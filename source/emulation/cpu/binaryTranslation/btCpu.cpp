@@ -41,9 +41,6 @@ void BtCPU::run() {
 
 std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
     std::shared_ptr<BtData> firstPass = createData();
-    if (ip == 0xd04acc20) {
-        int ii = 0;
-    }
     firstPass->ip = ip;
     firstPass->startOfDataIp = ip;
     translateData(firstPass);
@@ -515,77 +512,41 @@ static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
 
 #include "../x64/x64CPU.h"
 
-void common_runSingleOp(BtCPU* cpu) {    
-    thread_local static DecodedBlock* block;
+#if !defined(BOXEDWINE_64BIT_MMU) && !defined(BOXEDWINE_X64);
+void common_runSingleOp(BtCPU* cpu) {           
+    U32 address = cpu->eip.u32;
 
+    if (cpu->isBig()) {
+        address += cpu->seg[CS].address;
+    } else {
+        address = cpu->seg[CS].address + (address & 0xFFFF);
+    }
+
+    CodeBlock block = cpu->memory->findCodeBlockContaining(address, 0);
     if (!block) {
-        // prevents crashes since the normal core needs these
-        block = new DecodedBlock();
-        block->next1 = block;
-        block->next2 = block;
+        int ii = 0;
     }
-    DecodedBlock::currentBlock = block;    
-    U32 eip = cpu->eip.u32;    
-    DecodedOp* op = cpu->getOp(cpu->eip.u32, false);
-
-    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
-        for (U32 i = 0; i < 8; i++) {
-            cpu->xmm[i].pd.u64[0] = ((x64CPU*)cpu)->fpuState.xmm[i].low;
-            cpu->xmm[i].pd.u64[1] = ((x64CPU*)cpu)->fpuState.xmm[i].high;
-        }        
+    DecodedBlock::currentBlock = block->block;
+    if (!DecodedBlock::currentBlock) {
+        void* host = getMemData(cpu->memory)->getExistingHostAddress(address);
+        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
+        //cpu->memory->addExtraCodeBlock(address, DecodedBlock::currentBlock);
     }
-    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
-        U16 controlWord = ((x64CPU*)cpu)->fpuState.fcw;
-        U16 statusWord = ((x64CPU*)cpu)->fpuState.fsw;
-        U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
-        cpu->fpu.SetCW(controlWord);
-        cpu->fpu.SetSW(statusWord);
-        cpu->fpu.SetTagFromAbridged(tag);
-
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            if (!(tag & (1 << i))) {
-                //cpu->fpu.setReg(i, 0.0);
-            } else {
-                double d = cpu->fpu.FLD80(((x64CPU*)cpu)->fpuState.st_mm[index].low, (S16)((x64CPU*)cpu)->fpuState.st_mm[index].high);
-                cpu->fpu.setReg(i, d);
-            }
-        }
-    } else {
-        for (U32 i = 0; i < 8; i++) {
-            cpu->reg_mmx[i].q = ((x64CPU*)cpu)->fpuState.st_mm[i].low;
-        }
+    DecodedOp* op = DecodedBlock::currentBlock->getOp(address);
+    bool deallocBlock = false;
+    if (!op) {
+        // interesting rare case where the code skipped over the 1 byte lock prefix and the address wasn't ready (on demand, mapped file)
+        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
+        op = DecodedBlock::currentBlock->getOp(address);
+        deallocBlock = true;
     }
-    OpCallback func = NormalCPU::getFunctionForOp(op);
-    op->next = DecodedOp::alloc();
-    op->next->pfn = emptyOp;
-    func(cpu, op);
-
-    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
-        ((x64CPU*)cpu)->fpuState.fcw = cpu->fpu.CW();
-        ((x64CPU*)cpu)->fpuState.fsw = cpu->fpu.SW();
-        ((x64CPU*)cpu)->fpuState.ftw = cpu->fpu.GetAbridgedTag();
-        U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            if (!(tag & (1 << i))) {
-                //memset(&((x64CPU*)cpu)->fpuState.st_mm[i].st[0], 0, 10);
-            } else {
-                cpu->fpu.ST80(i, (U64*)&((x64CPU*)cpu)->fpuState.st_mm[index].low, (U64*)&((x64CPU*)cpu)->fpuState.st_mm[index].high);
-            }
-        }
-    } else {
-        for (U32 i = 0; i < 8; i++) {
-            ((x64CPU*)cpu)->fpuState.st_mm[i].low = cpu->reg_mmx[i].q;
-        }
-    }
-    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
-        for (U32 i = 0; i < 8; i++) {
-            ((x64CPU*)cpu)->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
-            ((x64CPU*)cpu)->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
-        }        
-    }
-    op->dealloc(false);
+    op->pfn(cpu, op);
     cpu->fillFlags();
+    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+    if (deallocBlock) {
+        DecodedBlock::currentBlock->dealloc(false);
+    }
+    DecodedBlock::currentBlock = nullptr;
 }
+#endif
 #endif

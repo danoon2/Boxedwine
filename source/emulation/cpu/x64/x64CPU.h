@@ -81,10 +81,7 @@ public:
     ALIGN(FxsaveStruct fpuState, 16);
 	ALIGN(FxsaveStruct originalFpuState, 16);
 	U64 originalCpuRegs[16];
-    void* reTranslateChunkAddress;
-    void* syncToHostAddress;
-    void* syncFromHostAddress;
-    void* doSingleOpAddress;
+    void* reTranslateChunkAddress;    
 #ifdef BOXEDWINE_64BIT_MMU
     void* reTranslateChunkAddressFromReg;
 #endif

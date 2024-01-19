@@ -42,6 +42,9 @@ public:
 
     void addCode(U32 eip, CodeBlock block, U32 len);
     CodeBlock getCode(U32 eip);
+    CodeBlock findCode(U32 eip, U32 len);
+
+    void removeBlockAt(U32 address, U32 len);
 private:
     class CodePageEntry {
     public:
@@ -53,18 +56,19 @@ private:
 	    CodePageEntry* linkedPrev;
 	    CodePageEntry* linkedNext;
         CodePage* page;
-    };
-    void removeBlockAt(U32 address, U32 len);
-    CodePageEntry* findCode(U32 address, U32 len);
+    };    
+    CodePageEntry* findEntry(U32 address, U32 len);
     void addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link);
     void copyOnWrite();
 
     CodePageEntry* entries[CODE_ENTRIES];
     int entryCount;
 
+    CodePageEntry* getEntry(U32 eip);
+
     static CodePageEntry* freeCodePageEntries;
     static CodePageEntry* allocCodePageEntry();
-    static void freeCodePageEntry(CodePageEntry* entry);
+    void freeCodePageEntry(CodePageEntry* entry);
 };
 
 #endif

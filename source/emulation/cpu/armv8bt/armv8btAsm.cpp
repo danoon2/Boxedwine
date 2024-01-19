@@ -7,6 +7,7 @@
 
 #include "../common/common_other.h"
 #include "../../../../source/emulation/hardmmu/kmemory_hard.h"
+#include "../../../../source/emulation/softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 #include "../armv8/llvm_helper.h"
 #include "armv8btCodeChunk.h"
@@ -19,7 +20,7 @@ static bool isWidthVector(VectorWidth width) {
 }
 
 U32 Armv8btAsm::flagsNeeded() {
-    return DecodedOp::getNeededFlags(this->currentBlock, this->decodedOp, instructionInfo[this->decodedOp->inst].flagsSets & ~MAYBE);
+    return DecodedOp::getNeededFlags(this->currentBlock, this->currentOp, instructionInfo[this->currentOp->inst].flagsSets & ~MAYBE);
 }
 
 void Armv8btAsm::pushPair(U8 r1, U8 r2) {
@@ -57,7 +58,8 @@ void Armv8btAsm::releaseFpuTagOffset(U8 offsetReg) {
 }
 
 U8 Armv8btAsm::getFpuTopReg() {
-    if (!this->fpuTopRegSet) {
+    // if we get the cached top before a read/write and that read/write calls the host, then the instruction is not re-entrant
+    if (1) {
         this->fpuTopRegSet = true;
         this->readMem32ValueOffset(xFpuTop, xCPU, (U32)(offsetof(CPU, fpu.top)));
     }
@@ -624,6 +626,19 @@ void Armv8btAsm::cmpValue32(U8 src, U32 value) {
     } else {
         U8 tmp = getRegWithConst(value);
         cmpRegs32(src, tmp);
+        releaseTmpReg(tmp);
+    }
+}
+
+void Armv8btAsm::cmpValue64(U8 src, U32 value) {
+    if (value <= 0xFFF) {
+        write8(0x1f | (U8)(src << 5));
+        write8((U8)(src >> 3) | (U8)(value << 2));
+        write8(value >> 6);
+        write8(0xf1); // 71 is 32-bit version (f1 is 64-bit version)
+    } else {
+        U8 tmp = getRegWithConst(value);
+        cmpRegs64(src, tmp);
         releaseTmpReg(tmp);
     }
 }
@@ -1241,73 +1256,73 @@ void Armv8btAsm::movRegToReg(U8 dst, U8 src, U32 width, bool zeroExtend) {
 
 void Armv8btAsm::calculateAddress16(U8 dst) {
     // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
-    if (this->decodedOp->base != SEG_ZERO) {
-        if (this->decodedOp->rm == regZero) {
-            if (this->decodedOp->sibIndex == regZero) {
-                addValue32(dst, getSegReg(this->decodedOp->base), (U16)this->decodedOp->disp);
+    if (this->currentOp->base != SEG_ZERO) {
+        if (this->currentOp->rm == regZero) {
+            if (this->currentOp->sibIndex == regZero) {
+                addValue32(dst, getSegReg(this->currentOp->base), (U16)this->currentOp->disp);
             } else {
-                if (this->decodedOp->disp) {
-                    addValue32(dst, getNativeReg(this->decodedOp->sibIndex), (U16)this->decodedOp->disp);
+                if (this->currentOp->disp) {
+                    addValue32(dst, getNativeReg(this->currentOp->sibIndex), (U16)this->currentOp->disp);
                     andValue32(dst, dst, 0xFFFF);
-                    addRegs32(dst, dst, getSegReg(this->decodedOp->base));
+                    addRegs32(dst, dst, getSegReg(this->currentOp->base));
                 } else {
-                    andValue32(dst, getNativeReg(this->decodedOp->sibIndex), 0xFFFF);
-                    addRegs32(dst, dst, getSegReg(this->decodedOp->base));
+                    andValue32(dst, getNativeReg(this->currentOp->sibIndex), 0xFFFF);
+                    addRegs32(dst, dst, getSegReg(this->currentOp->base));
                 }
             }
         } else {
-            if (this->decodedOp->sibIndex == regZero) {
-                if (this->decodedOp->disp) {
-                    addValue32(dst, getNativeReg(this->decodedOp->rm), (U16)this->decodedOp->disp);
+            if (this->currentOp->sibIndex == regZero) {
+                if (this->currentOp->disp) {
+                    addValue32(dst, getNativeReg(this->currentOp->rm), (U16)this->currentOp->disp);
                     andValue32(dst, dst, 0xFFFF);
-                    addRegs32(dst, dst, getSegReg(this->decodedOp->base));
+                    addRegs32(dst, dst, getSegReg(this->currentOp->base));
                 } else {
-                    andValue32(dst, getNativeReg(this->decodedOp->rm), 0xFFFF);
-                    addRegs32(dst, dst, getSegReg(this->decodedOp->base));
+                    andValue32(dst, getNativeReg(this->currentOp->rm), 0xFFFF);
+                    addRegs32(dst, dst, getSegReg(this->currentOp->base));
                 }
             } else {
-                addRegs32(dst, getNativeReg(this->decodedOp->rm), getNativeReg(this->decodedOp->sibIndex));
-                if (this->decodedOp->disp) {
-                    addValue32(dst, dst, (U16)this->decodedOp->disp);
+                addRegs32(dst, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex));
+                if (this->currentOp->disp) {
+                    addValue32(dst, dst, (U16)this->currentOp->disp);
                 }
                 andValue32(dst, dst, 0xFFFF);
-                addRegs32(dst, dst, getSegReg(this->decodedOp->base));
+                addRegs32(dst, dst, getSegReg(this->currentOp->base));
             }
         }
     } else {
         // special case for lea gw, we don't want to overwrite the top 16-bits of dst
         U8 tmp = getTmpReg();
-        if (this->decodedOp->rm == regZero) {
-            if (this->decodedOp->sibIndex == regZero) {
-                movk(dst, this->decodedOp->disp); // intentially movk to keep upper 16-bit
+        if (this->currentOp->rm == regZero) {
+            if (this->currentOp->sibIndex == regZero) {
+                movk(dst, this->currentOp->disp); // intentially movk to keep upper 16-bit
                 releaseTmpReg(tmp);
                 return;
             } else {
-                if (this->decodedOp->disp) {
-                    addValue32(tmp, getNativeReg(this->decodedOp->sibIndex), (U16)this->decodedOp->disp);
+                if (this->currentOp->disp) {
+                    addValue32(tmp, getNativeReg(this->currentOp->sibIndex), (U16)this->currentOp->disp);
                 } else {
-                    if (dst != getNativeReg(this->decodedOp->sibIndex)) {
-                        movRegToReg(dst, getNativeReg(this->decodedOp->sibIndex), 16, false);
+                    if (dst != getNativeReg(this->currentOp->sibIndex)) {
+                        movRegToReg(dst, getNativeReg(this->currentOp->sibIndex), 16, false);
                     }
                     releaseTmpReg(tmp);
                     return;
                 }
             }
         } else {
-            if (this->decodedOp->sibIndex == regZero) {
-                if (this->decodedOp->disp) {
-                    addValue32(tmp, getNativeReg(this->decodedOp->rm), (U16)this->decodedOp->disp);
+            if (this->currentOp->sibIndex == regZero) {
+                if (this->currentOp->disp) {
+                    addValue32(tmp, getNativeReg(this->currentOp->rm), (U16)this->currentOp->disp);
                 } else {
-                    if (dst != getNativeReg(this->decodedOp->rm)) {
-                        movRegToReg(dst, getNativeReg(this->decodedOp->rm), 16, false);
+                    if (dst != getNativeReg(this->currentOp->rm)) {
+                        movRegToReg(dst, getNativeReg(this->currentOp->rm), 16, false);
                     }
                     releaseTmpReg(tmp);
                     return;                    
                 }
             } else {
-                addRegs32(tmp, getNativeReg(this->decodedOp->rm), getNativeReg(this->decodedOp->sibIndex));
-                if (this->decodedOp->disp) {
-                    addValue32(tmp, tmp, (U16)this->decodedOp->disp);
+                addRegs32(tmp, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex));
+                if (this->currentOp->disp) {
+                    addValue32(tmp, tmp, (U16)this->currentOp->disp);
                 }
             }
         }
@@ -1317,67 +1332,67 @@ void Armv8btAsm::calculateAddress16(U8 dst) {
 }
 
 void Armv8btAsm::calculateAddress32(U8 dst) {
-    bool needsSeg = this->decodedOp->base != SEG_ZERO && KThread::currentThread()->process->hasSetSeg[this->decodedOp->base];
+    bool needsSeg = this->currentOp->base != SEG_ZERO && KThread::currentThread()->process->hasSetSeg[this->currentOp->base];
 
-    if (this->decodedOp->rm == regZero) {
-        if (this->decodedOp->sibIndex == regZero) {
+    if (this->currentOp->rm == regZero) {
+        if (this->currentOp->sibIndex == regZero) {
             // example lea eax, [0x1234]
             if (needsSeg) {
-                addValue32(dst, getSegReg(this->decodedOp->base), this->decodedOp->disp);
+                addValue32(dst, getSegReg(this->currentOp->base), this->currentOp->disp);
                 needsSeg = false;
             } else {
-                loadConst(dst, this->decodedOp->disp);
+                loadConst(dst, this->currentOp->disp);
             }
         } else {
-            if (this->decodedOp->disp) {
+            if (this->currentOp->disp) {
                 // example lea eax, [eax<<2 + 0x1234]
-                if (this->decodedOp->sibScale) {
-                    shiftRegLeftWithValue32(dst, getNativeReg(this->decodedOp->sibIndex), this->decodedOp->sibScale);
-                    addValue32(dst, dst, this->decodedOp->disp);
+                if (this->currentOp->sibScale) {
+                    shiftRegLeftWithValue32(dst, getNativeReg(this->currentOp->sibIndex), this->currentOp->sibScale);
+                    addValue32(dst, dst, this->currentOp->disp);
                 } else {
-                    addValue32(dst, getNativeReg(this->decodedOp->sibIndex), this->decodedOp->disp);
+                    addValue32(dst, getNativeReg(this->currentOp->sibIndex), this->currentOp->disp);
                 }
             } else {
                 // example lea eax, [eax<<2]
-                shiftRegLeftWithValue32(dst, getNativeReg(this->decodedOp->sibIndex), this->decodedOp->sibScale);
+                shiftRegLeftWithValue32(dst, getNativeReg(this->currentOp->sibIndex), this->currentOp->sibScale);
             }
         }
     } else {
-        if (this->decodedOp->sibIndex == regZero) {
-            if (this->decodedOp->disp) {
+        if (this->currentOp->sibIndex == regZero) {
+            if (this->currentOp->disp) {
                 // example lea eax, [eax + 0x1234]
-                addValue32(dst, getNativeReg(this->decodedOp->rm), this->decodedOp->disp);
+                addValue32(dst, getNativeReg(this->currentOp->rm), this->currentOp->disp);
             } else {
                 // example lea eax, [eax]
                 if (needsSeg) {
-                    addRegs32(dst, getNativeReg(this->decodedOp->rm), getSegReg(this->decodedOp->base));
+                    addRegs32(dst, getNativeReg(this->currentOp->rm), getSegReg(this->currentOp->base));
                     needsSeg = false;
                 } else {
-                    if (dst != getNativeReg(this->decodedOp->rm)) {
+                    if (dst != getNativeReg(this->currentOp->rm)) {
                         // :TODO: maybe return the reg instead of copying it if seg isn't needed?
-                        mov32(dst, getNativeReg(this->decodedOp->rm));
+                        mov32(dst, getNativeReg(this->currentOp->rm));
                     }
                 }
             }
         } else {
-            if (this->decodedOp->disp) {
+            if (this->currentOp->disp) {
                 // example lea eax, [eax + eax<<2 + 0x1234]
-                addRegs32(dst, getNativeReg(this->decodedOp->rm), getNativeReg(this->decodedOp->sibIndex), this->decodedOp->sibScale);
-                addValue32(dst, dst, this->decodedOp->disp);
+                addRegs32(dst, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex), this->currentOp->sibScale);
+                addValue32(dst, dst, this->currentOp->disp);
             } else {
                 // example lea eax, [eax + eax<<2]
-                addRegs32(dst, getNativeReg(this->decodedOp->rm), getNativeReg(this->decodedOp->sibIndex), this->decodedOp->sibScale);
+                addRegs32(dst, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex), this->currentOp->sibScale);
             }
         }
     }
     if (needsSeg) {
-        addRegs32(dst, dst, getSegReg(this->decodedOp->base));
+        addRegs32(dst, dst, getSegReg(this->currentOp->base));
     }
 }
 
 U8 Armv8btAsm::getAddressReg() {
     U8 tmp = getTmpReg();
-    if (this->decodedOp->ea16) {
+    if (this->currentOp->ea16) {
         calculateAddress16(tmp);
     } else {
         calculateAddress32(tmp);
@@ -1385,11 +1400,14 @@ U8 Armv8btAsm::getAddressReg() {
     return tmp;
 }
 
-#ifdef BOXEDWINE_64BIT_MMU
-U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, S8 tmpReg) {
+U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool skipAlignmentCheck, S8 tmpReg) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (this->useSingleMemOffset) {
         return xMem;
     } else {
+#else
+        {
+#endif
         U8 resultReg = getTmpReg();
         bool needToReleaseTmpReg = false;
 
@@ -1399,8 +1417,25 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, S8 tmpReg) {
         }
 
         shiftRegRightWithValue32(tmpReg, regEmulatedAddress, 12); // get page
+#ifdef BOXEDWINE_64BIT_MMU 
         readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
         readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
+#else
+        if (width != 8 && width != 16 && width != 32 && width != 64 && width != 128) {
+            kpanic("Armv8btAsm::getHostMem bad width=%d %s", width, currentOp->name());
+        }
+        width = width / 8;
+        readMem64RegOffset(resultReg, (instructionInfo[this->currentOp->inst].writeMemWidth ? xMemWrite : xMemRead), tmpReg, 3);
+        if (!skipAlignmentCheck && width > 1) {
+            andValue32(tmpReg, regEmulatedAddress, 0xFFF);
+            doIf(tmpReg, K_PAGE_SIZE - width, DO_IF_GREATER_THAN, [=] {
+                writeToRegFromValue(resultReg, 0);
+                });
+        }
+        doIf(resultReg, 0, DO_IF_EQUAL, [=] {
+            emulateSingleOp();
+            });
+#endif
         if (needToReleaseTmpReg) {
             releaseTmpReg(tmpReg);
         }
@@ -1408,49 +1443,19 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, S8 tmpReg) {
     }
 }
 
-U8 Armv8btAsm::getHostMemWithOffset(U8 regEmulatedAddress, U32 offset) {
-    if (this->useSingleMemOffset) {
-        return xMem;
-    } else {
-        U8 resultReg = getTmpReg();
-        U8 tmpReg = getTmpReg();
-        S32 value = (S32)offset;
-        if (value < 0) {
-            subValue32(tmpReg, regEmulatedAddress, (U32)(-value));
-        } else {
-            addValue32(tmpReg, regEmulatedAddress, offset);
-        }
-        shiftRegRightWithValue32(tmpReg, tmpReg, 12); // get page
-        readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
-        readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
-        releaseTmpReg(tmpReg);
-        return resultReg;
-    }
-}
-
-U8 Armv8btAsm::getHostMemFromAddress(U32 address) {
-    if (this->useSingleMemOffset) {
-        return xMem;
-    } else {
-        U8 resultReg = getTmpReg();
-        U8 tmpReg = getRegWithConst(address >> 12);
-
-        readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
-        readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
-        releaseTmpReg(tmpReg);
-        return resultReg;
-    }
-}
-
 void Armv8btAsm::releaseHostMem(U8 reg) {
+#ifdef BOXEDWINE_64BIT_MMU 
     if (reg != xMem) {
         releaseTmpReg(reg);
     }
+#else
+    releaseTmpReg(reg);
+#endif
 }
 
 void Armv8btAsm::vReadMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 128, false);
         vReadMem128RegOffset(dst, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -1461,7 +1466,7 @@ void Armv8btAsm::vReadMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddres
 
 void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 64, false);
         addRegs64(addressReg, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -1474,7 +1479,7 @@ void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOffs
 
 void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 64, false);
         vReadMem64RegOffset(dst, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -1483,8 +1488,8 @@ void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, bool addMemOffsetToAddress
     }
 }
 
-void Armv8btAsm::readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 width, std::function<void(void)> pfn, bool lock, bool doWrite, bool generateMemoryBarrierForLock) {
-    U8 memReg = getHostMem(addressReg);
+void Armv8btAsm::readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 width, std::function<void(void)> pfn, bool lock, bool doWrite) {
+    U8 memReg = getHostMem(addressReg, width, doWrite);
     addRegs64(addressReg, addressReg, memReg);
     releaseHostMem(memReg);
 
@@ -1493,103 +1498,9 @@ void Armv8btAsm::readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 wid
     readMemory(addressReg, readDst, width, false, lock);
     pfn();
     if (doWrite) {
-        writeMemory(addressReg, writeSrc, 16, false, lock, readDst, restartPos, generateMemoryBarrierForLock);
+        writeMemory(addressReg, writeSrc, width, false, lock, readDst, restartPos);
     }
 }
-
-#else
-void Armv8btAsm::readEmulatedMemory(U8 addressReg, U8 dst, U32 width) {
-    // read memory->mmuReadPtr in xMemRead
-    U8 memReg = getTmpReg();
-    readMem32RegOffset(memReg, xMemRead, (addressReg >> K_PAGE_SHIFT) << 2);
-    doIf(memReg, 0, DO_IF_NOT_EQUAL, [this, width, addressReg, memReg, dst] {
-            if (width == 64) {
-                readMem64RegOffset(dst, addressReg, memReg, 0);
-            } else if (width == 32) {
-                readMem32RegOffset(dst, addressReg, memReg, 0);
-            } else if (width == 16) {
-                readMem16RegOffset(dst, addressReg, memReg, signExtend);
-            } else if (width == 8) {
-                readMem8RegOffset(dst, addressReg, memReg, signExtend);
-            } else {
-                kpanic("ArmV8bt: readMemory with invalid width: %d", width);
-            }
-        }, [] {
-            // todo call slow method
-
-            }, [this, memReg] {
-                releaseTmpReg(memReg);
-                });
-    
-}
-
-void Armv8btAsm::vReadMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
-    if (addMemOffsetToAddress) {
-        U8 memReg = getTmpReg();
-        readMem32RegOffset(memReg, xMemRead, (addressReg >> K_PAGE_SHIFT) << 2);
-        doIf(memReg, 0, DO_IF_NOT_EQUAL, [this, addressReg, memReg, dst] {
-            vReadMem128RegOffset(dst, addressReg, memReg);
-            }, [] {
-                // :TODO:
-                kpanic("vReadMemory128 failed");
-                }, [this, memReg] {
-                    releaseTmpReg(memReg);
-                    });
-    }
-    else {
-        vReadMem128ValueOffset(dst, addressReg, 0);
-    }
-}
-
-void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
-    if (addMemOffsetToAddress) {
-        U8 memReg = getTmpReg();
-        readMem32RegOffset(memReg, xMemRead, (addressReg >> K_PAGE_SHIFT) << 2);
-        doIf(memReg, 0, DO_IF_NOT_EQUAL, [this, addressReg, memReg] {
-            addRegs64(addressReg, addressReg, memReg);
-            }, [] {
-                // :TODO:
-                kpanic("vReadMemory64 index failed");
-                }, [this, memReg] {
-                    releaseTmpReg(memReg);
-                    });
-    }
-    write8(dst | (U8)(addressReg << 5));
-    write8((U8)(addressReg >> 3) | 0x84);
-    write8(0x40);
-    write8((index == 1) ? 0x4d : 0x0d);
-}
-
-void Armv8btAsm::vReadMemory64(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
-    if (addMemOffsetToAddress) {
-        U8 memReg = getTmpReg();
-        readMem32RegOffset(memReg, xMemRead, (addressReg >> K_PAGE_SHIFT) << 2);
-        doIf(memReg, 0, DO_IF_NOT_EQUAL, [this, addressReg, memReg, dst] {
-            vReadMem64RegOffset(dst, addressReg, memReg);
-            }, [] {
-                // :TODO:
-                kpanic("vReadMemory64 failed");
-                }, [this, memReg] {
-                    releaseTmpReg(memReg);
-                    });
-    }
-    else {
-        vReadMem64ValueOffset(dst, addressReg, 0);
-    }
-}
-
-void Armv8btAsm::readWriteMemory(U8 addressReg, U8 dst, U32 width, std::function<void(void)> pfn, bool lock, bool doWrite) {
-    if (lock) {
-        kpanic("Armv8btAsm::readWriteMemory lock not implemented");
-    }
-    readMemory(addressReg, dst, width, true, lock);
-    pfn();
-    if (doWrite) {
-        writeMemory(addressReg, dst, width, true, lock);
-    }
-}
-
-#endif
 
 void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetToAddress, bool lock, bool signExtend) {
     if (lock) {        
@@ -1601,10 +1512,11 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
         if (lock) {
             kpanic("ArmV8bt: readMemory lock not implement for addMemOffsetToAddress = true");
         }
-#ifndef BOXEDWINE_64BIT_MMU
-        readEmulatedMemory(addressReg, dst, width);
+#ifdef BOXEDWINE_64BIT_MMU 
+        U8 memReg = getHostMem(addressReg, width, false, false, (addressReg != dst) ? dst : -1);
 #else
-        U8 memReg = getHostMem(addressReg, (addressReg != dst) ? dst : -1);
+        U8 memReg = getHostMem(addressReg, width, false);
+#endif
         if (width == 64) {
             readMem64RegOffset(dst, addressReg, memReg, 0);
         } else if (width == 32) {
@@ -1617,7 +1529,6 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
             kpanic("ArmV8bt: readMemory with invalid width: %d", width);
         }    
         releaseHostMem(memReg);
-#endif
     } else if (lock) {
         if (width == 64) {
             readMem64Lock(dst, addressReg);
@@ -1704,7 +1615,7 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
         return;
     }
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, width, true);
         if (width == 64) {
             writeMem64RegOffset(src, addressReg, memReg);
         } else if (width == 32) {
@@ -2100,7 +2011,7 @@ void Armv8btAsm::branchNativeRegister(U8 reg) {
     write8(0xd6);
 }
 
-void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
+void Armv8btAsm::jmpRegToxBranchEip(bool mightNeedCS) {
 #ifdef BOXEDWINE_64BIT_MMU
     if (KSystem::useLargeAddressSpace) {
         if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
@@ -2126,18 +2037,37 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
 
         if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
             U8 tmpReg = getTmpReg();
-            addRegs32(tmpReg, reg, xCS);
+            addRegs32(tmpReg, xBranchEip, xCS);
             andValue32(xOffset, tmpReg, 0xFFF); // get page offset            
             shiftRegRightWithValue32(xPage, tmpReg, 12); // get page
             releaseTmpReg(tmpReg);
         } else {
-            andValue32(xOffset, reg, 0xFFF); // get page offset
-            shiftRegRightWithValue32(xPage, reg, 12); // get page
+            andValue32(xOffset, xBranchEip, 0xFFF); // get page offset
+            shiftRegRightWithValue32(xPage, xBranchEip, 12); // get page
         }
         readMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_OP_PAGES); // get offset table pages
         readMem64RegOffset(xBranch, xBranch, xPage, 3); // get offset table for page
+
+#ifndef BOXEDWINE_64BIT_MMU
+        cmpValue64(xBranch, 0);
+        doIf(xBranch, 0, DO_IF_EQUAL, [=] {
+            writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
+            readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
+            branchNativeRegister(xBranch);
+            }, nullptr, nullptr, false, false);
+#endif       
         readMem64RegOffset(xBranch, xBranch, xOffset, 3); // read value at offset for page
+
+#ifdef BOXEDWINE_64BIT_MMU
         readMem8ValueOffset(xResult, xBranch, 0); // verify that where we will jump is valid
+#else
+        cmpValue64(xBranch, 0);
+        doIf(xBranch, 0, DO_IF_EQUAL, [=] {
+            writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
+            readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
+            branchNativeRegister(xBranch);
+            }, nullptr, nullptr, false, false);
+#endif        
     }
 #ifdef _DEBUG
     // make it easier to see where we jumped from
@@ -2148,8 +2078,8 @@ void Armv8btAsm::jmpReg(U8 reg, bool mightNeedCS) {
 
 void Armv8btAsm::doJmp(bool mightNeedCS) {
     // ok to call 32-bit read for 16-bit instruction, cpu->eip.u32 will be properly masked by this point
-    readMem32ValueOffset(xBranch, xCPU, CPU_OFFSET_EIP);
-    jmpReg(xBranch, mightNeedCS);
+    readMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
+    jmpRegToxBranchEip(mightNeedCS);
 }
 
 static void armv8_retranslateChunkAdjustForCS() {
@@ -2161,15 +2091,14 @@ static void armv8_retranslateChunkAdjustForCS() {
     cpu->returnHostAddress = cpu->reTranslateChunk();
 }
 
-#ifdef BOXEDWINE_64BIT_MMU
-void Armv8btAsm::createCodeForRetranslateChunk() {
-    syncRegsFromHost(true);
-    callHost((void*)armv8_retranslateChunkAdjustForCS);
-    syncRegsToHost();
-    readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
-    branchNativeRegister(xBranch);
+static void armv8_translateIfNecessary(Armv8btCPU* cpu) {
+    if (!cpu->isBig()) {
+        cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
+    }
+    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
 }
 
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
 void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
     syncRegsFromHost(true);
     mov64(0, xCPU); // param 1 (CPU)
@@ -2179,6 +2108,39 @@ void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
     branchNativeRegister(xBranch);
 }
 #endif
+#ifdef BOXEDWINE_64BIT_MMU
+void Armv8btAsm::createCodeForRetranslateChunk() {
+    syncRegsFromHost(true);
+    callHost((void*)armv8_retranslateChunkAdjustForCS);
+    syncRegsToHost();
+    readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
+    branchNativeRegister(xBranch);
+}
+
+#else
+void common_runSingleOp(BtCPU* cpu);
+void Armv8btAsm::createCodeForDoSingleOp() {
+    callSyncRegsFromHost();
+    mov64(0, xCPU); // param 1 (CPU)
+    callHost((void*)common_runSingleOp);
+    syncRegsToHost();
+    readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
+    branchNativeRegister(xBranch);
+}
+
+void Armv8btAsm::emulateSingleOp() {
+    loadConst(xBranch, this->startOfOpIp);
+    writeMem32ValueOffset(xBranch, xCPU, CPU_OFFSET_EIP);
+    loadConst(xBranch, CPU_OFFSET_DO_SINGLE_OP_ADDRESS);
+    readMem64RegOffset(xBranch, xCPU, xBranch);
+    branchNativeRegister(xBranch); // we won't return to here
+
+    fpuOffsetRegSet = false;
+    fpuTopRegSet = false;
+    clearCachedFpuRegs();
+}
+
+#endif
 
 void signalHandler();
 
@@ -2187,14 +2149,6 @@ void Armv8btAsm::createCodeForRunSignal() {
     syncRegsToHost();
     readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
     branchNativeRegister(xBranch);
-}
-
-static void armv8_translateIfNecessary(Armv8btCPU* cpu) {
-    cpu->eip.u32 -= cpu->seg[CS].address;
-    if (!cpu->isBig()) {
-        cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
-    }
-    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
 }
 
 void Armv8btAsm::write64Buffer(U8* buffer, U64 value) {
@@ -2388,8 +2342,8 @@ void Armv8btAsm::jumpTo(U32 eip) {
             write8(0x14);
             addTodoLinkJump(eip, 4, false);
         } else */{
-            loadConst(xBranch, eip);
-            jmpReg(xBranch, false);
+            loadConst(xBranchEip, eip);
+            jmpRegToxBranchEip(false);
         }
     }
 }
@@ -2416,13 +2370,25 @@ void Armv8btAsm::releaseTmpReg(U8 reg) {
     tmpRegInUse[reg - xTmp1] = false;
 }
 
-void Armv8btAsm::callHost(void* pfn) {
-    U8 tmp = getRegWithConst((U64)pfn);
-    // BLR tmp
-    write8((U8)(tmp << 5));
-    write8((U8)(tmp >> 3));
+void Armv8btAsm::ret() {
+    write8(0xc0);
+    write8(0x03);
+    write8(0x5f);
+    write8(0xd6);
+}
+
+void Armv8btAsm::blr(U8 reg) {
+    // BLR reg
+    write8((U8)(reg << 5));
+    write8((U8)(reg >> 3));
     write8(0x3f);
     write8(0xd6);
+}
+
+void Armv8btAsm::callHost(void* pfn) {
+    U8 tmp = getRegWithConst((U64)pfn);
+    blr(tmp);
+    fpuTopRegSet = false;
     releaseTmpReg(tmp);
 }
 
@@ -2439,11 +2405,32 @@ x0 to x7 : used to hold argument values passed to a subroutine, and also hold re
 
 // regs and flags (x0-x8) are wiped out and will need to saved/loaded
 // all other xRegs (xCPU, xMem, xES, etc) are callee saved will be reloaded as necessary, but already have their values set on the cpu so they don't need to be set
-#ifdef BOXEDWINE_64BIT_MMU
 void Armv8btAsm::syncRegsFromHost(bool eipInBranchReg) {
+    if (eipInBranchReg) {
+#ifdef BOXEDWINE_64BIT_MMU
+        U8 tmpReg = getTmpReg();
+        subRegs64(tmpReg, xBranchLargeAddressOffset, xLargeAddress);
+        shiftRegRightWithValue64(tmpReg, tmpReg, 3);
+        writeMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EIP);
+        releaseTmpReg(tmpReg);
 #else
-void Armv8btAsm::syncRegsFromHost() {
+        //writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
 #endif
+    } else {
+        U8 tmpReg = getTmpReg();
+        loadConst(tmpReg, this->startOfOpIp);
+        writeMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EIP);
+        releaseTmpReg(tmpReg);
+    }
+    callSyncRegsFromHost();
+}
+
+void Armv8btAsm::callSyncRegsFromHost() {
+    readMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_SYNC_FROM_HOST_ADDRESS);
+    blr(xBranch);
+}
+
+void Armv8btAsm::createCodeForSyncFromHost() {
     writeMem32ValueOffset(xEAX, xCPU, CPU_OFFSET_EAX);
     writeMem32ValueOffset(xECX, xCPU, CPU_OFFSET_ECX);
     writeMem32ValueOffset(xEDX, xCPU, CPU_OFFSET_EDX);
@@ -2453,23 +2440,6 @@ void Armv8btAsm::syncRegsFromHost() {
     writeMem32ValueOffset(xESI, xCPU, CPU_OFFSET_ESI);
     writeMem32ValueOffset(xEDI, xCPU, CPU_OFFSET_EDI);
     writeMem32ValueOffset(xFLAGS, xCPU, CPU_OFFSET_FLAGS);
-
-#ifdef BOXEDWINE_64BIT_MMU
-    if (eipInBranchReg) {
-        U8 tmpReg = getTmpReg();
-        subRegs64(tmpReg, xBranchLargeAddressOffset, xLargeAddress);
-        shiftRegRightWithValue64(tmpReg, tmpReg, 3);
-        writeMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EIP);
-        releaseTmpReg(tmpReg);
-    } else {
-#else
-        {
-#endif
-        U8 tmpReg = getTmpReg();
-        loadConst(tmpReg, this->startOfOpIp);
-        writeMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EIP);
-        releaseTmpReg(tmpReg);
-    }
 
     U8 addressReg = getTmpReg();
     addValue64(addressReg, xCPU, (U32)(offsetof(CPU, xmm[0])));
@@ -2482,12 +2452,19 @@ void Armv8btAsm::syncRegsFromHost() {
     vWriteMemMultiple64(vMMX4, addressReg, 4, false);
 
     releaseTmpReg(addressReg);
-
-    // :TODO: fpu sse
+    ret();
 }
 
 // don't adjust flags in this, several doif calls like setSegment, assume this
 void Armv8btAsm::syncRegsToHost() {
+    readMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_SYNC_TO_HOST_ADDRESS);
+    blr(xBranch);    
+    fpuOffsetRegSet = false;
+    fpuTopRegSet = false;
+    clearCachedFpuRegs();
+}
+
+void Armv8btAsm::createCodeForSyncToHost() {
     readMem32ValueOffset(xEAX, xCPU, CPU_OFFSET_EAX);
     readMem32ValueOffset(xECX, xCPU, CPU_OFFSET_ECX);
     readMem32ValueOffset(xEDX, xCPU, CPU_OFFSET_EDX);
@@ -2510,11 +2487,11 @@ void Armv8btAsm::syncRegsToHost() {
 
     // if we are using the FPU, these need to be restored
     // Quake 2 time demo will require this because it will cause an exception from self modifying code while using the FPU
-    addValue64(xFpuOffset, xCPU, (U32)(offsetof(CPU, fpu)));
+    //addValue64(xFpuOffset, xCPU, (U32)(offsetof(CPU, fpu)));
 
     // these 2 instructions instead of readMem32ValueOffset because readMem32ValueOffset uses a tmp reg and we are out for the div instruction
-    loadConst(addressReg, (U32)(offsetof(CPU, fpu.top)));
-    this->readMem32RegOffset(xFpuTop, xCPU, addressReg);
+   // loadConst(addressReg, (U32)(offsetof(CPU, fpu.top)));
+    //this->readMem32RegOffset(xFpuTop, xCPU, addressReg);
     releaseTmpReg(addressReg);
 
     // In the future, maybe only set these if they could have changed
@@ -2526,10 +2503,7 @@ void Armv8btAsm::syncRegsToHost() {
     this->readMem32ValueOffset(xGS, xCPU, (U32)(offsetof(CPU, seg[GS].address)));
 
     this->readMem32ValueOffset(xStackMask, xCPU, (U32)(offsetof(CPU, stackMask)));
-    // mdk perf won't draw correctly without this
-    clearCachedFpuRegs();
-    //fpuOffsetRegSet = false;
-    //fpuTopRegSet = false;
+    ret();
 }
 
 void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
@@ -2593,9 +2567,8 @@ void Armv8btAsm::compareZeroAndBranch(U8 reg, bool isZero, U32 eip) {
     }
     if (!isEipInChunk(eip)) {
         doIf(reg, 0, isZero? DO_IF_EQUAL:DO_IF_NOT_EQUAL, [eip, this] {
-            U8 tmpReg = this->getRegWithConst(eip);
-            jmpReg(tmpReg, false);
-            this->releaseTmpReg(tmpReg);
+            loadConst(xBranchEip, eip);
+            jmpRegToxBranchEip(false);
             });
     } else {
         write8(reg);
@@ -2808,7 +2781,7 @@ void Armv8btAsm::vWriteMem128ValueOffset(U8 dst, U8 base, S32 offset) {
 
 void Armv8btAsm::vWriteMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 128, true);
         vWriteMem128RegOffset(dst, addressReg, memReg);
         releaseHostMem(memReg);
     } else {
@@ -2860,7 +2833,7 @@ void Armv8btAsm::vReadMem64ValueOffset(U8 dst, U8 base, S32 offset) {
 
 void Armv8btAsm::vWriteMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 64, true);
         addRegs64(addressReg, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -2873,7 +2846,7 @@ void Armv8btAsm::vWriteMemory64(U8 addressReg, U8 dst, U32 index, bool addMemOff
 
 void Armv8btAsm::vReadMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 16, false);
         addRegs64(addressReg, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -2894,7 +2867,7 @@ void Armv8btAsm::vReadMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOffs
 
 void Armv8btAsm::vWriteMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 16, true);
         addRegs64(addressReg, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -2915,7 +2888,7 @@ void Armv8btAsm::vWriteMemory16(U8 addressReg, U8 dst, U32 index, bool addMemOff
 
 void Armv8btAsm::vReadMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 32, false);
         addRegs64(addressReg, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -2936,7 +2909,7 @@ void Armv8btAsm::vReadMem32RegOffset(U8 dst, U8 base, U8 offsetReg) {
 
 void Armv8btAsm::vReadMemory32(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 32, false);
         vReadMem32RegOffset(dst, addressReg, memReg);
         releaseHostMem(memReg);
     } else {
@@ -2960,7 +2933,7 @@ void Armv8btAsm::vReadMem32ValueOffset(U8 dst, U8 base, S32 offset) {
 
 void Armv8btAsm::vWriteMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress) {
     if (addMemOffsetToAddress) {
-        U8 memReg = getHostMem(addressReg);
+        U8 memReg = getHostMem(addressReg, 32, true);
         addRegs64(addressReg, addressReg, memReg);
         releaseHostMem(memReg);
     }
@@ -4971,6 +4944,10 @@ static void arm_invalidOp(CPU* cpu, U32 op) {
 }
 
 void Armv8btAsm::invalidOp(U32 op) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost();
 
     mov64(0, xCPU); // param 1 (CPU)
@@ -4979,6 +4956,7 @@ void Armv8btAsm::invalidOp(U32 op) {
     callHost((void*)arm_invalidOp);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 static U8 fetchByte(void* p, U32* eip) {
@@ -5003,6 +4981,10 @@ void Armv8btAsm::logOp(U32 eip) {
 }
 
 void Armv8btAsm::signalIllegalInstruction(int code) {
+#ifndef BOXEDWINE_64BIT_MMU
+    emulateSingleOp();
+    done = true;
+#else
     syncRegsFromHost();
 
     mov64(0, xCPU); // param 1 (CPU)
@@ -5011,15 +4993,19 @@ void Armv8btAsm::signalIllegalInstruction(int code) {
     callHost((void*)common_signalIllegalInstruction);
     syncRegsToHost();
     doJmp(true);
+#endif
 }
 
 void Armv8btAsm::translateInstruction() {
     KMemoryData* mem = getMemData(cpu->memory);
+    if (this->ip == 0xd07e9698) {
+        int ii = 0;
+    }
     this->startOfOpIp = this->ip;
 #ifdef BOXEDWINE_64BIT_MMU
     this->useSingleMemOffset = KSystem::useSingleMemOffset && !mem->doesInstructionNeedMemoryOffset(this->ip);
 #endif
-    this->ip += this->decodedOp->len;
+    this->ip += this->currentOp->len;
 #ifdef _DEBUG
     if (this->cpu->logFile) {
         this->logOp(this->startOfOpIp);
@@ -5040,11 +5026,11 @@ void Armv8btAsm::translateInstruction() {
 #endif
     }
 #endif
-    armv8btEncoder[this->decodedOp->inst](this);
+    armv8btEncoder[this->currentOp->inst](this);
 
     for (int i = 0; i < xNumberOfTmpRegs; i++) {
         if (this->tmpRegInUse[i]) {
-            kpanic("op(%x) leaked tmp reg", this->decodedOp->originalOp);
+            kpanic("op(%x) leaked tmp reg", this->currentOp->originalOp);
         }
     }
 }

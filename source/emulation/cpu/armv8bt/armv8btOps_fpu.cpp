@@ -349,7 +349,7 @@ static void doFCOMI(Armv8btAsm* data, U8 v1, S32 tagIndex1, U8 v2, S32 tagIndex2
 }
 
 static void doCMov(Armv8btAsm* data) {
-	FPUReg from(data, data->decodedOp->reg, false);
+	FPUReg from(data, data->currentOp->reg, false);
 	U8 tagReg = data->getTmpReg();
 	from.hostReadTag(tagReg); // read before push changes indexes
 	FPUReg to(data, 0, true, false);
@@ -373,13 +373,13 @@ void callFpu(Armv8btAsm* data, pfnFpu pfn) {
 void callFpuR(Armv8btAsm* data, pfnFpuR pfn) {
 	data->syncRegsFromHost();
 	data->mov64(0, xCPU); // param 1 (CPU)
-	data->loadConst(1, data->decodedOp->reg);
+	data->loadConst(1, data->currentOp->reg);
 	data->callHost((void*)pfn);
 	data->syncRegsToHost();
 }
-void callFpuA(Armv8btAsm* data, pfnFpuA pfn) {
-	U8 tmpReg = data->getAddressReg();
+void callFpuA(Armv8btAsm* data, pfnFpuA pfn) {	
 	data->syncRegsFromHost();
+	U8 tmpReg = data->getAddressReg(); // tmpReg could be x9 which is used by syncRegsFromHost, so calculate after syncRegsFromHost
 	data->mov64(0, xCPU); // param 1 (CPU)
 	data->movRegToReg(1, tmpReg, 32, false);
 	data->releaseTmpReg(tmpReg);
@@ -393,7 +393,7 @@ void opFADD_ST0_STj(Armv8btAsm* data) {
 #else
 	// cpu->fpu.STV(0) += cpu->fpu.STV(reg)
 	FPUReg dst(data, 0, true);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	data->fAdd(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
 }
@@ -404,7 +404,7 @@ void opFMUL_ST0_STj(Armv8btAsm* data) {
 #else
 	// cpu->fpu.STV(0) *= cpu->fpu.STV(reg)
 	FPUReg dst(data, 0, true);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	data->fMul(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
 }
@@ -413,8 +413,8 @@ void opFCOM_STi(Armv8btAsm* data) {
 	callFpuR(data, common_FCOM_STi);
 #else
 	FPUReg dst(data, 0, false, true, false, false);
-	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
-	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	FPUReg src(data, data->currentOp->reg, false, true, false, false);
+	doFCOM(data, dst.reg, 0, src.reg, data->currentOp->reg);
 #endif
 }
 void opFCOM_STi_Pop(Armv8btAsm* data) {
@@ -422,8 +422,8 @@ void opFCOM_STi_Pop(Armv8btAsm* data) {
 	callFpuR(data, common_FCOM_STi_Pop);
 #else
 	FPUReg dst(data, 0, false, true, false, false);
-	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
-	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	FPUReg src(data, data->currentOp->reg, false, true, false, false);
+	doFCOM(data, dst.reg, 0, src.reg, data->currentOp->reg);
 	FPU_POP(data);
 #endif
 }
@@ -432,7 +432,7 @@ void opFSUB_ST0_STj(Armv8btAsm* data) {
 	callFpuR(data, common_FSUB_ST0_STj);
 #else
 	FPUReg dst(data, 0, true);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	data->fSub(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
 }
@@ -441,7 +441,7 @@ void opFSUBR_ST0_STj(Armv8btAsm* data) {
 	callFpuR(data, common_FSUBR_ST0_STj);
 #else
 	FPUReg dst(data, 0, true);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	data->fSub(dst.reg, src.reg, dst.reg, D_scaler);
 #endif
 }
@@ -450,7 +450,7 @@ void opFDIV_ST0_STj(Armv8btAsm* data) {
 	callFpuR(data, common_FDIV_ST0_STj);
 #else
 	FPUReg dst(data, 0, true);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	data->fDiv(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
 }
@@ -459,7 +459,7 @@ void opFDIVR_ST0_STj(Armv8btAsm* data) {
 	callFpuR(data, common_FDIVR_ST0_STj);
 #else
 	FPUReg dst(data, 0, true);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	data->fDiv(dst.reg, src.reg, dst.reg, D_scaler);
 #endif
 }
@@ -553,7 +553,7 @@ void opFLD_STi(Armv8btAsm* data) {
 	// int reg_from = cpu->fpu.STV(reg);
 	// cpu->fpu.PREP_PUSH();
 	// cpu->fpu.FST(reg_from, cpu->fpu.STV(0));
-	FPUReg fromTmp(data, data->decodedOp->reg, false, true, true);
+	FPUReg fromTmp(data, data->currentOp->reg, false, true, true);
 	U8 tagReg = data->getTmpReg();
 	fromTmp.hostReadTag(tagReg); // read before push changes indexes
 
@@ -575,7 +575,7 @@ void opFXCH_STi(Armv8btAsm* data) {
 	// this->regs[other] = this->regs[st];
 	// this->tags[st] = tag;
 	// this->regs[st] = reg;
-	FPUReg from(data, data->decodedOp->reg, true);
+	FPUReg from(data, data->currentOp->reg, true);
 	FPUReg to(data, 0, true);
 	U8 vTmpReg = data->vGetTmpReg();
 	data->vMov64(vTmpReg, 0, from.reg, 0);
@@ -1132,7 +1132,6 @@ void opFNINIT(Armv8btAsm* data) {
 	data->clearCachedFpuRegs();
 	data->zeroReg(xFpuTop);
 	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, top)));
-	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
 	// :TODO: clear tags
 #endif
 }
@@ -1141,9 +1140,9 @@ void opFUCOMI_ST0_STj(Armv8btAsm* data) {
 	callFpuR(data, common_FUCOMI_ST0_STj);
 #else
 	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
-	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	doFCOMI(data, dst.reg, 0, src.reg, data->currentOp->reg);
 #endif
 }
 void opFCOMI_ST0_STj(Armv8btAsm* data) {
@@ -1151,8 +1150,8 @@ void opFCOMI_ST0_STj(Armv8btAsm* data) {
 	callFpuR(data, common_FCOMI_ST0_STj);
 #else
 	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
-	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	FPUReg src(data, data->currentOp->reg, false);
+	doFCOMI(data, dst.reg, 0, src.reg, data->currentOp->reg);
 #endif
 }
 void opFILD_DWORD_INTEGER(Armv8btAsm* data) {
@@ -1217,7 +1216,7 @@ void opFADD_STi_ST0(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FADD_STi_ST0);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fAdd(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
@@ -1226,7 +1225,7 @@ void opFMUL_STi_ST0(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FMUL_STi_ST0);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fMul(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
@@ -1235,7 +1234,7 @@ void opFSUBR_STi_ST0(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FSUBR_STi_ST0);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, src.reg, dst.reg, D_scaler);
 #endif
@@ -1244,7 +1243,7 @@ void opFSUB_STi_ST0(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FSUB_STi_ST0);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
@@ -1253,7 +1252,7 @@ void opFDIVR_STi_ST0(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FDIVR_STi_ST0);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, src.reg, dst.reg, D_scaler);
 #endif
@@ -1262,7 +1261,7 @@ void opFDIV_STi_ST0(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FDIV_STi_ST0);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, dst.reg, src.reg, D_scaler);
 #endif
@@ -1354,7 +1353,7 @@ void opFFREE_STi(Armv8btAsm* data) {
 	callFpuR(data, common_FFREE_STi);
 #else
 	// cpu->fpu.FFREE_STi(cpu->fpu.STV(reg));
-	hostWriteTag(data, data->getRegWithConst(TAG_Empty), true, data->decodedOp->reg);
+	hostWriteTag(data, data->getRegWithConst(TAG_Empty), true, data->currentOp->reg);
 #endif
 }
 void opFST_STi(Armv8btAsm* data) {
@@ -1363,7 +1362,7 @@ void opFST_STi(Armv8btAsm* data) {
 #else
 	// cpu->fpu.FST(cpu->fpu.STV(0), cpu->fpu.STV(reg));
 	FPUReg src(data, 0, false);
-	FPUReg dst(data, data->decodedOp->reg, true, false);
+	FPUReg dst(data, data->currentOp->reg, true, false);
 
 	U8 tagReg = data->getTmpReg();
 	src.hostReadTag(tagReg);
@@ -1377,9 +1376,9 @@ void opFUCOM_STi(Armv8btAsm* data) {
 	callFpuR(data, common_FUCOM_STi);
 #else
 	FPUReg dst(data, 0, false);
-	FPUReg src(data, data->decodedOp->reg, false);
+	FPUReg src(data, data->currentOp->reg, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
-	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	doFCOM(data, dst.reg, 0, src.reg, data->currentOp->reg);
 #endif
 }
 void opFUCOM_STi_Pop(Armv8btAsm* data) {
@@ -1387,9 +1386,9 @@ void opFUCOM_STi_Pop(Armv8btAsm* data) {
 	callFpuR(data, common_FUCOM_STi_Pop);
 #else
 	FPUReg dst(data, 0, false, true, false, false);
-	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
+	FPUReg src(data, data->currentOp->reg, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
-	doFCOM(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	doFCOM(data, dst.reg, 0, src.reg, data->currentOp->reg);
 	FPU_POP(data);
 #endif
 }
@@ -1467,7 +1466,7 @@ void opFADD_STi_ST0_Pop(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FADD_STi_ST0_Pop);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fAdd(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
@@ -1477,7 +1476,7 @@ void opFMUL_STi_ST0_Pop(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FMUL_STi_ST0_Pop);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fMul(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
@@ -1498,7 +1497,7 @@ void opFSUBR_STi_ST0_Pop(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FSUBR_STi_ST0_Pop);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, src.reg, dst.reg, D_scaler);
 	FPU_POP(data);
@@ -1508,7 +1507,7 @@ void opFSUB_STi_ST0_Pop(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FSUB_STi_ST0_Pop);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fSub(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
@@ -1518,7 +1517,7 @@ void opFDIVR_STi_ST0_Pop(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FDIVR_STi_ST0_Pop);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, src.reg, dst.reg, D_scaler);
 	FPU_POP(data);
@@ -1528,7 +1527,7 @@ void opFDIV_STi_ST0_Pop(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FDIV_STi_ST0_Pop);
 #else
-	FPUReg dst(data, data->decodedOp->reg, true);
+	FPUReg dst(data, data->currentOp->reg, true);
 	FPUReg src(data, 0, false);
 	data->fDiv(dst.reg, dst.reg, src.reg, D_scaler);
 	FPU_POP(data);
@@ -1619,7 +1618,7 @@ void opFFREEP_STi(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuR(data, common_FFREEP_STi);
 #else
-	hostWriteTag(data, data->getRegWithConst(TAG_Empty), true, data->decodedOp->reg);
+	hostWriteTag(data, data->getRegWithConst(TAG_Empty), true, data->currentOp->reg);
 	FPU_POP(data);
 #endif
 }
@@ -1641,9 +1640,9 @@ void opFUCOMI_ST0_STj_Pop(Armv8btAsm* data) {
 	callFpuR(data, common_FUCOMI_ST0_STj_Pop);
 #else
 	FPUReg dst(data, 0, false, true, false, false);
-	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
+	FPUReg src(data, data->currentOp->reg, false, true, false, false);
 	// :TODO: FCOM and FUCOM currently do the same thing
-	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	doFCOMI(data, dst.reg, 0, src.reg, data->currentOp->reg);
 	FPU_POP(data);
 #endif
 }
@@ -1652,8 +1651,8 @@ void opFCOMI_ST0_STj_Pop(Armv8btAsm* data) {
 	callFpuR(data, common_FCOMI_ST0_STj_Pop);
 #else
 	FPUReg dst(data, 0, false, true, false, false);
-	FPUReg src(data, data->decodedOp->reg, false, true, false, false);
-	doFCOMI(data, dst.reg, 0, src.reg, data->decodedOp->reg);
+	FPUReg src(data, data->currentOp->reg, false, true, false, false);
+	doFCOMI(data, dst.reg, 0, src.reg, data->currentOp->reg);
 	FPU_POP(data);
 #endif
 }

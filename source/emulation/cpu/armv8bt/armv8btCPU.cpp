@@ -5,6 +5,7 @@
 #include "armv8btAsm.h"
 #include "armv8btOps.h"
 #include "../../hardmmu/kmemory_hard.h"
+#include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 #include "../binaryTranslation/btCodeChunk.h"
 #include "armv8btCodeChunk.h"
@@ -115,6 +116,12 @@ void* Armv8btCPU::init() {
     data.writeToRegFromValue(xESI, ESI);
     data.writeToRegFromValue(xEDI, EDI);        
     
+#ifdef xMemRead
+    KMemoryData* memData = getMemData(memory);
+    data.writeToRegFromValue(xMemRead, (U64)memData->mmuReadPtrAdjusted);
+    data.writeToRegFromValue(xMemWrite, (U64)memData->mmuWritePtrAdjusted);
+#endif
+
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
     data.doJmp(false);
     std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
@@ -131,7 +138,7 @@ void* Armv8btCPU::init() {
         this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
-
+#ifdef BOXEDWINE_64BIT_MMU
     if (!this->thread->process->reTranslateChunkAddress) {
         Armv8btAsm translateData(this);
         translateData.createCodeForRetranslateChunk();
@@ -146,6 +153,7 @@ void* Armv8btCPU::init() {
         this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
+#endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         Armv8btAsm translateData(this);
@@ -155,6 +163,27 @@ void* Armv8btCPU::init() {
     }
     this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
 #endif
+    if (!this->thread->process->syncToHostAddress) {
+        Armv8btAsm translateData(this);
+        translateData.createCodeForSyncToHost();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->syncToHostAddress = chunk3->getHostAddress();
+    }
+    this->syncToHostAddress = this->thread->process->syncToHostAddress;
+    if (!this->thread->process->syncFromHostAddress) {
+        Armv8btAsm translateData(this);
+        translateData.createCodeForSyncFromHost();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->syncFromHostAddress = chunk3->getHostAddress();
+    }
+    this->syncFromHostAddress = this->thread->process->syncFromHostAddress;
+    if (!this->thread->process->doSingleOpAddress) {
+        Armv8btAsm translateData(this);
+        translateData.createCodeForDoSingleOp();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
+    }
+    this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
         Armv8btAsm translateData(this);
@@ -267,31 +296,53 @@ void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCod
 #endif
 }
 
-static U8 fetchByte(void* p, U32* eip) {
-    KMemory* memory = (KMemory*)p;
-    return memory->readb((*eip)++);
-}
-
 void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
-#ifdef BOXEDWINE_64BIT_MMU
     KMemoryData* mem = getMemData(memory);
-
+#ifdef BOXEDWINE_64BIT_MMU    
     U32 codePage = (data->ip+ this->seg[CS].address) >> K_PAGE_SHIFT;
     U32 nativePage = mem->getNativePage(codePage);
     if (mem->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
 #endif
-    DecodedBlock block;
-    data->currentBlock = &block;
-    decodeBlock(fetchByte, memory, data->startOfDataIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
-    DecodedOp* op = block.op;
-    while (op) {  
+    data->currentOp = nullptr;
+    data->currentBlock = nullptr;
+    DecodedOp* prevOp = nullptr;
+    while (1) {
         U32 address = this->seg[CS].address+data->ip;
         void* hostAddress = mem->getExistingHostAddress(address);
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
+        }
+        if (!data->currentOp) {
+            U32 address = this->seg[CS].address + data->ip;
+            DecodedBlock* prev = data->currentBlock;
+            if (prev) {
+                data->currentBlock = nullptr; // don't chain to an existing block
+            } else {
+                std::shared_ptr<BtCodeChunk> chunk = memory->getCodeBlock(address);
+                if (chunk) {
+                    data->currentBlock = chunk->block;
+                    if (!data->currentBlock) {
+                        int ii = 0;
+                    }
+                }
+            }
+            if (!data->currentBlock) {
+                data->currentBlock = NormalCPU::getBlockForInspectionButNotUsed(this, address, big);
+                if (prev) {
+                    prev->bytes += data->currentBlock->bytes;
+                    prevOp->next = data->currentBlock->op;
+                    data->currentBlock->op = nullptr;
+                    delete data->currentBlock;
+                    data->currentBlock = prev;
+                }
+            }
+            data->currentOp = data->currentBlock->getOp(address);
+            if (!data->currentOp) {
+                int ii = 0;
+            }
         }
 #ifdef BOXEDWINE_64BIT_MMU
         if (firstPass) {
@@ -326,9 +377,7 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
                 a->getFpuTopReg();
             }
         }
-        data->decodedOp = op;
         data->translateInstruction();
-        op = op->next;
         if (data->done) {
             break;
         }
@@ -336,14 +385,13 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
             break;
         }               
         data->resetForNewOp();
-        if (!op) {
-            block.op->dealloc(true);
-            decodeBlock(fetchByte, memory, data->startOfOpIp + this->seg[CS].address, this->isBig(), 0, 0, 0, &block);
-            op = block.op;
-        }
-    }     
-    block.op->dealloc(true);
+        prevOp = data->currentOp;
+        data->currentOp = data->currentOp->next;
+    }         
+#ifdef BOXEDWINE_64BIT_MMU
+    data->currentBlock->dealloc(false);
     data->currentBlock = NULL;
+#endif    
 }
 
 #endif

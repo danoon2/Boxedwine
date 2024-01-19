@@ -46,6 +46,7 @@ typedef enum {
 #define xSrc 15
 #define xDst 16
 #define xResult 17
+#define xBranchEip 17
 
 // don't use x18
 
@@ -68,13 +69,14 @@ typedef enum {
 #define xGS 27
 #define xStackMask 28
 // calleeSavedReg must only be used between syncRegFromHost and syncRegToHost
+#ifdef BOXEDWINE_64BIT_MMU
 #define calleeSavedReg 28
+#endif
+#define xFpuTop 30
+#define xFpuOffset 29
 
 // x29 is the frame register
 // x30 is the link register (used to return from subroutines)
-
-#define xFpuOffset 29
-#define xFpuTop 30
 
 // 18 is used as TEB?
 // Apple doc: The register x18 is reserved for the platform. Conforming software should not make use of it.
@@ -156,6 +158,9 @@ typedef enum {
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(Armv8btCPU, exitToStartThreadLoop))
 #define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(Armv8btCPU, returnToLoopAddress))
 #define CPU_OFFSET_MEMOFFSET (U32)(offsetof(CPU, memOffsets))
+#define CPU_OFFSET_SYNC_TO_HOST_ADDRESS (U32)(offsetof(Armv8btCPU, syncToHostAddress))
+#define CPU_OFFSET_SYNC_FROM_HOST_ADDRESS (U32)(offsetof(Armv8btCPU, syncFromHostAddress))
+#define CPU_OFFSET_DO_SINGLE_OP_ADDRESS (U32)(offsetof(Armv8btCPU, doSingleOpAddress))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
@@ -204,14 +209,21 @@ public:
 	void restoreNativeState();
     void addReturn();
 #ifdef BOXEDWINE_64BIT_MMU
-    void createCodeForRetranslateChunk();
+    void createCodeForRetranslateChunk();    
+#else
+    void createCodeForDoSingleOp();
+    void emulateSingleOp();
+#endif
+#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void createCodeForJmpAndTranslateIfNecessary();
 #endif
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
     void createCodeForRunSignal();
 #endif
-    
+    void createCodeForSyncToHost();
+    void createCodeForSyncFromHost();
+
     void writeToRegFromValue(U8 reg, U64 value);    
     void setNativeFlags(U32 flags, U32 mask);
     void write64Buffer(U8* buffer, U64 value);
@@ -253,7 +265,7 @@ public:
     void compareZeroAndBranch(U8 reg, bool isZero, U32 eip);
     void writeJumpAmount(U32 pos, U32 toLocation);
     void doJmp(bool mightNeedCS); // jump to current cpu->eip
-    void jmpReg(U8 reg, bool mightNeedCS);
+    void jmpRegToxBranchEip(bool mightNeedCS);
     virtual void jumpTo(U32 eip); // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
     void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);
     U8 getRegWithConst(U64 value);
@@ -268,12 +280,11 @@ public:
     U32 branchSignedLessThanOrEqual();
     U32 branch();
     void syncRegsToHost();
-#ifdef BOXEDWINE_64BIT_MMU
     void syncRegsFromHost(bool eipInBranchReg = false);
-#else
-    void syncRegsFromHost();
-#endif
+    void callSyncRegsFromHost(); // doesn't set eip
     void callHost(void* pfn);
+    void ret();
+    void blr(U8 reg);
 
     // stack
     void pushNativeReg16(U8 reg);    
@@ -302,14 +313,8 @@ public:
     void signExtend64(U8 dst, U8 src, U32 width);
     void notReg32(U8 dst, U8 src);
 
-#ifdef BOXEDWINE_64BIT_MMU
-    U8 getHostMem(U8 regEmulatedAddress, S8 tmpReg = -1);
-    U8 getHostMemWithOffset(U8 regEmulatedAddress, U32 offset);
-    U8 getHostMemFromAddress(U32 address);
+    U8 getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool skipAlignmentCheck = false, S8 tmpReg = -1);
     void releaseHostMem(U8 reg);
-#else
-    void readEmulatedMemory(U8 addressReg, U8 dst, U32 width);
-#endif
 
     // mov to/from memory
     void readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 width, std::function<void(void)> pfn, bool lock = false, bool doWrite = true);
@@ -381,6 +386,7 @@ public:
     void cmpRegs32(U8 src1, U8 src2);
     void cmpRegs64(U8 src1, U8 src2);
     void cmpValue32(U8 src, U32 value);
+    void cmpValue64(U8 src, U32 value);
 
     void modValue32(U8 dst, U8 src, U32 value);
     void unsignedDivideReg32(U8 dst, U8 top, U8 bottom);

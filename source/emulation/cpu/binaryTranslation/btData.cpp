@@ -24,8 +24,7 @@ BtData::BtData() {
     this->dynamic = false;
     this->useSingleMemOffset = true;
 #endif
-    this->decodedOp = nullptr;
-    this->currentBlock = nullptr;
+    this->currentOp = nullptr;
     this->needLargeIfJmpReg = false;
 }
 
@@ -144,6 +143,7 @@ std::shared_ptr<BtCodeChunk> BtData::commit(bool makeLive) {
     dynamic = false;
 #endif
     std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, dynamic);
+    chunk->block = this->currentBlock;
     if (makeLive) {
         chunk->makeLive();
     }

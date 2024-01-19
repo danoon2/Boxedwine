@@ -471,8 +471,35 @@ CodeBlock KMemory::getCodeBlock(U32 address) {
     return NULL;
 }
 
-void KMemory::addCodeBlock(U32 address, CodeBlock block) {
+CodeBlock KMemory::findCodeBlockContaining(U32 address, U32 len) {
     Page* page = data->getPage(address >> K_PAGE_SHIFT);
+    if (page->type == Page::Type::Code_Page) {
+        CodePage* codePage = (CodePage*)page;
+        return codePage->findCode(address, len);
+    }
+    return NULL;
+}
+
+void KMemory::removeCodeBlock(U32 address, U32 len) {
+    Page* page = data->getPage(address >> K_PAGE_SHIFT);
+    
+    if (page->type == Page::Type::Code_Page) {
+        CodePage* codePage = (CodePage*)page;
+        codePage->removeBlockAt(address, len);
+    }
+}
+
+void KMemory::addCodeBlock(U32 address, CodeBlock block) {
+    CodePage* codePage = data->getOrCreateCodePage(address);
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    codePage->addCode(address, block, block->getEipLen());
+#else
+    codePage->addCode(address, block, block->bytes);
+#endif
+}
+
+CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
+    Page* page = getPage(address >> K_PAGE_SHIFT);
 
     CodePage* codePage;
     if (page->type == Page::Type::Code_Page) {
@@ -480,24 +507,19 @@ void KMemory::addCodeBlock(U32 address, CodeBlock block) {
     } else {
         if (page->type == Page::Type::RO_Page || page->type == Page::Type::RW_Page || page->type == Page::Type::Copy_On_Write_Page) {
             RWPage* p = (RWPage*)page;
-            codePage = CodePage::alloc(data, p->page, p->address, p->flags);
-            data->setPage(address >> K_PAGE_SHIFT, codePage);
+            codePage = CodePage::alloc(this, p->page, p->address, p->flags);
+            setPage(address >> K_PAGE_SHIFT, codePage);
         } else if (page->type == Page::Type::File_Page) {
             // code probably linked to a block that didn't exist and we created a place holder instruction there to re-translate (see callRetranslateChunk)
             FilePage* p = (FilePage*)page;
             p->ondemmandFile(address);
-            addCodeBlock(address, block);
-            return;
+            return getOrCreateCodePage(address);
         } else {
             kpanic("Unhandled code caching page type: %d", page->type);
             codePage = nullptr;
         }
     }
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    codePage->addCode(address, block, block->getEipLen());
-#else
-    codePage->addCode(address, block, block->bytes);
-#endif
+    return codePage;
 }
 
 void KMemory::logPageFault(KThread* thread, U32 address) {

@@ -18,16 +18,16 @@ void opCmpsb(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU); 
-    data->loadConst(1, data->decodedOp->repZero);
-    data->loadConst(2, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->repZero);
+    data->loadConst(2, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)cmpsb16r);
         } else {
             data->callHost((void*)cmpsb16);
         }
     } else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)cmpsb32r);
         } else {
             data->callHost((void*)cmpsb32);
@@ -41,10 +41,10 @@ void opCmpsw(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->repZero);
-    data->loadConst(2, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->repZero);
+    data->loadConst(2, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)cmpsw16r);
         }
         else {
@@ -52,7 +52,7 @@ void opCmpsw(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)cmpsw32r);
         }
         else {
@@ -67,10 +67,10 @@ void opCmpsd(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->repZero);
-    data->loadConst(2, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->repZero);
+    data->loadConst(2, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)cmpsd16r);
         }
         else {
@@ -78,7 +78,7 @@ void opCmpsd(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)cmpsd32r);
         }
         else {
@@ -93,9 +93,9 @@ void opMovsb(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)movsb16r);
         }
         else {
@@ -103,7 +103,7 @@ void opMovsb(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)movsb32r);
         }
         else {
@@ -116,9 +116,9 @@ void opMovsw(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)movsw16r);
         }
         else {
@@ -126,7 +126,7 @@ void opMovsw(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)movsw32r);
         }
         else {
@@ -139,9 +139,9 @@ void opMovsd(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)movsd16r);
         }
         else {
@@ -149,7 +149,7 @@ void opMovsd(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)movsd32r);
         }
         else {
@@ -164,8 +164,8 @@ void opStosb(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)stosb16r);
         }
         else {
@@ -173,7 +173,7 @@ void opStosb(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)stosb32r);
         }
         else {
@@ -186,8 +186,8 @@ void opStosw(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)stosw16r);
         }
         else {
@@ -195,7 +195,7 @@ void opStosw(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)stosw32r);
         }
         else {
@@ -208,8 +208,8 @@ void opStosd(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)stosd16r);
         }
         else {
@@ -217,7 +217,7 @@ void opStosd(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)stosd32r);
         }
         else {
@@ -231,9 +231,9 @@ void opLodsb(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)lodsb16r);
         }
         else {
@@ -241,7 +241,7 @@ void opLodsb(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)lodsb32r);
         }
         else {
@@ -254,9 +254,9 @@ void opLodsw(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)lodsw16r);
         }
         else {
@@ -264,7 +264,7 @@ void opLodsw(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)lodsw32r);
         }
         else {
@@ -277,9 +277,9 @@ void opLodsd(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->base);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->base);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)lodsd16r);
         }
         else {
@@ -287,7 +287,7 @@ void opLodsd(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)lodsd32r);
         }
         else {
@@ -301,9 +301,9 @@ void opScasb(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->repZero);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->repZero);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)scasb16r);
         }
         else {
@@ -311,7 +311,7 @@ void opScasb(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)scasb32r);
         }
         else {
@@ -326,9 +326,9 @@ void opScasw(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->repZero);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->repZero);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)scasw16r);
         }
         else {
@@ -336,7 +336,7 @@ void opScasw(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)scasw32r);
         }
         else {
@@ -351,9 +351,9 @@ void opScasd(Armv8btAsm* data) {
     data->syncRegsFromHost();
     syncDF(data);
     data->mov64(0, xCPU);
-    data->loadConst(1, data->decodedOp->repZero);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    data->loadConst(1, data->currentOp->repZero);
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)scasd16r);
         }
         else {
@@ -361,7 +361,7 @@ void opScasd(Armv8btAsm* data) {
         }
     }
     else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             data->callHost((void*)scasd32r);
         }
         else {
@@ -373,8 +373,8 @@ void opScasd(Armv8btAsm* data) {
 }
 #else
 void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // U32 sBase = cpu->seg[base].address;
             // S32 inc = cpu->df;
@@ -396,7 +396,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             //     cpu->lazyFlags = FLAGS_SUB8;
 
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 incReg = data->getTmpReg();            
             U8 tmpReg = data->getTmpReg();
 
@@ -439,7 +439,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // if ((v1 == v2) != rep_zero) break;
             data->subRegs32(xResult, xDst, xSrc, 0, true);
 
-            if (data->decodedOp->repZero) {
+            if (data->currentOp->repZero) {
                 data->writeJumpAmount(data->branchEQ(), loopPos);
             } else {
                 data->writeJumpAmount(data->branchNE(), loopPos);
@@ -468,7 +468,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
             // cpu->lazyFlags = FLAGS_SUB8;
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 incReg = data->getTmpReg();
             U8 diReg = data->getTmpReg();
             U8 siReg = data->getTmpReg();
@@ -504,7 +504,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             data->releaseTmpReg(incReg);
         }
     } else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // U32 sBase = cpu->seg[base].address;
             // S32 inc = cpu->df;
@@ -527,7 +527,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // }            
 
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 incReg = data->getTmpReg();
             U8 tmpReg = data->getTmpReg();
 
@@ -560,7 +560,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // if ((v1 == v2) != rep_zero) break;
             data->subRegs32(xResult, xDst, xSrc, 0, true);
 
-            if (data->decodedOp->repZero) {
+            if (data->currentOp->repZero) {
                 data->writeJumpAmount(data->branchEQ(), loopPos);
             } else {
                 data->writeJumpAmount(data->branchNE(), loopPos);
@@ -588,7 +588,7 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // cpu->lazyFlags = FLAGS_SUB8;
 
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 incReg = data->getTmpReg();
             U8 tmpReg = data->getTmpReg();
 
@@ -631,8 +631,8 @@ void opCmpsd(Armv8btAsm* data) {
 }
 
 void movs(Armv8btAsm* data, U32 width) {
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // U32 sBase = cpu->seg[base].address;
             // S32 inc = cpu->df;
@@ -645,7 +645,7 @@ void movs(Armv8btAsm* data, U32 width) {
             //     CX--;
             // }
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 siReg = xSrc;
             U8 diReg = xDst;
             U8 addressReg = data->getTmpReg();
@@ -700,7 +700,7 @@ void movs(Armv8btAsm* data, U32 width) {
             // SI += inc;
 
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);            
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);            
             U8 siReg = xSrc;
             U8 diReg = xDst;
             U8 addressReg = data->getTmpReg();            
@@ -734,7 +734,7 @@ void movs(Armv8btAsm* data, U32 width) {
             data->releaseTmpReg(incReg);
         }
     } else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // U32 sBase = cpu->seg[base].address;
             // S32 inc = cpu->df;
@@ -747,7 +747,7 @@ void movs(Armv8btAsm* data, U32 width) {
             //     ECX--;
             // }
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 addressReg = data->getTmpReg();
             U8 incReg = data->getTmpReg();
             // S32 inc = cpu->df
@@ -791,7 +791,7 @@ void movs(Armv8btAsm* data, U32 width) {
             // EDI += inc;
             // ESI += inc;
             U8 dBaseReg = data->getSegReg(ES);
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 addressReg = data->getTmpReg();
             U8 tmpReg = data->getTmpReg();
 
@@ -832,8 +832,8 @@ void opMovsd(Armv8btAsm* data) {
 }
 
 void stos(Armv8btAsm* data, U32 width) {
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // S32 inc = cpu->df;
             // U32 count = CX;
@@ -909,7 +909,7 @@ void stos(Armv8btAsm* data, U32 width) {
             data->releaseTmpReg(incReg);
         }
     } else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // S32 inc = cpu->df;
             // U32 count = ECX;
@@ -984,8 +984,8 @@ void opStosd(Armv8btAsm* data) {
 }
 
 static void lods(Armv8btAsm* data, U32 width) {
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 sBase = cpu->seg[base].address;
             // S32 inc = cpu->df;
             // U32 count = CX;
@@ -995,7 +995,7 @@ static void lods(Armv8btAsm* data, U32 width) {
             //     SI += inc;
             //     CX--;
             // }
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 siReg = data->getTmpReg();
             U8 addressReg = data->getTmpReg();
             U8 incReg = data->getTmpReg();
@@ -1045,7 +1045,7 @@ static void lods(Armv8btAsm* data, U32 width) {
             // AL = readb(cpu->seg[base].address + SI);
             // SI += cpu->df;
 
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 siReg = data->getTmpReg();
             U8 addressReg = data->getTmpReg();            
 
@@ -1079,7 +1079,7 @@ static void lods(Armv8btAsm* data, U32 width) {
             data->releaseTmpReg(siReg);
         }
     } else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 sBase = cpu->seg[base].address;
             // S32 inc = cpu->df;
             // U32 count = ECX;
@@ -1090,7 +1090,7 @@ static void lods(Armv8btAsm* data, U32 width) {
             //     ECX--;
             // }
 
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 addressReg = data->getTmpReg();
             U8 incReg = data->getTmpReg();
 
@@ -1132,7 +1132,7 @@ static void lods(Armv8btAsm* data, U32 width) {
         } else {
             // AL = readb(cpu->seg[base].address + ESI);
             // ESI += cpu->df;
-            U8 sBaseReg = data->getSegReg(data->decodedOp->base);
+            U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 addressReg = data->getTmpReg();            
 
             // readb(sBase + SI)
@@ -1194,8 +1194,8 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
 
     U8 incReg = data->getTmpReg();
     data->getDF(incReg, width);
-    if (data->decodedOp->ea16) {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+    if (data->currentOp->ea16) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // S32 inc = cpu->df;
             // U32 count = CX;
@@ -1241,7 +1241,7 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // if ((AL == v1) != rep_zero) break;
             data->subRegs32(xResult, siReg, xSrc, 0, true);
 
-            if (data->decodedOp->repZero) {
+            if (data->currentOp->repZero) {
                 data->writeJumpAmount(data->branchEQ(), loopPos);
             } else {
                 data->writeJumpAmount(data->branchNE(), loopPos);
@@ -1282,7 +1282,7 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             data->releaseTmpReg(diReg);
         }
     } else {
-        if (data->decodedOp->repZero || data->decodedOp->repNotZero) {
+        if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
             // S32 inc = cpu->df;
             // U32 count = ECX;
@@ -1321,7 +1321,7 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // if ((AL == v1) != rep_zero) break;
             data->subRegs32(xResult, siReg, xSrc, 0, true);
 
-            if (data->decodedOp->repZero) {
+            if (data->currentOp->repZero) {
                 data->writeJumpAmount(data->branchEQ(), loopPos);
             } else {
                 data->writeJumpAmount(data->branchNE(), loopPos);

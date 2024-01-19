@@ -6,6 +6,8 @@
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../cpu/binaryTranslation/btMemory.h"
 
+class CodePage;
+
 class KMemoryData : public BtMemory {
 #else
 class KMemoryData {
@@ -41,6 +43,7 @@ public:
     U8* mmuWritePtrAdjusted[K_NUMBER_OF_PAGES];
 
     void clearDelayedReset();
+    CodePage* getOrCreateCodePage(U32 address);
 private:
     KMemoryData* delayedReset;
 #endif   

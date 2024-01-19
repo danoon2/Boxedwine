@@ -12,10 +12,18 @@
 #else
 #define START_OP(cpu, op)
 #endif
+
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#define NEXT() cpu->eip.u32+=op->len
+#define NEXT_DONE() 
+#define NEXT_BRANCH1() cpu->eip.u32+=op->len
+#define NEXT_BRANCH2() cpu->eip.u32+=op->len
+#else
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next)
 #define NEXT_DONE() cpu->nextBlock = cpu->getNextBlock();
 #define NEXT_BRANCH1() cpu->eip.u32+=op->len; if (!DecodedBlock::currentBlock->next1) {DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next1
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!DecodedBlock::currentBlock->next2) {DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next2
+#endif
 
 #include "instructions.h"
 #include "normal_arith.h"
@@ -85,7 +93,7 @@ static void initNormalOps() {
     normalOps[LMSWRreg] = 0; 
     normalOps[LMSW] = 0;
     normalOps[INVLPG] = 0;
-    normalOps[Callback] = 0;
+    normalOps[Callback] = onExitSignal;
 }
 
 OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
@@ -225,6 +233,13 @@ DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(CPU* cpu, U32 address, 
     DecodedBlock* block = NormalBlock::alloc();
     decodeBlock(fetchByte, cpu, address, big, 0, K_PAGE_SIZE, 0, block);
     block->address = address;
+    initNormalOps();
+    DecodedOp* op = block->op;
+    while (op) {
+        if (!op->pfn) // callback will be set by decoder
+            op->pfn = normalOps[op->inst];
+        op = op->next;
+    }
     return block;
 }
 

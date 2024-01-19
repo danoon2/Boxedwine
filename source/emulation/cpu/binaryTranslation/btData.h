@@ -42,7 +42,7 @@ public:
     std::vector<TodoJump> todoJump;
     S32 stopAfterInstruction;
 
-    DecodedOp* decodedOp;
+    DecodedOp* currentOp;
     DecodedBlock* currentBlock;
 
     std::shared_ptr<BtData> firstPass;

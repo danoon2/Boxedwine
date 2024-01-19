@@ -50,14 +50,15 @@ public:
     void writeOp(bool isG8bit=false);
 #ifdef BOXEDWINE_64BIT_MMU
     void addDynamicCheck(bool panic);
+#else
+    void createCodeForDoSingleOp();
 #endif
 	void saveNativeState();
 	void restoreNativeState();
     void createCodeForRetranslateChunk(bool includeSetupFromR9=false);
     void createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9 = false);
     void createCodeForSyncToHost();
-    void createCodeForSyncFromHost();
-    void createCodeForDoSingleOp();
+    void createCodeForSyncFromHost();    
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
     void createCodeForRunSignal();
@@ -218,14 +219,14 @@ private:
     void callHost(void* pfn, U8 tmp = 0xFF, bool internal = false);
     void callJmp(bool big, U8 rm, bool jmp);
 
-    void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit, bool calculateHostAddress);
+    void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit, bool calculateHostAddress, U8 hostMem=0xff);
     void setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit);
     void setSib(U8 sib, bool checkBase);
 
     void addWithLea(U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S32 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U32 bytes);
     void zeroReg(U8 reg, bool isRexReg, bool keepFlags);
     void doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes);
-    void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress);
+    void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress, U8 hostMem);
   
     U8 getHostMem(U8 regEmulatedAddress, bool isRex);
 #ifdef BOXEDWINE_64BIT_MMU
@@ -235,7 +236,7 @@ private:
 
     U8 getRegForSeg(U8 base, U8 tmpReg);
     U8 getRegForNegSeg(U8 base, U8 tmpReg);
-    void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg, bool calculateHostAddress);
+    void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg, bool calculateHostAddress, U8 hostMem);
 
     void setDisplacement32(U32 disp32);
     void setDisplacement8(U8 disp8);  
@@ -267,7 +268,7 @@ private:
 
     void shiftRightNoFlags(U8 src, U8 dst, U32 value, U8 tmpReg);    
 #ifndef BOXEDWINE_64BIT_MMU
-    void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false);
+    void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false);
 #endif
 };
 #endif

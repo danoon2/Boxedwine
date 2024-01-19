@@ -581,6 +581,9 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1872,6 +1875,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h">
       <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

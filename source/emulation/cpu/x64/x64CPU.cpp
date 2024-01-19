@@ -7,6 +7,7 @@
 #include "x64CodeChunk.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../../hardmmu/kmemory_hard.h"
+#include "../normal/normalCPU.h"
 
 CPU* CPU::allocCPU(KMemory* memory) {
     return new x64CPU(memory);
@@ -128,14 +129,7 @@ void* x64CPU::init() {
         std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
         this->thread->process->syncFromHostAddress = chunk3->getHostAddress();
     }
-    this->syncFromHostAddress = this->thread->process->syncFromHostAddress;
-    if (!this->thread->process->doSingleOpAddress) {
-        X64Asm translateData(this);
-        translateData.createCodeForDoSingleOp();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
-    }
-    this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
+    this->syncFromHostAddress = this->thread->process->syncFromHostAddress;    
 #ifdef BOXEDWINE_64BIT_MMU
     if (!this->thread->process->reTranslateChunkAddressFromReg) {
         X64Asm translateData(this);
@@ -144,6 +138,14 @@ void* x64CPU::init() {
         this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
+#else
+    if (!this->thread->process->doSingleOpAddress) {
+        X64Asm translateData(this);
+        translateData.createCodeForDoSingleOp();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
+    }
+    this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
 #endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
@@ -256,11 +258,44 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
     if (mem->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
         data->dynamic = true;
     }
-#endif
+#endif    
     data->firstPass = firstPass;
+    data->currentOp = nullptr;
+    data->currentBlock = nullptr;
+    DecodedOp* prevOp = nullptr;
+
     while (1) {  
         U32 address = this->seg[CS].address+data->ip;
         void* hostAddress = mem->getExistingHostAddress(address);
+        if (!data->currentOp) {
+            U32 address = this->seg[CS].address + data->ip;
+            DecodedBlock* prev = data->currentBlock;
+            if (prev) {
+                data->currentBlock = nullptr; // don't chain to an existing block
+            } else {
+                std::shared_ptr<BtCodeChunk> chunk = memory->getCodeBlock(address);
+                if (chunk) {
+                    data->currentBlock = chunk->block;
+                    if (!data->currentBlock) {
+                        int ii = 0;
+                    }
+                }
+            }
+            if (!data->currentBlock) {
+                data->currentBlock = NormalCPU::getBlockForInspectionButNotUsed(this, address, big);
+                if (prev) {
+                    prev->bytes += data->currentBlock->bytes;
+                    prevOp->next = data->currentBlock->op;
+                    data->currentBlock->op = nullptr;
+                    delete data->currentBlock;
+                    data->currentBlock = prev;
+                }
+            }
+            data->currentOp = data->currentBlock->getOp(address);
+            if (!data->currentOp) {
+                int ii = 0;
+            }
+        }
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
@@ -292,14 +327,16 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
 #endif
         data->mapAddress(address, data->bufferPos);
         data->translateInstruction();
-        if (data->done) {
+        if (data->done || data->currentOp->inst == Invalid) {
             break;
         }
         if (data->stopAfterInstruction!=-1 && (int)data->ipAddressCount==data->stopAfterInstruction) {
             break;
         }
         data->resetForNewOp();
-    }     
+        prevOp = data->currentOp;
+        data->currentOp = data->currentOp->next;
+    }  
 }
 
 #ifdef BOXEDWINE_64BIT_MMU
@@ -335,6 +372,105 @@ bool x64CPU::handleStringOp(DecodedOp* op) {
         return true;
     }
     return false;
+}
+#endif
+
+#ifndef BOXEDWINE_64BIT_MMU
+void common_runSingleOp(x64CPU* cpu) {
+    U32 address = cpu->eip.u32;
+
+    if (cpu->isBig()) {
+        address += cpu->seg[CS].address;
+    } else {
+        address = cpu->seg[CS].address + (address & 0xFFFF);
+    }
+    CodeBlock block = cpu->memory->findCodeBlockContaining(address, 0);
+    if (!block) {
+        int ii = 0;
+    }
+    DecodedBlock::currentBlock = block->block;
+    if (!DecodedBlock::currentBlock) {
+        void* host = getMemData(cpu->memory)->getExistingHostAddress(address);
+        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
+        //cpu->memory->addExtraCodeBlock(address, DecodedBlock::currentBlock);
+    }
+    DecodedOp* op = DecodedBlock::currentBlock->getOp(address);
+    bool deallocBlock = false;
+    if (!op) {
+        // interesting rare case where the code skipped over the 1 byte lock prefix and the address wasn't ready (on demand, mapped file)
+        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
+        op = DecodedBlock::currentBlock->getOp(address);
+        deallocBlock = true;
+    }
+    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
+            cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
+        }
+    }
+    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
+        U16 controlWord = cpu->fpuState.fcw;
+        U16 statusWord = cpu->fpuState.fsw;
+        U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
+        cpu->fpu.SetCW(controlWord);
+        cpu->fpu.SetSW(statusWord);
+        cpu->fpu.SetTagFromAbridged(tag);
+
+        for (U32 i = 0; i < 8; i++) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            if (!(tag & (1 << i))) {
+                //cpu->fpu.setReg(i, 0.0);
+            } else {
+                double d = cpu->fpu.FLD80(cpu->fpuState.st_mm[index].low, (S16)cpu->fpuState.st_mm[index].high);
+                cpu->fpu.setReg(i, d);
+            }
+        }
+    } else {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
+        }
+    }
+    bool inSignal = cpu->thread->inSignal;
+
+    op->pfn(cpu, op);
+
+    if (inSignal != (cpu->thread->inSignal!=0)) {
+        // :TODO: move this threads context read/write
+        if (inSignal) {
+            memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
+        } else {
+            memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
+        }
+    }
+    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
+        cpu->fpuState.fcw = cpu->fpu.CW();
+        cpu->fpuState.fsw = cpu->fpu.SW();
+        cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag();
+        U8 tag = cpu->fpuState.ftw;
+        for (U32 i = 0; i < 8; i++) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            if (!(tag & (1 << i))) {
+                //memset(&((x64CPU*)cpu)->fpuState.st_mm[i].st[0], 0, 10);
+            } else {
+                cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
+            }
+        }
+    } else {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->fpuState.st_mm[i].low = cpu->reg_mmx[i].q;
+        }
+    }
+    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
+            cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
+        }
+    }
+    cpu->fillFlags();
+    if (deallocBlock) {
+        DecodedBlock::currentBlock->dealloc(false);
+    }
+    DecodedBlock::currentBlock = nullptr;
 }
 #endif
 #endif

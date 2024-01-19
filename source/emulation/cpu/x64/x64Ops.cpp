@@ -165,7 +165,11 @@ static U32 instGrp4(X64Asm* data) {
     U8 rm = data->fetch8();
     if (G(rm)==7) {        
         void* pfn = (void*)data->fetch64();
+#ifdef BOXEDWINE_64BIT_MMU 
         data->callCallback(pfn);
+#else
+        data->emulateSingleOp();
+#endif
         data->done = true;
         return 0;
     }
@@ -2304,10 +2308,14 @@ static U32 sseOp3AE(X64Asm* data) {
     U8 rm = data->fetch8();
     switch (G(rm)) {
     case 0: // FXSAVE
-        data->translateRM(rm, false, true, false, false, 0);
+        data->emulateSingleOp();
+        data->done = true;
+        //data->translateRM(rm, false, true, false, false, 0);
         break;
     case 1: // FXRSTOR
-        data->translateRM(rm, false, true, false, false, 0);
+        data->emulateSingleOp();
+        data->done = true;
+        //data->translateRM(rm, false, true, false, false, 0);
         break;
     case 2: // LDMXCSR
         data->translateRM(rm, false, true, false, false, 0);
@@ -2316,7 +2324,9 @@ static U32 sseOp3AE(X64Asm* data) {
         data->translateRM(rm, false, true, false, false, 0);
         break;
     case 4: // XSAVE
-        data->translateRM(rm, false, true, false, false, 0);
+        data->emulateSingleOp();
+        data->done = true;
+        //data->translateRM(rm, false, true, false, false, 0);
         break;
     case 5:         
         if (rm>=0xC0) { // LFENCE
@@ -2324,7 +2334,9 @@ static U32 sseOp3AE(X64Asm* data) {
             data->rm = rm;
             data->writeOp(); // keep same
         } else { // XRSTOR
-            data->translateRM(rm, false, true, false, false, 0);
+            data->emulateSingleOp();
+            data->done = true;
+            //data->translateRM(rm, false, true, false, false, 0);
         }
         break;
     case 6: // MFENCE

@@ -33,11 +33,6 @@ class KMemoryData;
 class KProcess;
 class BtMemory;
 
-class KMemoryExtraData {
-public:
-    virtual ~KMemoryExtraData() {}
-};
-
 class KMemory {
 private:
     KMemory(KProcess* process);
@@ -98,9 +93,9 @@ public:
 
     // normal core
     CodeBlock getCodeBlock(U32 address);
+    CodeBlock findCodeBlockContaining(U32 address, U32 len);
     void addCodeBlock(U32 address, CodeBlock block);
-
-    KMemoryExtraData* extraData;
+    void removeCodeBlock(U32 address, U32 len);
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;

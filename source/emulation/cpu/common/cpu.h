@@ -232,15 +232,20 @@ public:
     virtual ~CPU() {}
     
     Reg reg[9];
-    Seg seg[7];
+    Seg seg[7];    
     U32 flags;
-    Reg eip;    
+    Reg eip;
     U8* reg8[9];
 #ifdef BOXEDWINE_64BIT_MMU
     U64* memOffsets; // ARM will use one less instruction for shared memory access if the offset of this is in the first 256 bytes
-#endif
+#endif    
     MMX_reg reg_mmx[8];
     ALIGN(SSE xmm[8], 16);
+
+    U64 memcheckq[K_PAGE_SIZE];
+    U64 memcheckd[K_PAGE_SIZE];
+    U64 memcheckw[K_PAGE_SIZE];
+    U64 memcheckqq[K_PAGE_SIZE];
 
     Reg  src;
     Reg  dst;

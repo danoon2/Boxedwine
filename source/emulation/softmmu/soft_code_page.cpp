@@ -4,6 +4,7 @@
 #include "soft_code_page.h"
 #include "soft_ram.h"
 #include "kmemory_soft.h"
+#include "../cpu/normal/normalCPU.h"
 
 CodePage::CodePageEntry* CodePage::freeCodePageEntries;
 
@@ -23,14 +24,7 @@ CodePage::CodePageEntry* CodePage::allocCodePageEntry() {
 void CodePage::freeCodePageEntry(CodePageEntry* entry) {	
     U32 offset = entry->offset >> CODE_ENTRIES_SHIFT;
     CodePageEntry** entries = entry->page->entries;
-   
-    if (entry->block) {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        entry->block->release(KThread::currentThread()->memory);
-#else
-        entry->block->dealloc(false);
-#endif
-    }
+       
     // remove any entries linked to this one from other pages
     if (entry->linkedPrev) {
         entry->linkedPrev->linkedNext = NULL;
@@ -52,9 +46,23 @@ void CodePage::freeCodePageEntry(CodePageEntry* entry) {
     if (entry->next) {
         entry->next->prev = entry->prev;
     }
+
+    if (entry->block) {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        KMemory* memory = KThread::currentThread()->memory;
+        // check to prevent recursion
+        if (getMemData(memory)->getExistingHostAddress(address + entry->offset)) {
+            entry->block->release(memory);
+        }
+#else
+        entry->block->dealloc(false);
+#endif
+    }
+
     // add the entry to the free list
     entry->next = freeCodePageEntries;
     entry->block = NULL;
+    entry->len = 0;
     freeCodePageEntries = entry;     
 }
 
@@ -81,8 +89,19 @@ CodePage::~CodePage() {
     }
 }
 
+CodePage::CodePageEntry* CodePage::getEntry(U32 eip) {
+    U32 offset = eip & K_PAGE_MASK;
+    CodePageEntry* entry = this->entries[offset >> CODE_ENTRIES_SHIFT];
+    while (entry) {
+        if (entry->offset == offset && !entry->linkedPrev)
+            return entry;
+        entry = entry->next;
+    }
+    return nullptr;
+}
+
 // :TODO: what if address+len is in the next page
-CodePage::CodePageEntry* CodePage::findCode(U32 address, U32 len) {
+CodePage::CodePageEntry* CodePage::findEntry(U32 address, U32 len) {
     U32 offset = address & K_PAGE_MASK;
     U32 stop = offset + ((len+31) >> CODE_ENTRIES_SHIFT);
     if (stop>=CODE_ENTRIES)
@@ -90,8 +109,12 @@ CodePage::CodePageEntry* CodePage::findCode(U32 address, U32 len) {
     for (U32 i=0;i<=stop;i++) {
         CodePageEntry* entry = entries[i];
         while (entry) {
-            if (((entry->offset <= offset && offset < (entry->offset + entry->len)) || (entry->offset <= (offset + len) && (offset + len) < (entry->offset + entry->len))) && !entry->linkedPrev)
+            if (((entry->offset <= offset && offset < (entry->offset + entry->len)) || (entry->offset <= (offset + len) && (offset + len) < (entry->offset + entry->len)))) {
+                while (entry->linkedPrev) {
+                    entry = entry->linkedPrev;
+                }
                 return entry;
+            }
             entry = entry->next;
         }
     }
@@ -105,7 +128,7 @@ static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
 
 
 void CodePage::removeBlockAt(U32 address, U32 len) {
-    CodePageEntry* entry = findCode(address, len);
+    CodePageEntry* entry = findEntry(address, len);
 
     while (entry) {
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
@@ -132,13 +155,12 @@ void CodePage::removeBlockAt(U32 address, U32 len) {
 #endif
         entryCount--;
         freeCodePageEntry(entry);
-        entry = findCode(address, len);
+        entry = findEntry(address, len);
     }
 }
 
 void CodePage::addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link) {
     U32 offset = eip & K_PAGE_MASK;
-
     CodePageEntry** entry = &this->entries[offset >> CODE_ENTRIES_SHIFT];
 
     if (!*entry) {
@@ -167,12 +189,20 @@ void CodePage::addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link) {
     entryCount++;
 	if (offset + len > K_PAGE_SIZE) {
         U32 nextPage = eip + (*entry)->len;
-		this->addCode(nextPage, NULL, len - (nextPage - eip), *entry);
+		memory->getOrCreateCodePage(nextPage)->addCode(nextPage, nullptr, len - (nextPage - eip), *entry);
 	}
 }
 
 void CodePage::addCode(U32 eip, CodeBlock op, U32 len) {
     this->addCode(eip, op, len, NULL);
+}
+
+CodeBlock CodePage::findCode(U32 eip, U32 len) {
+    CodePageEntry* entry = findEntry(eip, len);
+    if (entry) {
+        return entry->block;
+    }
+    return nullptr;
 }
 
 CodeBlock CodePage::getCode(U32 eip) {

@@ -57,32 +57,32 @@ static void interleave_shufd(Armv8btAsm* data, U8 dst, U8 src1, U8 src2, U8 mask
 }
 
 void opPshufwMmxMmx(Armv8btAsm* data) {
-    if (data->decodedOp->reg == data->decodedOp->rm) {
+    if (data->currentOp->reg == data->currentOp->rm) {
         U8 vTmpReg = data->vGetTmpReg();
-        pshuflw_dst_noequal_src(data, vTmpReg, data->getNativeMmxReg(data->decodedOp->rm), data->decodedOp->imm);
-        data->vMov64ToScaler(data->getNativeMmxReg(data->decodedOp->reg), vTmpReg, 0);
+        pshuflw_dst_noequal_src(data, vTmpReg, data->getNativeMmxReg(data->currentOp->rm), data->currentOp->imm);
+        data->vMov64ToScaler(data->getNativeMmxReg(data->currentOp->reg), vTmpReg, 0);
         data->vReleaseTmpReg(vTmpReg);
     } else {
-        pshuflw_dst_noequal_src(data, data->getNativeMmxReg(data->decodedOp->reg), data->getNativeMmxReg(data->decodedOp->rm), data->decodedOp->imm);
+        pshuflw_dst_noequal_src(data, data->getNativeMmxReg(data->currentOp->reg), data->getNativeMmxReg(data->currentOp->rm), data->currentOp->imm);
     }
 }
 void opPshufwMmxE64(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory64(addressReg, tmpReg, true);
-    pshuflw_dst_noequal_src(data, data->getNativeMmxReg(data->decodedOp->reg), tmpReg, data->decodedOp->imm);
+    pshuflw_dst_noequal_src(data, data->getNativeMmxReg(data->currentOp->reg), tmpReg, data->currentOp->imm);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 
 void opPshufdXmmXmm(Armv8btAsm* data) {
-    if (data->decodedOp->reg == data->decodedOp->rm) {
+    if (data->currentOp->reg == data->currentOp->rm) {
         U8 vTmpReg = data->vGetTmpReg();
-        pshufd_dst_noequal_src(data, vTmpReg, data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
-        data->vMov128(data->getNativeSseReg(data->decodedOp->reg), vTmpReg);
+        pshufd_dst_noequal_src(data, vTmpReg, data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
+        data->vMov128(data->getNativeSseReg(data->currentOp->reg), vTmpReg);
         data->vReleaseTmpReg(vTmpReg);
     } else {
-        pshufd_dst_noequal_src(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
+        pshufd_dst_noequal_src(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
     }
 }
 
@@ -90,20 +90,20 @@ void opPshufdXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    pshufd_dst_noequal_src(data, data->getNativeSseReg(data->decodedOp->reg), tmpReg, data->decodedOp->imm);
+    pshufd_dst_noequal_src(data, data->getNativeSseReg(data->currentOp->reg), tmpReg, data->currentOp->imm);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 
 void opPshufhwXmmXmm(Armv8btAsm* data) {
-    if (data->decodedOp->reg == data->decodedOp->rm) {
+    if (data->currentOp->reg == data->currentOp->rm) {
         U8 vTmpReg = data->vGetTmpReg();
-        pshufhw_dst_noequal_src(data, vTmpReg, data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
-        data->vMov64ToScaler(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, 0);
+        pshufhw_dst_noequal_src(data, vTmpReg, data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
+        data->vMov64ToScaler(data->getNativeSseReg(data->currentOp->reg), vTmpReg, 0);
         data->vReleaseTmpReg(vTmpReg);
     } else {
-        pshufhw_dst_noequal_src(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
-        data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, data->getNativeSseReg(data->decodedOp->rm), 0);
+        pshufhw_dst_noequal_src(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
+        data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, data->getNativeSseReg(data->currentOp->rm), 0);
     }
 }
 
@@ -111,21 +111,21 @@ void opPshufhwXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    pshufhw_dst_noequal_src(data, data->getNativeSseReg(data->decodedOp->reg), tmpReg, data->decodedOp->imm);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    pshufhw_dst_noequal_src(data, data->getNativeSseReg(data->currentOp->reg), tmpReg, data->currentOp->imm);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 
 void opPshuflwXmmXmm(Armv8btAsm* data) {
-    if (data->decodedOp->reg == data->decodedOp->rm) {
+    if (data->currentOp->reg == data->currentOp->rm) {
         U8 vTmpReg = data->vGetTmpReg();
-        pshuflw_dst_noequal_src(data, vTmpReg, data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
-        data->vMov64ToScaler(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, 0);
+        pshuflw_dst_noequal_src(data, vTmpReg, data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
+        data->vMov64ToScaler(data->getNativeSseReg(data->currentOp->reg), vTmpReg, 0);
         data->vReleaseTmpReg(vTmpReg);
     } else {
-        pshuflw_dst_noequal_src(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
-        data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 1, data->getNativeSseReg(data->decodedOp->rm), 1);
+        pshuflw_dst_noequal_src(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
+        data->vMov64(data->getNativeSseReg(data->currentOp->reg), 1, data->getNativeSseReg(data->currentOp->rm), 1);
     }
 }
 
@@ -133,8 +133,8 @@ void opPshuflwXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    pshuflw_dst_noequal_src(data, data->getNativeSseReg(data->decodedOp->reg), tmpReg, data->decodedOp->imm);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 1, tmpReg, 1);
+    pshuflw_dst_noequal_src(data, data->getNativeSseReg(data->currentOp->reg), tmpReg, data->currentOp->imm);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 1, tmpReg, 1);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
@@ -142,25 +142,25 @@ void opPshuflwXmmE128(Armv8btAsm* data) {
 void opShufpdXmmXmm(Armv8btAsm* data) {
     // r.f64[0] = ((imm8 & 1) == 0) ? a.f64[0] : a.f64[1];
     // r.f64[1] = ((imm8 & 2) == 0) ? b.f64[0] : b.f64[1];
-    interleave_shufq(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
+    interleave_shufq(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
 }
 void opShufpdXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    interleave_shufq(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, data->decodedOp->imm);
+    interleave_shufq(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, data->currentOp->imm);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 
 void opShufpsXmmXmm(Armv8btAsm* data) {
-    interleave_shufd(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm);
+    interleave_shufd(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm);
 }
 void opShufpsXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    interleave_shufd(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, data->decodedOp->imm);
+    interleave_shufd(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, data->currentOp->imm);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }

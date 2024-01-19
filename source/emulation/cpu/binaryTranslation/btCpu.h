@@ -37,7 +37,10 @@ public:
     int exceptionSigNo;
     int exceptionSigCode;
     U64 exceptionIp;    
-    void* returnToLoopAddress;    
+    void* returnToLoopAddress;   
+    void* syncToHostAddress;
+    void* syncFromHostAddress;
+    void* doSingleOpAddress;
     int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called
 
     std::vector<U32> pendingCodePages;

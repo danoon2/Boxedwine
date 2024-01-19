@@ -37,6 +37,21 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->reset();
 
     this->logFile = NULL;//fopen("good.txt", "w");
+
+    memset(memcheckqq, 0xff, sizeof(memcheckqq));
+    for (int i = 0; i < 15; i++) {
+        memcheckqq[K_PAGE_SIZE - 1 - i] = 0;
+    }
+    memset(memcheckq, 0xff, sizeof(memcheckq));
+    for (int i = 0; i < 7; i++) {
+        memcheckq[K_PAGE_SIZE - 1 - i] = 0;
+    }
+    memset(memcheckd, 0xff, sizeof(memcheckd));
+    for (int i = 0; i < 3; i++) {
+        memcheckd[K_PAGE_SIZE - 1 - i] = 0;
+    }
+    memset(memcheckw, 0xff, sizeof(memcheckw));
+    memcheckw[K_PAGE_SIZE - 1] = 0;
 }
 
 void CPU::setSeg(U32 index, U32 address, U32 value) {

@@ -16,6 +16,7 @@ public:
 };
 
 class BtCPU;
+class DecodedBlock;
 
 class BtCodeChunk : public std::enable_shared_from_this<BtCodeChunk> {
 public:
@@ -49,6 +50,7 @@ public:
 #endif
     U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
     
+    DecodedBlock* block;
 protected:
     void detachFromHost(KMemory* memory);
     void internalDealloc();

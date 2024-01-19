@@ -138,11 +138,11 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     if (process->name=="services.exe") {
         this->log=true;
     }
-    //char tmp[10];
-    //itoa(id, tmp, 10);
-    //strcat(tmp, ".txt");
+    
+    //BString tmp = BString::valueOf(id);
+    //tmp += ".txt";
     //if (id==0x1c)
-    //this->cpu->logFile = fopen(tmp, "w");
+    //this->cpu->logFile = fopen(tmp.c_str(), "w");
 }
 
 bool KThread::isLdtEmpty(struct user_desc* desc) {

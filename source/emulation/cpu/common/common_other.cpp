@@ -1,6 +1,11 @@
 #include "boxedwine.h"
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#define NEXT_BRANCH1()
+#define NEXT_BRANCH2()
+#else
 #define NEXT_BRANCH1() if (!DecodedBlock::currentBlock->next1) {DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next1
 #define NEXT_BRANCH2() if (!DecodedBlock::currentBlock->next2) {DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next2
+#endif
 U32 common_bound16(CPU* cpu, U32 reg, U32 address){
     if (cpu->reg[reg].u16<cpu->memory->readw(address) || cpu->reg[reg].u16>cpu->memory->readw(address+2)) {
         cpu->prepareException(EXCEPTION_BOUND, 0);

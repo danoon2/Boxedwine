@@ -11,14 +11,11 @@ MappedFileCache::~MappedFileCache() {
     delete[] this->data;
 }
 
-KMemory::KMemory(KProcess* process) : extraData(nullptr), process(process) {
+KMemory::KMemory(KProcess* process) : process(process) {
     data = new KMemoryData(this);
 }
 
 KMemory::~KMemory() {
-    if (extraData) {
-        delete extraData;
-    }
     delete data;
 }
 

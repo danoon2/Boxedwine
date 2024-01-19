@@ -6091,6 +6091,11 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
             flags &= ~ instructionInfo[n->inst].flagsSets;
             flags &= ~ instructionInfo[n->inst].flagsUndefined;
         }
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        if (instructionInfo[n->inst].branch) {
+            break;
+        }
+#endif
         lastOp = n;
         n = n->next;
     }

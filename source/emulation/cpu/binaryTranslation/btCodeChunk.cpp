@@ -18,6 +18,7 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
 #ifdef BOXEDWINE_64BIT_MMU
     this->dynamic = dynamic;
 #endif
+    this->block = nullptr;
     Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [this]() {
         memset(this->hostAddress, 0xce, this->hostAddressSize);
         });
@@ -120,6 +121,9 @@ void BtCodeChunk::internalDealloc() {
     this->emulatedInstructionLen = NULL;
     delete[] this->hostInstructionLen;
     this->hostInstructionLen = NULL;
+    if (this->block) {
+        block->dealloc(false);
+    }
 }
 
 U32 BtCodeChunk::getEipThatContainsHostAddress(void* address, void** startOfHostInstruction, U32* index) {
@@ -181,8 +185,13 @@ std::shared_ptr<BtCodeChunkLink> BtCodeChunk::addLinkFrom(std::shared_ptr<BtCode
 void BtCodeChunk::releaseAndRetranslate() {
     // remove this chunk and its mappings from being used (since it is about to be replaced)
     BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
-    detachFromHost(cpu->thread->memory);
 
+#ifdef BOXEDWINE_64BIT_MMU
+    detachFromHost(cpu->thread->memory);
+#else
+    KMemoryData* mem = getMemData(cpu->memory);
+    mem->memory->removeCodeBlock(getEip(), getEipLen());    
+#endif
     std::shared_ptr<BtCodeChunk> chunk = cpu->translateChunk(this->emulatedAddress - cpu->seg[CS].address);
     cpu->makePendingCodePagesReadOnly();
     for (auto& link : this->linksFrom) {

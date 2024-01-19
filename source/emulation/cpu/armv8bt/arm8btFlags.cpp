@@ -1123,7 +1123,7 @@ class Arm8BtFlagsDshl16 : public Arm8BtFlagsDefault16 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u16 >> (16 - cpu->src.u8)) & 1;
         U8 tmp1 = data->getTmpReg();
-        data->shiftRegRightWithValue32(tmp1, xDst, 16 - data->decodedOp->imm);
+        data->shiftRegRightWithValue32(tmp1, xDst, 16 - data->currentOp->imm);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp1);
     }
@@ -1156,7 +1156,7 @@ class Arm8BtFlagsDshl32 : public Arm8BtFlagsDefault32 {
     virtual void setCF(Armv8btAsm* data, U8 reg) {
         // (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;
         U8 tmp1 = data->getTmpReg();
-        data->shiftRegRightWithValue32(tmp1, xDst, 32 - data->decodedOp->imm);
+        data->shiftRegRightWithValue32(tmp1, xDst, 32 - data->currentOp->imm);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp1);
     }
@@ -1228,7 +1228,7 @@ class Arm8BtFlagsDshr16 : public Arm8BtFlagsDefault16 {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
 
         // src.u8 should already have been masked to 0x1f
-        U8 amount = data->decodedOp->imm & 0xF;
+        U8 amount = data->currentOp->imm & 0xF;
         U8 tmp1 = data->getTmpReg();
         data->shiftRegRightWithValue32(tmp1, xDst, amount - 1);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
@@ -1285,7 +1285,7 @@ class Arm8BtFlagsDshr32 : public Arm8BtFlagsDefault32 {
         // src.u8 should already have been masked to 0x1f
 
         U8 tmp1 = data->getTmpReg();
-        data->shiftRegRightWithValue32(tmp1, xDst, data->decodedOp->imm - 1);
+        data->shiftRegRightWithValue32(tmp1, xDst, data->currentOp->imm - 1);
         data->copyBitsFromSourceAtPositionToDest(reg, tmp1, 0, 1); // CF is 0x01 (bit 0)
         data->releaseTmpReg(tmp1);
     }
