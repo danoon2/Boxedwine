@@ -2021,7 +2021,7 @@ void X64Asm::createCodeForDoSingleOp() {
     syncRegsFromHost(true);
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8);
-    callHost(common_runSingleOp);
+    callHost((void*)common_runSingleOp);
     syncRegsToHost();
     doJmp(true);
 }
