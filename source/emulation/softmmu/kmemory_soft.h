@@ -3,10 +3,10 @@
 
 #ifdef BOXEDWINE_DEFAULT_MMU
 
+class CodePage;
+
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../cpu/binaryTranslation/btMemory.h"
-
-class CodePage;
 
 class KMemoryData : public BtMemory {
 #else
@@ -36,14 +36,15 @@ public:
     U8* mmuReadPtr[K_NUMBER_OF_PAGES];
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];
 
+    CodePage* getOrCreateCodePage(U32 address);
+
     // you need to add the full emulated address to the page to get the host page instead of just an offset
     // this will speed things up in the binary translator
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8* mmuReadPtrAdjusted[K_NUMBER_OF_PAGES];
     U8* mmuWritePtrAdjusted[K_NUMBER_OF_PAGES];
 
-    void clearDelayedReset();
-    CodePage* getOrCreateCodePage(U32 address);
+    void clearDelayedReset();    
 private:
     KMemoryData* delayedReset;
 #endif   
