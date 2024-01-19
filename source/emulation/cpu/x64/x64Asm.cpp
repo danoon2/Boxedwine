@@ -3726,7 +3726,7 @@ void X64Asm::syscall(U32 opLen) {
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
 
 #ifndef BOXEDWINE_64BIT_MMU        
-    callHost(common_runSingleOp);
+    callHost((void*)common_runSingleOp);
 #else
     // void ksyscall(cpu, op->len)    
 
