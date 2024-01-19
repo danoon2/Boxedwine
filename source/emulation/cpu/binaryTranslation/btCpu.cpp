@@ -512,7 +512,7 @@ static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
 
 #include "../x64/x64CPU.h"
 
-#if !defined(BOXEDWINE_64BIT_MMU) && !defined(BOXEDWINE_X64);
+#if !defined(BOXEDWINE_64BIT_MMU) && !defined(BOXEDWINE_X64)
 void common_runSingleOp(BtCPU* cpu) {           
     U32 address = cpu->eip.u32;
 

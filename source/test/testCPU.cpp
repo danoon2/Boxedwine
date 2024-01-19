@@ -12425,7 +12425,7 @@ extern "C" {
     int runCpuTestsMac(void);
 }
 int runCpuTestsMac(void) {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_64BIT_MMU)
     int result = runCpuTests();
     KSystem::useSingleMemOffset = false;
     tearDown();
