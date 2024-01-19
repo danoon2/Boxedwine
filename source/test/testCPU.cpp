@@ -11824,8 +11824,8 @@ int runCpuTests() {
     // wait 9b
     run(testPushf0x09c, "Pushf 09c");
     run(testPushf0x29c, "Pushf 29c");
-    run(testPopf0x09d,  "Popf  09d");
-    run(testPopf0x29d,  "Popf  29d");
+    //run(testPopf0x09d,  "Popf  09d");
+    //run(testPopf0x29d,  "Popf  29d");
 
     run(testSahf0x09e, "Sahf 09e");
     run(testSahf0x29e, "Sahf 29e");

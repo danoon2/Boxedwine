@@ -5,6 +5,7 @@
 #include "ksignal.h"
 #include "../../source/emulation/cpu/x64/x64CPU.h"
 #include "../../source/emulation/hardmmu/kmemory_hard.h"
+#include "../../source/emulation/softmmu/kmemory_soft.h"
 
 #ifdef __MACH__
 #define __USE_GNU
@@ -365,6 +366,7 @@ void signalHandler() {
         cpu->flags &= ~AC;
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
+#ifdef BOXEDWINE_64BIT_MMU
     } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
         U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
         if (rip) {
@@ -374,6 +376,7 @@ void signalHandler() {
         // :TODO: can jumping cause us to miss something?
         cpu->returnHostAddress = cpu->exceptionIp;
         return;
+#endif
     } else if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
         cpu->returnHostAddress = cpu->handleFpuException(code);
