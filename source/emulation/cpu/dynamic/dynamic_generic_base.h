@@ -1024,10 +1024,10 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         }
         endBlock();
 
-        DynamicMemory* memory = (DynamicMemory*)cpu->memory->extraData;
+        DynamicMemory* memory = (DynamicMemory*)cpu->memory->dynamicMemory;
         if (!memory) {
             memory = new DynamicMemory();
-            cpu->memory->extraData = memory;
+            cpu->memory->dynamicMemory = memory;
         }
         void* mem = NULL;
 
