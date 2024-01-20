@@ -1346,6 +1346,9 @@ void common_log(CPU* cpu, DecodedOp* op) {
 }
 
 DecodedBlock* common_getNextBlock(CPU* cpu) {
+    if (cpu->thread->terminating) {
+        return nullptr;
+    }
     return cpu->getNextBlock();
 }
 

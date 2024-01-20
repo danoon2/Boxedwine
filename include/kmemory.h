@@ -42,6 +42,7 @@ private:
 public:
     static KMemory* create(KProcess* process);
     ~KMemory();
+    void cleanup(); // called when the process is done but the last thread might still need to return
 
     U32 mlock(U32 addr, U32 len);
     U32 mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off);
@@ -101,7 +102,7 @@ public:
     void removeCodeBlock(U32 address, U32 len);
 
 #ifdef BOXEDWINE_DYNAMIC
-    DynamicMemory* dynamicMemory = nullptr;
+    DynamicMemory* dynamicMemory;
 #endif
 private:
     friend KMemoryData* getMemData(KMemory* memory);

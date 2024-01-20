@@ -180,7 +180,10 @@ void OPCALL normal_invalid(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_int80(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     ksyscall(cpu, op->len);
- NEXT_DONE();
+    if (cpu->thread->terminating) {
+        return;
+    }
+    NEXT_DONE();
 }
 void OPCALL normal_int98(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

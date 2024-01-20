@@ -13,6 +13,19 @@ static U32 lastTitleUpdate = 0;
 bool isMainthread() {
     return true;
 }
+
+static BString getSize(int pages)
+{
+    pages *= 4;
+    if (pages < 2048) {
+        return BString::valueOf(pages) + B("KB");
+    }
+    if (pages < 2048 * 1024) {
+        return BString::valueOf(pages / 1024) + B("MB");
+    }
+    return BString::valueOf(pages / 1024 / 1024) + B("GB");
+}
+extern int allocatedRamPages;
 bool doMainLoop() {
     bool shouldQuit = false;
 
@@ -37,12 +50,14 @@ bool doMainLoop() {
         }
         if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;
-            if (KSystem::title.length()) {
+            if (0) {
                 KNativeWindow::getNativeWindow()->setTitle(KSystem::title);
             } else {
                 BString title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY );
                 title.append(" MIPS");
                 title.append(getMIPS());
+                title.append(" : ");
+                title.append(getSize(allocatedRamPages));
                 KNativeWindow::getNativeWindow()->setTitle(title);
             }            
             checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy

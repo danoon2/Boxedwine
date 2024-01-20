@@ -6,6 +6,7 @@
 #include "../x32/x32CPU.h"
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
+#include "../../../util/ptrpool.h"
 
 #ifdef _DEBUG
 #define START_OP(cpu, op) op->log(cpu)
@@ -129,13 +130,11 @@ public:
 
     void run(CPU* cpu);
 
-private:
-    void init();
-    NormalBlock* next;
+    void reset();
 };
 
 NormalBlock::NormalBlock() {
-    this->init();
+    this->reset();
 }
 
 void NormalBlock::run(CPU* cpu) {
@@ -149,10 +148,9 @@ void NormalBlock::run(CPU* cpu) {
     cpu->blockInstructionCount+=this->opCount;
 }
 
-static NormalBlock* freeBlocks;
+static PtrPool<NormalBlock> freeBlocks;
 
-void NormalBlock::init() {
-    this->next = 0;
+void NormalBlock::reset() {
     this->op = NULL;
     this->bytes = 0;
     this->opCount = 0;
@@ -163,24 +161,11 @@ void NormalBlock::init() {
 }
 
 void NormalBlock::clearCache() {
-    while (freeBlocks) {
-        NormalBlock* next = freeBlocks->next;
-        delete freeBlocks;
-        freeBlocks = next;
-    }
+    freeBlocks.deleteAll();
 }
 
 NormalBlock* NormalBlock::alloc() {
-    NormalBlock* result;
-
-    if (freeBlocks) {
-        result = freeBlocks;
-        freeBlocks = freeBlocks->next;
-        result->init();
-        return result;
-    } else {
-        return new NormalBlock();
-    }    
+    return freeBlocks.get();
 }
 
 void NormalBlock::dealloc(bool delayed) {
@@ -196,15 +181,13 @@ void NormalBlock::dealloc(bool delayed) {
             cpu->delayedFreeBlock = this;
         } else {
             this->op->dealloc(true);
-            this->next = freeBlocks;
-            this->op = NULL;
-            freeBlocks = this;
+            this->op = nullptr;
+            freeBlocks.put(this);            
         }
     } else {
         this->op->dealloc(true);
-        this->next = freeBlocks;
-        this->op = NULL;
-        freeBlocks = this;
+        this->op = nullptr;
+        freeBlocks.put(this);
     }
     if (this->next1) {
         this->next1->removeReferenceFrom(this);

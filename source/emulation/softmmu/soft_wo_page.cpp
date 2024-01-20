@@ -4,8 +4,8 @@
 
 #include "soft_wo_page.h"
 
-WOPage* WOPage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
-    return new WOPage(memory, page, address, flags);
+WOPage* WOPage::alloc(U8* page, U32 address, U32 flags) {
+    return new WOPage(page, address, flags);
 }
 
 U8 WOPage::readb(U32 address) {

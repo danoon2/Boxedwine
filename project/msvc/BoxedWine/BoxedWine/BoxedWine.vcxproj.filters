@@ -1245,6 +1245,9 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\ptrpool.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

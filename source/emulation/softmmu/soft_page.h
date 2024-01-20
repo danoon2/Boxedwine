@@ -38,7 +38,7 @@ public:
         Copy_On_Write_Page,
         Native_Page
     };
-    Page(KMemoryData* memory, Type type, U32 flags) : memory(memory), flags(flags), type(type) {}
+    Page(U32 flags) : flags(flags) {}
     virtual ~Page() {};
 
     virtual U8 readb(U32 address)=0;
@@ -51,15 +51,14 @@ public:
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false)=0; // might have permission, but may not be ready
     virtual bool inRam()=0;
     virtual void close() = 0;
+    virtual Type getType() = 0;
 
     bool canRead() {return (this->flags & PAGE_READ)!=0;}
     bool canWrite() {return (this->flags & PAGE_WRITE)!=0;}
     bool canExec() {return (this->flags & PAGE_EXEC)!=0;}
     bool mapShared() {return (this->flags & PAGE_SHARED)!=0;}
 
-    KMemoryData* memory;
     U8 flags;
-    const Type type;
 };
 
 #endif

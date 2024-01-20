@@ -4,11 +4,11 @@
 
 #include "soft_native_page.h"
 
-NativePage* NativePage::alloc(KMemoryData* memory, U8* nativeAddress, U32 address, U32 flags) {
-    return new NativePage(memory, nativeAddress, address, flags);
+NativePage* NativePage::alloc(U8* nativeAddress, U32 address, U32 flags) {
+    return new NativePage(nativeAddress, address, flags);
 }
 
-NativePage::NativePage(KMemoryData* memory, U8* nativeAddress, U32 address, U32 flags) : Page(memory, Native_Page, flags), nativeAddress(nativeAddress), address(address) {
+NativePage::NativePage(U8* nativeAddress, U32 address, U32 flags) : Page(flags), nativeAddress(nativeAddress), address(address) {
 }
 
 U8 NativePage::readb(U32 address) {

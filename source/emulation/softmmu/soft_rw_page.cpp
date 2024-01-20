@@ -5,11 +5,11 @@
 #include "soft_rw_page.h"
 #include "soft_ram.h"
 
-RWPage* RWPage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
-    return new RWPage(memory, page, address, flags);
+RWPage* RWPage::alloc(U8* page, U32 address, U32 flags) {
+    return new RWPage(page, address, flags);
 }
 
-RWPage::RWPage(KMemoryData* memory, U8* page, U32 address, U32 flags, Type type) : Page(memory, type, flags), address(address) {
+RWPage::RWPage(U8* page, U32 address, U32 flags) : Page(flags), address(address) {
     if (page) {
         this->page = page;
         ramPageIncRef(page);

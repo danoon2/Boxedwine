@@ -25,16 +25,17 @@
 
 class ROPage : public RWPage {
 private:
-    ROPage(KMemoryData* memory, U8* page, U32 address, U32 flags) : RWPage(memory, page, address, flags, RO_Page) {}
+    ROPage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags) {}
 
 public:
-    static ROPage* alloc(KMemoryData* memory, U8* page, U32 address, U32 flags);
+    static ROPage* alloc(U8* page, U32 address, U32 flags);
 
     virtual void writeb(U32 address, U8 value) override;
     virtual void writew(U32 address, U16 value) override;
     virtual void writed(U32 address, U32 value) override;
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    virtual Type getType() override { return RO_Page; }
 };
 
 #endif

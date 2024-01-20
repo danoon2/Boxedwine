@@ -6,8 +6,8 @@
 #include "soft_ram.h"
 #include "kmemory_soft.h"
 
-CopyOnWritePage* CopyOnWritePage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
-    return new CopyOnWritePage(memory, page, address, flags);
+CopyOnWritePage* CopyOnWritePage::alloc(U8* page, U32 address, U32 flags) {
+    return new CopyOnWritePage(page, address, flags);
 }
 
 void CopyOnWritePage::copyOnWrite(U32 address) {	
@@ -21,24 +21,24 @@ void CopyOnWritePage::copyOnWrite(U32 address) {
         ramPageIncRef(ram);
     }    
 
-    memory->setPageRamWithFlags(ram, address >> K_PAGE_SHIFT, flags, false);
+    getMemData(KThread::currentThread()->memory)->setPageRamWithFlags(ram, address >> K_PAGE_SHIFT, flags, false);
     ramPageDecRef(ram); // setPageRamWithFlags will increment this
 }
 
 void CopyOnWritePage::writeb( U32 address, U8 value) {
-    KMemoryData* data = memory;
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     copyOnWrite(address);
     data->memory->writeb(address, value);
 }
 
 void CopyOnWritePage::writew(U32 address, U16 value) {
-    KMemoryData* data = memory;
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     copyOnWrite(address);
     data->memory->writew(address, value);
 }
 
 void CopyOnWritePage::writed(U32 address, U32 value) {
-    KMemoryData* data = memory;
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     copyOnWrite(address);
     data->memory->writed(address, value);
 }
@@ -76,7 +76,7 @@ U8* CopyOnWritePage::getReadPtr(U32 address, bool makeReady) {
 
 U8* CopyOnWritePage::getWritePtr(U32 address, U32 len, bool makeReady) {
     if (canWrite() && makeReady) {
-        KMemoryData* data = memory;
+        KMemoryData* data = getMemData(KThread::currentThread()->memory);
         copyOnWrite(address);
         return data->getPage(address >> K_PAGE_SHIFT)->getWritePtr(address, len, true);
     }

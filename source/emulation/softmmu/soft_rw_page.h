@@ -25,9 +25,9 @@
 
 class RWPage : public Page {
 protected:
-    RWPage(KMemoryData* memory, U8* page, U32 address, U32 flags, Type type=RW_Page);
+    RWPage(U8* page, U32 address, U32 flags);
 public:    
-    static RWPage* alloc(KMemoryData* memory, U8* page, U32 address, U32 flags);
+    static RWPage* alloc(U8* page, U32 address, U32 flags);
 
     virtual ~RWPage();
 
@@ -42,6 +42,7 @@ public:
 
     virtual bool inRam() override {return true;}
     virtual void close() override {delete this;}
+    virtual Type getType() override { return RW_Page; }
 
     U8* page;
     U32 address;

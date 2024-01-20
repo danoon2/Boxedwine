@@ -402,32 +402,51 @@ void common_runSingleOp(x64CPU* cpu) {
         op = DecodedBlock::currentBlock->getOp(address);
         deallocBlock = true;
     }
-    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
-        for (U32 i = 0; i < 8; i++) {
-            cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
-            cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
-        }
-    }
-    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
-        U16 controlWord = cpu->fpuState.fcw;
-        U16 statusWord = cpu->fpuState.fsw;
-        U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
-        cpu->fpu.SetCW(controlWord);
-        cpu->fpu.SetSW(statusWord);
-        cpu->fpu.SetTagFromAbridged(tag);
 
+    for (U32 i = 0; i < 8; i++) {
+        cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
+        cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
+    }
+
+    U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
+    bool mmx = false;
+
+    U16 controlWord = cpu->fpuState.fcw;
+    U16 statusWord = cpu->fpuState.fsw;
+    cpu->fpu.SetCW(controlWord);
+    cpu->fpu.SetSW(statusWord);
+    cpu->fpu.SetTagFromAbridged(tag);
+
+    if (tag) {        
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - cpu->fpu.GetTop()) & 7;
             if (!(tag & (1 << i))) {
                 //cpu->fpu.setReg(i, 0.0);
             } else {
-                double d = cpu->fpu.FLD80(cpu->fpuState.st_mm[index].low, (S16)cpu->fpuState.st_mm[index].high);
-                cpu->fpu.setReg(i, d);
+                if ((cpu->fpuState.st_mm[index].high & 0xFFFFFF00) == 0xFFFFFF00) {
+                    mmx = true;
+                    break;
+                }
             }
         }
-    } else {
-        for (U32 i = 0; i < 8; i++) {
-            cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
+
+        if (mmx) {
+            for (U32 i = 0; i < 8; i++) {
+                cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
+            }
+        } else {
+            cpu->resetMMX();
+            if (!cpu->thread->process->emulateFPU) {
+                for (U32 i = 0; i < 8; i++) {
+                    U32 index = (i - cpu->fpu.GetTop()) & 7;
+                    if (!(tag & (1 << i))) {
+                        //cpu->fpu.setReg(i, 0.0);
+                    } else {
+                        double d = cpu->fpu.FLD80(cpu->fpuState.st_mm[index].low, (S16)cpu->fpuState.st_mm[index].high);
+                        cpu->fpu.setReg(i, d);
+                    }
+                }
+            }
         }
     }
     bool inSignal = cpu->thread->inSignal;
@@ -442,30 +461,32 @@ void common_runSingleOp(x64CPU* cpu) {
             memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
         }
     }
-    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
-        cpu->fpuState.fcw = cpu->fpu.CW();
-        cpu->fpuState.fsw = cpu->fpu.SW();
-        cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag();
-        U8 tag = cpu->fpuState.ftw;
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            if (!(tag & (1 << i))) {
-                //memset(&((x64CPU*)cpu)->fpuState.st_mm[i].st[0], 0, 10);
-            } else {
-                cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
+    cpu->fpuState.fcw = cpu->fpu.CW();
+    cpu->fpuState.fsw = cpu->fpu.SW();
+    cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag();
+    if (cpu->fpuState.ftw) {
+        if (cpu->isMMXinUse()) {
+            for (U32 i = 0; i < 8; i++) {
+                cpu->fpuState.st_mm[i].low = cpu->reg_mmx[i].q;
+            }
+        } else if (!cpu->thread->process->emulateFPU) {
+            U8 tag = cpu->fpuState.ftw;
+            for (U32 i = 0; i < 8; i++) {
+                U32 index = (i - cpu->fpu.GetTop()) & 7;
+                if (!(tag & (1 << i))) {
+                    //memset(&((x64CPU*)cpu)->fpuState.st_mm[i].st[0], 0, 10);
+                } else {
+                    cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
+                }
             }
         }
-    } else {
-        for (U32 i = 0; i < 8; i++) {
-            cpu->fpuState.st_mm[i].low = cpu->reg_mmx[i].q;
-        }
     }
-    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
-        for (U32 i = 0; i < 8; i++) {
-            cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
-            cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
-        }
+
+    for (U32 i = 0; i < 8; i++) {
+        cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
+        cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
     }
+
     cpu->fillFlags();
     if (deallocBlock) {
         DecodedBlock::currentBlock->dealloc(false);

@@ -4,8 +4,8 @@
 
 #include "soft_no_page.h"
 
-NOPage* NOPage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
-    return new NOPage(memory, page, address, flags);
+NOPage* NOPage::alloc(U8* page, U32 address, U32 flags) {
+    return new NOPage(page, address, flags);
 }
 
 U8 NOPage::readb(U32 address) {

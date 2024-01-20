@@ -1040,6 +1040,7 @@
     <ClInclude Include="..\..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\..\source\util\networkutils.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h" />
     <ClInclude Include="..\..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\..\source\util\threadutils.h" />

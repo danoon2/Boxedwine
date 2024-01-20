@@ -212,6 +212,9 @@ void KProcess::onExec(KThread* thread) {
 KProcess::~KProcess() {
     killAllThreads(KThread::currentThread());
     this->cleanupProcess();
+    if (memory) {
+        delete memory;
+    }
 }
 
 void KProcess::cleanupProcess() {    
@@ -225,7 +228,10 @@ void KProcess::cleanupProcess() {
     }
     this->attachedShm.clear();
     this->privateShm.clear();
-    this->mappedFiles.clear();    
+    this->mappedFiles.clear(); 
+    if (memory) {
+        memory->cleanup();
+    }
 }
 
 KThread* KProcess::createThread() {	

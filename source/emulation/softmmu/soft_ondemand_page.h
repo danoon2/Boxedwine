@@ -23,12 +23,18 @@
 
 #include "soft_page.h"
 
+template<class>
+class PtrPool;
+
 class OnDemandPage : public Page {
 protected:
-    OnDemandPage(KMemoryData* memory, U32 flags) : Page(memory, On_Demand_Page, flags) {}
+    OnDemandPage(KMemoryData* memory, U32 flags) : Page(flags) {}
+    OnDemandPage() : Page(0) {}
+    void reset();
 
+    friend class PtrPool<OnDemandPage>;
 public:
-    static OnDemandPage* alloc(KMemoryData* memory, U32 flags);
+    static OnDemandPage* alloc(U32 flags);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;
@@ -38,9 +44,10 @@ public:
     virtual void writed(U32 address, U32 value) override;
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    virtual Type getType() override { return On_Demand_Page; }
 
     virtual bool inRam() override {return false;}
-    virtual void close() override {delete this;}
+    virtual void close();    
 
     void ondemmand(U32 address);
 };

@@ -25,7 +25,7 @@
 
 class InvalidPage : public Page {
 public:
-    InvalidPage() : Page(nullptr, Invalid_Page, 0) {}
+    InvalidPage() : Page(0) {}
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;
@@ -35,6 +35,7 @@ public:
     virtual void writed(U32 address, U32 value) override;
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    virtual Type getType() override { return Invalid_Page; }
 
     virtual bool inRam() override {return false;}
     virtual void close() override {}

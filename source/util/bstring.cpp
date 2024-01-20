@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 #include "concurrentqueue.h"
+#include "ptrpool.h"
 
 #include <charconv>
 
@@ -30,7 +31,7 @@ public:
 #define LARGEST_LEVEL 16
 #define TOTAL_LEVEL 13
 
-static moodycamel::ConcurrentQueue<BStringData*>* freeStringData;
+static PtrPool<BStringData>* freeStringData;
 static moodycamel::ConcurrentQueue<char*>* freeMemoryBySize;
 
 char* getNewString(int level) {
@@ -65,20 +66,17 @@ void BStringData::decRefCount() {
             releaseString(level, str);
         }
         if (!freeStringData) {
-            freeStringData = new moodycamel::ConcurrentQueue<BStringData*>;
+            freeStringData = new PtrPool<BStringData>();
         }
-        freeStringData->enqueue(this);
+        freeStringData->put(this);
     }
 }
 
 static BStringData* allocNewData() {
-    BStringData* newData;
-
-    if (freeStringData && freeStringData->try_dequeue(newData)) {
-        newData->reset();
-        return newData;
+    if (!freeStringData) {
+        freeStringData = new PtrPool<BStringData>();
     }
-    return new BStringData();
+    return freeStringData->get();
 }
 
 template <typename T>

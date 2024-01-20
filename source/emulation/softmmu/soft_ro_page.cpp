@@ -4,8 +4,8 @@
 
 #include "soft_ro_page.h"
 
-ROPage* ROPage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
-    return new ROPage(memory, page, address, flags);
+ROPage* ROPage::alloc(U8* page, U32 address, U32 flags) {
+    return new ROPage(page, address, flags);
 }
 
 void ROPage::writeb(U32 address, U8 value) {

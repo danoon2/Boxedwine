@@ -28,24 +28,25 @@
 
 class CodePage : public RWPage {
 protected:
-    CodePage(KMemoryData* memory, U8* page, U32 address, U32 flags);
+    CodePage(U8* page, U32 address, U32 flags);
     ~CodePage();
 
 public:
-    static CodePage* alloc(KMemoryData* memory, U8* page, U32 address, U32 flags);
+    static CodePage* alloc(U8* page, U32 address, U32 flags);
 
     virtual void writeb(U32 address, U8 value) override;
     virtual void writew(U32 address, U16 value) override;
     virtual void writed(U32 address, U32 value) override;
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    virtual Type getType() override { return Code_Page; }
 
     void addCode(U32 eip, CodeBlock block, U32 len);
     CodeBlock getCode(U32 eip);
     CodeBlock findCode(U32 eip, U32 len);
 
     void removeBlockAt(U32 address, U32 len);
-private:
+
     class CodePageEntry {
     public:
         CodeBlock block;
@@ -56,7 +57,13 @@ private:
 	    CodePageEntry* linkedPrev;
 	    CodePageEntry* linkedNext;
         CodePage* page;
+
+        void reset() {
+            memset(this, 0, sizeof(CodePageEntry));
+        }
     };    
+
+private:
     CodePageEntry* findEntry(U32 address, U32 len);
     void addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link);
     void copyOnWrite();
@@ -66,7 +73,6 @@ private:
 
     CodePageEntry* getEntry(U32 eip);
 
-    static CodePageEntry* freeCodePageEntries;
     static CodePageEntry* allocCodePageEntry();
     void freeCodePageEntry(CodePageEntry* entry);
 };

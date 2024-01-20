@@ -1,6 +1,7 @@
 #include "boxedwine.h"
 #include "../emulation/softmmu/kmemory_soft.h"
 #include "../emulation/hardmmu/kmemory_hard.h"
+#include "../emulation/cpu/dynamic/dynamic_memory.h"
 
 MappedFileCache::~MappedFileCache() {
     for (U32 i = 0; i < this->dataSize; i++) {
@@ -13,10 +14,28 @@ MappedFileCache::~MappedFileCache() {
 
 KMemory::KMemory(KProcess* process) : process(process) {
     data = new KMemoryData(this);
+#ifdef BOXEDWINE_DYNAMIC
+    dynamicMemory = nullptr;
+#endif
 }
 
 KMemory::~KMemory() {
-    delete data;
+    if (data) {
+        delete data;
+    }
+#ifdef BOXEDWINE_DYNAMIC
+    if (dynamicMemory) {
+        delete dynamicMemory;
+    }
+#endif
+}
+
+void KMemory::cleanup() {
+    if (data) {
+        delete data;
+        data = nullptr;
+    }
+    // don't delete dynamic memory yet, we might return to it to finish
 }
 
 KMemory* KMemory::create(KProcess* process) {

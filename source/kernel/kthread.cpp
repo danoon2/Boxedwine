@@ -696,8 +696,9 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(cpu->thread->waitingForSignalToEndCond);
     }
 
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
     cpu->nextBlock = cpu->getNextBlock();
-
+#endif
     /*
     if (action->flags & K_SA_RESTORER) {
         push32(&thread->cpu, thread->cpu->eip.u32);

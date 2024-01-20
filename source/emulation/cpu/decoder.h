@@ -1487,8 +1487,8 @@ public:
     U8 repZero;
     U8 repNotZero;    
     U8 ea16;
-private:
-    void init();
+
+    void reset();
 };
 
 typedef U8 (*pfnFetchByte)(void* data, U32* pEip);

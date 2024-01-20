@@ -5,20 +5,12 @@
 #include "soft_ram.h"
 #include "kmemory_soft.h"
 #include "../cpu/normal/normalCPU.h"
+#include "../../util/ptrpool.h"
 
-CodePage::CodePageEntry* CodePage::freeCodePageEntries;
+static PtrPool<CodePage::CodePageEntry> freeEntries;
 
 CodePage::CodePageEntry* CodePage::allocCodePageEntry() {
-    CodePageEntry* result;
-
-    if (freeCodePageEntries) {
-        result = freeCodePageEntries;
-        freeCodePageEntries = result->next;        
-    } else {
-       result = new CodePageEntry();
-    }	
-    memset(result, 0, sizeof(CodePageEntry));
-    return result;
+    return freeEntries.get();
 }
 
 void CodePage::freeCodePageEntry(CodePageEntry* entry) {	
@@ -60,17 +52,16 @@ void CodePage::freeCodePageEntry(CodePageEntry* entry) {
     }
 
     // add the entry to the free list
-    entry->next = freeCodePageEntries;
-    entry->block = NULL;
+    entry->block = nullptr;
     entry->len = 0;
-    freeCodePageEntries = entry;     
+    freeEntries.put(entry);
 }
 
-CodePage* CodePage::alloc(KMemoryData* memory, U8* page, U32 address, U32 flags) {
-    return new CodePage(memory, page, address, flags);
+CodePage* CodePage::alloc(U8* page, U32 address, U32 flags) {
+    return new CodePage(page, address, flags);
 }
 
-CodePage::CodePage(KMemoryData* memory, U8* page, U32 address, U32 flags) : RWPage(memory, page, address, flags, Code_Page) {
+CodePage::CodePage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags) {
     memset(this->entries, 0, sizeof(this->entries));
     entryCount = 0;
 }
@@ -189,7 +180,7 @@ void CodePage::addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link) {
     entryCount++;
 	if (offset + len > K_PAGE_SIZE) {
         U32 nextPage = eip + (*entry)->len;
-		memory->getOrCreateCodePage(nextPage)->addCode(nextPage, nullptr, len - (nextPage - eip), *entry);
+		getMemData(KThread::currentThread()->memory)->getOrCreateCodePage(nextPage)->addCode(nextPage, nullptr, len - (nextPage - eip), *entry);
 	}
 }
 
@@ -222,7 +213,7 @@ void CodePage::copyOnWrite() {
         memcpy(ram, page, K_PAGE_SIZE);
         ramPageDecRef(page);
         page = ram;
-        memory->setPage(address >> K_PAGE_SHIFT, this);        
+        getMemData(KThread::currentThread()->memory)->setPage(address >> K_PAGE_SHIFT, this);
     }
 }
 

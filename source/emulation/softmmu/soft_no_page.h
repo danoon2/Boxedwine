@@ -25,10 +25,10 @@
 
 class NOPage : public RWPage {
 protected:
-    NOPage(KMemoryData* memory, U8* page, U32 address, U32 flags) : RWPage(memory, page, address, flags, NO_Page) {}
+    NOPage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags) {}
 
 public:
-    static NOPage* alloc(KMemoryData* memory, U8* page, U32 address, U32 flags);
+    static NOPage* alloc(U8* page, U32 address, U32 flags);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;
@@ -38,6 +38,7 @@ public:
     virtual void writed(U32 address, U32 value) override;
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    virtual Type getType() override { return NO_Page; }
 };
 
 #endif

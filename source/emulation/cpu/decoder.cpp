@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 #include "decoder.h"
+#include "../../util/ptrpool.h"
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -5991,22 +5992,17 @@ U32 DecodeData::fetch32() {
     return ((U32)this->fetch16()) | (((U32)this->fetch16()) << 16);
 }
 
-static DecodedOp* freeOps;
-BOXEDWINE_MUTEX freeOpsMutex;
+static PtrPool<DecodedOp> freeOps;
 
 DecodedOp::DecodedOp() {
-    this->init();
+    this->reset();
 }
 
 void DecodedOp::clearCache() {
-    while (freeOps) {
-        DecodedOp* next = freeOps->next;
-        delete freeOps;
-        freeOps = next;
-    }
+    freeOps.deleteAll();
 }
 
-void DecodedOp::init() {
+void DecodedOp::reset() {
     this->next = 0;
     this->disp = 0;
     this->imm = 0;
@@ -6022,22 +6018,10 @@ void DecodedOp::init() {
     this->pfn = NULL;
 }
 DecodedOp* DecodedOp::alloc() {
-    DecodedOp* result;
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeOpsMutex);
-
-    if (freeOps) {
-        result = freeOps;
-        freeOps = freeOps->next;
-        result->init();
-        return result;
-    } else {
-        return new DecodedOp();
-    }    
+    return freeOps.get();   
 }
 
 void DecodedOp::dealloc(bool deallocNext) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeOpsMutex);
-
 #ifdef _DEBUG
     if (this->inst == InstructionCount) {
         kpanic("tried to dealloc a DecodedOp that was already deallocated");
@@ -6046,9 +6030,9 @@ void DecodedOp::dealloc(bool deallocNext) {
     if (deallocNext && this->next) {
         this->next->dealloc(deallocNext);
     }
-    this->next = freeOps;
+    this->next = nullptr;
     this->inst = InstructionCount;
-    freeOps = this;
+    freeOps.put(this);
 }
 
 bool DecodedOp::isStringOp() {

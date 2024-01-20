@@ -25,10 +25,10 @@
 
 class CopyOnWritePage : public RWPage {
 protected:
-    CopyOnWritePage(KMemoryData* memory, U8* page, U32 address, U32 flags) : RWPage(memory, page, address, flags, Copy_On_Write_Page){}
+    CopyOnWritePage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags){}
 
 public:
-    static CopyOnWritePage* alloc(KMemoryData* memory, U8* page, U32 address, U32 flags);
+    static CopyOnWritePage* alloc(U8* page, U32 address, U32 flags);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;
@@ -38,6 +38,7 @@ public:
     virtual void writed(U32 address, U32 value) override;
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    virtual Type getType() override { return Copy_On_Write_Page; }
 
 private:
     void copyOnWrite(U32 address);

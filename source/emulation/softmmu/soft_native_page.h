@@ -5,10 +5,10 @@
 
 class NativePage : public Page {
 protected:
-    NativePage(KMemoryData* memory, U8* nativeAddress, U32 address, U32 flags);
+    NativePage(U8* nativeAddress, U32 address, U32 flags);
 
 public:
-    static NativePage* alloc(KMemoryData* memory, U8* nativeAddress, U32 address, U32 flags);
+    static NativePage* alloc(U8* nativeAddress, U32 address, U32 flags);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;
@@ -18,6 +18,7 @@ public:
     virtual void writed(U32 address, U32 value) override;
     virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
     virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    virtual Type getType() override { return Native_Page; }
 
     virtual bool inRam() override {return true;}
     virtual void close() override {delete this;}
