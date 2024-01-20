@@ -180,9 +180,11 @@ void NormalBlock::dealloc(bool delayed) {
         if (cpu && ((delayed && !cpu->delayedFreeBlock) || this == DecodedBlock::currentBlock)) {
             cpu->delayedFreeBlock = this;
         } else {
-            this->op->dealloc(true);
-            this->op = nullptr;
-            freeBlocks.put(this);            
+            if (op) {
+                this->op->dealloc(true);
+                this->op = nullptr;
+            }
+            freeBlocks.put(this);
         }
     } else {
         this->op->dealloc(true);

@@ -335,7 +335,7 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
                     prev->bytes += data->currentBlock->bytes;
                     prevOp->next = data->currentBlock->op;
                     data->currentBlock->op = nullptr;
-                    delete data->currentBlock;
+                    data->currentBlock->dealloc(false);
                     data->currentBlock = prev;
                 }
             }
