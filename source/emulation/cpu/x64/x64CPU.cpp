@@ -287,7 +287,7 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
                     prev->bytes += data->currentBlock->bytes;
                     prevOp->next = data->currentBlock->op;
                     data->currentBlock->op = nullptr;
-                    delete data->currentBlock;
+                    data->currentBlock->dealloc(false);
                     data->currentBlock = prev;
                 }
             }
@@ -402,51 +402,32 @@ void common_runSingleOp(x64CPU* cpu) {
         op = DecodedBlock::currentBlock->getOp(address);
         deallocBlock = true;
     }
-
-    for (U32 i = 0; i < 8; i++) {
-        cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
-        cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
+    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
+            cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
+        }
     }
+    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
+        U16 controlWord = cpu->fpuState.fcw;
+        U16 statusWord = cpu->fpuState.fsw;
+        U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
+        cpu->fpu.SetCW(controlWord);
+        cpu->fpu.SetSW(statusWord);
+        cpu->fpu.SetTagFromAbridged(tag);
 
-    U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
-    bool mmx = false;
-
-    U16 controlWord = cpu->fpuState.fcw;
-    U16 statusWord = cpu->fpuState.fsw;
-    cpu->fpu.SetCW(controlWord);
-    cpu->fpu.SetSW(statusWord);
-    cpu->fpu.SetTagFromAbridged(tag);
-
-    if (tag) {        
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - cpu->fpu.GetTop()) & 7;
             if (!(tag & (1 << i))) {
                 //cpu->fpu.setReg(i, 0.0);
             } else {
-                if ((cpu->fpuState.st_mm[index].high & 0xFFFFFF00) == 0xFFFFFF00) {
-                    mmx = true;
-                    break;
-                }
+                double d = cpu->fpu.FLD80(cpu->fpuState.st_mm[index].low, (S16)cpu->fpuState.st_mm[index].high);
+                cpu->fpu.setReg(i, d);
             }
         }
-
-        if (mmx) {
-            for (U32 i = 0; i < 8; i++) {
-                cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
-            }
-        } else {
-            cpu->resetMMX();
-            if (!cpu->thread->process->emulateFPU) {
-                for (U32 i = 0; i < 8; i++) {
-                    U32 index = (i - cpu->fpu.GetTop()) & 7;
-                    if (!(tag & (1 << i))) {
-                        //cpu->fpu.setReg(i, 0.0);
-                    } else {
-                        double d = cpu->fpu.FLD80(cpu->fpuState.st_mm[index].low, (S16)cpu->fpuState.st_mm[index].high);
-                        cpu->fpu.setReg(i, d);
-                    }
-                }
-            }
+    } else {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
         }
     }
     bool inSignal = cpu->thread->inSignal;

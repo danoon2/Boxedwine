@@ -59,7 +59,14 @@ public:
         CodePage* page;
 
         void reset() {
-            memset(this, 0, sizeof(CodePageEntry));
+            block = nullptr;
+            offset = 0;
+            len = 0;
+            next = nullptr;
+            prev = nullptr;
+            linkedPrev = nullptr;
+            linkedNext = nullptr;
+            page = nullptr;
         }
     };    
 
