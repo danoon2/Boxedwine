@@ -2160,35 +2160,35 @@ static U32 mmxRegE(X64Asm* data) {
 // FPU ESC 6
 // FPU ESC 7
 
-static U32 instFPU(X64Asm* data) {
+static U32 instFPU(X64Asm* data, U8 rm) {
 #ifndef BOXEDWINE_64BIT_MMU 
     bool isBig = data->currentOp->originalOp >= 0x200;    
     if (!isBig) {
         kpanic("instFPU softmmu doesn't support 16-bit, fpu emulation should have been enabled");
     }
     if (data->currentOp->inst == FNSAVE) {
-        data->fpuWrite(data->fetch8(), isBig ? 108 : 94);
+        data->fpuWrite(rm, isBig ? 108 : 94);
         return 0;
     } else if (data->currentOp->inst == FNSTENV) {
-        data->fpuWrite(data->fetch8(), isBig ? 28 : 14);
+        data->fpuWrite(rm, isBig ? 28 : 14);
         return 0;
     } else if (data->currentOp->inst == Fxsave) {
-        data->fpuWrite(data->fetch8(), 512);
+        data->fpuWrite(rm, 512);
         return 0;
     } else if (data->currentOp->inst == FLDENV) {
-        data->fpuRead(data->fetch8(), isBig ? 28 : 14);
+        data->fpuRead(rm, isBig ? 28 : 14);
         return 0;
     } else if (data->currentOp->inst == FRSTOR) {
-        data->fpuRead(data->fetch8(), isBig ? 108 : 94);
+        data->fpuRead(rm, isBig ? 108 : 94);
         return 0;
     } else if (data->currentOp->inst == Fxrstor) {
-        data->fpuRead(data->fetch8(), 512);
+        data->fpuRead(rm, 512);
         return 0;
     }
 #endif
     // don't check G, because G is a function not a reg
     // don't check E, we never load or store to ESP
-    data->translateRM(data->fetch8(), false, false, false, false, 0);
+    data->translateRM(rm, false, false, false, false, 0);
     return 0;
 }
 
@@ -2201,88 +2201,72 @@ static U32 wait(X64Asm* data) {
 
 static U32 instFPU0(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu0(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu0(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
 
 static U32 instFPU1(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu1(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu1(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
 
 static U32 instFPU2(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu2(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu2(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
 
 static U32 instFPU3(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu3(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu3(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
 
 static U32 instFPU4(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu4(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu4(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
 
 static U32 instFPU5(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu5(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu5(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
 
 static U32 instFPU6(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu6(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu6(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
 
 static U32 instFPU7(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
-        //data->fpu7(data->fetch8());
-        data->emulateSingleOp();
-        data->done = true;
+        data->fpu7(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2329,18 +2313,30 @@ static U32 inst32RM(X64Asm* data) {
     return 0;
 }
 
+static void emulateRM(X64Asm* data, U8 rm) {
+    // advance eip correctly
+    U32 pos = data->bufferPos;
+    data->translateRM(rm, false, false, false, false, 0);
+    data->bufferPos;
+    data->emulateSingleOp();
+}
+
 static U32 sseOp3AE(X64Asm* data) {
     U8 rm = data->fetch8();
     switch (G(rm)) {
     case 0: // FXSAVE
-        data->emulateSingleOp();
-        data->done = true;
-        //data->translateRM(rm, false, true, false, false, 0);
+        if (data->cpu->thread->process->emulateFPU) {
+            emulateRM(data, rm);
+        } else {
+            instFPU(data, rm);
+        }
         break;
     case 1: // FXRSTOR
-        data->emulateSingleOp();
-        data->done = true;
-        //data->translateRM(rm, false, true, false, false, 0);
+        if (data->cpu->thread->process->emulateFPU) {
+            emulateRM(data, rm);
+        } else {
+            instFPU(data, rm);
+        }
         break;
     case 2: // LDMXCSR
         data->translateRM(rm, false, true, false, false, 0);
@@ -2349,9 +2345,8 @@ static U32 sseOp3AE(X64Asm* data) {
         data->translateRM(rm, false, true, false, false, 0);
         break;
     case 4: // XSAVE
-        data->emulateSingleOp();
+        data->invalidOp(data->currentOp->originalOp);
         data->done = true;
-        //data->translateRM(rm, false, true, false, false, 0);
         break;
     case 5:         
         if (rm>=0xC0) { // LFENCE
@@ -2359,9 +2354,8 @@ static U32 sseOp3AE(X64Asm* data) {
             data->rm = rm;
             data->writeOp(); // keep same
         } else { // XRSTOR
-            data->emulateSingleOp();
+            data->invalidOp(data->currentOp->originalOp);
             data->done = true;
-            //data->translateRM(rm, false, true, false, false, 0);
         }
         break;
     case 6: // MFENCE

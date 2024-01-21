@@ -215,7 +215,10 @@ void useFlags() {
 }
 
 void runTestCPU() {    
-#ifdef BOXEDWINE_BINARY_TRANSLATOR    
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_X64
+    process->emulateFPU = !cpu->isBig();
+#endif
     pushCode8(0xcd);
     pushCode8(0x97); // will cause TEST specific return code to be inserted
     ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
