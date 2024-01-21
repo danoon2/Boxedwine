@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 template<typename T>
 class PtrPool {
 private:
@@ -20,15 +22,21 @@ public:
         if (!queue.empty()) {
             newData = queue.front();
             queue.pop();
-            newData->reset();
+            if constexpr (!std::is_integral<T>::value) {
+                newData->reset();
+            }
             return newData;
+        }
+        if (blockSize == 0) {
+            return nullptr;
         }
         T* t = new T[blockSize];
         for (int i = 1; i < blockSize; i++) {
-            t[i].reset();
             queue.push(&t[i]);
+        }    
+        if constexpr (!std::is_integral<T>::value) {
+            t[0].reset();
         }
-        t[0].reset();
         allocated.push_back(t);
         return &t[0];
     }
@@ -48,3 +56,4 @@ public:
         queue = {};
     }
 };
+

@@ -35,6 +35,7 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->reg8[8] = &this->reg[8].u8;  
 
     this->reset();
+    this->fpu.reset();
 
     this->logFile = NULL;//fopen("good.txt", "w");
 

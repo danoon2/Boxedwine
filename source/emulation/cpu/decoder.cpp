@@ -618,10 +618,10 @@ const InstructionInfo instructionInfo[] = {
     {0, 32, 0, 0, 0, 0, 0}, // FLD_SINGLE_REAL
     {0, 32, 0, 0, 0, 0, 0}, // FST_SINGLE_REAL
     {0, 32, 0, 0, 0, 0, 0}, // FST_SINGLE_REAL_Pop
-    {0, 12, 0, 0, 0, 0, 0}, // FLDENV
-    {0, 2, 0, 0, 0, 0, 0}, // FLDCW
-    {0, 0, 12, 0, 0, 0, 0}, // FNSTENV
-    {0, 0, 2, 0, 0, 0, 0}, // FNSTCW
+    {0, 224, 0, 0, 0, 0, 0}, // FLDENV
+    {0, 16, 0, 0, 0, 0, 0}, // FLDCW
+    {0, 0, 224, 0, 0, 0, 0}, // FNSTENV
+    {0, 0, 16, 0, 0, 0, 0}, // FNSTCW
 
     {0, 0, 0, 0, CF, 0, 0}, // FCMOV_ST0_STj_CF
     {0, 0, 0, 0, ZF, 0, 0}, // FCMOV_ST0_STj_ZF

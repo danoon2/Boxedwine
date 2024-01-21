@@ -2161,6 +2161,31 @@ static U32 mmxRegE(X64Asm* data) {
 // FPU ESC 7
 
 static U32 instFPU(X64Asm* data) {
+#ifndef BOXEDWINE_64BIT_MMU 
+    bool isBig = data->currentOp->originalOp >= 0x200;    
+    if (!isBig) {
+        kpanic("instFPU softmmu doesn't support 16-bit, fpu emulation should have been enabled");
+    }
+    if (data->currentOp->inst == FNSAVE) {
+        data->fpuWrite(data->fetch8(), isBig ? 108 : 94);
+        return 0;
+    } else if (data->currentOp->inst == FNSTENV) {
+        data->fpuWrite(data->fetch8(), isBig ? 28 : 14);
+        return 0;
+    } else if (data->currentOp->inst == Fxsave) {
+        data->fpuWrite(data->fetch8(), 512);
+        return 0;
+    } else if (data->currentOp->inst == FLDENV) {
+        data->fpuRead(data->fetch8(), isBig ? 28 : 14);
+        return 0;
+    } else if (data->currentOp->inst == FRSTOR) {
+        data->fpuRead(data->fetch8(), isBig ? 108 : 94);
+        return 0;
+    } else if (data->currentOp->inst == Fxrstor) {
+        data->fpuRead(data->fetch8(), 512);
+        return 0;
+    }
+#endif
     // don't check G, because G is a function not a reg
     // don't check E, we never load or store to ESP
     data->translateRM(data->fetch8(), false, false, false, false, 0);

@@ -838,6 +838,9 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
             this->hasSetSeg[i] = true;
             this->hasSetStackMask = true;
         }
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        this->emulateFPU = true;
+#endif
     }
 
     if (!ElfLoader::loadProgram(thread, openNode, &thread->cpu->eip.u32)) {

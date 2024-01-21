@@ -165,7 +165,7 @@ bool FsZip::readFileFromZip(BString zipFile, BString file, BString& result) {
             U32 read;
             char* buffer = new char[file_info.uncompressed_size+1];
             unzOpenCurrentFile(z);            
-            read = unzReadCurrentFile(z, buffer, (unsigned)file_info.uncompressed_size + 1);
+            read = unzReadCurrentFile(z, buffer, (unsigned)file_info.uncompressed_size);
             buffer[read]=0;
             unzCloseCurrentFile(z);
             unzClose(z);

@@ -154,6 +154,8 @@ public:
     U32 sw;
     U32 top;
     U32 round;
+
+    U32 envData[4];
 };
 
 #endif

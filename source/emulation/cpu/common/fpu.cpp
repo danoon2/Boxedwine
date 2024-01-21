@@ -778,10 +778,18 @@ void FPU::FSTENV(CPU* cpu, U32 addr) {
         cpu->memory->writew(addr + 0, this->cw);
         cpu->memory->writew(addr + 2, this->sw);
         cpu->memory->writew(addr + 4, GetTag());
+        cpu->memory->writew(addr + 6, envData[0]); // instruction pointer
+        cpu->memory->writew(addr + 8, envData[1]); // op code
+        cpu->memory->writew(addr + 10, envData[2]); // data pointer
+        cpu->memory->writew(addr + 12, envData[3]); // data pointer selector
     } else {
         cpu->memory->writed(addr + 0, this->cw);
         cpu->memory->writed(addr + 4, this->sw);
         cpu->memory->writed(addr + 8, GetTag());
+        cpu->memory->writed(addr + 12, envData[0]);
+        cpu->memory->writed(addr + 16, envData[1]);
+        cpu->memory->writed(addr + 20, envData[2]);
+        cpu->memory->writed(addr + 24, envData[3]);
     }
 }
 
@@ -793,10 +801,16 @@ void FPU::FLDENV(CPU* cpu, U32 addr) {
         cw = cpu->memory->readw(addr + 0);
         this->sw = cpu->memory->readw(addr + 2);
         tag = cpu->memory->readw(addr + 4);
+        for (int i = 0; i < 4; i++) {
+            envData[i] = cpu->memory->readw(addr + 6 + i * 2);
+        }
     } else {
         cw = cpu->memory->readd(addr + 0);
         this->sw = cpu->memory->readd(addr + 4);
         tag = cpu->memory->readd(addr + 8);
+        for (int i = 0; i < 4; i++) {
+            envData[i] = cpu->memory->readd(addr + 12 + i * 4);
+        }
     }
     SetTag(tag);
     SetCW(cw);
@@ -952,4 +966,5 @@ void FPU::reset() {
 	FPU_SET_TOP(this, 0);
 	this->top=0;
 	SetTag(TAG_Empty);
+    memset(envData, 0, sizeof(envData));
 }

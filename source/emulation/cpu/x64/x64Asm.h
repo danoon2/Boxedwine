@@ -52,6 +52,8 @@ public:
     void addDynamicCheck(bool panic);
 #else
     void createCodeForDoSingleOp();
+    void fpuRead(U8 rm, U32 len);
+    void fpuWrite(U8 rm, U32 len);
 #endif
 	void saveNativeState();
 	void restoreNativeState();
