@@ -80,6 +80,7 @@ public:
     U32 arg5;
     ALIGN(FxsaveStruct fpuState, 16);
 	ALIGN(FxsaveStruct originalFpuState, 16);
+    ALIGN(U8 fpuBuffer[512], 16);
 	U64 originalCpuRegs[16];
     void* reTranslateChunkAddress;    
 #ifdef BOXEDWINE_64BIT_MMU

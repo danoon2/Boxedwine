@@ -32,6 +32,7 @@
 #define CPU_OFFSET_STRING_WRITES_DI (U32)(offsetof(x64CPU, stringWritesToDi))
 #define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
 #define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
+#define CPU_OFFSET_FPU_BUFFER (U32)(offsetof(x64CPU, fpuBuffer))
 #define CPU_OFFSET_RETURN_HOST_ADDRESS (U32)(offsetof(x64CPU, returnHostAddress))
 #define CPU_OFFSET_RETRANSLATE_CHUNK_ADDRESS (U32)(offsetof(x64CPU, reTranslateChunkAddress))
 #define CPU_OFFSET_SYNC_TO_HOST_ADDRESS (U32)(offsetof(x64CPU, syncToHostAddress))
@@ -1036,16 +1037,6 @@ void X64Asm::setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit) 
 #ifndef BOXEDWINE_64BIT_MMU
 void common_runSingleOp(x64CPU* cpu);
 
-thread_local static U8 fpuPage[256];
-
-static void fpuRead(x64CPU* cpu, U32 len, U32 address, U8* tmp) {
-    cpu->memory->memcpy(tmp, address, len);
-}
-
-static void fpuWrite(x64CPU* cpu, U32 len, U32 address, U8* tmp) {
-    cpu->memory->memcpy(address, tmp, len);
-}
-
 void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg, bool writeHostMemToReg, bool skipAlignmentCheck, bool releaseReg) {
     U8 pageReg = getTmpReg();
     bool memRegNeedsRelease = false;
@@ -2029,14 +2020,14 @@ static void fpuWriteMem(x64CPU* cpu, U32 address, U32 len) {
     if (len > sizeof(cpu->fpuState)) {
         kpanic("fpuReadMem");
     }
-    cpu->memory->memcpy(address, &cpu->fpuState, len);
+    cpu->memory->memcpy(address, cpu->fpuBuffer, len);
 }
 
 static void fpuReadMem(x64CPU* cpu, U32 address, U32 len) {
     if (len > sizeof(cpu->fpuState)) {
         kpanic("fpuReadMem");
     }
-    cpu->memory->memcpy(&cpu->fpuState, address, len);
+    cpu->memory->memcpy(cpu->fpuBuffer, address, len);
 }
 
 void X64Asm::fpuWrite(U8 rm, U32 len) {
@@ -2051,7 +2042,7 @@ void X64Asm::fpuWrite(U8 rm, U32 len) {
     }    
     write8((U8)currentOp->originalOp);
     write8((rm & 0x38) | HOST_CPU | 0x80);
-    write32(CPU_OFFSET_FPU_STATE);
+    write32(CPU_OFFSET_FPU_BUFFER);
 
     syncRegsFromHost();
 
@@ -2098,7 +2089,7 @@ void X64Asm::fpuRead(U8 rm, U32 len) {
     }    
     write8((U8)currentOp->originalOp);
     write8((rm & 0x38) | HOST_CPU | 0x80);
-    write32(CPU_OFFSET_FPU_STATE);
+    write32(CPU_OFFSET_FPU_BUFFER);
 }
 #endif
 
