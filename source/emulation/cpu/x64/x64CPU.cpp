@@ -386,7 +386,7 @@ void common_runSingleOp(x64CPU* cpu) {
     }
     CodeBlock block = cpu->memory->findCodeBlockContaining(address, 0);
     if (!block) {
-        int ii = 0;
+        block = cpu->translateChunk(cpu->eip.u32);
     }
     DecodedBlock::currentBlock = block->block;
     if (!DecodedBlock::currentBlock) {

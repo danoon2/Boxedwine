@@ -2,11 +2,16 @@
 #include "../emulation/softmmu/kmemory_soft.h"
 #include "../emulation/hardmmu/kmemory_hard.h"
 #include "../emulation/cpu/dynamic/dynamic_memory.h"
+#include "../emulation/softmmu/soft_ram.h"
 
 MappedFileCache::~MappedFileCache() {
     for (U32 i = 0; i < this->dataSize; i++) {
         if (this->data[i]) {
+#ifdef BOXEDWINE_DEFAULT_MMU
+            ramPageDecRef(this->data[i]);
+#else
             delete[] this->data[i];
+#endif
         }
     }
     delete[] this->data;
