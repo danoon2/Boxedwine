@@ -9,7 +9,7 @@
 U32 getNextTimer();
 void runTimers();
 
-extern U32 platformThreadCount;
+extern std::atomic<int> platformThreadCount;
 extern U32 exceptionCount;
 extern U32 dynamicCodeExceptionCount;
 static U32 lastTitleUpdate = 0;

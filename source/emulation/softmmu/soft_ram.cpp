@@ -3,7 +3,7 @@
 static BOXEDWINE_MUTEX ramMutex;
 int allocatedRamPages;
 
-#if defined(_DEBUG) && defined(BOXEDWINE_BINARY_TRANSLATOR)
+#if defined(_DEBUG) && defined(BOXEDWINE_BINARY_TRANSLATOR1)
 #include "../../util/ptrpool.h"
 
 static PtrPool<U8> freePages(0);

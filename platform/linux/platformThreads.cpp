@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <pthread.h>
 
-U32 platformThreadCount = 0;
+std::atomic<int> platformThreadCount;
 
 void platformHandler(int sig, siginfo_t* info, void* vcontext);
 

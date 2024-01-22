@@ -401,7 +401,7 @@ bool BtCPU::handleStringOp(DecodedOp* op) {
 
 #endif
 
-extern U32 platformThreadCount;
+extern std::atomic<int> platformThreadCount;
 
 void BtCPU::startThread() {
     jmp_buf jmpBuf;
