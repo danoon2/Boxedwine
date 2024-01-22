@@ -175,7 +175,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
 }
 
 static PVOID pHandler;
-U32 platformThreadCount = 0;
+std::atomic<int> platformThreadCount = 0;
 
 #ifdef __TEST
 void initThreadForTesting() {
