@@ -431,9 +431,12 @@ void common_runSingleOp(x64CPU* cpu) {
         }
     }
     bool inSignal = cpu->thread->inSignal;
-
-    op->pfn(cpu, op);
-
+    
+    try {
+        op->pfn(cpu, op);
+    } catch (...) {
+        int ii = 0;
+    }
     if (inSignal != (cpu->thread->inSignal!=0)) {
         // :TODO: move this threads context read/write
         if (inSignal) {

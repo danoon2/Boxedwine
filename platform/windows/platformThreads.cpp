@@ -188,9 +188,11 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     
+#ifdef BOXEDWINE_64BIT_MMU
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1,seh_filter);
     }
+#endif
     cpu->startThread();
     return 0;
 }

@@ -42,10 +42,6 @@
 #define BOXEDWINE_DEFAULT_MMU 1
 #endif
 
-#ifdef BOXEDWINE_HAS_SETJMP
-#include <setjmp.h>
-#endif
-
 #ifdef __APPLE__
 #define lseek64 lseek
 #endif

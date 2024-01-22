@@ -23,7 +23,6 @@
 #include "kscheduler.h"
 #include "ksignal.h"
 #include <string.h>
-#include <setjmp.h>
 
 thread_local KThread* KThread::runningThread;
 
@@ -826,11 +825,7 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, (writeFault?2:0));
         if (throwException) {
-#ifdef BOXEDWINE_HAS_SETJMP
-            longjmp(this->cpu->runBlockJump, 1);		
-#else
-            kpanic("setjmp is required for this app but it wasn't compiled into boxedwine");
-#endif
+            throw 2;
         }
     } else {
         this->memory->logPageFault(this, address);
@@ -846,11 +841,7 @@ void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool thro
         this->process->sigActions[K_SIGSEGV].sigInfo[3] = address;        
         this->runSignal(K_SIGSEGV, EXCEPTION_PAGE_FAULT, 1 | (writeFault?2:0)); 
         if (throwException) {
-#ifdef BOXEDWINE_HAS_SETJMP
-            longjmp(this->cpu->runBlockJump, 1);		
-#else 
-            kpanic("setjmp is required for this app but it was compiled into boxedwine");
-#endif
+            throw 1;
         }
     } else {
         this->memory->logPageFault(this, address);

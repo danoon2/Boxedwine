@@ -1,7 +1,6 @@
 #ifndef __CPU_H__
 #define __CPU_H__
 
-#include <setjmp.h>
 #include "lazyFlags.h"
 #include "fpu.h"
 #include "../decoder.h"
@@ -270,8 +269,6 @@ public:
 
     DecodedBlock* nextBlock;
     DecodedBlock* delayedFreeBlock;
-
-    jmp_buf runBlockJump;
 
     bool getCF();
     bool getSF();

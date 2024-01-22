@@ -2012,6 +2012,7 @@ void X64Asm::createCodeForDoSingleOp() {
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8);
     callHost((void*)common_runSingleOp);
+    writeToRegFromReg(0, true, 0, false, 8);
     syncRegsToHost();
     doJmp(true);
 }

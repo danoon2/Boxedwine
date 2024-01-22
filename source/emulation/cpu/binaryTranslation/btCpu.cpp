@@ -19,13 +19,11 @@ void BtCPU::run() {
         this->memOffset = getMemData(memory)->id;
 #endif
         this->exitToStartThreadLoop = 0;
-        if (setjmp(this->runBlockJump) == 0) {
-            StartCPU start = (StartCPU)this->init();
-            start();
+        StartCPU start = (StartCPU)this->init();
+        start();
 #ifdef __TEST
-            return;
+        return;
 #endif
-        }
         if (this->thread->terminating) {
             break;
         }
@@ -404,16 +402,13 @@ bool BtCPU::handleStringOp(DecodedOp* op) {
 extern std::atomic<int> platformThreadCount;
 
 void BtCPU::startThread() {
-    jmp_buf jmpBuf;
     KThread::setCurrentThread(thread);
 
     // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet
     KNativeThread::sleep(50);
 
-    if (!setjmp(jmpBuf)) {
-        this->jmpBuf = &jmpBuf;
-        this->run();
-    }
+    this->run();
+
     std::shared_ptr<KProcess> process = thread->process;
     process->deleteThread(thread);
 

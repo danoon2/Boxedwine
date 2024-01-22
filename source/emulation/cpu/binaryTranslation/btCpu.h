@@ -44,8 +44,6 @@ public:
     int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called
 
     std::vector<U32> pendingCodePages;
-    
-    jmp_buf* jmpBuf;
 
     std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
     virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr) = 0;

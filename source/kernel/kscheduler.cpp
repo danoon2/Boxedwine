@@ -131,18 +131,13 @@ void runThreadSlice(KThread* thread) {
     cpu->blockInstructionCount = 0;
     cpu->yield = false;
     cpu->nextBlock = cpu->getNextBlock(); // another thread that just ran could have modified this
-#ifdef BOXEDWINE_HAS_SETJMP
-    if (setjmp(cpu->runBlockJump)==0) {
-#endif
+    try {
         do {
             cpu->run();
-        } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);	
-
-#ifdef BOXEDWINE_HAS_SETJMP
-    } else {
+        } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
+    } catch (...) {
         cpu->nextBlock = NULL;
     }
-#endif
 
     cpu->instructionCount+=cpu->blockInstructionCount;
 }
