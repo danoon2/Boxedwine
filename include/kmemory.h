@@ -51,6 +51,7 @@ public:
     U32 unmap(U32 address, U32 len);
 
     U32 mapPages(KThread* thread, U32 startPage, const std::vector<U8*>& pages, U32 permissions);
+    U32 mapNativeMemory(void* hostAddress, U32 size);
 
     bool isPageAllocated(U32 page);
     bool canWrite(U32 address, U32 len);

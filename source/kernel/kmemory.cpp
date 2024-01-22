@@ -266,7 +266,7 @@ U32 KMemory::unmap(U32 address, U32 len) {
 }
 
 U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<U8*>& pages, U32 permissions) {
-    if (startPage == 0 && !data->reserveAddress(0, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
+    if (startPage == 0 && !data->reserveAddress(ADDRESS_PROCESS_MMAP_START, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
         return 0;        
     }
     this->data->allocPages(thread, startPage << K_PAGE_SHIFT, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, NULL, (U8**)pages.data());

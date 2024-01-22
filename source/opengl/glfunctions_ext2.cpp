@@ -1716,7 +1716,7 @@ void glcommon_glMapBufferRange(CPU* cpu) {
         kpanic("ext_glMapBufferRange is NULL");
     {
     void* ret=GL_FUNC(ext_glMapBufferRange)(ARG1, ARG2, ARG3, ARG4);
-#ifdef BOXEDWINE_64BIT_MMU
+
     if (ARG4 & GL_MAP_COHERENT_BIT) {
         static int shown;
         if (shown<100) {
@@ -1725,9 +1725,7 @@ void glcommon_glMapBufferRange(CPU* cpu) {
         }
     }
     EAX=mapBufferRange(cpu, ARG1, ret, ARG2, ARG3);
-#else
-    EAX=marshalBackp(cpu, ret, ARG3);
-#endif
+
     GL_LOG ("glMapBufferRange GLenum target=%d, GLintptr offset=%d, GLsizeiptr length=%d, GLbitfield access=%d",ARG1,ARG2,ARG3,ARG4);
     }
 }

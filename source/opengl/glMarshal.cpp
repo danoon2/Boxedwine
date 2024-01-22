@@ -713,6 +713,32 @@ U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) {
     return 0;
 }
 
+class BufferedTarget {
+public:
+    BufferedTarget() : bufferedAddress(0), originalBufferedAddress(NULL) {}
+    BufferedTarget(U32 bufferedAddress, S8* originalBufferedAddress, U32 size) : bufferedAddress(bufferedAddress), originalBufferedAddress(originalBufferedAddress), size(size) {}
+    U32 bufferedAddress;
+    S8* originalBufferedAddress;
+    U32 size;
+};
+
+static std::unordered_map<U32, BufferedTarget> bufferedTargets;
+
+U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size) {
+    if (bufferedTargets[target].bufferedAddress) {
+        kpanic("mapBufferRange already mapped");
+    }
+    U32 result = cpu->memory->mapNativeMemory(buffer, size);
+    bufferedTargets[target] = BufferedTarget(result, (S8*)buffer, size);
+    return result;
+}
+
+void unmapBuffer(CPU* cpu, GLenum target) {
+    BufferedTarget t = bufferedTargets[target];
+    cpu->memory->unmap(t.bufferedAddress, t.size);
+    bufferedTargets.erase(target);
+}
+
 // instance is in the instance number within the function, so if the same function calls this 3 times, each call will have a difference instance
 GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer == 0)

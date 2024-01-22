@@ -616,4 +616,17 @@ void KMemory::unlockMemory(U8 * lockedPointer) {
     // :TODO: nothing todo until lockReadOnlyMemory supports crossing page boundry
 }
 
+U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
+    U32 result = 0;
+    U32 pageCount = (size + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
+
+    if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount, &result, false, true, PAGE_MAPPED)) {
+        return 0;
+    }
+    for (U32 i = 0; i < pageCount; i++) {
+        getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i, PAGE_READ | PAGE_WRITE));
+    }
+    return result << K_PAGE_SHIFT;
+}
+
 #endif

@@ -3863,9 +3863,7 @@ void glcommon_glFlushMappedBufferRange(CPU* cpu) {
     if (!ext_glFlushMappedBufferRange)
         kpanic("ext_glFlushMappedBufferRange is NULL");
     {
-#ifdef BOXEDWINE_64BIT_MMU
-    flushBufferRange(cpu, ARG1, ARG2, ARG3);
-#endif
+
     GL_FUNC(ext_glFlushMappedBufferRange)(ARG1, ARG2, ARG3);
     GL_LOG ("glFlushMappedBufferRange GLenum target=%d, GLintptr offset=%d, GLsizeiptr length=%d",ARG1,ARG2,ARG3);
     }
