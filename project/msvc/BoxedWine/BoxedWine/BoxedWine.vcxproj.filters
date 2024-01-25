@@ -1248,6 +1248,9 @@
     <ClInclude Include="..\..\..\..\source\util\ptrpool.h">
       <Filter>source\util</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\rangeset.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

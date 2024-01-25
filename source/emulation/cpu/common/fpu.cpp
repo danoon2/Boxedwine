@@ -36,9 +36,6 @@ void flog(const char* msg, ...) {
         CPU* cpu = thread->cpu;
         BString name = thread->process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);   
         U32 offset = thread->process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32);
-        if (offset == 0x7DFEA) {
-            int ii = 0;
-        }
         fprintf(fpuLogFile, "%s %.08X ", name.c_str(), offset);
     }
     vfprintf(fpuLogFile, msg, argptr);

@@ -425,12 +425,14 @@ void Platform::commitNativeMemory(void* address, U64 len) {
     }
 }
 
-void* Platform::allocExecutable64kBlock(U32 count) {
-    void* result = VirtualAlloc(NULL, 64 * 1024 * count, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+void* Platform::alloc64kBlock(U32 count, bool executable) {
+    DWORD permission = executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE;
+
+    void* result = VirtualAlloc(NULL, 64 * 1024 * count, MEM_COMMIT, permission);
     if (!result) {
         LPSTR messageBuffer = NULL;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
-        kpanic("allocExecutable64kBlock: failed to commit memory : %s", messageBuffer);
+        kpanic("alloc64kBlock: failed to commit memory : %s", messageBuffer);
     }
     return result;
 }

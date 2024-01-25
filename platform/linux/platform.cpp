@@ -333,10 +333,14 @@ void Platform::commitNativeMemory(void* address, U64 len) {
     }
 }
 
-void* Platform::allocExecutable64kBlock(U32 count) {
-    void* result = mmap(NULL, 64 * 1024 * count, PROT_EXEC | PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
+void* Platform::alloc64kBlock(U32 count, bool executable) {
+    int prot = PROT_WRITE | PROT_READ;
+    if (executable) {
+        prot |= PROT_EXEC;
+    }
+    void* result = mmap(NULL, 64 * 1024 * count, prot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
     if (result == MAP_FAILED) {
-        kpanic("allocExecutable64kBlock: failed to commit memory : %s", strerror(errno));
+        kpanic("alloc64kBlock: failed to commit memory : %s", strerror(errno));
     }
     return result;
 }

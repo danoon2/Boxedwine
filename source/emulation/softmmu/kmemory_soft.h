@@ -37,6 +37,8 @@ public:
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];
 
     CodePage* getOrCreateCodePage(U32 address);
+    bool isAddressDynamic(U32 address, U32 len);
+    void markAddressDynamic(U32 address, U32 len);
 
     // you need to add the full emulated address to the page to get the host page instead of just an offset
     // this will speed things up in the binary translator

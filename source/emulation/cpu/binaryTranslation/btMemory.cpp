@@ -90,7 +90,7 @@ void* BtMemory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
         return result;
     }
     U32 count = (size + 65535) / 65536;
-    void* result = Platform::allocExecutable64kBlock(count);
+    void* result = Platform::alloc64kBlock(count, true);
     this->allocatedExecutableMemory.push_back(BtMemory::AllocatedMemory(result, count * 64 * 1024));
     count = 65536 / size;
     for (U32 i = 1; i < count; i++) {

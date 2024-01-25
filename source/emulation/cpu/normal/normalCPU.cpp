@@ -170,6 +170,7 @@ NormalBlock* NormalBlock::alloc() {
 
 void NormalBlock::dealloc(bool delayed) {
     KThread* thread = KThread::currentThread();
+    bool doDelete = false;
     if (thread) {
         CPU* cpu = thread->cpu;
         if (cpu && cpu->delayedFreeBlock && cpu->delayedFreeBlock != DecodedBlock::currentBlock) {
@@ -184,12 +185,13 @@ void NormalBlock::dealloc(bool delayed) {
                 this->op->dealloc(true);
                 this->op = nullptr;
             }
-            freeBlocks.put(this);
+            doDelete = true;
+
         }
     } else {
         this->op->dealloc(true);
         this->op = nullptr;
-        freeBlocks.put(this);
+        doDelete = true;
     }
     if (this->next1) {
         this->next1->removeReferenceFrom(this);
@@ -212,20 +214,33 @@ void NormalBlock::dealloc(bool delayed) {
         from = n;
     }
     this->referencedFrom = NULL;
+    if (doDelete) {
+        freeBlocks.put(this);
+    }
 }
 
 DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big) {
     DecodedBlock* block = NormalBlock::alloc();
-    decodeBlock(fetchByte, cpu, address, big, 0, K_PAGE_SIZE, 0, block);
+    decodeBlock(fetchByte, cpu, address, big, 0, 0, 0, block);
     block->address = address;
     initNormalOps();
     DecodedOp* op = block->op;
+
     while (op) {
         if (!op->pfn) // callback will be set by decoder
             op->pfn = normalOps[op->inst];
         op = op->next;
     }
     return block;
+}
+
+DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
+    thread_local static DecodedBlock* block = new DecodedBlock();
+    decodeBlock(fetchByte, cpu, address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
+    DecodedOp* op = block->op;
+    op->pfn = normalOps[op->inst];
+    block->op = nullptr;
+    return op;
 }
 
 DecodedBlock* NormalCPU::getNextBlock() {

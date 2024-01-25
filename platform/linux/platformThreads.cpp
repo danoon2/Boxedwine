@@ -50,7 +50,9 @@ void initThreadForTesting() {
 #endif
 
 void* platformThreadProc(void* param) {
+#ifdef BOXEDWINE_64BIT_MMU
     initHandlers();
+#endif
     KThread* thread = (KThread*)param;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->startThread();

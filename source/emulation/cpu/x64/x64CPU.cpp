@@ -273,7 +273,7 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
             if (prev) {
                 data->currentBlock = nullptr; // don't chain to an existing block
             } else {
-                std::shared_ptr<BtCodeChunk> chunk = memory->getCodeBlock(address);
+                std::shared_ptr<BtCodeChunk> chunk = memory->findCodeBlockContaining(address, 1);
                 if (chunk) {
                     data->currentBlock = chunk->block;
                     if (!data->currentBlock) {
@@ -286,6 +286,7 @@ void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::share
                 if (prev) {
                     prev->bytes += data->currentBlock->bytes;
                     prevOp->next = data->currentBlock->op;
+
                     data->currentBlock->op = nullptr;
                     data->currentBlock->dealloc(false);
                     data->currentBlock = prev;
@@ -377,6 +378,7 @@ bool x64CPU::handleStringOp(DecodedOp* op) {
 
 #ifndef BOXEDWINE_64BIT_MMU
 void common_runSingleOp(x64CPU* cpu) {
+    KMemoryData* mem = getMemData(cpu->memory);
     U32 address = cpu->eip.u32;
 
     if (cpu->isBig()) {
@@ -384,23 +386,32 @@ void common_runSingleOp(x64CPU* cpu) {
     } else {
         address = cpu->seg[CS].address + (address & 0xFFFF);
     }
-    CodeBlock block = cpu->memory->findCodeBlockContaining(address, 0);
-    if (!block) {
-        block = cpu->translateChunk(cpu->eip.u32);
-    }
-    DecodedBlock::currentBlock = block->block;
-    if (!DecodedBlock::currentBlock) {
-        void* host = getMemData(cpu->memory)->getExistingHostAddress(address);
-        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
-        //cpu->memory->addExtraCodeBlock(address, DecodedBlock::currentBlock);
-    }
-    DecodedOp* op = DecodedBlock::currentBlock->getOp(address);
+    DecodedOp* op = nullptr;
     bool deallocBlock = false;
-    if (!op) {
-        // interesting rare case where the code skipped over the 1 byte lock prefix and the address wasn't ready (on demand, mapped file)
-        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
+    bool deallocOp = false;
+    bool dynamic = cpu->arg5 != 0;
+    if (dynamic) {
+        op = NormalCPU::decodeSingleOp(cpu, address);
+        deallocOp = true;
+    } else {
+        CodeBlock block = cpu->memory->findCodeBlockContaining(address, 1);
+        if (!block) {
+            cpu->translateEip(cpu->eip.u32);
+            block = cpu->memory->findCodeBlockContaining(address, 1);
+        }
+        DecodedBlock::currentBlock = block->block;
+        if (!DecodedBlock::currentBlock) {
+            void* host = getMemData(cpu->memory)->getExistingHostAddress(address);
+            DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
+            //cpu->memory->addExtraCodeBlock(address, DecodedBlock::currentBlock);
+        }
         op = DecodedBlock::currentBlock->getOp(address);
-        deallocBlock = true;
+        if (!op) {
+            // interesting rare case where the code skipped over the 1 byte lock prefix and the address wasn't ready (on demand, mapped file)
+            DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
+            op = DecodedBlock::currentBlock->getOp(address);
+            deallocBlock = true;
+        }
     }
     if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
         for (U32 i = 0; i < 8; i++) {
@@ -472,6 +483,8 @@ void common_runSingleOp(x64CPU* cpu) {
     cpu->fillFlags();
     if (deallocBlock) {
         DecodedBlock::currentBlock->dealloc(false);
+    } else if (deallocOp) {
+        op->dealloc(true);
     }
     DecodedBlock::currentBlock = nullptr;
 }

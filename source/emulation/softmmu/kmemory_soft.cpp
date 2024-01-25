@@ -461,6 +461,7 @@ void KMemory::clone(KMemory* from) {
     }
 }
 
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
 // normal core
 CodeBlock KMemory::getCodeBlock(U32 address) {
     Page* page = data->getPage(address >> K_PAGE_SHIFT);
@@ -468,16 +469,30 @@ CodeBlock KMemory::getCodeBlock(U32 address) {
         CodePage* codePage = (CodePage*)page;
         return codePage->getCode(address);
     }
-    return NULL;
+    return nullptr;
 }
+#endif
 
 CodeBlock KMemory::findCodeBlockContaining(U32 address, U32 len) {
-    Page* page = data->getPage(address >> K_PAGE_SHIFT);
-    if (page->getType() == Page::Type::Code_Page) {
-        CodePage* codePage = (CodePage*)page;
-        return codePage->findCode(address, len);
+    while (len) {
+        Page* page = data->getPage(address >> K_PAGE_SHIFT);
+        U32 offset = address & K_PAGE_MASK;
+        U32 available = K_PAGE_SIZE - offset;
+        U32 todo = len;
+        if (todo > available) {
+            todo = available;
+        }
+        if (page->getType() == Page::Type::Code_Page) {
+            CodePage* codePage = (CodePage*)page;
+            CodeBlock result = codePage->findCode(address, todo);
+            if (result) {
+                return result;
+            }
+        }  
+        address += available;
+        len -= todo;
     }
-    return NULL;
+    return nullptr;
 }
 
 void KMemory::removeCodeBlock(U32 address, U32 len) {
@@ -496,6 +511,37 @@ void KMemory::addCodeBlock(U32 address, CodeBlock block) {
 #else
     codePage->addCode(address, block, block->bytes);
 #endif
+}
+
+void KMemoryData::markAddressDynamic(U32 address, U32 len) {
+    Page* page = getPage(address >> K_PAGE_SHIFT);
+
+    if (page->getType() == Page::Type::Code_Page) {
+        CodePage* codePage = (CodePage*)page;
+        U32 offset = address & K_PAGE_MASK;
+        if (offset + len > K_PAGE_SIZE) {
+            U32 todo = len - (K_PAGE_SIZE - offset);
+            markAddressDynamic(address + len - todo, todo);
+        }
+        codePage->markOffsetDynamic(offset, len);
+    }
+}
+
+bool KMemoryData::isAddressDynamic(U32 address, U32 len) {    
+    bool result = false;
+
+    Page* page = getPage(address >> K_PAGE_SHIFT);
+
+    if (page->getType() == Page::Type::Code_Page) {
+        CodePage* codePage = (CodePage*)page;
+        U32 offset = address & K_PAGE_MASK;
+        if (offset + len > K_PAGE_SIZE) {
+            U32 todo = len - (K_PAGE_SIZE - offset);
+            result = isAddressDynamic(address + len - todo, todo);
+        }
+        result |= codePage->isOffsetDynamic(offset, len);
+    }
+    return result;
 }
 
 CodePage* KMemoryData::getOrCreateCodePage(U32 address) {

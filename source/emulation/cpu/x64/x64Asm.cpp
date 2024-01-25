@@ -6,6 +6,7 @@
 #include "x64Ops.h"
 #include "../common/common_other.h"
 #include "../../../../source/emulation/hardmmu/kmemory_hard.h"
+#include "../../../../source/emulation/softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 #include "../normal/instructions.h"
 #include "../binaryTranslation/btCodeMemoryWrite.h"
@@ -2010,7 +2011,7 @@ void X64Asm::syncRegsFromHost(bool eipInR9) {
 void X64Asm::createCodeForDoSingleOp() {
     syncRegsFromHost(true);
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
-    writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8);
+    writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8);    
     callHost((void*)common_runSingleOp);
     writeToRegFromReg(0, true, 0, false, 8);
     syncRegsToHost();
@@ -3792,7 +3793,8 @@ void X64Asm::syscall(U32 opLen) {
     lockParamReg(PARAM_1_REG, PARAM_1_REX);
     writeToRegFromReg(PARAM_1_REG, PARAM_1_REX, HOST_CPU, true, 8); // CPU* param
 
-#ifndef BOXEDWINE_64BIT_MMU        
+#ifndef BOXEDWINE_64BIT_MMU      
+    writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
     callHost((void*)common_runSingleOp);
 #else
     // void ksyscall(cpu, op->len)    
@@ -4523,8 +4525,9 @@ void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
     cpu->fillFlags();
 }
 
-void X64Asm::emulateSingleOp() {
+void X64Asm::emulateSingleOp(bool dynamic) {
     writeToRegFromValue(HOST_TMP, true, startOfOpIp, 4);
+    writeToMemFromValue(dynamic ? 1 : 0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
     writeToRegFromMem(HOST_TMP2, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DO_SINGLE_OP_ADDRESS, 8, false);
     jmpNativeReg(HOST_TMP2, true);
 }
@@ -4873,6 +4876,30 @@ void X64Asm::createCodeForRetranslateChunk(bool includeSetupFromR9) {
 
 static void x64_jmpAndTranslateIfNecessary() {
     x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
+    KMemoryData* mem = getMemData(cpu->memory);
+    while (true) {
+        U32 address = cpu->eip.u32 + cpu->seg[CS].address;
+        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, address);
+        bool wasDynamic = false;
+        if (mem->isAddressDynamic(cpu->eip.u32, op->len)) {
+            cpu->arg5 = 1; // signal to runSingleOp that it is dynamic
+            common_runSingleOp(cpu);
+            wasDynamic = true;
+        } else {
+            CodeBlock block = cpu->memory->findCodeBlockContaining(address, op->len);
+            if (block) {
+                if (block->getEip() == address + 1 && op->lock != 0) {
+                    // the current block was created by skipping the lock, lets replace it
+                    cpu->memory->removeCodeBlock(block->getEip(), block->getEipLen());
+                }
+            }
+        }
+        op->dealloc(true);
+        if (wasDynamic) {
+            continue;
+        }
+        break;
+    }    
     cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
 }
 
@@ -5226,6 +5253,14 @@ void X64Asm::translateInstruction() {
 #endif
     }
 #endif
+
+    if (mem->isAddressDynamic(ip, currentOp->len)) {
+        mem->markAddressDynamic(ip, currentOp->len);
+        emulateSingleOp(true);
+        done = true;
+        return;
+    }
+    
     while (1) {
         this->op = this->fetch8();
         this->inst = this->baseOp + this->op;

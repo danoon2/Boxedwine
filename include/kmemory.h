@@ -96,8 +96,9 @@ public:
     void logPageFault(KThread* thread, U32 address);
     
 
-    // normal core
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
     CodeBlock getCodeBlock(U32 address);
+#endif
     CodeBlock findCodeBlockContaining(U32 address, U32 len);
     void addCodeBlock(U32 address, CodeBlock block);
     void removeCodeBlock(U32 address, U32 len);

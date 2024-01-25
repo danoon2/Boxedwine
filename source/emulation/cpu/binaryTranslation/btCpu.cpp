@@ -407,8 +407,11 @@ void BtCPU::startThread() {
     // :TODO: hopefully this will eventually go away.  For now this prevents a signal from being generated which isn't handled yet
     KNativeThread::sleep(50);
 
-    this->run();
-
+    try {
+        this->run();
+    } catch (...) {
+        int ii = 0;
+    }
     std::shared_ptr<KProcess> process = thread->process;
     process->deleteThread(thread);
 
@@ -517,7 +520,7 @@ void common_runSingleOp(BtCPU* cpu) {
         address = cpu->seg[CS].address + (address & 0xFFFF);
     }
 
-    CodeBlock block = cpu->memory->findCodeBlockContaining(address, 0);
+    CodeBlock block = cpu->memory->getCodeBlock(address);
     if (!block) {
         int ii = 0;
     }

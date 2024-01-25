@@ -133,7 +133,7 @@ public:
     static void* reserveNativeMemory(bool large);
     static void releaseNativeMemory(void* address, U64 len);
     static void commitNativeMemory(void* address, U64 len);
-    static void* allocExecutable64kBlock(U32 count);
+    static void* alloc64kBlock(U32 count, bool executable = false);
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);

@@ -22,9 +22,18 @@
 #ifdef BOXEDWINE_DEFAULT_MMU
 
 #include "soft_rw_page.h"
+#include "../../util/rangeset.h"
 
 #define CODE_ENTRIES 128
 #define CODE_ENTRIES_SHIFT 5
+#define CODE_ENTRIES_MASK 31
+
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
+#define InternalCodeBlock std::shared_ptr<BtCodeChunk>
+#else
+#define InternalCodeBlock std::shared_ptr<DecodedBlock>
+#endif
 
 class CodePage : public RWPage {
 protected:
@@ -42,46 +51,62 @@ public:
     virtual Type getType() override { return Code_Page; }
 
     void addCode(U32 eip, CodeBlock block, U32 len);
-    CodeBlock getCode(U32 eip);
     CodeBlock findCode(U32 eip, U32 len);
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
+    CodeBlock getCode(U32 eip);
+#endif
 
     void removeBlockAt(U32 address, U32 len);
+    bool isOffsetDynamic(U32 offset, U32 len);
+    void markOffsetDynamic(U32 offset, U32 len);    
 
     class CodePageEntry {
     public:
-        CodeBlock block;
-        U32 offset;
-	    U32 len;
-        CodePageEntry* next;
-	    CodePageEntry* prev;
-	    CodePageEntry* linkedPrev;
-	    CodePageEntry* linkedNext;
-        CodePage* page;
+        CodePageEntry() : block(nullptr), start(0), stop(0), nextEntry(nullptr), prevEntry(nullptr), next(nullptr), prev(nullptr), page(nullptr) {}
 
         void reset() {
             block = nullptr;
-            offset = 0;
-            len = 0;
+            start = 0;
+            stop = 0;
+            nextEntry = nullptr;
+            prevEntry = nullptr;
             next = nullptr;
             prev = nullptr;
-            linkedPrev = nullptr;
-            linkedNext = nullptr;
             page = nullptr;
+            sharedBlock = nullptr;
         }
-    };    
+
+        CodeBlock block;
+        U32 start;
+        U32 stop;
+
+        // within single bucket
+        CodePageEntry* nextEntry;
+        CodePageEntry* prevEntry;
+
+        // between page links
+        CodePageEntry* next;
+        CodePageEntry* prev;
+
+        CodePage* page;
+
+        // block is just a pointer that can be shared across more than one CodePageEntry, sharedBlock is used just to manage its life time and properly deallocate it
+        InternalCodeBlock sharedBlock;
+    };  
 
 private:
-    CodePageEntry* findEntry(U32 address, U32 len);
-    void addCode(U32 eip, CodeBlock block, U32 len, CodePageEntry* link);
+    void addCode(U32 eip, CodeBlock& block, const InternalCodeBlock& sharedBlock, U32 len, CodePageEntry* link);
     void copyOnWrite();
+    void removeBlock(CodePageEntry* entry);
+    CodePage::CodePageEntry* findEntry(U32 start, U32 stop);
+    void addEntry(U32 start, U32 stop, CodePageEntry* entry);
 
     CodePageEntry* entries[CODE_ENTRIES];
+    BOXEDWINE_MUTEX mutex;
+
     int entryCount;
-
-    CodePageEntry* getEntry(U32 eip);
-
-    static CodePageEntry* allocCodePageEntry();
-    void freeCodePageEntry(CodePageEntry* entry);
+    U8 writeCount;
+    U8* writeCountsPerByte;
 };
 
 #endif

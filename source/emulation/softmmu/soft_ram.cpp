@@ -3,48 +3,61 @@
 static BOXEDWINE_MUTEX ramMutex;
 int allocatedRamPages;
 
-#if defined(_DEBUG) && defined(BOXEDWINE_BINARY_TRANSLATOR)
+// native x64 code instructions sometimes assume proper alignment, so make sure when they align an emulated address, the hardware address is also aligned the same 
+// F-16 demo installer will crash if the page was allocated with just new on x64
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../../util/ptrpool.h"
 
 static PtrPool<U8> freePages(0);
+static std::unordered_map<U8*, U32> ramCounts;
 
 U8* ramPageAlloc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     U8* result = freePages.get();
     if (result) {
-        result[-1] = 1;
+        ramCounts[result] = 1;
         return result;
     }
-    // not efficient, 3 pages allocated per page returned, prev page holds ref count, middle page hold actual page, 3rd page is marked no permission to catch overwrites
-    U8* pages = (U8*)Platform::allocExecutable64kBlock(1);
+
+    U8* pages = (U8*)Platform::alloc64kBlock(1);
+#ifdef _DEBUG1 
+    // the page before and after the allocated ram will be allocated too and set to no permission so that read/write will generate exception
+    Platform::updateNativePermission((U64)(pages), 0, K_PAGE_SIZE);
     pages += K_PAGE_SIZE;
-    for (int i = 0; i < 5; i++) {        
-        Platform::updateNativePermission((U64)(pages+K_PAGE_SIZE), 0, K_PAGE_SIZE);
+    for (int i = 0; i < 7; i++) {
         freePages.put(pages);
-        pages += 3 * K_PAGE_SIZE;
+        Platform::updateNativePermission((U64)(pages + K_PAGE_SIZE), 0, K_PAGE_SIZE);
+        pages += 2 * K_PAGE_SIZE;
     }
+#else
+    for (int i = 0; i < 16; i++) {
+        freePages.put(pages);
+        pages += K_PAGE_SIZE;
+    }
+#endif
     return ramPageAlloc();
 }
 
 void ramPageIncRef(U8* ram) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    if (ram[-1] == 255) {
+    if (ramCounts[ram] == 255) {
         kpanic("max ram page ref count reached");
     }
-    ram[-1]++;
+    ramCounts[ram]++;
 }
 
 void ramPageDecRef(U8* ram) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    ram[-1]--;
-    if (ram[-1] == 0) {
+    ramCounts[ram]--;
+    if (ramCounts[ram] == 0) {
         allocatedRamPages--;
         Platform::updateNativePermission((U64)ram, 0, K_PAGE_SIZE);
     }
 }
 
 U32 ramPageRefCount(U8* ram) {
-    return ram[-1];
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
+    return ramCounts[ram];
 }
 #else
 U8* ramPageAlloc() {

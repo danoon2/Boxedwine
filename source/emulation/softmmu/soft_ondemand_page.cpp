@@ -17,7 +17,6 @@ static PtrPool<OnDemandPage> freePages;
 OnDemandPage* OnDemandPage::alloc(U32 flags) {
     OnDemandPage* page = freePages.get();
     page->flags = flags;
-    int ii = sizeof(OnDemandPage);
     return page;
 }
 

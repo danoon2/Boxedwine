@@ -178,7 +178,7 @@ public:
     void fpu7(U8 rm);
 
     void DsEdiMmxOrSSE(U8 rm);
-    void emulateSingleOp();
+    void emulateSingleOp(bool isDynamic = false);
 #ifdef __TEST
     void addReturnFromTest();
 #endif

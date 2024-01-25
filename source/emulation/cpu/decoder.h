@@ -1525,7 +1525,7 @@ public:
     
     DecodedOp* getOp(U32 eip);
 protected:
-    DecodedBlockFromNode* referencedFrom;
+    DecodedBlockFromNode* referencedFrom;    
 };
 void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
 
