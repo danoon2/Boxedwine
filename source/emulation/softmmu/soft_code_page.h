@@ -22,7 +22,6 @@
 #ifdef BOXEDWINE_DEFAULT_MMU
 
 #include "soft_rw_page.h"
-#include "../../util/rangeset.h"
 
 #define CODE_ENTRIES 128
 #define CODE_ENTRIES_SHIFT 5
