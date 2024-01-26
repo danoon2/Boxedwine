@@ -251,6 +251,7 @@ private:
     void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount);
     void bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
     void andReg(U8 reg, bool isRegRex, U32 mask);
+    void subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
     void getAddressInRegFromE(U8 reg, bool isRegRex, U8 rm, bool calculateHostAddress = false); // will trash current op data    
@@ -268,9 +269,11 @@ private:
     void calculateMemory16(U8 reg, bool isRex, U32 rm, S8 r1, S8 r2, S16 disp, U8 seg);
     void calculateMemory(U8 reg, bool isRex, U32 rm);
 
-    void shiftRightNoFlags(U8 src, U8 dst, U32 value, U8 tmpReg);    
+    void shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg);    
 #ifndef BOXEDWINE_64BIT_MMU
     void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false);
+public:
+    void movs(U32 width);
 #endif
 };
 #endif

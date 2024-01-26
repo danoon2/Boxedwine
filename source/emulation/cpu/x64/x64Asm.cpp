@@ -312,16 +312,16 @@ void X64Asm::writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8
 // 000000000284032E  mov         r15d, dword ptr[r13 + 408h]
 // 0000000002840335  mov         r10, qword ptr[r15 + r10 * 8]
 
-void X64Asm::shiftRightNoFlags(U8 src, U8 dst, U32 value, U8 tmpReg) {
+void X64Asm::shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg) {
     if (tmpReg == dst) {
         kpanic("X64Asm::shiftRightNoFlags logic error");
     }
     if (x64CPU::hasBMI2) {
         writeToRegFromValue(tmpReg, true, K_PAGE_SHIFT, 4);
-        bmi2ShiftRightReg(dst, src, true, tmpReg);
+        bmi2ShiftRightReg(dst, src, isSrcRex, tmpReg);
     } else {
         if (dst != src) {
-            writeToRegFromReg(dst, true, src, true, 4);
+            writeToRegFromReg(dst, true, src, isSrcRex, 4);
         }
         pushFlagsToReg(tmpReg, true, true); // since shiftRightReg will change flags
         shiftRightReg(dst, true, K_PAGE_SHIFT); // get page
@@ -1050,15 +1050,15 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
 
     bool needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
 
-    if (!skipAlignmentCheck && width != 2 && width != 4 && width != 8 && width != 16) {
+    if (!skipAlignmentCheck && width != 1 && width != 2 && width != 4 && width != 8 && width != 16) {
         needFlags = true;
     }
 
     // get page
-    shiftRightNoFlags(reg, pageReg, K_PAGE_SHIFT, memReg); // hostMemReg is used for tmp
+    shiftRightNoFlags(reg, isRex, pageReg, K_PAGE_SHIFT, memReg); // hostMemReg is used for tmp
 
     // if hostMemReg is 0, then we don't have permission            
-    writeToRegFromMem(memReg, isRex, (isWrite ? HOST_MEM_WRITE : HOST_MEM_READ), true, pageReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
+    writeToRegFromMem(memReg, true, (isWrite ? HOST_MEM_WRITE : HOST_MEM_READ), true, pageReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
     releaseTmpReg(pageReg);    
 
     if (needFlags) {
@@ -3443,6 +3443,25 @@ void X64Asm::andReg(U8 reg, bool isRegRex, U32 mask) {
     write8(0xE0 | reg);
     write32(mask);
 }
+
+void X64Asm::subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64) {
+    if (isDstRex || isSrcRex || is64) {
+        U8 rex = REX_BASE;
+        if (isDstRex) {
+            rex |= REX_MOD_RM;
+        }
+        if (isSrcRex) {
+            rex |= REX_MOD_REG;
+        }
+        if (is64) {
+            rex |= REX_64;
+        }
+        write8(rex);
+    }
+    write8(0x29);
+    write8(0xC0 | dst | (src << 3));
+}
+
 // :TODO: what about making call/ret pairs
 // call will push eip/rip into circular buffer
 // call will goto to a prelogue and adjust the stack so we don't worry about it
@@ -4530,6 +4549,226 @@ void X64Asm::emulateSingleOp(bool dynamic) {
     writeToMemFromValue(dynamic ? 1 : 0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
     writeToRegFromMem(HOST_TMP2, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_DO_SINGLE_OP_ADDRESS, 8, false);
     jmpNativeReg(HOST_TMP2, true);
+}
+
+// U32 dBase = cpu->seg[ES].address;
+// U32 sBase = cpu->seg[base].address;
+// S32 inc = cpu->getDirection();
+// U32 count = CX;
+// U32 i;
+// for (i = 0; i < count; i++) {
+//     cpu->memory->writeb(dBase + DI, cpu->memory->readb(sBase + SI));
+//     DI += inc;
+//     SI += inc;
+//     CX--;
+// }
+void X64Asm::movs(U32 width) {
+    bool repeat = (currentOp->repZero || currentOp->repNotZero);
+    bool needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
+    U32 skipPos = 0;
+    U8 skipFlagsReg = 0xff;
+
+    if (repeat) {
+        if (needFlags) {
+            skipFlagsReg = getTmpReg();
+            pushFlagsToReg(skipFlagsReg, true, true);
+        }
+        // test (e)cx, (e)cx
+        if (ea16) {
+            write8(0x66);
+        }
+        write8(0x85);
+        write8(0xc9);
+
+        // jz
+        write8(0x0f);
+        write8(0x84);
+
+        skipPos = bufferPos;
+        write32(0x0);
+
+        if (needFlags) {
+            popFlagsFromReg(skipFlagsReg, true, true);
+            releaseTmpReg(skipFlagsReg);
+        }
+    }
+    U32 pos = bufferPos;
+
+    U8 srcHostReg = getTmpReg();
+    if (this->cpu->thread->process->hasSetSeg[ds]) {
+        U8 srcReg = getTmpReg();
+        U8 tmpReg = getTmpReg();
+        U8 esReg = getRegForSeg(ds, tmpReg);
+
+        if (!ea16) {
+            addWithLea(srcReg, true, 6, false, esReg, true, 0, 0, 4);
+        } else {
+            zeroReg(srcReg, true, true);
+            writeToRegFromReg(srcReg, true, 6, false, 2);
+            addWithLea(srcReg, true, srcReg, true, esReg, true, 0, 0, 4);
+        }
+        checkMemory(srcReg, true, false, width, srcHostReg, false, false, true); // will release srcReg
+        addWithLea(srcHostReg, true, srcHostReg, true, esReg, true, 0, 0, 8);
+        releaseTmpReg(tmpReg);
+    } else {
+        if (!ea16) {
+            checkMemory(6, false, false, width, srcHostReg, false);
+        } else {
+            U8 srcReg = getTmpReg();
+            zeroReg(srcReg, true, true);
+            writeToRegFromReg(srcReg, true, 6, false, 2);
+            checkMemory(srcReg, true, false, width, srcHostReg, false);
+            releaseTmpReg(srcReg);
+        }
+    }
+    U8 dstHostReg = getTmpReg();
+    if (this->cpu->thread->process->hasSetSeg[ES]) {
+        U8 dstReg = getTmpReg();
+        U8 tmpReg = getTmpReg();
+
+        if (!ea16) {
+            addWithLea(dstReg, true, 7, false, getRegForSeg(ES, tmpReg), true, 0, 0, 4);
+        } else {
+            zeroReg(dstReg, true, true);
+            writeToRegFromReg(dstReg, true, 7, false, 2);
+            addWithLea(dstReg, true, dstReg, true, getRegForSeg(ES, tmpReg), true, 0, 0, 4);
+        }
+        releaseTmpReg(tmpReg);
+        checkMemory(dstReg, true, true, width, dstHostReg, false, false, true); // will release dstReg
+
+        if (ea16) {
+            // we need to keep the upper bits
+            pushNativeReg(7, false);
+        }
+
+        // need to fetch ds again because we had to release it before checkMemory so that it had at least 1 tmp available
+        tmpReg = getTmpReg();
+        addWithLea(dstHostReg, true, dstHostReg, true, getRegForSeg(ES, tmpReg), true, 0, 0, 8);
+        releaseTmpReg(tmpReg);
+        if (!ea16) {
+            addWithLea(7, false, 7, false, dstHostReg, true, 0, 0, 8);
+        } else {
+            dstReg = getTmpReg();
+            zeroReg(dstReg, true, true);
+            writeToRegFromReg(dstReg, true, 7, false, 2);
+            addWithLea(7, false, dstReg, true, dstHostReg, true, 0, 0, 8);
+            releaseTmpReg(dstReg);
+        }
+    } else {
+        if (!ea16) {
+            checkMemory(7, false, true, width, dstHostReg, false);
+            addWithLea(7, false, 7, false, dstHostReg, true, 0, 0, 8);
+        } else {
+            U8 dstReg = getTmpReg();
+            zeroReg(dstReg, true, true);
+            writeToRegFromReg(dstReg, true, 7, false, 2);
+            checkMemory(dstReg, true, true, width, dstHostReg, false);
+            if (ea16) {
+                // we need to keep the upper bits
+                pushNativeReg(7, false);
+            }
+            addWithLea(7, false, dstReg, true, dstHostReg, true, 0, 0, 8);
+            releaseTmpReg(dstReg);
+        }
+    }
+
+    if (ea16) {
+        // we need to keep the upper bits
+        pushNativeReg(6, false);
+    }
+
+    // setup esi/edi to point to host addresses
+    if (!ea16) {
+        addWithLea(6, false, 6, false, srcHostReg, true, 0, 0, 8);
+    } else {
+        U8 srcReg = getTmpReg();
+        zeroReg(srcReg, true, true);
+        writeToRegFromReg(srcReg, true, 6, false, 2);
+        addWithLea(6, false, srcReg, true, srcHostReg, true, 0, 0, 8);
+        releaseTmpReg(srcReg);
+    }    
+
+    // esi, edi, ecx will be adjust
+    // since we already checked the memory, we know this won't cause a page fault
+    // 
+    // movs
+    if (width == 4) {
+        write8(0xa5);
+    } else if (width == 2) {
+        write8(0x66);
+        write8(0xa5);
+    } else if (width == 1) {
+        write8(0xa4);
+    } else {
+        kpanic("X64Asm::movs bad width: %d", width);
+    }
+    
+    U8 flagsReg = 0xff;
+    if (needFlags) {
+        flagsReg = getTmpReg();
+        pushFlagsToReg(flagsReg, true, true);        
+    }
+
+    // adjust esi/edi back to their emulated values (they were incremented)        
+    subRegs(6, false, srcHostReg, true, true);
+    subRegs(7, false, dstHostReg, true, true);
+
+    if (ea16) {
+        // we need to restore the top 16-bits of esi/edi (with 16-bit address, they should not change)
+        writeToRegFromReg(srcHostReg, true, 6, false, 4);
+        writeToRegFromReg(dstHostReg, true, 7, false, 4);
+        popNativeReg(7, false);
+        popNativeReg(6, false);
+        writeToRegFromReg(6, false, srcHostReg, true, 2);
+        writeToRegFromReg(7, false, dstHostReg, true, 2);
+    }
+
+    releaseTmpReg(srcHostReg);
+    releaseTmpReg(dstHostReg);
+
+    if (needFlags) {
+        popFlagsFromReg(flagsReg, true, true);
+        releaseTmpReg(flagsReg);
+    }
+        
+    if (repeat) {
+        U8 tmpReg = getTmpReg();
+        if (ea16) {
+            // loop on cx is not valid on x64
+            writeToRegFromReg(tmpReg, true, 1, false, 4);
+            zeroExtend16to32(1, false, 1, false);
+        }
+        S32 diff = (S32)pos - (S32)bufferPos;
+        U32 startPos = bufferPos;
+
+        // loop on ecx != 0
+        write8(0xe2);            
+        write8(ea16?6:2);
+
+        // jmp over next jmp (restart)
+        if (ea16) {
+            addWithLea(1, false, tmpReg, true, -1, false, 0, -1, 4);
+        }
+        write8(0xeb);
+        U32 exitLoopPos = bufferPos;
+        write8(ea16?9:5);
+
+        // jmp back to start and do another loop
+        if (ea16) {
+            addWithLea(1, false, tmpReg, true, -1, false, 0, -1, 4);
+        }
+        write8(0xe9);
+        write32(diff - (bufferPos - startPos + 4));
+        releaseTmpReg(tmpReg);
+
+        write32Buffer(buffer + skipPos, bufferPos - skipPos - 4);
+        if (needFlags) {
+            U32 pos = bufferPos;            
+            popFlagsFromReg(skipFlagsReg, true, true);
+            U32 amount = bufferPos - pos;
+            buffer[exitLoopPos] = buffer[exitLoopPos] + (U8)amount;
+        }
+    }
 }
 
 void X64Asm::stos(void* pfn, U32 size, bool repeat) {

@@ -335,7 +335,6 @@ static void popSeg16(X64Asm* data, U32 seg) {
 
 static void popSeg32(X64Asm* data, U32 seg) {
     data->popSeg(seg, 4);
-    data->cpu->thread->process->hasSetSeg[seg] = true;
 }
 
 // POP ES
@@ -1446,8 +1445,7 @@ static U32 movsb(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->movs(1);
 #endif
     return 0;
 }
@@ -1464,8 +1462,7 @@ static U32 movsw(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->movs(2);
 #endif
     return 0;
 }
@@ -1482,8 +1479,7 @@ static U32 movsd(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->movs(4);
 #endif
     return 0;
 }

@@ -5897,6 +5897,10 @@ void testMovsb0x0a4() {
     // repnz (DF)
     strTest(1, 0xf2, 0xa4, DF, "abcd", 4, "0000", 4, 0x12340020, 0x12340010, 0x12340004, 0x1234001C, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
     assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
+
+    // repz 0
+    strTest(1, 0xf3, 0xa4, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x30303030);
 }
 
 void testMovsb0x2a4() {
@@ -5906,22 +5910,38 @@ void testMovsb0x2a4() {
     cpu->seg[DS].address = HEAP_ADDRESS - 0x40000;
     strTest(1, 0, 0xa4, DF, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x4000F, 0x4001F, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+    assertTrue((cpu->flags & FMASK_TEST) == 0);
+    assertTrue((cpu->flags & DF) != 0);
 
     // Not DF
-    strTest(1, 0, 0xa4, 0, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x40011, 0x40021, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    strTest(1, 0, 0xa4, OF, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x40011, 0x40021, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '1');
+    assertTrue((cpu->flags & FMASK_TEST) == OF);
+    assertTrue((cpu->flags & DF) == 0);
 
     // repz
-    strTest(1, 0xf3, 0xa4, 0, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    strTest(1, 0xf3, 0xa4, SF, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue((cpu->flags & FMASK_TEST) == SF);
+    assertTrue((cpu->flags & DF) == 0);
 
     // repnz
-    strTest(1, 0xf2, 0xa4, 0, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    strTest(1, 0xf2, 0xa4, ZF, "abcd", 4, "0000", 4, 0x40000, 0x40000, 4, 0x40004, 0x40004, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue((cpu->flags & FMASK_TEST) == ZF);
+    assertTrue((cpu->flags & DF) == 0);
 
     // repnz (DF)
-    strTest(1, 0xf2, 0xa4, DF, "abcd", 4, "0000", 4, 0x40020, 0x40010, 4, 0x4001C, 0x4000C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    strTest(1, 0xf2, 0xa4, PF|DF, "abcd", 4, "0000", 4, 0x40020, 0x40010, 4, 0x4001C, 0x4000C, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 3) == 0x61626364);
+    assertTrue((cpu->flags & FMASK_TEST) == PF);
+    assertTrue((cpu->flags & DF) != 0);
+
+    // repnz 0
+    strTest(1, 0xf2, 0xa4, AF, "abcd", 4, "0000", 4, 0x40000, 0x40000, 0, 0x40000, 0x40000, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x30303030);
+    assertTrue((cpu->flags & FMASK_TEST) == AF);
+    assertTrue((cpu->flags & DF) == 0);
 }
 
 void testMovsw0x0a5() {
@@ -5946,6 +5966,10 @@ void testMovsw0x0a5() {
     // repnz (DF)
     strTest(2, 0xf2, 0xa5, DF, "abcd", 4, "0000", 4, 0x12340020, 0x12340010, 0x12340002, 0x1234001C, 0x1234000C, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
     assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 2) == 0x61626364);
+
+    // repz 0
+    strTest(2, 0xf3, 0xa5, 0, "abcd", 4, "0000", 4, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x30303030);
 }
 
 void testMovsd0x2a5() {
@@ -5974,6 +5998,11 @@ void testMovsd0x2a5() {
     strTest(4, 0xf2, 0xa5, DF, "abcdefgh", 8, "00000000", 8, 0x40020, 0x40010, 2, 0x40018, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10) == 0x61626364);
     assertTrue(memory->readd(HEAP_ADDRESS + 256 + 0x10 - 4) == 0x65666768);
+
+    // repnz 0
+    strTest(4, 0xf2, 0xa5, 0, "abcdefgh", 8, "00000000", 8, 0x40000, 0x40000, 0, 0x40000, 0x40000, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x30303030);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 4) == 0x30303030);
 }
 
 void testStosb0x0aa() {
