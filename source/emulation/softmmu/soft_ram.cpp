@@ -8,12 +8,12 @@ int allocatedRamPages;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../../util/ptrpool.h"
 
-static PtrPool<U8, false> freePages(0);
+static PtrPool<U8, false> freeRamPages(0);
 static std::unordered_map<U8*, U32> ramCounts;
 
 U8* ramPageAlloc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    U8* result = freePages.get();
+    U8* result = freeRamPages.get();
     if (result) {
         ramCounts[result] = 1;
         allocatedRamPages++;
@@ -32,7 +32,7 @@ U8* ramPageAlloc() {
     }
 #else
     for (int i = 0; i < 16; i++) {
-        freePages.put(pages);
+        freeRamPages.put(pages);
         pages += K_PAGE_SIZE;
     }
 #endif
@@ -52,7 +52,8 @@ void ramPageDecRef(U8* ram) {
     ramCounts[ram]--;
     if (ramCounts[ram] == 0) {
         allocatedRamPages--;
-        Platform::updateNativePermission((U64)ram, 0, K_PAGE_SIZE);
+        memset(ram, 0, K_PAGE_SIZE);
+        freeRamPages.put(ram);
     }
 }
 
