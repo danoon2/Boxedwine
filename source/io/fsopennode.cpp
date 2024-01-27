@@ -8,7 +8,7 @@ FsOpenNode::~FsOpenNode() {
     this->node->removeOpenNode(this);
 }
 
-U32 FsOpenNode::read(KThread* thread, U32 address, U32 len) {
+U32 FsOpenNode::internalRead(KThread* thread, U32 address, U32 len) {
     U32 result = 0;
     KMemory* memory = thread->memory;
 
@@ -21,6 +21,17 @@ U32 FsOpenNode::read(KThread* thread, U32 address, U32 len) {
         return read == len;
         });
     return result;
+}
+
+U32 FsOpenNode::read(KThread* thread, U32 address, U32 len) {
+    BOXEDWINE_MUTEX* mutex = getReadMutex();
+    if (mutex) {
+        // this will reduce thashing in the zip file
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(*mutex);
+        return internalRead(thread, address, len);
+    } else {
+        return internalRead(thread, address, len);
+    }
 }
 
 U32 FsOpenNode::write(KThread* thread, U32 address, U32 len) {
@@ -41,6 +52,7 @@ U32 FsOpenNode::write(KThread* thread, U32 address, U32 len) {
 void FsOpenNode::loadDirEntries() {
     BOXEDWINE_CRITICAL_SECTION;
     if (this->dirEntries.size()==0 && this->node) {
+        this->dirEntries.reserve(2 + node->getChildCount());
         this->dirEntries.push_back(this->node);
         if (this->node->getParent())
             this->dirEntries.push_back(this->node->getParent());

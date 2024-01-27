@@ -212,7 +212,7 @@ public:
     void createCodeForRetranslateChunk();    
 #else
     void createCodeForDoSingleOp();
-    void emulateSingleOp();
+    void emulateSingleOp(DecodedOp* op);
 #endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void createCodeForJmpAndTranslateIfNecessary();
@@ -576,6 +576,7 @@ public:
     void addReturnFromTest();
 #endif
 
+    virtual void reset() override;
 private:
     void vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, bool is1128);
     void vIns(U8 rd, U8 rn, U8 imm4, U8 imm5);

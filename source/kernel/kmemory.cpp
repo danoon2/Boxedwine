@@ -83,6 +83,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             return -K_EACCES;
         }
     }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (flags & (K_MAP_FIXED | K_MAP_FIXED_NOREPLACE)) {
         if (addr & (K_PAGE_SIZE - 1)) {
             klog("tried to call mmap with invalid address: %X", addr);
@@ -194,6 +195,7 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
             return -K_ENOMEM;
         }
     }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     for (i = pageStart; i < pageStart + pageCount; i++) {
         this->data->protectPage(thread, i, permissions);
     }
@@ -266,6 +268,7 @@ U32 KMemory::unmap(U32 address, U32 len) {
 }
 
 U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<U8*>& pages, U32 permissions) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (startPage == 0 && !data->reserveAddress(ADDRESS_PROCESS_MMAP_START, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
         return 0;        
     }

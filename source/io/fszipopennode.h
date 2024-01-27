@@ -27,11 +27,12 @@ public:
     virtual void close() override;
     virtual void reopen() override;
     virtual bool isOpen() override;
+    virtual BOXEDWINE_MUTEX* getReadMutex() override;
 
 private:
     std::shared_ptr<FsZipNode> zipNode;
     S64 pos;
-    U64 offset;
+    U64 offset;    
 };
 
 #endif

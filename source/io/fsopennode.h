@@ -33,6 +33,7 @@ public:
     virtual void close()=0;
     virtual void reopen()=0;
     virtual bool isOpen()=0;
+    virtual BOXEDWINE_MUTEX* getReadMutex() {return nullptr;}
 
     BoxedPtr<FsNode> const node;
     const U32 flags;     
@@ -41,6 +42,7 @@ public:
 private:
     std::vector<BoxedPtr<FsNode> > dirEntries;
     void loadDirEntries();
+    U32 internalRead(KThread* thread, U32 address, U32 len);
 
     friend FsNode;
     KListNode<FsOpenNode*> listNode;

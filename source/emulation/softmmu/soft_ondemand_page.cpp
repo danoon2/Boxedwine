@@ -31,7 +31,9 @@ void OnDemandPage::close() {
 
 void OnDemandPage::ondemmand(U32 address) {
     U32 page = address >> K_PAGE_SHIFT;
-    getMemData(KThread::currentThread()->memory)->setPageRamWithFlags(nullptr, page, flags, false);
+    KMemory* memory = KThread::currentThread()->memory;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+    getMemData(memory)->setPageRamWithFlags(nullptr, page, flags, false);
 }
 
 U8 OnDemandPage::readb(U32 address) {

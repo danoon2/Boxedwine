@@ -5,8 +5,7 @@
 #include "../common/cpu.h"
 #include "x64CodeChunk.h"
 #include "../binaryTranslation/btCpu.h"
-
-class X64Asm;
+#include "x64Asm.h"
 
 union X87OrMMXRegister {
     using X87Register = uint8_t[10];
@@ -61,9 +60,8 @@ public:
     
     virtual void restart();
     virtual void* init();
-
-    U32 negSegAddress[6];
-
+    
+    U32 negSegAddress[6];    
 #ifdef BOXEDWINE_64BIT_MMU
     U64 negMemOffset;
     virtual bool handleStringOp(DecodedOp* op);
@@ -98,15 +96,18 @@ public:
     void addReturnFromTest();
 #endif
 
-    virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);    
-    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr);        
+    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);    
+    virtual void translateData(BtData* data, BtData* firstPass = nullptr);        
 
     virtual void setSeg(U32 index, U32 address, U32 value);
 #ifdef __TEST
     virtual void postTestRun();
 #endif    
 protected:
-    virtual std::shared_ptr<BtData> createData();
+    virtual BtData* getData1() override { data1.reset(); return &data1; }
+    virtual BtData* getData2() override { data2.reset(); return &data2; }
+    X64Asm data1;
+    X64Asm data2;
 };
 #endif
 #endif

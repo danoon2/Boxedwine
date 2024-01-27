@@ -4,7 +4,7 @@
 #ifdef BOXEDWINE_ARMV8BT
 #include "../binaryTranslation/btCpu.h"
 
-class Armv8btAsm;
+#include "armv8btAsm.h"
 
 class Armv8btCPU : public BtCPU {
 public:
@@ -34,8 +34,8 @@ public:
     void addReturnFromTest();
 #endif
 
-    virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0);
-    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr);
+    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0);
+    virtual void translateData(BtData* data, BtData* firstPass = nullptr);
 
     virtual void setSeg(U32 index, U32 address, U32 value);
 
@@ -43,9 +43,12 @@ public:
     virtual void postTestRun() {};
 #endif
 protected:
-    virtual std::shared_ptr<BtData> createData();
+    virtual BtData* getData1() override { data1.reset(); return &data1; }
+    virtual BtData* getData2() override { data2.reset(); return &data2; }
+    Armv8btAsm data1;
+    Armv8btAsm data2;
 private:      
-    void writeJumpAmount(const std::shared_ptr<BtData>& data, U32 pos, U32 toLocation, U8* offset);
+    void writeJumpAmount(BtData* data, U32 pos, U32 toLocation, U8* offset);
 };
 #endif
 #endif

@@ -665,7 +665,7 @@ void KMemory::unlockMemory(U8 * lockedPointer) {
 U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 result = 0;
     U32 pageCount = (size + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
-
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount, &result, false, true, PAGE_MAPPED)) {
         return 0;
     }

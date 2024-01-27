@@ -92,4 +92,8 @@ void FsZipOpenNode::reopen() {
     this->pos = 0;
 }
 
+BOXEDWINE_MUTEX* FsZipOpenNode::getReadMutex() {
+    return &zipNode->fsZip->readMutex;
+}
+
 #endif

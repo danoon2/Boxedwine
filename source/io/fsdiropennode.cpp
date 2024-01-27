@@ -19,6 +19,9 @@ S64 FsDirOpenNode::getFilePointer() {
 }
 
 S64 FsDirOpenNode::seek(S64 pos) {
+    if (pos == 0 && this->pos == 0) {
+        return 0;
+    }
     if (pos>=0 && pos<=this->getDirectoryEntryCount())
         this->pos = (S32)pos;
     else

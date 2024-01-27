@@ -34,6 +34,8 @@ public:
     U64 lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
     U64 lastZipFileOffset;
 
+    BOXEDWINE_MUTEX readMutex;
+
     void setupZipRead(U64 zipOffset, U64 zipFileOffset);
     void remove(BString localPath);
 

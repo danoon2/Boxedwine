@@ -4,6 +4,9 @@
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 class BtData;
 class BtCodeChunk;
+
+#define CPU_OFFSET_CURRENT_OP (U32)(offsetof(BtCPU, currentSingleOp))
+
 class BtCPU : public CPU {
 public:
     BtCPU(KMemory* memory) : CPU(memory), nativeHandle(0),
@@ -41,13 +44,13 @@ public:
     void* syncToHostAddress;
     void* syncFromHostAddress;
     void* doSingleOpAddress;
-    int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called
+    int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called    
 
     std::vector<U32> pendingCodePages;
 
     std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
-    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr) = 0;
-    virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) = 0;
+    virtual void translateData(BtData* data, BtData* firstPass = nullptr) = 0;
+    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) = 0;
     void* translateEipInternal(U32 ip);
 #ifdef __TEST
     virtual void postTestRun() = 0;
@@ -85,7 +88,8 @@ public:
     U32 pageOffsetJumpInstruction;
 protected:
     U64 getIpFromEip();
-    virtual std::shared_ptr<BtData> createData() = 0;
+    virtual BtData* getData1() = 0;
+    virtual BtData* getData2() = 0;
 };
 #endif
 

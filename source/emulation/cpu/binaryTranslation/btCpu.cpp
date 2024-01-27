@@ -38,17 +38,17 @@ void BtCPU::run() {
 }
 
 std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
-    std::shared_ptr<BtData> firstPass = createData();
+    BtData* firstPass = getData1();
     firstPass->ip = ip;
     firstPass->startOfDataIp = ip;
     translateData(firstPass);
 
-    std::shared_ptr<BtData> secondPass = createData();
+    BtData* secondPass = getData2();
     secondPass->ip = ip;
     secondPass->startOfDataIp = ip;
     secondPass->calculatedEipLen = firstPass->ip - firstPass->startOfDataIp;
     translateData(secondPass, firstPass);
-    S32 failedJumpOpIndex = this->preLinkCheck(secondPass.get());
+    S32 failedJumpOpIndex = this->preLinkCheck(secondPass);
 
     if (failedJumpOpIndex == -1) {
         std::shared_ptr<BtCodeChunk> chunk = secondPass->commit(false);
@@ -56,13 +56,13 @@ std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
         return chunk;
     }
     else {
-        firstPass = createData();
+        firstPass->reset();
         firstPass->ip = ip;
         firstPass->startOfDataIp = ip;
         firstPass->stopAfterInstruction = failedJumpOpIndex;
         translateData(firstPass);
 
-        secondPass = createData();
+        secondPass->reset();
         secondPass->ip = ip;
         secondPass->startOfDataIp = ip;
         secondPass->calculatedEipLen = firstPass->ip - firstPass->startOfDataIp;
@@ -520,31 +520,30 @@ void common_runSingleOp(BtCPU* cpu) {
         address = cpu->seg[CS].address + (address & 0xFFFF);
     }
 
-    CodeBlock block = cpu->memory->getCodeBlock(address);
-    if (!block) {
+    DecodedOp* op = cpu->currentSingleOp;
+    bool deallocOp = false;
+    if (!op) {
+        op = NormalCPU::decodeSingleOp(cpu, address);
+        deallocOp = true;
+    } else if (!op) {
+        kpanic("common_runSingleOp oops");
+    }
+
+    try {
+        if (!op->lock) {
+            op->pfn(cpu, op);
+        } else {
+            BOXEDWINE_CRITICAL_SECTION;
+            op->pfn(cpu, op);
+        }
+    } catch (...) {
         int ii = 0;
     }
-    DecodedBlock::currentBlock = block->block;
-    if (!DecodedBlock::currentBlock) {
-        void* host = getMemData(cpu->memory)->getExistingHostAddress(address);
-        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
-        //cpu->memory->addExtraCodeBlock(address, DecodedBlock::currentBlock);
-    }
-    DecodedOp* op = DecodedBlock::currentBlock->getOp(address);
-    bool deallocBlock = false;
-    if (!op) {
-        // interesting rare case where the code skipped over the 1 byte lock prefix and the address wasn't ready (on demand, mapped file)
-        DecodedBlock::currentBlock = NormalCPU::getBlockForInspectionButNotUsed(cpu, address, cpu->isBig());
-        op = DecodedBlock::currentBlock->getOp(address);
-        deallocBlock = true;
-    }
-    op->pfn(cpu, op);
     cpu->fillFlags();
     cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
-    if (deallocBlock) {
-        DecodedBlock::currentBlock->dealloc(false);
+    if (deallocOp) {
+        op->dealloc(true);
     }
-    DecodedBlock::currentBlock = nullptr;
 }
 #endif
 #endif

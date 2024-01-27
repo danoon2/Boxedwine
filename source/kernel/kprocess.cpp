@@ -620,6 +620,7 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     FsOpenNode* openNode = NULL;
     BString name;
 
+    KThread::setCurrentThread(thread);
     thread->setupStack();
     this->parentId = 1;
     this->userId = userId;
@@ -635,8 +636,7 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
             this->commandLine+=" ";
         this->commandLine+=argValues[i];
     }
-
-    KThread::setCurrentThread(thread);
+    
     this->initStdio();
     openNode=ElfLoader::inspectNode(currentDirectory, node, loader, interpreter, interpreterArgs);
     if (!openNode) {

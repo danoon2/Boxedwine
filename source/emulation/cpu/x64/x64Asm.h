@@ -45,6 +45,7 @@ class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);
     virtual void translateInstruction();
+    virtual void reset() override;
 
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress = true);
     void writeOp(bool isG8bit=false);
@@ -178,7 +179,7 @@ public:
     void fpu7(U8 rm);
 
     void DsEdiMmxOrSSE(U8 rm);
-    void emulateSingleOp(bool isDynamic = false);
+    void emulateSingleOp(DecodedOp* op, bool isDynamic = false);
 #ifdef __TEST
     void addReturnFromTest();
 #endif
@@ -273,7 +274,17 @@ private:
 #ifndef BOXEDWINE_64BIT_MMU
     void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false);
 public:
-    void movs(U32 width);
+    void lods(U32 width) {
+        string(width, true, false);
+    }
+    void movs(U32 width) {
+        string(width, true, true);
+    }
+    void stos(U32 width) {
+        string(width, false, true);
+    }
+private:
+    void string(U32 width, bool hasSrc, bool hasDst);
 #endif
 };
 #endif

@@ -50,7 +50,7 @@ bool doMainLoop() {
         }
         if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;
-            if (0) {
+            if (KSystem.title.length()) {
                 KNativeWindow::getNativeWindow()->setTitle(KSystem::title);
             } else {
                 BString title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY );

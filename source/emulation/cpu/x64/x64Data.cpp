@@ -4,6 +4,7 @@
 
 #include "x64Data.h"
 #include "x64CodeChunk.h"
+#include "x64CPU.h"
 
 X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->resetForNewOp();

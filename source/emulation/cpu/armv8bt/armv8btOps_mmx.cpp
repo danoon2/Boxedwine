@@ -4,6 +4,7 @@
 
 #include "armv8btAsm.h"
 #include "armv8btOps.h"
+#include "armv8btCPU.h"
 
 void opPunpcklbwMmx(Armv8btAsm* data) {
     // dest->ub.b7 = src->ub.b3;

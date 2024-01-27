@@ -23,7 +23,7 @@
 
 #include "soft_page.h"
 
-template<class>
+template<class, bool>
 class PtrPool;
 
 class OnDemandPage : public Page {
@@ -32,7 +32,7 @@ protected:
     OnDemandPage() : Page(0) {}
     void reset();
 
-    friend class PtrPool<OnDemandPage>;
+    friend class PtrPool<OnDemandPage, true>;
 public:
     static OnDemandPage* alloc(U32 flags);
 

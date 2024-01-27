@@ -13,6 +13,7 @@
 #include "armv8btOps_bits.h"
 #include "armv8btOps_mmx.h"
 #include "armv8btOps_fpu.h"
+#include "armv8btCPU.h"
 
 #include "../common/common_other.h"
 
@@ -2004,7 +2005,7 @@ void opPushSeg16(Armv8btAsm* data) {
 
 void opPopSeg16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2036,7 +2037,7 @@ void opPushSeg32(Armv8btAsm* data) {
 
 void opPopSeg32(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2330,7 +2331,7 @@ void opArplMem32(Armv8btAsm* data) {
 
 void opDaa(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2343,7 +2344,7 @@ void opDaa(Armv8btAsm* data) {
 
 void opDas(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2355,7 +2356,7 @@ void opDas(Armv8btAsm* data) {
 }
 void opAaa(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2367,7 +2368,7 @@ void opAaa(Armv8btAsm* data) {
 }
 void opAas(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2379,7 +2380,7 @@ void opAas(Armv8btAsm* data) {
 }
 void opAam(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2399,7 +2400,7 @@ void opAam(Armv8btAsm* data) {
 }
 void opAad(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2717,7 +2718,7 @@ void opMovE16S16(Armv8btAsm* data) {
 
 void opMovS16R16(Armv8btAsm* data) { 
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -2741,7 +2742,7 @@ void opMovS16R16(Armv8btAsm* data) {
 
 void opMovS16E16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     U8 addressReg = data->getAddressReg();    
@@ -2954,7 +2955,7 @@ void opCwq(Armv8btAsm* data) {
 }
 void opCallAp(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -2977,7 +2978,7 @@ void opCallAp(Armv8btAsm* data) {
 
 void opCallFar(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -3000,7 +3001,7 @@ void opCallFar(Armv8btAsm* data) {
 
 void opJmpAp(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -3021,7 +3022,7 @@ void opJmpAp(Armv8btAsm* data) {
 }
 void opJmpFar(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     kpanic("Need to test");
@@ -3098,7 +3099,7 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     // kpanic("Need to test");
@@ -3168,7 +3169,7 @@ void opInt80(Armv8btAsm* data) {
 
 void opInt98(Armv8btAsm* data) {    
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -3183,7 +3184,7 @@ void opInt98(Armv8btAsm* data) {
 }
 void opInt99(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -3210,7 +3211,7 @@ void opIntIb(Armv8btAsm* data) {
 }
 void opInt9A(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     data->syncRegsFromHost();
@@ -3228,7 +3229,7 @@ void opIntO(Armv8btAsm* data) {
 }
 static void doIret(Armv8btAsm* data, U32 big, U32 eip) {    
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -3444,7 +3445,7 @@ void opCPUID(Armv8btAsm* data) {
 static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {    
     if (level != 0) {
 #ifndef BOXEDWINE_64BIT_MMU
-        data->emulateSingleOp();
+        data->emulateSingleOp(data->currentOp);
         data->done = true;
 #else
         data->syncRegsFromHost();
@@ -3498,7 +3499,7 @@ void opLeave32(Armv8btAsm* data) {
 
 void doLoadSegment(Armv8btAsm* data, bool big) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     // U32 eaa = eaa(cpu, op);
@@ -3827,7 +3828,7 @@ void opCallE32(Armv8btAsm* data) {
 }
 void opCallFarE16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -3856,7 +3857,7 @@ void opCallFarE16(Armv8btAsm* data) {
 }
 void opCallFarE32(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     // kpanic("Need to test");
@@ -3918,7 +3919,7 @@ void opJmpE32(Armv8btAsm* data) {
 }
 void opJmpFarE16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     //kpanic("Need to test");
@@ -3946,7 +3947,7 @@ void opJmpFarE16(Armv8btAsm* data) {
 }
 void opJmpFarE32(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     // kpanic("Need to test");
@@ -4002,7 +4003,7 @@ static void callDstAddress(Armv8btAsm* data, void* pfn) {
 #endif
 void opLarR16R16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     kpanic("Need to test");
@@ -4013,7 +4014,7 @@ void opLarR16R16(Armv8btAsm* data) {
 }
 void opLarR16E16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     kpanic("Need to test");
@@ -4024,7 +4025,7 @@ void opLarR16E16(Armv8btAsm* data) {
 }
 void opLslR16R16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     kpanic("Need to test");
@@ -4035,7 +4036,7 @@ void opLslR16R16(Armv8btAsm* data) {
 }
 void opLslR16E16(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     kpanic("Need to test");
@@ -4046,7 +4047,7 @@ void opLslR16E16(Armv8btAsm* data) {
 }
 void opLslR32R32(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     kpanic("Need to test");
@@ -4057,7 +4058,7 @@ void opLslR32R32(Armv8btAsm* data) {
 }
 void opLslR32E32(Armv8btAsm* data) {
 #ifndef BOXEDWINE_64BIT_MMU
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #else
     kpanic("Need to test");
@@ -4729,11 +4730,11 @@ void opBswap32(Armv8btAsm* data) {
 
 void opEmms(Armv8btAsm* data) {}
 void opFxsave(Armv8btAsm* data) {
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
 }
 
 void opFxrstor(Armv8btAsm* data) {
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
 }
 
 void opLdmxcsr(Armv8btAsm* data) {

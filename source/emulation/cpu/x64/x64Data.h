@@ -3,7 +3,6 @@
 
 #ifdef BOXEDWINE_X64
 
-#include "x64CPU.h"
 #include "../binaryTranslation/btData.h"
 
 #define REX_BASE 0x40
@@ -43,6 +42,8 @@
 #define HOST_CPU          5
 
 #define HOST_TMP4         7
+
+class x64CPU;
 
 class X64Data : public BtData {
 public:

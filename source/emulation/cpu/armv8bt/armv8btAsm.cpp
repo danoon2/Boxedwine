@@ -11,6 +11,7 @@
 #include "../normal/normalCPU.h"
 #include "../armv8/llvm_helper.h"
 #include "armv8btCodeChunk.h"
+#include "armv8btCPU.h"
 
 static bool isWidthVector(VectorWidth width) {
     if (width == D_scaler || width == S_scaler) {
@@ -1425,7 +1426,7 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool ski
             kpanic("Armv8btAsm::getHostMem bad width=%d %s", width, currentOp->name());
         }
         width = width / 8;
-        readMem64RegOffset(resultReg, (instructionInfo[this->currentOp->inst].writeMemWidth ? xMemWrite : xMemRead), tmpReg, 3);
+        readMem64RegOffset(resultReg, (write ? xMemWrite : xMemRead), tmpReg, 3);
         if (!skipAlignmentCheck && width > 1) {
             andValue32(tmpReg, regEmulatedAddress, 0xFFF);
             doIf(tmpReg, K_PAGE_SIZE - width, DO_IF_GREATER_THAN, [=] {
@@ -1433,7 +1434,7 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool ski
                 });
         }
         doIf(resultReg, 0, DO_IF_EQUAL, [=] {
-            emulateSingleOp();
+            emulateSingleOp(currentOp);
             });
 #endif
         if (needToReleaseTmpReg) {
@@ -1966,6 +1967,12 @@ Armv8btAsm::Armv8btAsm(Armv8btCPU* cpu) : Armv8btData(cpu) {
     memset(vTmpRegInUse, 0, sizeof(vTmpRegInUse));
 }
 
+void Armv8btAsm::reset() {
+    Armv8btData::reset();
+    memset(tmpRegInUse, 0, sizeof(tmpRegInUse));
+    memset(vTmpRegInUse, 0, sizeof(vTmpRegInUse));
+}
+
 // only called when the thread starts
 void Armv8btAsm::saveNativeState() {
     pushPair(19, 20);
@@ -2128,9 +2135,11 @@ void Armv8btAsm::createCodeForDoSingleOp() {
     branchNativeRegister(xBranch);
 }
 
-void Armv8btAsm::emulateSingleOp() {
+void Armv8btAsm::emulateSingleOp(DecodedOp* op) {
     loadConst(xBranch, this->startOfOpIp);
     writeMem32ValueOffset(xBranch, xCPU, CPU_OFFSET_EIP);
+    loadConst(xBranch, (U64)op);
+    writeMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_CURRENT_OP);
     loadConst(xBranch, CPU_OFFSET_DO_SINGLE_OP_ADDRESS);
     readMem64RegOffset(xBranch, xCPU, xBranch);
     branchNativeRegister(xBranch); // we won't return to here
@@ -4945,7 +4954,7 @@ static void arm_invalidOp(CPU* cpu, U32 op) {
 
 void Armv8btAsm::invalidOp(U32 op) {
 #ifndef BOXEDWINE_64BIT_MMU
-    emulateSingleOp();
+    emulateSingleOp(currentOp);
     done = true;
 #else
     syncRegsFromHost();
@@ -4982,7 +4991,7 @@ void Armv8btAsm::logOp(U32 eip) {
 
 void Armv8btAsm::signalIllegalInstruction(int code) {
 #ifndef BOXEDWINE_64BIT_MMU
-    emulateSingleOp();
+    emulateSingleOp(currentOp);
     done = true;
 #else
     syncRegsFromHost();
@@ -4998,7 +5007,7 @@ void Armv8btAsm::signalIllegalInstruction(int code) {
 
 void Armv8btAsm::translateInstruction() {
     KMemoryData* mem = getMemData(cpu->memory);
-    if (this->ip == 0xd07e9698) {
+    if (this->ip == 0xf0001c85) {
         int ii = 0;
     }
     this->startOfOpIp = this->ip;

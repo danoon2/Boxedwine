@@ -8,7 +8,7 @@ int allocatedRamPages;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../../util/ptrpool.h"
 
-static PtrPool<U8> freePages(0);
+static PtrPool<U8, false> freePages(0);
 static std::unordered_map<U8*, U32> ramCounts;
 
 U8* ramPageAlloc() {
@@ -16,6 +16,7 @@ U8* ramPageAlloc() {
     U8* result = freePages.get();
     if (result) {
         ramCounts[result] = 1;
+        allocatedRamPages++;
         return result;
     }
 

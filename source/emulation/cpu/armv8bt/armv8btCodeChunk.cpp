@@ -2,6 +2,7 @@
 #ifdef BOXEDWINE_ARMV8BT
 #include "armv8btCodeChunk.h"
 #include "armv8btAsm.h"
+#include "armv8btCPU.h"
 
 bool Armv8CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, void* address) {
     Armv8btCPU* cpu = (Armv8btCPU*)btCPU;

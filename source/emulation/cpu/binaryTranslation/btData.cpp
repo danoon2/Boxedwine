@@ -40,6 +40,24 @@ BtData::~BtData() {
     }
 }
 
+void BtData::reset() {
+    this->ipAddressCount = 0;
+    this->bufferPos = 0;
+    this->done = false;
+    this->ip = 0;
+    this->startOfDataIp = 0;
+    this->startOfOpIp = 0;
+    this->calculatedEipLen = 0;
+    this->stopAfterInstruction = -1;
+#ifdef BOXEDWINE_64BIT_MMU
+    this->dynamic = false;
+    this->useSingleMemOffset = true;
+#endif
+    this->currentOp = nullptr;
+    this->needLargeIfJmpReg = false;
+    todoJump.clear();
+}
+
 void BtData::write8(U8 data) {
     if (this->bufferPos >= this->bufferSize) {
         U8* b = new U8[this->bufferSize * 2];

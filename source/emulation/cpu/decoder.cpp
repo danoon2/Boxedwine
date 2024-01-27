@@ -119,33 +119,33 @@ const InstructionInfo instructionInfo[] = {
     {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE32I32
 
     {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR8E8
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8R8
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR8I8
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8I8
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8I8
     {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR16E16
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16R16
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16R16
 /*070*/    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR16R16
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR16I16
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16I16
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16I16
     {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR32E32
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32R32
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR32I32
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32I32
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32I32
     // CF, AF, OF are always 0
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8R8
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR8I8
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8I8
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16R16
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8I8
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16R16
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR16R16
 /*080*/    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR16I16
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16I16
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32R32
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16I16
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR32I32
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32I32
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32I32
 
     {0, 0, 0, 0, 0, 0, 0}, // NotR8
     {0, 8, 8, 0, 0, 0, 0}, // NotE8

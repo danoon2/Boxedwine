@@ -238,6 +238,9 @@ public:
 #ifdef BOXEDWINE_64BIT_MMU
     U64* memOffsets; // ARM will use one less instruction for shared memory access if the offset of this is in the first 256 bytes
 #endif    
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    DecodedOp* currentSingleOp;
+#endif
     MMX_reg reg_mmx[8];
     ALIGN(SSE xmm[8], 16);
 

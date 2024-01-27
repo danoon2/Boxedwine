@@ -106,11 +106,12 @@ public:
 #ifdef BOXEDWINE_DYNAMIC
     DynamicMemory* dynamicMemory;
 #endif
+    BOXEDWINE_MUTEX mutex;
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
     friend BtMemory;
-
+    
     KMemoryData* data;
     KProcess* process;
 };

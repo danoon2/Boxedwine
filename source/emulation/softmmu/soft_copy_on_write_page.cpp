@@ -12,6 +12,8 @@ CopyOnWritePage* CopyOnWritePage::alloc(U8* page, U32 address, U32 flags) {
 
 void CopyOnWritePage::copyOnWrite(U32 address) {	
     U8* ram;
+    KMemory* memory = KThread::currentThread()->memory;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 
     if (!mapShared() && ramPageRefCount(this->page)>1) {
         ram = ramPageAlloc();
@@ -21,7 +23,7 @@ void CopyOnWritePage::copyOnWrite(U32 address) {
         ramPageIncRef(ram);
     }    
 
-    getMemData(KThread::currentThread()->memory)->setPageRamWithFlags(ram, address >> K_PAGE_SHIFT, flags, false);
+    getMemData(memory)->setPageRamWithFlags(ram, address >> K_PAGE_SHIFT, flags, false);
     ramPageDecRef(ram); // setPageRamWithFlags will increment this
 }
 

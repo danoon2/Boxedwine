@@ -115,14 +115,15 @@ void BtCodeChunk::internalDealloc() {
     KMemoryData* mem = getMemData(KThread::currentThread()->memory);
     if (this->hostAddress) {
         mem->freeExcutableMemory(this->hostAddress, this->hostAddressSize);
-    }
-    this->hostAddress = NULL;
+        this->hostAddress = NULL;
+    }    
     delete[] this->emulatedInstructionLen;
     this->emulatedInstructionLen = NULL;
     delete[] this->hostInstructionLen;
     this->hostInstructionLen = NULL;
     if (this->block) {
         block->dealloc(false);
+        block = nullptr;
     }
 }
 

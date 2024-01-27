@@ -2,6 +2,7 @@
 #ifdef BOXEDWINE_X64
 #include "x64CodeChunk.h"
 #include "x64Asm.h"
+#include "x64CPU.h"
 
 bool X64CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, void* address) {
     x64CPU* cpu = (x64CPU*)btCPU;

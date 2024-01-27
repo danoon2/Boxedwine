@@ -1,3 +1,6 @@
+#ifndef __BTDATA_H__
+#define __BTDATA_H__
+
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
 #include "btCpu.h"
@@ -37,7 +40,7 @@ public:
     U8* buffer;
     U32 bufferSize;
     U32 bufferPos;
-    U8 bufferInternal[256];
+    U8 bufferInternal[512];
 
     std::vector<TodoJump> todoJump;
     S32 stopAfterInstruction;
@@ -45,7 +48,7 @@ public:
     DecodedOp* currentOp;
     DecodedBlock* currentBlock;
 
-    std::shared_ptr<BtData> firstPass;
+    BtData* firstPass;
     bool needLargeIfJmpReg;
 
     void mapAddress(U32 ip, U32 bufferPos);
@@ -62,8 +65,10 @@ public:
     virtual void jumpTo(U32 eip) = 0;
     virtual void resetForNewOp() = 0;
     virtual void translateInstruction() = 0;
+    virtual void reset();
 protected:
     virtual std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) = 0;
 };
 
+#endif
 #endif

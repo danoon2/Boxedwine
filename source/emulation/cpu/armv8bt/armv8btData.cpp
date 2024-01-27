@@ -18,6 +18,13 @@ void Armv8btData::clearCachedFpuRegs() {
     memset(this->isFpuRegCached, 0, sizeof(isFpuRegCached));
 }
 
+void Armv8btData::reset() {
+    BtData::reset();
+    clearCachedFpuRegs();
+    this->fpuTopRegSet = false;
+    this->fpuOffsetRegSet = false;
+}
+
 void Armv8btData::resetForNewOp() {
     this->startOfOpIp = this->ip;
 }

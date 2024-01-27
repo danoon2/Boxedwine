@@ -32,22 +32,28 @@ public:
 #define TOTAL_LEVEL 13
 
 static PtrPool<BStringData>* freeStringData;
-static moodycamel::ConcurrentQueue<char*>* freeMemoryBySize;
+static PtrPool<char>* freeMemoryBySize[TOTAL_LEVEL];
 
 char* getNewString(int level) {
-    char* result;
-
-    if (freeMemoryBySize && freeMemoryBySize[level - SMALLEST_LEVEL].try_dequeue(result)) {
-        return result;
+    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
+        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
     }
-    return new char[(int)(1 << level)];
+    char* result = freeMemoryBySize[level - SMALLEST_LEVEL]->get();
+    if (!result) {
+        U32 size = 1 << level;
+        result = new char[size * 100];
+        for (int i = 1; i < 100; i++, result += size) {
+            freeMemoryBySize[level - SMALLEST_LEVEL]->put(result);
+        }
+    }
+    return result;
 }
 
 void releaseString(int level, char* str) {
     if (!freeMemoryBySize) {
-        freeMemoryBySize = new moodycamel::ConcurrentQueue<char*>[TOTAL_LEVEL];
+        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
     }
-    freeMemoryBySize[level - SMALLEST_LEVEL].enqueue(str);
+    freeMemoryBySize[level - SMALLEST_LEVEL]->put(str);
 }
 
 int powerOf2(int requestedSize) {

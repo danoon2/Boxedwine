@@ -17,7 +17,7 @@ CPU* CPU::allocCPU(KMemory* memory) {
     return new Armv8btCPU(memory);
 }
 
-Armv8btCPU::Armv8btCPU(KMemory* memory) : BtCPU(memory) {
+Armv8btCPU::Armv8btCPU(KMemory* memory) : BtCPU(memory), data1(this), data2(this) {
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[0] = 2147483648.0;
     sseConstants[SSE_MAX_INT32_PLUS_ONE_AS_DOUBLE].pd.f64[1] = 2147483648.0;
     sseConstants[SSE_MIN_INT32_MINUS_ONE_AS_DOUBLE].pd.f64[0] = -2147483649.0;
@@ -57,10 +57,6 @@ Armv8btCPU::Armv8btCPU(KMemory* memory) : BtCPU(memory) {
     largeAddressJumpInstruction = 0xf8400149;
     pageJumpInstruction = 0xf86f7929;
     pageOffsetJumpInstruction = 0x38400131;
-}
-
-std::shared_ptr<BtData> Armv8btCPU::createData() {
-    return std::make_shared<Armv8btAsm>(this);
 }
 
 void Armv8btCPU::setSeg(U32 index, U32 address, U32 value) {
@@ -203,7 +199,7 @@ void Armv8btCPU::addReturnFromTest() {
 }
 #endif
 
-void Armv8btCPU::writeJumpAmount(const std::shared_ptr<BtData>& data, U32 pos, U32 toLocation, U8* offset) {
+void Armv8btCPU::writeJumpAmount(BtData* data, U32 pos, U32 toLocation, U8* offset) {
     S32 amount = (S32)(toLocation) >> 2;
     if (offset[pos + 3] == 0x14) {
         if (amount > 0xFFFFFF) {
@@ -225,7 +221,7 @@ void Armv8btCPU::writeJumpAmount(const std::shared_ptr<BtData>& data, U32 pos, U
     }
 }
 
-void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
+void Armv8btCPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
     U32 i;
     KMemoryData* mem = getMemData(memory);
 
@@ -296,7 +292,7 @@ void Armv8btCPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCod
 #endif
 }
 
-void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
+void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
     KMemoryData* mem = getMemData(memory);
 #ifdef BOXEDWINE_64BIT_MMU    
     U32 codePage = (data->ip+ this->seg[CS].address) >> K_PAGE_SHIFT;
@@ -315,18 +311,14 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
             data->jumpTo(data->ip);
             break;
         }
-        if (!data->currentOp) {
-            U32 address = this->seg[CS].address + data->ip;
+        if (!data->currentOp) {            
             DecodedBlock* prev = data->currentBlock;
             if (prev) {
                 data->currentBlock = nullptr; // don't chain to an existing block
             } else {
-                std::shared_ptr<BtCodeChunk> chunk = memory->getCodeBlock(address);
+                std::shared_ptr<BtCodeChunk> chunk = memory->findCodeBlockContaining(address, 1);
                 if (chunk) {
                     data->currentBlock = chunk->block;
-                    if (!data->currentBlock) {
-                        int ii = 0;
-                    }
                 }
             }
             if (!data->currentBlock) {
@@ -369,10 +361,14 @@ void Armv8btCPU::translateData(const std::shared_ptr<BtData>& data, const std::s
             }
         }
 #endif
-        data->mapAddress(address, data->bufferPos);        
+        data->mapAddress(address, data->bufferPos);
+        // add a mapping so that if they skip the 1 byte lock they will get mapped to the lock version anyway, libc seems to want to skip the lock sometimes in order to improve performance by a tiny bit
+        if (data->currentOp->lock) {
+            data->mapAddress(address+1, data->bufferPos);
+        }
         if (firstPass) {
             // :TODO: find a way without a cast
-            std::shared_ptr<Armv8btAsm> a = std::dynamic_pointer_cast<Armv8btAsm>(firstPass);
+            Armv8btAsm* a = (Armv8btAsm*)(firstPass);
             if (a->fpuTopRegSet && !a->fpuOffsetRegSet) {
                 a->getFpuTopReg();
             }

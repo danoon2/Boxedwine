@@ -6,6 +6,7 @@
 #include "x64Data.h"
 #include "x64Asm.h"
 #include "../normal/normal_strings.h"
+#include "x64CPU.h"
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -168,7 +169,7 @@ static U32 instGrp4(X64Asm* data) {
 #ifdef BOXEDWINE_64BIT_MMU 
         data->callCallback(pfn);
 #else
-        data->emulateSingleOp();
+        data->emulateSingleOp(data->currentOp);
 #endif
         data->done = true;
         return 0;
@@ -1496,7 +1497,7 @@ static U32 cmpsb(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #endif
     return 0;
@@ -1514,7 +1515,7 @@ static U32 cmpsw(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #endif
     return 0;
@@ -1532,7 +1533,7 @@ static U32 cmpsd(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #endif
     return 0;
@@ -1550,8 +1551,7 @@ static U32 stosb(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->stos(1);
 #endif
     return 0;
 }
@@ -1568,8 +1568,7 @@ static U32 stosw(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->stos(2);
 #endif
     return 0;
 }
@@ -1586,8 +1585,7 @@ static U32 stosd(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->stos(4);
 #endif
     return 0;
 }
@@ -1604,8 +1602,7 @@ static U32 lodsb(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->lods(1);
 #endif
     return 0;
 }
@@ -1622,8 +1619,7 @@ static U32 lodsw(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->lods(2);
 #endif
     return 0;
 }
@@ -1640,8 +1636,7 @@ static U32 lodsd(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
-    data->done = true;
+    data->lods(4);
 #endif
     return 0;
 }
@@ -1658,7 +1653,7 @@ static U32 scasb(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #endif
     return 0;
@@ -1676,7 +1671,7 @@ static U32 scasw(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #endif
     return 0;
@@ -1694,7 +1689,7 @@ static U32 scasd(X64Asm* data) {
         }
     }
 #else
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 #endif
     return 0;
@@ -2113,10 +2108,10 @@ static U32 addressSize16(X64Asm* data) {
 // LOCK
 static U32 lock(X64Asm* data) {
     data->lockPrefix = true;
-    // :TODO: why was this here?
-    // if (data->ip-1 == data->startOfOpIp) {
-    //    data->mapAddress(data->ip, data->bufferPos);
-    //}
+    // add a mapping to the host instruction so that the lock can be skipped.  libc seems to do this.
+    if (data->ip-1 == data->startOfOpIp) {
+        data->mapAddress(data->ip, data->bufferPos);
+    }
     return 1;
 }
 
@@ -2314,7 +2309,7 @@ static void emulateRM(X64Asm* data, U8 rm) {
     U32 pos = data->bufferPos;
     data->translateRM(rm, false, false, false, false, 0);
     data->bufferPos;
-    data->emulateSingleOp();
+    data->emulateSingleOp(data->currentOp);
 }
 
 static U32 sseOp3AE(X64Asm* data) {
