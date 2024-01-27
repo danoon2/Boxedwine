@@ -10,8 +10,8 @@ class Armv8btCPU : public BtCPU {
 public:
     Armv8btCPU(KMemory* memory);
     
-    virtual void restart();
-    virtual void* init();    
+    virtual void restart() override;
+    virtual void* init() override;
 
     U8* parity_lookup;                
 	void*** eipToHostInstructionPages;    
@@ -34,13 +34,13 @@ public:
     void addReturnFromTest();
 #endif
 
-    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0);
-    virtual void translateData(BtData* data, BtData* firstPass = nullptr);
+    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) override;
+    virtual void translateData(BtData* data, BtData* firstPass = nullptr) override;
 
-    virtual void setSeg(U32 index, U32 address, U32 value);
+    virtual void setSeg(U32 index, U32 address, U32 value) override;
 
 #ifdef __TEST
-    virtual void postTestRun() {};
+    virtual void postTestRun() override {};
 #endif
 protected:
     virtual BtData* getData1() override { data1.reset(); return &data1; }

@@ -137,7 +137,6 @@ static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
     KThread* currentThread = KThread::currentThread();
-    KMemoryData* mem = getMemData(currentThread->memory);
     if (!currentThread) {
         return;
     }
@@ -159,6 +158,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     armCpu->exceptionIp = context->CONTEXT_PC;
 
 #ifdef BOXEDWINE_64BIT_MMU
+    KMemoryData* mem = getMemData(currentThread->memory);
     if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
         U32 insn = *(U32*)(cpu->exceptionIp);
         
@@ -213,8 +213,9 @@ void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
     Armv8btCPU* cpu = (Armv8btCPU*)currentThread->cpu;
+#ifdef BOXEDWINE_64BIT_MMU
     KMemoryData* mem = getMemData(currentThread->memory);
-
+#endif
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
         cpu->returnHostAddress = result;

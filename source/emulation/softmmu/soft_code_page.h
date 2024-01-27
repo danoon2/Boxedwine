@@ -28,7 +28,7 @@
 #define CODE_ENTRIES_MASK 31
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
+#include "../cpu/binaryTranslation/btCodeChunk.h"
 #define InternalCodeBlock std::shared_ptr<BtCodeChunk>
 #else
 #define InternalCodeBlock std::shared_ptr<DecodedBlock>

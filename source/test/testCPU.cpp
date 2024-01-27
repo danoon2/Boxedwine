@@ -568,7 +568,6 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
 }
 
 void EbCl(int instruction, int which, struct Data* data) {
-    struct Data* start = data;
     for (int i = 0; i < 2; i++) {
         while (data->valid) {
             int rm;
@@ -6524,7 +6523,6 @@ void testEnter0x0c8() {
 
     ESP -= 16;
     EBP = 0xabcd1234;
-    U32 esp = ESP;
     runTestCPU();
     assertTrue(EBP == 0xabcd0fee);
     assertTrue(ESP == 0xdee);    
@@ -6539,7 +6537,6 @@ void testEnter0x2c8() {
 
     ESP -= 16;
     EBP = 0xabcd1234;
-    U32 esp = ESP;
     runTestCPU();
     assertTrue(EBP == 0xfec);
     assertTrue(ESP == 0xdec);
@@ -6586,7 +6583,6 @@ void testIRet0x2cf() {
     cpu->big = true;
     newInstruction(0xcf, 0);
 
-    U32 esp = ESP;
     ESP -= 12;
     memory->writed(cpu->seg[SS].address + ESP, 0x128);
     memory->writed(cpu->seg[SS].address + ESP + 4, CODE_SEG_16);
@@ -9209,8 +9205,6 @@ void testJmpFarE16() {
     pushCode8(0xc0);
     pushCode8(0x10);
 
-    U32 esp = ESP;
-
     memory->writew(cpu->seg[DS].address + 200, 0x128);
     memory->writew(cpu->seg[DS].address + 202, CODE_SEG_16);
 
@@ -9242,8 +9236,6 @@ void testJmpFarE32() {
     pushCode8(0x83);
     pushCode8(0xc0);
     pushCode8(0x10);
-
-    U32 esp = ESP;
 
     memory->writed(cpu->seg[DS].address + 200, 0x128);
     memory->writed(cpu->seg[DS].address + 204, CODE_SEG_16);

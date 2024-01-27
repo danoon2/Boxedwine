@@ -1301,7 +1301,6 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
     }
 #endif
     if (KSystem::videoEnabled && renderer) {
-        U32 threadId = thread->id;
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         if (thread) {
             ChangeThread t(thread);

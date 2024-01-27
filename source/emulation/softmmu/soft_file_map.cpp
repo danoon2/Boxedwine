@@ -34,9 +34,6 @@ void FilePage::ondemmandFile(U32 address) {
     KMemory* memory = KThread::currentThread()->memory;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
-    bool read = this->canRead() || this->canExec();
-    bool write = this->canWrite();
-    bool shared = this->mapShared();
     U8* ram=NULL;    
 
     address = address & (~K_PAGE_MASK);

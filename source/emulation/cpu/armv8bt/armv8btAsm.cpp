@@ -5006,12 +5006,9 @@ void Armv8btAsm::signalIllegalInstruction(int code) {
 }
 
 void Armv8btAsm::translateInstruction() {
-    KMemoryData* mem = getMemData(cpu->memory);
-    if (this->ip == 0xf0001c85) {
-        int ii = 0;
-    }
     this->startOfOpIp = this->ip;
 #ifdef BOXEDWINE_64BIT_MMU
+    KMemoryData* mem = getMemData(cpu->memory);
     this->useSingleMemOffset = KSystem::useSingleMemOffset && !mem->doesInstructionNeedMemoryOffset(this->ip);
 #endif
     this->ip += this->currentOp->len;

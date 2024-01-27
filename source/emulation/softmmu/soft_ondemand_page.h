@@ -47,7 +47,7 @@ public:
     virtual Type getType() override { return On_Demand_Page; }
 
     virtual bool inRam() override {return false;}
-    virtual void close();    
+    virtual void close() override;    
 
     void ondemmand(U32 address);
 };

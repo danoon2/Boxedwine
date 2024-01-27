@@ -50,7 +50,7 @@ char* getNewString(int level) {
 }
 
 void releaseString(int level, char* str) {
-    if (!freeMemoryBySize) {
+    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
         freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
     }
     freeMemoryBySize[level - SMALLEST_LEVEL]->put(str);

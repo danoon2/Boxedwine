@@ -23,7 +23,7 @@ void BtCPU::run() {
         start();
 #ifdef __TEST
         return;
-#endif
+#else
         if (this->thread->terminating) {
             break;
         }
@@ -34,6 +34,7 @@ void BtCPU::run() {
         if (this->inException) {
             this->inException = false;
         }
+#endif
     }
 }
 
