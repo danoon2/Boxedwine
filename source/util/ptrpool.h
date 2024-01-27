@@ -37,7 +37,6 @@ private:
     }
 
     void internalDeleteAll() {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
         for (auto& t : allocated) {
             delete[] t;
         }

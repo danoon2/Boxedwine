@@ -47,6 +47,9 @@ KMemoryData::~KMemoryData() {
         delete delayedReset;
     }
 #endif
+    for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
+        mmu[i]->close();
+    }
 }
 
 void KMemoryData::setPage(U32 index, Page* page) {
