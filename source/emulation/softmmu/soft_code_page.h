@@ -96,7 +96,8 @@ public:
 private:
     void addCode(U32 eip, CodeBlock& block, const InternalCodeBlock& sharedBlock, U32 len, CodePageEntry* link);
     void copyOnWrite();
-    void removeBlock(CodePageEntry* entry);
+    void removeBlock(CodePageEntry* entry, U32 offset = 0);
+    void removeEntry(CodePageEntry* entry, U32 offset);
     CodePage::CodePageEntry* findEntry(U32 start, U32 stop);
     void addEntry(U32 start, U32 stop, CodePageEntry* entry);
 

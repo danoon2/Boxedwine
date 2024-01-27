@@ -32,7 +32,38 @@ CodePage::~CodePage() {
     }
 }
 
-void CodePage::removeBlock(CodePageEntry* entry) {
+static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
+    cpu->nextBlock = NULL;
+    cpu->yield = true;
+}
+
+void CodePage::removeEntry(CodePageEntry* entry, U32 offset) {
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
+    if (entry->block == DecodedBlock::currentBlock) {
+        KThread* thread = KThread::currentThread();
+        U32 ip;
+
+        if (thread->cpu->isBig())
+            ip = thread->cpu->seg[CS].address + thread->cpu->eip.u32;
+        else
+            ip = thread->cpu->seg[CS].address + thread->cpu->eip.u16;
+        if (entry->block->address + offset >= ip) {
+            // we don't have a pointer to the current op, so just set them all
+            DecodedOp* op = DecodedBlock::currentBlock->op;
+            while (op) {
+                op->pfn = emptyOp; // This will cause the current block to return
+                op = op->next;
+            }
+        }
+
+        entry->block->dealloc(true);
+        entry->block = NULL; // so that freeEntries.put won't dealloc it
+    }
+#endif
+    freeEntries.put(entry);
+}
+
+void CodePage::removeBlock(CodePageEntry* entry, U32 offset) {
     CodePageEntry* next = entry->next;
 
     // take care of page links
@@ -66,18 +97,13 @@ void CodePage::removeBlock(CodePageEntry* entry) {
                 if (e->nextEntry) {
                     e->nextEntry->prevEntry = e->prevEntry;
                 }
-                freeEntries.put(e);
+                removeEntry(e, offset);
                 e = entries[i];
             } else {
                 e = e->nextEntry;
             }
         }
     }    
-}
-
-static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
-    cpu->nextBlock = NULL;
-    cpu->yield = true;
 }
 
 void CodePage::markOffsetDynamic(U32 offset, U32 len) {
@@ -173,7 +199,7 @@ void CodePage::removeBlockAt(U32 address, U32 len) {
                 }
                 e = e->nextEntry;
             }
-            removeBlock(entry);
+            removeBlock(entry, offset);
             entry = findEntry(offset, offset + len - 1);
         }
     }
