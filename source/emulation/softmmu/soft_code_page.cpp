@@ -319,10 +319,10 @@ void CodePage::writed(U32 address, U32 value) {
             removeBlockAt(address + 1, 1);
         }
         if (readb(address + 2) != (U8)(value >> 16)) {
-            removeBlockAt(address + 1, 1);
+            removeBlockAt(address + 2, 1);
         }
         if (readb(address + 3) != (U8)(value >> 24)) {
-            removeBlockAt(address + 1, 1);
+            removeBlockAt(address + 3, 1);
         }
         copyOnWrite();
         RWPage::writed(address, value);

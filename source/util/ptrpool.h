@@ -45,7 +45,8 @@ private:
     }
 public:
     PtrPool(int blockSize=10000) : blockSize(blockSize) {}
-    ~PtrPool() {deleteAll();}
+    // currently on raspberry pi, calling deleteAll in the destructor hangs, it's probably because the global PtrPool get destructed in a different order, maybe they should be pointers that get deleting in KSystem::destroy
+    ~PtrPool() {}
 
     /// Return an object from the pool.
     T* get() {
