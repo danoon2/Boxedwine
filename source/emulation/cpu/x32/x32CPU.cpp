@@ -13,6 +13,7 @@
 
 #define INCREMENT_EIP(x, y) incrementEip(x, y)
 
+#define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
 // DynReg is a required type, but the values inside are local to this file
@@ -246,7 +247,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             outb(0x66);
             outb(0x03);
             outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg16(op->rm));
+            outb(offsetof(CPU, reg[op->rm].u16));
         }
 
         // add ax, [cpu->reg[op->sibIndex].u16]
@@ -254,7 +255,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             outb(0x66);
             outb(0x03);
             outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg16(op->sibIndex));
+            outb(offsetof(CPU, reg[op->sibIndex].u16));
         }
 
         // seg[6] is always 0
@@ -262,7 +263,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             // add eax, [cpu->seg[op->base].address]
             outb(0x03);
             outb(0x47 | (reg << 3));
-            outb(CPU::offsetofSegAddress(op->base));
+            outb(offsetof(CPU, seg[op->base].address));
         }
     } else {
         // cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
@@ -273,7 +274,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             // mov eax, [cpu->reg[op->sibIndex].u32];
             outb(0x8b);
             outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg32(op->sibIndex));
+            outb(offsetof(CPU, reg[op->sibIndex].u32));
 
             if (op->sibScale) {                
                 // shl eax, op->sibScale
@@ -291,7 +292,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 // add eax, [cpu->seg[op->base].address]
                 outb(0x03);
                 outb(0x47 | (reg << 3));
-                outb(CPU::offsetofSegAddress(op->base));
+                outb(offsetof(CPU, seg[op->base].address));
             }
         } else {
             // seg[6] is always 0
@@ -300,7 +301,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 // mov eax, [cpu->seg[op->base].address]
                 outb(0x8b);
                 outb(0x47 | (reg << 3));
-                outb(CPU::offsetofSegAddress(op->base));
+                outb(offsetof(CPU, seg[op->base].address));
             }
         }
         // add eax, [cpu->reg[op->rm].u32]
@@ -312,7 +313,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 outb(0x03); // add
             }
             outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg32(op->rm));
+            outb(offsetof(CPU, reg[op->rm].u32));
         }
 
         // add eax, op->disp 

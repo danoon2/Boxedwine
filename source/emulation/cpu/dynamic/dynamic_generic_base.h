@@ -80,7 +80,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         // add ax, [DYN_CPU_REG+cpu->reg[op->rm].u16]
         if (op->rm != 8) {
             DynReg tmp = getUnsavedTmpReg();
-            loadFromCpuOffset16(tmp, CPU::offsetofReg16(op->rm));
+            loadFromCpuOffset16(tmp, offsetof(CPU, reg[op->rm].u16));
             addRegs32(reg, tmp);
             clearRegUsed(tmp);
         }
@@ -88,7 +88,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         // add ax, [cpu->reg[op->sibIndex].u16]
         if (op->sibIndex != 8) {
             DynReg tmp = getUnsavedTmpReg();
-            loadFromCpuOffset16(tmp, CPU::offsetofReg16(op->sibIndex));
+            loadFromCpuOffset16(tmp, offsetof(CPU, reg[op->sibIndex].u16));
             addRegs32(reg, tmp);
             clearRegUsed(tmp);
         }
@@ -100,7 +100,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         if (op->base < 6) {
             // add eax, [cpu->seg[op->base].address]
             DynReg tmp = getUnsavedTmpReg();
-            loadFromCpuOffset32(tmp, CPU::offsetofSegAddress(op->base));
+            loadFromCpuOffset32(tmp, offsetof(CPU, seg[op->base].address));
             addRegs32(reg, tmp);
             clearRegUsed(tmp);
         }
@@ -110,7 +110,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
 
         if (op->sibIndex != 8) {
             initiallized = true;
-            loadFromCpuOffset32(reg, CPU::offsetofReg32(op->sibIndex));
+            loadFromCpuOffset32(reg, offsetof(CPU, reg[op->sibIndex].u32));
             if (op->sibScale) {
                 shiftLeft32(reg, op->sibScale);
             }
@@ -119,7 +119,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
                 // add eax, [cpu->seg[op->base].address]
                 DynReg tmp = getUnsavedTmpReg();
-                loadFromCpuOffset32(tmp, CPU::offsetofSegAddress(op->base));
+                loadFromCpuOffset32(tmp, offsetof(CPU, seg[op->base].address));
                 addRegs32(reg, tmp);
                 clearRegUsed(tmp);
             }
@@ -127,17 +127,17 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             // seg[6] is always 0
             if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
                 initiallized = true;
-                loadFromCpuOffset32(reg, CPU::offsetofSegAddress(op->base));
+                loadFromCpuOffset32(reg, offsetof(CPU, seg[op->base].address));
             }
         }
         // add eax, [cpu->reg[op->rm].u32]
         if (op->rm != 8) {
             if (!initiallized) {
                 initiallized = true;
-                loadFromCpuOffset32(reg, CPU::offsetofReg32(op->rm));
+                loadFromCpuOffset32(reg, offsetof(CPU, reg[op->rm].u32));
             } else {
                 DynReg tmp = getUnsavedTmpReg();
-                loadFromCpuOffset32(tmp, CPU::offsetofReg32(op->rm));
+                loadFromCpuOffset32(tmp, offsetof(CPU, reg[op->rm].u32));
                 addRegs32(reg, tmp);
                 clearRegUsed(tmp);
             }
