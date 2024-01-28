@@ -1209,6 +1209,84 @@ U32 CPU::writeCrx(U32 which, U32 value) {
     return 1;
 }
 
+#ifdef BOXEDWINE_DYNAMIC
+U32 CPU::offsetofReg32(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, reg[0].u32);
+    case 1: return offsetof(CPU, reg[1].u32);
+    case 2: return offsetof(CPU, reg[2].u32);
+    case 3: return offsetof(CPU, reg[3].u32);
+    case 4: return offsetof(CPU, reg[4].u32);
+    case 5: return offsetof(CPU, reg[5].u32);
+    case 6: return offsetof(CPU, reg[6].u32);
+    case 7: return offsetof(CPU, reg[7].u32);
+    case 8: return offsetof(CPU, reg[8].u32);
+    }
+    kpanic("CPU::offsetofReg32 oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofReg16(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, reg[0].u16);
+    case 1: return offsetof(CPU, reg[1].u16);
+    case 2: return offsetof(CPU, reg[2].u16);
+    case 3: return offsetof(CPU, reg[3].u16);
+    case 4: return offsetof(CPU, reg[4].u16);
+    case 5: return offsetof(CPU, reg[5].u16);
+    case 6: return offsetof(CPU, reg[6].u16);
+    case 7: return offsetof(CPU, reg[7].u16);
+    case 8: return offsetof(CPU, reg[8].u16);
+    }
+    kpanic("CPU::offsetofReg16 oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofReg8(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, reg[0].u8);
+    case 1: return offsetof(CPU, reg[1].u8);
+    case 2: return offsetof(CPU, reg[2].u8);
+    case 3: return offsetof(CPU, reg[3].u8);
+    case 4: return offsetof(CPU, reg[0].h8);
+    case 5: return offsetof(CPU, reg[1].h8);
+    case 6: return offsetof(CPU, reg[2].h8);
+    case 7: return offsetof(CPU, reg[3].h8);
+    }
+    kpanic("CPU::offsetofReg8 oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofSegAddress(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, seg[0].address);
+    case 1: return offsetof(CPU, seg[1].address);
+    case 2: return offsetof(CPU, seg[2].address);
+    case 3: return offsetof(CPU, seg[3].address);
+    case 4: return offsetof(CPU, seg[4].address);
+    case 5: return offsetof(CPU, seg[5].address);
+    case 6: return offsetof(CPU, seg[6].address);
+    }
+    kpanic("CPU::offsetofSegAddress oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofSegValue(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, seg[0].value);
+    case 1: return offsetof(CPU, seg[1].value);
+    case 2: return offsetof(CPU, seg[2].value);
+    case 3: return offsetof(CPU, seg[3].value);
+    case 4: return offsetof(CPU, seg[4].value);
+    case 5: return offsetof(CPU, seg[5].value);
+    case 6: return offsetof(CPU, seg[6].value);
+    }
+    kpanic("CPU::offsetofSegvalue oops %d", index);
+    return 0;
+}
+
+#endif
+
 void common_prepareException(CPU* cpu, int code, int error) {
     cpu->prepareException(code, error);
 }

@@ -343,6 +343,15 @@ public:
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);
+
+#ifdef BOXEDWINE_DYNAMIC
+    static U32 offsetofReg32(U32 index);
+    static U32 offsetofReg16(U32 index);
+    static U32 offsetofReg8(U32 index);
+    static U32 offsetofSegAddress(U32 index);
+    static U32 offsetofSegValue(U32 index);
+#endif
+
 #ifndef __TEST
 protected:    
 #endif

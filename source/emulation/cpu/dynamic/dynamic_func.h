@@ -21,11 +21,11 @@ enum DynArg {
 
 U32 cpuOffset(U32 r, DynWidth width) {
     if (width==DYN_8bit)
-        return OFFSET_REG8(r);
+        return CPU::offsetofReg8(r);
     else if (width==DYN_16bit)
-        return CPU_OFFSET_OF(reg[r].u16);
+        return CPU::offsetofReg16(r);
     else if (width==DYN_32bit)
-        return CPU_OFFSET_OF(reg[r].u32);
+        return CPU::offsetofReg16(r);
     else {
         kpanic("dynamic cpuOffset unexpected width: %d", width);
         return 0;
@@ -333,9 +333,9 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);
             } else {
                 startIf(jmpReg, (op->inst == SetZ_R8 ? DYN_EQUALS_ZERO : DYN_NOT_EQUALS_ZERO), true);
-                movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 1);
+                movToCpu(CPU::offsetofReg8(op->reg), DYN_8bit, 1);
                 startElse();
-                movToCpu(OFFSET_REG8(op->reg), DYN_8bit, 0);
+                movToCpu(CPU::offsetofReg8(op->reg), DYN_8bit, 0);
                 endIf();
             }
             INCREMENT_EIP(data, op);
