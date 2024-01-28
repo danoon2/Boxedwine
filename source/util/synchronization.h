@@ -44,7 +44,7 @@ private:
 
 #define BOXEDWINE_CRITICAL_SECTION static std::mutex csMutex; const std::lock_guard<std::mutex> lock(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex) const std::lock_guard<std::recursive_mutex> lock(csMutex);
-#define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond) std::unique_lock<std::mutex> boxedWineCriticalSection(csCond.m);
+#define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond) std::unique_lock<std::mutex> boxedWineCriticalSection((csCond).m);
 
 #define BOXEDWINE_MUTEX std::recursive_mutex
 #define BOXEDWINE_MUTEX_LOCK(mutex) mutex.lock()
@@ -52,11 +52,11 @@ private:
 #define BOXEDWINE_MUTEX_UNLOCK(mutex) mutex.unlock()
 
 #define BOXEDWINE_CONDITION BoxedWineCondition
-#define BOXEDWINE_CONDITION_SIGNAL(cond) cond.signal()
-#define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) cond.signalAll()
-#define BOXEDWINE_CONDITION_WAIT(cond) cond.wait(boxedWineCriticalSection)
-#define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, t) cond.waitWithTimeout(boxedWineCriticalSection, t)
-#define BOXEDWINE_CONDITION_SET_PARENT(cond, parent) cond.setParentCondition(parent)
+#define BOXEDWINE_CONDITION_SIGNAL(cond) (cond).signal()
+#define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) (cond).signalAll()
+#define BOXEDWINE_CONDITION_WAIT(cond) (cond).wait(boxedWineCriticalSection)
+#define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, t) (cond).waitWithTimeout(boxedWineCriticalSection, t)
+#define BOXEDWINE_CONDITION_SET_PARENT(cond, parent) (cond).setParentCondition(parent)
 
 #define BoxedWineConditionTimer BoxedWineCondition
 #else

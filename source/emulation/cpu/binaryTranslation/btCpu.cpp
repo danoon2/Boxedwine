@@ -24,6 +24,9 @@ void BtCPU::run() {
 #ifdef __TEST
         return;
 #else
+        if (this->thread->process->terminated) {
+            this->memory->cleanup();
+        }
         if (this->thread->terminating) {
             break;
         }

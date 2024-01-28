@@ -203,6 +203,11 @@ U32 KThread::signal(U32 signal, bool wait) {
                 }
             }
             if (wait) {
+                BOXEDWINE_CONDITION* c = this->waitingCond;
+                if (c) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(*c);
+                    BOXEDWINE_CONDITION_SIGNAL_ALL(*c);
+                }
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
                 BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
             }
