@@ -32,9 +32,14 @@ FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index, U32 fla
 // :TODO: what about sync'ing the writes back to the file?
 void FilePage::ondemmandFile(U32 address) {
     KMemory* memory = KThread::currentThread()->memory;
+    KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
     U8* ram=NULL;    
+
+    if (mem->getPage(page) != this) {
+        return;
+    }
 
     address = address & (~K_PAGE_MASK);
     if (1) {
