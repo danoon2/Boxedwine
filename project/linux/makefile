@@ -104,7 +104,7 @@ INCLUDES += -I../../lib/imgui
 
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
-CPPFLAGS ?= -std=c++17 -O2 -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
+CPPFLAGS ?= -std=c++20 -O2 -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
 
 LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lminizip -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
 

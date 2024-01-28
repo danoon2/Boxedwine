@@ -1056,7 +1056,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;_DEBUG;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1068,7 +1068,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1081,7 +1081,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1093,7 +1093,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;_DEBUG;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1106,7 +1106,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1119,7 +1119,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1134,7 +1134,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_IMGUI_V2</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1146,7 +1146,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_BINARY_TRANSLATOR;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1158,7 +1158,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1170,7 +1170,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1182,7 +1182,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x86'">
     <ClCompile>
       <PreprocessorDefinitions>__TEST;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1194,7 +1194,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>

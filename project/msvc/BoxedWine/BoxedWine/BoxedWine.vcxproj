@@ -45,53 +45,53 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -177,7 +177,7 @@
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <EnablePREfast>true</EnablePREfast>
       <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;</UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -207,7 +207,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -238,7 +238,7 @@
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -268,7 +268,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
     </ClCompile>
@@ -300,7 +300,7 @@
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <EnablePREfast>false</EnablePREfast>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -333,7 +333,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -364,7 +364,7 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -396,7 +396,7 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
