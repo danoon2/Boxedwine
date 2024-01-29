@@ -1165,7 +1165,7 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
         }
     }
     
-    doIf(testReg, true, 0, [=] {
+    doIf(testReg, true, 0, [=, this] {
         if (needFlags) {
             U8 flagsReg = getTmpReg();
             popNativeReg(flagsReg, true);
@@ -3653,7 +3653,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
         if (needFlags) {
             pushFlagsToReg(HOST_TMP2, true, true);
         }
-        doIf(HOST_TMP3, true, 0, [=] {          
+        doIf(HOST_TMP3, true, 0, [=, this] {          
             if (needFlags) {
                 popFlagsFromReg(HOST_TMP2, true, true);
             }
@@ -3674,7 +3674,7 @@ void X64Asm::jmpReg(U8 reg, bool isRex, bool mightNeedCS) {
         // mov HOST_TMP, [HOST_TMP3]
         writeToRegFromMem(HOST_TMP, true, HOST_TMP3, true, -1, false, 0, 0, 2, false);
 #else
-        doIf(HOST_TMP3, true, 0, [=] {
+        doIf(HOST_TMP3, true, 0, [=, this] {
             if (needFlags) {
                 popFlagsFromReg(HOST_TMP2, true, true);
             }

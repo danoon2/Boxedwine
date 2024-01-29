@@ -205,7 +205,7 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
             }
             if (success) {                
                 *result = i;
-                for (U32 pageIndex = 0; j < pageCount; pageIndex++) {
+                for (U32 pageIndex = 0; pageIndex < pageCount; pageIndex++) {
                     mmu[i + pageIndex]->flags |= reservedFlag;
                 }
                 return true;

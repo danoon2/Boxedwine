@@ -12,9 +12,9 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString 
     hardLinkCount(1),
     type(type),  
     parent(parent),
-    isDir(isDirectory),  
-    locksCS(B("FsNode.lockCS")),
-    hasLoadedChildrenFromFileSystem(false)
+    isDir(isDirectory),      
+    hasLoadedChildrenFromFileSystem(false),
+    locksCS(B("FsNode.lockCS"))
  {   
 }
 

@@ -36,7 +36,7 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
             }
         }
     }
-    Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [=]() {
+    Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [=, this]() {
         memcpy(this->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
         });
 }
