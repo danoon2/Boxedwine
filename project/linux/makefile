@@ -9,6 +9,7 @@ uname_n := $(shell uname -n)
 $(info uname -m is $(uname_m))
 ifeq ($(uname_m), armv7l)
 JIT_FLAGS := -DBOXEDWINE_DYNAMIC_ARMV7 -DBOXEDWINE_DYNAMIC
+export GCC_EXTRA_FLAGS := -fno-tree-vectorize
 else ifeq ($(uname_m), aarch64)
 BT_FLAGS := -O0 -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_ARMV8BT -DBOXEDWINE_BT_DEBUG_NO_EXCEPTIONS -DBOXEDWINE_MULTI_THREADED -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON
 RELEASE_FLAGS := -DBOXEDWINE_64
@@ -104,7 +105,7 @@ INCLUDES += -I../../lib/imgui
 
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
-CPPFLAGS ?= -std=c++20 -O2 -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
+CPPFLAGS ?= -std=c++20 -O2 $(GCC_EXTRA_FLAGS) -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
 
 LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lminizip -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
 
