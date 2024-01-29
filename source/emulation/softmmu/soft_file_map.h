@@ -25,10 +25,10 @@
 
 class FilePage : public Page {
 protected:
-    FilePage(const BoxedPtr<MappedFile>& mapped, U32 index, U32 flags) : Page(flags), mapped(mapped), index(index) {}
+    FilePage(const BoxedPtr<MappedFile>& mapped, U32 index) : mapped(mapped), index(index) {}
 
 public:
-    static FilePage* alloc(const BoxedPtr<MappedFile>& mapped, U32 index, U32 flags);
+    static FilePage* alloc(const BoxedPtr<MappedFile>& mapped, U32 index);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;

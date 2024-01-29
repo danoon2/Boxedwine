@@ -25,10 +25,10 @@
 
 class NOPage : public RWPage {
 protected:
-    NOPage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags) {}
+    NOPage(U8* page, U32 address) : RWPage(page, address) {}
 
 public:
-    static NOPage* alloc(U8* page, U32 address, U32 flags);
+    static NOPage* alloc(U8* page, U32 address);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;

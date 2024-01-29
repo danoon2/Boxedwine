@@ -19,6 +19,7 @@ MappedFileCache::~MappedFileCache() {
 
 KMemory::KMemory(KProcess* process) : process(process) {
     data = new KMemoryData(this);
+    ::memset(flags, 0, sizeof(flags));
 #ifdef BOXEDWINE_DYNAMIC
     dynamicMemory = nullptr;
 #endif
@@ -94,7 +95,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                 return -K_ENOMEM;
             }
             for (U32 page = pageStart; page < pageStart + pageCount; page++) {
-                if (data->isPageMapped(page)) {
+                if (isPageMapped(page)) {
                     return -K_EEXIST;
                 }
             }
@@ -191,7 +192,7 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
         permissions |= PAGE_EXEC;
 
     for (i = pageStart; i < pageStart + pageCount; i++) {
-        if (!data->isPageMapped(i)) {
+        if (!isPageMapped(i)) {
             return -K_ENOMEM;
         }
     }
@@ -217,10 +218,10 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         kpanic("mremap not implemented for oldsize==0");
     }
     U32 oldPageCount = oldsize >> K_PAGE_SHIFT;
-    U32 pageFlags = data->getPageFlags(oldaddress >> K_PAGE_SHIFT);
+    U32 pageFlags = getPageFlags(oldaddress >> K_PAGE_SHIFT);
 
     for (U32 i = 0; i < oldPageCount; i++) {
-        if (data->getPageFlags((oldaddress >> K_PAGE_SHIFT) + i) != pageFlags) {
+        if (getPageFlags((oldaddress >> K_PAGE_SHIFT) + i) != pageFlags) {
             return -K_EFAULT;
         }
     }
@@ -284,7 +285,7 @@ bool KMemory::canWrite(U32 address, U32 len) {
     bool result = true;
 
     iteratePages(address, len, [this, &result](U32 page) {
-        if (data->getPageFlags(page) & PAGE_WRITE) {
+        if (getPageFlags(page) & PAGE_WRITE) {
             return true;
         }
         result = false;
@@ -297,7 +298,7 @@ bool KMemory::canRead(U32 address, U32 len) {
     bool result = true;
 
     iteratePages(address, len, [this, &result](U32 page) {
-        if (data->getPageFlags(page) & PAGE_READ) {
+        if (getPageFlags(page) & PAGE_READ) {
             return true;
         }
         result = false;
@@ -416,4 +417,8 @@ void KMemory::iteratePages(U32 address, U32 len, std::function<bool(U32 page)> c
             break;
         }
     }
+}
+
+U32 KMemory::getPageFlags(U32 page) {
+    return flags[page];
 }

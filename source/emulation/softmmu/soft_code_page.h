@@ -36,11 +36,11 @@
 
 class CodePage : public RWPage {
 protected:
-    CodePage(U8* page, U32 address, U32 flags);
+    CodePage(U8* page, U32 address);
     ~CodePage();
 
 public:
-    static CodePage* alloc(U8* page, U32 address, U32 flags);
+    static CodePage* alloc(U8* page, U32 address);
 
     virtual void writeb(U32 address, U8 value) override;
     virtual void writew(U32 address, U16 value) override;

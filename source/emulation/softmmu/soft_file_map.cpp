@@ -25,8 +25,8 @@
 
 #include "kprocess.h"
 
-FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index, U32 flags) {
-    return new FilePage(mapped, index, flags);
+FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index) {
+    return new FilePage(mapped, index);
 }
 
 // :TODO: what about sync'ing the writes back to the file?
@@ -58,7 +58,7 @@ void FilePage::ondemmandFile(U32 address) {
         }
     }
 
-    getMemData(memory)->setPageRamWithFlags(ram, page, flags, true);
+    getMemData(memory)->setPageRam(ram, page, true);
 }
 
 U8 FilePage::readb(U32 address) {	
@@ -98,7 +98,7 @@ void FilePage::writed(U32 address, U32 value) {
 }
 
 U8* FilePage::getReadPtr(U32 address, bool makeReady) {
-    if (makeReady && canRead()) {
+    if (makeReady && KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
         KMemoryData* data = getMemData(KThread::currentThread()->memory);
         ondemmandFile(address);
         return data->getPage(address >> K_PAGE_SHIFT)->getReadPtr(address, true);
@@ -107,7 +107,7 @@ U8* FilePage::getReadPtr(U32 address, bool makeReady) {
 }
 
 U8* FilePage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    if (makeReady && canWrite()) {
+    if (makeReady && KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT)) {
         KMemoryData* data = getMemData(KThread::currentThread()->memory);
         ondemmandFile(address);
         return data->getPage(address >> K_PAGE_SHIFT)->getWritePtr(address, len, true);

@@ -11,7 +11,6 @@
 #include "soft_no_page.h"
 #include "soft_copy_on_write_page.h"
 #include "soft_file_map.h"
-#include "soft_ondemand_page.h"
 #include "soft_code_page.h"
 
 #include "soft_ram.h"
@@ -112,49 +111,51 @@ void KMemoryData::addCallback(OpCallback func) {
     }
 }
 
-void KMemoryData::setPageRamWithFlags(U8* ram, U32 pageIndex, U8 flags, bool copyOnWrite) {
+void KMemoryData::setPageRam(U8* ram, U32 pageIndex, bool copyOnWrite) {
     Page* page = mmu[pageIndex];
-    page->flags = flags;
-    bool read = page->canRead() || page->canExec();
-    bool write = page->canWrite();
+
+    bool read = memory->canRead(pageIndex) || memory->canExec(pageIndex);
+    bool write = memory->canWrite(pageIndex);
     
-    if (copyOnWrite && !page->mapShared()) {
-        setPage(pageIndex, CopyOnWritePage::alloc(ram, pageIndex << K_PAGE_SHIFT, page->flags));
+    if (copyOnWrite && !memory->mapShared(pageIndex)) {
+        setPage(pageIndex, CopyOnWritePage::alloc(ram, pageIndex << K_PAGE_SHIFT));
     } else if (read && write) {
-        setPage(pageIndex, RWPage::alloc(ram, pageIndex << K_PAGE_SHIFT, page->flags));
+        setPage(pageIndex, RWPage::alloc(ram, pageIndex << K_PAGE_SHIFT));
     } else if (write) {
-        setPage(pageIndex, WOPage::alloc(ram, pageIndex << K_PAGE_SHIFT, page->flags));
+        setPage(pageIndex, WOPage::alloc(ram, pageIndex << K_PAGE_SHIFT));
     } else if (read) {
-        setPage(pageIndex, ROPage::alloc(ram, pageIndex << K_PAGE_SHIFT, page->flags));
+        setPage(pageIndex, ROPage::alloc(ram, pageIndex << K_PAGE_SHIFT));
     } else {
-        setPage(pageIndex, NOPage::alloc(ram, pageIndex << K_PAGE_SHIFT, page->flags));
+        setPage(pageIndex, NOPage::alloc(ram, pageIndex << K_PAGE_SHIFT));
     }
 }
 
-bool KMemoryData::isPageMapped(U32 page) {
-    return (this->getPage(page)->flags & PAGE_MAPPED) != 0;
-}
-
 void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile, U8** ramPages) {
+    for (U32 i = 0; i < pageCount; i++) {
+        if (page + i == 0xd06cf) {
+            int ii = 0;
+        }
+        memory->flags[page + i] = permissions;
+    }
     if (ramPages) {
         bool read = permissions & K_PROT_READ;
         bool write = permissions & K_PROT_WRITE;
 
         if (read && write) {
             for (U32 i = 0; i < pageCount; i++) {
-                this->setPage(page + i, RWPage::alloc(ramPages[i], page << K_PAGE_SHIFT, permissions));
+                this->setPage(page + i, RWPage::alloc(ramPages[i], page << K_PAGE_SHIFT));
             }
         } else if (write) {
             for (U32 i = 0; i < pageCount; i++) {
-                this->setPage(page + i, WOPage::alloc(ramPages[i], page << K_PAGE_SHIFT, permissions));
+                this->setPage(page + i, WOPage::alloc(ramPages[i], page << K_PAGE_SHIFT));
             }
         } else if (read) {
             for (U32 i = 0; i < pageCount; i++) {
-                this->setPage(page + i, ROPage::alloc(ramPages[i], page << K_PAGE_SHIFT, permissions));
+                this->setPage(page + i, ROPage::alloc(ramPages[i], page << K_PAGE_SHIFT));
             }
         } else {
             for (U32 i = 0; i < pageCount; i++) {
-                this->setPage(page + i, NOPage::alloc(ramPages[i], page << K_PAGE_SHIFT, permissions));
+                this->setPage(page + i, NOPage::alloc(ramPages[i], page << K_PAGE_SHIFT));
             }
         }
     } else if (mappedFile) {
@@ -165,11 +166,11 @@ void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permis
         }
 
         for (U32 i = 0; i < pageCount; i++) {
-            this->setPage(page + i, FilePage::alloc(mappedFile, filePage++, permissions));
+            this->setPage(page + i, FilePage::alloc(mappedFile, filePage++));
         }
     } else {
         for (U32 i = 0; i < pageCount; i++) {
-            this->setPage(page + i, OnDemandPage::alloc(permissions));
+            this->setPage(page + i, invalidPage);
         }
     }
 }
@@ -188,13 +189,13 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
         if (i + pageCount >= K_NUMBER_OF_PAGES) {
             return false;
         }
-        if (this->getPage(i)->getType() == Page::Type::Invalid_Page || (canBeReMapped && (this->getPage(i)->flags & PAGE_MAPPED))) {
+        if (memory->flags[i] == 0 || (canBeReMapped && (memory->flags[i] & PAGE_MAPPED))) {
             U32 j;
             bool success = true;
 
             for (j = 1; j < pageCount; j++) {
                 U32 nextPage = i + j; // could be done a different way, but this helps the static analysis
-                if (nextPage < K_NUMBER_OF_PAGES && this->getPage(nextPage)->getType() != Page::Type::Invalid_Page && (!canBeReMapped || !(this->getPage(i)->flags & PAGE_MAPPED))) {
+                if (nextPage < K_NUMBER_OF_PAGES && memory->flags[nextPage] != 0 && (!canBeReMapped || !(memory->flags[nextPage] & PAGE_MAPPED))) {
                     success = false;
                     break;
                 }
@@ -206,7 +207,7 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
             if (success) {                
                 *result = i;
                 for (U32 pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-                    mmu[i + pageIndex]->flags |= reservedFlag;
+                    memory->flags[i + pageIndex] = reservedFlag;
                 }
                 return true;
             }
@@ -219,56 +220,43 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
 void KMemoryData::protectPage(KThread* thread, U32 i, U32 permissions) {
     Page* page = this->getPage(i);
 
-    U32 flags = page->flags;
-    flags &= ~PAGE_PERMISSION_MASK;
-    flags |= (permissions & PAGE_PERMISSION_MASK);
+    U32 newFlags = memory->flags[i];
+    newFlags &= ~PAGE_PERMISSION_MASK;
+    newFlags |= (permissions & PAGE_PERMISSION_MASK);
+    memory->flags[i] = newFlags;
 
-    // we didn't have ram backing before, so lets delay its creation
-    if (page->getType() == Page::Type::Invalid_Page) {
-        // I don't think this path is possible, we can only protect pages that are already mapped
-        this->setPage(i, OnDemandPage::alloc(flags));
-    }
-    // the page type doesn't need to change, so just update flags
-    else if (page->getType() == Page::Type::File_Page || page->getType() == Page::Type::On_Demand_Page || page->getType() == Page::Type::Copy_On_Write_Page || page->getType() == Page::Type::Code_Page) {
-        page->flags = flags;
-    }
     // we already have ram backing, so we need to preserve it and maybe change the page object
-    else if (page->getType() == Page::Type::RO_Page || page->getType() == Page::Type::RW_Page || page->getType() == Page::Type::WO_Page || page->getType() == Page::Type::NO_Page) {
+    if (page->getType() == Page::Type::RO_Page || page->getType() == Page::Type::RW_Page || page->getType() == Page::Type::WO_Page || page->getType() == Page::Type::NO_Page) {
         RWPage* p = (RWPage*)page;
 
         if ((permissions & PAGE_READ) && (permissions & PAGE_WRITE)) {
             if (page->getType() != Page::Type::RW_Page) {
-                this->setPage(i, RWPage::alloc(p->page, p->address, flags));
+                this->setPage(i, RWPage::alloc(p->page, p->address));
             }
         } else if (permissions & PAGE_WRITE) {
             if (page->getType() != Page::Type::WO_Page) {
-                this->setPage(i, WOPage::alloc(p->page, p->address, flags));
+                this->setPage(i, WOPage::alloc(p->page, p->address));
             }
         } else if (permissions & PAGE_READ) {
             if (page->getType() != Page::Type::RO_Page) {
-                this->setPage(i, ROPage::alloc(p->page, p->address, flags));
+                this->setPage(i, ROPage::alloc(p->page, p->address));
             }
         } else {
             if (page->getType() != Page::Type::NO_Page) {
-                this->setPage(i, NOPage::alloc(p->page, p->address, flags));
+                this->setPage(i, NOPage::alloc(p->page, p->address));
             }
         }
-    } else {
-        kdebug("Memory::protect didn't expect page type: %d", page->getType());
     }
 }
 
 bool KMemoryData::isPageAllocated(U32 page) {
-    return this->getPage(page)->getType() != Page::Type::Invalid_Page;
-}
-
-U32 KMemoryData::getPageFlags(U32 page) {
-    return this->mmu[page]->flags;
+    return memory->flags[page] != 0;
 }
 
 void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
     for (U32 i = page; i < page + pageCount; i++) {
         this->setPage(i, invalidPage);
+        memory->flags[i] = 0;
     }
 }
 
@@ -286,6 +274,7 @@ void KMemoryData::execvReset() {
     KMemoryData* newData = new KMemoryData(memory);
     newData->delayedReset = this;
     memory->data = newData;
+    memset(memory->flags, 0, sizeof(memory->flags));
 #else
     setPagesInvalid(0, K_NUMBER_OF_PAGES);
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
@@ -397,67 +386,68 @@ U8* KMemory::getIntPtr(U32 address) {
 }
 
 void KMemory::clone(KMemory* from) {
+    ::memcpy(flags, from->flags, sizeof(flags));
     for (int i = 0; i < 0x100000; i++) {
         Page* page = from->data->getPage(i);
-        if (page->getType() == Page::Type::On_Demand_Page) {
-            if (page->mapShared()) {
-                OnDemandPage* p = (OnDemandPage*)page;
-                p->ondemmand(i << K_PAGE_SHIFT);
+        if (page->getType() == Page::Type::Invalid_Page && flags[i] != 0) {
+            if (mapShared(i)) {
+                // convert to regular page with its own ram so that the ram can be shared
+                InvalidPage* p = (InvalidPage*)page;
+                p->ondemmand(from, i);
                 // fall through
             } else {
-                data->setPage(i, OnDemandPage::alloc(page->flags));
                 continue;
             }
         }
         if (page->getType() == Page::Type::File_Page) {
             FilePage* p = (FilePage*)page;
-            if (page->mapShared()) {
+            if (mapShared(i)) {
                 p->ondemmandFile(i << K_PAGE_SHIFT);
                 // fall through
             } else {
-                data->setPage(i, FilePage::alloc(p->mapped, p->index, p->flags));
+                data->setPage(i, FilePage::alloc(p->mapped, p->index));
                 continue;
             }
         }
         page = from->data->getPage(i); // above code could have changed this
         if (page->getType() == Page::Type::RO_Page || page->getType() == Page::Type::RW_Page || page->getType() == Page::Type::WO_Page || page->getType() == Page::Type::NO_Page) {
             RWPage* p = (RWPage*)page;
-            if (!page->mapShared()) {
+            if (!mapShared(i)) {
                 if (page->getType() == Page::Type::WO_Page) {
                     U8* ram = ramPageAlloc();
                     ::memcpy(ram, p->page, K_PAGE_SIZE);
-                    data->setPage(i, WOPage::alloc(ram, p->address, p->flags));
+                    data->setPage(i, WOPage::alloc(ram, p->address));
                 } else if (page->getType() == Page::Type::NO_Page) {
                     U8* ram = ramPageAlloc();
                     ::memcpy(ram, p->page, K_PAGE_SIZE);
-                    data->setPage(i, NOPage::alloc(ram, p->address, p->flags));
+                    data->setPage(i, NOPage::alloc(ram, p->address));
                 } else {
-                    data->setPage(i, CopyOnWritePage::alloc(p->page, p->address, p->flags));
-                    from->data->setPage(i, CopyOnWritePage::alloc(p->page, p->address, p->flags));
+                    data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
+                    from->data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
                 }
             } else {
                 if (page->getType() == Page::Type::RO_Page) {
-                    data->setPage(i, ROPage::alloc(p->page, p->address, p->flags));
+                    data->setPage(i, ROPage::alloc(p->page, p->address));
                 } else if (page->getType() == Page::Type::RW_Page) {
-                    data->setPage(i, RWPage::alloc(p->page, p->address, p->flags));
+                    data->setPage(i, RWPage::alloc(p->page, p->address));
                 } else if (page->getType() == Page::Type::WO_Page) {
-                    data->setPage(i, WOPage::alloc(p->page, p->address, p->flags));
+                    data->setPage(i, WOPage::alloc(p->page, p->address));
                 } else if (page->getType() == Page::Type::NO_Page) {
-                    data->setPage(i, NOPage::alloc(p->page, p->address, p->flags));
+                    data->setPage(i, NOPage::alloc(p->page, p->address));
                 }
             }
         } else if (page->getType() == Page::Type::Code_Page) {
             // CodePage will check copy on write
             CodePage* p = (CodePage*)page;
-            data->setPage(i, CodePage::alloc(p->page, p->address, p->flags));
+            data->setPage(i, CodePage::alloc(p->page, p->address));
         }  else if (page->getType() == Page::Type::Copy_On_Write_Page) {
             CopyOnWritePage* p = (CopyOnWritePage*)page;
-            data->setPage(i, CopyOnWritePage::alloc(p->page, p->address, p->flags));
+            data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
         } else if (page->getType() == Page::Type::Native_Page) {
             NativePage* p = (NativePage*)page;
-            data->setPage(i, NativePage::alloc(p->nativeAddress, p->address, p->flags));
+            data->setPage(i, NativePage::alloc(p->nativeAddress, p->address));
         } else if (page->getType() == Page::Type::Invalid_Page) {
-            data->setPage(i, from->data->getPage(i));
+            
         } else {
             kpanic("unhandled case when cloning memory: page type = %d", page->getType());
         }
@@ -556,7 +546,7 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
     } else {
         if (page->getType() == Page::Type::RO_Page || page->getType() == Page::Type::RW_Page || page->getType() == Page::Type::Copy_On_Write_Page) {
             RWPage* p = (RWPage*)page;
-            codePage = CodePage::alloc(p->page, p->address, p->flags);
+            codePage = CodePage::alloc(p->page, p->address);
             setPage(address >> K_PAGE_SHIFT, codePage);
         } else if (page->getType() == Page::Type::File_Page) {
             // code probably linked to a block that didn't exist and we created a place holder instruction there to re-translate (see callRetranslateChunk)
@@ -673,7 +663,8 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
         return 0;
     }
     for (U32 i = 0; i < pageCount; i++) {
-        getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i, PAGE_READ | PAGE_WRITE));
+        flags[result + i] = PAGE_MAPPED | PAGE_READ | PAGE_WRITE;
+        getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i));
     }
     return result << K_PAGE_SHIFT;
 }

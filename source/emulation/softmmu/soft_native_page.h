@@ -5,10 +5,10 @@
 
 class NativePage : public Page {
 protected:
-    NativePage(U8* nativeAddress, U32 address, U32 flags);
+    NativePage(U8* nativeAddress, U32 address);
 
 public:
-    static NativePage* alloc(U8* nativeAddress, U32 address, U32 flags);
+    static NativePage* alloc(U8* nativeAddress, U32 address);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;

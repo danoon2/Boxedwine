@@ -25,10 +25,10 @@
 
 class WOPage : public RWPage {
 protected:
-    WOPage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags) {}
+    WOPage(U8* page, U32 address) : RWPage(page, address) {}
 
 public:
-    static WOPage* alloc(U8* page, U32 address, U32 flags);
+    static WOPage* alloc(U8* page, U32 address);
 
     virtual U8 readb(U32 address) override;
     virtual U16 readw(U32 address) override;

@@ -565,7 +565,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_native_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ram.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.h" />
@@ -812,7 +811,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_native_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ram.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp" />

@@ -95,6 +95,13 @@ public:
     
     void logPageFault(KThread* thread, U32 address);
     
+    U32 getPageFlags(U32 page);
+
+    bool canRead(U32 page) { return (flags[page] & PAGE_READ) != 0; }
+    bool canWrite(U32 page) { return (flags[page] & PAGE_WRITE) != 0; }
+    bool canExec(U32 page) { return (flags[page] & PAGE_EXEC) != 0; }
+    bool mapShared(U32 page) { return (flags[page] & PAGE_SHARED) != 0; }
+    bool isPageMapped(U32 page) { return (flags[page] & PAGE_MAPPED) != 0; }
 
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
     CodeBlock getCodeBlock(U32 address);
@@ -112,6 +119,8 @@ private:
     friend KMemoryData;
     friend BtMemory;
     
+    U8 flags[K_NUMBER_OF_PAGES];
+
     KMemoryData* data;
     KProcess* process;
 };

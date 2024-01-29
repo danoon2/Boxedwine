@@ -10,11 +10,11 @@
 #define DYNAMIC_MAX 3
 static PtrPool<CodePage::CodePageEntry> freeEntries;
     
-CodePage* CodePage::alloc(U8* page, U32 address, U32 flags) {
-    return new CodePage(page, address, flags);
+CodePage* CodePage::alloc(U8* page, U32 address) {
+    return new CodePage(page, address);
 }
 
-CodePage::CodePage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags) {
+CodePage::CodePage(U8* page, U32 address) : RWPage(page, address) {
     memset(this->entries, 0, sizeof(this->entries));
     entryCount = 0;
     writeCount = 0;
@@ -280,7 +280,7 @@ CodeBlock CodePage::findCode(U32 eip, U32 len) {
 }
 
 void CodePage::copyOnWrite() {
-    if (!mapShared() && ramPageRefCount(page) > 1) {
+    if (!KThread::currentThread()->memory->mapShared(address >> K_PAGE_SHIFT) && ramPageRefCount(page) > 1) {
         U8* ram = ramPageAlloc();
         memcpy(ram, page, K_PAGE_SIZE);
         ramPageDecRef(page);
@@ -330,14 +330,14 @@ void CodePage::writed(U32 address, U32 value) {
 }
 
 U8* CodePage::getReadPtr(U32 address, bool makeReady) {
-    if (canRead()) {
+    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
         return this->page;
     }
     return nullptr;
 }
 
 U8* CodePage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    if (canWrite() && makeReady) {
+    if (KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT) && makeReady) {
         removeBlockAt(address, len);
         return this->page;
     }

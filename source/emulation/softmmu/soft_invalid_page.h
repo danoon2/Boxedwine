@@ -25,8 +25,6 @@
 
 class InvalidPage : public Page {
 public:
-    InvalidPage() : Page(0) {}
-
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;
     virtual U16 readw(U32 address) override;
@@ -39,6 +37,8 @@ public:
 
     virtual bool inRam() override {return false;}
     virtual void close() override {}
+
+    void ondemmand(KMemory* memory, U32 page);
 };
 
 #endif

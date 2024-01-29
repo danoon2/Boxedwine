@@ -1331,12 +1331,12 @@ static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, name.c_str(), ARG3);
     U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
 #ifdef _DEBUG
-    if (result>1000) {
-        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
-        if (!found) {
-            printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
-        }
-    }
+    //if (result>1000) {
+    //    BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
+    //    if (!found) {
+    //        printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
+    //    }
+    //}
 #endif
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;

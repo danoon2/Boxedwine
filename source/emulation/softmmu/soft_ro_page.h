@@ -25,10 +25,10 @@
 
 class ROPage : public RWPage {
 private:
-    ROPage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags) {}
+    ROPage(U8* page, U32 address) : RWPage(page, address) {}
 
 public:
-    static ROPage* alloc(U8* page, U32 address, U32 flags);
+    static ROPage* alloc(U8* page, U32 address);
 
     virtual void writeb(U32 address, U8 value) override;
     virtual void writew(U32 address, U16 value) override;

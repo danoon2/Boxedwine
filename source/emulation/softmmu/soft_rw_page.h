@@ -25,9 +25,9 @@
 
 class RWPage : public Page {
 protected:
-    RWPage(U8* page, U32 address, U32 flags);
+    RWPage(U8* page, U32 address);
 public:    
-    static RWPage* alloc(U8* page, U32 address, U32 flags);
+    static RWPage* alloc(U8* page, U32 address);
 
     virtual ~RWPage();
 

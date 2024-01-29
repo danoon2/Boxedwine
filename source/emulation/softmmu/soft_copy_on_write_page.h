@@ -25,10 +25,10 @@
 
 class CopyOnWritePage : public RWPage {
 protected:
-    CopyOnWritePage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags){}
+    CopyOnWritePage(U8* page, U32 address) : RWPage(page, address){}
 
 public:
-    static CopyOnWritePage* alloc(U8* page, U32 address, U32 flags);
+    static CopyOnWritePage* alloc(U8* page, U32 address);
 
     virtual U8 readb(U32 address) override;
     virtual void writeb(U32 address, U8 value) override;

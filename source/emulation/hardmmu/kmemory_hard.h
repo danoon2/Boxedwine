@@ -21,7 +21,6 @@ public:
 
     // needed by kmemory
     bool isPageAllocated(U32 page);
-    bool isPageMapped(U32 page);
     void allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const BoxedPtr<MappedFile>& mappedFile, U8** ramPages = nullptr);
     void protectPage(KThread* thread, U32 i, U32 permissions);
     void setPagesInvalid(U32 page, U32 pageCount);
@@ -29,8 +28,7 @@ public:
     void clearDelayedReset();
     U32 getPageFlags(U32 page);    
     bool reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag);
-    
-    U8 flags[K_NUMBER_OF_PAGES];
+        
     U8 nativeFlags[K_NATIVE_NUMBER_OF_PAGES]; // this is based on the granularity for permissions, Platform::getPagePermissionGranularity. 
     U32 allocated;
     U64 id;

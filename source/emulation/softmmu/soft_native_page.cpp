@@ -4,11 +4,11 @@
 
 #include "soft_native_page.h"
 
-NativePage* NativePage::alloc(U8* nativeAddress, U32 address, U32 flags) {
-    return new NativePage(nativeAddress, address, flags);
+NativePage* NativePage::alloc(U8* nativeAddress, U32 address) {
+    return new NativePage(nativeAddress, address);
 }
 
-NativePage::NativePage(U8* nativeAddress, U32 address, U32 flags) : Page(flags), nativeAddress(nativeAddress), address(address) {
+NativePage::NativePage(U8* nativeAddress, U32 address) : nativeAddress(nativeAddress), address(address) {
 }
 
 U8 NativePage::readb(U32 address) {
@@ -56,14 +56,14 @@ void NativePage::writed(U32 address, U32 value) {
 }
 
 U8* NativePage::getReadPtr(U32 address, bool makeReady) {
-    if (canRead()) {
+    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
         return this->nativeAddress + (address - this->address);
     }
     return NULL;
 }
 
 U8* NativePage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    if (canWrite()) {
+    if (KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT)) {
         return this->nativeAddress + (address - this->address);
     }
     return NULL;

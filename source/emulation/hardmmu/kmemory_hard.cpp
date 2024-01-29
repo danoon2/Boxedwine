@@ -94,14 +94,6 @@ void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
     freeNativeMemory(page, pageCount);
 }
 
-U32 KMemoryData::getPageFlags(U32 page) {
-    return this->flags[page];
-}
-
-bool KMemoryData::isPageMapped(U32 page) {
-    return (this->flags[page] & PAGE_MAPPED) != 0;
-}
-
 bool KMemoryData::isPageAllocated(U32 page) {
     return (flags[page] & PAGE_ALLOCATED) != 0;
 }
