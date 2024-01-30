@@ -2308,8 +2308,8 @@ void Armv8btAsm::addDynamicCheck(bool panic) {
 }
 #endif
 
-void Armv8btAsm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
-    this->todoJump.push_back(TodoJump(eip, this->bufferPos - 4, size, sameChunk, this->ipAddressCount));
+void Armv8btAsm::addTodoLinkJump(U32 eip) {
+    this->todoJump.push_back(TodoJump(eip, this->bufferPos - 4, this->ipAddressCount));
 }
 
 bool Armv8btAsm::isEipInChunk(U32 eip) {
@@ -2335,7 +2335,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
         write8(0);
         write8(0);
         write8(0x14);
-        addTodoLinkJump(eip, 4, true);
+        addTodoLinkJump(eip);
     } else {
         // when a chunk gets modified/replaced other chunks that point to it via this jump need to get updated
         // it is not possible to modify the executable code directly in an atomic way, so instead of embedding
@@ -2591,7 +2591,7 @@ void Armv8btAsm::compareZeroAndBranch(U8 reg, bool isZero, U32 eip) {
             // CBNZ
             write8(0x35);
         }
-        addTodoLinkJump(eip, 4, true);
+        addTodoLinkJump(eip);
     }
 }
 

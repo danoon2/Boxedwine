@@ -5,12 +5,13 @@
 
 class BtCodeChunkLink {
 public:
-    BtCodeChunkLink(void* fromHostOffset, U32 toEip, void* toHostInstruction, bool direct) : fromHostOffset(fromHostOffset), toEip(toEip), toHostInstruction(toHostInstruction), direct(direct) {}
+    BtCodeChunkLink(void* fromHostOffset, U32 toEip, U32 fromEip, void* toHostInstruction, bool direct) : fromHostOffset(fromHostOffset), toEip(toEip), fromEip(fromEip), toHostInstruction(toHostInstruction), direct(direct) {}
     // will point to an address in the middle of the instruction
     void* fromHostOffset;
 
     // will point to the start of the instruction
     U32 toEip;
+    U32 fromEip;
     void* toHostInstruction;
     bool direct;
 };

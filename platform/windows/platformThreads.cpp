@@ -138,27 +138,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     InException inException(cpu);
     KMemoryData* mem = getMemData(cpu->memory);
 
-    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
-        if (ep->ContextRecord->Rsp & 0xf) {
-            kpanic("seh_filter: bad stack alignment");
-        }
-        U64 rip = cpu->handleIllegalInstruction(ep->ContextRecord->Rip);
-        if (rip) {
-            ep->ContextRecord->Rip = rip;
-            return EXCEPTION_CONTINUE_EXECUTION;
-        }
-    } 
-#ifdef BOXEDWINE_64BIT_MMU
-    else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && mem->isAddressExecutable((void*)ep->ContextRecord->Rip)) {        
-        U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);        
-        if (rip) {
-            syncToException(ep, true);
-            ep->ContextRecord->Rip = rip;
-        }
-        return EXCEPTION_CONTINUE_EXECUTION;
-    } 
-#endif
-    else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
         kpanic("EXCEPTION_FLT_STACK_CHECK");
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_DIVIDE_BY_ZERO) {
         int code = getFpuException(ep->ContextRecord->FltSave.ControlWord, ep->ContextRecord->FltSave.StatusWord);

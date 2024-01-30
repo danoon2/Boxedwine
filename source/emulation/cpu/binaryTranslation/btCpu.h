@@ -56,18 +56,7 @@ public:
     virtual void postTestRun() = 0;
 #endif
 
-#ifdef BOXEDWINE_64BIT_MMU
-    U64 memOffset;
-    void markCodePageReadOnly(BtData* data);
-    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
-    U64 handleCodePatch(U64 rip, U32 address);
-    virtual bool handleStringOp(DecodedOp* op);
-    void* eipToHostInstructionAddressSpaceMapping;
-#endif
-
     U64 reTranslateChunk();
-    U64 handleChangedUnpatchedCode(U64 rip);
-    U64 handleIllegalInstruction(U64 ip);
     U64 handleMissingCode(U32 page, U32 offset);        
     DecodedOp* getOp(U32 eip, bool existing);
     void* translateEip(U32 ip);    

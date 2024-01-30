@@ -222,38 +222,9 @@ void signalHandler() {
         return;
     }
     InException e(cpu);
-    if (cpu->exceptionSigNo == SIGILL || cpu->exceptionSigNo == SIGTRAP) {
-        U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);
-        if (rip) {
-            cpu->returnHostAddress = rip;
-            return;
-        }
-        cpu->translateEip(cpu->eip.u32);
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-    } 
-#ifdef BOXEDWINE_64BIT_MMU
-    else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
-        U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
-        if (rip) {
-            cpu->returnHostAddress = rip;
-            return;
-        }
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-    } 
-#endif
-    else if (cpu->exceptionSigNo == SIGFPE) {
+    if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
         cpu->returnHostAddress = cpu->handleFpuException(code);
-        return;
-    } else if (*((U8*)cpu->exceptionIp) == 0xce || *((U8*)cpu->exceptionIp) == 0xcd) {
-        U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);
-        if (rip) {
-            cpu->returnHostAddress = rip;
-            return;
-        }
-        cpu->returnHostAddress = cpu->exceptionIp;
         return;
     }
     kpanic("unhandled exception %d", cpu->exceptionSigNo);

@@ -618,9 +618,6 @@
     <ClInclude Include="..\..\..\..\include\meminfo.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\memory.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\platform.h">
       <Filter>include</Filter>
     </ClInclude>

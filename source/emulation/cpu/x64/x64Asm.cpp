@@ -2927,15 +2927,15 @@ void X64Asm::jumpConditional(U8 condition, U32 eip) {
         write8(0x0F);
         write8(0x80+condition);
         write32(0);
-        addTodoLinkJump(eip, 4, true);
+        addTodoLinkJump(eip);
     } else {
         write8(0x70+condition);
         doLoop(eip);
     }
 }
 
-void X64Asm::addTodoLinkJump(U32 eip, U32 size, bool sameChunk) {
-    this->todoJump.push_back(TodoJump(eip, this->bufferPos-(size==4?4:11), size, sameChunk, this->ipAddressCount));
+void X64Asm::addTodoLinkJump(U32 eip) {
+    this->todoJump.push_back(TodoJump(eip, this->bufferPos-4, this->ipAddressCount));
 }
 
 void X64Asm::jumpTo(U32 eip) {  
@@ -2951,7 +2951,7 @@ void X64Asm::jumpTo(U32 eip) {
     if (this->stopAfterInstruction!=(S32)this->ipAddressCount && (this->calculatedEipLen==0 || (eip>=this->startOfDataIp && eip<this->startOfDataIp+this->calculatedEipLen))) {
         write8(0xE9);
         write32(0);
-        addTodoLinkJump(eip, 4, true);
+        addTodoLinkJump(eip);
     } else {
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
         writeToRegFromValue(HOST_TMP, true, eip, 4);

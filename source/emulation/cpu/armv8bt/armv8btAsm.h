@@ -267,7 +267,7 @@ public:
     void doJmp(bool mightNeedCS); // jump to current cpu->eip
     void jmpRegToxBranchEip(bool mightNeedCS);
     virtual void jumpTo(U32 eip) override; // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
-    void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);
+    void addTodoLinkJump(U32 eip);
     U8 getRegWithConst(U64 value);
     void branchNativeRegister(U8 reg);
     U32 branchEQ();

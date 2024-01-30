@@ -127,9 +127,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ram.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
@@ -1192,9 +1189,6 @@
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_page.h">

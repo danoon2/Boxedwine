@@ -195,51 +195,12 @@ void x64CPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
     for (i=0;i<data->todoJump.size();i++) {
         U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
         U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
-        U8 size = data->todoJump[i].offsetSize;
 
-        if (size==4 && data->todoJump[i].sameChunk) {
-            U8* host = (U8*)fromChunk->getHostFromEip(eip);
-            if (!host) {
-                kpanic("x64CPU::link can not link into the middle of an instruction");
-            }
-            data->write32Buffer(offset, (U32)(host - offset - 4));            
-        } else if (size==4 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
-
-            if (!toHostAddress) {
-                U8 op = 0xce;
-                U32 hostIndex = 0;
-                std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
-                chunk->makeLive();
-                toHostAddress = (U8*)chunk->getHostAddress();            
-            }
-            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
-            if (!toChunk) {
-                kpanic("x64CPU::link to chunk missing");
-            }
-            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
-            data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));            
-        } else if (size==8 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
-
-            if (!toHostAddress) {
-                X64Asm returnData(this);
-                returnData.startOfOpIp = eip - this->seg[CS].address;
-                returnData.callRetranslateChunk();
-                U32 hostIndex = 0;
-                std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(1, &eip, &hostIndex, returnData.buffer, returnData.bufferPos, eip - this->seg[CS].address, 1, false);
-                chunk->makeLive();
-                toHostAddress = (U8*)chunk->getHostAddress();
-            }
-            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
-            if (!toChunk) {
-                kpanic("x64CPU::link to chunk missing");
-            }
-            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
-            data->write64Buffer(offset, (U64)&(link->toHostInstruction));
-        } else {
-            kpanic("x64CPU::link unexpected patch size");
+        U8* host = (U8*)fromChunk->getHostFromEip(eip);
+        if (!host) {
+            kpanic("x64CPU::link can not link into the middle of an instruction");
         }
+        data->write32Buffer(offset, (U32)(host - offset - 4));            
     }
 #ifdef BOXEDWINE_64BIT_MMU
     markCodePageReadOnly(data.get());

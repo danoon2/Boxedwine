@@ -177,7 +177,7 @@ std::shared_ptr<BtCodeChunkLink> BtCodeChunk::addLinkFrom(std::shared_ptr<BtCode
     if (from == shared_from_this()) {
         kpanic("BtCodeChunk::addLinkFrom can not link to itself");
     }
-    std::shared_ptr<BtCodeChunkLink> link = std::make_shared<BtCodeChunkLink>(fromHostOffset, toEip, toHostInstruction, direct);
+    std::shared_ptr<BtCodeChunkLink> link = std::make_shared<BtCodeChunkLink>(fromHostOffset, toEip, from->getEip(), toHostInstruction, direct);
     from->linksTo.push_back(link);
     this->linksFrom.push_back(link);
     return link;
@@ -203,7 +203,7 @@ void BtCodeChunk::releaseAndRetranslate() {
             if (link->direct) {
                 U32 fromInstructionIndex;
                 KMemoryData* mem = getMemData(cpu->memory);
-                std::shared_ptr<BtCodeChunk> fromChunk = mem->getCodeChunkContainingHostAddress(link->fromHostOffset);
+                std::shared_ptr<BtCodeChunk> fromChunk = cpu->memory->findCodeBlockContaining(link->fromEip, 1);
                 void* srcHostInstruction = NULL;
                 fromChunk->getEipThatContainsHostAddress(link->fromHostOffset, &srcHostInstruction, &fromInstructionIndex);
                 U64 srcHost = (U64)srcHostInstruction;

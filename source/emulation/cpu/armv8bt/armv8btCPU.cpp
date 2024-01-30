@@ -231,61 +231,22 @@ void Armv8btCPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32
     for (i=0;i<data->todoJump.size();i++) {
         U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
         U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
-        U8 size = data->todoJump[i].offsetSize;
-        U8* host = NULL;
+        U8* host = (U8*)fromChunk->getHostFromEip(eip);
 
-        if (size==4 && (host = (U8*)fromChunk->getHostFromEip(eip))) {
+        if (!host) {
+            kpanic("Armv8btCPU::link can not link into the middle of an instruction");
+        }
 #ifdef BOXEDWINE_MAC_JIT
         if (__builtin_available(macOS 11.0, *)) {
             pthread_jit_write_protect_np(false);
         }
 #endif
-            writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(host - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
+        writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(host - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
 #ifdef BOXEDWINE_MAC_JIT
         if (__builtin_available(macOS 11.0, *)) {
             pthread_jit_write_protect_np(true);
         }
 #endif
-        } else if (size==4) {
-            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
-
-            if (!toHostAddress) {
-                U8 op = 0xce;
-                U32 hostIndex = 0;
-                std::shared_ptr<BtCodeChunk> chunk = std::make_shared<Armv8CodeChunk>(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
-                chunk->makeLive();
-                toHostAddress = (U8*)chunk->getHostAddress();            
-            }
-            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
-            if (!toChunk) {
-                kpanic("Armv8btCPU::link to chunk missing");
-            }
-            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
-            writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(toHostAddress - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
-        } else if (size==8 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)mem->getExistingHostAddress(eip);
-
-            if (!toHostAddress) {
-                Armv8btAsm returnData(this);
-                returnData.startOfOpIp = eip - this->seg[CS].address;
-                returnData.callRetranslateChunk();
-                U32 hostIndex = 0;
-                std::shared_ptr<BtCodeChunk> chunk = std::make_shared<Armv8CodeChunk>(1, &eip, &hostIndex, returnData.buffer, returnData.bufferPos, eip - this->seg[CS].address, 1, false);
-                chunk->makeLive();
-                toHostAddress = (U8*)chunk->getHostAddress();
-            }
-            std::shared_ptr<BtCodeChunk> toChunk = mem->getCodeChunkContainingHostAddress(toHostAddress);
-            if (!toChunk) {
-                kpanic("Armv8btCPU::link to chunk missing");
-            }
-            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
-            data->write64Buffer(offset, (U64)&(link->toHostInstruction));
-        } else {
-            kpanic("Armv8btCPU::link unexpected patch size");
-        }
-    }
-    if (data->todoJump.size()) {
-
     }
 #ifdef BOXEDWINE_64BIT_MMU
     markCodePageReadOnly(data.get());

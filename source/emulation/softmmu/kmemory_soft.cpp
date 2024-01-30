@@ -276,9 +276,9 @@ void KMemoryData::execvReset() {
     memory->data = newData;
     memset(memory->flags, 0, sizeof(memory->flags));
 #else
-    setPagesInvalid(0, K_NUMBER_OF_PAGES);
-    this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
+    setPagesInvalid(0, K_NUMBER_OF_PAGES);    
 #endif    
+    this->allocPages(KThread::currentThread(), CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
 }
 
 U64 KMemory::readq(U32 address) {

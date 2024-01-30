@@ -254,9 +254,9 @@ public:
     void* runSignalAddress;
 #endif
 #endif
-private:
-    std::unordered_map<U32, KFileDescriptor*> fds;
     BOXEDWINE_MUTEX fdsMutex;
+private:
+    std::unordered_map<U32, KFileDescriptor*> fds;    
 
     std::unordered_map<U32, user_desc> ldt;
     BOXEDWINE_MUTEX ldtMutex;

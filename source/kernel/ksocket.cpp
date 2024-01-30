@@ -159,6 +159,8 @@ U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 
     std::shared_ptr<KUnixSocketObject> s2;
     KMemory* memory = thread->memory;
 
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
+
     if (af!=K_AF_UNIX) {
         kwarn("socketpair with adress family %d not implemented", af);
         return -1;

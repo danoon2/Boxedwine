@@ -12,9 +12,6 @@ public:
 	BtMemory(KMemory* memory);
 	~BtMemory();	
 
-	void reserveNativeMemory();
-	void releaseNativeMemory();
-
 	void* getExistingHostAddress(U32 eip);
 	void* allocateExcutableMemory(U32 size, U32* allocatedSize);
 	void freeExcutableMemory(void* hostMemory, U32 size);
@@ -24,7 +21,6 @@ public:
 	void setEipPageCommitted(U32 page) { this->committedEipPages[page] = true; }		
 
 	std::shared_ptr<BtCodeChunk> getCodeChunkContainingEip(U32 eip);
-	std::shared_ptr<BtCodeChunk> getCodeChunkContainingHostAddress(void* hostAddress);
 
 	void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
 	void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
@@ -42,9 +38,6 @@ public:
 #define EXECUTABLE_MIN_SIZE_POWER 7
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
-
-	std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<BtCodeChunk> > >> codeChunksByHostPage;
-	std::unordered_map<U32, std::shared_ptr< std::list< std::shared_ptr<BtCodeChunk> > >> codeChunksByEmulationPage;
 
 	std::list<void*> freeExecutableMemory[EXECUTABLE_SIZES];		
 	KMemory* memory;
