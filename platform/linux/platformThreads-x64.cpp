@@ -315,6 +315,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     x64Cpu->regPage = context->CONTEXT_R8;
     x64Cpu->regOffset = context->CONTEXT_R9;
 
+#ifdef BOXEDWINE_64BIT_MMU
     if (mem->isAddressExecutable((void*)context->CONTEXT_RIP)) {
         unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
         std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
@@ -322,6 +323,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
             cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
         }
     }
+#endif
     context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
 }
 
@@ -350,34 +352,7 @@ void signalHandler() {
         return;
     }
     InException e(cpu);
-    if (cpu->exceptionSigNo == SIGILL || cpu->exceptionSigNo == SIGTRAP) {
-        //if (cpu->exceptionRSP & 0xf) {
-        //    kpanic("seh_filter: bad stack alignment");
-        //}
-        U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);
-        if (rip) {
-            cpu->returnHostAddress = rip;
-            return;
-        }
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-    } else if (cpu->exceptionSigNo == SIGBUS && cpu->exceptionSigCode == BUS_ADRALN) {
-        // :TODO: figure out how AC got set, I've only seen this while op logging
-        cpu->flags &= ~AC;
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-#ifdef BOXEDWINE_64BIT_MMU
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && mem->isAddressExecutable((void*)cpu->exceptionIp)) {
-        U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
-        if (rip) {
-            cpu->returnHostAddress = rip;
-            return;
-        }
-        // :TODO: can jumping cause us to miss something?
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-#endif
-    } else if (cpu->exceptionSigNo == SIGFPE) {
+    if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
         cpu->returnHostAddress = cpu->handleFpuException(code);
         return;

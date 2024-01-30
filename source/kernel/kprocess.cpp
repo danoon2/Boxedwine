@@ -61,53 +61,11 @@ std::shared_ptr<KProcess> KProcess::create() {
     return process;
 }
 
-KProcess::KProcess(U32 id) : id(id), 
-    parentId(0),
-    groupId(0),
-    userId(0),
-    effectiveUserId(0),
-    effectiveGroupId(0),
-    pendingSignals(0),
-    signaled(0),
-    exitCode(0),
-    umaskValue(0x1a4), // 0644
-    terminated(false),
-    memory(NULL),
-    brkEnd(0), 
-    waitingThread(NULL),
-    loaderBaseAddress(0),
-    phdr(0),
-    phnum(0),
-    phentsize(0),
-    entry(0),
-    eventQueueFD(0),
-    exitOrExecCond(B("KProcess::exitOrExecCond")),
-    hasSetStackMask(false),
-    threadRemovedCondition(B("KProcess::threadRemovedCondition")),
-    systemProcess(false) {
-
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    emulateFPU=false;
-    returnToLoopAddress = NULL;
-    reTranslateChunkAddress = NULL;
-    syncToHostAddress = NULL;
-    syncFromHostAddress = NULL;
-    doSingleOpAddress = NULL;
-#ifdef BOXEDWINE_64BIT_MMU
-    reTranslateChunkAddressFromReg = NULL;
-#endif
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-    jmpAndTranslateIfNecessary = NULL;
-#endif
-#ifdef BOXEDWINE_POSIX
-    runSignalAddress = NULL;
-#endif
-#endif
+KProcess::KProcess(U32 id) : id(id), exitOrExecCond(B("KProcess::exitOrExecCond")), threadRemovedCondition(B("KProcess::threadRemovedCondition")) {
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
         this->ldt[i].read_exec_only = 1;
     }
-    memset(this->usedTLS, 0, sizeof(this->usedTLS));
 
     this->ldt[1].base_addr = 0;
     this->ldt[1].entry_number = 1;
@@ -121,16 +79,8 @@ KProcess::KProcess(U32 id) : id(id),
     this->ldt[2].seg_not_present = 0;
     this->ldt[2].read_exec_only = 0;
 
-    memset(this->sigActions, 0, sizeof(KSigAction)*MAX_SIG_ACTIONS);
-
-    for (int i=0;i<6;i++) {
-        this->hasSetSeg[i] = false;
-    }
     this->hasSetSeg[GS] = true;
     this->hasSetSeg[FS] = true;    
-
-    this->glStringsiExtensions = 0;
-    this->numberOfExtensions = 0;
 }
 
 void KProcess::onExec(KThread* thread) {

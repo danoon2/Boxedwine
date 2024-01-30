@@ -9,11 +9,7 @@ BoxedWineCriticalSectionCond::~BoxedWineCriticalSectionCond() {
     this->cond->unlock();
 }
 
-BoxedWineCondition::BoxedWineCondition(BString name) : name(name), lockOwner(0), parent(nullptr) {
-}
-
-BoxedWineCondition::BoxedWineCondition() {
-    this->lockOwner = 0;
+BoxedWineCondition::BoxedWineCondition(BString name) : name(name) {
 }
 
 void BoxedWineCondition::lock() {

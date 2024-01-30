@@ -1483,10 +1483,10 @@ static U32 syscall_renameat(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-std::mt19937 gen{std::random_device{}()};
-std::uniform_int_distribution<size_t> dist{0, 255};
-
 static U32 syscall_getrandom(CPU* cpu, U32 eipCount) {
+    static std::mt19937 gen{ std::random_device{}() };
+    static std::uniform_int_distribution<size_t> dist{ 0, 255 };
+
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "getrandom buf=%X buflen=%d flags=%X", ARG1, ARG2, ARG3);
     U32 buf = ARG1;
     U32 count = ARG2;

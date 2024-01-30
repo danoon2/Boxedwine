@@ -5,11 +5,13 @@
 
 class SdlCallback {
 public:
-    SDL_Event sdlEvent;
+    SdlCallback() = default;
+
+    SDL_Event sdlEvent = { 0 };
     BOXEDWINE_CONDITION cond;
     std::function<U32()> pfn;
-    U32 result;
-    SdlCallback* next;
+    U32 result = 0;
+    SdlCallback* next = nullptr;
 };
 
 U32 sdlDispatch(std::function<U32()> p);

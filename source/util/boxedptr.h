@@ -39,7 +39,7 @@ public:
         if (ptr) 
             ptr->retain(); 
     }
-    BoxedPtr(BoxedPtr &&p) : ptr(p.ptr) { p.ptr = 0; }
+    BoxedPtr(BoxedPtr &&p) noexcept : ptr(p.ptr) { p.ptr = 0; }
    
     template <class X>
     BoxedPtr(BoxedPtr<X> &&p) : ptr(p.get()) {

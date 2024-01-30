@@ -136,6 +136,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <CodeAnalysisRuleSet>mine.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <LinkIncremental>false</LinkIncremental>

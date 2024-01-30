@@ -6,7 +6,7 @@
 class KSocketMsgObject {
 public:
     std::shared_ptr<KObject> object;
-    U32 accessFlags;
+    U32 accessFlags = 0;
 };
 
 

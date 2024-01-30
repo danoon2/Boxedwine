@@ -11,7 +11,7 @@
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
 
-static U32 segOffset[] = {CPU_OFFSET_ES, CPU_OFFSET_CS, CPU_OFFSET_SS, CPU_OFFSET_DS, CPU_OFFSET_FS, CPU_OFFSET_GS};
+static U32 segOffset[] = {CPU_OFFSET_ES, CPU_OFFSET_CS, CPU_OFFSET_SS, CPU_OFFSET_DS, CPU_OFFSET_FS, CPU_OFFSET_GS, 0, 0};
 
 // push es 0x06 removed
 // pop es 0x07 removed

@@ -285,7 +285,7 @@ KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : K
 #ifdef WIN32
     if (!winsock_intialized) {
         WSADATA wsaData;
-        WSAStartup(0x0202, &wsaData);
+        static_cast<void>(WSAStartup(0x0202, &wsaData));
         winsock_intialized=1;
     }
 #endif
@@ -1113,6 +1113,9 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
     U32 nativeFlags = 0;
     KMemory* memory = thread->memory;
 
+    if (length && !thread->memory->canWrite(buffer, length)) {
+        return -K_EFAULT;
+    }
     if (flags & K_MSG_OOB)
         nativeFlags|=MSG_OOB;
     if (flags & K_MSG_PEEK)
@@ -1122,16 +1125,16 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
     }
     int inLen=0;
     socklen_t outLen=0;
-    char* fromBuffer = NULL;
+    char* fromBuffer = nullptr;
 
     if (address_len) {
         inLen = memory->readd( address_len);
         fromBuffer = new char[inLen];
         memory->memcpy(fromBuffer, address, inLen);
     }
-    char* tmp = NULL;
+    char* tmp = nullptr;
     
-    if (buffer) {
+    if (length) {
         tmp = new char[length];
     }
     outLen = inLen;

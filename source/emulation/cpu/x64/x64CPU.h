@@ -58,39 +58,39 @@ class x64CPU : public BtCPU {
 public:
     x64CPU(KMemory* memory);
     
-    virtual void restart();
-    virtual void* init();
+    virtual void restart() override;
+    virtual void* init() override;
     
-    U32 negSegAddress[6];    
+    U32 negSegAddress[6] = { 0 };
 #ifdef BOXEDWINE_64BIT_MMU
-    U64 negMemOffset;
+    U64 negMemOffset = 0;
     virtual bool handleStringOp(DecodedOp* op);
 #endif
-    U64 exceptionRSP;
-    U64 exceptionRSI;
-    U64 exceptionRDI;
-    U64 exceptionR8;
-    U64 exceptionR9;
-    U64 exceptionR10;	
-	void*** eipToHostInstructionPages;    
-    U32 stringRepeat;
-    U32 stringWritesToDi;
-    U32 arg5;
-    ALIGN(FxsaveStruct fpuState, 16);
-	ALIGN(FxsaveStruct originalFpuState, 16);
-    ALIGN(U8 fpuBuffer[512], 16);
-	U64 originalCpuRegs[16];
-    void* reTranslateChunkAddress;    
+    U64 exceptionRSP = 0;
+    U64 exceptionRSI = 0;
+    U64 exceptionRDI = 0;
+    U64 exceptionR8 = 0;
+    U64 exceptionR9 = 0;
+    U64 exceptionR10 = 0;	
+	void*** eipToHostInstructionPages = nullptr;
+    U32 stringRepeat = 0;
+    U32 stringWritesToDi = 0;
+    U32 arg5 = 0;
+    ALIGN(FxsaveStruct fpuState, 16) = { 0 };
+    ALIGN(FxsaveStruct originalFpuState, 16) = { 0 };
+    ALIGN(U8 fpuBuffer[512], 16) = { 0 };
+    U64 originalCpuRegs[16] = { 0 };
+    void* reTranslateChunkAddress = nullptr;    
 #ifdef BOXEDWINE_64BIT_MMU
-    void* reTranslateChunkAddressFromReg;
+    void* reTranslateChunkAddressFromReg = nullptr;
 #endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-    void* jmpAndTranslateIfNecessary;
+    void* jmpAndTranslateIfNecessary = nullptr;
 #endif
     static bool hasBMI2;
 
 #ifdef _DEBUG
-    U32 fromEip;
+    U32 fromEip = 0;
 #endif
 #ifdef __TEST
     void addReturnFromTest();

@@ -339,6 +339,7 @@ void glcommon_glGetMapdv(CPU* cpu) {
         GLdouble buffer[2];
         GL_FUNC(pglGetMapdv)(target, query, buffer);
         marshalBackd(cpu, ARG3, buffer, isMap2(target)?2:1);
+        break;
     }
     case GL_DOMAIN: {
         GLdouble buffer[4];
@@ -378,6 +379,7 @@ void glcommon_glGetMapfv(CPU* cpu) {
         GLfloat buffer[2];
         GL_FUNC(pglGetMapfv)(target, query, buffer);
         marshalBackf(cpu, ARG3, buffer, isMap2(target)?2:1);
+        break;
     }
     case GL_DOMAIN: {
         GLfloat buffer[4];
@@ -417,6 +419,7 @@ void glcommon_glGetMapiv(CPU* cpu) {
         GLint buffer[2];
         GL_FUNC(pglGetMapiv)(target, query, buffer);
         marshalBacki(cpu, ARG3, buffer, isMap2(target)?2:1);
+        break;
     }
     case GL_DOMAIN: {
         GLint buffer[4];

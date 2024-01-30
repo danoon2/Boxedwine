@@ -23,11 +23,11 @@ public:
     void onKey(U32 key, U32 down);
     void close();
 
-    FILE* file;
+    FILE* file = nullptr;
     BString directory;
 private:
     void out(const char* s);
-    int screenShotCount;
+    int screenShotCount = 0;
     void fullScrennShot();
     void partialScreenShot(U32 x, U32 y, U32 w, U32 h);
 };

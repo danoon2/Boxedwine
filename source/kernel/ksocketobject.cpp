@@ -3,25 +3,6 @@
 #include "ksocketobject.h"
 #include "kscheduler.h"
 
-KSocketObject::KSocketObject(U32 objectType, U32 domain, U32 type, U32 protocol) : 
-        KObject(objectType), 
-        domain(domain),
-        type(type),
-        protocol(protocol),
-        lastModifiedTime(0),
-        blocking(true), 
-        listening(false),
-        nl_port(0),
-        connected(false), 
-        recvLen(1048576), 
-        sendLen(1048576), 
-        inClosed(false), 
-        outClosed(false),
-        flags(0),
-        error(0)
-{
-}    
-
 void KSocketObject::readMsgHdr(KThread* thread, U32 address, MsgHdr* hdr) {
     KMemory* memory = thread->memory;
 

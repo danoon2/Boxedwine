@@ -7,11 +7,12 @@ class KSocketObject : public KObject {
 public:
     class KSockAddress {
     public:
-        U16 family;
-        char data[256];
+        KSockAddress() = default;
+        U16 family = 0;
+        char data[256] = { 0 };
     };    
 
-    KSocketObject(U32 objectType, U32 domain, U32 type, U32 protocol);
+    KSocketObject(U32 objectType, U32 domain, U32 type, U32 protocol) : KObject(objectType), domain(domain), type(type), protocol(protocol) {}
 
     virtual U32 accept(KThread* thread, KFileDescriptor* fd, U32 address, U32 len, U32 flags) = 0;
     virtual U32 bind(KThread* thread, KFileDescriptor* fd, U32 address, U32 len) = 0;
@@ -27,24 +28,24 @@ public:
     virtual U32 setsockopt(KThread* thread, KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len) = 0;
     virtual U32 shutdown(KThread* thread, KFileDescriptor* fd, U32 how) = 0;
 
-    U32 domain;
-    U32 type;
-    U32 protocol;    
-    U64 lastModifiedTime;
-    bool blocking;
-    bool listening;
-    U32 nl_port;    
+    U32 domain = 0;
+    U32 type = 0;
+    U32 protocol = 0;    
+    U64 lastModifiedTime = 0;
+    bool blocking = true;
+    bool listening = false;
+    U32 nl_port = 0;    
     
-    bool connected; // this will be 0 and connection will be set while connect is blocking
+    bool connected = false; // this will be 0 and connection will be set while connect is blocking
     KSockAddress destAddress;
-    U32 recvLen;
-    U32 sendLen;
+    U32 recvLen = 1048576;
+    U32 sendLen = 1048576;
 
-    bool inClosed;
-    bool outClosed;
+    bool inClosed = false;
+    bool outClosed = false;
 
-    U32 flags;
-    int error;
+    U32 flags = 0;
+    int error = 0;
 
 protected:
     class MsgHdr {

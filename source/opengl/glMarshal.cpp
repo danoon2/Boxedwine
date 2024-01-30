@@ -715,11 +715,11 @@ U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) {
 
 class BufferedTarget {
 public:
-    BufferedTarget() : bufferedAddress(0), originalBufferedAddress(NULL) {}
+    BufferedTarget() = default;
     BufferedTarget(U32 bufferedAddress, S8* originalBufferedAddress, U32 size) : bufferedAddress(bufferedAddress), originalBufferedAddress(originalBufferedAddress), size(size) {}
-    U32 bufferedAddress;
-    S8* originalBufferedAddress;
-    U32 size;
+    U32 bufferedAddress = 0;
+    S8* originalBufferedAddress = nullptr;
+    U32 size = 0;
 };
 
 static std::unordered_map<U32, BufferedTarget> bufferedTargets;

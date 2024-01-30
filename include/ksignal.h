@@ -111,7 +111,7 @@ class KFileLock;
 
 class KSignal : public KObject {
 public:
-    KSignal();
+    KSignal() : KObject(KTYPE_SIGNAL), lockCond(B("KSignal::lockCond")) {}
 
     // from KObject
     virtual U32 ioctl(KThread* thread, U32 request) override;
@@ -135,10 +135,10 @@ public:
     virtual U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
     virtual bool canMap() override;
 
-    bool blocking;
-    U64 mask;
-    U32 signalingPid;
-    U32 signalingUid;
+    bool blocking = false;
+    U64 mask = 0;
+    U32 signalingPid = 0;
+    U32 signalingUid = 0;
     BOXEDWINE_CONDITION lockCond;
     KSigAction sigAction;
 };

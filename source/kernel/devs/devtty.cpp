@@ -123,10 +123,10 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (KSystem::ttyPrepend) {
         thread_local static bool newLine = true;
         if (newLine) {
-            ::write(1, "TTY:", 4);
+            static_cast<void>(::write(1, "TTY:", 4));
             BString name = KThread::currentThread()->process->name;
-            ::write(1, name.c_str(), (U32)name.length());
-            ::write(1, ":", 1);
+            static_cast<void>(::write(1, name.c_str(), (U32)name.length()));
+            static_cast<void>(::write(1, ":", 1));
             newLine = false;
         }
         if (buffer[len - 1] == '\n') {

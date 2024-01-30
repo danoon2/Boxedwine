@@ -9,22 +9,7 @@ class BtCodeChunk;
 
 class BtCPU : public CPU {
 public:
-    BtCPU(KMemory* memory) : CPU(memory), nativeHandle(0),
-        exceptionAddress(0), 
-        inException(false), 
-        exceptionReadAddress(false), 
-        returnHostAddress(0), 
-        exceptionSigNo(0), 
-        exceptionSigCode(0), 
-        exceptionIp(0), 
-#ifdef BOXEDWINE_64BIT_MMU
-        eipToHostInstructionAddressSpaceMapping(NULL),
-#endif
-        returnToLoopAddress(NULL),
-#ifdef BOXEDWINE_64BIT_MMU
-        memOffset(0),
-#endif
-        exitToStartThreadLoop(0) {}
+    BtCPU(KMemory* memory) : CPU(memory) {}
 
     // from CPU
     virtual void run();
@@ -32,19 +17,19 @@ public:
 
     virtual void* init() = 0; // called from run
 
-    U64 nativeHandle;
-    U64 exceptionAddress;
-    bool inException;
-    bool exceptionReadAddress;
-    U64 returnHostAddress; // after returning from the signalHandler, this will contain the host address we should jump to
-    int exceptionSigNo;
-    int exceptionSigCode;
-    U64 exceptionIp;    
-    void* returnToLoopAddress;   
-    void* syncToHostAddress;
-    void* syncFromHostAddress;
-    void* doSingleOpAddress;
-    int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called    
+    U64 nativeHandle = 0;
+    U64 exceptionAddress = 0;
+    bool inException = false;
+    bool exceptionReadAddress = false;
+    U64 returnHostAddress = 0; // after returning from the signalHandler, this will contain the host address we should jump to
+    int exceptionSigNo = 0;
+    int exceptionSigCode = 0;
+    U64 exceptionIp = 0;
+    void* returnToLoopAddress = nullptr;
+    void* syncToHostAddress = nullptr;
+    void* syncFromHostAddress = nullptr;
+    void* doSingleOpAddress = nullptr;
+    int exitToStartThreadLoop = 0; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called    
 
     std::vector<U32> pendingCodePages;
 
@@ -68,13 +53,13 @@ public:
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed
 
     // used by handleAccessException
-    U32 destEip;
-    U64 regPage;
-    U64 regOffset;
+    U32 destEip = 0;
+    U64 regPage = 0;
+    U64 regOffset = 0;
 
-    U32 largeAddressJumpInstruction;
-    U32 pageJumpInstruction;
-    U32 pageOffsetJumpInstruction;
+    U32 largeAddressJumpInstruction = 0;
+    U32 pageJumpInstruction = 0;
+    U32 pageOffsetJumpInstruction = 0;
 protected:
     U64 getIpFromEip();
     virtual BtData* getData1() = 0;

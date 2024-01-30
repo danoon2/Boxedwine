@@ -502,7 +502,7 @@ void GlobalSettings::updateFileList(BString fileLocation) {
                 if (Fs::doesNativePathExist(path)) {
                     Fs::deleteNativeFile(path);
                 }
-                ::rename(tmpPath.c_str(), path.c_str());
+                static_cast<void>(::rename(tmpPath.c_str(), path.c_str())); // ignore return result
                 unsigned int newcrc = crc32File(path);
                 if (newcrc != oldcrc) {
                     changed = true;

@@ -6,7 +6,7 @@
 
 class BStringData {
 public:
-    BStringData() : str(nullptr), len(0), level(0), refCount(0) {}
+    BStringData() = default;
 
     void reset() {
         refCount = 0;
@@ -21,9 +21,9 @@ public:
 
     void decRefCount();
 
-    char* str;
-    int len;
-    int level;
+    char* str = nullptr;
+    int len = 0;
+    int level = 0;
     std::atomic_int refCount;
 };
 
@@ -107,7 +107,19 @@ void appendData(BString& s, T i, int base) {
     s.data->str[s.data->len] = 0;
 }
 
-BString BString::empty(B(""));
+BString BString::empty("", true);
+
+BString::BString(const char* str, bool literal) {
+    data = allocNewData();
+    data->incRefCount();
+    if (literal) {
+        data->len = -1;
+        data->level = 0;
+        data->str = (char*)str;
+    } else {
+        kpanic("BString::BString oops");
+    }
+}
 
 BString::BString() {
     if (!empty.data) {
@@ -532,8 +544,12 @@ BString BString::substr(int beginIndex, int len) const {
     return BString(d);
 }
 
-int BString::toInt() const {
+int32_t BString::toInt() const {
     return std::atoi(data->str);
+}
+
+int64_t BString::toInt64() const {
+    return std::atoll(data->str);
 }
 
 int BString::getLevel() const {
@@ -853,13 +869,12 @@ BString BString::operator^(const char* s) const {
     d->str[d->len] = 0;
     return BString(d);
 }
-
+#include <string>
 BString BString::copy(const char* s) {
     if (!s) {
         return empty;
     }
     BString result(allocNewData());
-
     result.data->len = (int)strlen(s);
     result.data->level = powerOf2(result.data->len + 1);
     result.data->str = getNewString(result.data->level);
@@ -878,15 +893,6 @@ BString BString::copy(const char* s, int len) {
     result.data->str = getNewString(result.data->level);
     memcpy(result.data->str, s, result.data->len);
     result.data->str[result.data->len] = 0;
-    return result;
-}
-
-BString BString::literal(const char* s) {
-    BString result(allocNewData());
-
-    result.data->str = (char*)s;
-    result.data->len = -1;
-    result.data->level = 0;
     return result;
 }
 

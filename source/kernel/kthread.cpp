@@ -238,11 +238,11 @@ U32 KThread::signal(U32 signal, bool wait) {
 struct futex {
 public:
     futex() : cond(B("futex")) {}
-    KThread* thread;
-    U8* address;  
-    U32 expireTimeInMillies;
-    U32 mask;
-    bool wake;
+    KThread* thread = nullptr;
+    U8* address = nullptr;  
+    U32 expireTimeInMillies = 0;
+    U32 mask = 0;
+    bool wake = false;
     BOXEDWINE_CONDITION cond;
 };
 

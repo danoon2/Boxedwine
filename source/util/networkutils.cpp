@@ -14,7 +14,7 @@
 #pragma comment(lib, "urlmon.lib")
 class DownloadProgress : public IBindStatusCallback {
 public:
-    bool* cancel;
+    bool* cancel = nullptr;
     std::function<void(U64 bytesCompleted)> f;
 
     HRESULT __stdcall QueryInterface(const IID&, void**) {

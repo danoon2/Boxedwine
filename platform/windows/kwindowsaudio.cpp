@@ -35,7 +35,7 @@ public:
 
 class KNativeAudioWindows : public KNativeAudioSDL, public std::enable_shared_from_this<KNativeAudioWindows> {
 public:
-	KNativeAudioWindows() : m_out(0), wDevID(0), eventFd(0), hMidi(0), dwCallback(0), dwInstance(0), wFlags(0) {}
+	KNativeAudioWindows() = default;
 	virtual ~KNativeAudioWindows() {}
 
 	virtual U32 midiOutOpen(KProcess* process, U32 fd, U32 wDevID, U32 lpDesc, U32 dwFlags);
@@ -50,19 +50,19 @@ public:
 	virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume);
 	virtual U32 midiOutReset(U32 wDevID);
 
-	HMIDIOUT m_out;
+	HMIDIOUT m_out = nullptr;
 
 	std::unordered_map<U32, NativeMidiData> data;
 
-	U32 wDevID;
-	U32 eventFd;
+	U32 wDevID = 0;
+	U32 eventFd = 0;
 
-	U32 hMidi;
-	U32 dwCallback;
-	U32 dwInstance;
-	U32 wFlags;
+	U32 hMidi = 0;
+	U32 dwCallback = 0;
+	U32 dwInstance = 0;
+	U32 wFlags = 0;
 
-	KProcess* process;
+	KProcess* process = nullptr;
 };
 
 static void write32(U8* buffer, U32 data) {

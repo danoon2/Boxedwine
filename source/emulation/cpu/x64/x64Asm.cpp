@@ -957,7 +957,7 @@ void X64Asm::calculateMemory(U8 reg, bool isRex, U32 rm) {
                 } else { // [base + index << shift]
                     U8 seg = base == 4 ? this->ss : this->ds;
 
-                    if (base == SEG_ZERO || !this->cpu->thread->process->hasSetSeg[base]) {
+                    if (base == SEG_ZERO || !this->cpu->thread->process->hasSetSeg[seg]) {
                         addWithLea(reg, isRex, base, false, (index == 4 ? -1 : index), false, sib >> 6, 0, 4);
                     } else {                        
                         U32 tmpReg = getTmpReg();                        
@@ -5368,6 +5368,7 @@ void X64Asm::fpu2(U8 rm) {
                     break;
                 }
             // intentional fall through
+                [[fallthrough]];
             default:
                 invalidOp(this->inst); break;
         }

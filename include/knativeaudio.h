@@ -42,7 +42,7 @@
 
 class BoxedGUID {
 public:
-	BoxedGUID() : Data1(0), Data2(0), Data3(0), Data4() {}
+	BoxedGUID() = default;
 	BoxedGUID(U32 Data1, U16 Data2, U16 Data3, U8 Data4, U8 Data5, U8 Data6, U8 Data7, U8 Data8, U8 Data9, U8 Data10, U8 Data11) : Data1(Data1), Data2(Data2), Data3(Data3) {
 		this->Data4[0] = Data4;
 		this->Data4[1] = Data5;
@@ -77,10 +77,10 @@ public:
 		memory->writew(address, Data3); address += 2;
 		memory->memcpy(address, Data4, 8);
 	}
-	U32  Data1;
-	U16  Data2;
-	U16  Data3;
-	U8   Data4[8];
+	U32  Data1 = 0;
+	U16  Data2 = 0;
+	U16  Data3 = 0;
+	U8   Data4[8] = { 0 };
 };
 
 class BoxedWaveFormatEx {
@@ -120,7 +120,8 @@ public:
 
 class BoxedWaveFormatExtensible : public BoxedWaveFormatEx {
 public:
-	BoxedWaveFormatExtensible() : BoxedWaveFormatEx(), wValidBitsPerSample(0), dwChannelMask(0) {}
+	BoxedWaveFormatExtensible() = default;
+
 	void read(KMemory* memory, U32 address) {
 		address = BoxedWaveFormatEx::read(memory, address);
 		if (this->cbSize == 0 || this->cbSize >= 22) {
@@ -137,8 +138,8 @@ public:
 			SubFormat.write(memory, address);
 		}
 	}
-	U16 wValidBitsPerSample; // union with wSamplesPerBlock
-	U32 dwChannelMask;
+	U16 wValidBitsPerSample = 0; // union with wSamplesPerBlock
+	U32 dwChannelMask = 0;
 	BoxedGUID SubFormat;
 };
 

@@ -119,7 +119,7 @@ void Player::runSlice() {
             runSlice();
         }
     } else if (this->nextCommand=="WAIT") {
-        if (KSystem::getMicroCounter()>this->lastCommandTime+1000000l*atoi(this->nextValue.c_str())) {
+        if (KSystem::getMicroCounter()>this->lastCommandTime+1000000l*this->nextValue.toInt64()) {
             klog("script: done waiting %s", this->nextValue.c_str());
             instance->readCommand();            
         }

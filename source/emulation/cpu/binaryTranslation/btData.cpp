@@ -8,24 +8,10 @@
 BtData::BtData() {
     this->ipAddress = this->ipAddressBuffer;
     this->ipAddressBufferPos = this->ipAddressBufferPosBuffer;
-    this->ipAddressCount = 0;
     this->ipAddressBufferSize = sizeof(this->ipAddressBuffer) / sizeof(this->ipAddressBuffer[0]);
 
     this->buffer = this->bufferInternal;
-    this->bufferSize = sizeof(this->bufferInternal);
-    this->bufferPos = 0;
-    this->done = false;
-    this->ip = 0;
-    this->startOfDataIp = 0;
-    this->startOfOpIp = 0;
-    this->calculatedEipLen = 0;
-    this->stopAfterInstruction = -1;
-#ifdef BOXEDWINE_64BIT_MMU
-    this->dynamic = false;
-    this->useSingleMemOffset = true;
-#endif
-    this->currentOp = nullptr;
-    this->needLargeIfJmpReg = false;
+    this->bufferSize = sizeof(this->bufferInternal);    
 }
 
 BtData::~BtData() {

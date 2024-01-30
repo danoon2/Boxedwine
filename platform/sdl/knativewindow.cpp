@@ -41,17 +41,17 @@
 class KNativeWindowSdl;
 class Boxed_Surface {
 public:
-    Boxed_Surface(KNativeWindowSdl* screen, KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags) : screen(screen), thread(thread), bits(bits), width(width), height(height), pitch(pitch), flags(flags), done(false) {}
-    KNativeWindowSdl* screen;
-    KThread* thread;
-    U32 bits;
-    U32 width;
-    U32 height;
-    U32 pitch;
-    U32 flags;
-    SDL_Color colors[256];
+    Boxed_Surface(KNativeWindowSdl* screen, KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags) : screen(screen), thread(thread), bits(bits), width(width), height(height), pitch(pitch), flags(flags) {}
+    KNativeWindowSdl* screen = nullptr;
+    KThread* thread = nullptr;
+    U32 bits = 0;
+    U32 width = 0;
+    U32 height = 0;
+    U32 pitch = 0;
+    U32 flags = 0;
+    SDL_Color colors[256] = { 0 };
     BOXEDWINE_MUTEX mutex;
-    bool done;
+    bool done = false;
 };
 
 class WndSdl : public Wnd {

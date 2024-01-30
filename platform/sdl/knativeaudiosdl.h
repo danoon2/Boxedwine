@@ -3,7 +3,7 @@
 
 class KNativeSDLAudioData {
 public:
-	KNativeSDLAudioData() : cvtBuf(0), cvtBufSize(0), sameFormat(false), open(false), process(nullptr), isRender(false), isPlaying(false), eventFd(0), adevid(0), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), address_lcl_offs_frames(0), period_frames(0) {}
+	KNativeSDLAudioData() = default;
 	~KNativeSDLAudioData() {
 		if (resamp_buffer) {
 			delete[] resamp_buffer;
@@ -13,35 +13,35 @@ public:
 		}
 	}
 
-	SDL_AudioSpec want;
-	SDL_AudioSpec got;
-	SDL_AudioCVT cvt;
-	U8* cvtBuf;
-	U32 cvtBufSize;
+	SDL_AudioSpec want = { 0 };
+	SDL_AudioSpec got = { 0 };
+	SDL_AudioCVT cvt = { 0 };
+	U8* cvtBuf = nullptr;
+	U32 cvtBufSize = 0;
 
-	bool sameFormat;
-	bool open;
-	KProcess* process;
+	bool sameFormat = false;
+	bool open = false;
+	KProcess* process = nullptr;
 
-	bool isRender;
-	bool isPlaying;
-	U32 eventFd;
-	U32 adevid;
+	bool isRender = false;
+	bool isPlaying = false;
+	U32 eventFd = 0;
+	U32 adevid = 0;
 
-	U32 cap_held_frames;
-	U32 resamp_bufsize_frames;
-	U8* resamp_buffer;
-	U32 cap_offs_frames;
-	U32 bufsize_frames;
+	U32 cap_held_frames = 0;
+	U32 resamp_bufsize_frames = 0;
+	U8* resamp_buffer = nullptr;
+	U32 cap_offs_frames = 0;
+	U32 bufsize_frames = 0;
 
 	// points to memory in the emulator, must be locked before read/write
-	U32 address_local_buffer;
-	U32 address_wri_offs_frames;
-	U32 address_held_frames;
-	U32 address_lcl_offs_frames;
+	U32 address_local_buffer = 0;
+	U32 address_wri_offs_frames = 0;
+	U32 address_held_frames = 0;
+	U32 address_lcl_offs_frames = 0;
 
 	// mirrored in emulator side
-	U32 period_frames; // read only, doesn't change
+	U32 period_frames = 0; // read only, doesn't change
 	BoxedWaveFormatExtensible fmt; // read only, doesn't change
 };
 

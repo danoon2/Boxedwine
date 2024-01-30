@@ -40,16 +40,18 @@ KUnixSocketObject::~KUnixSocketObject() {
         }
         this->connecting.reset();
     }
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    for (auto& weakSocket : this->pendingConnections) {
-        std::shared_ptr<KUnixSocketObject> s = weakSocket.lock();
-        if (s) {
-            s->connecting.reset();
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(s->lockCond);
-            BOXEDWINE_CONDITION_SIGNAL_ALL(s->lockCond);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
+        for (auto& weakSocket : this->pendingConnections) {
+            std::shared_ptr<KUnixSocketObject> s = weakSocket.lock();
+            if (s) {
+                s->connecting.reset();
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(s->lockCond);
+                BOXEDWINE_CONDITION_SIGNAL_ALL(s->lockCond);
+            }
         }
-    }    
-    BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
+        BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
+    }
 }
 
 void KUnixSocketObject::setBlocking(bool blocking) {

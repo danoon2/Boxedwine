@@ -181,6 +181,10 @@ void scheduleThread(KThread* thread) {
     platformThreadCount++;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->nativeHandle = (U64)CreateThread(NULL, 0, platformThreadProc, thread, CREATE_SUSPENDED, 0);
+    if (!cpu->nativeHandle) {
+        kpanic("scheduleThread failed to create thread");
+        return;
+    }
 #ifdef BOXEDWINE_MULTI_THREADED
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
         Platform::setCpuAffinityForThread(KThread::currentThread(), KSystem::cpuAffinityCountForApp);

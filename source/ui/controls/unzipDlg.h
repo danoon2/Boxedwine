@@ -15,7 +15,7 @@ private:
 
     BString label;
     BString currentFile;
-    U32 percentDone;
+    U32 percentDone = 0;
     std::function<void(bool)> onCompleted;
 };
 

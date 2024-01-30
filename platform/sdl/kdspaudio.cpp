@@ -20,11 +20,6 @@ void closeSdlAudio() {
 class KDspAudioSdl : public KDspAudio, public std::enable_shared_from_this<KDspAudioSdl> {
 public:
 	KDspAudioSdl() : bufferCond(B("KDspAudioSdl::bufferCond")) {
-		memset(&this->want, 0, sizeof(this->want));
-		memset(&this->got, 0, sizeof(this->got));
-		this->cvtBufLen = 0;
-		this->cvtBuf = NULL;
-		this->cvtBufPos = 0;
 		this->want.format = AUDIO_U8;
 		this->want.channels = 1;
 		this->want.freq = 11025;
@@ -40,9 +35,6 @@ public:
 #else
 		this->got.samples = 5512;
 #endif
-		this->sameFormat = false;
-		this->open = false;
-		this->closeWhenDone = false;
 	}
 
 	virtual ~KDspAudioSdl() {
@@ -95,18 +87,18 @@ public:
 			return 0;
 		}
 	}
-	SDL_AudioSpec want;
-	SDL_AudioSpec got;
-	SDL_AudioCVT cvt;
-	int cvtBufLen;
-	int cvtBufPos;
-	unsigned char* cvtBuf;
-	bool sameFormat;
-	U32 dspFragSize;
-	bool open;
+	SDL_AudioSpec want = { 0 };
+	SDL_AudioSpec got = { 0 };
+	SDL_AudioCVT cvt = { 0 };
+	int cvtBufLen = 0;
+	int cvtBufPos = 0;
+	unsigned char* cvtBuf = nullptr;
+	bool sameFormat = false;
+	U32 dspFragSize = 0;
+	bool open = false;
 	std::deque<U8> audioBuffer;
 	BOXEDWINE_CONDITION bufferCond;
-	bool closeWhenDone;
+	bool closeWhenDone = false;
 };
 
 // not really a voice, currently they are not mixed

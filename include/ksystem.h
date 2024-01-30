@@ -64,17 +64,17 @@ public:
 
     std::vector<U8*> pages;
     const U32 id;
-    U32 len;
+    U32 len = 0;
     const U32 key;
-    U32 cpid;
-    U32 lpid;
-    U64 ctime;
-    U64 dtime;
-    U64 atime;
-    U32 nattch;
-    U32 markedForDelete;
-    U32 cuid;
-    U32 cgid;
+    U32 cpid = 0;
+    U32 lpid = 0;
+    U64 ctime = 0;
+    U64 dtime = 0;
+    U64 atime = 0;
+    U32 nattch = 0;
+    U32 markedForDelete = 0;
+    U32 cuid = 0;
+    U32 cgid = 0;
 };
 
 class KSystem {

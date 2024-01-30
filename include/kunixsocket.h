@@ -62,7 +62,7 @@ private:
 
     std::deque<S8> recvBuffer;
     std::queue<std::shared_ptr<KSocketMsg> > msgs;
-    U32 pid;
+    U32 pid = 0;
 
     U32 internal_write(KThread* thread, const std::shared_ptr<KUnixSocketObject>& con, BOXEDWINE_CONDITION& cond, U32 buffer, U32 len);
 };

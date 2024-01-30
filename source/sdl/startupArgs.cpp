@@ -528,10 +528,11 @@ bool StartUpArgs::loadDefaultResource(const char* app) {
     lines.clear();
     lines.push_back(BString::copy(app));
     if (!cmd.isEmpty() && readLinesFromFile(cmd, lines)) {
-        const char** ppArgs = new const char*[lines.size()];
-        for (int i=0;i<(int)lines.size();i++) {
+        int count = (int)lines.size();
+        const char** ppArgs = new const char*[count];
+        for (int i=0;i<count;i++) {
             ppArgs[i] = lines[i].c_str();
-            if (lines[i] == "-zip" && i+1<(int)lines.size()) {
+            if (lines[i] == "-zip" && i+1<count) {
                 if (!Fs::doesNativePathExist(lines[i+1])) {
                     BString zip = Platform::getResourceFilePath(lines[i+1]);
                     if (!zip.isEmpty() && Fs::doesNativePathExist(zip)) {
@@ -707,7 +708,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
             if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
-                MKDIR(argv[i+1]);
+                static_cast<void>(MKDIR(argv[i+1])); // return result ignored
                 if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
                     klog("-record path does not exist and could not be created: %s", argv[i+1]);
                     return false;

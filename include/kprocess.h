@@ -30,22 +30,26 @@ class MappedFileCache;
 
 class MappedFile : public BoxedPtrBase {
 public:
+    MappedFile() = default;
+
     BoxedPtr<MappedFileCache> systemCacheEntry;
     std::shared_ptr<KFile> file;
-    U32 address;
-    U64 len;
-    U64 offset;
+    U32 address = 0;
+    U64 len = 0;
+    U64 offset = 0;
 };
 
 #define K_SIG_INFO_SIZE 10
 
 class KSigAction {
 public:
-    U32 handlerAndSigAction;
-    U64 mask;
-    U32 flags;
-    U32 restorer;
-    U32 sigInfo[K_SIG_INFO_SIZE];
+    KSigAction() = default;
+
+    U32 handlerAndSigAction = 0;
+    U64 mask = 0;
+    U32 flags = 0;
+    U32 restorer = 0;
+    U32 sigInfo[K_SIG_INFO_SIZE] = { 0 };
 
     void writeSigAction(KMemory* memory, U32 address, U32 sigsetSize);
     void readSigAction(KMemory* memory, U32 address, U32 sigsetSize);
@@ -199,56 +203,56 @@ public:
     void attachSHM(U32 address, const BoxedPtr<SHM>& shm);
     void printMappedFiles();
 
-    U32 id;
-    U32 parentId;
-    U32 groupId;
-    U32 userId;
-    U32 effectiveUserId;
-    U32 effectiveGroupId;
-    U64 pendingSignals;
+    U32 id = 0;
+    U32 parentId = 0;
+    U32 groupId = 0;
+    U32 userId = 0;
+    U32 effectiveUserId = 0;
+    U32 effectiveGroupId = 0;
+    U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
-    U32 signaled;
-    U32 exitCode;
-    U32 umaskValue;
-    bool terminated;
-    KMemory* memory;
+    U32 signaled = 0;
+    U32 exitCode = 0;
+    U32 umaskValue = 0;
+    bool terminated = false;
+    KMemory* memory = nullptr;
 
     BString currentDirectory;
-    U32 brkEnd;    
+    U32 brkEnd = 0;    
     KSigAction sigActions[MAX_SIG_ACTIONS];
     KProcessTimer timer;
     BString commandLine;
     BString exe;
     BString name;
     std::vector<BString> path;        
-    KThread* waitingThread;
-    U32 loaderBaseAddress;
-    U32 phdr;
-    U32 phnum;
-    U32 phentsize;
-    U32 entry;
-    U32 eventQueueFD;     
+    KThread* waitingThread = nullptr;
+    U32 loaderBaseAddress = 0;
+    U32 phdr = 0;
+    U32 phnum = 0;
+    U32 phentsize = 0;
+    U32 entry = 0;
+    U32 eventQueueFD = 0;
     BOXEDWINE_CONDITION exitOrExecCond;
 
-    bool hasSetStackMask;
-    bool hasSetSeg[6];
+    bool hasSetStackMask = false;
+    bool hasSetSeg[8] = { false }; // 8 just to prevent bounds checking
 
     std::unordered_map<U32, U32> glStrings;    
-    U32 glStringsiExtensions;
+    U32 glStringsiExtensions = 0;
     std::vector<U32> glStringsiExtensionsOffset;
-    U32 numberOfExtensions;
+    U32 numberOfExtensions = 0;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    bool emulateFPU;
-    void* reTranslateChunkAddress; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
-    void* syncToHostAddress;
-    void* syncFromHostAddress;
-    void* doSingleOpAddress;
+    bool emulateFPU = false;
+    void* reTranslateChunkAddress = nullptr; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
+    void* syncToHostAddress = nullptr;
+    void* syncFromHostAddress = nullptr;
+    void* doSingleOpAddress = nullptr;
 #ifdef BOXEDWINE_64BIT_MMU
     void* reTranslateChunkAddressFromReg; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
 #endif
-    void* returnToLoopAddress; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
+    void* returnToLoopAddress = nullptr; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-    void* jmpAndTranslateIfNecessary;
+    void* jmpAndTranslateIfNecessary = nullptr;
 #endif
 #ifdef BOXEDWINE_POSIX
     void* runSignalAddress;
@@ -277,7 +281,7 @@ public:
     BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed
 private:
 
-    U32 usedTLS[TLS_ENTRIES];
+    U32 usedTLS[TLS_ENTRIES] = { 0 };
     BOXEDWINE_MUTEX usedTlsMutex;
 
     U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);
@@ -291,7 +295,7 @@ private:
 
     BoxedPtr<FsNode> commandLineNode;
     BoxedPtr<FsNode> procNode;
-    bool systemProcess;
+    bool systemProcess = false;
 };
 
 #endif

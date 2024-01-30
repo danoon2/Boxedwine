@@ -192,12 +192,13 @@ void LayoutTextInputControl::draw(int width) {
 		ImGui::SameLine();
 		if (ImGui::Button(this->browseButtonLabel)) {
 			if (this->browseButtonType == BROWSE_BUTTON_FILE) {
-				char** types = (char**)alloca(sizeof(char*) * this->browseFileTypes.size());
-				for (int i=0;i<(int)this->browseFileTypes.size();i++) {
-					types[i] = (char*)alloca(this->browseFileTypes[i].length() + 1);
-					strcpy(types[i], this->browseFileTypes[i].c_str());
+				int count = (int)this->browseFileTypes.size();
+				const char** types = new const char*[count];
+				for (int i=0;i<count;i++) {
+					types[i] = this->browseFileTypes[i].c_str();
 				}
 				const char* result = tfd::openFileDialog(c_getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, NULL, 0);
+				delete[] types;
 				if (result) {
 					strcpy(this->text, result);
 					if (this->onChange) {

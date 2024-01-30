@@ -14,7 +14,7 @@ public:
 class BoxedWineCondition {
 public:
     BoxedWineCondition(BString name);
-    BoxedWineCondition();
+    BoxedWineCondition() = default;
 
     bool tryLock();
     void lock();
@@ -29,8 +29,8 @@ public:
 
     std::mutex m;
     std::condition_variable c;
-    U32 lockOwner;
-    BoxedWineCondition* parent;
+    U32 lockOwner = 0;
+    BoxedWineCondition* parent = nullptr;
 };
 
 class BoxedWineCriticalSectionCond {

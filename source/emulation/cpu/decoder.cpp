@@ -4447,6 +4447,7 @@ public:
                         break;
                     }
                 // intentional fall through
+                    [[fallthrough]];
                 default:
                     op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
             }
@@ -6242,7 +6243,7 @@ const char* DecodedOp::name() {
 
 void DecodedOp::log(CPU* cpu) {
 #ifdef _DEBUG
-    if (cpu->logFile && this->inst<Callback) {
+    if (cpu->logFile && this->inst >= 0 && this->inst < None) {
         BOXEDWINE_CRITICAL_SECTION;
         U32 pos = ftell((FILE*)cpu->logFile); // :TODO: should be 64-bit
         fprintf((FILE*)cpu->logFile, "%04X %08X ", cpu->thread->id, cpu->eip.u32);

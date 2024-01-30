@@ -1,16 +1,17 @@
 #ifndef __BSTRING_H__
 #define __BSTRING_H__
 
-#define B(x) BString::literal(x)
+#define B(x) BString(x, true)
 
 class BStringData;
 
 // this class represents the local holder of the shared data, BStringData
 //
 // BStringData is reference counted, if someone tries to write to BStringData and it has a reference count greater than one, then it will make a copy
-class BString {
+class BString {	
 public:
 	BString();
+	BString(const char*, bool litteral);
 	//BString(const char* s);
 	//BString(const char* s, int len);
 	BString(const BString& s);
@@ -44,7 +45,8 @@ public:
 	bool startsWith(char s, bool ignoreCase = false) const;
 	BString substr(int beginIndex) const;
 	BString substr(int beginIndex, int len) const;
-	int toInt() const;
+	int32_t toInt() const;
+	int64_t toInt64() const;
 
 	// modifying function
 	void append(const BString& s);
