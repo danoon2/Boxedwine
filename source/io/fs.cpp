@@ -21,7 +21,7 @@ BoxedPtr<FsFileNode> Fs::rootNode;
 BString Fs::nativePathSeperator;
 
 void Fs::shutDown() {
-	rootNode = NULL;
+	rootNode = nullptr;
 }
 bool Fs::initFileSystem(BString rootPath) {
     Fs::nextNodeId = 1;
@@ -39,10 +39,10 @@ bool Fs::initFileSystem(BString rootPath) {
         klog("Created root directory: %s", rootPath.c_str());
     }
 
-    BoxedPtr<FsNode> parent(NULL);
+    BoxedPtr<FsNode> parent(nullptr);
     rootNode = new FsFileNode(Fs::nextNodeId++, 0, B("/"), B(""), path, true, true, parent);
 
-    BoxedPtr<FsNode> dir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), false, NULL);
+    BoxedPtr<FsNode> dir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), false, nullptr);
     if (dir) {
         std::vector<BoxedPtr<FsNode> > children;
         dir->getAllChildren(children);
@@ -50,7 +50,7 @@ bool Fs::initFileSystem(BString rootPath) {
             children[i]->remove();
         }
     }
-    BoxedPtr<FsNode> lock = Fs::getNodeFromLocalPath(B(""), B("/tmp/.X0-lock"), false, NULL);
+    BoxedPtr<FsNode> lock = Fs::getNodeFromLocalPath(B(""), B("/tmp/.X0-lock"), false, nullptr);
     if (lock) {
         lock->remove();
     }
@@ -140,14 +140,14 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path
     Fs::splitPath(fullpath, parts);
     BoxedPtr<FsNode> node = Fs::rootNode;
     if (!node) {
-        return NULL;
+        return nullptr;
     }
     std::vector<BoxedPtr<FsNode> > nodes;
 
     nodes.push_back(node);
 
     if (!cleanPath(parts))
-        return NULL;
+        return nullptr;
     for (U32 i=0;i<parts.size();) {
         if (parts[i].length()==0) { // ignore double slashes
             i++;
@@ -163,7 +163,7 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path
                 missingParts.push_back(parts[i]);
             }
             lastNode = nodes.back();
-            return NULL;
+            return nullptr;
         }
         nodes.push_back(node);
         if (node->isLink() && (followLink || i<parts.size()-1)) {
@@ -179,7 +179,7 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path
                 parts.erase(parts.begin(), parts.begin()+i);
             }   
             if (!cleanPath(parts))
-                return NULL;
+                return nullptr;
 
             nodes.clear();
             node = Fs::rootNode;
@@ -273,7 +273,7 @@ U64 Fs::getNativeDirectorySize(BString path, bool recursive) {
 }
 
 bool Fs::isNativePathDirectory(BString path) {
-    PLATFORM_STAT_STRUCT buf;
+    PLATFORM_STAT_STRUCT buf = {};
 
 #ifdef BOXEDWINE_MSVC
     if (path.length()<3) {

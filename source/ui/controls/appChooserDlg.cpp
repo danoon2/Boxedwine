@@ -2,10 +2,10 @@
 #include "../boxedwineui.h"
 #include <thread>
 
-AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp)> onSelected, bool saveApp, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, NULL, parent), items(items), wineApps(wineApps), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL), saveApp(saveApp) {
+AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp)> onSelected, bool saveApp, BaseDlg* parent) : BaseDlg(APPCHOOSER_DLG_TITLE, 600, 400, nullptr, parent), items(items), wineApps(wineApps), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL), saveApp(saveApp) {
 }
 
-AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp)> onSelected, bool saveApp, BaseDlg* parent, int titleId) : BaseDlg(titleId, 600, 400, NULL, parent), items(items), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL), saveApp(saveApp) {
+AppChooserDlg::AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp)> onSelected, bool saveApp, BaseDlg* parent, int titleId) : BaseDlg(titleId, 600, 400, nullptr, parent), items(items), onSelected(onSelected), labelId(APPCHOOSER_DLG_CHOOSE_APP_LABEL), saveApp(saveApp) {
 }
 
 void AppChooserDlg::drawItems(std::vector<BoxedApp>& apps, int startingIndex) {

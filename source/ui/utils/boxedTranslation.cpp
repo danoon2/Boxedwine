@@ -47,7 +47,7 @@ const char* c_getTranslation(int msg, bool useDefaultIfMissing) {
     case INSTALLVIEW_RUN_WINE_CONFIG_HELP:
         return "Wine Config can be used to change the Windows version that is currently being emulated by Wine.  For example if your installer or application fails to run because it says it needs Windows 95, the you can use Wine Config to fix this.";
     case INSTALLVIEW_INSTALL_TYPE_HELP:
-        return NULL;
+        return nullptr;
     case INSTALLVIEW_INSTALL_TYPE_LABEL:
         return "Install Type:";
     case INSTALLVIEW_CONTAINER_LABEL:
@@ -416,7 +416,7 @@ const char* c_getTranslation(int msg, bool useDefaultIfMissing) {
         if (useDefaultIfMissing) {
             return "Unknown msg";
         }
-        return NULL;
+        return nullptr;
     }
 }
 

@@ -158,7 +158,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
         BoxedwineData::addContainer(container);
         container->saveContainer();
     }
-    runOptions(container, NULL, installOptions, runner, downloads);
+    runOptions(container, nullptr, installOptions, runner, downloads);
 
     BString containerDir = container->getDir();
     BString cmd = this->exe;
@@ -255,7 +255,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                             return false;;
                         }
                     }
-                    runOptions(container, NULL, exeOptions, r, d);
+                    runOptions(container, nullptr, exeOptions, r, d);
                     if (chooseShortCut) {
                         new AppChooserDlg(items, [container](BoxedApp app) {
                             gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());

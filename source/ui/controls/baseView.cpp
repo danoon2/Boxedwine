@@ -10,7 +10,7 @@ void BaseView::addTab(const BaseViewTab& tab, int index) {
     ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));
     ImGui::SameLine();    
     ImVec2 pos = ImGui::GetCursorPos();
-    ImVec2 s = ImGui::CalcTextSize(tab.name.c_str(), NULL, true);
+    ImVec2 s = ImGui::CalcTextSize(tab.name.c_str(), nullptr, true);
     s.x = 0;
     s.y += this->extraVerticalSpacing * 2;
     BString nameId = "##" + tab. name;

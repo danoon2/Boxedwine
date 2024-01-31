@@ -24,7 +24,7 @@ U32 WOPage::readd(U32 address) {
 }
 
 U8* WOPage::getReadPtr(U32 address, bool makeReady) {
-    return NULL;
+    return nullptr;
 }
 
 U8* WOPage::getWritePtr(U32 address, U32 len, bool makeReady) {

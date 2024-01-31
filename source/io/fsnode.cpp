@@ -80,7 +80,7 @@ BoxedPtr<FsNode> FsNode::getChildByName(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     if (this->childrenByName.count(name))
         return this->childrenByName[name];
-    return NULL;
+    return nullptr;
 }
 
 BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(BString name) {
@@ -91,7 +91,7 @@ BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(BString name) {
             return n.second;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 U32 FsNode::getChildCount() {    
@@ -201,7 +201,7 @@ KFileLock* FsNode::internalGetLock(KFileLock* lock, bool otherProcess) {
             return next;
         }
     }
-    return NULL;
+    return nullptr;
  }
 
 void FsNode::addOpenNode(KListNode<FsOpenNode*>* node) {

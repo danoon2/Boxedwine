@@ -56,13 +56,7 @@ public:
 
 class WndSdl : public Wnd {
 public:
-    WndSdl() : pixelFormat(NULL), pixelFormatIndex(0), openGlContext(NULL), activated(0), processId(0), hwnd(0)
-#ifdef BOXEDWINE_RECORDER
-        , bits(0), bitsSize(0)
-#endif
-        , sdlTexture(NULL), sdlTextureHeight(0), sdlTextureWidth(0)
-    {}
-
+    WndSdl() = default;
     virtual void setText(BString text) override {
     }
 
@@ -84,19 +78,19 @@ public:
     }
 
     BString text;
-    PixelFormat* pixelFormat;
-    U32 pixelFormatIndex;
-    void* openGlContext;
-    U32 activated;
-    U32 processId;
-    U32 hwnd;
+    PixelFormat* pixelFormat = nullptr;
+    U32 pixelFormatIndex = 0;
+    void* openGlContext = nullptr;
+    U32 activated = 0;
+    U32 processId = 0;
+    U32 hwnd = 0;
 #ifdef BOXEDWINE_RECORDER
-    U8* bits;
-    U32 bitsSize;
+    U8* bits = nullptr;
+    U32 bitsSize = 0;
 #endif
-    SDL_Texture* sdlTexture;
-    int sdlTextureHeight;
-    int sdlTextureWidth;
+    SDL_Texture* sdlTexture = nullptr;
+    int sdlTextureHeight = 0;
+    int sdlTextureWidth = 0;
 };
 
 U32 KNativeWindow::defaultScreenWidth = 800;
@@ -107,11 +101,7 @@ U32 sdlCustomEvent;
 
 class KNativeWindowSdl : public KNativeWindow, public std::enable_shared_from_this<KNativeWindowSdl> {
 public:
-    KNativeWindowSdl() : scaleX(100), scaleXOffset(0), scaleY(100), scaleYOffset(0), sdlDesktopWidth(0), sdlDesktopHeight(0), fullScreen(FULLSCREEN_NOTSET), vsync(VSYNC_DEFAULT), window(NULL), renderer(NULL), shutdownWindow(NULL), shutdownRenderer(NULL), desktopTexture(NULL), currentContext(NULL), contextCount(0), windowIsGL(false), glWindowVersionMajor(0), windowIsHidden(false), timeToHideUI(0), timeWindowWasCreated(0), lastChildWndCreated(0), primarySurface(NULL)
-#ifdef BOXEDWINE_RECORDER
-        , screenCopyTexture(NULL)
-#endif
-    {
+    KNativeWindowSdl() {
         width = KNativeWindow::defaultScreenWidth;
         height = KNativeWindow::defaultScreenHeight;
         bpp = KNativeWindow::defaultScreenBpp;
@@ -128,34 +118,34 @@ public:
         this->cursors.clear();
     }
 
-    U32 width;
-    U32 height;
-    U32 bpp;
-    U32 scaleX;
-    U32 scaleXOffset;
-    U32 scaleY;
-    U32 scaleYOffset;
-    U32 sdlDesktopWidth;
-    U32 sdlDesktopHeight;
+    U32 width = 0;
+    U32 height = 0;
+    U32 bpp = 0;
+    U32 scaleX = 100;
+    U32 scaleXOffset = 0;
+    U32 scaleY = 100;
+    U32 scaleYOffset = 0;
+    U32 sdlDesktopWidth = 0;
+    U32 sdlDesktopHeight = 0;
     BString scaleQuality;
-    U32 fullScreen;
-    U32 vsync;
+    U32 fullScreen = FULLSCREEN_NOTSET;
+    U32 vsync = VSYNC_DEFAULT;
 
-    SDL_Window* window;
-    SDL_Renderer* renderer;
-    SDL_Window* shutdownWindow;
-    SDL_Renderer* shutdownRenderer;
-    SDL_Texture* desktopTexture;
-    void* currentContext;
+    SDL_Window* window = nullptr;
+    SDL_Renderer* renderer = nullptr;
+    SDL_Window* shutdownWindow = nullptr;
+    SDL_Renderer* shutdownRenderer = nullptr;
+    SDL_Texture* desktopTexture = nullptr;
+    void* currentContext = nullptr;
     BOXEDWINE_MUTEX sdlMutex;
-    int contextCount;
-    bool windowIsGL;
-    U32 glWindowVersionMajor;
-    bool windowIsHidden;
-    U32 timeToHideUI;
-    U32 timeWindowWasCreated;
-    U32 lastChildWndCreated;
-    Boxed_Surface* primarySurface;
+    int contextCount = 0;
+    bool windowIsGL = false;
+    U32 glWindowVersionMajor = 0;
+    bool windowIsHidden = false;
+    U32 timeToHideUI = 0;
+    U32 timeWindowWasCreated = 0;
+    U32 lastChildWndCreated = 0;
+    Boxed_Surface* primarySurface = nullptr;
 
     BString delayedCreateWindowMsg; // the ui will watch for this message
     std::unordered_map<BString, SDL_Cursor*> cursors;
@@ -236,7 +226,7 @@ public:
     std::shared_ptr<WndSdl> getWndSdl(U32 hwnd);        
     BString getCursorName(const char* moduleName, const char* resourceName, int resource);
 #ifdef BOXEDWINE_RECORDER
-    SDL_Texture* screenCopyTexture;
+    SDL_Texture* screenCopyTexture = nullptr;
     virtual void pushWindowSurface();
     virtual void popWindowSurface();
     virtual void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a);
@@ -272,11 +262,11 @@ bool KNativeWindowSdl::waitForEvent(U32 ms) {
         ms = 100;
         updateShutdownWindow();
     }
-    return SDL_WaitEventTimeout(NULL, ms) == 1;
+    return SDL_WaitEventTimeout(nullptr, ms) == 1;
 }
 
 bool KNativeWindowSdl::processEvents() {
-    SDL_Event e;
+    SDL_Event e = {};
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
     if (timeToHideUI && timeToHideUI < KSystem::getMilliesSinceStart()) {
@@ -390,14 +380,14 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
             std::shared_ptr<WndSdl> wnd = n.second;
             if (wnd->sdlTexture) {
                 SDL_DestroyTexture(wnd->sdlTexture);
-                wnd->sdlTexture = NULL;
+                wnd->sdlTexture = nullptr;
                 wnd->sdlTextureHeight = 0;
                 wnd->sdlTextureWidth = 0;
             }
         }
         if (desktopTexture) {
             SDL_DestroyTexture(desktopTexture);
-            desktopTexture = NULL;
+            desktopTexture = nullptr;
         }
     }
     if (!thread) {
@@ -423,7 +413,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
         SDL_Renderer* r = renderer;
         if (r) {
             SDL_DestroyRenderer(r);
-            renderer = NULL;
+            renderer = nullptr;
         }
         DISPATCH_MAIN_THREAD_BLOCK_END                    
     }
@@ -433,17 +423,17 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
     }
     if (shutdownRenderer) {
         SDL_DestroyRenderer(shutdownRenderer);
-        shutdownRenderer = NULL;
+        shutdownRenderer = nullptr;
     }
     if (shutdownWindow) {
         SDL_DestroyWindow(shutdownWindow);
-        shutdownWindow = NULL;
+        shutdownWindow = nullptr;
     }
     if (window) {
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
         SDL_DestroyWindow(window);
         DISPATCH_MAIN_THREAD_BLOCK_END
-        window = 0;
+        window = nullptr;
         windowIsGL = false;
         glWindowVersionMajor = 0;
     }   
@@ -528,10 +518,10 @@ U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
     } else if (arg == 0) {
         if (thread->hasContextBeenMadeCurrentSinceCreation) {
             // SDL requires that a context have been created before this call since it will store the current windows in TLS which will then be retrieved in this call
-            BoxedwineGL::current->makeCurrent(NULL, window);
+            BoxedwineGL::current->makeCurrent(nullptr, window);
         }
-        thread->currentContext = 0;
-        currentContext = NULL;
+        thread->currentContext = nullptr;
+        currentContext = nullptr;
         return 1;
     } else {
         klog("Tried to make an OpenGL context current for a different thread?");
@@ -540,11 +530,11 @@ U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
 }
 
 KThreadGlContext* KNativeWindowSdl::getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id) {
-    KThreadGlContext* result = NULL;
+    KThreadGlContext* result = nullptr;
 
     process->iterateThreads([id, &result] (KThread* thread) {
         result = thread->getGlContextById(id);
-        return result==NULL;
+        return result== nullptr;
     });
     return result;
 }
@@ -599,7 +589,7 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
     firstWindowCreated = 1;
 
-    SDL_DisplayMode dm;
+    SDL_DisplayMode dm = { 0 };
     int sdlFlags = SDL_WINDOW_OPENGL;
     if (!KSystem::showWindowImmediately) {
         sdlFlags |= SDL_WINDOW_HIDDEN;
@@ -653,7 +643,7 @@ void* KNativeWindowSdl::createVulkanSurface(void* instance) {
         return result;
     }
 #endif
-    return NULL;
+    return nullptr;
 }
 
 #include "../../tools/opengl/gldef.h"
@@ -698,15 +688,15 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, i
     }
 #endif
     if (result) {
-        void* context;
         int cx = wnd->windowRect.right - wnd->windowRect.left;
         int cy = wnd->windowRect.bottom - wnd->windowRect.top;
 
         // Mac requires this on the main thread, but Windows make current will fail if its not on the same thread as create context
 #ifdef BOXEDWINE_MSVC
-        context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
+        void* context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
         thread->hasContextBeenMadeCurrentSinceCreation = true;
 #else
+        void* context = nullptr;
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(&context COMMA this COMMA wnd COMMA cx COMMA cy COMMA major COMMA minor COMMA profile)
         context = BoxedwineGL::current->createContext(window, wnd, wnd->pixelFormat, cx, cy, major, minor, profile);
         BoxedwineGL::current->makeCurrent(NULL, window);
@@ -798,7 +788,7 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
             for (auto& n : hwndToWnd) {
                 std::shared_ptr<WndSdl> wnd = n.second;
-                wnd->openGlContext = 0;
+                wnd->openGlContext = nullptr;
             }
         }
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, scaleQuality.c_str());
@@ -936,14 +926,15 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
             return;
         }
         DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-        SDL_Texture *sdlTexture = NULL;
+        ChangeThread changeThread(thread);
+        SDL_Texture *sdlTexture = nullptr;
         
         if (wnd->sdlTexture) {
             sdlTexture = (SDL_Texture*)wnd->sdlTexture;
             if (sdlTexture && (((U32)wnd->sdlTextureHeight) != height || ((U32)wnd->sdlTextureWidth) != width)) {
                 SDL_DestroyTexture(sdlTexture);
-                wnd->sdlTexture = NULL;
-                sdlTexture = NULL;
+                wnd->sdlTexture = nullptr;
+                sdlTexture = nullptr;
             }
         }
         if (!sdlTexture) {
@@ -988,9 +979,9 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
 #endif        
         if (KSystem::videoEnabled && renderer) {
 #ifdef BOXEDWINE_FLIP_MANUALLY
-            SDL_UpdateTexture(sdlTexture, NULL, sdlBuffer, pitch);
+            SDL_UpdateTexture(sdlTexture, nullptr, sdlBuffer, pitch);
 #else
-            SDL_UpdateTexture(sdlTexture, NULL, thread->memory->getIntPtr(bits), pitch);
+            SDL_UpdateTexture(sdlTexture, nullptr, thread->memory->getIntPtr(bits), pitch);
 #endif
         }
         DISPATCH_MAIN_THREAD_BLOCK_END
@@ -1003,7 +994,7 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
     if (bits == 0) {
         if (desktopTexture) {
             SDL_DestroyTexture(desktopTexture);
-            desktopTexture = NULL;
+            desktopTexture = nullptr;
         }
         return;
     }
@@ -1048,7 +1039,7 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
 
             if (buf && bufLen < len) {
                 delete[] buf;
-                buf = NULL;
+                buf = nullptr;
                 bufLen = 0;
             }
             if (!buf) {
@@ -1062,11 +1053,11 @@ void KNativeWindowSdl::updatePrimarySurface(KThread* thread, U32 bits, U32 width
                     to[x] = colors[memory->readb(bits + y * pitch + x)];
                 }
             }
-            SDL_UpdateTexture(desktopTexture, NULL, buf, width * 4);
+            SDL_UpdateTexture(desktopTexture, nullptr, buf, width * 4);
         } else {
             U32 len = pitch * height;
             U8* p = thread->memory->lockReadOnlyMemory(bits, len);
-            SDL_UpdateTexture(desktopTexture, NULL, p, pitch);
+            SDL_UpdateTexture(desktopTexture, nullptr, p, pitch);
             thread->memory->unlockMemory(p);
         }
     }
@@ -1137,14 +1128,14 @@ void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* byte
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
 
     preDrawWindow();
-    SDL_Texture* sdlTexture = NULL;
+    SDL_Texture* sdlTexture = nullptr;
 
     if (wnd->sdlTexture) {
         sdlTexture = (SDL_Texture*)wnd->sdlTexture;
         if (sdlTexture && (((U32)wnd->sdlTextureHeight) != height || ((U32)wnd->sdlTextureWidth) != width)) {
             SDL_DestroyTexture(sdlTexture);
-            wnd->sdlTexture = NULL;
-            sdlTexture = NULL;
+            wnd->sdlTexture = nullptr;
+            sdlTexture = nullptr;
         }
     }
     if (!sdlTexture) {
@@ -1176,7 +1167,7 @@ void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* byte
     }
 #endif        
     if (KSystem::videoEnabled && renderer) {
-        SDL_UpdateTexture(sdlTexture, NULL, bytes, pitch);
+        SDL_UpdateTexture(sdlTexture, nullptr, bytes, pitch);
         
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
         SDL_RenderClear(renderer);
@@ -1186,7 +1177,7 @@ void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* byte
             dstrect.y = wnd->windowRect.top * (int)scaleY / 100 + scaleYOffset;
             dstrect.w = wnd->sdlTextureWidth * (int)scaleX / 100;
             dstrect.h = wnd->sdlTextureHeight * (int)scaleY / 100;
-            SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
+            SDL_RenderCopy(renderer, wnd->sdlTexture, nullptr, &dstrect);
         }
         if (scaleXOffset) {
             SDL_Rect rect;
@@ -1315,9 +1306,9 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                     dstrect.w = wnd->sdlTextureWidth*(int)scaleX/100;
                     dstrect.h = wnd->sdlTextureHeight*(int)scaleY/100;
 #ifndef BOXEDWINE_FLIP_MANUALLY
-                    SDL_RenderCopyEx(renderer, wnd->sdlTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_VERTICAL);
+                    SDL_RenderCopyEx(renderer, wnd->sdlTexture, nullptr, &dstrect, 0, nullptr, SDL_FLIP_VERTICAL);
 #else
-                    SDL_RenderCopy(renderer, wnd->sdlTexture, NULL, &dstrect);
+                    SDL_RenderCopy(renderer, wnd->sdlTexture, nullptr, &dstrect);
 #endif
                 }
             }
@@ -1327,7 +1318,7 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
                 dstrect.y = scaleYOffset;
                 dstrect.w = this->screenWidth() * (int)scaleX / 100;
                 dstrect.h = this->screenHeight() * (int)scaleY / 100;
-                SDL_RenderCopyEx(renderer, desktopTexture, NULL, &dstrect, 0, NULL, SDL_FLIP_NONE);
+                SDL_RenderCopyEx(renderer, desktopTexture, nullptr, &dstrect, 0, nullptr, SDL_FLIP_NONE);
             }
             if (scaleXOffset) {                
                 SDL_Rect rect;
@@ -1368,7 +1359,7 @@ void WndSdl::show(bool bShow) {
     if (!bShow) {
         if (this->sdlTexture) {
             SDL_DestroyTexture(this->sdlTexture);
-            this->sdlTexture = NULL;
+            this->sdlTexture = nullptr;
         }
         this->sdlTextureHeight = 0;
         this->sdlTextureWidth = 0;
@@ -1376,9 +1367,9 @@ void WndSdl::show(bool bShow) {
 }
 
 U32 KNativeWindowSdl::getGammaRamp(KThread* thread, U32 ramp) {
-    U16 r[256];
-    U16 g[256];
-    U16 b[256];
+    U16 r[256] = { 0 };
+    U16 g[256] = { 0 };
+    U16 b[256] = { 0 };
     KMemory* memory = thread->memory;
 
     if (KSystem::videoEnabled && window) {
@@ -1610,8 +1601,7 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
             if (fd) {
-                U32 flags = MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE;
-                U8 buffer[28];
+                U32 flags = MOUSEEVENTF_MOVE|MOUSEEVENTF_ABSOLUTE;                
 
                 if (down) {
                     switch (button) {
@@ -1626,6 +1616,7 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
                         case 2: flags |= MOUSEEVENTF_MIDDLEUP; break;
                     }
                 }
+                U8 buffer[28] = {};
                 writeLittleEndian_4(buffer, 0); // INPUT_MOUSE
                 writeLittleEndian_4(buffer+4, x); // dx
                 writeLittleEndian_4(buffer+8, y); // dy
@@ -1679,9 +1670,8 @@ bool KNativeWindowSdl::setCursor(const char* moduleName, const char* resourceNam
 
 void KNativeWindowSdl::createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) {
     //int byteCount = (width+31) / 31 * 4 * height;
-    int dst,src,y, x;
-    U8 data_bits[64*64/8];
-    U8 mask_bits[64*64/8];
+    U8 data_bits[64 * 64 / 8] = {};
+    U8 mask_bits[64 * 64 / 8] = {};
     U32 srcPitch = (width+31)/32*4;
     U32 dstPitch = (width+7)/8;
 
@@ -1696,16 +1686,14 @@ void KNativeWindowSdl::createAndSetCursor(const char* moduleName, const char* re
     // 0 1 -> 0 1
     // 1 0 -> 0 0
     // 1 1 -> 1 0
-    for (y=0;y<height;y++) {
-        dst = dstPitch*y;
-        src = srcPitch*y;
+    for (int y=0;y<height;y++) {
+        int dst = dstPitch*y;
+        int src = srcPitch*y;
 
-        for (x=0;x<(width+7)/8;src++,dst++,x++) {
-            int j;
-
+        for (int x=0;x<(width+7)/8;src++,dst++,x++) {
             data_bits[dst] = 0;
             mask_bits[dst] = 0;
-            for (j=0;j<8;j++) {
+            for (int j=0;j<8;j++) {
                 U8 aBit = (and_bits[src] >> j) & 0x1;
                 U8 xBit = (xor_bits[src] >> j) & 0x1;
 
@@ -1771,8 +1759,7 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
         lastProcessId = process->id;
         if (fd) {
             U16 vKey = 0;
-            U16 scan = 0;
-            U8 buffer[28];
+            U16 scan = 0;            
 
             U32 flags = 0;
             if (!down) 
@@ -2182,6 +2169,7 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
             if (scan & 0x100)               
                 flags |= BOXED_KEYEVENTF_EXTENDEDKEY;
 
+            U8 buffer[28] = {};
             writeLittleEndian_4(buffer, 1); // INPUT_KEYBOARD
             writeLittleEndian_2(buffer+4, vKey); // wVk
             writeLittleEndian_2(buffer+6, scan & 0xFF); // wScan
@@ -2220,8 +2208,8 @@ bool KNativeWindowSdl::getMousePos(int* x, int* y) {
 
 void KNativeWindowSdl::pushWindowSurface() {
     SDL_Surface* src = SDL_GetWindowSurface(window);
-    SDL_Rect r;
-    U32 depth;
+    SDL_Rect r = {};
+    U32 depth = 0;
 
     if (screenBpp()==15)
         depth = 15;
@@ -2239,7 +2227,7 @@ void KNativeWindowSdl::pushWindowSurface() {
     U8* pixels = new unsigned char[len];
 
     if (!SDL_RenderReadPixels(renderer, &src->clip_rect, src->format->format, pixels, src->w * src->format->BytesPerPixel)) {
-        SDL_UpdateTexture(screenCopyTexture, NULL, pixels, src->w * src->format->BytesPerPixel);
+        SDL_UpdateTexture(screenCopyTexture, nullptr, pixels, src->w * src->format->BytesPerPixel);
     }
     delete[] pixels;
 }
@@ -2252,11 +2240,11 @@ void KNativeWindowSdl::popWindowSurface() {
     rect.w = dst->w;
     rect.h = dst->h;    
         
-    SDL_RenderCopy(renderer, screenCopyTexture, NULL, &rect);	
+    SDL_RenderCopy(renderer, screenCopyTexture, nullptr, &rect);
     SDL_RenderPresent(renderer);
 
     SDL_DestroyTexture(screenCopyTexture);
-    screenCopyTexture = NULL;
+    screenCopyTexture = nullptr;
 }
 
 void KNativeWindowSdl::drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) {
@@ -2267,7 +2255,7 @@ void KNativeWindowSdl::drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U3
     rect.w = dst->w;
     rect.h = dst->h;    
         
-    SDL_RenderCopy(renderer, screenCopyTexture, NULL, &rect);	
+    SDL_RenderCopy(renderer, screenCopyTexture, nullptr, &rect);
 
     rect.x = x;
     rect.y = y;
@@ -2294,7 +2282,7 @@ int getMouseButtonFromEvent(SDL_Event* e) {
 }
 
 void KNativeWindowSdl::processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) {
-    SDL_Event e;
+    SDL_Event e = {};
     while (!BOXEDWINE_MUTEX_TRY_LOCK(sdlMutex)) {
         KNativeWindow::getNativeWindow()->processEvents();
     }
@@ -2342,8 +2330,8 @@ bool KNativeWindowSdl::internalScreenShot(BString filepath, SDL_Rect* r, U32* cr
         }
         return false;
     }
-    U8* pixels = NULL;
-    SDL_Surface* s = NULL;
+    U8* pixels = nullptr;
+    SDL_Surface* s = nullptr;
     U32 rMask=0;
     U32 gMask=0;
     U32 bMask=0;
@@ -2414,7 +2402,7 @@ bool KNativeWindowSdl::partialScreenShot(BString filepath, U32 x, U32 y, U32 w, 
 }
 
 bool KNativeWindowSdl::screenShot(BString filepath, U32* crc) {
-    return internalScreenShot(filepath, NULL, crc);
+    return internalScreenShot(filepath, nullptr, crc);
 
 }
 
@@ -2598,7 +2586,7 @@ static U32 translate(U32 key) {
 }
 
 bool KNativeWindowSdl::isShutdownWindowIsOpen() {
-    return shutdownWindow!=NULL;
+    return shutdownWindow!= nullptr;
 }
     
 void KNativeWindowSdl::updateShutdownWindow() {
@@ -2624,7 +2612,7 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
     }
 #endif    
     if (e->type == SDL_QUIT) {
-        KThread::setCurrentThread(NULL);
+        KThread::setCurrentThread(nullptr);
         std::shared_ptr<KProcess> p = KSystem::getProcess(10);
         if (p && !KSystem::shutingDown) {
             // Give the system 10 seconds to try and shutdown cleanly, this is so wineserver can flush registry changes            
@@ -2789,7 +2777,7 @@ std::shared_ptr<KNativeWindow> KNativeWindow::getNativeWindow() {
 void KNativeWindow::shutdown() {
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(screen->sdlMutex);
-        screen->destroyScreen(NULL);
+        screen->destroyScreen(nullptr);
         
     }
     screen = NULL;

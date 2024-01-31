@@ -37,7 +37,7 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->reset();
     this->fpu.reset();
 
-    this->logFile = NULL;//fopen("good.txt", "w");
+    this->logFile = nullptr;//fopen("good.txt", "w");
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     currentSingleOp = nullptr;
@@ -102,7 +102,7 @@ void CPU::reset() {
         this->xmm[i].pi.u64[0] = 0;
         this->xmm[i].pi.u64[1] = 0;
     }
-    this->lazyFlags = 0;
+    this->lazyFlags = nullptr;
     this->setIsBig(1);
     this->seg[CS].value = 0xF; // index 1, LDT, rpl=3
     this->seg[SS].value = 0x17; // index 2, LDT, rpl=3
@@ -115,8 +115,8 @@ void CPU::reset() {
     this->lazyFlags = FLAGS_NONE;
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
-    this->nextBlock = NULL;
-    this->delayedFreeBlock = NULL;
+    this->nextBlock = nullptr;
+    this->delayedFreeBlock = nullptr;
 }
 
 void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
@@ -137,8 +137,6 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
     } else {
         //U32 rpl=selector & 3;
         U32 index = selector >> 3;
-        struct user_desc* ldt;
-        U32 esp;
 
         if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "CALL:CS selector zero", EXCEPTION_GP,0))
             return;
@@ -147,14 +145,14 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
             CPU_CHECK_COND(this, 0, "CALL:CS beyond limits", EXCEPTION_GP,selector & 0xfffc);
             return;
         }
-        ldt = this->thread->getLDT(index);
+        struct user_desc* ldt = this->thread->getLDT(index);
 
         if (this->thread->isLdtEmpty(ldt)) {
             prepareException(EXCEPTION_NP,selector & 0xfffc);
             return;
         }
        
-        esp = THIS_ESP;
+        U32 esp = THIS_ESP;
         // commit point
         if (big) {
             esp = push32_r(esp, this->seg[CS].value);
@@ -183,7 +181,6 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
     } else {
         //U32 rpl=selector & 3;
         U32 index = selector >> 3;
-        struct user_desc* ldt;
 
         if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "JMP:CS selector zero", EXCEPTION_GP,0))
             return;
@@ -192,7 +189,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
             if (CPU_CHECK_COND(this, 0, "JMP:CS beyond limits", EXCEPTION_GP,selector & 0xfffc))
                 return;
         }
-        ldt = this->thread->getLDT(index);
+        struct user_desc* ldt = this->thread->getLDT(index);
 
         if (this->thread->isLdtEmpty(ldt)) {
             prepareException(EXCEPTION_NP,selector & 0xfffc);
@@ -291,11 +288,10 @@ FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
 }
 
 BString getFunctionName(BString name, U32 moduleEip) {    
-    KThread* thread;
     std::shared_ptr<KProcess> process = KProcess::create();
     std::vector<BString> args;
     std::vector<BString> env;
-    KFileDescriptor* fd = NULL;
+    KFileDescriptor* fd = nullptr;
 
     if (!name.length())
         return B("Unknown");
@@ -304,7 +300,7 @@ BString getFunctionName(BString name, U32 moduleEip) {
     args.push_back(name);
     args.push_back(B("-f"));
     args.push_back(BString::valueOf(moduleEip, 16));
-    thread = process->startProcess(B("/usr/bin"), args, env, 0, 0, 0, 0);
+    KThread* thread = process->startProcess(B("/usr/bin"), args, env, 0, 0, 0, 0);
     if (!thread)
         return B("");
 
@@ -328,8 +324,6 @@ BString getFunctionName(BString name, U32 moduleEip) {
 }
 
 void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
-    U32 prevEbp;
-    U32 returnEip;
     U32 moduleEip = this->thread->process->getModuleEip(this->seg[CS].address+eip);
     BString name = this->thread->process->getModuleName(this->seg[CS].address+eip);
     BString functionName = getFunctionName(name, moduleEip);    
@@ -339,8 +333,8 @@ void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
     klog("%*s %-20s %-40s %08x / %08x", indent, "", name.length()?name.c_str():"Unknown", functionName.c_str(), eip, moduleEip);        
 
     if (this->memory->canRead(ebp, 8)) {
-        prevEbp = memory->readd(ebp); 
-        returnEip = memory->readd(ebp+4);
+        U32 prevEbp = memory->readd(ebp); 
+        U32 returnEip = memory->readd(ebp+4);
         if (prevEbp==0)
             return;
         walkStack(returnEip, prevEbp, indent);
@@ -443,14 +437,12 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
 }
 
 U32 CPU::lar(U32 selector, U32 ar) {
-    struct user_desc* ldt;
-
     this->fillFlags();
     if (selector == 0 || selector>=LDT_ENTRIES) {
         this->flags &=~ZF;
         return ar;
     }    
-    ldt = this->thread->getLDT(selector >> 3);
+    struct user_desc* ldt = this->thread->getLDT(selector >> 3);
     this->flags |= ZF;
     ar = 0;
     if (!ldt->seg_not_present)
@@ -463,14 +455,12 @@ U32 CPU::lar(U32 selector, U32 ar) {
 }
 
 U32 CPU::lsl(U32 selector, U32 limit) {
-    struct user_desc* ldt;
-
     this->fillFlags();
     if (selector == 0 || selector>=LDT_ENTRIES) {
         this->removeZF();
         return limit;
     }    
-    ldt = this->thread->getLDT(selector >> 3);
+    struct user_desc* ldt = this->thread->getLDT(selector >> 3);
     if (!ldt) {
         this->removeZF();
         return limit;
@@ -520,8 +510,8 @@ U32 CPU::setSegment(U32 seg, U32 value) {
 
 void CPU::ret(U32 big, U32 bytes) {
     if (this->flags & VM) {
-        U32 new_ip;
-        U32 new_cs;
+        U32 new_ip = 0;
+        U32 new_cs = 0;
         if (big) {
             new_ip = pop32();
             new_cs = pop32() & 0xffff;            
@@ -534,22 +524,19 @@ void CPU::ret(U32 big, U32 bytes) {
         this->eip.u32 = new_ip;
         this->setIsBig(0);
     } else {
-        U32 offset,selector;
-        U32 rpl; // requested privilege level
-        struct user_desc* ldt;
-        U32 index;
+        U32 selector = 0;
 
         if (big) 
             selector = peek32(1);
         else 
             selector = peek16(1);
 
-        rpl=selector & 3;
+        U32 rpl=selector & 3; // requested privilege level
         if(rpl < this->cpl) {
             this->prepareException(EXCEPTION_GP, selector & 0xfffc);
             return;
         }        
-        index = selector >> 3;
+        U32 index = selector >> 3;
 
         if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "RET:CS selector zero", EXCEPTION_GP,0))
             return;
@@ -558,13 +545,14 @@ void CPU::ret(U32 big, U32 bytes) {
             CPU_CHECK_COND(this, 0, "RET:CS beyond limits", EXCEPTION_GP,selector & 0xfffc);
             return;
         }
-        ldt = this->thread->getLDT(index);
+        struct user_desc* ldt = this->thread->getLDT(index);
         if (this->thread->isLdtEmpty(ldt)) {
             this->prepareException(EXCEPTION_NP, selector & 0xfffc);
             return;
         }
         if (this->cpl==rpl) {
             // Return to same level             
+            U32 offset = 0;
             if (big) {
                 offset = pop32();
                 selector = pop32() & 0xffff;
@@ -578,10 +566,9 @@ void CPU::ret(U32 big, U32 bytes) {
             THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + bytes ) & this->stackMask);
         } else {
             // Return to outer level
-            U32 n_esp;
-            U32 n_ss;
-            U32 ssIndex;
-            struct user_desc* ssLdt;
+            U32 n_esp = 0;
+            U32 n_ss = 0;
+            U32 offset = 0;;
 
             if (big) {
                 offset = pop32();
@@ -596,7 +583,7 @@ void CPU::ret(U32 big, U32 bytes) {
                 n_esp = pop16();
                 n_ss = pop16();
             }
-            ssIndex = n_ss >> 3;
+            U32 ssIndex = n_ss >> 3;
             if (CPU_CHECK_COND(this, (n_ss & 0xfffc)==0, "RET to outer level with SS selector zero", EXCEPTION_GP,0))
                 return;
             
@@ -604,7 +591,7 @@ void CPU::ret(U32 big, U32 bytes) {
                 CPU_CHECK_COND(this, 0, "RET:SS beyond limits", EXCEPTION_GP,selector & 0xfffc);
                 return;
             }
-            ssLdt = this->thread->getLDT(ssIndex);
+            struct user_desc* ssLdt = this->thread->getLDT(ssIndex);
 
             if (CPU_CHECK_COND(this, (n_ss & 3)!=rpl, "RET to outer segment with invalid SS privileges", EXCEPTION_GP,n_ss & 0xfffc))
                 return;
@@ -676,11 +663,9 @@ void CPU::iret(U32 big, U32 oldeip) {
         kpanic("cpu tasks not implemented");
         return;
     } else {
-        U32 n_cs_sel, n_flags;
-        U32 n_eip;
-        U32 n_cs_rpl;
-        U32 csIndex;
-        struct user_desc* ldt;
+        U32 n_cs_sel = 0;
+        U32 n_flags = 0;
+        U32 n_eip = 0;
 
         if (big) {
             n_eip = this->peek32(0);
@@ -688,17 +673,15 @@ void CPU::iret(U32 big, U32 oldeip) {
             n_flags = this->peek32(2);
 
             if ((n_flags & VM) && (this->cpl==0)) {
-                U32 n_ss,n_esp,n_es,n_ds,n_fs,n_gs;
-
                 // commit point
                 ESP = (ESP & this->stackNotMask) | ((ESP + 12) & this->stackMask);
                 this->eip.u32 = n_eip & 0xffff;
-                n_esp=this->pop32();
-                n_ss=this->pop32() & 0xffff;
-                n_es=this->pop32() & 0xffff;
-                n_ds=this->pop32() & 0xffff;
-                n_fs=this->pop32() & 0xffff;
-                n_gs=this->pop32() & 0xffff;
+                U32 n_esp=this->pop32();
+                U32 n_ss=this->pop32() & 0xffff;
+                U32 n_es=this->pop32() & 0xffff;
+                U32 n_ds=this->pop32() & 0xffff;
+                U32 n_fs=this->pop32() & 0xffff;
+                U32 n_gs=this->pop32() & 0xffff;
 
                 this->setFlags(n_flags, FMASK_NORMAL | VM);
                 this->lazyFlags = FLAGS_NONE;
@@ -725,8 +708,8 @@ void CPU::iret(U32 big, U32 oldeip) {
         }
         if (CPU_CHECK_COND(this, (n_cs_sel & 0xfffc)==0, "IRET:CS selector zero", EXCEPTION_GP, 0))
             return;
-        n_cs_rpl=n_cs_sel & 3;
-        csIndex = n_cs_sel >> 3;
+        U32 n_cs_rpl=n_cs_sel & 3;
+        U32 csIndex = n_cs_sel >> 3;
 
         if (CPU_CHECK_COND(this, csIndex>=LDT_ENTRIES, "IRET:CS selector beyond limits", EXCEPTION_GP,(n_cs_sel & 0xfffc))) {
             return;
@@ -734,31 +717,26 @@ void CPU::iret(U32 big, U32 oldeip) {
         if (CPU_CHECK_COND(this, n_cs_rpl<this->cpl, "IRET to lower privilege", EXCEPTION_GP,(n_cs_sel & 0xfffc))) {
             return;
         }
-        ldt = this->thread->getLDT(csIndex);
+        struct user_desc* ldt = this->thread->getLDT(csIndex);
 
         if (CPU_CHECK_COND(this, this->thread->isLdtEmpty(ldt), "IRET with nonpresent code segment",EXCEPTION_NP,(n_cs_sel & 0xfffc)))
             return;
 
         /* Return to same level */
         if (n_cs_rpl==this->cpl) {
-            U32 mask;
-
             // commit point
             ESP = (ESP & this->stackNotMask) | ((ESP + (big?12:6)) & this->stackMask);
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->setIsBig(ldt->seg_32bit);
             this->eip.u32 = n_eip;     
-            mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
+            U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->lazyFlags = FLAGS_NONE;
             this->setFlags(n_flags,mask);            
         } else {
             /* Return to outer level */
-            U32 n_ss;
-            U32 n_esp;
-            U32 ssIndex;
-            struct user_desc* ssLdt;
-            U32 mask;
+            U32 n_ss = 0;
+            U32 n_esp = 0;
 
             if (big) {
                 n_esp = this->peek32(3);
@@ -772,13 +750,13 @@ void CPU::iret(U32 big, U32 oldeip) {
             if (CPU_CHECK_COND(this, (n_ss & 3)!=n_cs_rpl, "IRET:Outer level:SS rpl!=CS rpl", EXCEPTION_GP,n_ss & 0xfffc))
                 return;
 
-            ssIndex = n_ss >> 3;
+            U32 ssIndex = n_ss >> 3;
             if (CPU_CHECK_COND(this, ssIndex>=LDT_ENTRIES, "IRET:Outer level:SS beyond limit", EXCEPTION_GP,n_ss & 0xfffc))
                 return;
             //if (CPU_CHECK_COND(n_ss_desc_2.DPL()!=n_cs_rpl, "IRET:Outer level:SS dpl!=CS rpl", EXCEPTION_GP,n_ss & 0xfffc))
             //    return;
 
-            ssLdt = this->thread->getLDT(ssIndex);
+            struct user_desc* ssLdt = this->thread->getLDT(ssIndex);
 
             if (CPU_CHECK_COND(this, this->thread->isLdtEmpty(ssLdt), "IRET:Outer level:Stack segment not present", EXCEPTION_NP,n_ss & 0xfffc))
                 return;
@@ -786,7 +764,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             // commit point
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->setIsBig(ldt->seg_32bit);
-            mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
+            U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->setFlags(n_flags, mask);
             this->lazyFlags = FLAGS_NONE;

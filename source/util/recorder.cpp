@@ -32,7 +32,7 @@ void Recorder::initCommandLine(BString root, const std::vector<BString>& zips, B
     out("\r\n");
 
     out("ARGC=");    
-    out(BString::valueOf((int)args.size()).c_str());
+    out(BString::valueOf(args.size()).c_str());
     out("\r\n");
 
     for (U32 i=0;i<args.size();i++) {
@@ -217,7 +217,7 @@ U32 BOXEDWINE_RECORDER_QUIT() {
         } else {
             klog("script: failed");
             klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
-            KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), NULL);
+            KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr);
         }
     }
     return 1;

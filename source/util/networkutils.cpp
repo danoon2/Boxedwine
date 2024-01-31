@@ -65,10 +65,13 @@ bool downloadFile(BString url, BString filePath, std::function<void(U64 bytesCom
     progress.cancel = cancel;
     progress.f = f;
 
-    HRESULT hr = URLDownloadToFile(0, url.c_str(), filePath.c_str(), 0, static_cast<IBindStatusCallback*>(&progress));
+    HRESULT hr = URLDownloadToFile(nullptr, url.c_str(), filePath.c_str(), 0, &progress);
     if (hr != S_OK) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        // the use of FORMAT_MESSAGE_ALLOCATE_BUFFER causes this funky cast
+        [[gsl::suppress(type.1)]]
+        LPSTR pArg = reinterpret_cast<LPSTR>(&messageBuffer);
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), pArg, 0, nullptr);
         errorMsg = BString::copy(messageBuffer);
         LocalFree(messageBuffer);
     }

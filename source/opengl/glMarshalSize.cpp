@@ -802,7 +802,7 @@ U32 getMap2Count(GLenum target) {
 }
 
 GLint glcommon_glGetPixelMap_size(GLenum map) {
-    GLint len;
+    GLint len = 0;
 
     GL_FUNC(pglGetIntegerv)(map, &len);
     return len;

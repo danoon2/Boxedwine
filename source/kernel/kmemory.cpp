@@ -60,7 +60,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
     bool exec = (prot & K_PROT_EXEC) != 0;
     U32 pageStart = addr >> K_PAGE_SHIFT;
     U32 pageCount = (len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
-    KFileDescriptor* fd = 0;
+    KFileDescriptor* fd = nullptr;
 
     if (0xFFFFFFFF - addr < len) {
         return -K_EINVAL;
@@ -169,7 +169,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             this->process->mappedFiles[mappedFile->address] = mappedFile;
             this->data->allocPages(thread, pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
-            this->data->allocPages(thread, pageStart, pageCount, permissions, 0, 0, NULL);
+            this->data->allocPages(thread, pageStart, pageCount, permissions, 0, 0, nullptr);
         }
     }
     return addr;
@@ -182,7 +182,6 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
     U32 pageStart = address >> K_PAGE_SHIFT;
     U32 pageCount = (len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
     U32 permissions = 0;
-    U32 i;
 
     if (write)
         permissions |= PAGE_WRITE;
@@ -191,13 +190,13 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
     if (exec)
         permissions |= PAGE_EXEC;
 
-    for (i = pageStart; i < pageStart + pageCount; i++) {
+    for (U32 i = pageStart; i < pageStart + pageCount; i++) {
         if (!isPageMapped(i)) {
             return -K_ENOMEM;
         }
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-    for (i = pageStart; i < pageStart + pageCount; i++) {
+    for (U32 i = pageStart; i < pageStart + pageCount; i++) {
         this->data->protectPage(thread, i, permissions);
     }
     return 0;
@@ -229,7 +228,6 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         this->unmap(oldaddress + newsize, oldsize - newsize);
         return oldaddress;
     } else {
-        U32 result;
         U32 prot = 0;
         U32 f = K_MAP_FIXED;
         if (pageFlags & PAGE_READ) {
@@ -246,7 +244,7 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         } else {
             f |= K_MAP_PRIVATE;
         }
-        result = this->mmap(thread, oldaddress + oldsize, newsize - oldsize, prot, f, -1, 0);
+        U32 result = this->mmap(thread, oldaddress + oldsize, newsize - oldsize, prot, f, -1, 0);
         if (result == oldaddress + oldsize) {
             return oldaddress;
         }
@@ -273,7 +271,7 @@ U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<U8*>& pa
     if (startPage == 0 && !data->reserveAddress(ADDRESS_PROCESS_MMAP_START, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
         return 0;        
     }
-    this->data->allocPages(thread, startPage << K_PAGE_SHIFT, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, NULL, (U8**)pages.data());
+    this->data->allocPages(thread, startPage << K_PAGE_SHIFT, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, (U8**)pages.data());
     return startPage;
 }
 

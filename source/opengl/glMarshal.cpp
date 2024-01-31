@@ -5,7 +5,7 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
-#define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {buffer##p[i] = cpu->memory->read##m(address);address+=s;} return buffer##p;}
+#define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {buffer##p[i] = cpu->memory->read##m(address);address+=s;} return buffer##p;}
 
 #ifdef BOXEDWINE_64BIT_MMU
 #include "../emulation/hardmmu/kmemory_hard.h"
@@ -183,7 +183,7 @@ const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addres
 }
 
 #else 
-#define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {U32 i; if (!address) return NULL; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=NULL;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (i=0;i<count;i++) {struct conv d; get = cpu->memory->read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
+#define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {struct conv d; get = cpu->memory->read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
 
 MARSHAL_TYPE(GLbyte, b, b, 1)
 MARSHAL_TYPE(GLbyte, 2b, b, 1)
@@ -264,10 +264,8 @@ MARSHAL_TYPE_CUSTOM(GLdouble, d, q, 8, long2Double, d.l, d.d)
 MARSHAL_TYPE_CUSTOM(GLdouble, 2d, q, 8, long2Double, d.l, d.d)
 
 void marshalBackd(CPU* cpu, U32 address, GLdouble* buffer, U32 count) {
-    U32 i;
-
     if (address) {
-        for (i=0;i<count;i++) {
+        for (U32 i=0;i<count;i++) {
             struct long2Double d;
             d.d = buffer[i];
             cpu->memory->writeq(address, d.l);
@@ -277,10 +275,8 @@ void marshalBackd(CPU* cpu, U32 address, GLdouble* buffer, U32 count) {
 }
 
 void marshalBackf(CPU* cpu, U32 address, GLfloat* buffer, U32 count) {
-    U32 i;
-
     if (address) {
-        for (i=0;i<count;i++) {
+        for (U32 i=0;i<count;i++) {
             struct int2Float f;
             f.f = buffer[i];
             cpu->memory->writed(address, f.i);
@@ -290,10 +286,8 @@ void marshalBackf(CPU* cpu, U32 address, GLfloat* buffer, U32 count) {
 }
 
 void marshalBacki(CPU* cpu, U32 address, GLint* buffer, U32 count) {
-    U32 i;
-
     if (address) {
-        for (i=0;i<count;i++) {
+        for (U32 i=0;i<count;i++) {
             cpu->memory->writed(address, buffer[i]);
             address+=4;
         }
@@ -305,10 +299,8 @@ void marshalBackui(CPU* cpu, U32 address, GLuint* buffer, U32 count) {
 }
 
 void marshalBacki64(CPU* cpu, U32 address, GLint64* buffer, U32 count) {
-    U32 i;
-
     if (address) {
-        for (i=0;i<count;i++) {
+        for (U32 i=0;i<count;i++) {
             cpu->memory->writeq(address, buffer[i]);
             address+=8;
         }
@@ -320,10 +312,8 @@ void marshalBackui64(CPU* cpu, U32 address, GLuint64* buffer, U32 count) {
 }
 
 void marshalBackus(CPU* cpu, U32 address, GLushort* buffer, U32 count) {
-    U32 i;
-
     if (address) {
-        for (i=0;i<count;i++) {
+        for (U32 i=0;i<count;i++) {
             cpu->memory->writew(address, buffer[i]);
             address+=2;
         }
@@ -359,10 +349,10 @@ void marshalBackbool(CPU* cpu, U32 address, GLboolean* buffer, U32 count) {
 }
 
 GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
-    GLvoid* data=0;
+    GLvoid* data= nullptr;
 
     if (!address)
-        return NULL;
+        return nullptr;
     switch (type) {
         case GL_UNSIGNED_BYTE:
             data = marshalub(cpu, address, count);
@@ -440,11 +430,11 @@ void marshalBackType(CPU* cpu, U32 type, U32 count, GLvoid* buffer, U32 address)
 }
 
 GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
-    int bytes_per_comp;
+    int bytes_per_comp = 0;
     int len = components_in_format (format);
     
     if (!pixel)
-        return 0;
+        return nullptr;
 
     if (type == GL_BITMAP) {
         bytes_per_comp = 1;
@@ -485,25 +475,25 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
         return marshalf(cpu, pixel, len);
     default:
         kpanic("glcommongl.c marshalPixels uknown type: %d", type);
-        return NULL;
+        return nullptr;
     }
 }
 
 GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels) {
-    int bytes_per_comp;
-    int isSigned=0;
-    int bytes_per_row;
-    int len;
-    int remainder;
+    int bytes_per_comp = 0;
+    int isSigned = 0;
+    int bytes_per_row = 0;
+    int len = 0;
+    int remainder = 0;
     
-    GLint skipPixels;
-    GLint skipRows;
-    GLint alignment;
-    GLint pixels_per_row;
+    GLint skipPixels = 0;
+    GLint skipRows = 0;
+    GLint alignment = 0;
+    GLint pixels_per_row = 0;
     GLint skipImages = 0;
 
     if (!pixels)
-        return 0;
+        return nullptr;
 
     GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
     GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
@@ -594,20 +584,20 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         }
     }
     kpanic("glcommongl.c marshalPixels unknown bytes_per_comp %d", bytes_per_comp);
-    return 0;
+    return nullptr;
 }
 
 void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 address, GLvoid* pixels) {
-    int bytes_per_comp;
-    int isSigned=0;
-    int bytes_per_row;
-    int len;
-    int remainder;
+    int bytes_per_comp = 0;
+    int isSigned = 0;
+    int bytes_per_row = 0;
+    int len = 0;
+    int remainder = 0;
 
-    GLint skipPixels;
-    GLint skipRows;
-    GLint alignment;
-    GLint pixels_per_row;
+    GLint skipPixels = 0;
+    GLint skipRows = 0;
+    GLint alignment = 0;
+    GLint pixels_per_row = 0;
     GLint skipImages = 0;
 
     if (!pixels)
@@ -742,7 +732,7 @@ void unmapBuffer(CPU* cpu, GLenum target) {
 // instance is in the instance number within the function, so if the same function calls this 3 times, each call will have a difference instance
 GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer == 0)
-        return NULL;
+        return nullptr;
     if (buffer <0x10000) {
         return (GLvoid*)(uintptr_t)buffer;
     }
@@ -772,23 +762,21 @@ GLvoid** bufferpp;
 U32 bufferpp_len;
 
 GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount, U32 autoCharWidth) {
-    U32 i;
-
     if (bytesPerCount==-1 && autoCharWidth!=1) {
         kpanic("OpenGL marshalpp can't handle multi-byte strings");
     }
     if (!buffer)
-        return NULL;
+        return nullptr;
 
     if (bufferpp && bufferpp_len<count) {
         delete[] bufferpp;
-        bufferpp=NULL;
+        bufferpp= nullptr;
     }
     if (!bufferpp) {
         bufferpp = new GLvoid*[count];
         bufferpp_len = count;
     }
-    for (i=0;i<count;i++) {
+    for (U32 i=0;i<count;i++) {
         S32 len = 0;
         U32 p = cpu->memory->readd(buffer+i*4);
         if (sizes) {
@@ -830,11 +818,11 @@ const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengt
         for (U32 i = 0; i < bufferszArray_len; i++) {
             if (bufferszArray[i]) {
                 delete[] bufferszArray[i];
-                bufferszArray[i] = NULL;
+                bufferszArray[i] = nullptr;
             }
         }
     }
-    if (bufferszArray_len < count) {
+    if (!bufferszArray || bufferszArray_len < count) {
         if (bufferszArray) {
             delete[] bufferszArray;
         }
@@ -842,7 +830,7 @@ const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengt
         bufferszArray_len = count;
     }
     for (U32 i = 0; i < count; i++) {
-        U32 len;
+        U32 len = 0;
         U32 strAddress = cpu->memory->readd(address + i * 4);
         if (addressLengths) {
             len = cpu->memory->readd(addressLengths + i * 4);
@@ -867,7 +855,7 @@ const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addres
         for (U32 i = 0; i < bufferszArray_len; i++) {
             if (bufferszArrayARB[i]) {
                 delete[] bufferszArrayARB[i];
-                bufferszArrayARB[i] = NULL;
+                bufferszArrayARB[i] = nullptr;
             }
         }
     }
@@ -879,7 +867,7 @@ const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addres
         bufferszArrayARB_len = count;
     }
     for (U32 i = 0; i < count; i++) {
-        U32 len;
+        U32 len = 0;
         U32 strAddress = cpu->memory->readd(address + i * 4);
         if (addressLengths) {
             len = cpu->memory->readd(addressLengths + i * 4);
@@ -899,7 +887,7 @@ const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addres
 
 void* marshalunhandled(const char* func, const char* param, CPU* cpu, U32 address) {
     klog("%s parameter in OpenGL function, %s, was not marshalled", func, param);
-    return 0;
+    return nullptr;
 }
 
 // GLsizeiptr is 64-bit on x64 and 32-bit on x86
@@ -931,7 +919,7 @@ void* marshalDrawArraysIndirectBindlessCommandNV(CPU* cpu, U32 address, U32 coun
     //U32 size = 20 + 24*vertexCount;
 
     kpanic("DrawArraysIndirectBindlessCommandNV was not marshalled");
-    return NULL;
+    return nullptr;
 }
 
 #ifndef DISABLE_GL_EXTENSIONS
@@ -1052,13 +1040,11 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
 #else
 MARSHAL_TYPE(GLhandleARB, handle, d, 4)
 
-void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
-    U32 i;
-    
+void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {    
     // :TODO:
     if (sizeof(GLhandleARB)!=4)
         kpanic("marshalBackhandle not supported on this platform");
-    for (i=0;i<count;i++) {
+    for (U32 i=0;i<count;i++) {
         cpu->memory->writed(address, buffer[i]);
         address+=4;
     }

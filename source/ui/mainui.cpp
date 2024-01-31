@@ -11,13 +11,13 @@
 #include "examples/imgui_impl_dx9.h"
 #include <SDL_syswm.h>
 #include <d3d9.h>
-static LPDIRECT3D9              g_pD3D = NULL;
-LPDIRECT3DDEVICE9        g_pd3dDevice = NULL;
+static LPDIRECT3D9              g_pD3D = nullptr;
+LPDIRECT3DDEVICE9        g_pd3dDevice = nullptr;
 static D3DPRESENT_PARAMETERS    g_d3dpp = {};
 
 bool CreateDeviceD3D(HWND hWnd)
 {
-    if ((g_pD3D = Direct3DCreate9(D3D_SDK_VERSION)) == NULL)
+    if ((g_pD3D = Direct3DCreate9(D3D_SDK_VERSION)) == nullptr)
         return false;
 
     // Create the D3DDevice
@@ -38,8 +38,8 @@ bool CreateDeviceD3D(HWND hWnd)
 
 void CleanupDeviceD3D()
 {
-    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = NULL; }
-    if (g_pD3D) { g_pD3D->Release(); g_pD3D = NULL; }
+    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
+    if (g_pD3D) { g_pD3D->Release(); g_pD3D = nullptr; }
 }
 
 void ResetDevice()
@@ -113,7 +113,7 @@ void uiDraw() {
     ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, io.DisplaySize.y));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::GetColorU32(ImGuiCol_MenuBarBg));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));    
-    ImGui::Begin("mainWindow", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Begin("mainWindow", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar);
     ImGui::PopStyleColor();
     drawAppBar(appButtons, currentViewDeprecated, GlobalSettings::largeFontBold);
     //ImGui::Separator();
@@ -139,7 +139,7 @@ void gotoView(int viewId, BString tab, BString param1) {
     if (!currentView || currentView->saveChanges()) {
         if (currentView) {
             delete currentView;
-            currentView = NULL;
+            currentView = nullptr;
         }
         currentViewDeprecated = viewId;
         if (viewId == VIEW_OPTIONS) {
@@ -349,11 +349,11 @@ void uiShutdown() {
     ImGui::DestroyContext();
     
     SDL_DestroyWindow(window);
-    window = NULL;    
+    window = nullptr;
 }
 
 bool uiIsRunning() {
-    return window!=NULL;
+    return window!= nullptr;
 }
 
 bool uiLoop() {
@@ -362,7 +362,7 @@ bool uiLoop() {
     // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
     // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
     // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-    SDL_Event event;
+    SDL_Event event = {};
     bool done = false;
     while (SDL_WaitEventTimeout(&event, GlobalSettings::getFrameDelayMillies()))
     {
@@ -420,14 +420,14 @@ bool uiLoop() {
         g_pd3dDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
         g_pd3dDevice->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
         D3DCOLOR clear_col_dx = D3DCOLOR_RGBA((int)(clear_color.x * 255.0f), (int)(clear_color.y * 255.0f), (int)(clear_color.z * 255.0f), (int)(clear_color.w * 255.0f));
-        g_pd3dDevice->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
+        g_pd3dDevice->Clear(0, nullptr, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, clear_col_dx, 1.0f, 0);
         ImGui::Render();
         if (g_pd3dDevice->BeginScene() >= 0)
         {
             ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
             g_pd3dDevice->EndScene();
         }
-        HRESULT result = g_pd3dDevice->Present(NULL, NULL, NULL, NULL);
+        HRESULT result = g_pd3dDevice->Present(nullptr, nullptr, nullptr, nullptr);
 
         // Handle loss of D3D9 device
         if (result == D3DERR_DEVICELOST && g_pd3dDevice->TestCooperativeLevel() == D3DERR_DEVICENOTRESET) {
@@ -471,7 +471,7 @@ bool uiShow(BString basePath) {
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 
 #ifdef BOXEDWINE_OPENGL_SDL
-    const char* glsl_version = NULL;
+    const char* glsl_version = nullptr;
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         // Decide GL+GLSL versions
 #if __APPLE__
@@ -588,7 +588,7 @@ bool uiShow(BString basePath) {
     currentViewDeprecated = VIEW_APPS;
     if (currentView) {
         delete currentView;
-        currentView = NULL;
+        currentView = nullptr;
     }
     loadApps(); // need to be after we create the context for images to work
     createButton();

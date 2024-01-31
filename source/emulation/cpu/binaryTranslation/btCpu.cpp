@@ -119,7 +119,7 @@ DecodedOp* BtCPU::getOp(U32 eip, bool existing) {
         decodeBlock(fetchByte, memory, eip, this->isBig(), 4, 64, 1, block);
         return block->op;
     }
-    return NULL;
+    return nullptr;
 }
 
 void* BtCPU::translateEipInternal(U32 ip) {
@@ -225,7 +225,7 @@ void BtCPU::wakeThreadIfWaiting() {
 }
 
 DecodedBlock* BtCPU::getNextBlock() {
-    return NULL;
+    return nullptr;
 }
 
 S32 BtCPU::preLinkCheck(BtData* data) {

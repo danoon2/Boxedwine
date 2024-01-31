@@ -67,7 +67,7 @@ U32 FsOpenNode::getDirectoryEntryCount() {
 
 BoxedPtr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, BString& name) {
     if (!this->node) {
-        return NULL;
+        return nullptr;
     }
     this->loadDirEntries();
     if (index==0)

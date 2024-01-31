@@ -43,14 +43,14 @@ DownloadDlg::DownloadDlg(int title, const std::vector<DownloadItem>& items, std:
                 if (totalSize) {
                     this->percentDone = (U32)(100 * (completedSize + bytesCompleted) / totalSize);
                 }
-                }, NULL, errorMsg, &this->cancelled);
+                }, nullptr, errorMsg, &this->cancelled);
             if (!result && item.urlBackup.length() && !this->cancelled) {
                 errorMsg = "";
                 result = downloadFile(item.urlBackup, tmpFilePath, [this, totalSize, completedSize](U64 bytesCompleted) {
                     if (totalSize) {
                         this->percentDone = (U32)(100 * (completedSize + bytesCompleted) / totalSize);
                     }
-                    }, NULL, errorMsg, &this->cancelled);
+                    }, nullptr, errorMsg, &this->cancelled);
             }
             if (!result) {
                 break;

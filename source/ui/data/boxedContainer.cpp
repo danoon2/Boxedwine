@@ -319,7 +319,7 @@ BoxedApp* BoxedContainer::getAppByIniFile(BString iniFile) {
             return app;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void BoxedContainer::setName(BString name) {
@@ -462,40 +462,40 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
         systemReg.writeKeyDword(szKeyWindNT, "CSDVersion", (U32)((version.wServicePackMajor << 8) | version.wServicePackMajor));
         systemReg.writeKey(szKeyEnvNT, "OS", "Windows_NT");
 
-        systemReg.writeKey(szKey9x, "VersionNumber", NULL);
-        systemReg.writeKey(szKey9x, "SubVersionNumber", NULL);
-        systemReg.writeKey(szKey9x, "ProductName", NULL);
-        userReg.writeKey("Software\\Wine", "Version", NULL);
+        systemReg.writeKey(szKey9x, "VersionNumber", nullptr);
+        systemReg.writeKey(szKey9x, "SubVersionNumber", nullptr);
+        systemReg.writeKey(szKey9x, "ProductName", nullptr);
+        userReg.writeKey("Software\\Wine", "Version", nullptr);
     } else if (version.dwPlatformId == VER_PLATFORM_WIN32_WINDOWS) {
         BString ver = BString::valueOf(version.dwMajorVersion) + "." + BString::valueOf(version.dwMinorVersion) + "." + BString::valueOf(version.dwBuildNumber);
         BString product = "Microsoft " + version.szDescription;
 
-        systemReg.writeKey(szKeyNT, "CurrentVersion", NULL);
-        systemReg.writeKey(szKeyNT, "CSDVersion", NULL);
-        systemReg.writeKey(szKeyNT, "CurrentBuild", NULL);
-        systemReg.writeKey(szKeyNT, "CurrentBuildNumber", NULL);
-        systemReg.writeKey(szKeyNT, "ProductName", NULL);
-        systemReg.writeKey(szKeyProdNT, "ProductType", NULL);
-        systemReg.writeKey(szKeyWindNT, "CSDVersion", NULL);
-        systemReg.writeKey(szKeyEnvNT, "OS", NULL);
+        systemReg.writeKey(szKeyNT, "CurrentVersion", nullptr);
+        systemReg.writeKey(szKeyNT, "CSDVersion", nullptr);
+        systemReg.writeKey(szKeyNT, "CurrentBuild", nullptr);
+        systemReg.writeKey(szKeyNT, "CurrentBuildNumber", nullptr);
+        systemReg.writeKey(szKeyNT, "ProductName", nullptr);
+        systemReg.writeKey(szKeyProdNT, "ProductType", nullptr);
+        systemReg.writeKey(szKeyWindNT, "CSDVersion", nullptr);
+        systemReg.writeKey(szKeyEnvNT, "OS", nullptr);
 
         systemReg.writeKey(szKey9x, "VersionNumber", ver.c_str());
         systemReg.writeKey(szKey9x, "SubVersionNumber", version.szCSDVersion.c_str());
         systemReg.writeKey(szKey9x, "ProductName", product.c_str());
-        userReg.writeKey("Software\\Wine", "Version", NULL);
+        userReg.writeKey("Software\\Wine", "Version", nullptr);
     } else {
-        systemReg.writeKey(szKeyNT, "CurrentVersion", NULL);
-        systemReg.writeKey(szKeyNT, "CSDVersion", NULL);
-        systemReg.writeKey(szKeyNT, "CurrentBuild", NULL);
-        systemReg.writeKey(szKeyNT, "CurrentBuildNumber", NULL);
-        systemReg.writeKey(szKeyNT, "ProductName", NULL);
-        systemReg.writeKey(szKeyProdNT, "ProductType", NULL);
-        systemReg.writeKey(szKeyWindNT, "CSDVersion", NULL);
-        systemReg.writeKey(szKeyEnvNT, "OS", NULL);
+        systemReg.writeKey(szKeyNT, "CurrentVersion", nullptr);
+        systemReg.writeKey(szKeyNT, "CSDVersion", nullptr);
+        systemReg.writeKey(szKeyNT, "CurrentBuild", nullptr);
+        systemReg.writeKey(szKeyNT, "CurrentBuildNumber", nullptr);
+        systemReg.writeKey(szKeyNT, "ProductName", nullptr);
+        systemReg.writeKey(szKeyProdNT, "ProductType", nullptr);
+        systemReg.writeKey(szKeyWindNT, "CSDVersion", nullptr);
+        systemReg.writeKey(szKeyEnvNT, "OS", nullptr);
 
-        systemReg.writeKey(szKey9x, "VersionNumber", NULL);
-        systemReg.writeKey(szKey9x, "SubVersionNumber", NULL);
-        systemReg.writeKey(szKey9x, "ProductName", NULL);
+        systemReg.writeKey(szKey9x, "VersionNumber", nullptr);
+        systemReg.writeKey(szKey9x, "SubVersionNumber", nullptr);
+        systemReg.writeKey(szKey9x, "ProductName", nullptr);
 
         userReg.writeKey("Software\\Wine", "Version", version.szVersion.c_str());
     }

@@ -29,27 +29,6 @@
 
 U64 sysCallTime;
 extern struct Block emptyBlock;
-//#undef LOG_SYSCALLS
-#undef LOG_OPS
-#define LOG_OPS
-#ifdef LOG_OPS
-void logsyscall(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    if (1) {
-        char tmp[256];
-        vsnprintf(tmp, sizeof(tmp), fmt, args);
-    }
-    va_end(args);
-}
-
-#define LOGSYS logsyscall
-#elif defined LOG_SYSCALLS
-#define LOGSYS klog
-#else
-#define LOGSYS if (0) klog
-#endif
-
 
 #define ARG1 EBX
 #define ARG2 ECX
@@ -84,23 +63,19 @@ static U32 syscallMask = 0;
 static U32 syscallMask = 0;
 #endif
 
-void sysLog(U32 type, CPU* cpu, const char* msg, ...) {
-    va_list argptr;
-    va_start(argptr, msg);
+template<typename ... Args>
+void sysLog(U32 type, CPU* cpu, const char* msg, Args ... args) {
     if (type & syscallMask) {
-        vprintf( msg, argptr);
+        std::printf(msg, args ...);
     }
-    va_end(argptr);
 }
 
-void sysLog1(U32 type, CPU* cpu, const char* msg, ...) {
-    va_list argptr;
-    va_start(argptr, msg);
+template<typename ... Args>
+void sysLog1(U32 type, CPU* cpu, const char* msg, Args ... args) {
     if (type & syscallMask) {
         printf("%.4X/%.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
-        vprintf( msg, argptr);
+        std::printf(msg, args ...);
     }
-    va_end(argptr);
 }
 
 #define SYS_LOG if (syscallMask) sysLog
@@ -527,7 +502,6 @@ static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
     U32 result = 0;
-    char tmp[MAX_FILEPATH_LEN];
     KMemory* memory = cpu->memory;
 
     switch (ARG1) {
@@ -536,11 +510,11 @@ static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
             result = ksocket(SARG2, SARG3 & 0xFF, SARG4);
             break;
         case 2: // SYS_BIND
-            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_BIND: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(memory, SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_BIND: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(memory, SARG3, SARG4).c_str(), SARG4);
             result = kbind(cpu->thread, SARG2, SARG3, SARG4);
             break;
         case 3: // SYS_CONNECT
-            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_CONNECT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(memory, SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_CONNECT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(memory, SARG3, SARG4).c_str(), SARG4);
             result = kconnect(cpu->thread, SARG2, SARG3, SARG4);
             break;
         case 4: // SYS_LISTEN				
@@ -548,7 +522,7 @@ static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
             result = klisten(cpu->thread, SARG2, SARG3);
             break;
         case 5: // SYS_ACCEPT
-            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_ACCEPT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(memory, SARG3, SARG4, tmp, sizeof(tmp)), SARG4);
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_ACCEPT: socket=%d address=%X(%s) len=%d", SARG2, SARG3, socketAddressName(memory, SARG3, SARG4).c_str(), SARG4);
             result = kaccept(cpu->thread, SARG2, SARG3, SARG4, 0);
             break;			
         case 6: // SYS_GETSOCKNAME
@@ -572,11 +546,11 @@ static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
             result = krecv(cpu->thread, SARG2, SARG3, SARG4, SARG5);
             break;
         case 11: // SYS_SENDTO
-            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SENDTO: socket=%d buffer=%X len=%d flags=%X dest=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(memory, SARG6, SARG7, tmp, sizeof(tmp)));
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_SENDTO: socket=%d buffer=%X len=%d flags=%X dest=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(memory, SARG6, SARG7).c_str());
             result = ksendto(cpu->thread, SARG2, SARG3, SARG4, SARG5, SARG6, SARG7);
             break;
         case 12: // SYS_RECVFROM
-            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_RECVFROM: socket=%d buffer=%X len=%d flags=%X address=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(memory, SARG6, SARG7, tmp, sizeof(tmp)));
+            SYS_LOG1(SYSCALL_SOCKET, cpu, "SYS_RECVFROM: socket=%d buffer=%X len=%d flags=%X address=%s", SARG2, SARG3, SARG4, SARG5, socketAddressName(memory, SARG6, SARG7).c_str());
             result = krecvfrom(cpu->thread, SARG2, SARG3, SARG4, SARG5, SARG6, SARG7);
             break;
         case 13: // SYS_SHUTDOWN
@@ -640,7 +614,7 @@ static U32 syscall_sysinfo(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_ipc(CPU* cpu, U32 eipCount) {
-    U32 result;
+    U32 result = 0;
 
     // ARG5 holds the pointer to be copied
     if (ARG1 == 21) { // IPCOP_shmat
@@ -719,11 +693,9 @@ static U32 syscall_llseek(CPU* cpu, U32 eipCount) {
     if (ARG4 && r64>=0) {
         cpu->memory->writeq(ARG4, r64);
     }
-    U32 result;
+    U32 result = 0;
     if (r64<0) {
         result = (U32)r64;
-    } else {
-        result = 0;
     }
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -1323,7 +1295,7 @@ BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, BString name) {
             return result;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
@@ -1520,16 +1492,14 @@ U32 syscall_socketpair(CPU* cpu, U32 eipCount) {
 }
 
 U32 syscall_bind(CPU* cpu, U32 eipCount) {
-    char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG1(SYSCALL_SOCKET, cpu, "bind socket=%d address=%X(%s) len=%d", ARG1, ARG2, socketAddressName(cpu->memory, ARG2, ARG3, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "bind socket=%d address=%X(%s) len=%d", ARG1, ARG2, socketAddressName(cpu->memory, ARG2, ARG3).c_str(), ARG3);
     U32 result = kbind(cpu->thread, ARG1, ARG2, ARG3);
     SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
 U32 syscall_connect(CPU* cpu, U32 eipCount) {
-    char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG1(SYSCALL_SOCKET, cpu, "connect socket=%d address=%X(%s) len=%d", ARG1, ARG2, socketAddressName(cpu->memory, ARG2, ARG3, tmp, sizeof(tmp)), ARG3);
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "connect socket=%d address=%X(%s) len=%d", ARG1, ARG2, socketAddressName(cpu->memory, ARG2, ARG3).c_str(), ARG3);
     U32 result = kconnect(cpu->thread, ARG1, ARG2, ARG3);
     SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -1543,8 +1513,7 @@ U32 syscall_listen(CPU* cpu, U32 eipCount) {
 }
 
 U32 syscall_accept4(CPU* cpu, U32 eipCount) {
-    char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG1(SYSCALL_SOCKET, cpu, "accept4 socket=%d address=%X(%s) len=%d flags=%X", ARG1, ARG2, socketAddressName(cpu->memory, ARG2, ARG3, tmp, sizeof(tmp)), ARG3, ARG4);
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "accept4 socket=%d address=%X(%s) len=%d flags=%X", ARG1, ARG2, socketAddressName(cpu->memory, ARG2, ARG3).c_str(), ARG3, ARG4);
     U32 result = kaccept(cpu->thread, ARG1, ARG2, ARG3, ARG4);
     SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -1579,8 +1548,7 @@ U32 syscall_getpeername(CPU* cpu, U32 eipCount) {
 }
 
 U32 syscall_sendto(CPU* cpu, U32 eipCount) {
-    char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG1(SYSCALL_SOCKET, cpu, "sendto socket=%d buffer=%X len=%d flags=%X dest=%s", ARG1, ARG2, ARG3, ARG4, socketAddressName(cpu->memory, ARG5, ARG6, tmp, sizeof(tmp)));
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "sendto socket=%d buffer=%X len=%d flags=%X dest=%s", ARG1, ARG2, ARG3, ARG4, socketAddressName(cpu->memory, ARG5, ARG6).c_str());
     U32 result = ksendto(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
     SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -1594,8 +1562,7 @@ U32 syscall_sendmsg(CPU* cpu, U32 eipCount) {
 }
 
 U32 syscall_recvfrom(CPU* cpu, U32 eipCount) {
-    char tmp[MAX_FILEPATH_LEN];
-    SYS_LOG1(SYSCALL_SOCKET, cpu, "recvfrom socket=%d buffer=%X len=%d flags=%X address=%s", ARG1, ARG2, ARG3, ARG4, socketAddressName(cpu->memory, ARG5, ARG6, tmp, sizeof(tmp)));
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "recvfrom socket=%d buffer=%X len=%d flags=%X address=%s", ARG1, ARG2, ARG3, ARG4, socketAddressName(cpu->memory, ARG5, ARG6).c_str());
     U32 result = krecvfrom(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
     SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -1616,42 +1583,42 @@ U32 syscall_shutdown(CPU* cpu, U32 eipCount) {
 }
 
 static const SyscallFunc syscallFunc[] = {
-    0,                  // 0
+    nullptr,                  // 0
     syscall_exit,       // 1 __NR_exit
-    0,                  // 2
+    nullptr,                  // 2
     syscall_read,       // 3 __NR_read
     syscall_write,      // 4 __NR_write
     syscall_open,       // 5 __NR_open
     syscall_close,      // 6 __NR_close
     syscall_waitpid,    // 7 __NR_waitpid
-    0,                  // 8
+    nullptr,                  // 8
     syscall_link,       // 9 __NR_link
     syscall_unlink,     // 10 __NR_unlink
     syscall_execve,     // 11 __NR_execve
     syscall_chdir,      // 12 __NR_chdir
     syscall_time,       // 13 __NR_time
-    0,                  // 14
+    nullptr,                  // 14
     syscall_chmod,      // 15 __NR_chmod
-    0,                  // 16
-    0,                  // 17
-    0,                  // 18
+    nullptr,                  // 16
+    nullptr,                  // 17
+    nullptr,                  // 18
     syscall_lseek,      // 19 __NR_lseek
     syscall_getpid,     // 20 __NR_getpid
-    0,                  // 21
-    0,                  // 22
-    0,                  // 23
+    nullptr,                  // 21
+    nullptr,                  // 22
+    nullptr,                  // 23
     syscall_getuid,     // 24 __NR_getuid
-    0,                  // 25
+    nullptr,                  // 25
     syscall_ptrace,     // 26 __NR_ptrace
     syscall_alarm,      // 27 __NR_alarm
-    0,                  // 28
-    0,                  // 29
+    nullptr,                  // 28
+    nullptr,                  // 29
     syscall_utime,      // 30 __NR_utime
-    0,                  // 31
-    0,                  // 32
+    nullptr,                  // 31
+    nullptr,                  // 32
     syscall_access,     // 33 __NR_access
-    0,                  // 34
-    0,                  // 35
+    nullptr,                  // 34
+    nullptr,                  // 35
     syscall_sync,       // 36 __NR_sync
     syscall_kill,       // 37 __NR_kill
     syscall_rename,     // 38 __NR_rename
@@ -1660,156 +1627,156 @@ static const SyscallFunc syscallFunc[] = {
     syscall_dup,        // 41 __NR_dup
     syscall_pipe,       // 42 __NR_pipe
     syscall_times,      // 43 __NR_times
-    0,                  // 44
+    nullptr,                  // 44
     syscall_brk,        // 45 __NR_brk
-    0,                  // 46
+    nullptr,                  // 46
     syscall_getgid,     // 47 __NR_getgid
-    0,                  // 48
+    nullptr,                  // 48
     syscall_geteuid,    // 49 __NR_geteuid
     syscall_getegid,    // 50 __NR_getegid
-    0,                  // 51
-    0,                  // 52
-    0,                  // 53
+    nullptr,                  // 51
+    nullptr,                  // 52
+    nullptr,                  // 53
     syscall_ioctl,      // 54 __NR_ioctl
-    0,                  // 55
-    0,                  // 56
+    nullptr,                  // 55
+    nullptr,                  // 56
     syscall_setpgid,    // 57 __NR_setpgid
-    0,                  // 58
-    0,                  // 59
+    nullptr,                  // 58
+    nullptr,                  // 59
     syscall_umask,      // 60 __NR_umask
-    0,                  // 61
-    0,                  // 62
+    nullptr,                  // 61
+    nullptr,                  // 62
     syscall_dup2,       // 63 __NR_dup2
     syscall_getppid,    // 64 __NR_getppid
     syscall_getpgrp,    // 65 __NR_getpgrp
     syscall_setsid,     // 66 __NR_setsid
-    0,                  // 67
-    0,                  // 68
-    0,                  // 69
-    0,                  // 70
-    0,                  // 71
-    0,                  // 72
-    0,                  // 73
-    0,                  // 74
+    nullptr,                  // 67
+    nullptr,                  // 68
+    nullptr,                  // 69
+    nullptr,                  // 70
+    nullptr,                  // 71
+    nullptr,                  // 72
+    nullptr,                  // 73
+    nullptr,                  // 74
     syscall_setrlimit,  // 75 __NR_setrlimit 
-    0,                  // 76
+    nullptr,                  // 76
     syscall_getrusuage, // 77 __NR_getrusage
     syscall_gettimeofday,// 78__NR_gettimeofday
-    0,                  // 79
-    0,                  // 80
-    0,                  // 81
-    0,                  // 82
+    nullptr,                  // 79
+    nullptr,                  // 80
+    nullptr,                  // 81
+    nullptr,                  // 82
     syscall_symlink,    // 83 __NR_symlink
-    0,                  // 84
+    nullptr,                  // 84
     syscall_readlink,   // 85 __NR_readlink
-    0,                  // 86
-    0,                  // 87
-    0,                  // 88
-    0,                  // 89
+    nullptr,                  // 86
+    nullptr,                  // 87
+    nullptr,                  // 88
+    nullptr,                  // 89
     syscall_mmap64,     // 90 __NR_mmap
     syscall_unmap,      // 91 __NR_munmap
-    0,                  // 92
+    nullptr,                  // 92
     syscall_ftruncate,  // 93 __NR_ftruncate
     syscall_fchmod,     // 94 __NR_fchmod
-    0,                  // 95
-    0,                  // 96
+    nullptr,                  // 95
+    nullptr,                  // 96
     syscall_setpriority,// 97 __NR_setpriority
-    0,                  // 98
+    nullptr,                  // 98
     syscall_statfs,     // 99 __NR_statfs
-    0,                  // 100
+    nullptr,                  // 100
     syscall_ioperm,     // 101 __NR_ioperm
     syscall_socketcall, // 102 __NR_socketcall
-    0,                  // 103
+    nullptr,                  // 103
     syscall_setitimer,  // 104 __NR_setitimer 
-    0,                  // 105
-    0,                  // 106
-    0,                  // 107
-    0,                  // 108
-    0,                  // 109
+    nullptr,                  // 105
+    nullptr,                  // 106
+    nullptr,                  // 107
+    nullptr,                  // 108
+    nullptr,                  // 109
     syscall_iopl,       // 110 __NR_iopl
-    0,                  // 111
-    0,                  // 112
-    0,                  // 113
+    nullptr,                  // 111
+    nullptr,                  // 112
+    nullptr,                  // 113
     syscall_wait4,      // 114 __NR_wait4
-    0,                  // 115
+    nullptr,                  // 115
     syscall_sysinfo,    // 116 __NR_sysinfo
     syscall_ipc,        // 117 __NR_ipc
     syscall_fsync,      // 118 __NR_fsync
     syscall_sigreturn,  // 119 __NR_sigreturn
     syscall_clone,      // 120 __NR_clone
-    0,                  // 121
+    nullptr,                  // 121
     syscall_uname,      // 122 __NR_uname
     syscall_modify_ldt, // 123 __NR_modify_ldt
-    0,                  // 124
+    nullptr,                  // 124
     syscall_mprotect,   // 125 __NR_mprotect
-    0,                  // 126
-    0,                  // 127
-    0,                  // 128
-    0,                  // 129
-    0,                  // 130
-    0,                  // 131
+    nullptr,                  // 126
+    nullptr,                  // 127
+    nullptr,                  // 128
+    nullptr,                  // 129
+    nullptr,                  // 130
+    nullptr,                  // 131
     syscall_getpgid,    // 132 __NR_getpgid
     syscall_fchdir,     // 133 __NR_fchdir
-    0,                  // 134
-    0,                  // 135
-    0,                  // 136
-    0,                  // 137
-    0,                  // 138
-    0,                  // 139
+    nullptr,                  // 134
+    nullptr,                  // 135
+    nullptr,                  // 136
+    nullptr,                  // 137
+    nullptr,                  // 138
+    nullptr,                  // 139
     syscall_llseek,     // 140 __NR__llseek
     syscall_getdents,   // 141 __NR_getdents
     syscall_newselect,  // 142 __NR_newselect
     syscall_flock,      // 143 __NR_flock
     syscall_msync,      // 144 __NR_msync
-    0,                  // 145
+    nullptr,                  // 145
     syscall_writev,     // 146  __NR_writev
-    0,                  // 147
+    nullptr,                  // 147
     syscall_fdatasync,  // 148 __NR_fdatasync
-    0,                  // 149
+    nullptr,                  // 149
     syscall_mlock,      // 150 __NR_mlock
-    0,                  // 151
-    0,                  // 152
-    0,                  // 153
-    0,                  // 154
+    nullptr,                  // 151
+    nullptr,                  // 152
+    nullptr,                  // 153
+    nullptr,                  // 154
     syscall_sched_getparam, // 155 __NR_sched_getparam
-    0,                  // 156
+    nullptr,                  // 156
     syscall_sched_getscheduler, // 157 __NR_sched_getscheduler
     syscall_sched_yield,// 158 __NR_sched_yield
     syscall_sched_get_priority_max, // 159 __NR_sched_get_priority_max
     syscall_sched_get_priority_min, // 160 __NR_sched_get_priority_min
-    0,                  // 161
+    nullptr,                  // 161
     syscall_nanosleep,  // 162 __NR_nanosleep
     syscall_mremap,     // 163 __NR_mremap
-    0,                  // 164
-    0,                  // 165
+    nullptr,                  // 164
+    nullptr,                  // 165
     syscall_vm86,       // 166 __NR_vm86
-    0,                  // 167
+    nullptr,                  // 167
     syscall_poll,       // 168 __NR_poll
-    0,                  // 169
-    0,                  // 170
-    0,                  // 171
+    nullptr,                  // 169
+    nullptr,                  // 170
+    nullptr,                  // 171
     syscall_prctl,      // 172 __NR_prctl
-    0,                  // 173
+    nullptr,                  // 173
     syscall_rt_sigaction,// 174 __NR_rt_sigaction
     syscall_rt_sigprocmask, // 175 __NR_rt_sigprocmask
-    0,                  // 176
-    0,                  // 177
-    0,                  // 178
+    nullptr,                  // 176
+    nullptr,                  // 177
+    nullptr,                  // 178
     syscall_rt_sigsuspend, // 179 __NR_rt_sigsuspend
     syscall_pread64,    // 180 __NR_pread64
     syscall_pwrite64,   // 181 __NR_pwrite64
-    0,                  // 182
+    nullptr,                  // 182
     syscall_getcwd,     // 183 __NR_getcwd
-    0,                  // 184
-    0,                  // 185
+    nullptr,                  // 184
+    nullptr,                  // 185
     syscall_sigaltstack,// 186 __NR_sigaltstack
-    0,                  // 187
-    0,                  // 188
-    0,                  // 189
+    nullptr,                  // 187
+    nullptr,                  // 188
+    nullptr,                  // 189
     syscall_vfork,      // 190 __NR_vfork
     syscall_ugetrlimit, // 191 __NR_ugetrlimit
     syscall_mmap2,      // 192 __NR_mmap2
-    0,                  // 193
+    nullptr,                  // 193
     syscall_ftruncate64,// 194 __NR_ftruncate64
     syscall_stat64,     // 195 __NR_stat64
     syscall_lstat64,    // 196 __NR_lstat64
@@ -1819,8 +1786,8 @@ static const SyscallFunc syscallFunc[] = {
     syscall_getgid32,   // 200 __NR_getgid32
     syscall_geteuid32,  // 201 __NR_geteuid32
     syscall_getegid32,  // 202 __NR_getegid32
-    0,                  // 203
-    0,                  // 204
+    nullptr,                  // 203
+    nullptr,                  // 204
     syscall_getgroups32,// 205 __NR_getgroups32
     syscall_setgroups32,// 206 __NR_setgroups32
     syscall_fchown32,   // 207 __NR_fchown32
@@ -1831,56 +1798,56 @@ static const SyscallFunc syscallFunc[] = {
     syscall_chown32,    // 212 __NR_chown32
     syscall_setuid32,   // 213 __NR_setuid32
     syscall_setgid32,   // 214 __NR_setgid32
-    0,                  // 215
-    0,                  // 216
-    0,                  // 217
+    nullptr,                  // 215
+    nullptr,                  // 216
+    nullptr,                  // 217
     syscall_mincore,    // 218 __NR_mincore
     syscall_madvise,    // 219 __NR_madvise
     syscall_getdents64, // 220 __NR_getdents64
     syscall_fcntl64,    // 221 __NR_fcntl64
-    0,                  // 222
-    0,                  // 223
+    nullptr,                  // 222
+    nullptr,                  // 223
     syscall_gettid,     // 224 __NR_gettid
-    0,                  // 225
-    0,                  // 226
-    0,                  // 227
+    nullptr,                  // 225
+    nullptr,                  // 226
+    nullptr,                  // 227
     syscall_fsetxattr,  // 228 __NR_fsetxattr
     syscall_getxattr,   // 229
     syscall_lgetxattr,  // 230
     syscall_fgetxattr,  // 231 __NR_fgetxattr
-    0,                  // 232
-    0,                  // 233
+    nullptr,                  // 232
+    nullptr,                  // 233
     syscall_flistxattr, // 234 __NR_flistxattr
-    0,                  // 235
-    0,                  // 236
-    0,                  // 237
-    0,                  // 238 __NR_tkill
-    0,                  // 239
+    nullptr,                  // 235
+    nullptr,                  // 236
+    nullptr,                  // 237
+    nullptr,                  // 238 __NR_tkill
+    nullptr,                  // 239
     syscall_futex,      // 240 __NR_futex
     syscall_sched_setaffinity, // 241 __NR_sched_setaffinity
     syscall_sched_getaffinity, // 242 __NR_sched_getaffinity
     syscall_set_thread_area, // 243 __NR_set_thread_area
-    0,                  // 244
-    0,                  // 245
-    0,                  // 246
-    0,                  // 247
-    0,                  // 248
-    0,                  // 249
-    0,                  // 250
-    0,                  // 251
+    nullptr,                  // 244
+    nullptr,                  // 245
+    nullptr,                  // 246
+    nullptr,                  // 247
+    nullptr,                  // 248
+    nullptr,                  // 249
+    nullptr,                  // 250
+    nullptr,                  // 251
     syscall_exit_group, // 252 __NR_exit_group
-    0,                  // 253
+    nullptr,                  // 253
     syscall_epoll_create, // 254 __NR_epoll_create
     syscall_epoll_ctl,  // 255 __NR_epoll_ctl
     syscall_epoll_wait, // 256 __NR_epoll_wait
-    0,                  // 257
+    nullptr,                  // 257
     syscall_set_tid_address, // 258 __NR_set_tid_address
-    0,                  // 259
-    0,                  // 260
-    0,                  // 261
-    0,                  // 262
-    0,                  // 263
-    0,                  // 264
+    nullptr,                  // 259
+    nullptr,                  // 260
+    nullptr,                  // 261
+    nullptr,                  // 262
+    nullptr,                  // 263
+    nullptr,                  // 264
     syscall_clock_gettime, // 265 __NR_clock_gettime
     syscall_clock_getres, // 266 __NR_clock_getres
     syscall_clock_nanosleep, // 267 __NR_clock_nanosleep
@@ -1889,92 +1856,92 @@ static const SyscallFunc syscallFunc[] = {
     syscall_tgkill,     // 270 __NR_tgkill
     syscall_utimes,     // 271 __NR_utimes
     syscall_fadvise64,  // 272 __NR_fadvise64
-    0,                  // 273
-    0,                  // 274
-    0,                  // 275
-    0,                  // 276
-    0,                  // 277
-    0,                  // 278
-    0,                  // 279
-    0,                  // 280
-    0,                  // 281
-    0,                  // 282
-    0,                  // 283
-    0,                  // 284
-    0,                  // 285
-    0,                  // 286
-    0,                  // 287
-    0,                  // 288
-    0,                  // 289
-    0,                  // 290
+    nullptr,                  // 273
+    nullptr,                  // 274
+    nullptr,                  // 275
+    nullptr,                  // 276
+    nullptr,                  // 277
+    nullptr,                  // 278
+    nullptr,                  // 279
+    nullptr,                  // 280
+    nullptr,                  // 281
+    nullptr,                  // 282
+    nullptr,                  // 283
+    nullptr,                  // 284
+    nullptr,                  // 285
+    nullptr,                  // 286
+    nullptr,                  // 287
+    nullptr,                  // 288
+    nullptr,                  // 289
+    nullptr,                  // 290
     syscall_inotify_init,// 291 __NR_inotify_init
-    0,                  // 292 __NR_inotify_add_watch
-    0,                  // 293 __NR_inotify_rm_watch
-    0,                  // 294
+    nullptr,                  // 292 __NR_inotify_add_watch
+    nullptr,                  // 293 __NR_inotify_rm_watch
+    nullptr,                  // 294
     syscall_openat,     // 295 __NR_openat
     syscall_mkdirat,    // 296 __NR_mkdirat
-    0,                  // 297
+    nullptr,                  // 297
     syscall_fchownat,   // 298 __NR_fchownat
-    0,                  // 299
+    nullptr,                  // 299
     syscall_fstatat64,  // 300 __NR_fstatat64
     syscall_unlinkat,   // 301 __NR_unlinkat
     syscall_renameat,   // 302
-    0,                  // 303
+    nullptr,                  // 303
     syscall_symlinkat,  // 304 __NR_symlinkat
     syscall_readlinkat, // 305 __NR_readlinkat
     syscall_fchmodat,   // 306 __NR_fchmodat
     syscall_faccessat,  // 307 __NR_faccessat
-    0,                  // 308
-    0,                  // 309
-    0,                  // 310
+    nullptr,                  // 308
+    nullptr,                  // 309
+    nullptr,                  // 310
     syscall_set_robust_list, // 311 __NR_set_robust_list
-    0,                  // 312
-    0,                  // 313
+    nullptr,                  // 312
+    nullptr,                  // 313
     syscall_sync_file_range, // 314 __NR_sync_file_range
-    0,                  // 315
-    0,                  // 316
-    0,                  // 317
-    0,                  // 318 __NR_getcpu
-    0,                  // 319
+    nullptr,                  // 315
+    nullptr,                  // 316
+    nullptr,                  // 317
+    nullptr,                  // 318 __NR_getcpu
+    nullptr,                  // 319
     syscall_utimensat,  // 320 __NR_utimensat
-    0,                  // 321
-    0,                  // 322
-    0,                  // 323 
-    0,                  // 324 
-    0,                  // 325
-    0,                  // 326
+    nullptr,                  // 321
+    nullptr,                  // 322
+    nullptr,                  // 323 
+    nullptr,                  // 324 
+    nullptr,                  // 325
+    nullptr,                  // 326
     syscall_signalfd4,  // 327 __NR_signalfd4
-    0,                  // 328
+    nullptr,                  // 328
     syscall_epoll_create1, // 329 __NR_epoll_create1
-    0,                  // 330
+    nullptr,                  // 330
     syscall_pipe2,      // 331 __NR_pipe2
-    0,                  // 332
-    0,                  // 333
-    0,                  // 334
-    0,                  // 335
-    0,                  // 336
-    0,                  // 337
-    0,                  // 338
-    0,                  // 339
+    nullptr,                  // 332
+    nullptr,                  // 333
+    nullptr,                  // 334
+    nullptr,                  // 335
+    nullptr,                  // 336
+    nullptr,                  // 337
+    nullptr,                  // 338
+    nullptr,                  // 339
     syscall_prlimit64,  // 340 __NR_prlimit64
-    0,                  // 341 __NR_name_to_handle_at
-    0,                  // 342 __NR_open_by_handle_at
-    0,                  // 343
-    0,                  // 344
+    nullptr,                  // 341 __NR_name_to_handle_at
+    nullptr,                  // 342 __NR_open_by_handle_at
+    nullptr,                  // 343
+    nullptr,                  // 344
     syscall_sendmmsg,   // 345 __NR_sendmmsg 
-    0,                  // 346
-    0,                  // 347
-    0,                  // 348
-    0,                  // 349
-    0,                  // 350
-    0,                  // 351
-    0,                  // 352
+    nullptr,                  // 346
+    nullptr,                  // 347
+    nullptr,                  // 348
+    nullptr,                  // 349
+    nullptr,                  // 350
+    nullptr,                  // 351
+    nullptr,                  // 352
     syscall_renameat,   // 353 __NR_renameat2
-    0,                  // 354
+    nullptr,                  // 354
     syscall_getrandom,  // 355 __NR_getrandom
     syscall_memfd_create,// 356 __NR_memfd_create
-    0,                  // 357 __NR_bpf
-    0,                  // 358 __NR_execveat
+    nullptr,                  // 357 __NR_bpf
+    nullptr,                  // 358 __NR_execveat
     syscall_socket,     // 359 __NR_socket
     syscall_socketpair, // 360 __NR_socketpair
     syscall_bind,       // 361 __NR_bind
@@ -1990,44 +1957,44 @@ static const SyscallFunc syscallFunc[] = {
     syscall_recvfrom,   // 371 __NR_recvfrom
     syscall_recvmsg,    // 372 __NR_recvmsg
     syscall_shutdown,   // 373 __NR_shutdown
-    0,                  // 374
-    0,                  // 375
-    0,                  // 376
-    0,                  // 377
-    0,                  // 378
-    0,                  // 379
-    0,                  // 380
-    0,                  // 381
-    0,                  // 382
-    0,                  // 383 statx
-    0,                  // 384
-    0,                  // 385
-    0,                  // 386
-    0,                  // 387
-    0,                  // 388
-    0,                  // 389
-    0,                  // 390
-    0,                  // 391
-    0,                  // 392
-    0,                  // 393
-    0,                  // 394
-    0,                  // 395
-    0,                  // 396
-    0,                  // 397
-    0,                  // 398
-    0,                  // 399
-    0,                  // 400
-    0,                  // 401
-    0,                  // 402
+    nullptr,                  // 374
+    nullptr,                  // 375
+    nullptr,                  // 376
+    nullptr,                  // 377
+    nullptr,                  // 378
+    nullptr,                  // 379
+    nullptr,                  // 380
+    nullptr,                  // 381
+    nullptr,                  // 382
+    nullptr,                  // 383 statx
+    nullptr,                  // 384
+    nullptr,                  // 385
+    nullptr,                  // 386
+    nullptr,                  // 387
+    nullptr,                  // 388
+    nullptr,                  // 389
+    nullptr,                  // 390
+    nullptr,                  // 391
+    nullptr,                  // 392
+    nullptr,                  // 393
+    nullptr,                  // 394
+    nullptr,                  // 395
+    nullptr,                  // 396
+    nullptr,                  // 397
+    nullptr,                  // 398
+    nullptr,                  // 399
+    nullptr,                  // 400
+    nullptr,                  // 401
+    nullptr,                  // 402
     syscall_clock_gettime64,     // 403
-    0,                  // 404
-    0,                  // 405
+    nullptr,                  // 404
+    nullptr,                  // 405
     syscall_clock_getres_time64,   // 406
     syscall_clock_nanosleep_time64, // 407
-    0,                  // 408
-    0,                  // 409
-    0,                  // 410
-    0,                  // 411
+    nullptr,                  // 408
+    nullptr,                  // 409
+    nullptr,                  // 410
+    nullptr,                  // 411
     syscall_utimensat_time64 // 412
 };
 
@@ -2035,7 +2002,7 @@ static const SyscallFunc syscallFunc[] = {
 extern S32 contextTime; // about the # instruction per 10 ms
 #endif
 void ksyscall(CPU* cpu, U32 eipCount) {
-    U32 result;
+    U32 result = -K_ENOSYS;
 #ifdef BOXEDWINE_MULTI_THREADED 
     U32 syscallNo = EAX;
 #endif
@@ -2046,7 +2013,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     if (cpu->thread->pendingSignals) {
         // I know this is a nested if statement, but it makes setting a break point easier
         if (cpu->thread->runSignals()) {
-            cpu->nextBlock = NULL;
+            cpu->nextBlock = nullptr;
             return;
         }
     }
@@ -2080,6 +2047,6 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         EAX = result;
         cpu->eip.u32+=eipCount;
     }
-    cpu->nextBlock = NULL;
+    cpu->nextBlock = nullptr;
 }
 

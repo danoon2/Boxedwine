@@ -69,11 +69,11 @@ public:
         mask(0),
         prop(0),
         bufferCond(B("DevInput::bufferCond")),
-        clearOnExit(0) {}
+        clearOnExit(nullptr) {}
 
     virtual ~DevInput() {
         if (clearOnExit) {
-            *clearOnExit = NULL;
+            *clearOnExit = nullptr;
         }
     }
 

@@ -59,14 +59,14 @@ U8* NativePage::getReadPtr(U32 address, bool makeReady) {
     if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
         return this->nativeAddress + (address - this->address);
     }
-    return NULL;
+    return nullptr;
 }
 
 U8* NativePage::getWritePtr(U32 address, U32 len, bool makeReady) {
     if (KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT)) {
         return this->nativeAddress + (address - this->address);
     }
-    return NULL;
+    return nullptr;
 }
 
 #endif

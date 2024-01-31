@@ -40,24 +40,23 @@ U32 DevMixer::ioctl(KThread* thread, U32 request) {
     KMemory* memory = thread->memory;
     //bool read = (request & 0x40000000) != 0;
     bool write = (request & 0x80000000) != 0;
-    U32 i;
 
     switch (request & 0xFFFF) {
     case 0x5801: // SNDCTL_SYSINFO
         if (write) {
             U32 p = IOCTL_ARG1;
-            for (i=0;i<len/4;i++)
+            for (U32 i=0;i<len/4;i++)
                 memory->writed(p+i*4, 2000+i);
             memory->strcpy(p, "OSS/Linux"); p+=32; // char product[32];		/* For example OSS/Free, OSS/Linux or OSS/Solaris */
             memory->strcpy(p, "4.0.0a"); p+=32; // char version[32];		/* For example 4.0a */
             memory->writed(p, 0x040000); p+=4; // int versionnum;		/* See OSS_GETVERSION */
 
-            for (i=0;i<128;i++) {
+            for (U32 i=0;i<128;i++) {
                 memory->writeb(p, i+100); p+=1; // char options[128];		/* Reserved */
             }
 
             memory->writed(p, 1); p+=4; // offset 196 int numaudios;		/* # of audio/dsp devices */
-            for (i=0;i<8;i++) {
+            for (U32 i=0;i<8;i++) {
                 memory->writed(p, 200+i); p+=4; // int openedaudio[8];		/* Bit mask telling which audio devices are busy */
             }
 
@@ -66,7 +65,7 @@ U32 DevMixer::ioctl(KThread* thread, U32 request) {
             memory->writed(p, 1); p+=4; // int numtimers;		/* # of available timer devices */
             memory->writed(p, 1); p+=4; // offset 244 int nummixers;		/* # of mixer devices */
 
-            for (i=0;i<8;i++) {
+            for (U32 i=0;i<8;i++) {
                 memory->writed(p, 0); p+=4; // int openedmidi[8];		/* Bit mask telling which midi devices are busy */
             }
             memory->writed(p, 1); p+=4; // offset 280 int numcards;			/* Number of sound cards in the system */
@@ -101,7 +100,7 @@ U32 DevMixer::ioctl(KThread* thread, U32 request) {
             memory->writed(p, 0); p+=4; // int rate_source;
             memory->strcpy(p, ""); p+=64; // oss_handle_t handle;
             memory->writed(p, 0); p+=4; // unsigned int nrates
-            for (i=0;i<20;i++) {
+            for (U32 i=0;i<20;i++) {
                 memory->writed(p, 0); p+=4; // rates[20];	/* Please read the manual before using these */
             }
             memory->strcpy(p, ""); p+=32; // oss_longname_t song_name;	/* Song name (if given) */

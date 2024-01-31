@@ -133,7 +133,7 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 			if (data->cvtBufLen && data->cvtBufLen < data->cvt.len * data->cvt.len_mult) {
 				data->cvtBufLen = 0;
 				SDL_free(data->cvtBuf);
-				data->cvtBuf = NULL;
+				data->cvtBuf = nullptr;
 			}
 			if (!data->cvtBufLen) {
 				data->cvtBufLen = data->cvt.len * data->cvt.len_mult;

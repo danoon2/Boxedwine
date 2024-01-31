@@ -1367,6 +1367,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+    <None Include="BoxedWine.ruleset" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\Boxedwine.rc" />

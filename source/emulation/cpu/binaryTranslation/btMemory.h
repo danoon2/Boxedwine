@@ -12,11 +12,11 @@ public:
 	BtMemory(KMemory* memory);
 	~BtMemory();	
 
-	void* getExistingHostAddress(U32 eip);
-	void* allocateExcutableMemory(U32 size, U32* allocatedSize);
-	void freeExcutableMemory(void* hostMemory, U32 size);
+	U8* getExistingHostAddress(U32 eip);
+	U8* allocateExcutableMemory(U32 size, U32* allocatedSize);
+	void freeExcutableMemory(U8* hostMemory, U32 size);
 	void executableMemoryReleased();
-	bool isAddressExecutable(void* address);
+	bool isAddressExecutable(U8* address);
 	bool isEipPageCommitted(U32 page);
 	void setEipPageCommitted(U32 page) { this->committedEipPages[page] = true; }		
 
@@ -29,8 +29,8 @@ public:
 
 	class AllocatedMemory {
 	public:
-		AllocatedMemory(void* memory, U32 size) : memory(memory), size(size) {}
-		void* memory;
+		AllocatedMemory(U8* memory, U32 size) : memory(memory), size(size) {}
+		U8* memory;
 		U32 size;
 	};
 	std::list<AllocatedMemory> allocatedExecutableMemory;
@@ -39,12 +39,12 @@ public:
 #define EXECUTABLE_MAX_SIZE_POWER 22
 #define EXECUTABLE_SIZES 16
 
-	std::list<void*> freeExecutableMemory[EXECUTABLE_SIZES];		
+	std::list<U8*> freeExecutableMemory[EXECUTABLE_SIZES];		
 	KMemory* memory;
 
 	bool committedEipPages[K_NUMBER_OF_PAGES];
 
-	void*** eipToHostInstructionPages;
+	U8*** eipToHostInstructionPages;
 #ifdef BOXEDWINE_64BIT_MMU	
 	void commitHostAddressSpaceMapping(U32 page, U32 pageCount, U64 defaultValue);
 	void setEipForHostMapping(U32 eip, void* host);

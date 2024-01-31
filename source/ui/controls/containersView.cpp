@@ -6,7 +6,7 @@
 bool isMesaOpenglAvailable();
 #endif
 
-ContainersView::ContainersView(BString tab, BString app) : BaseView(B("ContainersView")), currentContainer(NULL), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(NULL), currentAppChanged(false) {
+ContainersView::ContainersView(BString tab, BString app) : BaseView(B("ContainersView")), currentContainer(nullptr), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(nullptr), currentAppChanged(false) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();
 
@@ -249,7 +249,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                         if (this->currentContainer->getApps().size()) {
                             this->setCurrentApp(this->currentContainer->getApps()[0]);
                         } else {
-                            this->currentApp = NULL;
+                            this->currentApp = nullptr;
                         }
                         showAppSection(this->currentContainer->getApps().size() != 0);
                         rebuildShortcutsCombobox();
@@ -665,7 +665,7 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         setCurrentApp(this->currentContainer->getApps()[0]);
         rebuildShortcutsCombobox();        
     } else {
-        this->currentApp = NULL;
+        this->currentApp = nullptr;
     }    
     showAppSection(this->currentContainer->getApps().size() != 0);
     if (this->currentContainer->getWineVersionAsNumber() > 500) {

@@ -52,19 +52,17 @@ GLintptr* bufferip;
 U32 bufferip_len;
 
 GLintptr* marshalip(CPU* cpu, U32 address, U32 count) {
-    U32 i;
-
     if (!address)
-        return NULL;
+        return nullptr;
     if (bufferip && bufferip_len<count) {
         delete[] bufferip;
-        bufferip=NULL;
+        bufferip=nullptr;
     }
     if (!bufferip) {
         bufferip = new GLintptr[count];
         bufferip_len = count;
     }
-    for (i=0;i<count;i++) {
+    for (U32 i=0;i<count;i++) {
         bufferip[i] = (GLintptr)cpu->memory->readd(address);
         address+=4;
     }
@@ -75,19 +73,17 @@ GLintptr* buffer2ip;
 U32 buffer2ip_len;
 
 GLintptr* marshal2ip(CPU* cpu, U32 address, U32 count) {
-    U32 i;
-
     if (!address)
-        return NULL;
+        return nullptr;
     if (buffer2ip && buffer2ip_len<count) {
         delete[] buffer2ip;
-        buffer2ip=NULL;
+        buffer2ip= nullptr;
     }
     if (!buffer2ip) {
         buffer2ip = new GLintptr[count];
         buffer2ip_len = count;
     }
-    for (i=0;i<count;i++) {
+    for (U32 i=0;i<count;i++) {
         buffer2ip[i] = (GLintptr)cpu->memory->readd(address);
         address+=4;
     }
@@ -274,12 +270,12 @@ void glcommon_glGetString(CPU* cpu) {
 void glcommon_glGetTexImage(CPU* cpu) {
     GLenum target = ARG1;
     GLint level = ARG2;
-    GLsizei width;
-    GLsizei height;
+    GLsizei width=0;
+    GLsizei height=0;
     GLenum format = ARG3;
     GLenum type = ARG4;
 
-    GLvoid* pixels;
+    GLvoid* pixels = nullptr;
     GLboolean b = PIXEL_PACK_BUFFER();
 
     //GL_LOG("glGetTexImage GLenum target=%d, GLint level=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5);
@@ -320,9 +316,9 @@ void glcommon_glGetMapdv(CPU* cpu) {
 
     switch (query) {
     case GL_COEFF: {
-        GLdouble* buffer;
-        GLint order[2];
-        int count;
+        GLdouble* buffer=nullptr;
+        GLint order[2] = {};
+        int count=0;
 
         GL_FUNC(pglGetMapiv)(target, GL_ORDER, order);
         if (isMap2(target)) {
@@ -336,13 +332,13 @@ void glcommon_glGetMapdv(CPU* cpu) {
         break;
     }
     case GL_ORDER: {
-        GLdouble buffer[2];
+        GLdouble buffer[2] = {};
         GL_FUNC(pglGetMapdv)(target, query, buffer);
         marshalBackd(cpu, ARG3, buffer, isMap2(target)?2:1);
         break;
     }
     case GL_DOMAIN: {
-        GLdouble buffer[4];
+        GLdouble buffer[4] = {};
         GL_FUNC(pglGetMapdv)(target, query, buffer);
         marshalBackd(cpu, ARG3, buffer, isMap2(target)?4:2);
         break;
@@ -360,9 +356,9 @@ void glcommon_glGetMapfv(CPU* cpu) {
     GL_LOG("glGetMapfv GLenum target=%d, GLenum query=%d, GLfloat *v=%.08x", ARG1, ARG2, ARG3);
     switch (query) {
     case GL_COEFF: {
-        GLfloat* buffer;
-        GLint order[2];
-        int count;
+        GLfloat* buffer = nullptr;
+        GLint order[2] = {};
+        int count = 0;
 
         GL_FUNC(pglGetMapiv)(target, GL_ORDER, order);
         if (isMap2(target)) {
@@ -376,13 +372,13 @@ void glcommon_glGetMapfv(CPU* cpu) {
         break;
     }
     case GL_ORDER: {
-        GLfloat buffer[2];
+        GLfloat buffer[2] = {};
         GL_FUNC(pglGetMapfv)(target, query, buffer);
         marshalBackf(cpu, ARG3, buffer, isMap2(target)?2:1);
         break;
     }
     case GL_DOMAIN: {
-        GLfloat buffer[4];
+        GLfloat buffer[4] = {};
         GL_FUNC(pglGetMapfv)(target, query, buffer);
         marshalBackf(cpu, ARG3, buffer, isMap2(target)?4:2);
         break;
@@ -400,9 +396,9 @@ void glcommon_glGetMapiv(CPU* cpu) {
     GL_LOG("glGetMapiv GLenum target=%d, GLenum query=%d, GLint *v=%.08x", ARG1, ARG2, ARG3);
     switch (query) {
     case GL_COEFF: {
-        GLint* buffer;
-        GLint order[2];
-        int count;
+        GLint* buffer = nullptr;
+        GLint order[2] = {};
+        int count=0;
 
         GL_FUNC(pglGetMapiv)(target, GL_ORDER, order);
         if (isMap2(target)) {
@@ -416,13 +412,13 @@ void glcommon_glGetMapiv(CPU* cpu) {
         break;
     }
     case GL_ORDER: {
-        GLint buffer[2];
+        GLint buffer[2] = {};
         GL_FUNC(pglGetMapiv)(target, query, buffer);
         marshalBacki(cpu, ARG3, buffer, isMap2(target)?2:1);
         break;
     }
     case GL_DOMAIN: {
-        GLint buffer[4];
+        GLint buffer[4] = {};
         GL_FUNC(pglGetMapiv)(target, query, buffer);
         marshalBacki(cpu, ARG3, buffer, isMap2(target)?4:2);
         break;
@@ -470,7 +466,7 @@ void glcommon_glInterleavedArrays(CPU* cpu) {
 
 // GLAPI void APIENTRY glReadPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels ) {
 void glcommon_glReadPixels(CPU* cpu) {
-    GLvoid* pixels;
+    GLvoid* pixels = nullptr;
     GLsizei width = ARG3;
     GLsizei height = ARG4;
     GLenum format = ARG5;

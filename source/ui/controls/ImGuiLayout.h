@@ -24,10 +24,10 @@ public:
 
 class ComboboxData {
 public:
-	ComboboxData() : dataForCombobox(0), currentSelectedIndex(0) {}
-	char* dataForCombobox;
+	ComboboxData() = default;
+	char* dataForCombobox = nullptr;
 	std::vector<ComboboxItem> data;
-	int currentSelectedIndex;
+	int currentSelectedIndex = 0;
 
 	void dataChanged();
 };
@@ -70,7 +70,7 @@ private:
 
 class LayoutTextInputControl : public LayoutControl {
 public:
-	LayoutTextInputControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::TextInput), onBrowseFinished(nullptr), numberOfLines(1), browseButtonType(BROWSE_BUTTON_NONE), browseButtonWidth(0.0f), browseButtonLabel(NULL) {this->text[0]=0;}
+	LayoutTextInputControl(std::shared_ptr<LayoutRow> row) : LayoutControl(row, LayoutControlType::TextInput), onBrowseFinished(nullptr), numberOfLines(1), browseButtonType(BROWSE_BUTTON_NONE), browseButtonWidth(0.0f), browseButtonLabel(nullptr) {this->text[0]=0;}
 	void setText(BString text) { strncpy(this->text, text.c_str(), sizeof(this->text)); }
 	BString getText() { return BString::copy(this->text); }
 

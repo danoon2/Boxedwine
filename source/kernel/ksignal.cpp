@@ -64,7 +64,7 @@ bool KSignal::isAsync() {
 
 KFileLock* KSignal::getLock(KFileLock* lock) {
     kdebug("KSignal::getLock not implemented yet");
-    return 0;
+    return nullptr;
 }
 
 U32 KSignal::setLock(KFileLock* lock, bool wait) {
@@ -151,7 +151,7 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
                 for (U32 i=0;i<32;i++) {
                     if ((todo & ((U64)1 << i))!=0) {
                         thread->pendingSignals &= ~(1 << i);                
-                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction:NULL);
+                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction: nullptr);
                         result+=128;
                         len-=128;
                         buffer+=128;
@@ -169,7 +169,7 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
                 for (U32 i=0;i<32;i++) {
                     if ((todo & ((U64)1 << i))!=0) {
                         thread->process->pendingSignals &= ~(1 << i);                
-                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction:NULL);
+                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction: nullptr);
                         result+=128;
                         len-=128;
                         buffer+=128;
@@ -238,7 +238,7 @@ S64 KSignal::length() {
 }
 
 U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 flags) {
-    KFileDescriptor* fd;
+    KFileDescriptor* fd = nullptr;
     KMemory* memory = thread->memory;
 
     if (fildes>=0) {

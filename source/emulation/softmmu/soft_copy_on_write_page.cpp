@@ -11,7 +11,7 @@ CopyOnWritePage* CopyOnWritePage::alloc(U8* page, U32 address) {
 }
 
 void CopyOnWritePage::copyOnWrite(U32 address) {	
-    U8* ram;
+    U8* ram = nullptr;
     KMemory* memory = KThread::currentThread()->memory;
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);

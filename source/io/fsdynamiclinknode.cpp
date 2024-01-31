@@ -27,7 +27,7 @@ U64 FsDynamicLinkNode::length() {
 }
 
 FsOpenNode* FsDynamicLinkNode::open(U32 flags) {
-    return NULL;
+    return nullptr;
 }
 
 U32 FsDynamicLinkNode::getType(bool checkForLink) {

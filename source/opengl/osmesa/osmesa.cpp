@@ -59,7 +59,7 @@ static fn_OSMesaGetProcAddress pOSMesaGetProcAddress;
 
 class MesaBoxedwineGlContext {
 public:
-    MesaBoxedwineGlContext() : buffer(NULL), width(0), height(0), pitch(0), bpp(0), profile(0), major(0), minor(0), pixelFormat(NULL), context(NULL) {}
+    MesaBoxedwineGlContext() = default;
     ~MesaBoxedwineGlContext() {
         if (buffer) {
             delete[] buffer;
@@ -68,16 +68,16 @@ public:
             pOSMesaDestroyContext(context);
         }
     }
-    U8* buffer;
-    U32 width;
-    U32 height;
-    U32 pitch;
-    U32 bpp;
-    U32 profile;
-    U32 major;
-    U32 minor;
-    PixelFormat* pixelFormat;
-    OSMesaContext context;
+    U8* buffer = nullptr;
+    U32 width = 0;
+    U32 height = 0;
+    U32 pitch = 0;
+    U32 bpp = 0;
+    U32 profile = 0;
+    U32 major = 0;
+    U32 minor = 0;
+    PixelFormat* pixelFormat = nullptr;
+    OSMesaContext context = nullptr;
     std::shared_ptr<Wnd> wnd;
 };
 
@@ -121,12 +121,13 @@ BString MesaBoxedwineGL::getLastError() {
 }
 
 void* MesaBoxedwineGL::createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) {
-    return internalCreateContext(window, wnd, pixelFormat, width, height, major, minor, profile, NULL);
+    return internalCreateContext(window, wnd, pixelFormat, width, height, major, minor, profile, nullptr);
 }
 
 void* MesaBoxedwineGL::internalCreateContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat * pixelFormat, U32 width, U32 height, int major, int minor, int profile, OSMesaContext sharedContext) {
     MesaBoxedwineGlContext* c = new MesaBoxedwineGlContext();
-    int attribs[100], n = 0;
+    int attribs[100] = { 0 };
+    int n = 0;
 
     attribs[n++] = OSMESA_FORMAT;
     attribs[n++] = OSMESA_BGRA;
@@ -151,7 +152,7 @@ void* MesaBoxedwineGL::internalCreateContext(void* window, std::shared_ptr<Wnd> 
     c->context = pOSMesaCreateContextAttribs(attribs, sharedContext);
     if (!c->context) {
         delete  c;
-        return NULL;
+        return nullptr;
     }
     c->width = width;
     c->height = height;   
@@ -188,7 +189,7 @@ bool MesaBoxedwineGL::shareList(KThreadGlContext* src, KThreadGlContext* dst, vo
         MesaBoxedwineGlContext* dstContext = (MesaBoxedwineGlContext*)dst->context;
         MesaBoxedwineGlContext* srcContext = (MesaBoxedwineGlContext*)src->context;
 
-        dst->context = internalCreateContext(NULL, dstContext->wnd, dstContext->pixelFormat, dstContext->width, dstContext->height, dstContext->major, dstContext->minor, dstContext->profile, srcContext->context);
+        dst->context = internalCreateContext(nullptr, dstContext->wnd, dstContext->pixelFormat, dstContext->width, dstContext->height, dstContext->major, dstContext->minor, dstContext->profile, srcContext->context);
         dst->sharing = true;
         deleteContext(dstContext);
         return true;
@@ -307,7 +308,7 @@ void initMesaOpenGL() {
 void shutdownMesaOpenGL() {
     if (pDLL) {
         SDL_UnloadObject(pDLL);
-        pDLL = NULL;
+        pDLL = nullptr;
     }
 }
 

@@ -41,7 +41,8 @@ U32 getNextTimer() {
 
     timers.for_each([millies, &result](KListNode<KTimer*>* node) {
         KTimer* timer = node->data;
-        U32 next;
+        U32 next = 0;
+
         if (timer->millies <= millies) {
             next = 0;
         }

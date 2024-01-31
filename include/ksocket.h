@@ -117,6 +117,6 @@ U32 krecvmsg(KThread* thread, U32 socket, U32 msg, U32 flags);
 U32 ksendto(KThread* thread, U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len);
 U32 krecvfrom(KThread* thread, U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len);
 
-const char* socketAddressName(KMemory* memory, U32 address, U32 len, char* result, U32 cbResult);
+BString socketAddressName(KMemory* memory, U32 address, U32 len);
 bool isNativeSocket(KThread* thread, int desc);
 #endif

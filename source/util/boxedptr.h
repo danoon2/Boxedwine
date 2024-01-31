@@ -30,7 +30,7 @@ private:
 template <typename T> 
 class BoxedPtr {    
 public: 
-    explicit BoxedPtr() : ptr(0) {};
+    explicit BoxedPtr() : ptr(nullptr) {};
     BoxedPtr(T *p) : ptr(p) { 
         if (ptr) 
             ptr->retain(); 
@@ -39,11 +39,11 @@ public:
         if (ptr) 
             ptr->retain(); 
     }
-    BoxedPtr(BoxedPtr &&p) noexcept : ptr(p.ptr) { p.ptr = 0; }
+    BoxedPtr(BoxedPtr &&p) noexcept : ptr(p.ptr) { p.ptr = nullptr; }
    
     template <class X>
     BoxedPtr(BoxedPtr<X> &&p) : ptr(p.get()) {
-        p.ptr = 0;
+        p.ptr = nullptr;
     }
  
     template <class X>
@@ -73,7 +73,7 @@ public:
     T &operator*() const { return *ptr; }
     T *operator->() const { return ptr; }
     T *get() const { return ptr; }
-    explicit operator bool() const { return ptr!=0; }
+    explicit operator bool() const { return ptr!= nullptr; }
  
     void swap(BoxedPtr &other) {
         T *tmp = other.ptr;

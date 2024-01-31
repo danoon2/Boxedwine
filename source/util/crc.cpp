@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 
 unsigned int crc32b(unsigned char *message, int len) {
-    unsigned int h = 0, g;
+    unsigned int h = 0, g = 0;
     int i;
 
     for (i=0;i<len;i++) {

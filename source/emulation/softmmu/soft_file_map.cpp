@@ -35,7 +35,7 @@ void FilePage::ondemmandFile(U32 address) {
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
-    U8* ram=NULL;    
+    U8* ram= nullptr;
 
     if (mem->getPage(page) != this) {
         return;

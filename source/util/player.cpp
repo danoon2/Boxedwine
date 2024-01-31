@@ -5,13 +5,13 @@
 Player* Player::instance;
 
 void Player::readCommand() {
-    char tmp[256];
+    char tmp[256] = {};
     U32 count=0;
 
     this->nextCommand=B("");
     this->nextValue=B("");
     while (true) {
-        U32 result = (U32)fread(&tmp[count], 1, 1, this->file);
+        size_t result = fread(&tmp[count], 1, 1, this->file);
         if (!result) {
             tmp[count] = 0;
             if (count>0) {
@@ -45,7 +45,7 @@ void Player::readCommand() {
     this->lastCommandTime = KSystem::getMicroCounter();
     if (this->nextCommand.length()==0) {
         klog("script did not finish properly: failed");
-        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), NULL);
+        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr);
         exit(99);
     }
 }
@@ -160,7 +160,7 @@ void Player::runSlice() {
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
         klog("script timed out %s", this->directory.c_str());
-        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), NULL);
+        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr);
         exit(2);
     }
 }

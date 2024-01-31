@@ -17,7 +17,7 @@ void BoxedWineCondition::lock() {
     if (KThread::currentThread()) {
         this->lockOwner = KThread::currentThread()->id;
     } else {
-        this->lockOwner = (U32)-1;
+        this->lockOwner = 0xFFFFFFFF;
     }
 }
  
@@ -26,7 +26,7 @@ bool BoxedWineCondition::tryLock() {
         if (KThread::currentThread()) {
             this->lockOwner = KThread::currentThread()->id;
         } else {
-            this->lockOwner = (U32)-1;
+            this->lockOwner = 0xFFFFFFFF;
         }
         return true;
     }
@@ -60,7 +60,7 @@ void BoxedWineCondition::wait(std::unique_lock<std::mutex>& lock) {
     }
     this->c.wait(lock);
     if (thread) {
-        thread->waitingCond = NULL;
+        thread->waitingCond = nullptr;
     }
     if (parent) {
         BoxedWineCondition& p = *parent;
@@ -76,7 +76,7 @@ void BoxedWineCondition::waitWithTimeout(std::unique_lock<std::mutex>& lock, U32
     }
     this->c.wait_for(lock, std::chrono::milliseconds(KSystem::emulatedMilliesToHost(ms)));
     if (thread) {
-        thread->waitingCond = NULL;
+        thread->waitingCond = nullptr;
     }    
     if (parent) {
         BoxedWineCondition& p = *parent;

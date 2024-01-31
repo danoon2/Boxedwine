@@ -33,7 +33,7 @@ public:
 
     BString getNativePathForApp(const BoxedApp& app);
 
-    void getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount=NULL, BString nativeDirectory=BString());
+    void getNewApps(std::vector<BoxedApp>& apps, MountInfo* mount= nullptr, BString nativeDirectory=BString());
     void getWineApps(std::vector<BoxedApp>& apps);
     void updateCachedSize();
 

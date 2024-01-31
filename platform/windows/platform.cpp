@@ -99,19 +99,17 @@ int Platform::nativeSocketPair(S32 socks[2]) {
     union {
        struct sockaddr_in inaddr;
        struct sockaddr addr;
-    } a;
-    SOCKET listener;
-    int e;
+    } a = {};
     socklen_t addrlen = sizeof(a.inaddr);
     DWORD flags = 0;
     int reuse = 1;
 
-    if (socks == 0) {
+    if (socks == nullptr) {
       WSASetLastError(WSAEINVAL);
       return SOCKET_ERROR;
     }
 
-    listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    SOCKET listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (listener == INVALID_SOCKET) 
         return SOCKET_ERROR;
 
@@ -130,12 +128,12 @@ int Platform::nativeSocketPair(S32 socks[2]) {
             break;
         if (listen(listener, 1) == SOCKET_ERROR)
             break;
-        socks[0] = (U32)WSASocket(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
+        socks[0] = (U32)WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, flags);
         if (socks[0] == (U32)INVALID_SOCKET)
             break;
         if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR)
             break;
-        socks[1] = (U32)accept(listener, NULL, NULL);
+        socks[1] = (U32)accept(listener, nullptr, nullptr);
         if (socks[1] == INVALID_SOCKET)
             break;
 
@@ -143,7 +141,7 @@ int Platform::nativeSocketPair(S32 socks[2]) {
         return 0;
     } while (0);
 
-    e = WSAGetLastError();
+    int e = WSAGetLastError();
     closesocket(listener);
     closesocket(socks[0]);
     closesocket(socks[1]);
@@ -163,14 +161,8 @@ typedef struct _PROCESSOR_POWER_INFORMATION
 typedef LONG (WINAPI *CNPI)(POWER_INFORMATION_LEVEL,PVOID,ULONG,PVOID,ULONG);
 static U32 cachedCpuMaxFreq;
 
-U32 Platform::getCpuFreqMHz() {
-    if (cachedCpuMaxFreq) {
-        return cachedCpuMaxFreq;
-    }
-    NTSTATUS ret;
-    ULONG size;
-    LPBYTE pBuffer = NULL;
-    unsigned int num_cpus;
+std::shared_ptr<BYTE> getProcessorPowerInformation() {
+    unsigned int num_cpus = 0;
     SYSTEM_INFO system_info;
     system_info.dwNumberOfProcessors = 0;
 
@@ -181,86 +173,73 @@ U32 Platform::getCpuFreqMHz() {
     } else {
         num_cpus = system_info.dwNumberOfProcessors;
     }
-
     // Allocate size.
-    size = num_cpus * sizeof(PROCESSOR_POWER_INFORMATION);
-    pBuffer = (BYTE*)LocalAlloc(LPTR, size);
-    if (!pBuffer) {
-        return NULL;
+    ULONG size = num_cpus * sizeof(PROCESSOR_POWER_INFORMATION);
+    BYTE* p = (BYTE*)LocalAlloc(LPTR, size);
+    if (!p) {
+        return nullptr;
     }
+    std::shared_ptr<BYTE> pBuffer(p, [](BYTE* p) {
+        LocalFree(p);
+        });
 
     // Syscall.
-    CNPI Pwrinfo = (CNPI)GetProcAddress(LoadLibrary(TEXT("powrprof.dll")), "CallNtPowerInformation");
-    ret = Pwrinfo(ProcessorInformation, NULL, 0, pBuffer, size);
-    if (ret != 0) {
-        LocalFree(pBuffer);
-        return NULL;
+    HMODULE hModule = LoadLibrary(TEXT("powrprof.dll"));
+    if (!hModule) {
+        return nullptr;
     }
+    CNPI Pwrinfo = (CNPI)GetProcAddress(hModule, "CallNtPowerInformation");
+    if (!Pwrinfo) {
+        return nullptr;
+    }
+    NTSTATUS ret = Pwrinfo(ProcessorInformation, nullptr, 0, pBuffer.get(), size);
+    if (ret != 0) {
+        return nullptr;
+    }
+    return pBuffer;
+}
 
-    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION *)pBuffer;
+U32 Platform::getCpuFreqMHz() {
+    if (cachedCpuMaxFreq) {
+        return cachedCpuMaxFreq;
+    }
+    
+    std::shared_ptr<BYTE> pBuffer = getProcessorPowerInformation();
+    if (!pBuffer) {
+        return 0;
+    }
+    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION *)pBuffer.get();
     cachedCpuMaxFreq = ppi->MaxMhz;
-    LocalFree(pBuffer);
     return cachedCpuMaxFreq;
 }
 
 U32 Platform::getCpuCurScalingFreqMHz(U32 cpuIndex) {
-    NTSTATUS ret;
-    ULONG size;
-    LPBYTE pBuffer = NULL;
     unsigned int num_cpus = Platform::getCpuCount();    
 
     if (cpuIndex>=num_cpus) {
         return 0;
     }
-    // Allocate size.
-    size = num_cpus * sizeof(PROCESSOR_POWER_INFORMATION);
-    pBuffer = (BYTE*)LocalAlloc(LPTR, size);
+    std::shared_ptr<BYTE> pBuffer = getProcessorPowerInformation();
     if (!pBuffer) {
-        return NULL;
+        return 0;
     }
-
-    // Syscall.
-    CNPI Pwrinfo = (CNPI)GetProcAddress(LoadLibrary(TEXT("powrprof.dll")), "CallNtPowerInformation");
-    ret = Pwrinfo(ProcessorInformation, NULL, 0, pBuffer, size);
-    if (ret != 0) {
-        LocalFree(pBuffer);
-        return NULL;
-    }
-
-    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION *)pBuffer;
-    U32 result = ppi[cpuIndex].CurrentMhz;
-    LocalFree(pBuffer);
-    return result;
+    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION*)pBuffer.get();
+    return ppi[cpuIndex].CurrentMhz;
 }
 
 U32 Platform::getCpuMaxScalingFreqMHz(U32 cpuIndex) {
-    NTSTATUS ret;
-    ULONG size;
-    LPBYTE pBuffer = NULL;
     unsigned int num_cpus = Platform::getCpuCount();    
 
     if (cpuIndex>=num_cpus) {
         return 0;
     }
-    // Allocate size.
-    size = num_cpus * sizeof(PROCESSOR_POWER_INFORMATION);
-    pBuffer = (BYTE*)LocalAlloc(LPTR, size);
+    std::shared_ptr<BYTE> pBuffer = getProcessorPowerInformation();
     if (!pBuffer) {
-        return NULL;
+        return 0;
     }
+    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION*)pBuffer.get();
 
-    // Syscall.
-    CNPI Pwrinfo = (CNPI)GetProcAddress(LoadLibrary(TEXT("powrprof.dll")), "CallNtPowerInformation");
-    ret = Pwrinfo(ProcessorInformation, NULL, 0, pBuffer, size);
-    if (ret != 0) {
-        LocalFree(pBuffer);
-        return NULL;
-    }
-
-    PROCESSOR_POWER_INFORMATION* ppi = (PROCESSOR_POWER_INFORMATION *)pBuffer;
-    U32 result = ppi[cpuIndex].MhzLimit;
-    LocalFree(pBuffer);
-    return result;
+    return ppi[cpuIndex].MhzLimit;
 }
 
 
@@ -282,9 +261,9 @@ U32 Platform::getCpuCount() {
 }
 
 int getPixelFormats(PixelFormat* pfd, int maxPfs) {
-    PIXELFORMATDESCRIPTOR p;
+    PIXELFORMATDESCRIPTOR p = {};
     HDC hdc = GetDC(GetDesktopWindow());
-    int count = DescribePixelFormat(hdc, 0, 0, NULL);
+    int count = DescribePixelFormat(hdc, 0, 0, nullptr);
     int result = 1;
     int i;
 
@@ -364,7 +343,7 @@ BString Platform::getResourceFilePath(BString location) {
 }
 
 void Platform::openFileLocation(BString location) {
-    ShellExecute(NULL, "open", location.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    ShellExecute(nullptr, "open", location.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 }
 
 void Platform::setCurrentThreadPriorityHigh() {
@@ -392,8 +371,8 @@ U32 Platform::getPagePermissionGranularity() {
 
 U32 Platform::allocateNativeMemory(U64 address) {
     if (!VirtualAlloc((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_COMMIT, PAGE_READWRITE)) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("allocateNativeMemory: failed to commit memory: page=%x : %s", address, messageBuffer);
     }
     return 0;
@@ -401,8 +380,8 @@ U32 Platform::allocateNativeMemory(U64 address) {
 
 U32 Platform::freeNativeMemory(U64 address) {
     if (!VirtualFree((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_DECOMMIT)) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("failed to release memory: %s", messageBuffer);
     }
     return 0;
@@ -411,27 +390,27 @@ U32 Platform::freeNativeMemory(U64 address) {
 void Platform::releaseNativeMemory(void* address, U64 len) {
     // per Windows spec, if MEM_RELEASE is used, then the dwSize must be 0 and the entire chunk will be released
     if (!VirtualFree(address, 0, MEM_RELEASE)) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("failed to release executable memory: %s", messageBuffer);
     }
 }
 
 void Platform::commitNativeMemory(void* address, U64 len) {
     if (!VirtualAlloc(address, (SIZE_T)len, MEM_COMMIT, PAGE_READWRITE)) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("allocNativeMemory: failed to commit memory: %s", messageBuffer);
     }
 }
 
-void* Platform::alloc64kBlock(U32 count, bool executable) {
+U8* Platform::alloc64kBlock(U32 count, bool executable) {
     DWORD permission = executable ? PAGE_EXECUTE_READWRITE : PAGE_READWRITE;
 
-    void* result = VirtualAlloc(NULL, 64 * 1024 * count, MEM_COMMIT, permission);
+    U8* result = static_cast<U8*>(VirtualAlloc(nullptr, 64 * 1024 * count, MEM_COMMIT, permission));
     if (!result) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("alloc64kBlock: failed to commit memory : %s", messageBuffer);
     }
     return result;
@@ -439,7 +418,7 @@ void* Platform::alloc64kBlock(U32 count, bool executable) {
 
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     DWORD proto = 0;
-    DWORD oldProtect;
+    DWORD oldProtect = 0;
 
     if (len == 0) {
         len = getPagePermissionGranularity() << K_PAGE_SHIFT;
@@ -455,29 +434,28 @@ U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
         proto = PAGE_NOACCESS;
     }
     if (!VirtualProtect((void*)address, len, proto, &oldProtect)) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("failed to protect memory: %s", messageBuffer);
     }
     return 0;
 }
 
-void* Platform::reserveNativeMemory(bool large) {
-    void* p;
+U8* Platform::reserveNativeMemory(bool large) {
     U64 i = 1;
-    U64 len = large ? 0x800000000l : 0x100000000l;
+    SIZE_T len = large ? 0x800000000l : 0x100000000l;
 
-    p = (void*)(i << 32);
-    while (VirtualAlloc(p, (SIZE_T)len, MEM_RESERVE, PAGE_READWRITE) == 0) {
+    U8* p = (U8*)(i << 32);
+    while (VirtualAlloc(p, len, MEM_RESERVE, PAGE_READWRITE) == nullptr) {
         i++;
-        p = (void*)(i << 32);
+        p = (U8*)(i << 32);
     }
     return p;
 }
 
 U32 Platform::nanoSleep(U64 nano) {
-    U32 millies = (U32)(nano / 1000000);
-    LARGE_INTEGER startTime;
+    DWORD millies = (DWORD)(nano / 1000000);
+    LARGE_INTEGER startTime = {};
 
     if (millies > NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT || !PCFreq || !QueryPerformanceCounter(&startTime)) {
         Sleep(millies);
@@ -505,7 +483,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         if (cores > 63) {
             cores = 63;
         }
-        U64 mask;
+        U64 mask = 0;
         if (count == 0) {
             mask = (1 << cores) - 1;
         } else if (count == 1) {
@@ -521,7 +499,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
 
 #ifdef BOXEDWINE_X64
 bool platformHasBMI2() {
-    int regs[4];
+    int regs[4] = {};
 
     __cpuidex(regs, 7, 0);
     if (regs[1] & (1 << 8)) {

@@ -3,7 +3,7 @@
 
 class BaseDlg {
 public:
-    BaseDlg(int title, int width, int height, ImFont* font=NULL, BaseDlg* parent=NULL);
+    BaseDlg(int title, int width, int height, ImFont* font = nullptr, BaseDlg* parent = nullptr);
     virtual ~BaseDlg() {}
 
     static void runDialogs();

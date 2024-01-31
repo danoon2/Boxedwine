@@ -1697,7 +1697,7 @@ void glcommon_glMapBuffer(CPU* cpu) {
     if (!ext_glMapBuffer)
         kpanic("ext_glMapBuffer is NULL");
     {
-    GLint size;void* ret=GL_FUNC(ext_glMapBuffer)(ARG1, ARG2);
+    GLint size=0;void* ret=GL_FUNC(ext_glMapBuffer)(ARG1, ARG2);
     ext_glGetBufferParameteriv(ARG1, GL_BUFFER_SIZE, &size); EAX=marshalBackp(cpu, ret, size);
     GL_LOG ("glMapBuffer GLenum target=%d, GLenum access=%d",ARG1,ARG2);
     }
@@ -1706,7 +1706,7 @@ void glcommon_glMapBufferARB(CPU* cpu) {
     if (!ext_glMapBufferARB)
         kpanic("ext_glMapBufferARB is NULL");
     {
-    GLint size;void* ret=GL_FUNC(ext_glMapBufferARB)(ARG1, ARG2);
+    GLint size=0;void* ret=GL_FUNC(ext_glMapBufferARB)(ARG1, ARG2);
     ext_glGetBufferParameterivARB(ARG1, GL_BUFFER_SIZE, &size); EAX=marshalBackp(cpu, ret, size);
     GL_LOG ("glMapBufferARB GLenum target=%d, GLenum access=%d",ARG1,ARG2);
     }
@@ -1757,7 +1757,7 @@ void glcommon_glMapNamedBuffer(CPU* cpu) {
     if (!ext_glMapNamedBuffer)
         kpanic("ext_glMapNamedBuffer is NULL");
     {
-    GLint size;void* ret=GL_FUNC(ext_glMapNamedBuffer)(ARG1, ARG2);
+    GLint size=0;void* ret=GL_FUNC(ext_glMapNamedBuffer)(ARG1, ARG2);
     ext_glGetNamedBufferParameteriv(ARG1, GL_BUFFER_SIZE, &size); EAX=marshalBackp(cpu, ret, size);
     GL_LOG ("glMapNamedBuffer GLuint buffer=%d, GLenum access=%d",ARG1,ARG2);
     }
@@ -1766,7 +1766,7 @@ void glcommon_glMapNamedBufferEXT(CPU* cpu) {
     if (!ext_glMapNamedBufferEXT)
         kpanic("ext_glMapNamedBufferEXT is NULL");
     {
-    GLint size;void* ret=GL_FUNC(ext_glMapNamedBufferEXT)(ARG1, ARG2);
+    GLint size=0;void* ret=GL_FUNC(ext_glMapNamedBufferEXT)(ARG1, ARG2);
     ext_glGetNamedBufferParameterivEXT(ARG1, GL_BUFFER_SIZE, &size); EAX=marshalBackp(cpu, ret, size);
     GL_LOG ("glMapNamedBufferEXT GLuint buffer=%d, GLenum access=%d",ARG1,ARG2);
     }

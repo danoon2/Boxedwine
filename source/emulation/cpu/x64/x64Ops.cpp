@@ -1354,7 +1354,7 @@ static U32 popFlags32(X64Asm* data) {
 
 // MOV AL,Ob
 static U32 movAlOb(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
@@ -1366,7 +1366,7 @@ static U32 movAlOb(X64Asm* data) {
 
 // MOV AX,Ow
 static U32 movAxOw(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
@@ -1378,7 +1378,7 @@ static U32 movAxOw(X64Asm* data) {
 
 // MOV EAX,Od
 static U32 movEaxOd(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
@@ -1390,7 +1390,7 @@ static U32 movEaxOd(X64Asm* data) {
 
 // MOV Ob,Al
 static U32 movObAl(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
@@ -1402,7 +1402,7 @@ static U32 movObAl(X64Asm* data) {
 
 // MOV Ow,Ax
 static U32 movOwAx(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
@@ -1414,7 +1414,7 @@ static U32 movOwAx(X64Asm* data) {
 
 // MOV Od,Eax
 static U32 movOdEax(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {

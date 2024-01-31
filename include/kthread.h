@@ -26,15 +26,15 @@
 
 class OpenGLVetexPointer {
 public:
-    OpenGLVetexPointer() : size(0), type(0), stride(0), count(0), ptr(0), marshal(NULL), marshal_size(0), refreshEachCall(0) {}
-    U32 size;
-    U32 type;
-    U32 stride;
-    U32 count; // used by marshalEdgeFlagPointerEXT
-    U32 ptr;
-    U8* marshal;
-    U32 marshal_size;
-    U32 refreshEachCall;
+    OpenGLVetexPointer() = default;
+    U32 size = 0;
+    U32 type = 0;
+    U32 stride = 0;
+    U32 count = 0; // used by marshalEdgeFlagPointerEXT
+    U32 ptr = 0;
+    U8* marshal = nullptr;
+    U32 marshal_size = 0;
+    U32 refreshEachCall = 0;
 };
 
 class KProcess;
@@ -42,11 +42,11 @@ class Memory;
 
 class KThreadGlContext {
 public:
-    KThreadGlContext():context(NULL), hasBeenMadeCurrent(false), sharing(false) {}
-    KThreadGlContext(void* context):context(context), hasBeenMadeCurrent(false), sharing(false) {}
-    void* context;
-    bool hasBeenMadeCurrent;
-    bool sharing;
+    KThreadGlContext() = default;
+    KThreadGlContext(void* context):context(context) {}
+    void* context = nullptr;
+    bool hasBeenMadeCurrent = false;
+    bool sharing = false;
 };
 
 class KThread {
@@ -81,31 +81,31 @@ public:
     U32 nanoSleep(U64 nano);
     U32 clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain);
 
-    U32 id;
-    U64 sigMask; // :TODO: what happens when this is changed while in a signal
-    U64 inSigMask;
-    U32 alternateStack;
-    U32 alternateStackSize;
-    CPU* cpu;
-    U32 stackPageStart;
-    U32 stackPageCount;
-    U32 stackPageSize;
+    U32 id = 0;
+    U64 sigMask = 0; // :TODO: what happens when this is changed while in a signal
+    U64 inSigMask = 0;
+    U32 alternateStack = 0;
+    U32 alternateStackSize = 0;
+    CPU* cpu = nullptr;
+    U32 stackPageStart = 0;
+    U32 stackPageCount = 0;
+    U32 stackPageSize = 0;
     std::shared_ptr<KProcess> process;
     KMemory* const memory;
-    bool interrupted;
-    U32 inSignal;    
+    bool interrupted = false;
+    U32 inSignal = 0;    
 #ifdef BOXEDWINE_MULTI_THREADED
-    bool exited;	
-    bool startSignal;
+    bool exited = false;	
+    bool startSignal = false;
 #endif
-    bool terminating;
-    U32 clear_child_tid;
-    U64 userTime;
-    U64 kernelTime;
-    U32 inSysCall;
+    bool terminating = false;
+    U32 clear_child_tid = 0;
+    U64 userTime = 0;
+    U64 kernelTime = 0;
+    U32 inSysCall = 0;
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
-    U64 waitingForSignalToEndMaskToRestore;    
-    U64 pendingSignals;
+    U64 waitingForSignalToEndMaskToRestore = 0;
+    U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
     KThreadGlContext* getGlContextById(U32 id);
     void removeGlContextById(U32 id);
@@ -115,8 +115,8 @@ public:
 
     std::unordered_map<U32, KThreadGlContext> glContext;
 public:
-    void* currentContext;
-    bool log; // syscalls
+    void* currentContext = nullptr;
+    bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer;
     OpenGLVetexPointer glNormalPointer;
     OpenGLVetexPointer glFogPointer;
@@ -133,7 +133,7 @@ public:
     inline static KThread* currentThread() {return runningThread;}
 	inline static void setCurrentThread(KThread* thread) { runningThread = thread; }
 
-    BOXEDWINE_CONDITION *waitingCond;    
+    BOXEDWINE_CONDITION *waitingCond = nullptr;    
     BOXEDWINE_CONDITION pollCond;
 #ifdef BOXEDWINE_MULTI_THREADED
     BOXEDWINE_MUTEX waitingCondSync;
@@ -144,7 +144,7 @@ public:
     BoxedWineConditionTimer condTimer;
 #endif
 
-    U32 condStartWaitTime;
+    U32 condStartWaitTime = 0;
 private:
     void clearFutexes();
 
@@ -152,7 +152,7 @@ private:
 
     BOXEDWINE_CONDITION sleepCond;      
 
-    struct user_desc tls[TLS_ENTRIES];
+    struct user_desc tls[TLS_ENTRIES] = {};
     BOXEDWINE_MUTEX tlsMutex;
 
     static BOXEDWINE_MUTEX futexesMutex;

@@ -75,25 +75,25 @@ static void initNormalOps() {
 #include "../common/cpu_init_fpu.h"
 #undef INIT_CPU    
     
-    normalOps[SLDTReg] = 0; 
-    normalOps[SLDTE16] = 0;
-    normalOps[STRReg] = 0; 
-    normalOps[STRE16] = 0;
-    normalOps[LLDTR16] = 0; 
-    normalOps[LLDTE16] = 0;
-    normalOps[LTRR16] = 0; 
-    normalOps[LTRE16] = 0;
-    normalOps[VERRR16] = 0; 
-    normalOps[VERWR16] = 0; 
-    normalOps[SGDT] = 0;
+    normalOps[SLDTReg] = nullptr;
+    normalOps[SLDTE16] = nullptr;
+    normalOps[STRReg] = nullptr;
+    normalOps[STRE16] = nullptr;
+    normalOps[LLDTR16] = nullptr;
+    normalOps[LLDTE16] = nullptr;
+    normalOps[LTRR16] = nullptr;
+    normalOps[LTRE16] = nullptr;
+    normalOps[VERRR16] = nullptr;
+    normalOps[VERWR16] = nullptr;
+    normalOps[SGDT] = nullptr;
     normalOps[SIDT] = normal_sidt;
-    normalOps[LGDT] = 0;
-    normalOps[LIDT] = 0;
-    normalOps[SMSWRreg] = 0; 
-    normalOps[SMSW] = 0;
-    normalOps[LMSWRreg] = 0; 
-    normalOps[LMSW] = 0;
-    normalOps[INVLPG] = 0;
+    normalOps[LGDT] = nullptr;
+    normalOps[LIDT] = nullptr;
+    normalOps[SMSWRreg] = nullptr;
+    normalOps[SMSW] = nullptr;
+    normalOps[LMSWRreg] = nullptr;
+    normalOps[LMSW] = nullptr;
+    normalOps[INVLPG] = nullptr;
     normalOps[Callback] = onExitSignal;
 }
 
@@ -107,7 +107,7 @@ NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {
 #ifdef BOXEDWINE_DYNAMIC
     this->firstOp = firstDynamicOp;
 #else
-    this->firstOp = NULL;
+    this->firstOp = nullptr;
 #endif
 }
 
@@ -139,8 +139,8 @@ NormalBlock::NormalBlock() {
 
 void NormalBlock::run(CPU* cpu) {
 #ifdef _DEBUG
-    if (this==NULL || this->op==NULL || this->op->pfn==NULL) {
-        kpanic("NormalBlock::run is about to crash");
+    if (this== nullptr || this->op== nullptr || this->op->pfn== nullptr) {
+        //kpanic("NormalBlock::run is about to crash");
     }
 #endif  
     this->op->pfn(cpu, this->op);
@@ -151,13 +151,13 @@ void NormalBlock::run(CPU* cpu) {
 static PtrPool<NormalBlock> freeBlocks;
 
 void NormalBlock::reset() {
-    this->op = NULL;
+    this->op = nullptr;
     this->bytes = 0;
     this->opCount = 0;
     this->runCount = 0;
-    this->next1 = NULL;
-    this->next2 = NULL;
-    this->referencedFrom = NULL;
+    this->next1 = nullptr;
+    this->next2 = nullptr;
+    this->referencedFrom = nullptr;
 }
 
 void NormalBlock::clearCache() {
@@ -175,7 +175,7 @@ void NormalBlock::dealloc(bool delayed) {
         CPU* cpu = thread->cpu;
         if (cpu && cpu->delayedFreeBlock && cpu->delayedFreeBlock != DecodedBlock::currentBlock) {
             DecodedBlock* b = cpu->delayedFreeBlock;
-            cpu->delayedFreeBlock = NULL;
+            cpu->delayedFreeBlock = nullptr;
             b->dealloc(false);
         }
         if (cpu && ((delayed && !cpu->delayedFreeBlock) || this == DecodedBlock::currentBlock)) {
@@ -195,25 +195,25 @@ void NormalBlock::dealloc(bool delayed) {
     }
     if (this->next1) {
         this->next1->removeReferenceFrom(this);
-        this->next1 = NULL;
+        this->next1 = nullptr;
     }
     if (this->next2) {
         this->next2->removeReferenceFrom(this);
-        this->next2 = NULL;
+        this->next2 = nullptr;
     }
     DecodedBlockFromNode* from = this->referencedFrom;
     while (from) {
         DecodedBlockFromNode* n = from->next;
         if (from->block->next1 == this) {
-            from->block->next1 = NULL;
+            from->block->next1 = nullptr;
         }
         if (from->block->next2 == this) {
-            from->block->next2 = NULL;
+            from->block->next2 = nullptr;
         }
         from->dealloc();
         from = n;
     }
-    this->referencedFrom = NULL;
+    this->referencedFrom = nullptr;
     if (doDelete) {
         freeBlocks.put(this);
     }
@@ -245,7 +245,7 @@ DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
 
 DecodedBlock* NormalCPU::getNextBlock() {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    return NULL;
+    return nullptr;
 #else
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return NULL;
@@ -284,7 +284,7 @@ void NormalCPU::run() {
     if (!this->nextBlock && !this->yield) {
         kpanic("NormalCPU::run no block set");
     }
-    DecodedBlock::currentBlock = NULL;
+    DecodedBlock::currentBlock = nullptr;
 #endif
 }
 

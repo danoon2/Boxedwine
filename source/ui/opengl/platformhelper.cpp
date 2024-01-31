@@ -1,7 +1,11 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 #define STB_IMAGE_IMPLEMENTATION
+
+#pragma warning(push)
+#pragma warning (disable : ALL_CODE_ANALYSIS_WARNINGS)
 #include "../utils/stb_image.h"
+#pragma warning(pop)
 
 #ifdef BOXEDWINE_IMGUI_DX9
 #include <d3d9.h>
@@ -15,12 +19,12 @@ void dx9UnloadTexture(void* texture) {
 
 
 void* dx9MakeRGBATexture(const unsigned char* data, int width, int height) {
-    IDirect3DTexture9* texture = NULL;
-    D3DLOCKED_RECT r;
+    IDirect3DTexture9* texture = nullptr;
+    D3DLOCKED_RECT r = { 0 };
 
-    if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, NULL) != D3D_OK)
+    if (g_pd3dDevice->CreateTexture(width, height, 1, D3DUSAGE_DYNAMIC, D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture, nullptr) != D3D_OK)
         return nullptr;
-    if (texture->LockRect(0, &r, NULL, D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) != D3D_OK)
+    if (texture->LockRect(0, &r, nullptr, D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) != D3D_OK)
         return nullptr;
     for (int y = 0; y < height; y++)
     {
@@ -90,7 +94,7 @@ void* MakeRGBATexture(const unsigned char* data, int width, int height) {
         return glMakeRGBATexture(data, width, height);
     }
 #endif
-    return NULL;
+    return nullptr;
 }
 
 unsigned char* LoadImageFromFile(const char* filename, int* out_width, int* out_height)
@@ -98,10 +102,10 @@ unsigned char* LoadImageFromFile(const char* filename, int* out_width, int* out_
     // Load from file
     int image_width = 0;
     int image_height = 0;
-    unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
-    if (image_data == NULL)
-        return NULL;
-
+    unsigned char* image_data = stbi_load(filename, &image_width, &image_height, nullptr, 4);
+    if (image_data == nullptr) {
+        return nullptr;
+    }
     *out_width = image_width;
     *out_height = image_height;
 

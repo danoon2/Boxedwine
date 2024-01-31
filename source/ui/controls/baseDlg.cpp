@@ -6,7 +6,7 @@
 std::list<BaseDlg*> BaseDlg::activeDialogs;
 
 void BaseDlg::runDialogs() {
-    BaseDlg* toDelete = NULL;
+    BaseDlg* toDelete = nullptr;
     for (auto& dlg : BaseDlg::activeDialogs) {
         if (!dlg->isDone) {
             dlg->runIfVisible();
@@ -47,7 +47,7 @@ void ComboboxData::dataChanged() {
     dataForCombobox[len]=0;
 }
 
-BaseDlg::BaseDlg(int title, int width, int height, ImFont* font, BaseDlg* parent) : isDone(false), parent(parent), child(NULL), font(font) {
+BaseDlg::BaseDlg(int title, int width, int height, ImFont* font, BaseDlg* parent) : isDone(false), parent(parent), child(nullptr), font(font) {
     this->width = GlobalSettings::scaleIntUI(width);
     this->height = GlobalSettings::scaleIntUI(height);
     this->toolTipWidth = (float)GlobalSettings::scaleIntUI(28);
@@ -68,7 +68,7 @@ void BaseDlg::runIfVisible() {
     if (this->font) {
         ImGui::PushFont(this->font);
     }
-    if (ImGui::BeginPopupModal(this->title, NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse/* | ImGuiWindowFlags_NoMove*/))
+    if (ImGui::BeginPopupModal(this->title, nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse/* | ImGuiWindowFlags_NoMove*/))
     {
         ImGui::SetWindowSize(ImVec2((float)width, (float)height));        
         this->run();

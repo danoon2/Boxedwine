@@ -130,6 +130,16 @@ BString::BString() {
     data->incRefCount();
 }
 
+BString::BString(U32 size, char value) {
+    data = allocNewData();
+    data->str = getNewString(SMALLEST_LEVEL);
+    data->len = size-1;
+    data->level = getLevel();
+    data->str = getNewString(data->level);
+    memset(data->str, value, size);
+    data->incRefCount();
+}
+
 BString::BString(BStringData* data) {
     this->data = data;
     this->data->incRefCount();
@@ -155,6 +165,10 @@ BString::~BString() {
 }
 
 const char* BString::c_str() const {
+    return data->str;
+}
+
+char* BString::str() {
     return data->str;
 }
 
@@ -282,9 +296,9 @@ bool BString::contains(const char* s, bool ignoreCase) const {
         return false;
     }
     if (!ignoreCase) {
-        return strstr(data->str, s) != 0;
+        return strstr(data->str, s) != nullptr;
     }
-    return strcasestr(data->str, s) != 0;
+    return strcasestr(data->str, s) != nullptr;
 }
 
 bool BString::endsWith(const BString& s, bool ignoreCase) const {
@@ -359,7 +373,7 @@ int BString::lastIndexOf(const char* s, int fromIndex) const {
     if (isEmpty()) {
         return -1;
     }
-    size_t pos;
+    size_t pos = 0;
     if (fromIndex > length() || fromIndex < 0) {
         pos = std::string_view::npos;
     } else {
@@ -377,7 +391,7 @@ int BString::lastIndexOf(char c, int fromIndex) const {
     if (isEmpty()) {
         return -1;
     }
-    size_t pos;
+    size_t pos = 0;
     if (fromIndex > length() || fromIndex < 0) {
         pos = std::string_view::npos;
     } else {
@@ -802,6 +816,11 @@ void BString::clear() {
     data->str[0] = 0;
 }
 
+void BString::setLength(int len) {
+    data->len = len;
+    data->str[len] = 0;
+}
+
 // additional size to add
 void BString::makeWritable(int len) {
     if (data->level == 0 || data->refCount > 1) {
@@ -839,8 +858,8 @@ BString BString::operator^(const char* s) const {
     BStringData* d = allocNewData();
     int sLen = (int)strlen(s);
     char sep = (char)std::filesystem::path::preferred_separator;
-    bool needAddSep;
-    bool needRemoveSep;
+    bool needAddSep = false;
+    bool needRemoveSep = false;
 
     if (length() == 0) {
         needAddSep = s[0] != sep;

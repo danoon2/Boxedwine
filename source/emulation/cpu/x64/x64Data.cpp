@@ -11,7 +11,7 @@ X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
 }
 
 U8 X64Data::fetch8() {
-    U32 address;
+    U32 address = 0;
 
     if (this->cpu->isBig()) {
         address = this->ip + this->cpu->seg[CS].address;

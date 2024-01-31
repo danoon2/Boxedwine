@@ -14,7 +14,7 @@ BtMemory::BtMemory(KMemory* memory) : memory(memory) {
     }
     this->eipToHostInstructionAddressSpaceMapping = NULL;
 #else
-    this->eipToHostInstructionPages = new void** [K_NUMBER_OF_PAGES];
+    this->eipToHostInstructionPages = new U8** [K_NUMBER_OF_PAGES];
     memset(this->eipToHostInstructionPages, 0, K_NUMBER_OF_PAGES * sizeof(void**));
 #endif    
     memset(this->committedEipPages, 0, sizeof(this->committedEipPages));
@@ -32,7 +32,7 @@ BtMemory::~BtMemory() {
 }
 
 // call during code translation, this needs to be fast
-void* BtMemory::getExistingHostAddress(U32 eip) {
+U8* BtMemory::getExistingHostAddress(U32 eip) {
 #ifdef BOXEDWINE_64BIT_MMU
     if (KSystem::useLargeAddressSpace) {
         if (!this->isEipPageCommitted(eip >> K_PAGE_SHIFT)) {
@@ -50,14 +50,14 @@ void* BtMemory::getExistingHostAddress(U32 eip) {
         U32 offset = eip & K_PAGE_MASK;
         if (this->eipToHostInstructionPages[page])
             return this->eipToHostInstructionPages[page][offset];
-        return NULL;
+        return nullptr;
     }
 }
 
-bool BtMemory::isAddressExecutable(void* address) {
+bool BtMemory::isAddressExecutable(U8* address) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
     for (auto& p : this->allocatedExecutableMemory) {
-        if (address >= p.memory && address < (U8*)p.memory + p.size) {
+        if (address >= p.memory && address < p.memory + p.size) {
             return true;
         }
     }
@@ -74,7 +74,7 @@ int powerOf2(U32 requestedSize, U32& size) {
     return powerOf2Size;
 }
 
-void* BtMemory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
+U8* BtMemory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
     U32 size = 0;
     U32 powerOf2Size = powerOf2(requestedSize, size);
@@ -90,12 +90,12 @@ void* BtMemory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     }
     U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
     if (!this->freeExecutableMemory[index].empty()) {
-        void* result = this->freeExecutableMemory[index].front();
+        U8* result = this->freeExecutableMemory[index].front();
         this->freeExecutableMemory[index].pop_front();
         return result;
     }
     U32 count = (size + 65535) / 65536;
-    void* result = Platform::alloc64kBlock(count, true);
+    U8* result = Platform::alloc64kBlock(count, true);
     this->allocatedExecutableMemory.push_back(BtMemory::AllocatedMemory(result, count * 64 * 1024));
     count = 65536 / size;
     for (U32 i = 1; i < count; i++) {
@@ -104,7 +104,7 @@ void* BtMemory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
     return result;
 }
 
-void BtMemory::freeExcutableMemory(void* hostMemory, U32 actualSize) {
+void BtMemory::freeExcutableMemory(U8* hostMemory, U32 actualSize) {
     Platform::writeCodeToMemory(hostMemory, actualSize, [hostMemory, actualSize] {
         memset(hostMemory, 0xcd, actualSize);
         });

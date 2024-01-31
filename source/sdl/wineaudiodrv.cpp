@@ -336,7 +336,7 @@ static void boxedaudio_drv_init(CPU* cpu) {
 	U32 addressHeldFrames = ARG7;
 	U32 addressLclOffsFrames = ARG8;
 	U32 bufsizeFrames = ARG9;
-	EAX = audio->init(KThread::currentThread()->process.get(), isRender, boxedAudioId, addressFmt, addressPeriodFrames, addressLocalBuffer, addressWriOffsFrames, addressHeldFrames, addressLclOffsFrames, bufsizeFrames);
+	EAX = audio->init(KThread::currentThread()->process, isRender, boxedAudioId, addressFmt, addressPeriodFrames, addressLocalBuffer, addressWriOffsFrames, addressHeldFrames, addressLclOffsFrames, bufsizeFrames);
 }
 
 static void boxedaudio_drv_start(CPU* cpu) {

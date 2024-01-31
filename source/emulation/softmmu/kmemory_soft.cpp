@@ -63,21 +63,21 @@ void KMemoryData::setPage(U32 index, Page* page) {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8* readPtr = page->getReadPtr(address);
     if (readPtr) {
-        if (readPtr - (index << K_PAGE_SHIFT) == 0) {
+        if (readPtr - (index << K_PAGE_SHIFT) == nullptr) {
             kpanic("Memory::setPage r logic mistake");
         }
         this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
     } else {
-        this->mmuReadPtrAdjusted[index] = 0;
+        this->mmuReadPtrAdjusted[index] = nullptr;
     }
     U8* writePtr = page->getWritePtr(address, K_PAGE_SHIFT);
     if (writePtr) {
-        if (writePtr - (index << K_PAGE_SHIFT) == 0) {
+        if (writePtr - (index << K_PAGE_SHIFT) == nullptr) {
             kpanic("Memory::setPage w logic mistake");
         }
         this->mmuWritePtrAdjusted[index] = writePtr - (index << K_PAGE_SHIFT);
     } else {
-        this->mmuWritePtrAdjusted[index] = 0;
+        this->mmuWritePtrAdjusted[index] = nullptr;
     }
 #endif
 }
@@ -190,10 +190,10 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
             return false;
         }
         if (memory->flags[i] == 0 || (canBeReMapped && (memory->flags[i] & PAGE_MAPPED))) {
-            U32 j;
+            U32 j = 1;
             bool success = true;
 
-            for (j = 1; j < pageCount; j++) {
+            for (; j < pageCount; j++) {
                 U32 nextPage = i + j; // could be done a different way, but this helps the static analysis
                 if (nextPage < K_NUMBER_OF_PAGES && memory->flags[nextPage] != 0 && (!canBeReMapped || !(memory->flags[nextPage] & PAGE_MAPPED))) {
                     success = false;
@@ -450,7 +450,7 @@ void KMemory::clone(KMemory* from) {
         } else if (page->getType() == Page::Type::Invalid_Page) {
             
         } else {
-            kpanic("unhandled case when cloning memory: page type = %d", page->getType());
+            kpanic("unhandled case when cloning memory: page type = %d", static_cast<int>(page->getType()));
         }
     }
 }
@@ -541,7 +541,7 @@ bool KMemoryData::isAddressDynamic(U32 address, U32 len) {
 CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
     Page* page = getPage(address >> K_PAGE_SHIFT);
 
-    CodePage* codePage;
+    CodePage* codePage = nullptr;
     if (page->getType() == Page::Type::Code_Page) {
         codePage = (CodePage*)page;
     } else {
@@ -555,7 +555,7 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
             p->ondemmandFile(address);
             return getOrCreateCodePage(address);
         } else {
-            kpanic("Unhandled code caching page type: %d", page->getType());
+            kpanic("Unhandled code caching page type: %d", static_cast<int>(page->getType()));
             codePage = nullptr;
         }
     }
@@ -564,7 +564,6 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
 
 void KMemory::logPageFault(KThread* thread, U32 address) {
     U32 start = 0;
-    U32 i;
     CPU* cpu = thread->cpu;
 
     BString name = process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);
@@ -572,7 +571,7 @@ void KMemory::logPageFault(KThread* thread, U32 address) {
 
     klog("Page Fault at %.8X", address);
     klog("Valid address ranges:");
-    for (i = 0; i < K_NUMBER_OF_PAGES; i++) {
+    for (U32 i = 0; i < K_NUMBER_OF_PAGES; i++) {
         if (!start) {
             if (data->getPage(i) != invalidPage) {
                 start = i;

@@ -246,7 +246,7 @@ void readResourceDirectory(FILE* f, uint32_t resourceVirtualAddress, uint32_t ba
     for (int i=0;i<dir->NumberOfNamedEntries+dir->NumberOfIdEntries;i++, entry++) {
         if (entry->DirectoryInfo.DataIsDirectory) {
             if (entry->DirectoryInfo.OffsetToDirectory<offsetFromBaseResource || entry->DirectoryInfo.OffsetToDirectory+sizeof(ImageResourceDirectory)>=offsetFromBaseResource+resourceBufferSize) {
-                unsigned char buffer[4096];
+                unsigned char buffer[4096] = {};
                 int newOffsetFromBaseResource = entry->DirectoryInfo.OffsetToDirectory & 0xFFFFF000;
                 fseek(f, offsetFromBaseResource+baseResourceFileOffset, SEEK_SET);
                 fread(buffer, 1, 4096, f);
@@ -256,7 +256,7 @@ void readResourceDirectory(FILE* f, uint32_t resourceVirtualAddress, uint32_t ba
             }
         } else {
             if (isIcon) {
-                ImageResourceDataEntry* data;
+                ImageResourceDataEntry* data = nullptr;
                 if (entry->DirectoryInfo.OffsetToDirectory>=offsetFromBaseResource && entry->DirectoryInfo.OffsetToDirectory+sizeof(ImageResourceDirectory)<offsetFromBaseResource+resourceBufferSize) {
                     data = (ImageResourceDataEntry*)(entry->OffsetToData+resourceBuffer);
                 } else {
@@ -294,7 +294,7 @@ void readPalette(BitmapInfoHeader& bih, FILE* f, U32* palette) {
 unsigned char* loadData(BitmapInfoHeader& bih, FILE* f, int stride) {
     if (bih.biCompression != 0) { // BMP_NO_COMPRESSION
         kwarn("Compressed icon was not handled");
-        return NULL;
+        return nullptr;
     }
 	int dataSize = bih.biHeight * stride;
 	unsigned char* data = new unsigned char[dataSize];
@@ -330,11 +330,11 @@ static void swapRGB(U8* data, int height, int width) {
 unsigned char* loadData(BitmapInfoHeader& bih, FILE* f) {
 	int stride = (bih.biWidth * bih.biBitCount + 7) / 8;
 	stride = (stride + 3) / 4 * 4;
-	unsigned char* result = NULL;
+	unsigned char* result = nullptr;
 
     if (bih.biCompression != 0) { // BMP_NO_COMPRESSION
         kwarn("Compressed icon was not handled");
-        return NULL;
+        return nullptr;
     } else {
 	    int dataSize = bih.biHeight * stride;
 	    result = new unsigned char[dataSize];
@@ -436,7 +436,7 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
         }
         return result;
     }
-    return NULL;
+    return nullptr;
 }
 
 /*
@@ -526,25 +526,25 @@ U32 getDoubleWord(FILE* f) {
 const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* width, int* height) {
     FILE* f = fopen(nativeExePath.c_str(), "rb");
     if (!f) {
-        return NULL;
+        return nullptr;
     }
     unsigned char* buffer = new unsigned char[32*1024];
     U32 read = (U32)fread(buffer, 1, 32 * 1024, f);
     if (buffer[0]!='M' || buffer[1]!='Z') {
         fclose(f);
-        return NULL;
+        return nullptr;
     }
     U32 nextHeader = READD(buffer, 60);    // e_lfanew File address of new exe header
     if (nextHeader>read-1) {
         fclose(f);
-        return NULL;
+        return nullptr;
     }
     std::vector<IconInfo> icons;
     if (buffer[nextHeader]=='N' && buffer[nextHeader+1]=='E') {
         ImageOs2Header* header = (ImageOs2Header*)(buffer+nextHeader);
         if (header->ne_rsrctab >= header->ne_restab) {
             fclose(f);
-            return NULL;
+            return nullptr;
         }
         fseek(f, nextHeader + header->ne_rsrctab, SEEK_SET);
         U16 alignShiftCount = getWord(f);
@@ -601,11 +601,9 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
         Pe32OptionalHeader* optionalHeader = (Pe32OptionalHeader*)(buffer+nextHeader+sizeof(PeHeader));
         ImageSectionHeader* sectionHeader = (ImageSectionHeader*)(((unsigned char*)optionalHeader)+header->SizeOfOptionalHeader);
 
-        U32 resourceRVA;
-        U32 resourceSize;
         if (optionalHeader->Magic == 0x010b) {
-            resourceRVA = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+16); // 8 bytes per entry, resources is at 3 rd entry
-            resourceSize = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+20);
+            U32 resourceRVA = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+16); // 8 bytes per entry, resources is at 3 rd entry
+            U32 resourceSize = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+20);
             U32 rawOffset = resourceRVA;
             for (int i=0;i<header->NumberOfSections;i++) {
                 ImageSectionHeader* section = sectionHeader+i;
@@ -624,12 +622,12 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
             kwarn("Icon 20b not implemented");
         } else {
             fclose(f);
-            return NULL;
+            return nullptr;
         }                
     }
     if (icons.size()>0) {
         IconInfo bestIcon = icons[0];
-        for (int i=1;i<(int)icons.size();i++) {
+        for (size_t i=1;i<icons.size();i++) {
             if (bestIcon.bih.biCompression) {
                 continue;
             }
@@ -646,5 +644,5 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
         return result;
     }
     fclose(f);
-    return NULL;
+    return nullptr;
 }

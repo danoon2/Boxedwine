@@ -12,6 +12,7 @@ class BString {
 public:
 	BString();
 	BString(const char*, bool litteral);
+	BString(U32 size, char value);
 	//BString(const char* s);
 	//BString(const char* s, int len);
 	BString(const BString& s);
@@ -19,6 +20,7 @@ public:
 	~BString();
 
 	const char* c_str() const;
+	char* str();
 	void w_str(wchar_t* w, int len) const;
 
 	char charAt(int i) const;
@@ -47,6 +49,14 @@ public:
 	BString substr(int beginIndex, int len) const;
 	int32_t toInt() const;
 	int64_t toInt64() const;
+
+	template<typename ... Args>
+	void sprintf(const char* format, Args ... args) {
+		int size = std::snprintf(nullptr, 0, format, args ...);
+		makeWritable(size);
+		std::snprintf(str(), size + 1, format, args ...);
+		setLength(size);
+	}
 
 	// modifying function
 	void append(const BString& s);
@@ -159,6 +169,7 @@ protected:
 
 	// len is what we need in addition to current length, pass 0 just to make sure we are writable
 	void makeWritable(int len);
+	void setLength(int len);
 };
 
 namespace std {

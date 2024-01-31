@@ -74,7 +74,7 @@ bool  KUnixSocketObject::isAsync() {
 
 KFileLock*  KUnixSocketObject::getLock(KFileLock* lock) {
     kdebug("UnixSocketObject::getLock not implemented yet");
-    return NULL;
+    return nullptr;
 }
 
 U32  KUnixSocketObject::setLock(KFileLock* lock, bool wait) {
@@ -83,7 +83,8 @@ U32  KUnixSocketObject::setLock(KFileLock* lock, bool wait) {
 }
 
 bool KUnixSocketObject::isOpen() {
-    return this->listening || !this->connection.expired();
+    std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
+    return this->listening || con != nullptr;
 }
 
 bool KUnixSocketObject::isReadReady() {
@@ -92,7 +93,8 @@ bool KUnixSocketObject::isReadReady() {
 }
 
 bool KUnixSocketObject::isWriteReady() {
-    return !this->connection.expired();
+    std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
+    return con != nullptr;
 }
 
 void KUnixSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
@@ -124,9 +126,11 @@ void KUnixSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 
 }
 
 U32 KUnixSocketObject::internal_write(KThread* thread, const std::shared_ptr<KUnixSocketObject>& con, BOXEDWINE_CONDITION& cond, U32 buffer, U32 len) {
-    U32 count=0;
     KMemory* memory = thread->memory;
 
+    if (!memory->canRead(buffer, len)) {
+        return -K_EFAULT;
+    }
     if (this->type == K_SOCK_DGRAM) {
         if (!strcmp(this->destAddress.data, "/dev/log")) {
             BString s = memory->readString(buffer);
@@ -139,34 +143,23 @@ U32 KUnixSocketObject::internal_write(KThread* thread, const std::shared_ptr<KUn
     
     //printf("internal_write: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->connection->recvBuffer, (int)this->connection->recvBuffer.size(), (int)this->connection->recvBuffer.capacity(), len);
 
-    while (len) {
-        S8 tmp[4096];
-        U32 todo = len;
-
-        if (todo>4096)
-            todo = 4096;
-        if (!memory->canRead(buffer, todo)) {
-            kwarn("KUnixSocketObject::internal_write about to crash reading buffer to buffer");
-        }
-        memory->memcpy(tmp, buffer, todo);
-        con->recvBuffer.insert(con->recvBuffer.end(), tmp, tmp + todo);
-        buffer+=todo;
-        len-=todo;
-        count+=todo;
-    }     
-    return count;
+    memory->performOnMemory(buffer, len, true, [con](U8* ram, U32 len) {
+        con->recvBuffer.insert(con->recvBuffer.end(), ram, ram + len);
+        return true;
+        });
+  
+    return len;
 }
 
 U32 KUnixSocketObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
     U32 len=0;
-    S32 i;
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     KMemory* memory = thread->memory;
 
     BOXEDWINE_CONDITION& cond = (con?con->lockCond:this->lockCond);
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(cond);
 
-    for (i=0;i<iovcnt;i++) {
+    for (S32 i=0;i<iovcnt;i++) {
         U32 buf = memory->readd(iov + i * 8);
         U32 toWrite = memory->readd(iov + i * 8 + 4);
         S32 result;
@@ -278,6 +271,9 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len) {
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
     KMemory* memory = thread->memory;
 
+    if (!memory->canWrite(buffer, len)) {
+        return -K_EFAULT;
+    }
     if (!this->inClosed && !con)
         return -K_EPIPE;
     con = nullptr; // don't hold a strong reference to this, if we are blocking then it would prevent the con object from being destroyed when its process is closed
@@ -300,28 +296,13 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len) {
         }
 #endif
     }
-    // :TODO: remove extra copy
-    while (len && this->recvBuffer.size()!=0) {
-        S8 tmp[4096];
-        U32 todo = len;
+    count = std::min(len, (U32)this->recvBuffer.size());
+    memory->performOnMemory(buffer, count, false, [this](U8* ram, U32 len) {
+        std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + len, ram);
+        this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + len);
+        return true;
+        });
 
-        if (todo > 4096)
-            todo = 4096;
-        if (todo > this->recvBuffer.size())
-            todo = (U32)this->recvBuffer.size();
-
-        std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + todo, tmp);
-        this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + todo);
-
-        if (!memory->canWrite(buffer, todo)) {
-            kwarn("KUnixSocketObject::read about to crash writing to buffer");
-        }
-        memory->memcpy(buffer, tmp, todo);
-
-        buffer += todo;
-        count += todo;
-        len -= todo;
-    }      
     if (con) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     }
@@ -369,7 +350,7 @@ public:
     bool remove() override {if (!this->parent) return false; this->removeNodeFromParent(); return true;}
     U64 lastModified() override {return 0;}
     U64 length() override {return 0;}
-    FsOpenNode* open(U32 flags) override {kwarn("unixsocket_open was called, this shouldn't happen.  syscall_open should detect we have a kobject already"); return NULL;}
+    FsOpenNode* open(U32 flags) override {kwarn("unixsocket_open was called, this shouldn't happen.  syscall_open should detect we have a kobject already"); return nullptr;}
     U32 getType(bool checkForLink) override {return 12;} // DT_SOCK
     U32 getMode() override {return K__S_IREAD | K__S_IWRITE | K_S_IFSOCK;}
     U32 removeDir() override {kpanic("UnixSocket::removeDir not implemented"); return 0;}
@@ -381,13 +362,11 @@ U32 KUnixSocketObject::bind(KThread* thread, KFileDescriptor* fd, U32 address, U
 
     U32 family = memory->readw(address);
     if (family==K_AF_UNIX) {
-        char tmp[MAX_FILEPATH_LEN];
-        const char* socketName = socketAddressName(memory, address, len, tmp, sizeof(tmp));
+        BString name = socketAddressName(memory, address, len);
 
-        if (!socketName || !socketName[0]) {
+        if (name.length() == 0) {
             return 0; // :TODO: why does XOrg need this
         }
-        BString name = BString::copy(socketName);
         BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(thread->process->currentDirectory, name, true);
         if (node) {
             return -K_EADDRINUSE;
@@ -718,7 +697,7 @@ U32 KUnixSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 leve
 }
 
 U32 KUnixSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
-    MsgHdr hdr;
+    MsgHdr hdr = {};
     KMemory* memory = thread->memory;
     U32 result = 0;
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
@@ -782,7 +761,7 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 address
 }
 
 U32 KUnixSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
-    MsgHdr hdr;
+    MsgHdr hdr = {};
     U32 result = 0;
     KMemory* memory = thread->memory;
 

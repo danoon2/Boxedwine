@@ -94,7 +94,7 @@ void KSystem::init() {
 }
 
 void KSystem::destroy() {
-	KThread::setCurrentThread(NULL);
+	KThread::setCurrentThread(nullptr);
 	KSystem::shutingDown = true;
     while (true) {
         std::shared_ptr<KProcess> p;
@@ -125,7 +125,7 @@ void KSystem::destroy() {
     NormalCPU::clearCache();
     if (KSystem::logFile) {
         fclose(KSystem::logFile);
-        KSystem::logFile = NULL;
+        KSystem::logFile = nullptr;
     }
 }
 
@@ -243,7 +243,7 @@ U32 KSystem::clock_getres64(KThread* thread, U32 clk_id, U32 timespecAddress) {
 }
 
 KThread* KSystem::getThreadById(U32 threadId) {
-    KThread* result = NULL;
+    KThread* result = nullptr;
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
     for (auto& p : processes) {
@@ -347,7 +347,7 @@ void KSystem::wakeThreadsWaitingOnProcessStateChanged() {
 
 U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
     std::shared_ptr<KProcess> process;
-    U32 result;
+    U32 result = 0;
     KMemory* memory = thread->memory;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
@@ -587,7 +587,7 @@ U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
 #define SHM_EXEC        0100000 /* execution access */
 
 U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
-    U32 permissions;
+    U32 permissions = 0;
     BoxedPtr<SHM> shm;
 
     if (shmid & PRIVATE_SHMID)
@@ -836,7 +836,7 @@ BoxedPtr<MappedFileCache> KSystem::getFileCache(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
     if (KSystem::fileCache.count(name))
         return KSystem::fileCache[name];
-    return NULL;
+    return nullptr;
 }
 
 void KSystem::setFileCache(BString name, const BoxedPtr<MappedFileCache>& fileCache) {
@@ -930,7 +930,7 @@ PixelFormat* KSystem::getPixelFormat(U32 index) {
     if (index < numberOfPfs) {
         return &pfs[index];
     }
-    return NULL;
+    return nullptr;
 }
 
 U32 KSystem::describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr)

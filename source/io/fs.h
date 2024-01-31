@@ -50,7 +50,7 @@ class FsFileNode;
 class Fs {
 public:   
     static bool initFileSystem(BString rootPath);
-    static BoxedPtr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink=NULL);    
+    static BoxedPtr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink=nullptr);    
     static BoxedPtr<FsNode> addFileNode(BString path, BString link, BString nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent);
     static BoxedPtr<FsNode> addVirtualFile(BString path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data=0);
     static BoxedPtr<FsNode> addDynamicLinkFile(BString path, U32 rdev, const BoxedPtr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink);
@@ -87,7 +87,7 @@ public:
 private:
     friend class KUnixSocketObject;
 
-    static BoxedPtr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, BoxedPtr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink=NULL);
+    static BoxedPtr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, BoxedPtr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink= nullptr);
 
     static std::atomic_int nextNodeId;
 };

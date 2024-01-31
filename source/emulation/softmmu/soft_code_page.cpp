@@ -18,7 +18,7 @@ CodePage::CodePage(U8* page, U32 address) : RWPage(page, address) {
     memset(this->entries, 0, sizeof(this->entries));
     entryCount = 0;
     writeCount = 0;
-    writeCountsPerByte = 0;
+    writeCountsPerByte = nullptr;
 }
 
 CodePage::~CodePage() {
@@ -33,7 +33,7 @@ CodePage::~CodePage() {
 }
 
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
-    cpu->nextBlock = NULL;
+    cpu->nextBlock = nullptr;
     cpu->yield = true;
 }
 
@@ -212,7 +212,7 @@ void CodePage::addCode(U32 eip, CodeBlock& block, const InternalCodeBlock& share
     entry->sharedBlock = sharedBlock;
     entry->page = this;
     U32 offset = eip & K_PAGE_MASK;
-    U32 stop;
+    U32 stop = 0;
 
     if (offset + len > K_PAGE_SIZE) {
         stop = K_PAGE_SIZE - 1;

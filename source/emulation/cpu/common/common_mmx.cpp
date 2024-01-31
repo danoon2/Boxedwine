@@ -191,7 +191,7 @@ void common_psrlwE64(CPU* cpu, U32 reg, U32 address) {
 
 void common_psrawMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=&cpu->reg_mmx[r1];
-    U8 shift;
+    U8 shift = 0;
 
     if (cpu->reg_mmx[r2].q > 15) {
         shift = 16;
@@ -300,7 +300,7 @@ void common_psrldE64(CPU* cpu, U32 reg, U32 address) {
 
 void common_psradMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=&cpu->reg_mmx[r1];
-    U8 shift;
+    U8 shift = 0;
 
     if (cpu->reg_mmx[r2].q > 31) {
         shift = 32;
@@ -717,8 +717,8 @@ void common_psubusbMmx(CPU* cpu, U32 r1, U32 r2) {
 
 void common_psubusbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
-    MMX_reg src;
-    MMX_reg result;
+    MMX_reg src = {};
+    MMX_reg result = {};
     
     src.q = cpu->memory->readq(address);
 
@@ -749,8 +749,8 @@ void common_psubuswMmx(CPU* cpu, U32 r1, U32 r2) {
 
 void common_psubuswE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
-    MMX_reg src;
-    MMX_reg result;
+    MMX_reg src = {};
+    MMX_reg result = {};
     
     src.q = cpu->memory->readq(address);
 

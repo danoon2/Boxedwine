@@ -46,7 +46,6 @@ void x64CPU::restart() {
 
 void* x64CPU::init() {
     X64Asm data(this);
-    void* result;
     KMemoryData* mem = getMemData(memory);
     x64CPU* cpu = this;
 
@@ -94,7 +93,7 @@ void* x64CPU::init() {
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
     data.doJmp(false);
     std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
-    result = chunk->getHostAddress();
+    void* result = chunk->getHostAddress();
     //link(&data, chunk);
     this->pendingCodePages.clear();    
     this->eipToHostInstructionPages = mem->eipToHostInstructionPages;
@@ -186,15 +185,14 @@ void x64CPU::addReturnFromTest() {
 #endif
 
 void x64CPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
-    U32 i;
     KMemoryData* mem = getMemData(memory);
 
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
     }
-    for (i=0;i<data->todoJump.size();i++) {
-        U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
-        U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
+    for (auto& todoJump : data->todoJump) {
+        U32 eip = seg[CS].address + todoJump.eip;
+        U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+todoJump.bufferPos;
 
         U8* host = (U8*)fromChunk->getHostFromEip(eip);
         if (!host) {

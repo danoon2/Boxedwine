@@ -103,49 +103,49 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x86'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\lib\glew\src\glew.cpp" />

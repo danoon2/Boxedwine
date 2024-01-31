@@ -180,7 +180,7 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     BtCPU* cpu = (BtCPU*)thread->cpu;
-    cpu->nativeHandle = (U64)CreateThread(NULL, 0, platformThreadProc, thread, CREATE_SUSPENDED, 0);
+    cpu->nativeHandle = (U64)CreateThread(nullptr, 0, platformThreadProc, thread, CREATE_SUSPENDED, nullptr);
     if (!cpu->nativeHandle) {
         kpanic("scheduleThread failed to create thread");
         return;

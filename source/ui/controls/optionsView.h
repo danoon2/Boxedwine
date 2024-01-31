@@ -5,9 +5,9 @@
 
 class OptionsViewWineVersion {
 public:
-	OptionsViewWineVersion() : currentVersion(NULL), availableVersion(NULL) {}
-	WineVersion* currentVersion;
-	WineVersion* availableVersion;
+	OptionsViewWineVersion() = default;
+	WineVersion* currentVersion = nullptr;
+	WineVersion* availableVersion = nullptr;
 	BString name;
 	BString size;
 };

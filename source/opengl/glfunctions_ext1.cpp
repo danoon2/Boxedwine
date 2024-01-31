@@ -4908,7 +4908,7 @@ void glcommon_glGetBufferPointerv(CPU* cpu) {
     if (!ext_glGetBufferPointerv)
         kpanic("ext_glGetBufferPointerv is NULL");
     {
-    GLint size;void* p;GL_FUNC(ext_glGetBufferPointerv)(ARG1, ARG2, &p);
+    GLint size=0;void* p;GL_FUNC(ext_glGetBufferPointerv)(ARG1, ARG2, &p);
     ext_glGetBufferParameteriv(ARG1, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, marshalBackp(cpu, p, size));
     GL_LOG ("glGetBufferPointerv GLenum target=%d, GLenum pname=%d, void** params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -4917,7 +4917,7 @@ void glcommon_glGetBufferPointervARB(CPU* cpu) {
     if (!ext_glGetBufferPointervARB)
         kpanic("ext_glGetBufferPointervARB is NULL");
     {
-    GLint size;void* p;GL_FUNC(ext_glGetBufferPointervARB)(ARG1, ARG2, &p);
+    GLint size=0;void* p=nullptr;GL_FUNC(ext_glGetBufferPointervARB)(ARG1, ARG2, &p);
     ext_glGetBufferParameterivARB(ARG1, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, marshalBackp(cpu, p, size));
     GL_LOG ("glGetBufferPointervARB GLenum target=%d, GLenum pname=%d, void** params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -4962,7 +4962,7 @@ void glcommon_glGetColorTable(CPU* cpu) {
     if (!ext_glGetColorTable)
         kpanic("ext_glGetColorTable is NULL");
     {
-    static GLubyte* buffer;static U32 bufferLen; GLubyte* p; GLboolean b=PIXEL_PACK_BUFFER(); U32 colors; if (b)p=(GLubyte*)pARG4; else {U32 len;colors=components_in_format(ARG2)*marshalGetColorTableWidth(ARG1);len=colors*getDataSize(ARG3);if (bufferLen<len){if (buffer) delete[] buffer;buffer=new GLubyte[len];bufferLen=len;} p=buffer;}GL_FUNC(ext_glGetColorTable)(ARG1, ARG2, ARG3, p);
+    static GLubyte* buffer;static U32 bufferLen; GLubyte* p=nullptr; GLboolean b=PIXEL_PACK_BUFFER(); U32 colors=0; if (b)p=(GLubyte*)pARG4; else {colors=components_in_format(ARG2)*marshalGetColorTableWidth(ARG1);U32 len=colors*getDataSize(ARG3);if (bufferLen<len){if (buffer) delete[] buffer;buffer=new GLubyte[len];bufferLen=len;} p=buffer;}GL_FUNC(ext_glGetColorTable)(ARG1, ARG2, ARG3, p);
     if (!b) marshalBackType(cpu, ARG3, colors, p, ARG4);
     GL_LOG ("glGetColorTable GLenum target=%d, GLenum format=%d, GLenum type=%d, void* table=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -5096,7 +5096,7 @@ void glcommon_glGetCompressedMultiTexImageEXT(CPU* cpu) {
     if (!ext_glGetCompressedMultiTexImageEXT)
         kpanic("ext_glGetCompressedMultiTexImageEXT is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p; if (b) p=(GLvoid*)pARG4; else {size = marshalGetCompressedMultiImageSizeEXT(ARG1, ARG2, ARG3); p = (GLvoid*)marshalui(cpu, ARG4, size);}GL_FUNC(ext_glGetCompressedMultiTexImageEXT)(ARG1, ARG2, ARG3, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p=nullptr; if (b) p=(GLvoid*)pARG4; else {size = marshalGetCompressedMultiImageSizeEXT(ARG1, ARG2, ARG3); p = (GLvoid*)marshalui(cpu, ARG4, size);}GL_FUNC(ext_glGetCompressedMultiTexImageEXT)(ARG1, ARG2, ARG3, p);
     if (!b) marshalBackui(cpu, ARG4, (GLuint*)p, size);
     GL_LOG ("glGetCompressedMultiTexImageEXT GLenum texunit=%d, GLenum target=%d, GLint lod=%d, void* img=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -5105,7 +5105,7 @@ void glcommon_glGetCompressedTexImage(CPU* cpu) {
     if (!ext_glGetCompressedTexImage)
         kpanic("ext_glGetCompressedTexImage is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p; if (b) p=(GLvoid*)pARG3; else {size = marshalGetCompressedImageSize(ARG1, ARG2); p = (GLvoid*)marshalui(cpu, ARG3, size);}GL_FUNC(ext_glGetCompressedTexImage)(ARG1, ARG2, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p=nullptr; if (b) p=(GLvoid*)pARG3; else {size = marshalGetCompressedImageSize(ARG1, ARG2); p = (GLvoid*)marshalui(cpu, ARG3, size);}GL_FUNC(ext_glGetCompressedTexImage)(ARG1, ARG2, p);
     if (!b) marshalBackui(cpu, ARG3, (GLuint*)p, size);
     GL_LOG ("glGetCompressedTexImage GLenum target=%d, GLint level=%d, void* img=%.08x",ARG1,ARG2,ARG3);
     }
@@ -5114,7 +5114,7 @@ void glcommon_glGetCompressedTexImageARB(CPU* cpu) {
     if (!ext_glGetCompressedTexImageARB)
         kpanic("ext_glGetCompressedTexImageARB is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p; if (b) p=(GLvoid*)pARG3; else {size = marshalGetCompressedImageSizeARB(ARG1, ARG2); p = (GLvoid*)marshalui(cpu, ARG3, size);}GL_FUNC(ext_glGetCompressedTexImageARB)(ARG1, ARG2, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p=nullptr; if (b) p=(GLvoid*)pARG3; else {size = marshalGetCompressedImageSizeARB(ARG1, ARG2); p = (GLvoid*)marshalui(cpu, ARG3, size);}GL_FUNC(ext_glGetCompressedTexImageARB)(ARG1, ARG2, p);
     if (!b) marshalBackui(cpu, ARG3, (GLuint*)p, size);
     GL_LOG ("glGetCompressedTexImageARB GLenum target=%d, GLint level=%d, void* img=%.08x",ARG1,ARG2,ARG3);
     }
@@ -5123,7 +5123,7 @@ void glcommon_glGetCompressedTextureImage(CPU* cpu) {
     if (!ext_glGetCompressedTextureImage)
         kpanic("ext_glGetCompressedTextureImage is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p; if (b) p=(GLvoid*)pARG4; else {p = (GLvoid*)marshalui(cpu, ARG4, ARG3);}GL_FUNC(ext_glGetCompressedTextureImage)(ARG1, ARG2, ARG3, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p=nullptr; if (b) p=(GLvoid*)pARG4; else {p = (GLvoid*)marshalui(cpu, ARG4, ARG3);}GL_FUNC(ext_glGetCompressedTextureImage)(ARG1, ARG2, ARG3, p);
     if (!b) marshalBackui(cpu, ARG4, (GLuint*)p, ARG3);
     GL_LOG ("glGetCompressedTextureImage GLuint texture=%d, GLint level=%d, GLsizei bufSize=%d, void* pixels=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -5132,7 +5132,7 @@ void glcommon_glGetCompressedTextureImageEXT(CPU* cpu) {
     if (!ext_glGetCompressedTextureImageEXT)
         kpanic("ext_glGetCompressedTextureImageEXT is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p; if (b) p=(GLvoid*)pARG4; else {size = marshalGetCompressedTextureSizeEXT(ARG1, ARG2, ARG3); p = (GLvoid*)marshalui(cpu, ARG4, size);}GL_FUNC(ext_glGetCompressedTextureImageEXT)(ARG1, ARG2, ARG3, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p=nullptr; if (b) p=(GLvoid*)pARG4; else {size = marshalGetCompressedTextureSizeEXT(ARG1, ARG2, ARG3); p = (GLvoid*)marshalui(cpu, ARG4, size);}GL_FUNC(ext_glGetCompressedTextureImageEXT)(ARG1, ARG2, ARG3, p);
     if (!b) marshalBackui(cpu, ARG4, (GLuint*)p, size);
     GL_LOG ("glGetCompressedTextureImageEXT GLuint texture=%d, GLenum target=%d, GLint lod=%d, void* img=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -5141,7 +5141,7 @@ void glcommon_glGetCompressedTextureSubImage(CPU* cpu) {
     if (!ext_glGetCompressedTextureSubImage)
         kpanic("ext_glGetCompressedTextureSubImage is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p; if (b) p=(GLvoid*)pARG9; else {p = (GLvoid*)marshalui(cpu, ARG9, ARG8);}GL_FUNC(ext_glGetCompressedTextureSubImage)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p=nullptr; if (b) p=(GLvoid*)pARG9; else {p = (GLvoid*)marshalui(cpu, ARG9, ARG8);}GL_FUNC(ext_glGetCompressedTextureSubImage)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9, p);
     if (!b) marshalBackui(cpu, ARG9, (GLuint*)p, ARG8);
     GL_LOG ("glGetCompressedTextureSubImage GLuint texture=%d, GLint level=%d, GLint xoffset=%d, GLint yoffset=%d, GLint zoffset=%d, GLsizei width=%d, GLsizei height=%d, GLsizei depth=%d, GLsizei bufSize=%d, void* pixels=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8,ARG9,ARG10);
     }
@@ -5150,7 +5150,7 @@ void glcommon_glGetConvolutionFilter(CPU* cpu) {
     if (!ext_glGetConvolutionFilter)
         kpanic("ext_glGetConvolutionFilter is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p; int count; if (b) p=(GLvoid*)pARG4; else {count = components_in_format(ARG2)*marshalGetConvolutionWidth(ARG1)*marshalGetConvolutionWidth(ARG2); p = marshalType(cpu, ARG3, count, ARG4);}GL_FUNC(ext_glGetConvolutionFilter)(ARG1, ARG2, ARG3, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p=nullptr; int count=0; if (b) p=(GLvoid*)pARG4; else {count = components_in_format(ARG2)*marshalGetConvolutionWidth(ARG1)*marshalGetConvolutionWidth(ARG2); p = marshalType(cpu, ARG3, count, ARG4);}GL_FUNC(ext_glGetConvolutionFilter)(ARG1, ARG2, ARG3, p);
     if (!b) marshalBackType(cpu, ARG3, count, p, ARG4);
     GL_LOG ("glGetConvolutionFilter GLenum target=%d, GLenum format=%d, GLenum type=%d, void* image=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -5159,7 +5159,7 @@ void glcommon_glGetConvolutionFilterEXT(CPU* cpu) {
     if (!ext_glGetConvolutionFilterEXT)
         kpanic("ext_glGetConvolutionFilterEXT is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p; int count; if (b) p=(GLvoid*)pARG4; else {count = components_in_format(ARG2)*marshalGetConvolutionWidth(ARG1)*marshalGetConvolutionWidth(ARG2); p = marshalType(cpu, ARG3, count, ARG4);}GL_FUNC(ext_glGetConvolutionFilterEXT)(ARG1, ARG2, ARG3, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p=nullptr; int count=0; if (b) p=(GLvoid*)pARG4; else {count = components_in_format(ARG2)*marshalGetConvolutionWidth(ARG1)*marshalGetConvolutionWidth(ARG2); p = marshalType(cpu, ARG3, count, ARG4);}GL_FUNC(ext_glGetConvolutionFilterEXT)(ARG1, ARG2, ARG3, p);
     if (!b) marshalBackType(cpu, ARG3, count, p, ARG4);
     GL_LOG ("glGetConvolutionFilterEXT GLenum target=%d, GLenum format=%d, GLenum type=%d, void* image=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
@@ -5483,7 +5483,7 @@ void glcommon_glGetHistogram(CPU* cpu) {
     if (!ext_glGetHistogram)
         kpanic("ext_glGetHistogram is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p; if (b) p=(GLvoid*)pARG5; else {size = marshalHistogramWidth(ARG1); p = marshalPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5);}GL_FUNC(ext_glGetHistogram)(ARG1, bARG2, ARG3, ARG4, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p = nullptr; if (b) p=(GLvoid*)pARG5; else {size = marshalHistogramWidth(ARG1); p = marshalPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5);}GL_FUNC(ext_glGetHistogram)(ARG1, bARG2, ARG3, ARG4, p);
     if (!b) marshalBackPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5, p);
     GL_LOG ("glGetHistogram GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
     }
@@ -5492,7 +5492,7 @@ void glcommon_glGetHistogramEXT(CPU* cpu) {
     if (!ext_glGetHistogramEXT)
         kpanic("ext_glGetHistogramEXT is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p; if (b) p=(GLvoid*)pARG5; else {size = marshalHistogramWidth(ARG1); p = marshalPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5);}GL_FUNC(ext_glGetHistogramEXT)(ARG1, bARG2, ARG3, ARG4, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p = nullptr; if (b) p=(GLvoid*)pARG5; else {size = marshalHistogramWidth(ARG1); p = marshalPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5);}GL_FUNC(ext_glGetHistogramEXT)(ARG1, bARG2, ARG3, ARG4, p);
     if (!b) marshalBackPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5, p);
     GL_LOG ("glGetHistogramEXT GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
     }
@@ -6003,7 +6003,7 @@ void glcommon_glGetNamedBufferPointerv(CPU* cpu) {
     if (!ext_glGetNamedBufferPointerv)
         kpanic("ext_glGetNamedBufferPointerv is NULL");
     {
-    GLint size;void* p;GL_FUNC(ext_glGetNamedBufferPointerv)(ARG1, ARG2, &p);
+    GLint size=0;void* p;GL_FUNC(ext_glGetNamedBufferPointerv)(ARG1, ARG2, &p);
     ext_glGetNamedBufferParameteriv(ARG1, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, marshalBackp(cpu, p, size));
     GL_LOG ("glGetNamedBufferPointerv GLuint buffer=%d, GLenum pname=%d, void** params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -6012,7 +6012,7 @@ void glcommon_glGetNamedBufferPointervEXT(CPU* cpu) {
     if (!ext_glGetNamedBufferPointervEXT)
         kpanic("ext_glGetNamedBufferPointervEXT is NULL");
     {
-    GLint size;void* p;GL_FUNC(ext_glGetNamedBufferPointervEXT)(ARG1, ARG2, &p);
+    GLint size=0;void* p;GL_FUNC(ext_glGetNamedBufferPointervEXT)(ARG1, ARG2, &p);
     ext_glGetNamedBufferParameterivEXT(ARG1, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, marshalBackp(cpu, p, size));
     GL_LOG ("glGetNamedBufferPointervEXT GLuint buffer=%d, GLenum pname=%d, void** params=%.08x",ARG1,ARG2,ARG3);
     }

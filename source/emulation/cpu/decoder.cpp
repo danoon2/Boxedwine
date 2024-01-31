@@ -3195,23 +3195,25 @@ const LogInstruction instructionLog[] = {
 };
 #endif
 class DecodeData {
-public:    
-    U8 ds;
-    U8 ss;
-    bool ea16;
+public:  
+    DecodeData() = default;
 
-    U32 opCode;
-    U32 inst;
+    U8 ds = 0;
+    U8 ss = 0;
+    bool ea16 = false;
+
+    U32 opCode = 0;
+    U32 inst = 0;
 
     U8 fetch8();
     U16 fetch16();
     U32 fetch32();
 
-    pfnFetchByte fetchByte;
-    void* fetchByteData;
-    U32 eip;
-    U32 opCountSoFarInThisBlock;
-    U8 opLen;
+    pfnFetchByte fetchByte = nullptr;
+    void* fetchByteData = nullptr;
+    U32 eip = 0;
+    U32 opCountSoFarInThisBlock = 0;
+    U8 opLen = 0;
 };
 
 typedef void (*DECODER)(DecodeData* obj);
@@ -4901,7 +4903,7 @@ public:
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
-            bool reversed;
+            bool reversed = false;
 
             if (op->repZero) {
                 op->inst = this->f3Reg;
@@ -5835,29 +5837,29 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_16,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_16,
     // 0x100
-    &decodeGroup6_16, 0, &decodeLar16, &decodeLsl16, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeGroup6_16, nullptr, &decodeLar16, &decodeLsl16, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x110
     &sse2Movupd, &sse2Movupd_r, &sseMov0x112, &sseMov0x113, &sseMov0x114, &sseMov0x115, &sseMov0x116, &sseMov0x117,
-    0, 0, 0, 0, 0, 0, 0, &decodeHintNop,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &decodeHintNop,
     // 0x120
-    &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
+    &decodeMovRdCrx, nullptr, &decodeMovCrxRd, nullptr, nullptr, nullptr, nullptr, nullptr,
     &sse2Movapd, &sse2Movapd_r, &sseMov0x12a, &sseMov0x12b, &sseMov0x12c, &sseMov0x12d, &sseMov0x12e, &sseMov0x12f,
     // 0x130
-    0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    nullptr, &decodeRdtsc, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x140
     &decodeCmovO_16, &decodeCmovNO_16, &decodeCmovB_16, &decodeCmovNB_16, &decodeCmovZ_16, &decodeCmovNZ_16, &decodeCmovBE_16, &decodeCmovNBE_16,
     &decodeCmovS_16, &decodeCmovNS_16, &decodeCmovP_16, &decodeCmovNP_16, &decodeCmovL_16, &decodeCmovNL_16, &decodeCmovLE_16, &decodeCmovNLE_16,
     // 0x150
-    &sseMov0x150, &sseMov0x151, 0, 0, &sseAnd0x154, &sseAndNot0x155, &sseOr0x156, &sseXor0x157,
+    &sseMov0x150, &sseMov0x151, nullptr, nullptr, &sseAnd0x154, &sseAndNot0x155, &sseOr0x156, &sseXor0x157,
     &sseAdd0x158, &sseMul0x159, &sse0x15a, &sse0x15b, &sse0x15c, &sse0x15d, &sse0x15e, &sse0x15f,
     // 0x160
     &sse0x160, &sse0x161, &sse0x162, &sse0x163, &sse0x164, &sse0x165, &sse0x166, &sse0x167,
     &sse0x168, &sse0x169, &sse0x16a, &sse0x16b, &sse0x16c, &sse0x16d, &sse0x16e, &sse0x16f,
     // 0x170
-    &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, &sse0x176, 0,
-    0, 0, 0, 0, 0, 0, &sse0x17e, &sse0x17f,
+    &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, &sse0x176, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &sse0x17e, &sse0x17f,
     // 0x180
     &decodeJo16, &decodeJno16, &decodeJb16, &decodeJnb16, &decodeJz16, &decodeJnz16, &decodeJbe16, &decodeJnbe16,
     &decodeJs16, &decodeJns16, &decodeJp16, &decodeJnp16, &decodeJl16, &decodeJnl16, &decodeJle16, &decodeJnle16,
@@ -5865,23 +5867,23 @@ const Decode* const decoder[] = {
     &decodeSetO, &decodeSetNO, &decodeSetB, &decodeSetNB, &decodeSetZ, &decodeSetNZ, &decodeSetBE, &decodeSetNBE,
     &decodeSetS, &decodeSetNS, &decodeSetP, &decodeSetNP, &decodeSetL, &decodeSetNL, &decodeSetLE, &decodeSetNLE,
     // 0x1a0
-    &decodePushFs16, &decodePopFs16, &decodeCPUID, &decodeBtEwGw, &decodeDshlEwGw, &decodeDshlClEwGw, 0, 0,
-    &decodePushGs16, &decodePopGs16, 0, &decodeBtsEwGw, &decodeDshrEwGw, &decodeDshrClEwGw, 0, &decodeDimulGwEw,
+    &decodePushFs16, &decodePopFs16, &decodeCPUID, &decodeBtEwGw, &decodeDshlEwGw, &decodeDshlClEwGw, nullptr, nullptr,
+    &decodePushGs16, &decodePopGs16, nullptr, &decodeBtsEwGw, &decodeDshrEwGw, &decodeDshrClEwGw, nullptr, &decodeDimulGwEw,
     // 0x1b0
     &decodeCmpXchgEbGb, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, &decodeMovEwGw,
-    0, 0, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, 0,
+    nullptr, nullptr, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, nullptr,
     // 0x1c0
-    &decodeXadd8, &decodeXadd16, &sse0x1c2, 0, &ssePinsrwXmm, &ssePextrwXmm, &sse0x1c6, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeXadd8, &decodeXadd16, &sse0x1c2, nullptr, &ssePinsrwXmm, &ssePextrwXmm, &sse0x1c6, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x1d0
-    0, &sse0x1d1, &sse0x1d2, &sse0x1d3, &sse0x1d4, &sse0x1d5, &sse0x1d6, &ssePmovmskbXmm,
+    nullptr, &sse0x1d1, &sse0x1d2, &sse0x1d3, &sse0x1d4, &sse0x1d5, &sse0x1d6, &ssePmovmskbXmm,
     &sse0x1d8, &sse0x1d9, &ssePminubXmm, &sse0x1db, &sse0x1dc, &sse0x1dd, &ssePmaxubXmm, &sse0x1df,
     // 0x1e0
     &ssePavgbXmm, &sse0x1e1, &sse0x1e2, &ssePavgwXmm, &ssePmulhuwXmm, &sse0x1e5, &sse0x1e6, &sse0x1e7,
     &sse0x1e8, &sse0x1e9, &ssePminswXmm, &sse0x1eb, &sse0x1ec, &sse0x1ed, &ssePmaxswXmm, &sse0x1ef,
     // 0x1f0
-    0, &sse0x1f1, &sse0x1f2, &sse0x1f3, &sse0x1f4, &sse0x1f5, &ssePsadbwXmm, &sse0x1f7,
-    &sse0x1f8, &sse0x1f9, &sse0x1fa, &sse0x1fb, &sse0x1fc, &sse0x1fd, &sse0x1fe, 0,
+    nullptr, &sse0x1f1, &sse0x1f2, &sse0x1f3, &sse0x1f4, &sse0x1f5, &ssePsadbwXmm, &sse0x1f7,
+    &sse0x1f8, &sse0x1f9, &sse0x1fa, &sse0x1fb, &sse0x1fc, &sse0x1fd, &sse0x1fe, nullptr,
     // 0x200
     &decodeAddEbGb, &decodeAddEdGd, &decodeAddGbEb, &decodeAddGdEd, &decodeAddAlIb, &decodeAddEaxId, &decodePushEs32, &decodePopEs32,
     &decodeOrEbGb, &decodeOrEdGd, &decodeOrGbEb, &decodeOrGdEd, &decodeOrAlIb, &decodeOrEaxId, &decodePushCs32, &decode2Byte,
@@ -5931,17 +5933,17 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_32,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_32,
     // 0x300
-    &decodeGroup6_32, &decodeGroup7_32, 0, &decodeLsl32, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeGroup6_32, &decodeGroup7_32, nullptr, &decodeLsl32, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x310
     &sseMov0x310, &sseMov0x311, &sseMov0x312, &sseMov0x313, &sseUnpcklp, &sseUnpckhp, &sseMov0x316, &sseMov0x317,
-    &seePrefetch, 0, 0, 0, 0, 0, 0, &decodeHintNop,
+    &seePrefetch, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &decodeHintNop,
     // 0x320
-    &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
+    &decodeMovRdCrx, nullptr, &decodeMovCrxRd, nullptr, nullptr, nullptr, nullptr, nullptr,
     &sseMovapsXE, &sseMovapsEX, &sseCvt2a, &sseMovnt, &sseCvt2c, &sseCvt2d, &sseUcomis, &sseComis,
     // 0x330
-    0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    nullptr, &decodeRdtsc, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x340
     &decodeCmovO_32, &decodeCmovNO_32, &decodeCmovB_32, &decodeCmovNB_32, &decodeCmovZ_32, &decodeCmovNZ_32, &decodeCmovBE_32, &decodeCmovNBE_32,
     &decodeCmovS_32, &decodeCmovNS_32, &decodeCmovP_32, &decodeCmovNP_32, &decodeCmovL_32, &decodeCmovNL_32, &decodeCmovLE_32, &decodeCmovNLE_32,
@@ -5950,10 +5952,10 @@ const Decode* const decoder[] = {
     &sseAdd, &sseMul, &sse0x35a, &sse0x35b, &sseSub, &sseMin, &sseDiv, &sseMax,
     // 0x360
     &decodePunpcklbw, &decodePunpcklwd, &decodePunpckldq, &decodePacksswb, &decodePcmpgtb, &decodePcmpgtw, &decodePcmpgtd, &decodePackuswb,
-    &decodePunpckhbw, &decodePunpckhwd, &decodePunpckhdq, &decodePackssdw, 0, 0, &decodeMovPqEd, &decodeMovPqQq,
+    &decodePunpckhbw, &decodePunpckhwd, &decodePunpckhdq, &decodePackssdw, nullptr, nullptr, &decodeMovPqEd, &decodeMovPqQq,
     // 0x370
     &ssePshufwMmx, &decode371MMX, &decode372MMX, &decode373MMX, &decodePcmpeqb, &decodePcmpeqw, &decodePcmpeqd, &decodeEmms,
-    0, 0, 0, 0, 0, 0, &sse0x37e, &decodeMovQqPq,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &sse0x37e, &decodeMovQqPq,
     // 0x380
     &decodeJo32, &decodeJno32, &decodeJb32, &decodeJnb32, &decodeJz32, &decodeJnz32, &decodeJbe32, &decodeJnbe32,
     &decodeJs32, &decodeJns32, &decodeJp32, &decodeJnp32, &decodeJl32, &decodeJnl32, &decodeJle32, &decodeJnle32,
@@ -5961,23 +5963,23 @@ const Decode* const decoder[] = {
     &decodeSetO, &decodeSetNO, &decodeSetB, &decodeSetNB, &decodeSetZ, &decodeSetNZ, &decodeSetBE, &decodeSetNBE,
     &decodeSetS, &decodeSetNS, &decodeSetP, &decodeSetNP, &decodeSetL, &decodeSetNL, &decodeSetLE, &decodeSetNLE,
     // 0x3a0
-    &decodePushFs32, &decodePopFs32, &decodeCPUID, &decodeBtEdGd, &decodeDshlEdGd, &decodeDshlClEdGd, 0, 0,
-    &decodePushGs32, &decodePopGs32, 0, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, &decode3EA, &decodeDimulGdEd,
+    &decodePushFs32, &decodePopFs32, &decodeCPUID, &decodeBtEdGd, &decodeDshlEdGd, &decodeDshlClEdGd, nullptr, nullptr,
+    &decodePushGs32, &decodePopGs32, nullptr, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, &decode3EA, &decodeDimulGdEd,
     // 0x3b0
     &decodeCmpXchgEbGb, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
-    0, 0, &decodeGroup8_32, &decodeBtcEdGd, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
+    nullptr, nullptr, &decodeGroup8_32, &decodeBtcEdGd, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
     &decodeXadd8, &decodeXadd32, &sseCmp, &sse0x3c3, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
     &decodeBswapEAX, &decodeBswapECX, &decodeBswapEDX, &decodeBswapEBX, &decodeBswapESP, &decodeBswapEBP, &decodeBswapESI, &decodeBswapEDI,
     // 0x3d0
-    0, &decodePsrlw, &decodePsrld, &decodePsrlq, &sse0x3d4, &decodePmullw, &sse0x3d6, &ssePmovmskbMmx,
+    nullptr, &decodePsrlw, &decodePsrld, &decodePsrlq, &sse0x3d4, &decodePmullw, &sse0x3d6, &ssePmovmskbMmx,
     &decodePsubusb, &decodePsubusw, &ssePminubMmx, &decodePand, &decodePaddusb, &decodePaddusw, &ssePmaxubMmx, &decodePandn,
     // 0x3e0
     &ssePavgbMmx, &decodePsraw, &decodePsrad, &ssePavgwMmx, &ssePmulhuwMmx, &decodePmulhw, &sse0x3e6, &sseMovntq,
     &decodePsubsb, &decodePsubsw, &ssePminswMmx, &decodePor, &decodePaddsb, &decodePaddsw, &ssePmaxswMmx, &decodePxor,
     // 0x3f0
-    0, &decodePsllw, &decodePslld, &decodePsllq, &sse0x3f4, &decodePmaddwd, &ssePsadbwMmx, &sseMaskmov,
-    &decodePsubb, &decodePsubw, &decodePsubd, &sse0x3fb, &decodePaddb, &decodePaddw, &decodePaddd, 0,
+    nullptr, &decodePsllw, &decodePslld, &decodePsllq, &sse0x3f4, &decodePmaddwd, &ssePsadbwMmx, &sseMaskmov,
+    &decodePsubb, &decodePsubw, &decodePsubd, &sse0x3fb, &decodePaddb, &decodePaddw, &decodePaddd, nullptr,
 };
 
 U8 DecodeData::fetch8() {
@@ -6004,7 +6006,7 @@ void DecodedOp::clearCache() {
 }
 
 void DecodedOp::reset() {
-    this->next = 0;
+    this->next = nullptr;
     this->disp = 0;
     this->imm = 0;
     this->reg = 0;
@@ -6016,7 +6018,7 @@ void DecodedOp::reset() {
     this->lock = 0;
     this->repZero = 0;
     this->repNotZero = 0;
-    this->pfn = NULL;
+    this->pfn = nullptr;
 }
 DecodedOp* DecodedOp::alloc() {
     return freeOps.get();   
@@ -6105,7 +6107,7 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
 
 static DecodedBlockFromNode* freeFromNodes;
 DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
-    DecodedBlockFromNode* result;
+    DecodedBlockFromNode* result = nullptr;
 
     if (freeFromNodes) {
         result = freeFromNodes;
@@ -6114,20 +6116,20 @@ DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
         DecodedBlockFromNode* nodes = new DecodedBlockFromNode[1024];
 
         freeFromNodes = &nodes[1];
-        freeFromNodes->next = 0;
+        freeFromNodes->next = nullptr;
         for (int i=2;i<1024;i++) {
             nodes[i].next = freeFromNodes;
             freeFromNodes = &nodes[i];            
         }
         result = &nodes[0];
     }
-    result->next = NULL;
-    result->block = NULL;
+    result->next = nullptr;
+    result->block = nullptr;
     return result;
 }
 void DecodedBlockFromNode::dealloc() {
     this->next = freeFromNodes;
-    this->block = NULL;
+    this->block = nullptr;
     freeFromNodes = this;
 }
 
@@ -6151,12 +6153,12 @@ DecodedOp* DecodedBlock::getOp(U32 eip) {
         opEip += op->len;
         op = op->next;
     }
-    return NULL;
+    return nullptr;
 }
 
 void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
     DecodedBlockFromNode* from = this->referencedFrom;
-	DecodedBlockFromNode* prev = NULL;
+	DecodedBlockFromNode* prev = nullptr;
 
 	while (from) {
 		if (from->block == block) {

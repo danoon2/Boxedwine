@@ -6,10 +6,9 @@ KObject::KObject(U32 type) : type(type) {
 
 U32 KObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
     U32 len=0;
-    S32 i;
     KMemory* memory = thread->memory;
 
-    for (i=0;i<iovcnt;i++) {
+    for (S32 i=0;i<iovcnt;i++) {
         U32 buf = memory->readd(iov + i * 8);
         U32 toWrite = memory->readd(iov + i * 8 + 4);
         S32 result;

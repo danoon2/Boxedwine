@@ -41,7 +41,7 @@ BoxedWinVersion* BoxedwineData::getWinVersionFromName(BString name) {
             return &win;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void BoxedwineData::startApp() {
@@ -137,7 +137,7 @@ BoxedContainer* BoxedwineData::getContainerByDir(BString dir) {
             return container;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void BoxedwineData::addContainer(BoxedContainer* container) { 

@@ -205,7 +205,7 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (!this->iconsBySize.count(iconSize)) {
         int width = 0;
         int height = 0;
-        const unsigned char* data = NULL;
+        const unsigned char* data = nullptr;
         BString nativeExePath = this->container->getNativePathForApp(*this);
 
         if (Fs::doesNativePathExist(nativeExePath)) {
@@ -220,13 +220,13 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
         if (data) {
             this->iconsBySize[iconSize] = new BoxedAppIcon(data, width, height);
         } else {
-            this->iconsBySize[iconSize] = NULL;
+            this->iconsBySize[iconSize] = nullptr;
         }
     }
     if (this->iconsBySize.count(iconSize)) {
         return this->iconsBySize[iconSize];
     }
-    return NULL;
+    return nullptr;
 }
 
 void BoxedApp::remove() {

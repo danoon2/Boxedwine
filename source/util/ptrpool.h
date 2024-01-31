@@ -11,10 +11,8 @@ private:
     int blockSize;
 
     T* internalGet() {
-        T* newData;
-
         if (!queue.empty()) {
-            newData = queue.front();
+            T* newData = queue.front();
             queue.pop();
             return newData;
         }

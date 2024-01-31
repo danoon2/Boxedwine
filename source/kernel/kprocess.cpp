@@ -142,19 +142,19 @@ void KProcess::onExec(KThread* thread) {
     this->hasSetStackMask = false;
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    returnToLoopAddress = NULL;
-    reTranslateChunkAddress = NULL;
-    syncToHostAddress = NULL;
-    syncFromHostAddress = NULL;
-    doSingleOpAddress = NULL;
+    returnToLoopAddress = nullptr;
+    reTranslateChunkAddress = nullptr;
+    syncToHostAddress = nullptr;
+    syncFromHostAddress = nullptr;
+    doSingleOpAddress = nullptr;
 #ifdef BOXEDWINE_64BIT_MMU
-    reTranslateChunkAddressFromReg = NULL;
+    reTranslateChunkAddressFromReg = nullptr;
 #endif
 #ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-    jmpAndTranslateIfNecessary = NULL;
+    jmpAndTranslateIfNecessary = nullptr;
 #endif
 #ifdef BOXEDWINE_POSIX
-    runSignalAddress = NULL;
+    runSignalAddress = nullptr;
 #endif
 #endif
 }
@@ -207,7 +207,7 @@ KThread* KProcess::getThreadById(U32 tid) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     if (this->threads.count(tid))
         return this->threads[tid];
-    return NULL;
+    return nullptr;
 }
 
 U32 KProcess::getThreadCount() {
@@ -218,7 +218,7 @@ U32 KProcess::getThreadCount() {
 void KProcess::deleteThread(KThread* thread) {
     thread->cleanup();
     if (this->threads.size() == 0) {
-        this->memory = NULL;
+        this->memory = nullptr;
     }
     delete thread;
     
@@ -261,8 +261,6 @@ BString KProcess::getAbsoluteExePath() {
     return Fs::getParentPath(path);
 }
 void KProcess::clone(const std::shared_ptr<KProcess>& from) {
-    U32 i;
-
     this->parentId = from->id;;
     this->groupId = from->groupId;
     this->userId = from->userId;
@@ -292,7 +290,7 @@ void KProcess::clone(const std::shared_ptr<KProcess>& from) {
         this->attachedShm[n.first] = attached;
     }
 
-    for (i=0;i<LDT_ENTRIES;i++) {
+    for (U32 i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i] = from->ldt[i];
     }
     this->ldt = from->ldt;
@@ -301,7 +299,7 @@ void KProcess::clone(const std::shared_ptr<KProcess>& from) {
     this->phnum = from->phnum;
     this->entry = from->entry;
 
-    for (i=0;i<6;i++) {
+    for (U32 i=0;i<6;i++) {
         this->hasSetSeg[i] = from->hasSetSeg[i];
     }
     this->hasSetStackMask = from->hasSetStackMask;
@@ -340,20 +338,17 @@ static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
 #define HWCAP_I386_AMD3D 1 << 31
 
 static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int envc, U32* e) {
-    int i;
     std::shared_ptr<KProcess> process = cpu->thread->process;
-    U32 randomAddress;
-    U32 platform;
 
     cpu->push32(rand());
     cpu->push32(rand());
     cpu->push32(rand());
     cpu->push32(rand());
-    randomAddress = ESP;
+    U32 randomAddress = ESP;
     cpu->push32(0);
     cpu->push32(0);
     writeStackString(thread, cpu, "i686");
-    platform = ESP;
+    U32 platform = ESP;
 
     cpu->push32(0);	
     cpu->push32(0);	
@@ -397,20 +392,19 @@ static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int env
     cpu->push32(23); // AT_SECURE
 
     cpu->push32(0);	
-    for (i=envc-1;i>=0;i--) {
+    for (int i=envc-1;i>=0;i--) {
         cpu->push32(e[i]);
     }
     cpu->push32(0);
-    for (i=argc-1;i>=0;i--) {
+    for (int i=argc-1;i>=0;i--) {
         cpu->push32(a[i]);
     }
     cpu->push32(argc);
 }
 
 static void setupThreadStack(KThread* thread, CPU* cpu, BString programName, const std::vector<BString>& args, const std::vector<BString>& env) {
-    U32 a[MAX_ARG_COUNT];
-    U32 e[MAX_ARG_COUNT];
-    int i;
+    U32 a[MAX_ARG_COUNT] = {};
+    U32 e[MAX_ARG_COUNT] = {};
 
     cpu->push32(0);
     cpu->push32(0);
@@ -421,7 +415,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, BString programName, con
     if (env.size()>MAX_ARG_COUNT)
         kpanic("Too many env: %d is max", MAX_ARG_COUNT);
     //klog("env");
-    for (i=0;i<(int)env.size();i++) {
+    for (size_t i=0;i<env.size();i++) {
         writeStackString(thread, cpu, env[i].c_str());
         if (strncmp(env[i].c_str(), "PATH=", 5)==0) {
             env[i].substr(5).split(':', cpu->thread->process->path);
@@ -429,7 +423,7 @@ static void setupThreadStack(KThread* thread, CPU* cpu, BString programName, con
         //klog("    %s", env[i]);
         e[i]=ESP;
     }
-    for (i=(int)args.size()-1;i>=0;i--) {
+    for (S32 i=(S32)args.size()-1;i>=0;i--) {
         writeStackString(thread, cpu, args[i].c_str());
         a[i]=ESP;
     }
@@ -449,12 +443,10 @@ U32 KProcess::getNextFileDescriptorHandle(int after) {
 }
 
 KFileDescriptor* KProcess::allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {    
-    KFileDescriptor* result;
-
     if (handle<0) {
         handle = this->getNextFileDescriptorHandle(afterHandle);
     }
-    result = new KFileDescriptor(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
+    KFileDescriptor* result = new KFileDescriptor(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
 
     KFileDescriptor* old = this->getFileDescriptor(handle);
     if (old) {
@@ -477,7 +469,6 @@ U32 translateOpenError() {
 
 U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result) {
     BoxedPtr<FsNode> node;
-    FsOpenNode* openNode;
     std::shared_ptr<KObject> kobject;
 
     node = Fs::getNodeFromLocalPath(currentDirectory, localPath, true);
@@ -523,7 +514,7 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
     if (nodeObject) {
         kobject = nodeObject;
     } else {
-        openNode = node->open(accessFlags);
+        FsOpenNode* openNode = node->open(accessFlags);
         if (!openNode) {
             node->removeNodeFromParent();
             return translateOpenError();
@@ -544,13 +535,13 @@ U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFl
 
 void KProcess::initStdio() {
     if (!this->getFileDescriptor(0)) {
-        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_RDONLY, 0, 0, 0, NULL);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_RDONLY, 0, 0, 0, nullptr);
     }
     if (!this->getFileDescriptor(1)) {
-        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 1, 0, NULL);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 1, 0, nullptr);
     }
     if (!this->getFileDescriptor(2)) {
-        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 2, 0, NULL);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 2, 0, nullptr);
     }
 }
 
@@ -559,7 +550,7 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
 
     if (!node) {
         kwarn("Could not find %s", argValues[0].c_str());
-        return 0;
+        return nullptr;
     }
 
     BString interpreter;
@@ -569,8 +560,6 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     std::vector<BString> env;
     this->memory = KMemory::create(this);
     KThread* thread = this->createThread();
-    U32 i;
-    FsOpenNode* openNode = NULL;
     BString name;
 
     KThread::setCurrentThread(thread);
@@ -584,16 +573,16 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     this->exe = argValues[0];
     this->name = Fs::getFileNameFromPath(this->exe);
     
-    for (i=0;i<argValues.size();i++) {
+    for (U32 i=0;i<argValues.size();i++) {
         if (i>0)
             this->commandLine+=" ";
         this->commandLine+=argValues[i];
     }
     
     this->initStdio();
-    openNode=ElfLoader::inspectNode(currentDirectory, node, loader, interpreter, interpreterArgs);
+    FsOpenNode* openNode=ElfLoader::inspectNode(currentDirectory, node, loader, interpreter, interpreterArgs);
     if (!openNode) {
-        return 0;
+        return nullptr;
     }    
     if (ElfLoader::loadProgram(thread, openNode, &thread->cpu->eip.u32)) {
         // :TODO: why will it crash in strchr libc if I remove this
@@ -604,10 +593,10 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
         if (interpreter.length())
             args.push_back(interpreter);        
         args.push_back(BString(Fs::getFullPath(currentDirectory, argValues[0])));
-        for (i=1;i<argValues.size();i++) {
+        for (U32 i=1;i<argValues.size();i++) {
             args.push_back(argValues[i]);
         }
-        for (i=0;i<envValues.size();i++) {
+        for (U32 i=0;i<envValues.size();i++) {
             env.push_back(envValues[i]);
         }
         setupThreadStack(thread, thread->cpu, this->name, args, env);
@@ -644,7 +633,7 @@ KFileDescriptor* KProcess::getFileDescriptor(FD handle) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     if (this->fds.count(handle))
         return this->fds[handle];
-    return NULL;
+    return nullptr;
 }
 
 void KProcess::clearFdHandle(FD handle) {
@@ -720,7 +709,7 @@ BoxedPtr<FsNode> KProcess::findInPath(BString path) {
 
 U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, const std::vector<BString>& envs) {
     BoxedPtr<FsNode> node;
-    FsOpenNode* openNode = 0;
+    FsOpenNode* openNode = nullptr;
     BString interpreter;
     std::vector<BString> interpreterArgs;
     BString loader;
@@ -843,7 +832,7 @@ void KProcess::signalProcess(U32 signal) {
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
         if (this->pendingSignals & signalMask) {
-            this->signalFd(NULL, signal);
+            this->signalFd(nullptr, signal);
         }
     }
 }
@@ -961,7 +950,7 @@ U32 KProcess::access(BString path, U32 mode) {
 
 U32 KProcess::lseek(FD fildes, S32 offset, U32 whence) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
-    S64 pos;
+    S64 pos = 0;
 
     if (!fd) {
         return -K_EBADF;
@@ -1069,7 +1058,7 @@ U32 KProcess::close(FD fildes) {
 }
 
 U32 KProcess::open(BString path, U32 flags) {
-    KFileDescriptor* fd = NULL;
+    KFileDescriptor* fd = nullptr;
         
     U32 result = this->openFile(this->currentDirectory, path, flags, &fd);
     if (result || !fd) {
@@ -1140,7 +1129,7 @@ U32 KProcess::brk(KThread* thread, U32 address) {
 U32 KProcess::ioctl(KThread* thread, FD fildes, U32 request) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
 
-    if (fd==0) {
+    if (fd == nullptr) {
         return -K_EBADF;
     }
     return fd->kobject->ioctl(thread, request);
@@ -1154,7 +1143,6 @@ U32 KProcess::umask(U32 umask) {
 
 U32 KProcess::dup2(FD fildes, FD fildes2) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
-    KFileDescriptor* fd2;
 
     if (!fd || fildes2<0) {
         return -K_EBADF;
@@ -1162,7 +1150,7 @@ U32 KProcess::dup2(FD fildes, FD fildes2) {
     if (fildes == fildes2) {
         return fildes;
     }
-    fd2 = this->getFileDescriptor(fildes2);
+    KFileDescriptor* fd2 = this->getFileDescriptor(fildes2);
     if (fd2) {
         if (fd2->refCount>1) {
             kpanic("Not sure what to do on a dup2 where the refcount is %d", fd2->refCount);
@@ -1210,7 +1198,6 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
 
 U32 symlinkInDirectory(BString currentDirectory, BString target, BString linkpath) {
     BoxedPtr<FsNode> node;
-    FsOpenNode* openNode;
 
     node = Fs::getNodeFromLocalPath(currentDirectory, linkpath, false);
     if (node) {
@@ -1229,7 +1216,7 @@ U32 symlinkInDirectory(BString currentDirectory, BString target, BString linkpat
         node->removeNodeFromParent();
         return -K_EACCES;
     }
-    openNode = node->open( K_O_WRONLY|K_O_CREAT);
+    FsOpenNode* openNode = node->open( K_O_WRONLY|K_O_CREAT);
     if (!openNode) {
         node->removeNodeFromParent();
         return -K_EIO;
@@ -1301,16 +1288,15 @@ U32 KProcess::readlink(BString path, U32 buffer, U32 bufSize) {
 
 U32 KProcess::ftruncate64(FD fildes, U64 length) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
-    FsOpenNode* openNode;
 
-    if (fd==0) {
+    if (fd==nullptr) {
         return -K_EBADF;
     }
     if (fd->kobject->type!=KTYPE_FILE) {
         return -K_EINVAL;
     }
     std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
-    openNode = p->openFile;
+    FsOpenNode* openNode = p->openFile;
     if (openNode->node->isDirectory()) {
         return -K_EISDIR;
     }
@@ -1603,7 +1589,7 @@ U32 KProcess::exitgroup(KThread* thread, U32 code) {
 U32 KProcess::fchdir(FD fildes) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
 
-    if (fd==0) {
+    if (fd==nullptr) {
         return -K_EBADF;
     }
     if (fd->kobject->type!=KTYPE_FILE) {
@@ -1626,7 +1612,7 @@ U32 KProcess::fchdir(FD fildes) {
 
 S64 KProcess::llseek(FD fildes, S64 offset, U32 whence) {
     KFileDescriptor* fd = this->getFileDescriptor(fildes);
-    S64 pos;
+    S64 pos = 0;
 
     if (!fd) {
         return -K_EBADF;
@@ -1650,7 +1636,7 @@ S64 KProcess::llseek(FD fildes, S64 offset, U32 whence) {
 }
 
 U32 writeRecord(KMemory* memory, U32 dirp, U32 len, U32 count, U32 pos, bool is64, const char* name, U32 id, U32 type) {
-    U32 recordLen;
+    U32 recordLen = 0;
 
     if (is64) {
         recordLen = 20+(U32)strlen(name);
@@ -1733,7 +1719,7 @@ U32 KProcess::msync(U32 addr, U32 len, U32 flags) {
 U32 KProcess::writev(KThread* thread, FD handle, U32 iov, S32 iovcnt) {
     KFileDescriptor* fd = this->getFileDescriptor(handle);
 
-    if (fd==0) {
+    if (fd==nullptr) {
         return -K_EBADF;
     }
     if (!fd->canWrite()) {
@@ -1867,8 +1853,8 @@ U32 KProcess::lstat64(BString path, U32 buffer) {
         return -K_ENOENT;
     }
  
-    U64 len;
-    U32 mode;
+    U64 len = 0;
+    U32 mode = 0;
 
     if (node->isLink()) {
         len = node->getLink().length();
@@ -1891,11 +1877,10 @@ U32 KProcess::fstat64(FD handle, U32 buf) {
 }
 
 U32 KProcess::mincore(U32 address, U32 length, U32 vec) {
-    U32 i;
     U32 pages = (length+K_PAGE_SIZE+1)/K_PAGE_SIZE;
     U32 page = address >> K_PAGE_SHIFT;
 
-    for (i=0;i<pages;i++) {
+    for (U32 i=0;i<pages;i++) {
         if (page+i>=K_NUMBER_OF_PAGES)
             return -K_ENOMEM;
         if (this->memory->isPageAllocated(page+i))
@@ -2078,8 +2063,8 @@ U32 KProcess::utimes(BString path, U32 times) {
         U64 lastModifiedTime =  0;
         U32 lastModifiedTimeNano = 0;
         if (!times) {
-            lastAccessTime = time(NULL);
-            lastModifiedTime = time(NULL);
+            lastAccessTime = time(nullptr);
+            lastModifiedTime = time(nullptr);
         } else {
             lastAccessTime = memory->readd(times);
             lastAccessTimeNano = memory->readd(times+4)*1000;
@@ -2117,7 +2102,7 @@ U32 KProcess::openat(FD dirfd, BString path, U32 flags) {
 
     if (result)
         return result;
-    KFileDescriptor* fd = NULL;
+    KFileDescriptor* fd = nullptr;
     result = this->openFile(dir, path, flags, &fd);
     if (result || !fd) {
         return result;
@@ -2154,12 +2139,11 @@ U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
         return -K_ENOENT;
     }
 
-    U64 len;
+    U64 len = node->length();;
     U32 mode = node->getMode();
     if (node->isLink() || isLink) {
         mode|=K__S_IFLNK;
     }
-    len = node->length();
     KSystem::writeStat(this, path, buf, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;    
 }
@@ -2238,13 +2222,13 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags) {
     }
     if (lastAccessTimeNano != K_UTIME_OMIT) {
         if (lastAccessTimeNano == K_UTIME_NOW) {
-            lastAccessTime = time(NULL);
+            lastAccessTime = time(nullptr);
             lastAccessTimeNano = 0;
         }
     }
     if (lastModifiedTimeNano != K_UTIME_OMIT) {
         if (lastModifiedTimeNano == K_UTIME_NOW) {
-            lastModifiedTime = (U32)time(NULL);
+            lastModifiedTime = (U32)time(nullptr);
             lastModifiedTimeNano = 0;
         }
     }
@@ -2277,13 +2261,13 @@ U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
     }
     if (lastAccessTimeNano != K_UTIME_OMIT) {
         if (lastAccessTimeNano == K_UTIME_NOW) {
-            lastAccessTime = time(NULL);
+            lastAccessTime = time(nullptr);
             lastAccessTimeNano = 0;
         }
     }
     if (lastModifiedTimeNano != K_UTIME_OMIT) {
         if (lastModifiedTimeNano == K_UTIME_NOW) {
-            lastModifiedTime = (U32)time(NULL);
+            lastModifiedTime = (U32)time(nullptr);
             lastModifiedTimeNano = 0;
         }
     }
@@ -2294,7 +2278,7 @@ user_desc* KProcess::getLDT(U32 index) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ldtMutex);
     if (this->ldt.count(index))
         return &this->ldt[index];
-    return NULL;
+    return nullptr;
 }
 
 BoxedPtr<SHM> KProcess::allocSHM(U32 key, U32 afterIndex) {
@@ -2315,7 +2299,7 @@ BoxedPtr<SHM> KProcess::getSHM(U32 key) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(privateShmMutex);
     if (this->privateShm.count(key))
         return this->privateShm[key];
-    return NULL;
+    return nullptr;
 }
 
 void KProcess::attachSHM(U32 address, const BoxedPtr<SHM>& shm) {
@@ -2402,7 +2386,7 @@ U32 KProcess::signal(U32 signal) {
     // didn't find a thread that could handle it
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
     this->pendingSignals |= ((U64)1 << (signal-1));
-    this->signalFd(NULL, signal);
+    this->signalFd(nullptr, signal);
     return 0;
 }
 

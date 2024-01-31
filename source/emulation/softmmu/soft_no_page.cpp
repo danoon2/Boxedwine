@@ -36,11 +36,11 @@ void NOPage::writed(U32 address, U32 value) {
 }
 
 U8* NOPage::getReadPtr(U32 address, bool makeReady) {
-    return NULL;
+    return nullptr;
 }
 
 U8* NOPage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    return NULL;
+    return nullptr;
 }
 
 #endif

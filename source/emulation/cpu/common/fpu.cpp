@@ -245,9 +245,7 @@ double FPU::FLD80(U64 eind, S16 begin) {
     S64 exp64 = (((begin & 0x7fff) - BIAS80));
     S64 blah = ((exp64 > 0) ? exp64 : -exp64) & 0x3ff;
     S64 exp64final = ((exp64 > 0) ? blah : -blah) + BIAS64;
-    S64 mant64;
-    S64 sign;
-    struct FPU_Reg result;
+    struct FPU_Reg result = {};
 
     // 0x3FFF is for rounding
     U32 round = 0;
@@ -257,8 +255,8 @@ double FPU::FLD80(U64 eind, S16 begin) {
         round = 0x7FF;
     }
 
-    mant64 = ((eind + round) >> 11) & 0xfffffffffffffl;
-    sign = (begin & 0x8000) != 0 ? 1 : 0;
+    S64 mant64 = ((eind + round) >> 11) & 0xfffffffffffffl;
+    S64 sign = (begin & 0x8000) != 0 ? 1 : 0;
     result.l = (sign << 63) | (exp64final << 52) | mant64;
 
     if (eind == 0x8000000000000000l && (begin & 0x7fff) == 0x7fff) {
@@ -341,10 +339,8 @@ void FPU::FBLD(U8 data[], int store_to) {
     S64 val = 0;
     int in = 0;
     U64 base = 1;
-    int i;
-    double temp;
 
-    for(i = 0;i < 9;i++){
+    for(int i = 0;i < 9;i++){
         in = data[i];
         val += ( (in&0xf) * base); //in&0xf shouldn't be higher then 9
         base *= 10;
@@ -353,7 +349,7 @@ void FPU::FBLD(U8 data[], int store_to) {
     }
     //last number, only now convert to float in order to get
     //the best signification
-    temp = (double)(val);
+    double temp = (double)(val);
     in = data[9];
     temp += ( (in&0xf) * base );
     if(in&0x80) temp *= -1.0;
@@ -429,20 +425,17 @@ void FPU::FST_I64(CPU* cpu, U32 addr) {
 void FPU::FBST(CPU* cpu, U32 addr) {
     struct FPU_Reg val = this->regs[this->top];
     U8 sign = 0;
-    double temp;
-    int i;
-    int p;
 
     if (this->regs[this->top].l & 0x8000000000000000l) { //sign
         sign=1;
         val.d=-val.d;
     }
     //numbers from back to front
-    temp=val.d;
-    for(i=0;i<9;i++){
+    double temp=val.d;
+    for(int i=0;i<9;i++){
         val.d=temp;
         temp = (double)((S64)(floor(val.d/10.0)));
-        p = (int)(val.d - 10.0*temp);
+        int p = (int)(val.d - 10.0*temp);
         val.d=temp;
         temp = (double)((S64)(floor(val.d/10.0)));
         p |= ((int)(val.d - 10.0*temp)<<4);
@@ -450,7 +443,7 @@ void FPU::FBST(CPU* cpu, U32 addr) {
     }
     val.d=temp;
     temp = (double)((S64)(floor(val.d/10.0)));
-    p = (int)(val.d - 10.0*temp);
+    int p = (int)(val.d - 10.0*temp);
     if(sign)
         p|=0x80;
     cpu->memory->writeb(addr+9,p);
@@ -588,7 +581,7 @@ void FPU::FPREM1() {
     double valdiv = this->regs[STV(1)].d;
     double quot = valtop/valdiv;
     double quotf = floor(quot);
-    S64 ressaved;
+    S64 ressaved = 0;
     if (quot-quotf>0.5) ressaved = (S64)(quotf+1);
     else if (quot-quotf<0.5) ressaved = (S64)(quotf);
     else ressaved = (S64)(((((S64)(quotf))&1)!=0)?(quotf+1):(quotf));
@@ -791,8 +784,8 @@ void FPU::FSTENV(CPU* cpu, U32 addr) {
 }
 
 void FPU::FLDENV(CPU* cpu, U32 addr) {
-    U32 tag;
-    U32 cw;
+    U32 tag = 0;
+    U32 cw = 0;
         
     if (!cpu->isBig()) {
         cw = cpu->memory->readw(addr + 0);

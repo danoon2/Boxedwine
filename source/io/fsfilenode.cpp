@@ -156,12 +156,11 @@ void FsFileNode::ensurePathIsLocal() {
 
 FsOpenNode* FsFileNode::open(U32 flags) {
     U32 openFlags = O_BINARY;
-    U32 f;
             
     if (this->isDirectory()) {
         BoxedPtr<FsNode> n = Fs::getNodeFromLocalPath(B(""), this->path, true);
         if (!n) {
-            return NULL;
+            return nullptr;
         }
         return new FsDirOpenNode(n, flags);
     }
@@ -195,13 +194,13 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         openFlags|=O_APPEND;
     }
-    f = ::open(this->nativePath.c_str(), openFlags, 0666);	
+    U32 f = ::open(this->nativePath.c_str(), openFlags, 0666);	
     if (!f || f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
             return this->zipNode->open(this, flags);
 #endif
-        return 0;
+        return nullptr;
     }
     return new FsFileOpenNode(this, flags, f);
 }

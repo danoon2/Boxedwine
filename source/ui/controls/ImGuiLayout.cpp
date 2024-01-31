@@ -197,7 +197,7 @@ void LayoutTextInputControl::draw(int width) {
 				for (int i=0;i<count;i++) {
 					types[i] = this->browseFileTypes[i].c_str();
 				}
-				const char* result = tfd::openFileDialog(c_getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, NULL, 0);
+				const char* result = tfd::openFileDialog(c_getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, nullptr, 0);
 				delete[] types;
 				if (result) {
 					strcpy(this->text, result);
@@ -414,7 +414,7 @@ bool LayoutComboboxControl::setSelectionIntValue(int value) {
 	return false;
 }
 
-LayoutControl::LayoutControl(std::shared_ptr<LayoutRow> row, LayoutControlType type) : row(row), width(-1), type(type), readOnly(false), font(NULL) {
+LayoutControl::LayoutControl(std::shared_ptr<LayoutRow> row, LayoutControlType type) : row(row), width(-1), type(type), readOnly(false), font(nullptr) {
 }
 
 void LayoutControl::setRowHidden(bool hidden) {
@@ -451,13 +451,13 @@ void Markdown(BString markdown_)
 	// > C++14 can use ImGui::MarkdownConfig mdConfig{ LinkCallback, NULL, ImageCallback, ICON_FA_LINK, { { H1, true }, { H2, true }, { H3, false } }, NULL };
 	ImGui::MarkdownConfig mdConfig;
 	mdConfig.linkCallback = LinkCallback;
-	mdConfig.tooltipCallback = NULL;
+	mdConfig.tooltipCallback = nullptr;
 	//mdConfig.imageCallback = ImageCallback;
 	//mdConfig.linkIcon = ICON_FA_LINK;
 	mdConfig.headingFormats[0] = { GlobalSettings::largeFont, true };
 	mdConfig.headingFormats[1] = { GlobalSettings::mediumFont, true };
 	mdConfig.headingFormats[2] = { GlobalSettings::defaultFont, false };
-	mdConfig.userData = NULL;
+	mdConfig.userData = nullptr;
 	ImGui::Markdown(markdown_.c_str(), markdown_.length(), mdConfig);
 }
 

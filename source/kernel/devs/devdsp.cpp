@@ -78,7 +78,6 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     //BOOL read = request & 0x40000000;
     bool write = (request & 0x80000000)!=0;
-    int i;
 
     switch (request & 0xFFFF) {
     case 0x5000: // SNDCTL_DSP_RESET
@@ -92,12 +91,10 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(IOCTL_ARG1, this->freq);
         return 0;
     case 0x5003: { // SNDCTL_DSP_STEREO
-        U32 fmt;
-
         if (len!=4) {
             kpanic("SNDCTL_DSP_STEREO was expecting a len of 4");
         }
-        fmt = memory->readd(IOCTL_ARG1);
+        U32 fmt = memory->readd(IOCTL_ARG1);
         if (fmt != (U32)(this->channels - 1)) {
             this->audio->closeAudio();
         }
@@ -113,12 +110,10 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         return 0;
     }
     case 0x5005: { // SNDCTL_DSP_SETFMT 
-        U32 fmt;
-
         if (len!=4) {
             kpanic("SNDCTL_DSP_SETFMT was expecting a len of 4");
         }
-        fmt = memory->readd(IOCTL_ARG1);
+        U32 fmt = memory->readd(IOCTL_ARG1);
 		if (fmt != AFMT_QUERY && fmt != this->format) {
             this->audio->closeAudio();
         }
@@ -276,7 +271,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, 0); p+=4; // int rate_source;
             memory->strcpy(p, ""); p+=32; // oss_handle_t handle;
             memory->writed(p, 0); p+=4; // unsigned int nrates
-            for (i=0;i<20;i++) {
+            for (int i=0;i<20;i++) {
                 memory->writed(p, 0); p+=4; // rates[20];	/* Please read the manual before using these */
             }
             memory->strcpy(p, ""); p+=64; // oss_longname_t song_name;	/* Song name (if given) */

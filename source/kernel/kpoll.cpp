@@ -33,7 +33,6 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
 
     while (true) {        
         S32 result = 0;
-        U32 i;
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->pollCond);
         bool interrupted = !thread->inSignal && thread->interrupted;
         
@@ -42,7 +41,7 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
         
         data = firstData;
         // gather locks before we check the data so that we don't miss one
-        for (i=0;i<count;i++) {
+        for (U32 i=0;i<count;i++) {
             KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
             if (fd) {
                 fd->kobject->waitForEvents(thread->pollCond, data->events);
@@ -54,7 +53,7 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
         } 
 
         data = firstData;
-        for (i=0;i<count;i++) {
+        for (U32 i=0;i<count;i++) {
             KFileDescriptor* fd = data->pFD;
             data->revents = 0;
             if (fd) {
@@ -119,23 +118,21 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
 }
 
 U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
-    U32 i;
-    S32 result;
     U32 address = pfds;
     KMemory* memory = thread->memory;
 
     KPollData* pollData = new KPollData[nfds];
 
-    for (i=0;i<nfds;i++) {
+    for (U32 i=0;i<nfds;i++) {
         pollData[i].fd = memory->readd(address); address += 4;
         pollData[i].events = memory->readw(address); address += 2;
         pollData[i].revents = memory->readw(address); address += 2;
     }
 
-    result = internal_poll(thread, pollData, nfds, timeout);
+    S32 result = internal_poll(thread, pollData, nfds, timeout);
     if (result >= 0) { 
         pfds+=6;
-        for (i=0;i<nfds;i++) {
+        for (U32 i=0;i<nfds;i++) {
             memory->writew(pfds, pollData[i].revents);
             pfds+=8;
         }
@@ -147,7 +144,6 @@ U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
 
 U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
     S32 result = 0;
-    U32 i;
     int count = 0;
     U32 pollCount = 0;
     KMemory* memory = thread->memory;
@@ -163,11 +159,10 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
 
     KPollData* pollData = new KPollData[nfds];
 
-    for (i=0;i<nfds;) {
+    for (U32 i=0;i<nfds;) {
         U32 readbits = 0;
         U32 writebits = 0;
         U32 errorbits = 0;
-        U32 b;
 
         if (readfds!=0) {
             readbits = memory->readb(readfds + i / 8);
@@ -178,7 +173,7 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
         if (errorfds!=0) {
             errorbits = memory->readb(errorfds + i / 8);
         }
-        for (b = 0; b < 8 && i < nfds; b++, i++) {
+        for (U32 b = 0; b < 8 && i < nfds; b++, i++) {
             U32 mask = 1 << b;
             U32 r = readbits & mask;
             U32 w = writebits & mask;
@@ -215,7 +210,7 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
         return result;
     }
 
-    for (i=0;i<pollCount;i++) {
+    for (U32 i=0;i<pollCount;i++) {
         U32 found = 0;
         FD fd = pollData[i].fd;
         U32 revent = pollData[i].revents;

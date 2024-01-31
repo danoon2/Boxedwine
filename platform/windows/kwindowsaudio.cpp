@@ -134,7 +134,7 @@ U32 KNativeAudioWindows::midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, 
 
 U32 KNativeAudioWindows::midiOutClose(U32 wDevID) {
 	U32 result = ::midiOutClose(m_out);
-	m_out = NULL;
+	m_out = nullptr;
 	process = nullptr;
 	return result;
 }

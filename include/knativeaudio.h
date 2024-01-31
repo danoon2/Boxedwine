@@ -164,7 +164,7 @@ public:
 	virtual U32 getEndPoint(bool isRender, U32 adevid) = 0;
 	virtual void release(U32 boxedAudioId) = 0;
 	virtual void captureResample(U32 boxedAudioId) = 0;
-	virtual U32 init(KProcess* process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) = 0;
+	virtual U32 init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) = 0;
 	virtual U32 getLatency(U32 boxedAudioId, U32* latency) = 0;
 	virtual void lock(U32 boxedAudioId) = 0;
 	virtual void unlock(U32 boxedAudioId) = 0;

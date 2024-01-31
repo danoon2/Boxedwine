@@ -46,12 +46,12 @@ class KThread;
 
 class MappedFileCache : public BoxedPtrBase {
 public:
-    MappedFileCache(BString name) : name(name), data(NULL), dataSize(0) {}
+    MappedFileCache(BString name) : name(name) {}
     virtual ~MappedFileCache();
     const BString name;
     std::shared_ptr<KFile> file;
-    U8** data;
-    U32 dataSize;
+    U8** data = nullptr;
+    U32 dataSize = 0;
 };
 
 class SHM : public BoxedPtrBase {

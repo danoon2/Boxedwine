@@ -4,9 +4,9 @@
 #include "x64Asm.h"
 #include "x64CPU.h"
 
-bool X64CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, void* address) {
+bool X64CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, U8* address) {
     x64CPU* cpu = (x64CPU*)btCPU;
-    void* startofHostInstruction;
+    U8* startofHostInstruction;
     U32 index;
     U32 eip = this->getEipThatContainsHostAddress(address, &startofHostInstruction, &index) - cpu->seg[CS].address;
     X64Asm data(cpu);

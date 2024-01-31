@@ -28,7 +28,7 @@ bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
 }
 
 void KNativeSystem::exit(const char* msg, U32 code) {
-    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", msg, NULL);
+    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", msg, nullptr);
     _exit(code);
 }
 
@@ -105,7 +105,7 @@ U32 KNativeSystem::getDpiScale() {
 #endif
     float dpi = defaultDPI;
 
-    if (SDL_GetDisplayDPI(0, NULL, &dpi, NULL) != 0) {
+    if (SDL_GetDisplayDPI(0, nullptr, &dpi, nullptr) != 0) {
         return SCALE_DENOMINATOR;
     }
     return (U32)(dpi / defaultDPI * SCALE_DENOMINATOR);

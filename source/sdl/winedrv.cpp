@@ -320,7 +320,6 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
 
     if (devmode)
     {
-        U32 dmFields;
         U32 dmSize = memory->readw(devmode + 68);
         U32 width = KNativeWindow::defaultScreenWidth;
         U32 height = KNativeWindow::defaultScreenHeight;
@@ -332,7 +331,7 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
             return;
         }
 
-        dmFields = memory->readd(devmode + 72);
+        U32 dmFields = memory->readd(devmode + 72);
 
         if (dmFields & DM_BITSPERPEL) {
             bpp = memory->readd(devmode + 168);
@@ -444,8 +443,7 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     U32 devmode = ARG3;
     static const U16 dev_name[32] = { 'B','o','x','e','d','W','i','n','e',' ','d','r','i','v','e','r',0 };
     static DisplayModes* displayModes;
-    static int displayModesCount;
-    int i;
+    static U32 displayModesCount;
     KMemory* memory = cpu->memory;
 
     if (!displayModesCount) {
@@ -534,7 +532,7 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     memory->writew(devmode + 64, 0x401); // dmSpecVersion
     memory->writew(devmode + 66, 0x401); // dmDriverVersion
     memory->writew(devmode + 68, 188); // dmSize
-    for (i=0;i<17;i++) {
+    for (int i=0;i<17;i++) {
         memory->writew(devmode+i*2, dev_name[i]);
     }
     memory->writed(devmode + 72, DM_POSITION | DM_DISPLAYORIENTATION | DM_DISPLAYFIXEDOUTPUT | DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFLAGS | DM_DISPLAYFREQUENCY);
@@ -554,7 +552,7 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
         memory->writed(devmode + 168, KNativeWindow::getNativeWindow()->screenBpp());
         memory->writed(devmode + 172, KNativeWindow::getNativeWindow()->screenWidth());
         memory->writed(devmode + 176, KNativeWindow::getNativeWindow()->screenHeight());
-    } else if (ARG2>=0 && ARG2<(U32)displayModesCount) {
+    } else if (ARG2>=0 && ARG2<displayModesCount) {
         memory->writed(devmode + 168, displayModes[ARG2].bpp);
         memory->writed(devmode + 172, displayModes[ARG2].cx);
         memory->writed(devmode + 176, displayModes[ARG2].cy);
@@ -900,7 +898,7 @@ void boxeddrv_SetCursor(CPU* cpu) {
     KMemory* memory = cpu->memory;
 
     if (!hCursor && !wModuleName && !wResName && !resId) {
-        KNativeWindow::getNativeWindow()->setCursor(NULL, NULL, 0);
+        KNativeWindow::getNativeWindow()->setCursor(nullptr, nullptr, 0);
         if (pFound) {
             memory->writed(ARG5, 1);
         }
@@ -926,9 +924,8 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
     U32 hotX = ARG8;
     U32 hotY = ARG9;
     int pitch = (width+31) / 32 *4;
-    U8 data[64*64/8];
-    U8 mask[64*64/8];
-    int size;
+    U8 data[64 * 64 / 8] = { 0 };
+    U8 mask[64 * 64 / 8] = { 0 };
     KMemory* memory = cpu->memory;
 
     if (height>0) {
@@ -936,7 +933,7 @@ void boxeddrv_SetCursorBits(CPU* cpu) {
     } else {
         height=-height;
     }
-    size = pitch*height;
+    int size = pitch*height;
     if (size>(int)sizeof(data)) {
         klog("boxeddrv_SetCursorBits too large of cursor\n");
         return;
@@ -1422,7 +1419,7 @@ void boxeddrv_SetDeviceGammaRamp(CPU* cpu) {
 // Args: PHYSDEV dev, INT cap
 // return: INT
 void boxeddrv_GetDeviceCaps(CPU* cpu) {
-    S32 ret;
+    S32 ret = 0;
 
     switch (ARG2) {
     case DRIVERVERSION:

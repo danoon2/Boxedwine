@@ -4,7 +4,7 @@
 #include "../../io/fszip.h"
 #include "../../util/networkutils.h"
 #include "../../util/threadutils.h"
-#include "../../../lib/pugixml/src/pugixml.hpp"
+#include "pugixml.hpp"
 #include "knativesystem.h"
 #include "ksystem.h"
 #include "crc.h"
@@ -58,11 +58,11 @@ U32 GlobalSettings::defaultOpenGL = OPENGL_TYPE_SDL;
 bool GlobalSettings::enabledAutomation = false;
 
 void GlobalSettings::init(int argc, const char **argv) {
-    GlobalSettings::largeFontBold = NULL;
-    GlobalSettings::largeFont = NULL;
-    GlobalSettings::mediumFont = NULL;
-    GlobalSettings::defaultFont = NULL;
-    GlobalSettings::sectionTitleFont = NULL;
+    GlobalSettings::largeFontBold = nullptr;
+    GlobalSettings::largeFont = nullptr;
+    GlobalSettings::mediumFont = nullptr;
+    GlobalSettings::defaultFont = nullptr;
+    GlobalSettings::sectionTitleFont = nullptr;
     GlobalSettings::iconFontsLoaded = false;
     GlobalSettings::availableWineVersions.clear();
     GlobalSettings::availableWinetricksVersions.clear();
@@ -192,7 +192,7 @@ WineVersion* GlobalSettings::getInstalledWineFromName(BString name) {
             return &ver;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 WineVersion* GlobalSettings::getAvailableWineFromName(BString name) {
@@ -201,7 +201,7 @@ WineVersion* GlobalSettings::getAvailableWineFromName(BString name) {
             return &ver;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void GlobalSettings::lookForFileSystems(BString path) {
@@ -441,7 +441,7 @@ AppFile* GlobalSettings::getComponentByOptionName(BString name) {
             return &app;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 bool GlobalSettings::checkFileListForUpdate() {
@@ -498,7 +498,7 @@ void GlobalSettings::updateFileList(BString fileLocation) {
             BString errorMsg;
             GlobalSettings::filesListDownloading = true;
             if (::downloadFile(url, tmpPath, [](U64 bytesCompleted) {
-                }, NULL, errorMsg)) {
+                }, nullptr, errorMsg)) {
                 if (Fs::doesNativePathExist(path)) {
                     Fs::deleteNativeFile(path);
                 }
@@ -528,7 +528,7 @@ void GlobalSettings::updateFileList(BString fileLocation) {
                         }
                         if (!Fs::doesNativePathExist(demo.localIconPath)) {
                             ::downloadFile(demo.iconPath, demo.localIconPath, [](U64 bytesCompleted) {
-                                }, NULL, errorMsg);
+                                }, nullptr, errorMsg);
                             runOnMainUI([&demo]() {
                                 demo.buildIconTexture();
                                 return false;
@@ -783,7 +783,7 @@ WineVersion* WineVersion::getMissingDependency() const {
             }
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 BString WineVersion::getLocalFilePath() const {

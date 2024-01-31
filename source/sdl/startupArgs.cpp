@@ -502,7 +502,7 @@ bool StartUpArgs::apply() {
         }
         if (result) {
             if (!doMainLoop()) {
-                return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
+                return false; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
             }
         }
     }
@@ -731,12 +731,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     } 
     char curdir[1024];
     char* base = getcwd(curdir, sizeof(curdir));
-    char pathSeperator;
+    char pathSeperator = '/';
 
-    if (base!=NULL && strchr(base, '\\')!=0) {
+    if (base!=nullptr && strchr(base, '\\') != nullptr) {
         pathSeperator = '\\';
-    } else {
-        pathSeperator = '/';
     }
     if (KNativeSystem::getAppDirectory().length()) {
         BString base2 = KNativeSystem::getAppDirectory();

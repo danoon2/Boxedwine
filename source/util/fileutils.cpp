@@ -1,48 +1,33 @@
 #include "boxedwine.h"
 #include "fileutils.h"
 
-bool getline(FILE *fin, BString& result) {
-    int c;
-    result.removeAll();
-    while (EOF != (c = getc(fin))) {
-        if (c == '\n') {
-            break;
-        } else if (c == '\r') {
-            continue;
-        }
-        result+=(char)c;
-    }
-    if (c == EOF) {
-        return false;
-    }
-    return true;
-}
+#include <iostream>
+#include <fstream>
+#include <string>
 
 bool readLinesFromFile(BString filepath, std::vector<BString>& lines) {
-    FILE *fp = fopen(filepath.c_str(), "rb");
-    if (fp) { 
-        BString line;
-        while (getline(fp, line)) {
-            lines.push_back(line);
+    std::fstream file;
+
+    file.open(filepath.c_str(), std::ios::in);
+    if (file.is_open()) {
+        std::string line;
+        while (std::getline(file, line)) {
+            lines.push_back(BString::copy(line.c_str()));
         }
-        if (line.length()) {
-            lines.push_back(line);
-        }
-        fclose(fp);
+        file.close();
         return true;
     }
     return false;
 }
 
 bool writeLinesToFile(BString filepath, std::vector<BString>& lines) {
-    FILE *fp = fopen(filepath.c_str(), "wb");
-    if (fp) { 
+    std::fstream file;
+
+    file.open(filepath.c_str(), std::ios::out);
+    if (file.is_open()) {
         for (auto& line : lines) {
-            fwrite(line.c_str(), line.length(), 1, fp);
-            fwrite("\r\n", 2, 1, fp);
+            file << line.c_str() << "\r\n";
         }
-        fflush(fp);
-        fclose(fp);
         return true;
     }
     return false;

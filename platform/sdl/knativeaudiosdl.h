@@ -21,7 +21,7 @@ public:
 
 	bool sameFormat = false;
 	bool open = false;
-	KProcess* process = nullptr;
+	std::weak_ptr<KProcess> process;
 
 	bool isRender = false;
 	bool isPlaying = false;
@@ -59,7 +59,7 @@ public:
 	virtual U32 getEndPoint(bool isRender, U32 adevid) override;
 	virtual void release(U32 boxedAudioId) override;
 	virtual void captureResample(U32 boxedAudioId) override;
-	virtual U32 init(KProcess* process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
+	virtual U32 init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
 	virtual U32 getLatency(U32 boxedAudioId, U32* latency) override;
 	virtual void lock(U32 boxedAudioId) override;
 	virtual void unlock(U32 boxedAudioId) override;
@@ -109,7 +109,7 @@ public:
 		else if (boxedAudioId == 2) {
 			return &data[1];
 		}
-		return NULL;
+		return nullptr;
 	}
 };
 

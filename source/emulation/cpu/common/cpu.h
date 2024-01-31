@@ -13,8 +13,9 @@
 #ifndef SIMDE_NO_CHECK_IMMEDIATE_CONSTANT
 #define SIMDE_NO_CHECK_IMMEDIATE_CONSTANT
 #endif
-#include "../../../../lib/simde/simde/x86/sse.h"
-#include "../../../../lib/simde/simde/x86/sse2.h"
+
+#include "simde/x86/sse.h"
+#include "simde/x86/sse2.h"
 
 typedef void (*Int99Callback)(CPU* cpu);
 extern Int99Callback* int99Callback;

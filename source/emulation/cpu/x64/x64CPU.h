@@ -72,7 +72,7 @@ public:
     U64 exceptionR8 = 0;
     U64 exceptionR9 = 0;
     U64 exceptionR10 = 0;	
-	void*** eipToHostInstructionPages = nullptr;
+	U8*** eipToHostInstructionPages = nullptr;
     U32 stringRepeat = 0;
     U32 stringWritesToDi = 0;
     U32 arg5 = 0;

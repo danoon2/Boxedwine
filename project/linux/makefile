@@ -102,6 +102,8 @@ DEPS := $(OBJS:.o=.d)
 INCLUDES = -I../../include
 INCLUDES += -I../../lib/glew/include
 INCLUDES += -I../../lib/imgui
+INCLUDES += -I../../lib/simde
+INCLUDES += -I../../lib/pugixml/src
 
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)

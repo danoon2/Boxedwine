@@ -95,7 +95,7 @@ bool checkWaitingNativeSockets(int timeout) {
         if (maxSocketId==0)
             return false;
 #endif           
-        int result = select(maxSocketId + 1, &waitingReadset, &waitingWriteset, &waitingErrorset, (timeout>=0?&t:0));
+        int result = select(maxSocketId + 1, &waitingReadset, &waitingWriteset, &waitingErrorset, (timeout>=0?&t: nullptr));
         if (result) {
 #ifdef BOXEDWINE_MULTI_THREADED
             if (FD_ISSET(nativeSocketPipe[0], &waitingReadset)) {
@@ -104,7 +104,7 @@ bool checkWaitingNativeSockets(int timeout) {
                 return true;
             }
 #endif
-            BOXEDWINE_CONDITION* conditions[1024];
+            BOXEDWINE_CONDITION* conditions[1024] = { };
             U32 conditionCount = 0;
             {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);                
@@ -159,7 +159,7 @@ void startNativeSocketsThread() {
         Platform::nativeSocketPair(nativeSocketPipe);
         setNativeBlocking(nativeSocketPipe[0], false);
         setNativeBlocking(nativeSocketPipe[1], false);
-        checkWaitingNativeSocketsThread = KNativeThread::createAndStartThread(checkWaitingNativeSockets_thread, B("NativeSockeThread"), (void *)NULL);
+        checkWaitingNativeSocketsThread = KNativeThread::createAndStartThread(checkWaitingNativeSockets_thread, B("NativeSockeThread"), (void *)nullptr);
     }    
 }
 
@@ -170,7 +170,7 @@ void stopNativeSocketsThread() {
     ::send(nativeSocketPipe[1], &buf, 1, 0);
     checkWaitingNativeSocketsThread->wait();
     checkWaitingNativeSocketsThreadDone = false;
-    checkWaitingNativeSocketsThread = NULL;
+    checkWaitingNativeSocketsThread = nullptr;
 }
 #endif
 
@@ -205,7 +205,7 @@ void removeWaitingSocket(S32 nativeSocket) {
 }
 
 S32 translateNativeSocketError(int error) {
-    S32 result;
+    S32 result = 0;
 #ifdef WIN32
     if (error == WSAENOTCONN)
         result = -K_ENOTCONN;
@@ -289,8 +289,8 @@ KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : K
         winsock_intialized=1;
     }
 #endif
-    U32 nativeType;
-    U32 nativeProtocol;
+    U32 nativeType = 0;
+    U32 nativeProtocol = 0;
 
     this->nativeSocket = 0;
 
@@ -400,7 +400,7 @@ bool KNativeSocketObject::isAsync() {
 
 KFileLock* KNativeSocketObject::getLock(KFileLock* lock) {
     kdebug("KNativeSocketObject::getLock not implemented yet");
-    return 0;
+    return nullptr;
 }
 
 U32 KNativeSocketObject::setLock(KFileLock* lock, bool wait) {
@@ -417,14 +417,13 @@ bool KNativeSocketObject::isOpen() {
 }
 
 bool KNativeSocketObject::isPriorityReadReady() {
-    fd_set          sready;
-    struct timeval  nowait;
+    fd_set          sready = {};
+    struct timeval  nowait = { 0 };
 
     FD_ZERO(&sready);
     FD_SET(this->nativeSocket, &sready);
-    memset((char*)&nowait, 0, sizeof(nowait));
 
-    ::select(this->nativeSocket + 1, NULL, NULL, &sready, &nowait);
+    ::select(this->nativeSocket + 1, nullptr, nullptr, &sready, &nowait);
     bool result = FD_ISSET(this->nativeSocket, &sready) != 0;
     if (result) {
         this->error = 0;
@@ -433,14 +432,13 @@ bool KNativeSocketObject::isPriorityReadReady() {
 }
 
 bool KNativeSocketObject::isReadReady() {
-    fd_set          sready;
-    struct timeval  nowait;
+    fd_set          sready = {};
+    struct timeval  nowait = { 0 };
 
     FD_ZERO(&sready);
     FD_SET(this->nativeSocket, &sready);
-    memset((char*)&nowait, 0, sizeof(nowait));
 
-    ::select(this->nativeSocket + 1, &sready, NULL, NULL, &nowait);
+    ::select(this->nativeSocket + 1, &sready, nullptr, nullptr, &nowait);
     bool result = FD_ISSET(this->nativeSocket, &sready) != 0;
     if (result) {
         this->error = 0;
@@ -449,14 +447,13 @@ bool KNativeSocketObject::isReadReady() {
 }
 
 bool KNativeSocketObject::isWriteReady() {
-    fd_set          sready;
-    struct timeval  nowait;
+    fd_set          sready = {};
+    struct timeval  nowait = { 0 };
 
     FD_ZERO(&sready);
     FD_SET(this->nativeSocket, &sready);
-    memset((char*)&nowait, 0, sizeof(nowait));
 
-    ::select(this->nativeSocket + 1, NULL, &sready, NULL, &nowait);
+    ::select(this->nativeSocket + 1, nullptr, &sready, nullptr, &nowait);
     bool result = FD_ISSET(this->nativeSocket, &sready) != 0;
     if (result) {
         this->error = 0;
@@ -524,7 +521,7 @@ U32 KNativeSocketObject::bind(KThread* thread, KFileDescriptor* fd, U32 address,
         if (fd->kobject->type!=KTYPE_NATIVE_SOCKET) {
             return -K_ENOTSOCK;
         }
-        char tmp[4096];
+        char tmp[4096] = {};
         if (len>sizeof(tmp)) {
             kpanic("kbind: buffer not large enough: len=%d", len);
         }
@@ -540,7 +537,7 @@ U32 KNativeSocketObject::bind(KThread* thread, KFileDescriptor* fd, U32 address,
 }
 
 U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 address, U32 len) {
-    char buffer[1024];
+    char buffer[1024] = {};
     U32 result = 0;
     KMemory* memory = thread->memory;
 
@@ -596,7 +593,7 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
     }
 
     if (::connect(this->nativeSocket, (struct sockaddr*)buffer, len) == 0) {
-        int error;
+        int error = 0;
         socklen_t optLen = 4;
         ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &optLen);
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -646,7 +643,7 @@ U32 KNativeSocketObject::listen(KThread* thread, KFileDescriptor* fd, U32 backlo
 }
 
 U32 KNativeSocketObject::accept(KThread* thread, KFileDescriptor* fd, U32 address, U32 len, U32 flags) {
-    struct sockaddr addr;
+    struct sockaddr addr = {};
     socklen_t addrlen = sizeof(struct sockaddr);
     S32 result = (S32)::accept(this->nativeSocket, &addr, &addrlen);
     KMemory* memory = thread->memory;
@@ -724,7 +721,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 le
     KMemory* memory = thread->memory;
 
     if (level == K_IPPROTO_IP) {
-        U32 v;
+        U32 v = 0;
         switch (name) {
         case K_IP_MTU_DISCOVER:
             if (len != 4)
@@ -760,7 +757,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 le
         }
     }
     else if (level == K_IPPROTO_TCP) {
-        U32 v;
+        U32 v = 0;
         switch (name) {
         case K_TCP_NODELAY:
             if (len != 4)
@@ -785,7 +782,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 le
             return -K_EINVAL;
         }
     } else if (level == K_SOL_SOCKET) {
-        U32 v;
+        U32 v = 0;
         switch (name) {
             case K_SO_RCVBUF:
                 if (len!=4)
@@ -987,7 +984,7 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 le
 }
 
 U32 KNativeSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
-    MsgHdr hdr;
+    MsgHdr hdr = {};
     KMemory* memory = thread->memory;
     readMsgHdr(thread, address, &hdr);
 
@@ -1018,7 +1015,7 @@ U32 KNativeSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 addre
         memory->memcpy(buffer + len, p, toCopy);
         len += toCopy;
     }
-    struct sockaddr dest;
+    struct sockaddr dest = {};
     U32 destLen = std::min((U32)sizeof(struct sockaddr), hdr.msg_namelen);
     if (destLen) {
         memory->memcpy(&dest, hdr.msg_name, destLen);
@@ -1044,8 +1041,8 @@ U32 KNativeSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 addre
 
 U32 KNativeSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
     KMemory* memory = thread->memory;
-    char tmp[K_PAGE_SIZE];
-    MsgHdr hdr;
+    char tmp[K_PAGE_SIZE] = { 0 };
+    MsgHdr hdr = { 0 };
     U32 result = 0;
 
     readMsgHdr(thread, address, &hdr);        
@@ -1054,13 +1051,12 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 addre
         U32 len = memory->readd(hdr.msg_iov + 8 * i + 4);
 
         if (this->type == K_SOCK_DGRAM && this->domain==K_AF_INET && hdr.msg_namelen>=sizeof(struct sockaddr_in)) {
-            struct sockaddr_in in;
-            S32 r;
+            struct sockaddr_in in = {};
             socklen_t inLen = sizeof(struct sockaddr_in);
 
             if (len>sizeof(tmp))
                 len = sizeof(tmp);
-            r = (S32)::recvfrom(this->nativeSocket, tmp, len, 0, (struct sockaddr*)&in, &inLen);
+            S32 r = (S32)::recvfrom(this->nativeSocket, tmp, len, 0, (struct sockaddr*)&in, &inLen);
             if (r>=0) {
                 memory->memcpy(p, tmp, r);
                 // :TODO: maybe copied fields to the expected location rather than assume the structures are the same
@@ -1087,9 +1083,9 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 addre
 U32 KNativeSocketObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {
     KMemory* memory = thread->memory;
     U32 nativeFlags = 0;
-    struct sockaddr dest;
+    struct sockaddr dest = { 0 };
     int len=sizeof(struct sockaddr);
-    U32 result;    
+  
 
     if (flags & K_MSG_OOB)
         nativeFlags|=MSG_OOB;
@@ -1099,7 +1095,7 @@ U32 KNativeSocketObject::sendto(KThread* thread, KFileDescriptor* fd, U32 messag
     memory->memcpy(&dest, dest_addr, len);
     S8* tmp = new S8[length];
     memory->memcpy(tmp, message, length);
-    result = (U32)::sendto(this->nativeSocket, (char*)tmp, length, nativeFlags, &dest, len);
+    U32 result = (U32)::sendto(this->nativeSocket, (char*)tmp, length, nativeFlags, &dest, len);
     delete[] tmp;
     if ((S32)result>=0) {
         this->error = 0;
@@ -1164,8 +1160,8 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
 }
 
 FsOpenNode* openHosts(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
-    char name[256];
-    char buf[256];
+    char name[256] = {};
+    char buf[256] = {};
     name[0] = 0;
     gethostname(name, 256);
     snprintf(buf, sizeof(buf), "127.0.0.1\tlocalhost\n127.0.1.1\t%s\n::1\tip6-localhost ip6-loopback", name);

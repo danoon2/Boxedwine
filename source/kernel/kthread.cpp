@@ -31,7 +31,7 @@ BOXEDWINE_MUTEX KThread::futexesMutex;
 KThread::~KThread() {    
     this->cleanup();
     CPU* cpu = this->cpu;
-    this->cpu = NULL;
+    this->cpu = nullptr;
     delete cpu;
 }
 
@@ -92,47 +92,19 @@ void KThread::setupStack() {
 
 KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) : 
     id(id),   
-    sigMask(0),
-    inSigMask(0),
-    alternateStack(0),
-    alternateStackSize(0),
-    cpu(NULL),
-    stackPageStart(0),
-    stackPageCount(0),
-    stackPageSize(0),
     process(process),
-    memory(process->memory),
-    interrupted(false),
-    inSignal(0),
-#ifdef BOXEDWINE_MULTI_THREADED
-    exited(false),
-    startSignal(false),
-#endif
-    terminating(false),
-    clear_child_tid(0),
-    userTime(0),
-    kernelTime(0),
-    inSysCall(0),
+    memory(process->memory),    
     waitingForSignalToEndCond(B("KThread::waitingForSignalToEndCond")),
-    waitingForSignalToEndMaskToRestore(0),
-    pendingSignals(0),
-    hasContextBeenMadeCurrentSinceCreation(false),
-    glContext(0),
-    currentContext(0),
-    log(false),
-    waitingCond(0),
     pollCond(B("KThread::pollCond")),
 #ifndef BOXEDWINE_MULTI_THREADED
     scheduledThreadNode(this),
     waitThreadNode(this),            
 #endif
-    condStartWaitTime(0),
     sleepCond(B("KThread::sleepCond"))
     {
-    int i;
 
     this->sigMask = 0;
-    for (i=0;i<TLS_ENTRIES;i++) {
+    for (int i=0;i<TLS_ENTRIES;i++) {
         this->tls[i].seg_not_present = 1;
         this->tls[i].read_exec_only = 1;
     }
@@ -159,7 +131,7 @@ struct user_desc* KThread::getLDT(U32 index) {
     } else if (index<LDT_ENTRIES) {
         return this->process->getLDT(index);
     }
-    return NULL;
+    return nullptr;
 }
 
 void KThread::setTLS(struct user_desc* desc) {
@@ -258,7 +230,7 @@ struct futex* getFutex(KThread* thread, U8* address) {
             return &system_futex[i];
         }
     }
-    return 0;
+    return nullptr;
 }
 
 struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
@@ -266,7 +238,7 @@ struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
     int i=0;
 
     for (i=0;i<MAX_FUTEXES;i++) {
-        if (system_futex[i].thread==0) {
+        if (system_futex[i].thread== nullptr) {
             system_futex[i].thread = thread;
             system_futex[i].address = address;
             system_futex[i].expireTimeInMillies = millies;
@@ -276,12 +248,12 @@ struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
         }
     }
     kpanic("ran out of futexes");
-    return 0;
+    return nullptr;
 }
 
 void freeFutex(struct futex* f) {
-    f->thread = 0;
-    f->address = 0;
+    f->thread = nullptr;
+    f->address = nullptr;
 }
 
 void KThread::clearFutexes() {
@@ -298,17 +270,15 @@ void KThread::clearFutexes() {
 U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
     U8* ramAddress = memory->getIntPtr(addr);
 
-    if (ramAddress==0) {
+    if (ramAddress == nullptr) {
         kpanic("Could not find futex address: %0.8X", addr);
     }
     op = op & ~FUTEX_CLOCK_REALTIME;
     if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE || op == FUTEX_WAIT_BITSET_PRIVATE) {
         struct futex* f=getFutex(this, ramAddress);
-        U32 expireTime;
+        U32 expireTime = 0xFFFFFFFF;
 
-        if (pTime == 0) {
-            expireTime = 0xFFFFFFFF;
-        } else {
+        if (pTime != 0) {
             U32 seconds = memory->readd(pTime);
             U32 nano = memory->readd(pTime + 4);
             expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
@@ -362,9 +332,8 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
 #endif
         }
     } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE || op==FUTEX_WAKE_BITSET_PRIVATE) {
-        int i;
         U32 count = 0;
-        for (i=0;i<MAX_FUTEXES && count<value;i++) {
+        for (int i=0;i<MAX_FUTEXES && count<value;i++) {
             if (system_futex[i].address==ramAddress && !system_futex[i].wake && (op!= FUTEX_WAKE_BITSET_PRIVATE || (system_futex[i].mask & val3))) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
                 system_futex[i].wake = true;
@@ -674,12 +643,11 @@ U32 KThread::sigreturn() {
 }
 
 void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
-    U32 context;	
     U64 count = cpu->instructionCount;
 
     cpu->pop32(); // signal
     cpu->pop32(); // address
-    context = cpu->pop32();
+    U32 context = cpu->pop32();
     cpu->thread->condStartWaitTime = cpu->pop32();
     cpu->thread->interrupted = cpu->pop32()!=0;
 
@@ -724,7 +692,7 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
     if (action->handlerAndSigAction==K_SIG_DFL) {
 
     } else if (action->handlerAndSigAction != K_SIG_IGN) {
-        U32 context;
+        U32 context = 0;
         U32 address = 0;
         U32 stack = this->cpu->reg[4].u32;
         U32 interrupted = 0;
@@ -768,12 +736,10 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->reg[4].u32 = context;
 
         this->cpu->reg[4].u32 &= ~15;
-        if (action->flags & K_SA_SIGINFO) {
-            U32 i;
-            
+        if (action->flags & K_SA_SIGINFO) {            
             this->cpu->reg[4].u32-=INFO_SIZE;
             address = this->cpu->reg[4].u32;
-            for (i=0;i<K_SIG_INFO_SIZE;i++) {
+            for (U32 i=0;i<K_SIG_INFO_SIZE;i++) {
                 memory->writed(address+i*4, this->process->sigActions[signal].sigInfo[i]);
             }
                         
@@ -962,7 +928,7 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
         //klog("syscall_sigprocmask oset=%X", thread->sigMask);
     }
     if (set!=0) {
-        U64 mask;
+        U64 mask = 0;
         
         if (sigsetSize==4) {
             mask = memory->readd(set);
@@ -970,7 +936,6 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
             mask = memory->readq(set);
         } else {
             klog("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
-            mask = 0; // removes warning
         }
         if (how == K_SIG_BLOCK) {
             this->sigMask|=mask;
@@ -1040,7 +1005,7 @@ U32 KThread::signalstack(U32 ss, U32 oss) {
 KThreadGlContext* KThread::getGlContextById(U32 id) {
     if (this->glContext.count(id))
         return &this->glContext[id];
-    return NULL;
+    return nullptr;
 }
 
 void KThread::removeGlContextById(U32 id) {

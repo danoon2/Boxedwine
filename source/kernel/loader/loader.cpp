@@ -51,10 +51,10 @@ bool isValidElf(struct k_Elf32_Ehdr* hdr) {
 }
 
 BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
-    U8 buffer[sizeof(struct k_Elf32_Ehdr)];
+    U8 buffer[sizeof(struct k_Elf32_Ehdr)] = { 0 };
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
     U32 len = openNode->readNative(buffer, sizeof(buffer));
-    char interp[MAX_FILEPATH_LEN];
+    char interp[MAX_FILEPATH_LEN] = { 0 };
 
     *isElf=true;
     if (len!=sizeof(buffer)) {
@@ -65,12 +65,11 @@ BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
     }
     if (!*isElf) {
         if (buffer[0]=='#') {
-            U32 i;
             U32 mode = 0;
             U32 pos = 0;
-            char shell_interp[MAX_FILEPATH_LEN];
+            char shell_interp[MAX_FILEPATH_LEN] = { 0 };
 
-            for (i=1;i<len;i++) {
+            for (U32 i=1;i<len;i++) {
                 if (mode==0) {
                     if (buffer[i]=='!')
                         mode = 1;
@@ -107,7 +106,7 @@ BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
 
 FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs) {
     bool isElf = 0;
-    FsOpenNode* openNode = 0;
+    FsOpenNode* openNode = nullptr;
     BoxedPtr<FsNode> interpreterNode;
     BoxedPtr<FsNode> loaderNode;
 
@@ -128,13 +127,13 @@ FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNo
         delete openNode;
     }
     if (!interpreter.length() && !isElf) {
-        return NULL;
+        return nullptr;
     }
     if (interpreter.length()) {
         interpreterNode = Fs::getNodeFromLocalPath(currentDirectory, interpreter, true);	
         if (!interpreterNode) {
             kwarn("Interpreter not found: %s", interpreter.c_str());
-            return NULL;
+            return nullptr;
         }
         openNode = interpreterNode->open(K_O_RDONLY);		
         loader = ElfLoader::getInterpreter(openNode, &isElf);
@@ -144,7 +143,7 @@ FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNo
     if (loader.length()) {
         loaderNode = Fs::getNodeFromLocalPath(currentDirectory, loader, true);	
         if (!loaderNode) {
-            return NULL;
+            return nullptr;
         }
     }		
 
@@ -158,16 +157,14 @@ FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNo
 }
 
 int ElfLoader::getMemSizeOfElf(FsOpenNode* openNode) {
-    U8 buffer[sizeof(struct k_Elf32_Ehdr)];
+    U8 buffer[sizeof(struct k_Elf32_Ehdr)] = { 0 };
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
-    U32 len;
     U64 pos = openNode->getFilePointer();
     U32 address = 0xFFFFFFFF;
-    int i;
     int sections = 0;
 
     openNode->seek(0);
-    len = openNode->readNative(buffer, sizeof(buffer));
+    U32 len = openNode->readNative(buffer, sizeof(buffer));
     if (len != sizeof(buffer)) {
         return 0;
     }
@@ -178,7 +175,7 @@ int ElfLoader::getMemSizeOfElf(FsOpenNode* openNode) {
 
     len = 0;
     openNode->seek(hdr->e_phoff);
-    for (i = 0; i<hdr->e_phnum; i++) {
+    for (int i = 0; i<hdr->e_phnum; i++) {
         struct k_Elf32_Phdr phdr;
         openNode->readNative((U8*)&phdr, sizeof(struct k_Elf32_Phdr));
         if (phdr.p_type == PT_LOAD) {
@@ -234,12 +231,11 @@ U32 getPELoadAddress(struct FsOpenNode* openNode, U32* section, U32* numberOfSec
 }
 #endif
 bool ElfLoader::loadProgram(KThread* thread, FsOpenNode* openNode, U32* eip) {
-    U8 buffer[sizeof(struct k_Elf32_Ehdr)];
+    U8 buffer[sizeof(struct k_Elf32_Ehdr)] = { 0 };
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
     U32 len = openNode->readNative(buffer, sizeof(buffer));
     U32 address=0xFFFFFFFF;
-    U32 i;
-    U32 reloc;
+    U32 reloc = 0;
 
     if (len!=sizeof(buffer)) {
         return false;
@@ -248,7 +244,7 @@ bool ElfLoader::loadProgram(KThread* thread, FsOpenNode* openNode, U32* eip) {
         return false;    
     len=0;
     openNode->seek(hdr->e_phoff);	
-    for (i=0;i<hdr->e_phnum;i++) {
+    for (U32 i=0;i<hdr->e_phnum;i++) {
         struct k_Elf32_Phdr phdr;		
         openNode->readNative((U8*)&phdr, sizeof(struct k_Elf32_Phdr));
         if (phdr.p_type==PT_LOAD) {
@@ -274,7 +270,7 @@ bool ElfLoader::loadProgram(KThread* thread, FsOpenNode* openNode, U32* eip) {
     thread->process->brkEnd = address+len;
     thread->process->phdr = 0;
 
-    for (i=0;i<hdr->e_phnum;i++) {
+    for (U32 i=0;i<hdr->e_phnum;i++) {
         struct k_Elf32_Phdr phdr;		
         openNode->seek(hdr->e_phoff+hdr->e_phentsize*i);
         openNode->readNative((U8*)&phdr, sizeof(struct k_Elf32_Phdr));

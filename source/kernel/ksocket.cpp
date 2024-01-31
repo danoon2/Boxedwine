@@ -28,23 +28,26 @@
 #include <stdio.h>
 
 
-const char* socketAddressName(KMemory* memory, U32 address, U32 len, char* result, U32 cbResult) {
+BString socketAddressName(KMemory* memory, U32 address, U32 len) {
     if (!address) {
-        return "";
+        return B("");
     }
     U16 family = memory->readw(address);
     if (family == K_AF_UNIX) {
         U32 sLen = (U32)memory->strlen(address + 2);
-        memory->memcpy(result, address + 2, std::min(sLen+1, cbResult));
+        BString result(sLen + 1, 0);
+        memory->memcpy(result.str(), address + 2, sLen+1);
         return result;
     } else if (family == K_AF_NETLINK) {
-        snprintf(result, cbResult, "port %u", memory->readd(address + 4));
+        BString result;
+        result.sprintf("port %u", memory->readd(address + 4));
         return result;
     } else if (family == K_AF_INET) {
-        snprintf(result, cbResult, "AF_INET %u.%u.%u.%u:%u", memory->readb(address + 4), memory->readb(address + 5), memory->readb(address + 6), memory->readb(address + 7), memory->readb(address + 3) | (((U32)memory->readb(address + 2)) << 8));
+        BString result;
+        result.sprintf("AF_INET %u.%u.%u.%u:%u", memory->readb(address + 4), memory->readb(address + 5), memory->readb(address + 6), memory->readb(address + 7), memory->readb(address + 3) | (((U32)memory->readb(address + 2)) << 8));
         return result;
     }
-    return "Unknown address family";
+    return B("Unknown address family");
 }
 
 U32 ksocket(U32 domain, U32 type, U32 protocol) {
@@ -151,10 +154,10 @@ U32 kgetpeername(KThread* thread, U32 socket, U32 address, U32 plen) {
 }
 
 U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
-    FD fd1;
-    FD fd2;
-    KFileDescriptor* f1;
-    KFileDescriptor* f2;
+    FD fd1 = 0;
+    FD fd2 = 0;
+    KFileDescriptor* f1 = nullptr;
+    KFileDescriptor* f2 = nullptr;
     std::shared_ptr<KUnixSocketObject> s1;
     std::shared_ptr<KUnixSocketObject> s2;
     KMemory* memory = thread->memory;

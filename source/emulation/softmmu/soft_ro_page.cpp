@@ -25,7 +25,7 @@ U8* ROPage::getReadPtr(U32 address, bool makeReady) {
 }
 
 U8* ROPage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    return NULL;
+    return nullptr;
 }
 
 #endif

@@ -9,7 +9,7 @@ bool showMessageBox(BString id, bool open, const char* title, const char* msg) {
     if (open) {
         ImGui::OpenPopup(title);
     }
-    if (ImGui::BeginPopupModal(title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
@@ -33,7 +33,7 @@ bool showYesNoMessageBox(BString id, bool open, const char* title, const char* m
     if (open) {
         ImGui::OpenPopup(title);
     }
-    if (ImGui::BeginPopupModal(title, NULL, ImGuiWindowFlags_AlwaysAutoResize))
+    if (ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
     {
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();

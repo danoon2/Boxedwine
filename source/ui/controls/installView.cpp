@@ -276,7 +276,7 @@ void InstallView::onInstall() {
         }
     }
 
-    BoxedContainer* container = NULL;
+    BoxedContainer* container = nullptr;
 
     if (this->errorMsg.isEmpty()) {
         if (containerIndex != 0) {
@@ -333,7 +333,7 @@ void InstallView::onInstall() {
                 } else {
                     runOnMainUI([container, dest]() {
                         std::vector<BoxedApp> items;
-                        container->getNewApps(items, NULL, BString::copy(dest.string().c_str()));
+                        container->getNewApps(items, nullptr, BString::copy(dest.string().c_str()));
                         new AppChooserDlg(items, [container](BoxedApp app) {
                             gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });

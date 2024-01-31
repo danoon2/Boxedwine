@@ -51,7 +51,7 @@ bool KEPoll::isAsync() {
 
 KFileLock* KEPoll::getLock(KFileLock* lock) {
     kdebug("KEPoll::getLock not implemented yet");
-    return 0;
+    return nullptr;
 }
 
 U32 KEPoll::setLock(KFileLock* lock, bool wait) {
@@ -131,7 +131,7 @@ void KEPoll::close() {
 
 U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
     KFileDescriptor* targetFD = KThread::currentThread()->process->getFileDescriptor(fd);
-    Data* existing = NULL;
+    Data* existing = nullptr;
 
     if (!targetFD) {
         return -K_EBADF;
@@ -171,7 +171,6 @@ U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
 
 U32 KEPoll::wait(KThread* thread, U32 events, U32 maxevents, U32 timeout) {
     S32 result = 0;
-    U32 i;
     thread_local static KPollData pollData[256];
     U32 pollCount=0;
     KMemory* memory = thread->memory;
@@ -190,7 +189,7 @@ U32 KEPoll::wait(KThread* thread, U32 events, U32 maxevents, U32 timeout) {
     result = internal_poll(thread, pollData, pollCount, timeout);
     if (result >= 0) {
         result = 0;
-        for (i=0;i<pollCount;i++) {
+        for (U32 i=0;i<pollCount;i++) {
             if (pollData[i].revents!=0) {
                 memory->writed(events + result * 12, pollData[i].revents);        
                 memory->writeq(events + result * 12 + 4, pollData[i].data);

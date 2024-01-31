@@ -282,7 +282,7 @@ void X64Asm::writeToRegFromValue(U8 reg, bool isRexReg, U64 value, U8 bytes) {
 void X64Asm::writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress, U8 hostMem) {
     this->rex |= REX_BASE | REX_SIB_INDEX|REX_MOD_RM;    
     setRM(rm, checkG, false, isG8bit, isE8bit);
-    U8 hostReg;
+    U8 hostReg = 0xff;
     if (calculateHostAddress) {
         if (hostMem != 0xFF) {
             hostReg = hostMem;
@@ -352,7 +352,7 @@ U8 X64Asm::getHostMem(U8 regEmulatedAddress, bool isRex) {
     {
 #endif
         U8 resultReg = getTmpReg();
-        U8 tmpReg;
+        U8 tmpReg = 0xff;
         
         if (isTmpRegAvailable()) {
             tmpReg = getTmpReg();
@@ -1104,7 +1104,7 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
             testRegReleaseAfterCmp = true;
         }
 
-        U8 tmp;
+        U8 tmp = 0xff;
         bool hostMemPushed = false;
         if (releaseReg) {
             tmp = reg;
@@ -1783,7 +1783,7 @@ void X64Asm::adjustStack(U8 tmpReg, S32 bytes) {
 // 45 8D 5B 04          lea         r11d,[r11+4] 
 
 void X64Asm::popReg(U8 reg, bool isRegRex, S8 bytes, bool commit) {
-    U8 tmpReg;
+    U8 tmpReg = 0xff;
     bool allocatedTmpReg = false;
 
     if (reg==4 && !isRegRex) {
@@ -2174,13 +2174,13 @@ void X64Asm::createCodeForSyncToHost() {
 void X64Asm::syncRegsToHostCall() {
     U8 tmp = getParamSafeTmpReg();
     writeToRegFromMem(tmp, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_SYNC_TO_HOST_ADDRESS, 8, false);
-    callHost(NULL, tmp, true);
+    callHost(nullptr, tmp, true);
 }
 
 void X64Asm::syncRegsFromHostCall() {
     U8 tmp = getTmpReg();
     writeToRegFromMem(tmp, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_SYNC_FROM_HOST_ADDRESS, 8, false);
-    callHost(NULL, tmp, true);
+    callHost(nullptr, tmp, true);
 }
 
 void X64Asm::syncRegsToHost(S8 excludeReg) {
@@ -2875,7 +2875,7 @@ void X64Asm::popA16() {
 
 // PUSHAD
 void X64Asm::pushA32() {
-    S8 seg;
+    S8 seg = 0;
     U8 tmpReg = getTmpReg();
 
     if (this->cpu->thread->process->hasSetSeg[SS]) {
@@ -2899,7 +2899,7 @@ void X64Asm::pushA32() {
 
 // POPAD
 void X64Asm::popA32() {
-    S8 seg;
+    S8 seg = 0;
     U8 tmpReg = getTmpReg();
 
     if (this->cpu->thread->process->hasSetSeg[SS]) {

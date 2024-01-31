@@ -106,7 +106,7 @@ U8* InvalidPage::getWritePtr(U32 address, U32 len, bool makeReady) {
         ondemmand(thread->memory, page);
         return data->getPage(page)->getWritePtr(address, len, true);
     }
-    return NULL;
+    return nullptr;
 }
 
 #endif

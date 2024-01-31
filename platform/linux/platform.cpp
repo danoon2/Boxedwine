@@ -333,25 +333,25 @@ void Platform::commitNativeMemory(void* address, U64 len) {
     }
 }
 
-void* Platform::alloc64kBlock(U32 count, bool executable) {
+U8* Platform::alloc64kBlock(U32 count, bool executable) {
     int prot = PROT_WRITE | PROT_READ;
     if (executable) {
         prot |= PROT_EXEC;
     }
-    void* result = mmap(NULL, 64 * 1024 * count, prot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
+    U8* result = (U8*)mmap(NULL, 64 * 1024 * count, prot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
     if (result == MAP_FAILED) {
         kpanic("alloc64kBlock: failed to commit memory : %s", strerror(errno));
     }
     return result;
 }
 
-void* Platform::reserveNativeMemory(bool large) {
-    void* p;
+U8* Platform::reserveNativeMemory(bool large) {
+    U8* p;
 
     U64 len = large ? 0x800000000l : 0x100000000l;
     while (true) {
         nextMemoryId++;
-        p = (void*)(nextMemoryId << 32);
+        p = (U8*)(nextMemoryId << 32);
 
         if (isAddressRangeInUse(p, len)) {
             continue;
