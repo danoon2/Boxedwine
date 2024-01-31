@@ -128,7 +128,7 @@ struct WineMidiHdr {
 
 class KNativeAudioCoreAudioData {
 public:
-	KNativeAudioCoreAudioData() : lock(OS_UNFAIR_LOCK_INIT), process(0), isRender(false), isPlaying(false), eventFd(0), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), period_frames(0) {
+	KNativeAudioCoreAudioData() : lock(OS_UNFAIR_LOCK_INIT), isRender(false), isPlaying(false), eventFd(0), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), period_frames(0) {
     }
 	~KNativeAudioCoreAudioData() {
 		if (resamp_buffer) {
@@ -143,7 +143,7 @@ public:
 	AudioConverterRef converter;
 	AudioStreamBasicDescription dev_desc; /* audio unit format, not necessarily the same as fmt */
 
-    KProcess* process;
+    std::weak_ptr<KProcess> process;
 
     bool isRender;
     bool isPlaying;
@@ -180,7 +180,7 @@ public:
     virtual U32 getEndPoint(bool isRender, U32 adevid) override;
     virtual void release(U32 boxedAudioId) override;
     virtual void captureResample(U32 boxedAudioId) override;
-    virtual U32 init(KProcess* process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
+    virtual U32 init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
     virtual U32 getLatency(U32 boxedAudioId, U32* latency) override;
     virtual void lock(U32 boxedAudioId) override;
     virtual void unlock(U32 boxedAudioId) override;
@@ -711,15 +711,16 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
-    if (This->process->terminated) {
+    std::shared_ptr<KProcess> process = This->process.lock();
+    if (!process || process->terminated) {
         silence_buffer(This, ((U8 *)data->mBuffers[0].mData), nframes);
         return noErr;
     }
     os_unfair_lock_lock(&This->lock);
 
     if(This->isPlaying){
-        U32 held_frames = This->process->memory->readd(This->address_held_frames);
-        U32 lcl_offs_frames = This->process->memory->readd(This->address_lcl_offs_frames);
+        U32 held_frames = process->memory->readd(This->address_held_frames);
+        U32 lcl_offs_frames = process->memory->readd(This->address_lcl_offs_frames);
         
         lcl_offs_bytes = lcl_offs_frames * This->fmt.nBlockAlign;
         to_copy_frames = std::min(nframes, held_frames);
@@ -728,18 +729,18 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
         chunk_bytes = (This->bufsize_frames - lcl_offs_frames) * This->fmt.nBlockAlign;
 
         if (to_copy_bytes > chunk_bytes) {
-            This->process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, chunk_bytes);
-            This->process->memory->memcpy((U8*)data->mBuffers[0].mData + chunk_bytes, This->address_local_buffer, to_copy_bytes - chunk_bytes);
+            process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, chunk_bytes);
+            process->memory->memcpy((U8*)data->mBuffers[0].mData + chunk_bytes, This->address_local_buffer, to_copy_bytes - chunk_bytes);
         }
         else {
-            This->process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, to_copy_bytes);
+            process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, to_copy_bytes);
         }
         
         lcl_offs_frames += to_copy_frames;
         lcl_offs_frames %= This->bufsize_frames;
-        This->process->memory->writed(This->address_lcl_offs_frames, lcl_offs_frames);
+        process->memory->writed(This->address_lcl_offs_frames, lcl_offs_frames);
         held_frames -= to_copy_frames;
-        This->process->memory->writed(This->address_held_frames, held_frames);
+        process->memory->writed(This->address_held_frames, held_frames);
     } else {
         to_copy_bytes = to_copy_frames = 0;
     }
@@ -748,7 +749,7 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
         silence_buffer(This, ((U8 *)data->mBuffers[0].mData) + to_copy_bytes, nframes - to_copy_frames);
     }
     if (This->eventFd) {
-        KFileDescriptor* fd = This->process->getFileDescriptor(This->eventFd);
+        KFileDescriptor* fd = process->getFileDescriptor(This->eventFd);
         if (fd) {
             U8 c = EVENT_MSG_DATA_READ;
             fd->kobject->writeNative(&c, 1);
@@ -758,7 +759,7 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     return noErr;
 }
 
-U32 KNativeAudioCoreAudio::init(KProcess* process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
+U32 KNativeAudioCoreAudio::init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
     KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
     OSStatus sc;
     

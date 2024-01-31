@@ -201,7 +201,6 @@ void BtCodeChunk::releaseAndRetranslate() {
         if (destHost) {
             chunk->linksFrom.push_back(link);
             if (link->direct) {                
-                KMemoryData* mem = getMemData(cpu->memory);
                 std::shared_ptr<BtCodeChunk> fromChunk = cpu->memory->findCodeBlockContaining(link->fromEip, 1);
                 U8* srcHostInstruction = nullptr;
                 U32 fromInstructionIndex = 0;

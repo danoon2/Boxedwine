@@ -32,7 +32,7 @@ void Recorder::initCommandLine(BString root, const std::vector<BString>& zips, B
     out("\r\n");
 
     out("ARGC=");    
-    out(BString::valueOf(args.size()).c_str());
+    out(BString::valueOf((U32)args.size()).c_str());
     out("\r\n");
 
     for (U32 i=0;i<args.size();i++) {

@@ -41,7 +41,7 @@ void internal_kpanic(BString msg) {
     } else {
         KNativeThread::sleep(5000);
     }
-    _exit(1);
+    exit(1);
 }
 
 void internal_log(BString msg, FILE* f) {

@@ -112,8 +112,6 @@ void KMemoryData::addCallback(OpCallback func) {
 }
 
 void KMemoryData::setPageRam(U8* ram, U32 pageIndex, bool copyOnWrite) {
-    Page* page = mmu[pageIndex];
-
     bool read = memory->canRead(pageIndex) || memory->canExec(pageIndex);
     bool write = memory->canWrite(pageIndex);
     

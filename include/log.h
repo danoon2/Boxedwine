@@ -26,7 +26,7 @@ template <class... Args>
 void kpanic(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
-	std::sprintf(msg.str(), format, std::forward<Args>(args)...);
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
 	msg += "\n";
 	internal_kpanic(msg);
 }
@@ -35,7 +35,7 @@ template <class... Args>
 void kwarn(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
-	std::sprintf(msg.str(), format, std::forward<Args>(args)...);
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
 	msg += "\n";
 	internal_log(msg, stdout);
 }
@@ -44,7 +44,7 @@ template <class... Args>
 void klog(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
-	std::sprintf(msg.str(), format, std::forward<Args>(args)...);
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
 	msg += "\n";
 	internal_log(msg, stdout);
 }
@@ -53,7 +53,7 @@ template <class... Args>
 void klog_nonewline(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
-	std::sprintf(msg.str(), format, std::forward<Args>(args)...);
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
 	internal_log(msg, stdout);
 }
 
@@ -62,7 +62,7 @@ void kdebug(const char* format, Args&&... args) {
 #ifdef _DEBUG
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
-	std::sprintf(msg.str(), format, std::forward<Args>(args)...);
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
 	msg += "\n";
 	internal_log(msg, stderr);
 #endif

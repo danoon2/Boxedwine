@@ -222,14 +222,11 @@ void Armv8btCPU::writeJumpAmount(BtData* data, U32 pos, U32 toLocation, U8* offs
 }
 
 void Armv8btCPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
-    U32 i;
-    KMemoryData* mem = getMemData(memory);
-
     if (!fromChunk) {
         kpanic("Armv8btCPU::link fromChunk missing");
     }
-    for (i=0;i<data->todoJump.size();i++) {
-        U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
+    for (U32 i=0;i<data->todoJump.size();i++) {
+        U32 eip = this->seg[CS].address+data->todoJump[i].eip;
         U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
         U8* host = (U8*)fromChunk->getHostFromEip(eip);
 

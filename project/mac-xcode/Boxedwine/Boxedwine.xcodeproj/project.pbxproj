@@ -4631,11 +4631,8 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Debug;
@@ -4682,11 +4679,8 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Release;
@@ -4735,11 +4729,8 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Debug;
@@ -4789,11 +4780,8 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Release;
@@ -4904,6 +4892,7 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/sdl2/include",
+					"$(SRCROOT)/../../../lib/simde",
 				);
 			};
 			name = Debug;
@@ -4938,6 +4927,7 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/sdl2/include",
+					"$(SRCROOT)/../../../lib/simde",
 				);
 			};
 			name = Release;
@@ -4986,11 +4976,8 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Debug;
@@ -5040,11 +5027,8 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/simde",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Release;
@@ -5081,6 +5065,7 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/sdl2/include",
+					"$(SRCROOT)/../../../lib/simde",
 				);
 			};
 			name = Debug;
@@ -5119,6 +5104,7 @@
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/sdl2/include",
+					"$(SRCROOT)/../../../lib/simde",
 				);
 			};
 			name = Release;
@@ -5129,7 +5115,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -5187,7 +5173,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -5272,13 +5258,10 @@
 				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/simde",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Debug;
@@ -5323,13 +5306,10 @@
 				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
+					"$(SRCROOT)/../../../lib/simde",
 					"$(SRCROOT)/../../../lib/imgui",
 					"$(SRCROOT)/../../../lib/mac/SDL2.framework/Headers",
-					"$(SRCROOT)/../../../lib/poco/Foundation/include",
-					"$(SRCROOT)/../../../lib/poco/Net/include",
-					"$(SRCROOT)/../../../lib/poco/Util/include",
-					"$(SRCROOT)/../../../lib/poco/NetSSL_OpenSSL/include",
-					"$(SRCROOT)/../../../lib/poco/Crypto/include",
+					"$(SRCROOT)/../../../lib/pugixml/src",
 				);
 			};
 			name = Release;

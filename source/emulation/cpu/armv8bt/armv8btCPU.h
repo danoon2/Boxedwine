@@ -14,7 +14,7 @@ public:
     virtual void* init() override;
 
     U8* parity_lookup;                
-	void*** eipToHostInstructionPages;    
+	U8*** eipToHostInstructionPages;    
 
     SSE sseConstants[6];
 
