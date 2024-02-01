@@ -16,15 +16,18 @@ public:
     static BString getLocalTmpPath();
 
     FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativeRootPath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent);
-    virtual U32 rename(BString path) override; //return 0 if success, else errno
-    virtual bool remove() override;
-    virtual U64 lastModified() override;
-    virtual U64 length() override;
-    virtual FsOpenNode* open(U32 flags) override;
-    virtual U32 getType(bool checkForLink) override;
-    virtual U32 getMode() override;
-    virtual U32 removeDir() override;
-    virtual U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) override;
+
+    // from FsNode
+    U32 rename(BString path) override; //return 0 if success, else errno
+    bool remove() override;
+    U64 lastModified() override;
+    U64 length() override;
+    FsOpenNode* open(U32 flags) override;
+    U32 getType(bool checkForLink) override;
+    U32 getMode() override;
+    U32 removeDir() override;
+    U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) override;
+
     static std::set<BString> nonExecFileFullPaths;
 private:
     friend class FsFileOpenNode;

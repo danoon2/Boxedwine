@@ -3,7 +3,7 @@
 #include "fsmemopennode.h"
 #include "kstat.h"
 
-FsMemNode::FsMemNode(U32 id, U32 rdev, BString path) : FsNode(FsNode::Memory, id, rdev, path, B(""), B(""), false, nullptr), openNode(nullptr) {
+FsMemNode::FsMemNode(U32 id, U32 rdev, BString path) : FsNode(Type::Memory, id, rdev, path, B(""), B(""), false, nullptr), openNode(nullptr) {
 }
 
 U32 FsMemNode::rename(BString path) {

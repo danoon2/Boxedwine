@@ -72,7 +72,7 @@ public:
 
 class KProcessTimer : public KTimer { 
 public:
-    bool run();
+    bool run() override;
 private:
     friend class KProcess;
     std::weak_ptr<KProcess> process;

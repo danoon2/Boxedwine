@@ -10,7 +10,7 @@ public:
     void initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args);
     void runSlice();
 
-    FILE* file = nullptr;
+    std::fstream file;
     BString directory;
     BString version;
     U64 lastCommandTime = 0;

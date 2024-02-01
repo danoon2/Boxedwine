@@ -3,10 +3,11 @@
 
 class YesNoDlg : public BaseDlg {
 public:
-    YesNoDlg(int title, BString label, std::function<void(bool)> onCompleted);
+    YesNoDlg(Msg title, BString label, std::function<void(bool)> onCompleted);
 
 protected:
-    virtual void run();
+    // from BaseDlg
+    void run() override;
 
 private:
     BString label;

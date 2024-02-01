@@ -3,15 +3,18 @@
 
 class WaitDlg : public BaseDlg {
 public:
-    WaitDlg(int title, BString label);
-    WaitDlg(int title, BString label, std::function<bool()> checkIfShouldContinue);
+    WaitDlg(Msg title, BString label);
+    WaitDlg(Msg title, BString label, std::function<bool()> checkIfShouldContinue);
     virtual ~WaitDlg();
 
+protected:
+    // from BaseDlg
+    void run() override;
+
+public:
     void addSubLabel(BString subLabel, int max);
 
     std::function<void()> onDone;
-protected:
-    virtual void run();
 
 private:
     BString label;

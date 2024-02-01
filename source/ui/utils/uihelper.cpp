@@ -14,7 +14,7 @@ bool showMessageBox(BString id, bool open, const char* title, const char* msg) {
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
 
-        if (ImGui::Button(c_getTranslation(GENERIC_DLG_OK), ImVec2(120, 0))) {
+        if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_OK), ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup(); 
             result = false;
         }
@@ -38,13 +38,13 @@ bool showYesNoMessageBox(BString id, bool open, const char* title, const char* m
         SAFE_IMGUI_TEXT(msg);
         ImGui::Separator();
 
-        if (ImGui::Button(c_getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
+        if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
             ImGui::CloseCurrentPopup();
             result = false;
             *yes = true;
         }
         ImGui::SameLine();
-        if (ImGui::Button(c_getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
+        if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
             ImGui::CloseCurrentPopup();
             result = false;
         }
@@ -77,14 +77,14 @@ void alignNextTextRightInColumn(const char* text) {
 }
 
 void askToDownloadDefaultWine() {
-    int labelId = ERROR_NO_WINE;
+    Msg labelId = Msg::ERROR_NO_WINE;
 #ifdef BOXEDWINE_HIGHDPI
     U32 scale = KNativeSystem::getDpiScale();
     if (scale >= 1500 && !GlobalSettings::defaultFont) {
-        labelId = ERROR_NO_WINE_HIGH_DPI;
+        labelId = Msg::ERROR_NO_WINE_HIGH_DPI;
     }
 #endif
-    new YesNoDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(labelId), [](bool yes) {
+    new YesNoDlg(Msg::GENERIC_DLG_ERROR_TITLE, getTranslation(labelId), [](bool yes) {
         if (yes) {
             GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [](bool success) {
                 });

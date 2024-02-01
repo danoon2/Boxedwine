@@ -44,8 +44,11 @@ typedef void (*PFN_FPU)(CPU* cpu);
 class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);
-    virtual void translateInstruction();
-    virtual void reset() override;
+
+    // from BtData
+    void translateInstruction() override;
+    void reset() override;
+    void jumpTo(U32 eip) override;
 
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress = true);
     void writeOp(bool isG8bit=false);
@@ -106,8 +109,7 @@ public:
     void jcxz(U32 eip, bool ea16);
     void loop(U32 eip, bool ea16);
     void loopz(U32 eip, bool ea16);
-    void loopnz(U32 eip, bool ea16);
-    virtual void jumpTo(U32 eip);
+    void loopnz(U32 eip, bool ea16);    
     void jmp(bool big, U32 sel, U32 offset, U32 oldEip);
     void call(bool big, U32 sel, U32 offset, U32 oldEip);
     void retn16(U32 bytes);

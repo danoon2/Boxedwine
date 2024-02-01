@@ -38,17 +38,18 @@ public:
 	KNativeAudioWindows() = default;
 	virtual ~KNativeAudioWindows() {}
 
-	virtual U32 midiOutOpen(KProcess* process, U32 fd, U32 wDevID, U32 lpDesc, U32 dwFlags);
-	virtual U32 midiOutClose(U32 wDevID);
-	virtual U32 midiOutData(U32 wDevID, U32 dwParam);
-	virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-	virtual U32 midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-	virtual U32 midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-	virtual U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize);
-	virtual U32 midiOutGetNumDevs();
-	virtual U32 midiOutGetVolume(U32 wDevID, U32 lpdwVolume);
-	virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume);
-	virtual U32 midiOutReset(U32 wDevID);
+	// from KNativeAudio
+	U32 midiOutOpen(KProcess* process, U32 fd, U32 wDevID, U32 lpDesc, U32 dwFlags) override;
+	U32 midiOutClose(U32 wDevID) override;
+	U32 midiOutData(U32 wDevID, U32 dwParam) override;
+	U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) override;
+	U32 midiOutGetNumDevs() override;
+	U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) override;
+	U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) override;
+	U32 midiOutReset(U32 wDevID) override;
 
 	HMIDIOUT m_out = nullptr;
 
@@ -143,7 +144,7 @@ U32 KNativeAudioWindows::midiOutData(U32 wDevID, U32 dwParam) {
 	return ::midiOutShortMsg(m_out, dwParam);
 }
 
-U32 KNativeAudioWindows::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioWindows::midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	U32 dataAddress = process->memory->readd(lpMidiHdr);
 	if (this->data.count(dataAddress)==0) {
 		kwarn("KNativeAudioWindows::midiOutLongData tried to play unprepared buffer");
@@ -161,7 +162,7 @@ U32 KNativeAudioWindows::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) 
 	return result;
 }
 
-U32 KNativeAudioWindows::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioWindows::midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	U32 dataAddress = process->memory->readd(lpMidiHdr);
 	if (this->data.count(dataAddress)) {
 		kpanic("KNativeAudioWindows::midiOutPrepare tried to prepare already prepared buffer");
@@ -179,7 +180,7 @@ U32 KNativeAudioWindows::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	return result;
 }
 
-U32 KNativeAudioWindows::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioWindows::midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	U32 dataAddress = process->memory->readd(lpMidiHdr);
 	if (this->data.count(dataAddress)==0) {
 		return MMSYSERR_NOERROR;
@@ -207,7 +208,7 @@ U32 KNativeAudioWindows::midiOutGetNumDevs() {
 	return ::midiOutGetNumDevs();
 }
 
-U32 KNativeAudioWindows::midiOutGetVolume(U32 wDevID, U32 lpdwVolume) {
+U32 KNativeAudioWindows::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) {
 	DWORD volume;
 	U32 result = ::midiOutGetVolume(m_out, &volume);
 	process->memory->writed(lpdwVolume, volume);

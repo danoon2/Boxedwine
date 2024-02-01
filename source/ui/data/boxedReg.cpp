@@ -21,7 +21,7 @@ bool BoxedReg::readKey(const char* path, const char* key, BString& value) {
     searchKey += key;
     searchKey += "\"=";
 
-    for (int i = 0; i < (int)lines.size(); i++) {
+    for (size_t i = 0; i < lines.size(); i++) {
         BString line = lines[i];
         if (!found) {
             if (line.startsWith(section)) {
@@ -58,7 +58,7 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
     searchKey += key;
     searchKey += "\"=";
 
-    for (int i = 0; i < (int)lines.size(); i++) {
+    for (size_t i = 0; i < lines.size(); i++) {
         BString& line = lines[i];
         if (!found) {
             if (line.startsWith(section)) {

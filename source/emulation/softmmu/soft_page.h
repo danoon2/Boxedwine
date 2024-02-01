@@ -26,7 +26,7 @@ class KMemory;
 
 class Page {
 public:
-    enum Type {
+    enum class Type {
         Invalid_Page,
         RW_Page,
         RO_Page,

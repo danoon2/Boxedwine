@@ -20,16 +20,16 @@ bool HelpView::saveChanges() {
 
 void HelpView::createAboutTab() {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
-    std::shared_ptr<LayoutSection> section = model->addSection(HELPVIEW_TITLE_ABOUT);
+    std::shared_ptr<LayoutSection> section = model->addSection(Msg::HELPVIEW_TITLE_ABOUT);
 
-    section->addText(0, 0, getTranslation(HELPVIEW_ABOUT_LABEL));
+    section->addText(Msg::NONE, Msg::NONE, getTranslation(Msg::HELPVIEW_ABOUT_LABEL));
 
     BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += ABOUT_ICON;
         name += " ";
     }
-    name += getTranslation(HELPVIEW_TITLE_ABOUT);
+    name += getTranslation(Msg::HELPVIEW_TITLE_ABOUT);
     addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
 
         });
@@ -37,16 +37,16 @@ void HelpView::createAboutTab() {
 
 void HelpView::createHelpInstallTab() {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
-    std::shared_ptr<LayoutSection> section = model->addSection(HELPVIEW_TITLE_HELP_INSTALL);
+    std::shared_ptr<LayoutSection> section = model->addSection(Msg::HELPVIEW_TITLE_HELP_INSTALL);
 
-    section->addText(0, 0, getTranslation(HELPVIEW_HELP_INSTALL_LABEL));
+    section->addText(Msg::NONE, Msg::NONE, getTranslation(Msg::HELPVIEW_HELP_INSTALL_LABEL));
 
     BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += QUESTION_ICON;
         name += " ";
     }
-    name += getTranslation(HELPVIEW_TITLE_HELP_INSTALL);
+    name += getTranslation(Msg::HELPVIEW_TITLE_HELP_INSTALL);
     addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
 
         });
@@ -54,16 +54,16 @@ void HelpView::createHelpInstallTab() {
 
 void HelpView::createHelpTroubleshootingTab() {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
-    std::shared_ptr<LayoutSection> section = model->addSection(HELPVIEW_TITLE_HELP_TROUBLESHOOTING);
+    std::shared_ptr<LayoutSection> section = model->addSection(Msg::HELPVIEW_TITLE_HELP_TROUBLESHOOTING);
 
-    section->addText(0, 0, getTranslation(HELPVIEW_HELP_TROUBLESHOOTING_LABEL));
+    section->addText(Msg::NONE, Msg::NONE, getTranslation(Msg::HELPVIEW_HELP_TROUBLESHOOTING_LABEL));
 
     BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += QUESTION_ICON;
         name += " ";
     }
-    name += getTranslation(HELPVIEW_TITLE_HELP_TROUBLESHOOTING);
+    name += getTranslation(Msg::HELPVIEW_TITLE_HELP_TROUBLESHOOTING);
     addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
 
         });

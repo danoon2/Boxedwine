@@ -26,26 +26,26 @@ public:
     virtual void close();
 
     // from KObject
-    virtual U32 ioctl(KThread* thread, U32 request) override;
-    virtual S64 seek(S64 pos) override;
-    virtual S64 length() override;
-    virtual S64 getPos() override;
-    virtual void setBlocking(bool blocking) override;
-    virtual bool isBlocking() override;
-    virtual void setAsync(bool isAsync) override;
-    virtual bool isAsync() override;
-    virtual KFileLock* getLock(KFileLock* lock) override;
-    virtual U32  setLock(KFileLock* lock, bool wait) override;
-    virtual bool supportsLocks() override;
-    virtual bool isOpen() override;
-    virtual bool isReadReady() override;
-    virtual bool isWriteReady() override;
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
-    virtual U32  writeNative(U8* buffer, U32 len) override;
-    virtual U32  readNative(U8* buffer, U32 len) override;
-    virtual U32  stat(KProcess* process, U32 address, bool is64) override;
-    virtual U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
-    virtual bool canMap() override;
+    U32 ioctl(KThread* thread, U32 request) override;
+    S64 seek(S64 pos) override;
+    S64 length() override;
+    S64 getPos() override;
+    void setBlocking(bool blocking) override;
+    bool isBlocking() override;
+    void setAsync(bool isAsync) override;
+    bool isAsync() override;
+    KFileLock* getLock(KFileLock* lock) override;
+    U32  setLock(KFileLock* lock, bool wait) override;
+    bool supportsLocks() override;
+    bool isOpen() override;
+    bool isReadReady() override;
+    bool isWriteReady() override;
+    void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    U32  writeNative(U8* buffer, U32 len) override;
+    U32  readNative(U8* buffer, U32 len) override;
+    U32  stat(KProcess* process, U32 address, bool is64) override;
+    U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
+    bool canMap() override;
 
     U32 ctl(KMemory* memory, U32 op, FD fd, U32 address);
     U32 wait(KThread* thread, U32 events, U32 maxevents, U32 timeout);

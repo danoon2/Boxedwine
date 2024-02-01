@@ -124,7 +124,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
@@ -133,7 +133,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
     <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
@@ -141,21 +141,21 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
     <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
     <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
@@ -165,7 +165,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl1\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
     <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
@@ -173,7 +173,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
     <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
@@ -181,7 +181,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
-    <CodeAnalysisRuleSet>BoxedWine.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
     <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
@@ -1111,6 +1111,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="BoxedWine.ruleset" />
+    <None Include="BoxedWine1.ruleset" />
     <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <ItemGroup>

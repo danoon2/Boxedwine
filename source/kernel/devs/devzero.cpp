@@ -25,10 +25,10 @@ public:
     DevZero(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
 
     // From FsOpenNode
-    virtual U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
-    virtual bool canMap() override;
-    virtual U32 readNative(U8* buffer, U32 len) override;
-    virtual U32 writeNative(U8* buffer, U32 len) override;
+    U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
+    bool canMap() override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
 };
 
 U32 DevZero::readNative(U8* buffer, U32 len) {

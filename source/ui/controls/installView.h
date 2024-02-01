@@ -5,7 +5,8 @@ class InstallView : public BaseView {
 public:
 	InstallView(BString initialFileOrDirPath, BString tab=BString());
 
-	virtual bool saveChanges();
+    // from BaseView
+	bool saveChanges() override;
 
 private:
     void createInstallTab(BString initialFileOrDirPath);

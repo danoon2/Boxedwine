@@ -29,13 +29,14 @@
 
 class SdlBoxedwineGL : public BoxedwineGL {
 public:
-    virtual void deleteContext(void* context);
-    virtual bool makeCurrent(void* context, void* window);
-    virtual BString getLastError();
-    virtual void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile);
-    virtual void swapBuffer(void* window);
-    virtual void setSwapInterval(U32 vsync);
-    virtual bool shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window);
+    // from BoxedwineGL
+    void deleteContext(void* context) override;
+    bool makeCurrent(void* context, void* window) override;
+    BString getLastError() override;
+    void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) override;
+    void swapBuffer(void* window) override;
+    void setSwapInterval(U32 vsync) override;
+    bool shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window) override;
 };
 
 void SdlBoxedwineGL::deleteContext(void* context) {

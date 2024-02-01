@@ -41,7 +41,6 @@ void FilePage::ondemmandFile(U32 address) {
         return;
     }
 
-    address = address & (~K_PAGE_MASK);
     if (1) {
         if (index < mapped->systemCacheEntry->dataSize) {
             ram = mapped->systemCacheEntry->data[this->index];

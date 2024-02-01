@@ -3,10 +3,11 @@
 
 class OkDlg : public BaseDlg {
 public:
-    OkDlg(int title, BString label, std::function<void()> onDone, int width=400, int height=150);
+    OkDlg(Msg title, BString label, std::function<void()> onDone, int width=400, int height=150);
 
 protected:
-    virtual void run();
+    // from BaseDlg
+    void run() override;
 
 private:
     BString label;

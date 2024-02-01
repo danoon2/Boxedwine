@@ -1368,6 +1368,7 @@
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
     <None Include="BoxedWine.ruleset" />
+    <None Include="BoxedWine1.ruleset" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\Boxedwine.rc" />

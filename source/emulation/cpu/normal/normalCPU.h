@@ -9,8 +9,9 @@ public:
 
     static void clearCache();
 
-    virtual void run();
-    virtual DecodedBlock* getNextBlock();
+    // from CPU
+    void run() override;
+    DecodedBlock* getNextBlock() override;
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 

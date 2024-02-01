@@ -12,8 +12,8 @@ public:
     BtCPU(KMemory* memory) : CPU(memory) {}
 
     // from CPU
-    virtual void run();
-    virtual DecodedBlock* getNextBlock();
+    void run() override;
+    DecodedBlock* getNextBlock() override;
 
     virtual void* init() = 0; // called from run
 

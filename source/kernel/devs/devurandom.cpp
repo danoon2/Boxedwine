@@ -28,8 +28,8 @@ public:
     DevURandom(const BoxedPtr<FsNode>& node, U32 flags);
 
     // From FsOpenNode
-    virtual U32 readNative(U8* buffer, U32 len) override;
-    virtual U32 writeNative(U8* buffer, U32 len)  override {return 0;}
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len)  override {return 0;}
 
     std::mt19937 gen;
     std::uniform_int_distribution<size_t> dist;

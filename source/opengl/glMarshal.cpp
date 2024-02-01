@@ -430,19 +430,10 @@ void marshalBackType(CPU* cpu, U32 type, U32 count, GLvoid* buffer, U32 address)
 }
 
 GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
-    int bytes_per_comp = 0;
     int len = components_in_format (format);
     
     if (!pixel)
         return nullptr;
-
-    if (type == GL_BITMAP) {
-        bytes_per_comp = 1;
-    } else {		
-        int bytes_per_pixel;
-
-        bytes_per_pixel = get_bytes_per_pixel(format, type);
-    }
 
     switch (type) {
     case GL_UNSIGNED_BYTE_3_3_2:

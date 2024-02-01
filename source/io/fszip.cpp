@@ -63,6 +63,7 @@ bool FsZip::init(BString zipPath, BString mount) {
             tmp[0] = '/';
             if ( unzGetCurrentFileInfo(this->zipfile, &file_info, tmp + 1, MAX_FILEPATH_LEN - 1, nullptr, 0, nullptr, 0 ) != UNZ_OK ) {
                 klog("Could not read file info from zip file: %s", zipPath.c_str());
+                delete[] zipInfo;
                 unzClose( zipfile );
                 return false;
             }

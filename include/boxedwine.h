@@ -15,6 +15,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <fstream>
+#include <iostream>
 
 #include <errno.h>
 

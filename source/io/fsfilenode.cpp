@@ -18,7 +18,7 @@
 
 std::set<BString> FsFileNode::nonExecFileFullPaths;
 
-FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent) : FsNode(File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
+FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent) : FsNode(Type::File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
 }
 
 BString FsFileNode::getNativeTmpPath() {
@@ -147,7 +147,7 @@ void FsFileNode::ensurePathIsLocal() {
             Fs::makeLocalDirs(parentPath);
             this->zipNode->moveToFileSystem(this);
         }
-    } else if (this->parent->type==File) {
+    } else if (this->parent->type==Type::File) {
         BString parentPath = Fs::getParentPath(this->path);
         Fs::makeLocalDirs(parentPath);
     }

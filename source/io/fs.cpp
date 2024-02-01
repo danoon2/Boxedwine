@@ -238,7 +238,7 @@ BString Fs::getFileNameFromNativePath(BString path) {
 }
 
 bool Fs::doesNativePathExist(BString path) {
-    if (::access(path.c_str(), 0)!=-1) {
+    if (_access(path.c_str(), 0)!=-1) {
         return true;
     }
     return false;
@@ -343,10 +343,10 @@ void Fs::splitPath(BString path, std::vector<BString>& parts) {
 }
 
 U32 Fs::readNativeFile(BString nativePath, U8* buffer, U32 bufferLen) {
-    int f = ::open(nativePath.c_str(), O_RDONLY);
+    int f = _open(nativePath.c_str(), O_RDONLY);
     if (f>0) {
-        U32 result = (U32)::read(f, buffer, bufferLen);
-        ::close(f);
+        U32 result = (U32)_read(f, buffer, bufferLen);
+        _close(f);
         return result;
     }
     return 0;

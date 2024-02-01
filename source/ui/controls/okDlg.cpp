@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-OkDlg::OkDlg(int title, BString label, std::function<void()> onDone, int width, int height) : BaseDlg(title, width, height, GlobalSettings::mediumFont), label(label), onDone(onDone) {
+OkDlg::OkDlg(Msg title, BString label, std::function<void()> onDone, int width, int height) : BaseDlg(title, width, height, GlobalSettings::mediumFont), label(label), onDone(onDone) {
 }
 
 void OkDlg::run() {
@@ -16,7 +16,7 @@ void OkDlg::run() {
     ImGui::SetCursorPosY(this->height - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
     ImGui::Separator();
     ImGui::SetCursorPosX(ImGui::GetStyle().ItemSpacing.y);
-    if (ImGui::Button(c_getTranslation(GENERIC_DLG_OK), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
+    if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_OK), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
         if (this->onDone) {
             this->onDone();
         }

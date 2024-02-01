@@ -25,9 +25,9 @@ public:
     DevMixer(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
 
     // From FsOpenNode
-    virtual U32 ioctl(KThread* thread, U32 request) override;
-    virtual U32 readNative(U8* buffer, U32 len) override {return 0;}
-    virtual U32 writeNative(U8* buffer, U32 len) override {return 0;}
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len) override {return 0;}
+    U32 writeNative(U8* buffer, U32 len) override {return 0;}
 };
 
 FsOpenNode* openDevMixer(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
@@ -70,7 +70,7 @@ U32 DevMixer::ioctl(KThread* thread, U32 request) {
             }
             memory->writed(p, 1); p+=4; // offset 280 int numcards;			/* Number of sound cards in the system */
             memory->writed(p, 1); p+=4; // offset 284 int numaudioengines;		/* Number of audio engines in the system */
-            memory->strcpy(p, "GPL"); p+=16; // char license[16];		/* For example "GPL" or "CDDL" */
+            memory->strcpy(p, "GPL"); // char license[16];		/* For example "GPL" or "CDDL" */
             return 0;
         }
         break;
@@ -108,7 +108,7 @@ U32 DevMixer::ioctl(KThread* thread, U32 request) {
             memory->writed(p, -1); p+=4; // int latency;			/* In usecs, -1=unknown */
             memory->strcpy(p, "/dev/dsp"); p+=16; // oss_devnode_t devnode;	/* Device special file name (absolute path) */
             memory->writed(p, 0); p+=4; // int next_play_engine;		/* Read the documentation for more info */
-            memory->writed(p, 0); p+=4; // int next_rec_engine;		/* Read the documentation for more info */
+            memory->writed(p, 0); // int next_rec_engine;		/* Read the documentation for more info */
             return 0;
         }        
     }

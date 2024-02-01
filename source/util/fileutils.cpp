@@ -1,8 +1,6 @@
 #include "boxedwine.h"
 #include "fileutils.h"
 
-#include <iostream>
-#include <fstream>
 #include <string>
 
 bool readLinesFromFile(BString filepath, std::vector<BString>& lines) {

@@ -24,23 +24,23 @@ public:
     BufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer);
 
     // from FsOpenNode
-    virtual S64  length() override;
-    virtual bool setLength(S64 length) override;
-    virtual S64  getFilePointer() override;
-    virtual S64  seek(S64 pos) override;
-    virtual U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
-    virtual bool canMap() override;
-    virtual U32  ioctl(KThread* thread, U32 request) override;
-    virtual void setAsync(bool isAsync) override;
-    virtual bool isAsync() override;
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
-    virtual bool isWriteReady() override;
-    virtual bool isReadReady() override;
-    virtual U32 readNative(U8* buffer, U32 len) override;
-    virtual U32 writeNative(U8* buffer, U32 len) override;
-    virtual void close() override;
-    virtual void reopen() override;
-    virtual bool isOpen() override;
+    S64  length() override;
+    bool setLength(S64 length) override;
+    S64  getFilePointer() override;
+    S64  seek(S64 pos) override;
+    U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
+    bool canMap() override;
+    U32  ioctl(KThread* thread, U32 request) override;
+    void setAsync(bool isAsync) override;
+    bool isAsync() override;
+    void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    bool isWriteReady() override;
+    bool isReadReady() override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
+    void close() override;
+    void reopen() override;
+    bool isOpen() override;
 
     BString buffer;
 private:

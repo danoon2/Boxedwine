@@ -99,10 +99,9 @@ U8* InvalidPage::getReadPtr(U32 address, bool makeReady) {
 
 U8* InvalidPage::getWritePtr(U32 address, U32 len, bool makeReady) {
     KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
     U32 page = address >> K_PAGE_SHIFT;
     if (makeReady && thread->memory->canWrite(page)) {
-        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+        KMemoryData* data = getMemData(thread->memory);
         ondemmand(thread->memory, page);
         return data->getPage(page)->getWritePtr(address, len, true);
     }

@@ -179,7 +179,7 @@ void BString::w_str(wchar_t* w, int len) const {
 }
 
 void BString::append(const BString& s) {
-    append(s.data->str);
+    append(s.data->str, s.length());
 }
 
 void BString::append(const BString& s, int offset, int len) {
@@ -200,6 +200,25 @@ void BString::append(const char* s, int len) {
     makeWritable(len);
     strncpy(data->str + data->len, s, len);
     data->len += len;
+    data->str[data->len] = 0;
+}
+
+void BString::appendAfterNull(const BString& s) {
+    appendAfterNull(s.data->str, s.length());
+}
+
+void BString::appendAfterNull(const char* s) {
+    int len = (int)strlen(s);
+    makeWritable(len + 1);
+    strcpy(data->str + 1 + data->len, s);
+    data->len += len + 1;
+    data->str[data->len] = 0;
+}
+
+void BString::appendAfterNull(const char* s, int len) {
+    makeWritable(len + 1);
+    strncpy(data->str + 1 + data->len, s, len);
+    data->len += len + 1;
     data->str[data->len] = 0;
 }
 
@@ -609,6 +628,10 @@ BString BString::toUpperCase() const {
     }
     d->str[d->len] = 0;
     return BString(d);
+}
+
+void BString::resize(U32 len) {
+    makeWritable(len);
 }
 
 BString BString::trim() {

@@ -15,16 +15,16 @@ bool FsZipNode::moveToFileSystem(BoxedPtr<FsNode> node) {
         return false;
     FsOpenNode* from = this->open(node, K_O_RDONLY);
     bool result = false;
-    U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT, 0666);
+    U32 to = _open(node->nativePath.c_str(), O_WRONLY | O_CREAT, 0666);
     if (to != 0xFFFFFFFF) {
         U8 buffer[4096];
         U32 read = from->readNative(buffer, 4096);
         while (read) {
-            if (::write(to, buffer, read) != (int)read)
+            if (_write(to, buffer, read) != (int)read)
                 return false;
             read = from->readNative(buffer, 4096);
         }
-        ::close(to);
+        _close(to);
         result = true;
     }
     from->close();

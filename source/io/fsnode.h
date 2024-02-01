@@ -11,7 +11,7 @@ class KObject;
 
 class FsNode : public BoxedPtrBase {
 public:
-    enum Type
+    enum class Type
     {
         File,
         Zip,

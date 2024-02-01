@@ -126,9 +126,9 @@ public:
 
     NormalBlock();
 
-    virtual void dealloc(bool delayed);  
-
-    void run(CPU* cpu);
+    // from DecodedBlock
+    void dealloc(bool delayed) override;
+    void run(CPU* cpu) override;
 
     void reset();
 };
@@ -139,8 +139,8 @@ NormalBlock::NormalBlock() {
 
 void NormalBlock::run(CPU* cpu) {
 #ifdef _DEBUG
-    if (this== nullptr || this->op== nullptr || this->op->pfn== nullptr) {
-        //kpanic("NormalBlock::run is about to crash");
+    if (this->op== nullptr || this->op->pfn== nullptr) {
+        kpanic("NormalBlock::run is about to crash");
     }
 #endif  
     this->op->pfn(cpu, this->op);

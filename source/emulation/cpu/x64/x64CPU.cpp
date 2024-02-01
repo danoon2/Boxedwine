@@ -185,8 +185,6 @@ void x64CPU::addReturnFromTest() {
 #endif
 
 void x64CPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
-    KMemoryData* mem = getMemData(memory);
-
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
     }
@@ -333,7 +331,6 @@ bool x64CPU::handleStringOp(DecodedOp* op) {
 
 #ifndef BOXEDWINE_64BIT_MMU
 void common_runSingleOp(x64CPU* cpu) {
-    KMemoryData* mem = getMemData(cpu->memory);
     U32 address = cpu->eip.u32;
 
     if (cpu->isBig()) {

@@ -179,9 +179,9 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             BString path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ fileName;
             if (!Fs::doesNativePathExist(path)) {
                 if (!Fs::makeNativeDirs(path)) {
-                    BString errorMsg = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR, true, path, BString::copy(strerror(errno)));
+                    BString errorMsg = getTranslationWithFormat(Msg::INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR, true, path, BString::copy(strerror(errno)));
                     runOnMainUI([errorMsg]() {
-                        new OkDlg(GENERIC_DLG_ERROR_TITLE, errorMsg, nullptr, 500, 300);
+                        new OkDlg(Msg::GENERIC_DLG_ERROR_TITLE, errorMsg, nullptr, 500, 300);
                         return false;
                         });
                     return;
@@ -190,7 +190,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             BString destDir = path;
             std::function<bool() > unzip = [containerDir, appPath, appName, destDir]() {
                 runOnMainUI([appPath, destDir, appName]() {
-                    new UnzipDlg(UNZIP_DLG_TITLE, appName, appPath, destDir, [](bool success) {
+                    new UnzipDlg(Msg::UNZIP_DLG_TITLE, appName, appPath, destDir, [](bool success) {
                         if (success) {
                             runApps(globalRunner);
                         }
@@ -225,7 +225,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 GlobalSettings::startUpArgs.readyToLaunch = true;
 
                 runOnMainUI([appName]() {
-                    new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, appName));
+                    new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, appName));
                     return false;
                     });
                 return true;

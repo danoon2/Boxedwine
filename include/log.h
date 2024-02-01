@@ -23,6 +23,9 @@ void internal_log(BString msg, FILE* f);
 void internal_kpanic(BString msg);
 
 template <class... Args>
+#ifdef BOXEDWINE_MSVC
+__declspec(noreturn)
+#endif
 void kpanic(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');

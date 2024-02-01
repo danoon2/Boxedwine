@@ -23,7 +23,7 @@ public:
     void onKey(U32 key, U32 down);
     void close();
 
-    FILE* file = nullptr;
+    std::fstream file;
     BString directory;
 private:
     void out(const char* s);

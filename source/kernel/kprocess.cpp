@@ -1971,7 +1971,7 @@ U32 KProcess::fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg) {
         case K_F_ADD_SEALS: {
             if (fd->kobject->type==KTYPE_FILE) {
                 std::shared_ptr<KFile> f = std::dynamic_pointer_cast<KFile>(fd->kobject);
-                if (f->openFile->node->type==FsNode::Memory) {
+                if (f->openFile->node->type==FsNode::Type::Memory) {
                     FsMemOpenNode* openNode = (FsMemOpenNode*)f->openFile;
                     return openNode->addSeals(arg);
                 }
@@ -1981,7 +1981,7 @@ U32 KProcess::fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg) {
         case K_F_GET_SEALS: {
             if (fd->kobject->type==KTYPE_FILE) {
                 std::shared_ptr<KFile> f = std::dynamic_pointer_cast<KFile>(fd->kobject);
-                if (f->openFile->node->type==FsNode::Memory) {
+                if (f->openFile->node->type==FsNode::Type::Memory) {
                     FsMemOpenNode* openNode = (FsMemOpenNode*)f->openFile;
                     return openNode->getSeals();
                 }
@@ -2232,7 +2232,7 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags) {
             lastModifiedTimeNano = 0;
         }
     }
-    return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastAccessTimeNano);
+    return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastModifiedTimeNano);
 }
 
 U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
@@ -2271,7 +2271,7 @@ U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
             lastModifiedTimeNano = 0;
         }
     }
-    return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastAccessTimeNano);
+    return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastModifiedTimeNano);
 }
 
 user_desc* KProcess::getLDT(U32 index) {

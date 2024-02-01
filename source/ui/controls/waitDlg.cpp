@@ -1,11 +1,11 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-WaitDlg::WaitDlg(int title, BString label) : BaseDlg(title, 400, 150), label(label) {
+WaitDlg::WaitDlg(Msg title, BString label) : BaseDlg(title, 400, 150), label(label) {
     GlobalSettings::useFastFrameRate(true);
 }
 
-WaitDlg::WaitDlg(int title, BString label, std::function<bool()> checkIfShouldContinue) : BaseDlg(title, 400, 150), label(label), checkIfShouldContinue(checkIfShouldContinue) {
+WaitDlg::WaitDlg(Msg title, BString label, std::function<bool()> checkIfShouldContinue) : BaseDlg(title, 400, 150), label(label), checkIfShouldContinue(checkIfShouldContinue) {
     GlobalSettings::useFastFrameRate(true);
 }
 

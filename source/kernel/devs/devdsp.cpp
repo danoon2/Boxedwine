@@ -36,11 +36,11 @@ public:
     virtual ~DevDsp() {this->audio->closeAudio();}
 
     // From FsOpenNode
-    virtual bool setLength(S64 length) override;
-    virtual U32 ioctl(KThread* thread, U32 request) override;
-    virtual U32 readNative(U8* buffer, U32 len) override;
-    virtual U32 writeNative(U8* buffer, U32 len) override;
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    bool setLength(S64 length) override;
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
+    void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
 
     std::shared_ptr<KDspAudio> audio;
     U32 freq;
@@ -279,7 +279,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, -1); p+=4; // int latency;			/* In usecs, -1=unknown */
             memory->strcpy(p, "dsp"); p+=16; // oss_devnode_t devnode;	/* Device special file name (absolute path) */
             memory->writed(p, 0); p+=4; // int next_play_engine;		/* Read the documentation for more info */
-            memory->writed(p, 0); p+=4; // int next_rec_engine;		/* Read the documentation for more info */
+            memory->writed(p, 0); // int next_rec_engine;		/* Read the documentation for more info */
             return 0;
         }        
     }

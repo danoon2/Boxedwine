@@ -70,7 +70,7 @@ bool KSystem::useSingleMemOffset = true;
 U32 KSystem::cpuAffinityCountForApp = 0;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
-FILE* KSystem::logFile;
+std::fstream KSystem::logFile;
 std::function<void(BString line)> KSystem::watchTTY;
 bool KSystem::ttyPrepend;
 BString KSystem::exePath;
@@ -123,9 +123,8 @@ void KSystem::destroy() {
 	Fs::shutDown();
     DecodedOp::clearCache();
     NormalCPU::clearCache();
-    if (KSystem::logFile) {
-        fclose(KSystem::logFile);
-        KSystem::logFile = nullptr;
+    if (KSystem::logFile.is_open()) {
+        KSystem::logFile.close();
     }
 }
 
@@ -615,7 +614,7 @@ U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnA
     } else {
         permissions = K_PROT_READ | K_PROT_WRITE;
     }
-    U32 result = thread->process->memory->mapPages(thread, 0, shm->pages, permissions);    
+    U32 result = thread->process->memory->mapPages(thread, shmaddr >> K_PAGE_SHIFT, shm->pages, permissions);
     if (result == 0) {
         return -K_EINVAL;
     }

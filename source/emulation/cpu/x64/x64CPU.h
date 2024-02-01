@@ -58,9 +58,22 @@ class x64CPU : public BtCPU {
 public:
     x64CPU(KMemory* memory);
     
-    virtual void restart() override;
-    virtual void* init() override;
-    
+    // from CPU
+    void restart() override;
+    void setSeg(U32 index, U32 address, U32 value) override;
+
+    // from BtCPU
+    void* init() override;
+    void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) override;
+    void translateData(BtData* data, BtData* firstPass = nullptr) override;
+protected:
+    BtData* getData1() override { data1.reset(); return &data1; }
+    BtData* getData2() override { data2.reset(); return &data2; }
+    X64Asm data1;
+    X64Asm data2;
+
+public:
+
     U32 negSegAddress[6] = { 0 };
 #ifdef BOXEDWINE_64BIT_MMU
     U64 negMemOffset = 0;
@@ -95,19 +108,10 @@ public:
 #ifdef __TEST
     void addReturnFromTest();
 #endif
-
-    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk=0);    
-    virtual void translateData(BtData* data, BtData* firstPass = nullptr);        
-
-    virtual void setSeg(U32 index, U32 address, U32 value);
+        
 #ifdef __TEST
     virtual void postTestRun();
 #endif    
-protected:
-    virtual BtData* getData1() override { data1.reset(); return &data1; }
-    virtual BtData* getData2() override { data2.reset(); return &data2; }
-    X64Asm data1;
-    X64Asm data2;
 };
 #endif
 #endif

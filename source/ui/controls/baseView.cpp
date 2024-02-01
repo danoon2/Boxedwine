@@ -86,7 +86,7 @@ void BaseView::runErrorMsg(bool open) {
         this->errorMsgOpen = true;
     }
     ImGui::PushFont(GlobalSettings::mediumFont);
-    if (!showMessageBox(this->viewName + "ErrorMsg", open, c_getTranslation(GENERIC_DLG_ERROR_TITLE), this->errorMsg.c_str())) {
+    if (!showMessageBox(this->viewName + "ErrorMsg", open, c_getTranslation(Msg::GENERIC_DLG_ERROR_TITLE), this->errorMsg.c_str())) {
         this->errorMsgOpen = false;
         this->errorMsg = B("");
     }
@@ -106,7 +106,7 @@ std::shared_ptr<LayoutComboboxControl> BaseView::createWindowsVersionCombobox(co
     for (auto& win : BoxedwineData::getWinVersions()) {
         windowsVersion.push_back(ComboboxItem(win.szDescription));
     }
-    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(CONTAINER_VIEW_WINDOWS_VERION_LABEL, CONTAINER_VIEW_WINDOWS_VERION_HELP, windowsVersion, BoxedwineData::getDefaultWindowsVersionIndex());
+    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(Msg::CONTAINER_VIEW_WINDOWS_VERION_LABEL, Msg::CONTAINER_VIEW_WINDOWS_VERION_HELP, windowsVersion, BoxedwineData::getDefaultWindowsVersionIndex());
     result->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     return result;
 }
@@ -116,7 +116,7 @@ std::shared_ptr<LayoutComboboxControl> BaseView::createWineVersionCombobox(const
     for (auto& ver : GlobalSettings::getWineVersions()) {
         wineVersions.push_back(ComboboxItem(ver.name));
     }
-    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(COMMON_WINE_VERSION_LABEL, COMMON_WINE_VERSION_HELP, wineVersions, 0);
+    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(Msg::COMMON_WINE_VERSION_LABEL, Msg::COMMON_WINE_VERSION_HELP, wineVersions, 0);
     result->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     return result;
 }

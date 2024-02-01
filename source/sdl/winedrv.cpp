@@ -1031,154 +1031,158 @@ static U32 toUnicodeEx(KThread* thread, U32 virtKey, U32 scanCode, U32 lpKeyStat
         // "Ctrl+Alt+[key] won't generate a character
         return 0;
     }
-
-    if (!virtKey)
-        goto done;
-
-    /* UCKeyTranslate, below, terminates a dead-key sequence if passed a
-       modifier key press.  We want it to effectively ignore modifier key
-       presses.  I think that one isn't supposed to call it at all for modifier
-       events (e.g. NSFlagsChanged or kEventRawKeyModifiersChanged), since they
-       are different event types than key up/down events. */
-    switch (virtKey)
-    {
-    case BOXED_VK_SHIFT:
-    case BOXED_VK_CONTROL:
-    case BOXED_VK_MENU:
-    case BOXED_VK_CAPITAL:
-    case BOXED_VK_LSHIFT:
-    case BOXED_VK_RSHIFT:
-    case BOXED_VK_LCONTROL:
-    case BOXED_VK_RCONTROL:
-    case BOXED_VK_LMENU:
-    case BOXED_VK_RMENU:
-        goto done;
-    }
-
-    /* There are a number of key combinations for which Windows does not
-       produce characters, but Mac keyboard layouts may.  Eat them.  Do this
-       here to avoid the expense of UCKeyTranslate() but also because these
-       keys shouldn't terminate dead key sequences. */
-    if ((BOXED_VK_PRIOR <= virtKey && virtKey <= BOXED_VK_HELP) || (BOXED_VK_F1 <= virtKey && virtKey <= BOXED_VK_F24))
-        goto done;
-
-    /* Shift + <non-digit keypad keys>. */
-    if (shift && BOXED_VK_MULTIPLY <= virtKey && virtKey <= BOXED_VK_DIVIDE)
-        goto done;
-
-    if (ctrl)
-    {
-        /* Control-Tab, with or without other modifiers. */
-        if (virtKey == BOXED_VK_TAB)
-            goto done;
-
-        /* Control-Shift-<key>, Control-Alt-<key>, and Control-Alt-Shift-<key>
-           for these keys. */
-        if (shift || (memory->readb(lpKeyState + BOXED_VK_MENU)))
-        {
-            switch (virtKey)
-            {
-            case BOXED_VK_CANCEL:
-            case BOXED_VK_BACK:
-            case BOXED_VK_ESCAPE:
-            case BOXED_VK_SPACE:
-            case BOXED_VK_RETURN:
-                goto done;
-            }
+    bool done = false;
+    while (!done) {
+        if (!virtKey) {
+            break;
         }
-    }
+        /* UCKeyTranslate, below, terminates a dead-key sequence if passed a
+           modifier key press.  We want it to effectively ignore modifier key
+           presses.  I think that one isn't supposed to call it at all for modifier
+           events (e.g. NSFlagsChanged or kEventRawKeyModifiersChanged), since they
+           are different event types than key up/down events. */
+        switch (virtKey) {
+        case BOXED_VK_SHIFT:
+        case BOXED_VK_CONTROL:
+        case BOXED_VK_MENU:
+        case BOXED_VK_CAPITAL:
+        case BOXED_VK_LSHIFT:
+        case BOXED_VK_RSHIFT:
+        case BOXED_VK_LCONTROL:
+        case BOXED_VK_RCONTROL:
+        case BOXED_VK_LMENU:
+        case BOXED_VK_RMENU:
+            done = true;
+            continue;
+        }
 
-    if (shift) {
-        if (virtKey >= 'A' && virtKey <= 'Z') {
-            c = virtKey;
-        } else {
-            switch (virtKey) {
-            case '1': c = '!'; break;
-            case '2': c = '@'; break;
-            case '3': c = '#'; break;
-            case '4': c = '$'; break;
-            case '5': c = '%'; break;
-            case '6': c = '^'; break;
-            case '7': c = '&'; break;
-            case '8': c = '*'; break;
-            case '9': c = '('; break;
-            case '0': c = ')'; break;
-            case BOXED_VK_OEM_MINUS: c = '_'; break;
-            case BOXED_VK_OEM_PLUS: c = '+'; break;
-            case BOXED_VK_TAB: c = '\t'; break;
-            case BOXED_VK_OEM_4: c = '{'; break;
-            case BOXED_VK_OEM_6: c = '}'; break;
-            case BOXED_VK_OEM_1: c = ':'; break;
-            case BOXED_VK_OEM_7: c = '\"'; break;
-            case BOXED_VK_OEM_3: c = '~'; break;
-            case BOXED_VK_OEM_5: c = '|'; break;
-            case BOXED_VK_OEM_COMMA: c = '<'; break;
-            case BOXED_VK_OEM_PERIOD: c = '>'; break;
-            case BOXED_VK_OEM_2: c = '?'; break;
-            case BOXED_VK_SPACE: c = ' '; break;
-            case BOXED_VK_RETURN: c = 13; break;
-            case BOXED_VK_BACK: c = 8; break;
-            case BOXED_VK_ADD: c = '+'; break;
-            default:
-                kdebug("Unhandled key: %d", virtKey);
+        /* There are a number of key combinations for which Windows does not
+           produce characters, but Mac keyboard layouts may.  Eat them.  Do this
+           here to avoid the expense of UCKeyTranslate() but also because these
+           keys shouldn't terminate dead key sequences. */
+        if ((BOXED_VK_PRIOR <= virtKey && virtKey <= BOXED_VK_HELP) || (BOXED_VK_F1 <= virtKey && virtKey <= BOXED_VK_F24)) {
+            break;
+        }
+
+        /* Shift + <non-digit keypad keys>. */
+        if (shift && BOXED_VK_MULTIPLY <= virtKey && virtKey <= BOXED_VK_DIVIDE) {
+            break;
+        }
+
+        if (ctrl) {
+            /* Control-Tab, with or without other modifiers. */
+            if (virtKey == BOXED_VK_TAB) {
                 break;
             }
-        }
-    } else {
-        if (virtKey >= '0' && virtKey <= '9') {
-            c = virtKey;
-        } else if (virtKey >= 'A' && virtKey <= 'Z') {
-            c = virtKey - 'A' + 'a';
-        } else {
-            switch (virtKey) {
-            case BOXED_VK_OEM_MINUS: c = '-'; break;
-            case BOXED_VK_OEM_PLUS: c = '='; break;
-            case BOXED_VK_TAB: c = '\t'; break;
-            case BOXED_VK_OEM_4: c = '['; break;
-            case BOXED_VK_OEM_6: c = ']'; break;
-            case BOXED_VK_OEM_1: c = ';'; break;
-            case BOXED_VK_OEM_7: c = '\''; break;
-            case BOXED_VK_OEM_3: c = '`'; break;
-            case BOXED_VK_OEM_5: c = '\\'; break;
-            case BOXED_VK_OEM_COMMA: c = ','; break;
-            case BOXED_VK_OEM_PERIOD: c = '.'; break;
-            case BOXED_VK_OEM_2: c = '/'; break;
-            case BOXED_VK_SPACE: c = ' '; break;
-            case BOXED_VK_RETURN: c = 13; break;
-            case BOXED_VK_BACK: c = 8; break;
-            case BOXED_VK_ADD: c = '+'; break;
-            default:
-                kdebug("Unhandled key: %d", virtKey);
-                break;
+
+            /* Control-Shift-<key>, Control-Alt-<key>, and Control-Alt-Shift-<key>
+               for these keys. */
+            if (shift || (memory->readb(lpKeyState + BOXED_VK_MENU))) {
+                switch (virtKey) {
+                case BOXED_VK_CANCEL:
+                case BOXED_VK_BACK:
+                case BOXED_VK_ESCAPE:
+                case BOXED_VK_SPACE:
+                case BOXED_VK_RETURN:
+                    done = true;
+                    continue;
+                }
             }
         }
-    }
-    if (c && ctrl) {
-        if (c == '@') {
-            memory->writew(bufW, 0);
+
+        if (shift) {
+            if (virtKey >= 'A' && virtKey <= 'Z') {
+                c = virtKey;
+            } else {
+                switch (virtKey) {
+                case '1': c = '!'; break;
+                case '2': c = '@'; break;
+                case '3': c = '#'; break;
+                case '4': c = '$'; break;
+                case '5': c = '%'; break;
+                case '6': c = '^'; break;
+                case '7': c = '&'; break;
+                case '8': c = '*'; break;
+                case '9': c = '('; break;
+                case '0': c = ')'; break;
+                case BOXED_VK_OEM_MINUS: c = '_'; break;
+                case BOXED_VK_OEM_PLUS: c = '+'; break;
+                case BOXED_VK_TAB: c = '\t'; break;
+                case BOXED_VK_OEM_4: c = '{'; break;
+                case BOXED_VK_OEM_6: c = '}'; break;
+                case BOXED_VK_OEM_1: c = ':'; break;
+                case BOXED_VK_OEM_7: c = '\"'; break;
+                case BOXED_VK_OEM_3: c = '~'; break;
+                case BOXED_VK_OEM_5: c = '|'; break;
+                case BOXED_VK_OEM_COMMA: c = '<'; break;
+                case BOXED_VK_OEM_PERIOD: c = '>'; break;
+                case BOXED_VK_OEM_2: c = '?'; break;
+                case BOXED_VK_SPACE: c = ' '; break;
+                case BOXED_VK_RETURN: c = 13; break;
+                case BOXED_VK_BACK: c = 8; break;
+                case BOXED_VK_ADD: c = '+'; break;
+                default:
+                    kdebug("Unhandled key: %d", virtKey);
+                    break;
+                }
+            }
+        } else {
+            if (virtKey >= '0' && virtKey <= '9') {
+                c = virtKey;
+            } else if (virtKey >= 'A' && virtKey <= 'Z') {
+                c = virtKey - 'A' + 'a';
+            } else {
+                switch (virtKey) {
+                case BOXED_VK_OEM_MINUS: c = '-'; break;
+                case BOXED_VK_OEM_PLUS: c = '='; break;
+                case BOXED_VK_TAB: c = '\t'; break;
+                case BOXED_VK_OEM_4: c = '['; break;
+                case BOXED_VK_OEM_6: c = ']'; break;
+                case BOXED_VK_OEM_1: c = ';'; break;
+                case BOXED_VK_OEM_7: c = '\''; break;
+                case BOXED_VK_OEM_3: c = '`'; break;
+                case BOXED_VK_OEM_5: c = '\\'; break;
+                case BOXED_VK_OEM_COMMA: c = ','; break;
+                case BOXED_VK_OEM_PERIOD: c = '.'; break;
+                case BOXED_VK_OEM_2: c = '/'; break;
+                case BOXED_VK_SPACE: c = ' '; break;
+                case BOXED_VK_RETURN: c = 13; break;
+                case BOXED_VK_BACK: c = 8; break;
+                case BOXED_VK_ADD: c = '+'; break;
+                default:
+                    kdebug("Unhandled key: %d", virtKey);
+                    break;
+                }
+            }
+        }
+        if (c && ctrl) {
+            if (c == '@') {
+                memory->writew(bufW, 0);
+                ret = 1;
+            } else if (c >= 'a' && c <= 'z') {
+                c = c - 'a' + 1;
+            } else if (c >= 'A' && c <= 'Z') {
+                c = c - 'A' + 1;
+            } else if (c == '[') {
+                c = 27;
+            } else if (c == '\\') {
+                c = 28;
+            } else if (c == ']') {
+                c = 29;
+            } else if (c == '^') {
+                c = 30;
+            } else if (c == '_') {
+                c = 31;
+            }
+        }
+
+        if (c) {
+            memory->writew(bufW, c);
             ret = 1;
-        } else if (c >= 'a' && c <= 'z') {
-            c = c - 'a' + 1;
-        } else if (c >= 'A' && c <= 'Z') {
-            c = c - 'A' + 1;
-        } else if (c == '[') {
-            c = 27;
-        } else if (c == '\\') {
-            c = 28;
-        } else if (c == ']') {
-            c = 29;
-        } else if (c == '^') {
-            c = 30;
-        } else if (c == '_') {
-            c = 31;
         }
+        break;
     }
 
-    if (c) {
-        memory->writew(bufW, c);
-        ret = 1;
-    }
-done:
     /* Null-terminate the buffer, if there's room.  MSDN clearly states that the
        caller must not assume this is done, but some programs (e.g. Audiosurf) do. */
     if (1 <= ret && ret < bufW_size)

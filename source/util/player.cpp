@@ -5,47 +5,30 @@
 Player* Player::instance;
 
 void Player::readCommand() {
-    char tmp[256] = {};
-    U32 count=0;
+    this->nextCommand.clear();
+    this->nextValue.clear();
 
-    this->nextCommand=B("");
-    this->nextValue=B("");
-    while (true) {
-        size_t result = fread(&tmp[count], 1, 1, this->file);
-        if (!result) {
-            tmp[count] = 0;
-            if (count>0) {
-                if (this->nextCommand.length()==0) {
-                    this->nextCommand = BString::copy(tmp);
-                } else {
-                    this->nextValue = BString::copy(tmp);
-                }
-                break;
-            }
-            klog("script finished: success");
-            exit(0);
-        }
-        count++;
-        if (tmp[count-1]=='=') {
-            tmp[count-1] = 0;
-            this->nextCommand = BString::copy(tmp);
-            count = 0;
-            continue;
-        }
-        if (tmp[count-1]=='\n') {
-            if (count>=2 && tmp[count-2]=='\r') {
-                tmp[count-2]=0;
-            } else {
-                tmp[count-1] = 0;
-            }
-            this->nextValue=BString::copy(tmp);
-            break;
-        }
-    }
+    std::string l;
+    if (!std::getline(file, l)) {
+        klog("script finished: success");
+        exit(0);
+    }    
+    BString line(l.c_str(), true);
+    line.trim();
+    std::vector<BString> results;
+    line.split("=", results);
+    if (results.size() == 2) {
+        this->nextCommand = results[0];
+        this->nextValue = results[1];
+    } else if (results.size() == 1) {
+        this->nextCommand = results[0];
+    } else {
+        klog("malformed script.  Line = %s", line.c_str());
+        exit(99);
+    }    
     this->lastCommandTime = KSystem::getMicroCounter();
     if (this->nextCommand.length()==0) {
-        klog("script did not finish properly: failed");
-        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr);
+        klog("malformed script.  Line = %s", line.c_str());
         exit(99);
     }
 }
@@ -54,7 +37,7 @@ bool Player::start(BString directory) {
     Player::instance = new Player();
     BString script = BString(directory+"/"+RECORDER_SCRIPT);
     instance->directory = directory;
-    instance->file = fopen(script.c_str(), "rb");
+    instance->file.open(script.c_str(), std::ios::in | std::ios::binary);
     instance->lastCommandTime = 0;
     instance->lastScreenRead = 0;
     if (!instance->file) {

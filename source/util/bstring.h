@@ -63,6 +63,9 @@ public:
 	void append(const BString& s, int offset, int len);
 	void append(const char* s);
 	void append(const char* s, int len);
+	void appendAfterNull(const BString& s);
+	void appendAfterNull(const char* s);
+	void appendAfterNull(const char* s, int len);
 	void append(bool b);
 	void append(char c);
 	// missing on older gcc
@@ -87,6 +90,8 @@ public:
 	BString toLowerCase() const;
 	BString toUpperCase() const;
 	BString trim();
+	void resize(U32 len);
+	void clear();
 
 	BString operator+(const BString& s) const;
 	BString operator+(const char* s) const;
@@ -127,7 +132,6 @@ public:
 
 	static BString copy(const char* s);
 	static BString copy(const char* s, int len);
-	static BString literal(const char* s);
 
 	static BString join(BString delimiter, const std::vector<BString>& values);
 	static BString join(const char* delimiter, const std::vector<BString>& values);
@@ -163,9 +167,7 @@ protected:
 	BString(BStringData* data);
 
 	BStringData* data;
-	int getLevel() const;
-
-	void clear();
+	int getLevel() const;	
 
 	// len is what we need in addition to current length, pass 0 just to make sure we are writable
 	void makeWritable(int len);

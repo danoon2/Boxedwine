@@ -163,7 +163,7 @@ void createButton() {
         name += APP_LIST_ICON;
         name += " ";
     }
-    name += getTranslation(MAIN_BUTTON_APPS);
+    name += getTranslation(Msg::MAIN_BUTTON_APPS);
     appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_APPS);
     }));
@@ -173,7 +173,7 @@ void createButton() {
         name += INSTALL_ICON;
         name += " ";
     }
-    name += getTranslation(MAIN_BUTTON_INSTALL);
+    name += getTranslation(Msg::MAIN_BUTTON_INSTALL);
     appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_INSTALL);
     }));  
@@ -183,7 +183,7 @@ void createButton() {
         name += CONTAINER_ICON;
         name += " ";
     }
-    name += getTranslation(MAIN_BUTTON_CONTAINERS);
+    name += getTranslation(Msg::MAIN_BUTTON_CONTAINERS);
     appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_CONTAINERS);
     }));
@@ -193,7 +193,7 @@ void createButton() {
         name += OPTIONS_ICON;
         name += " ";
     }
-    name += getTranslation(MAIN_BUTTON_SETTINGS);
+    name += getTranslation(Msg::MAIN_BUTTON_SETTINGS);
     appButtons.push_back(AppButton(name, [](){
         gotoView(VIEW_OPTIONS);        
     }));
@@ -203,7 +203,7 @@ void createButton() {
         name += QUESTION_ICON;
         name += " ";
     }
-    name += getTranslation(MAIN_BUTTON_HELP);
+    name += getTranslation(Msg::MAIN_BUTTON_HELP);
     appButtons.push_back(AppButton(name, []() {
         gotoView(VIEW_HELP);
         }));
@@ -225,13 +225,13 @@ void loadApps() {
                         ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_ScrollbarGrab) | 0xFF000000);
                         bool result = false;
                         if (ImGui::BeginPopup("AppOptionsPopup")) {
-                            if (ImGui::Selectable(c_getTranslation(MAIN_BUTTON_SETTINGS))) {
+                            if (ImGui::Selectable(c_getTranslation(Msg::MAIN_BUTTON_SETTINGS))) {
                                 gotoView(VIEW_CONTAINERS, app->getContainer()->getDir(), app->getIniFilePath());
                             }     
-                            if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT))) {
-                                BString label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, app->getName());
+                            if (ImGui::Selectable(c_getTranslation(Msg::CONTAINER_VIEW_DELETE_SHORTCUT))) {
+                                BString label = getTranslationWithFormat(Msg::CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, app->getName());
                                 runOnMainUI([label, app]() {
-                                    new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [app](bool yes) {
+                                    new YesNoDlg(Msg::GENERIC_DLG_CONFIRM_TITLE, label, [app](bool yes) {
                                         if (yes) {
                                             runOnMainUI([app]() {
                                                 app->remove();
@@ -245,16 +245,16 @@ void loadApps() {
                             }
 #ifdef BOXEDWINE_RECORDER
                             if (GlobalSettings::isAutomationEnabled()) {
-                                if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_CREATE_AUTOMATION))) {
+                                if (ImGui::Selectable(c_getTranslation(Msg::CONTAINER_VIEW_CREATE_AUTOMATION))) {
                                     runOnMainUI([app]() {
-                                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                        new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                                         app->createAutomation();
                                         return false;
                                         });
                                 }
-                                if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_RUN_AUTOMATION), false, app->hasAutomation()? 0 : ImGuiSelectableFlags_Disabled)) {
+                                if (ImGui::Selectable(c_getTranslation(Msg::CONTAINER_VIEW_RUN_AUTOMATION), false, app->hasAutomation()? 0 : ImGuiSelectableFlags_Disabled)) {
                                     runOnMainUI([app]() {
-                                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                        new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                                         app->runAutomation();
                                         return false;
                                         });
@@ -271,27 +271,27 @@ void loadApps() {
                 } else {
                     runOnMainUI([app]() {
                         if (app->getContainer()->doesWineVersionExist()) {
-                            new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                            new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                             app->launch();
                         } else {
                             if (GlobalSettings::getWineVersions().size()) {                                
-                                BString label = getTranslationWithFormat(ERROR_MISSING_WINE, true, app->getContainer()->getWineVersion(), GlobalSettings::getWineVersions()[0].name);
-                                new YesNoDlg(GENERIC_DLG_ERROR_TITLE, label, [app](bool yes) {
+                                BString label = getTranslationWithFormat(Msg::ERROR_MISSING_WINE, true, app->getContainer()->getWineVersion(), GlobalSettings::getWineVersions()[0].name);
+                                new YesNoDlg(Msg::GENERIC_DLG_ERROR_TITLE, label, [app](bool yes) {
                                     if (yes) {
                                         app->getContainer()->setWineVersion(GlobalSettings::getWineVersions()[0].name);
                                         app->getContainer()->saveContainer();
-                                        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                        new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                                         app->launch();
                                     } 
                                     });
                             } else if (GlobalSettings::getAvailableWineVersions().size() != 0) {
-                                new YesNoDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(ERROR_NO_WINE), [app](bool yes) {
+                                new YesNoDlg(Msg::GENERIC_DLG_ERROR_TITLE, getTranslation(Msg::ERROR_NO_WINE), [app](bool yes) {
                                     if (yes) {
                                         GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [app](bool success) {
                                             if (success) {
                                                 app->getContainer()->setWineVersion(GlobalSettings::getWineVersions()[0].name);
                                                 app->getContainer()->saveContainer();
-                                                new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
+                                                new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                                                 app->launch();
                                             }
                                             });
@@ -508,9 +508,7 @@ bool uiShow(BString basePath) {
     int cy = GlobalSettings::getPreviousScreenHeight();
     U32 scale = SCALE_DENOMINATOR;
 
-    SDL_DisplayMode dm;
-    dm.w = 0;
-    dm.h = 0;
+    SDL_DisplayMode dm = { 0 };
     SDL_GetDesktopDisplayMode(0, &dm);
 
     int x = GlobalSettings::getPreviousScreenX();
@@ -535,7 +533,7 @@ bool uiShow(BString basePath) {
     SDL_RaiseWindow(window);
 #ifdef BOXEDWINE_IMGUI_DX9
     if (StartUpArgs::uiType == UI_TYPE_DX9) {
-        SDL_SysWMinfo wmInfo;
+        SDL_SysWMinfo wmInfo = {};
         SDL_VERSION(&wmInfo.version);
         SDL_GetWindowWMInfo(window, &wmInfo);
         HWND hwnd = (HWND)wmInfo.info.win.window;
@@ -642,11 +640,11 @@ bool uiShow(BString basePath) {
     if (GlobalSettings::getWineVersions().size()==0) {
         runOnMainUI([]() {
             if (GlobalSettings::getAvailableWineVersions().size() == 0 && GlobalSettings::isFilesListDownloading()) {
-                new WaitDlg(WAITDLG_GET_FILE_LIST_TITLE, getTranslation(WAITDLG_GET_FILE_LIST_LABEL), []() {
+                new WaitDlg(Msg::WAITDLG_GET_FILE_LIST_TITLE, getTranslation(Msg::WAITDLG_GET_FILE_LIST_LABEL), []() {
                     if (!GlobalSettings::isFilesListDownloading()) {
                         runOnMainUI([]() {
                             if (GlobalSettings::getAvailableWineVersions().size() == 0) {
-                                new OkDlg(GENERIC_DLG_ERROR_TITLE, getTranslation(ERROR_NO_FILE_LIST), []() {
+                                new OkDlg(Msg::GENERIC_DLG_ERROR_TITLE, getTranslation(Msg::ERROR_NO_FILE_LIST), []() {
                                     });
                             } else {
                                 askToDownloadDefaultWine();

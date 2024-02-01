@@ -130,7 +130,7 @@ void GlobalSettings::init(int argc, const char **argv) {
         BString res = BString::valueOf(width) + "x" + BString::valueOf(height);
         availableResolutions.push_back(res);
     }
-    GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
+    GlobalSettings::extraVerticalSpacing = GlobalSettings::scaleFloatUI(5.0);
 }
 
 void GlobalSettings::startUp() {
@@ -295,7 +295,7 @@ float GlobalSettings::scaleFloatUIAndFont(float value) {
 void GlobalSettings::setScale(U32 scale) {
     GlobalSettings::scale = scale;
     UiSettings::ICON_SIZE = GlobalSettings::scaleIntUI(48);
-    GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleIntUI(5);
+    GlobalSettings::extraVerticalSpacing = (float)GlobalSettings::scaleFloatUI(5.0);
 }
 
 void GlobalSettings::loadTheme() {
@@ -552,7 +552,7 @@ void GlobalSettings::updateFileList(BString fileLocation) {
                     }
                     if (upgradeAvailable.size()) {
                         runOnMainUI([wineLabel]() {
-                            new YesNoDlg(WINE_UPGRADE_AVAILABLE_TITLE, getTranslationWithFormat(WINE_UPGRADE_AVAILABLE_LABEL, false, wineLabel), [](bool yes) {
+                            new YesNoDlg(Msg::WINE_UPGRADE_AVAILABLE_TITLE, getTranslationWithFormat(Msg::WINE_UPGRADE_AVAILABLE_LABEL, false, wineLabel), [](bool yes) {
                                 if (yes) {
                                     runInBackgroundThread([]() {
                                         doUpgrade();
@@ -652,8 +652,8 @@ void GlobalSettings::downloadFile(BString url, BString filePath, BString name, U
             Fs::makeNativeDirs(parentPath);
         }
         std::vector<DownloadItem> items;
-        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, name), url, B(""), filePath, ((U64)sizeMB) * 1024 * 1024));
-        new DownloadDlg(DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
+        items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, name), url, B(""), filePath, ((U64)sizeMB) * 1024 * 1024));
+        new DownloadDlg(Msg::DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
             runOnMainUI([success, onCompleted]() {
                 GlobalSettings::reloadWineVersions();
                 if (!GlobalSettings::defaultFont) {
@@ -674,12 +674,12 @@ void GlobalSettings::downloadWine(const WineVersion& version, std::function<void
             Fs::makeNativeDirs(GlobalSettings::getFileSystemFolder());
         }
         std::vector<DownloadItem> items;
-        items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, version.name), version.filePath, version.filePathBackup, filePath, ((U64)(version.size)) * 1024 * 1024));
+        items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, version.name), version.filePath, version.filePathBackup, filePath, ((U64)(version.size)) * 1024 * 1024));
         WineVersion* depend = version.getMissingDependency();
         if (depend) {
-            items.push_back(DownloadItem(getTranslationWithFormat(DOWNLOADDLG_LABEL, true, depend->name), depend->filePath, depend->filePathBackup, depend->getLocalFilePath(), ((U64)(depend->size)) * 1024 * 1024));
+            items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, depend->name), depend->filePath, depend->filePathBackup, depend->getLocalFilePath(), ((U64)(depend->size)) * 1024 * 1024));
         }
-        new DownloadDlg(DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
+        new DownloadDlg(Msg::DOWNLOADDLG_TITLE, items, [onCompleted](bool success) {
             runOnMainUI([success, onCompleted]() {
                 GlobalSettings::reloadWineVersions();
                 if (!GlobalSettings::defaultFont) {

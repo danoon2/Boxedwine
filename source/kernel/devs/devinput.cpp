@@ -78,14 +78,14 @@ public:
     }
 
     // From FsOpenNode
-    virtual U32 ioctl(KThread* thread, U32 request) override;
-    virtual U32 readNative(U8* buffer, U32 len) override;
-    virtual U32 writeNative(U8* buffer, U32 len) override;
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
-    virtual void setAsync(bool isAsync) override;
-    virtual bool isAsync() override;
-    virtual bool isWriteReady() override;
-    virtual bool isReadReady() override;
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
+    void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    void setAsync(bool isAsync) override;
+    bool isAsync() override;
+    bool isWriteReady() override;
+    bool isReadReady() override;
 
     U32 asyncProcessId;
     U32 asyncProcessFd;
@@ -104,7 +104,9 @@ public:
 class DevInputTouch : public DevInput {
 public:
     DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual U32 ioctl(KThread* thread, U32 request) override;
+
+    // from FsOpenNode
+    U32 ioctl(KThread* thread, U32 request) override;
 
     U32 lastX;
     U32 lastY;
@@ -113,13 +115,17 @@ public:
 class DevInputMouse : public DevInput {
 public:
     DevInputMouse(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual U32 ioctl(KThread* thread, U32 request) override;
+
+    // from FsOpenNode
+    U32 ioctl(KThread* thread, U32 request) override;
 };
 
 class DevInputKeyboard : public DevInput {
 public:
     DevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual U32 ioctl(KThread* thread, U32 request) override;
+
+    // FsOpenNode
+    U32 ioctl(KThread* thread, U32 request) override;
 };
 
 static DevInputTouch* touchEvents;

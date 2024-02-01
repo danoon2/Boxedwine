@@ -10,7 +10,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();
 
-    containerNameControl = section->addTextInputRow(CONTAINER_VIEW_CONTAINER_NAME_LABEL, 0);
+    containerNameControl = section->addTextInputRow(Msg::CONTAINER_VIEW_CONTAINER_NAME_LABEL, Msg::NONE);
     containerNameControl->onChange = [this]() {
         this->setTabName(this->tabIndex, this->containerNameControl->getText());
         currentContainer->setName(this->containerNameControl->getText());
@@ -34,7 +34,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     };
 
 
-    containerGdiControl = section->addCheckbox(CONTAINER_VIEW_GDI_RENDERER_LABEL, CONTAINER_VIEW_GDI_RENDERER_HELP, false);
+    containerGdiControl = section->addCheckbox(Msg::CONTAINER_VIEW_GDI_RENDERER_LABEL, Msg::CONTAINER_VIEW_GDI_RENDERER_HELP, false);
     containerGdiControl->onChange = [this]() {        
         this->currentContainerChanged = true;
     };
@@ -43,7 +43,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     rendererOptions.push_back(ComboboxItem(B("OpenGL"), B("gl")));
     rendererOptions.push_back(ComboboxItem(B("Vulkan"), B("vulkan")));
     rendererOptions.push_back(ComboboxItem(B("GDI"), B("gdi")));
-    containerRendererControl = section->addComboboxRow(CONTAINER_VIEW_RENDERER_LABEL, CONTAINER_VIEW_RENDERER_HELP, rendererOptions);
+    containerRendererControl = section->addComboboxRow(Msg::CONTAINER_VIEW_RENDERER_LABEL, Msg::CONTAINER_VIEW_RENDERER_HELP, rendererOptions);
     containerRendererControl->onChange = [this]() {
         this->currentContainerChanged = true;
     };
@@ -53,7 +53,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     mouseOptions.push_back(ComboboxItem(B("Enable"), B("enable")));
     mouseOptions.push_back(ComboboxItem(B("Disable"), B("disable")));
     mouseOptions.push_back(ComboboxItem(B("Force"), B("force")));
-    containerMouseWarpControl = section->addComboboxRow(CONTAINER_VIEW_MOUSE_WARP_LABEL, CONTAINER_VIEW_MOUSE_WARP_HELP, mouseOptions);    
+    containerMouseWarpControl = section->addComboboxRow(Msg::CONTAINER_VIEW_MOUSE_WARP_LABEL, Msg::CONTAINER_VIEW_MOUSE_WARP_HELP, mouseOptions);
     containerMouseWarpControl->onChange = [this]() {
         this->currentContainerChanged = true;
     };
@@ -64,7 +64,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     for (int i = 3; i < 26; i++) {
         mountDrives.push_back(ComboboxItem(BString((char)('A' + i)) + ":", BString((char)('a' + i))));
     }
-    std::shared_ptr<LayoutRow> row = section->addRow(CONTAINER_VIEW_MOUNT_DIR_LABEL, CONTAINER_VIEW_MOUNT_DIR_HELP);
+    std::shared_ptr<LayoutRow> row = section->addRow(Msg::CONTAINER_VIEW_MOUNT_DIR_LABEL, Msg::CONTAINER_VIEW_MOUNT_DIR_HELP);
     containerMountDriveControl = row->addComboBox(mountDrives);
     containerMountDriveControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(50));
     containerMountDriveControl->onChange = [this]() {
@@ -78,14 +78,14 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         this->currentContainerMountChanged = true;
     };
 
-    row = section->addRow(CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, 0);
+    row = section->addRow(Msg::CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, Msg::NONE);
     containerLocationControl = row->addTextInput(B(""), true);
-    std::shared_ptr<LayoutButtonControl> showButtonControl = row->addButton(getTranslation(GENERIC_OPEN_BUTTON));
+    std::shared_ptr<LayoutButtonControl> showButtonControl = row->addButton(getTranslation(Msg::GENERIC_OPEN_BUTTON));
     showButtonControl->onChange = [this]() {
         Platform::openFileLocation(currentContainer->getDir());
     };
 
-    std::shared_ptr<LayoutButtonControl> selectWineAppButton = section->addButton(CONTAINER_VIEW_PROGRAMS_LABEL, 0, getTranslation(CONTAINER_VIEW_RUNE_WINE_APP_BUTTON_LABEL));
+    std::shared_ptr<LayoutButtonControl> selectWineAppButton = section->addButton(Msg::CONTAINER_VIEW_PROGRAMS_LABEL, Msg::NONE, getTranslation(Msg::CONTAINER_VIEW_RUNE_WINE_APP_BUTTON_LABEL));
     selectWineAppButton->onChange = [this]() {
         if (saveChanges()) { // need to capture any changes to mount
             runOnMainUI([this] {
@@ -105,15 +105,15 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                     GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
                         gotoView(VIEW_CONTAINERS, containerPath);
                     };
-                    }, false, NULL, CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
-                dlg->setLabelId(CONTAINER_VIEW_SELECT_WINE_APP_LABEL);
+                    }, false, NULL, Msg::CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
+                dlg->setLabelId(Msg::CONTAINER_VIEW_SELECT_WINE_APP_LABEL);
                 return false;
                 });
         }
     };
 
     if (GlobalSettings::getComponents().size()) {
-        row = section->addRow(CONTAINER_VIEW_COMPONENTS_LABEL, 0);
+        row = section->addRow(Msg::CONTAINER_VIEW_COMPONENTS_LABEL, Msg::NONE);
 
         std::vector<ComboboxItem> components;
         for (auto& component : GlobalSettings::getComponents()) {
@@ -121,7 +121,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         }
         componentsControl = row->addComboBox(components, 0);
 
-        std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+        std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
         installButton->onChange = [this]() {
             if (this->saveChanges()) {
                 AppFile& app = GlobalSettings::getComponents()[componentsControl->getSelection()];
@@ -139,9 +139,9 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     if (GlobalSettings::getAvailableWinetricksVersions().size() > 0) {        
         if (GlobalSettings::getInstalledWinetricksVersions().size() == 0) {
             WineVersion version = GlobalSettings::getAvailableWinetricksVersions()[0];
-            row = section->addRow(CONTAINER_VIEW_WINETRICKS_LABEL, 0);
-            std::shared_ptr<LayoutButtonControl> selectWineTricksButton = row->addButton(getTranslationWithFormat(GENERIC_DOWNLOAD, true, BString::valueOf(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
-            selectWineTricksButton->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+            row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_LABEL, Msg::NONE);
+            std::shared_ptr<LayoutButtonControl> selectWineTricksButton = row->addButton(getTranslationWithFormat(Msg::GENERIC_DOWNLOAD, true, BString::valueOf(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
+            selectWineTricksButton->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
             selectWineTricksButton->onChange = [this, version]() {
                 if (this->saveChanges()) {
                     GlobalSettings::downloadWine(version, [this](bool success) {
@@ -156,7 +156,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                 }
             };
         } else {
-            row = section->addRow(CONTAINER_VIEW_WINETRICKS_FONTS_LABEL, 0);
+            row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_FONTS_LABEL, Msg::NONE);
             WineVersion version = GlobalSettings::getInstalledWinetricksVersions()[0];
             std::vector<ComboboxItem> fonts;
             std::vector<BString> lines;
@@ -167,16 +167,16 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
             }
             fontsControl = row->addComboBox(fonts, 0);
 
-            std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+            std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
             installButton->onChange = [version, this]() {
                 if (this->saveChanges()) {
                     BString verb = fontsControl->getSelectionStringValue();
                     this->winetricks(version, verb);
                 }
             };
-            installButton->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+            installButton->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
 
-            row = section->addRow(CONTAINER_VIEW_WINETRICKS_DLLS_LABEL, 0);
+            row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_DLLS_LABEL, Msg::NONE);
             std::vector<ComboboxItem> dlls;
             lines.clear();
             version.data2.split('\n', lines);
@@ -186,19 +186,19 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
             }
             dllsControl = row->addComboBox(dlls, 0);
 
-            std::shared_ptr<LayoutButtonControl> installButton2 = row->addButton(getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+            std::shared_ptr<LayoutButtonControl> installButton2 = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
             installButton2->onChange = [version, this]() {
                 if (this->saveChanges()) {
                     BString verb = dllsControl->getSelectionStringValue();
                     this->winetricks(version, verb);
                 }
             };
-            installButton2->setHelpId(CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+            installButton2->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
         }
     }
 
     section->addSeparator();
-    std::shared_ptr<LayoutButtonControl> selectAppButton = section->addButton(CONTAINER_OPTIONS_DLG_ADD_APP_LABEL, CONTAINER_OPTIONS_DLG_ADD_APP_HELP, getTranslation(CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL));
+    std::shared_ptr<LayoutButtonControl> selectAppButton = section->addButton(Msg::CONTAINER_OPTIONS_DLG_ADD_APP_LABEL, Msg::CONTAINER_OPTIONS_DLG_ADD_APP_HELP, getTranslation(Msg::CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL));
     selectAppButton->onChange = [this]() {
         if (saveChanges()) { // need to capture any changes to mount
             runOnMainUI([this] {
@@ -221,7 +221,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     appSection = model->addSection();
     appSection->setIndent(true);
 
-    row = section->addRow(CONTAINER_VIEW_SHORTCUT_LIST_LABEL, CONTAINER_VIEW_SHORTCUT_LIST_HELP);
+    row = section->addRow(Msg::CONTAINER_VIEW_SHORTCUT_LIST_LABEL, Msg::CONTAINER_VIEW_SHORTCUT_LIST_HELP);
     appPickerControl = row->addComboBox();
     appPickerControl->onChange = [this]() {
         if (this->saveChanges()) {
@@ -236,12 +236,12 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         label += " ";
     }
     */
-    label += getTranslation(CONTAINER_VIEW_DELETE_SHORTCUT);
+    label += getTranslation(Msg::CONTAINER_VIEW_DELETE_SHORTCUT);
     std::shared_ptr<LayoutButtonControl> deleteButton = row->addButton(label);
     deleteButton->onChange = [this]() {
-        BString label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, this->currentApp->getName());
+        BString label = getTranslationWithFormat(Msg::CONTAINER_VIEW_DELETE_SHORTCUT_CONFIRMATION, true, this->currentApp->getName());
         runOnMainUI([label, this]() {
-            new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [this](bool yes) {
+            new YesNoDlg(Msg::GENERIC_DLG_CONFIRM_TITLE, label, [this](bool yes) {
                 if (yes) {
                     runOnMainUI([this]() {
                         this->currentAppChanged = false;
@@ -261,7 +261,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
             return false;
             });
     };
-    row = appSection->addRow(0, 0);
+    row = appSection->addRow(Msg::NONE, Msg::NONE);
     row->setTopMargin(0.0f);
     row->addCustomControl([this]() {
         if (this->currentApp && this->currentApp->getIconTexture()) {
@@ -273,15 +273,15 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         }
         });
 
-    appNameControl = appSection->addTextInputRow(CONTAINER_VIEW_NAME_LABEL, CONTAINER_VIEW_NAME_HELP);
+    appNameControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_NAME_LABEL, Msg::CONTAINER_VIEW_NAME_HELP);
     appNameControl->onChange = [this]() {
         this->currentApp->name = appNameControl->getText();
         this->currentAppChanged = true;
         rebuildShortcutsCombobox();
     };
 
-    appPathControl = appSection->addTextInputRow(CONTAINER_VIEW_SHORTCUT_PATH_LABEL, CONTAINER_VIEW_SHORTCUT_PATH_HELP, B(""), true);
-    appArgumentsControl = appSection->addTextInputRow(CONTAINER_VIEW_SHORTCUT_ARGUMENTS_LABEL, CONTAINER_VIEW_SHORTCUT_ARGUMENTS_HELP);
+    appPathControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_SHORTCUT_PATH_LABEL, Msg::CONTAINER_VIEW_SHORTCUT_PATH_HELP, B(""), true);
+    appArgumentsControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_SHORTCUT_ARGUMENTS_LABEL, Msg::CONTAINER_VIEW_SHORTCUT_ARGUMENTS_HELP);
     appArgumentsControl->setNumberOfLines(1);
     appArgumentsControl->onChange = [this]() {
         this->currentAppChanged = true;
@@ -291,11 +291,11 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     };
 
     std::vector<ComboboxItem> resolutions;
-    resolutions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), B("")));
+    resolutions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), B("")));
     for (auto& res : GlobalSettings::getAvailableResolutions()) {
         resolutions.push_back(ComboboxItem(res));
     }
-    appResolutionControl = appSection->addComboboxRow(CONTAINER_VIEW_RESOLUTION_LABEL, CONTAINER_VIEW_RESOLUTION_HELP, resolutions);
+    appResolutionControl = appSection->addComboboxRow(Msg::CONTAINER_VIEW_RESOLUTION_LABEL, Msg::CONTAINER_VIEW_RESOLUTION_HELP, resolutions);
     appResolutionControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
@@ -304,7 +304,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     bpp.push_back(ComboboxItem(B("32-bit (default)"), 32));
     bpp.push_back(ComboboxItem(B("16-bit"), 16));
     bpp.push_back(ComboboxItem(B("8-bit (256 colors))"), 8));
-    appBppControl = appSection->addComboboxRow(CONTAINER_VIEW_BPP_LABEL, CONTAINER_VIEW_BPP_HELP, bpp);
+    appBppControl = appSection->addComboboxRow(Msg::CONTAINER_VIEW_BPP_LABEL, Msg::CONTAINER_VIEW_BPP_HELP, bpp);
     appBppControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
@@ -313,7 +313,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     fullscreen.push_back(ComboboxItem(B("Not Set"), FULLSCREEN_NOTSET));
     fullscreen.push_back(ComboboxItem(B("Stretch"), FULLSCREEN_STRETCH));
     fullscreen.push_back(ComboboxItem(B("Letterbox (maintain aspect ratio)"), FULLSCREEN_ASPECT));
-    appFullScreenControl = appSection->addComboboxRow(CONTAINER_VIEW_FULL_SCREEN_LABEL, CONTAINER_VIEW_FULL_SCREEN_HELP, fullscreen);
+    appFullScreenControl = appSection->addComboboxRow(Msg::CONTAINER_VIEW_FULL_SCREEN_LABEL, Msg::CONTAINER_VIEW_FULL_SCREEN_HELP, fullscreen);
     appFullScreenControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
@@ -323,30 +323,30 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     vsync.push_back(ComboboxItem(B("Disabled"), VSYNC_DISABLED));
     vsync.push_back(ComboboxItem(B("Enabled"), VSYNC_ENABLED));
     vsync.push_back(ComboboxItem(B("Adaptive"), VSYNC_ADAPTIVE));
-    appVSyncControl = appSection->addComboboxRow(CONTAINER_VIEW_VSYNC_LABEL, CONTAINER_VIEW_VSYNC_HELP, vsync);
+    appVSyncControl = appSection->addComboboxRow(Msg::CONTAINER_VIEW_VSYNC_LABEL, Msg::CONTAINER_VIEW_VSYNC_HELP, vsync);
     appVSyncControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 
     if (GlobalSettings::isDpiAware()) {
-        appDpiAwareControl = appSection->addCheckbox(CONTAINER_VIEW_DPI_AWARE_LABEL, CONTAINER_VIEW_DPI_AWARE_HELP, false);
+        appDpiAwareControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_DPI_AWARE_LABEL, Msg::CONTAINER_VIEW_DPI_AWARE_HELP, false);
         appDpiAwareControl->onChange = [this]() {
             this->currentAppChanged = true;
         };
     }
-    appPollRateControl = appSection->addTextInputRow(CONTAINER_VIEW_POLL_RATE_LABEL, CONTAINER_VIEW_POLL_RATE_HELP);
+    appPollRateControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_POLL_RATE_LABEL, Msg::CONTAINER_VIEW_POLL_RATE_HELP);
     appPollRateControl->onChange = [this]() {
         this->currentApp->pollRate = atoi(appPollRateControl->getText().c_str());
         this->currentAppChanged = true;
     };
-    appSkipFramesControl = appSection->addTextInputRow(CONTAINER_VIEW_SKIP_FRAMES_LABEL, CONTAINER_VIEW_SKIP_FRAMES_HELP);
+    appSkipFramesControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_SKIP_FRAMES_LABEL, Msg::CONTAINER_VIEW_SKIP_FRAMES_HELP);
     appSkipFramesControl->onChange = [this]() {
         this->currentApp->skipFramesFPS = atoi(appSkipFramesControl->getText().c_str());
         this->currentAppChanged = true;
     };
 #ifdef BOXEDWINE_MULTI_THREADED
     std::vector<ComboboxItem> affinity;
-    affinity.push_back(ComboboxItem(getTranslation(GENERIC_COMBOBOX_ALL), 0));
+    affinity.push_back(ComboboxItem(getTranslation(Msg::GENERIC_COMBOBOX_ALL), 0));
 #ifdef __MACH__
     // Platform::setCpuAffinityForThread
     affinity.push_back(ComboboxItem(B("1"), 1));
@@ -355,18 +355,18 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         affinity.push_back(ComboboxItem(BString::valueOf(i), i));
     }
 #endif
-    appCpuAffinityControl = appSection->addComboboxRow(CONTAINER_VIEW_CPU_AFFINITY_LABEL, CONTAINER_VIEW_CPU_AFFINITY_HELP, affinity);
+    appCpuAffinityControl = appSection->addComboboxRow(Msg::CONTAINER_VIEW_CPU_AFFINITY_LABEL, Msg::CONTAINER_VIEW_CPU_AFFINITY_HELP, affinity);
     appCpuAffinityControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 #endif
     std::vector<ComboboxItem> scales;
-    scales.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), 0));
+    scales.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), 0));
     scales.push_back(ComboboxItem(B("1/2x"), 50));
     scales.push_back(ComboboxItem(B("1x"), 100));
     scales.push_back(ComboboxItem(B("2x"), 200));
     scales.push_back(ComboboxItem(B("3x"), 300));
-    appScaleControl = appSection->addComboboxRow(CONTAINER_VIEW_SCALE_LABEL, CONTAINER_VIEW_SCALE_HELP, scales);
+    appScaleControl = appSection->addComboboxRow(Msg::CONTAINER_VIEW_SCALE_LABEL, Msg::CONTAINER_VIEW_SCALE_HELP, scales);
     appScaleControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
@@ -374,42 +374,42 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     std::vector<ComboboxItem> quality;
     quality.push_back(ComboboxItem(B("Nearest Pixel Sampling (default)")));
     quality.push_back(ComboboxItem(B("Linear Filtering")));
-    appScaleQualityControl = appSection->addComboboxRow(CONTAINER_VIEW_SCALE_QUALITY_LABEL, CONTAINER_VIEW_SCALE_QUALITY_HELP, quality);
+    appScaleQualityControl = appSection->addComboboxRow(Msg::CONTAINER_VIEW_SCALE_QUALITY_LABEL, Msg::CONTAINER_VIEW_SCALE_QUALITY_HELP, quality);
     appScaleQualityControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 
 #if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
     std::vector<ComboboxItem> glOptions;
-    glOptions.push_back(ComboboxItem(getTranslation(GENERIC_DEFAULT), OPENGL_TYPE_NOT_SET));
+    glOptions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), OPENGL_TYPE_NOT_SET));
     glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_SDL));
     glOptions.push_back(ComboboxItem(B("Mesa - OpenGL in Software"), OPENGL_TYPE_OSMESA));
-    appOpenGlControl = appSection->addComboboxRow(OPTIONSVIEW_DEFAULT_OPENGL_LABEL, OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
+    appOpenGlControl = appSection->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
     appOpenGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
     appOpenGlControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 #endif
 
-    row = appSection->addRow(CONTAINER_VIEW_GL_EXT_LABEL, CONTAINER_VIEW_GL_EXT_HELP);
+    row = appSection->addRow(Msg::CONTAINER_VIEW_GL_EXT_LABEL, Msg::CONTAINER_VIEW_GL_EXT_HELP);
     appGlExControl = row->addTextInput();
     appGlExControl->setNumberOfLines(3);
     appGlExControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
     
-    std::shared_ptr<LayoutButtonControl> setButtonControl = row->addButton(getTranslation(CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL));
+    std::shared_ptr<LayoutButtonControl> setButtonControl = row->addButton(getTranslation(Msg::CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL));
     setButtonControl->onChange = [this]() {
         appGlExControl->setText(B("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture"));
         this->currentAppChanged = true;
     };    
 
-    appShowWindowImmediatelyControl = appSection->addCheckbox(CONTAINER_VIEW_SHOW_WINDOW_LABEL, CONTAINER_VIEW_SHOW_WINDOW_HELP, false);
+    appShowWindowImmediatelyControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_SHOW_WINDOW_LABEL, Msg::CONTAINER_VIEW_SHOW_WINDOW_HELP, false);
     appShowWindowImmediatelyControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
 
-    appDirectDrawAutoRefreshControl = appSection->addCheckbox(CONTAINER_VIEW_AUTO_REFRESH_LABEL, CONTAINER_VIEW_AUTO_REFRESH_HELP, false);
+    appDirectDrawAutoRefreshControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL, Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP, false);
     appDirectDrawAutoRefreshControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
@@ -450,7 +450,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                     ImGui::PushStyleColor(ImGuiCol_PopupBg, ImGui::GetColorU32(ImGuiCol_ScrollbarGrab) | 0xFF000000);
                     bool result = false;
                     if (ImGui::BeginPopup("ContainerOptionsPopup")) {
-                        if (ImGui::Selectable(c_getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL))) {
+                        if (ImGui::Selectable(c_getTranslation(Msg::CONTAINER_VIEW_DELETE_BUTTON_LABEL))) {
                             this->deleteContainer(item);
                         }
                         ImGui::EndPopup();
@@ -474,8 +474,8 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         label += TRASH_ICON;
         label += " ";
     }
-    label += getTranslation(CONTAINER_VIEW_DELETE_BUTTON_LABEL);
-    std::shared_ptr<LayoutButtonControl> deleteContainerButton = bottomSection->addButton(0, CONTAINER_VIEW_DELETE_BUTTON_HELP, label);
+    label += getTranslation(Msg::CONTAINER_VIEW_DELETE_BUTTON_LABEL);
+    std::shared_ptr<LayoutButtonControl> deleteContainerButton = bottomSection->addButton(Msg::NONE, Msg::CONTAINER_VIEW_DELETE_BUTTON_HELP, label);
     deleteContainerButton->onChange = [this]() {
         this->deleteContainer(this->currentContainer);
     };
@@ -484,7 +484,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
 void ContainersView::deleteContainer(BoxedContainer* container) {
     BString label;
     if (!container->getApps().size()) {
-        label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION, true, container->getName());
+        label = getTranslationWithFormat(Msg::CONTAINER_VIEW_DELETE_CONFIRMATION, true, container->getName());
     } else {
         label = "";
 
@@ -494,10 +494,10 @@ void ContainersView::deleteContainer(BoxedContainer* container) {
             }
             label += app->getName();
         }
-        label = getTranslationWithFormat(CONTAINER_VIEW_DELETE_CONFIRMATION_WITH_APPS, true, container->getName(), label);
+        label = getTranslationWithFormat(Msg::CONTAINER_VIEW_DELETE_CONFIRMATION_WITH_APPS, true, container->getName(), label);
     }
     runOnMainUI([label, this, container]() {
-        new YesNoDlg(GENERIC_DLG_CONFIRM_TITLE, label, [this, container](bool yes) {
+        new YesNoDlg(Msg::GENERIC_DLG_CONFIRM_TITLE, label, [this, container](bool yes) {
             if (yes) {
                 runOnMainUI([this, container]() {
                     container->deleteContainerFromFilesystem();
@@ -518,13 +518,13 @@ void ContainersView::deleteContainer(BoxedContainer* container) {
 
 bool ContainersView::saveChanges() {
     if (this->currentContainer && containerNameControl->getText().length() == 0) {
-        this->errorMsg = getTranslation(CONTAINER_VIEW_ERROR_BLANK_NAME);
+        this->errorMsg = getTranslation(Msg::CONTAINER_VIEW_ERROR_BLANK_NAME);
     } else if (this->containerMountDriveControl->getSelection() != 0 && containerMountPathControl->getText().length()==0) {
-        this->errorMsg = getTranslation(CONTAINER_VIEW_ERROR_MISSING_MOUNT_LOCATION);
+        this->errorMsg = getTranslation(Msg::CONTAINER_VIEW_ERROR_MISSING_MOUNT_LOCATION);
     } else if (this->containerMountDriveControl->getSelection() == 0 && containerMountPathControl->getText().length() != 0) {
-        this->errorMsg = getTranslation(CONTAINER_VIEW_ERROR_MISSING_MOUNT_DRIVE);
+        this->errorMsg = getTranslation(Msg::CONTAINER_VIEW_ERROR_MISSING_MOUNT_DRIVE);
     } else if (this->currentApp && appNameControl->getText().length()==0) {
-        this->errorMsg = getTranslation(CONTAINER_VIEW_NAME_REQUIRED);
+        this->errorMsg = getTranslation(Msg::CONTAINER_VIEW_NAME_REQUIRED);
     }
     if (this->errorMsg.isEmpty()) {
         if (this->currentContainer && this->currentContainerChanged) {
@@ -625,7 +625,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     WineVersion* wine = GlobalSettings::getInstalledWineFromName(this->containerWineVersionControl->getSelectionStringValue());
     bool hasAutoRefresh = atoi(wine->fsVersion.c_str()) >= 7;
     appDirectDrawAutoRefreshControl->setReadOnly(!hasAutoRefresh);
-    appDirectDrawAutoRefreshControl->setHelpId(hasAutoRefresh ? CONTAINER_VIEW_AUTO_REFRESH_HELP : CONTAINER_VIEW_AUTO_REFRESH_MISSING_HELP);
+    appDirectDrawAutoRefreshControl->setHelpId(hasAutoRefresh ? Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP : Msg::CONTAINER_VIEW_AUTO_REFRESH_MISSING_HELP);
 #ifdef BOXEDWINE_MULTI_THREADED
     appCpuAffinityControl->setSelectionIntValue(app->cpuAffinity);
 #endif
@@ -703,7 +703,7 @@ void ContainersView::winetricks(const WineVersion& winetricks, BString verb) {
     GlobalSettings::startUpArgs.ttyPrepend = true;
 #endif
     runOnMainUI([]() {
-        WaitDlg* dlg = new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, GlobalSettings::startUpArgs.title));
+        WaitDlg* dlg = new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, GlobalSettings::startUpArgs.title));
         KSystem::watchTTY = [dlg](BString line) {
             if (!KThread::currentThread() || KThread::currentThread()->process->name != "curl") {
                 dlg->addSubLabel(line, 5);

@@ -3395,7 +3395,7 @@ public:
         this->reg = reg;
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -3422,7 +3422,7 @@ public:
         this->mem = mem;
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         op->reg = G(rm);
@@ -3447,7 +3447,7 @@ public:
     DecodeMaskRM(Instruction reg, Instruction mem, U32 immWdith, U32 mask) : DecodeRM(reg, mem, immWdith) {
         this->mask = mask;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         DecodeRM::decode(data, op);
         op->imm &= this->mask;
         if (op->imm==0)
@@ -3471,7 +3471,7 @@ public:
         this->reg = reg;
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -3503,7 +3503,7 @@ public:
         this->reg = reg;
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -3531,7 +3531,7 @@ public:
     DecodeMem(Instruction mem, U32 immWidth) : Decode(immWidth) {
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         op->reg = G(rm);
@@ -3549,7 +3549,7 @@ public:
     DecodeLea(Instruction mem) {
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         op->reg = G(rm);
@@ -3568,7 +3568,7 @@ public:
     DecodeInstrMem(Instruction mem) {
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->base = data->ds;
         op->inst = this->mem;
     }
@@ -3591,7 +3591,7 @@ public:
         this->reg = reg;
         this->inst = inst;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = this->inst;
         op->reg = this->reg;
         fetchImm(data, op);
@@ -3619,7 +3619,7 @@ public:
         this->reg2 = reg2;
         this->inst = inst;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = this->inst;
         op->reg = this->reg;
         op->rm = this->reg2;
@@ -3643,7 +3643,7 @@ public:
     DecodeInst(Instruction reg, U32 immWidth, U32 signExtendWidth) : Decode(immWidth, signExtendWidth) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         fetchImm(data, op);
     }
@@ -3669,7 +3669,7 @@ public:
         this->f2Reg = f2Reg;
         this->f3Reg = f3Reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         if (op->repNotZero) {
             op->inst = f2Reg;
         } else if (op->repZero) {
@@ -3690,7 +3690,7 @@ class DecodeIntIb : public Decode {
 public:
     DecodeIntIb() : Decode(8) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         fetchImm(data, op);
         if (op->imm==0x80)
             op->inst = Int80;
@@ -3710,7 +3710,7 @@ public:
     DecodeDirect(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->base = data->ds;
         op->rm=regZero; 
@@ -3728,7 +3728,7 @@ private:
 
 class Decode2Byte : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->opCode+=0x100;
         data->inst = data->fetch8()+data->opCode;
         if (!decoder[data->inst]) {
@@ -3741,7 +3741,7 @@ public:
 
 class Decode66 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->opCode=0x200;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3750,7 +3750,7 @@ public:
 
 class Decode67 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->ea16 = 0;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3759,7 +3759,7 @@ public:
 
 class Decode266 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->opCode=0;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3768,7 +3768,7 @@ public:
 
 class Decode267 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->ea16 = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3777,7 +3777,7 @@ public:
 
 class DecodeLock : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->lock = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3786,7 +3786,7 @@ public:
 
 class DecodeRepNZ : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->repNotZero = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3795,7 +3795,7 @@ public:
 
 class DecodeRepZ : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->repZero = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3808,7 +3808,7 @@ public:
         this->seg = seg;
     }
 
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->ds = seg;
         data->ss = seg;
         data->inst = data->fetch8()+data->opCode;
@@ -3824,7 +3824,7 @@ public:
     DecodeIwIw(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->disp = data->fetch16();
         op->imm = data->fetch16();
@@ -3839,7 +3839,7 @@ public:
     DecodeIdIw(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->disp = data->fetch32();
         op->imm = data->fetch16();
@@ -3872,7 +3872,7 @@ class DecodeGrp1_8 : public DecodeFunc {
 public:
     DecodeGrp1_8(U32 immWidth) : DecodeFunc(immWidth) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3895,7 +3895,7 @@ public:
     }
     DecodeGrp1_16(U32 immWidth, U32 signExtendWidth) : DecodeFunc(immWidth, signExtendWidth) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3918,7 +3918,7 @@ public:
     }
     DecodeGrp1_32(U32 immWidth, U32 signExtendWidth) : DecodeFunc(immWidth, signExtendWidth) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3940,7 +3940,7 @@ public:
     DecodeGrp2_8(U32 immWidth, U32 imm) : DecodeFunc(immWidth) {
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3976,7 +3976,7 @@ public:
     DecodeGrp2_16(U32 immWidth, U32 imm) : DecodeFunc(immWidth) {
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4012,7 +4012,7 @@ public:
     DecodeGrp2_32(U32 immWidth, U32 imm) : DecodeFunc(immWidth) {
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4040,7 +4040,7 @@ private:
 
 class DecodeGrp2_Cl_8 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4058,7 +4058,7 @@ public:
 
 class DecodeGrp2_Cl_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4076,7 +4076,7 @@ public:
 
 class DecodeGrp2_Cl_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4094,7 +4094,7 @@ public:
 
 class DecodeGrp3_8 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4112,7 +4112,7 @@ public:
 
 class DecodeGrp3_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4130,7 +4130,7 @@ public:
 
 class DecodeGrp3_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U32 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4148,7 +4148,7 @@ public:
 
 class DecodeGrp4_8 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4172,7 +4172,7 @@ public:
 
 class DecodeGrp5_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4190,7 +4190,7 @@ public:
 
 class DecodeGrp5_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4208,7 +4208,7 @@ public:
 
 class DecodeGrp6_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4225,7 +4225,7 @@ public:
 
 class DecodeGrp6_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4242,7 +4242,7 @@ public:
 
 class DecodeGrp7_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4260,7 +4260,7 @@ public:
 
 class DecodeGrp8_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4281,7 +4281,7 @@ public:
 
 class DecodeGrp8_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4307,7 +4307,7 @@ public:
         this->reg = reg;
     }
 
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = this->reg;
         op->imm = data->fetch16();
         op->disp = data->fetch8() & 0x1f;
@@ -4319,7 +4319,7 @@ private:
 
 class DecodeFPU0 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4352,7 +4352,7 @@ public:
 
 class DecodeFPU1 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {				
@@ -4433,7 +4433,7 @@ public:
 
 class DecodeFPU2 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4471,7 +4471,7 @@ public:
 
 class DecodeFPU3 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4511,7 +4511,7 @@ public:
 
 class DecodeFPU4 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4544,7 +4544,7 @@ public:
 
 class DecodeFPU5 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4576,7 +4576,7 @@ public:
 
 class DecodeFPU6 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4616,7 +4616,7 @@ public:
 
 class DecodeFPU7 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4675,7 +4675,7 @@ public:
         this->inst[6] = i7;
         this->inst[7] = i8;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
         if (rm >= 0xc0) {
             op->reg = E(rm);
@@ -4692,7 +4692,7 @@ private:
 
 class Decode3AE : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4710,7 +4710,7 @@ public:
 
 class Decode318 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4740,7 +4740,7 @@ public:
         this->reg2 = reg2;
         this->mem2 = mem2;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -4781,7 +4781,7 @@ public:
         this->f3Reg = f3Reg;
         this->f3Mem = f3Mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -4837,7 +4837,7 @@ public:
         this->f3Reg = f3Reg;
         this->f3Mem = f3Mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -4899,7 +4899,7 @@ public:
         this->f3Mem = f3Mem;
         this->reversed3 = reversed3;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -4955,7 +4955,7 @@ public:
     DecodeRdtsc(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->imm = data->opCountSoFarInThisBlock;
     }

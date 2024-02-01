@@ -24,9 +24,9 @@ public:
     DevSequencer(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
 
 	// From FsOpenNode
-    virtual U32 ioctl(KThread* thread, U32 request) override;
-    virtual U32 readNative(U8* buffer, U32 len) override;
-    virtual U32 writeNative(U8* buffer, U32 len) override;
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
 };
 
 FsOpenNode* openDevSequencer(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {

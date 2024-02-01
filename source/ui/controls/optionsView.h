@@ -16,7 +16,8 @@ class OptionsView : public BaseView {
 public:
 	OptionsView(BString tab);
 
-	virtual bool saveChanges();
+	// from BaseView
+	bool saveChanges() override;
 
 private:
 	void createGeneralTab();
@@ -27,10 +28,8 @@ private:
 	void loadWineVersions();
 
 	const char* wineTitle;
-	float leftColumnWidthWine;
-	float rightColumnWidth;	
-	float wineButtonTotalColumnWidth;
-	float wineButtonFirstColumnWidth;
+	float wineButtonTotalColumnWidth = 0.0f;
+	float wineButtonFirstColumnWidth = 0.0f;
 	std::map<BString, OptionsViewWineVersion, std::greater<BString>> wineVersions;
 
 	// General

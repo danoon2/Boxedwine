@@ -262,8 +262,8 @@ bool StartUpArgs::apply() {
     KSystem::ttyPrepend = this->ttyPrepend;
     KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
-    if (!KSystem::logFile && this->logPath.length()) {
-        KSystem::logFile = fopen(this->logPath.c_str(), "w");
+    if (!KSystem::logFile.is_open() && this->logPath.length()) {
+        KSystem::logFile.open(this->logPath.c_str(), std::ios::out);
     }
 
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
@@ -537,7 +537,7 @@ bool StartUpArgs::loadDefaultResource(const char* app) {
                     BString zip = Platform::getResourceFilePath(lines[i+1]);
                     if (!zip.isEmpty() && Fs::doesNativePathExist(zip)) {
                         i++;
-                        ppArgs[i] = strdup(zip.c_str()); // I'm not worried about leaking this
+                        ppArgs[i] = _strdup(zip.c_str()); // I'm not worried about leaking this
                     }
                 }
             }
@@ -553,7 +553,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-log") && i + 1 < argc) {
             this->logPath = BString::copy(argv[i + 1]);
-            KSystem::logFile = fopen(this->logPath.c_str(), "w");
+            KSystem::logFile.open(logPath.c_str(), std::ios::out);
             i++;
         }
     }
@@ -730,7 +730,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         }
     } 
     char curdir[1024];
-    char* base = getcwd(curdir, sizeof(curdir));
+    char* base = _getcwd(curdir, sizeof(curdir));
     char pathSeperator = '/';
 
     if (base!=nullptr && strchr(base, '\\') != nullptr) {

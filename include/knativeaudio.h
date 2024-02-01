@@ -118,26 +118,25 @@ public:
 	U16	cbSize;
 };
 
-class BoxedWaveFormatExtensible : public BoxedWaveFormatEx {
+class BoxedWaveFormatExtensible {
 public:
-	BoxedWaveFormatExtensible() = default;
-
 	void read(KMemory* memory, U32 address) {
-		address = BoxedWaveFormatEx::read(memory, address);
-		if (this->cbSize == 0 || this->cbSize >= 22) {
+		address = ex.read(memory, address);
+		if (ex.cbSize == 0 || ex.cbSize >= 22) {
 			wValidBitsPerSample = memory->readw(address); address += 2;
 			dwChannelMask = memory->readd(address); address += 4;
 			SubFormat.read(memory, address);
 		}
 	}
 	void write(KMemory* memory, U32 address) {
-		address = BoxedWaveFormatEx::write(memory, address);
-		if (this->cbSize == 0 || this->cbSize >= 22) {
+		address = ex.write(memory, address);
+		if (ex.cbSize == 0 || ex.cbSize >= 22) {
 			memory->writew(address, wValidBitsPerSample); address += 2;
 			memory->writed(address, dwChannelMask); address += 4;
 			SubFormat.write(memory, address);
 		}
 	}
+	BoxedWaveFormatEx ex;
 	U16 wValidBitsPerSample = 0; // union with wSamplesPerBlock
 	U32 dwChannelMask = 0;
 	BoxedGUID SubFormat;
@@ -152,7 +151,7 @@ public:
 
 	KNativeAudio() : memory(nullptr) {}
 	virtual ~KNativeAudio() {}
-
+	
 	virtual bool load() = 0;
 	virtual void free() = 0;
 	virtual bool open() = 0;

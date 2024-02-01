@@ -42,12 +42,13 @@ protected:
 public:
     static CodePage* alloc(U8* page, U32 address);
 
-    virtual void writeb(U32 address, U8 value) override;
-    virtual void writew(U32 address, U16 value) override;
-    virtual void writed(U32 address, U32 value) override;
-    virtual U8* getReadPtr(U32 address, bool makeReady = false) override;
-    virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
-    virtual Type getType() override { return Code_Page; }
+    // from Page
+    void writeb(U32 address, U8 value) override;
+    void writew(U32 address, U16 value) override;
+    void writed(U32 address, U32 value) override;
+    U8* getReadPtr(U32 address, bool makeReady = false) override;
+    U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    Type getType() override { return Type::Code_Page; }
 
     void addCode(U32 eip, CodeBlock block, U32 len);
     CodeBlock findCode(U32 eip, U32 len);

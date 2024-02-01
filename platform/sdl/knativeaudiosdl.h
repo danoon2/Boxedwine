@@ -48,48 +48,50 @@ public:
 class KNativeAudioSDL : public KNativeAudio, public std::enable_shared_from_this<KNativeAudioSDL> {
 public:
 	virtual ~KNativeAudioSDL() {}
-	virtual bool load() override;
-	virtual void free() override;
-	virtual bool open() override;
-	virtual bool close() override;
-	virtual void start(U32 boxedAudioId, U32 eventFd) override;
-	virtual void stop(U32 boxedAudioId) override;
-	virtual bool configure() override;
-	virtual U32 hasDevice(bool isRender) override;
-	virtual U32 getEndPoint(bool isRender, U32 adevid) override;
-	virtual void release(U32 boxedAudioId) override;
-	virtual void captureResample(U32 boxedAudioId) override;
-	virtual U32 init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
-	virtual U32 getLatency(U32 boxedAudioId, U32* latency) override;
-	virtual void lock(U32 boxedAudioId) override;
-	virtual void unlock(U32 boxedAudioId) override;
-	virtual U32 isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
-	virtual U32 getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
-	virtual void setVolume(U32 boxedAudioId, float level, U32 channel) override;
-	virtual void cleanup() override;
 
-	virtual U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) override;
-	virtual U32 midiOutClose(U32 wDevID) override;
-	virtual U32 midiOutData(U32 wDevID, U32 dwParam) override;
-	virtual U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-	virtual U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-	virtual U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-	virtual U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) override;
-	virtual U32 midiOutGetNumDevs() override;
-	virtual U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) override;
-	virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) override;
-	virtual U32 midiOutReset(U32 wDevID) override;
+	// from KNativeAudio
+	bool load() override;
+	void free() override;
+	bool open() override;
+	bool close() override;
+	void start(U32 boxedAudioId, U32 eventFd) override;
+	void stop(U32 boxedAudioId) override;
+	bool configure() override;
+	U32 hasDevice(bool isRender) override;
+	U32 getEndPoint(bool isRender, U32 adevid) override;
+	void release(U32 boxedAudioId) override;
+	void captureResample(U32 boxedAudioId) override;
+	U32 init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
+	U32 getLatency(U32 boxedAudioId, U32* latency) override;
+	void lock(U32 boxedAudioId) override;
+	void unlock(U32 boxedAudioId) override;
+	U32 isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
+	U32 getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
+	void setVolume(U32 boxedAudioId, float level, U32 channel) override;
+	void cleanup() override;
 
-	virtual U32 midiInOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) override;
-	virtual U32 midiInClose(U32 wDevID) override;
-	virtual U32 midiInAddBuffer(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-	virtual U32 midiInPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-	virtual U32 midiInUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-	virtual U32 midiInGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) override;
-	virtual U32 midiInGetNumDevs() override;
-	virtual U32 midiInStart(U32 wDevID) override;
-	virtual U32 midiInStop(U32 wDevID) override;
-	virtual U32 midiInReset(U32 wDevID) override;
+	U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) override;
+	U32 midiOutClose(U32 wDevID) override;
+	U32 midiOutData(U32 wDevID, U32 dwParam) override;
+	U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) override;
+	U32 midiOutGetNumDevs() override;
+	U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) override;
+	U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) override;
+	U32 midiOutReset(U32 wDevID) override;
+
+	U32 midiInOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) override;
+	U32 midiInClose(U32 wDevID) override;
+	U32 midiInAddBuffer(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiInPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiInUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiInGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) override;
+	U32 midiInGetNumDevs() override;
+	U32 midiInStart(U32 wDevID) override;
+	U32 midiInStop(U32 wDevID) override;
+	U32 midiInReset(U32 wDevID) override;
 
 	U32 getSdlFormat(BoxedWaveFormatExtensible* pFmt);
 

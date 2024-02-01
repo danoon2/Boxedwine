@@ -43,13 +43,13 @@ public:
 		}
 	}
 
-	virtual void openAudio(U32 format, U32 freq, U32 channels);
-	virtual bool isOpen() { return this->open; }
-	virtual void closeAudio();
-	virtual void writeAudio(U8* data, U32 len);
-	virtual U32 getFragmentSize() {return this->got.samples;}
-	virtual U32 getBufferSize() {return (U32)this->audioBuffer.size();}
-	virtual U32 getBufferCapacity() { return DSP_BUFFER_SIZE;}
+	void openAudio(U32 format, U32 freq, U32 channels) override;
+	bool isOpen() override { return this->open; }
+	void closeAudio() override;
+	void writeAudio(U8* data, U32 len) override;
+	U32 getFragmentSize() override {return this->got.samples;}
+	U32 getBufferSize() override {return (U32)this->audioBuffer.size();}
+	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
 
 	void onClose();
 	void closeAudioFromAudioThread();

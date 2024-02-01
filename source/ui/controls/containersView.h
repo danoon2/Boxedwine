@@ -5,7 +5,8 @@ class ContainersView : public BaseView {
 public:
 	ContainersView(BString tab, BString app);
 
-	virtual bool saveChanges();
+    // from BaseView
+	bool saveChanges() override;
     
 private:
     void setCurrentApp(BoxedApp* app);

@@ -129,7 +129,7 @@ void BoxedContainer::launch(const std::vector<BString>& args, BString labelForWa
     GlobalSettings::startUpArgs.readyToLaunch = true;
 
     runOnMainUI([labelForWaitDlg]() {
-        new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, labelForWaitDlg));
+        new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, labelForWaitDlg));
         return false;
         });
 }

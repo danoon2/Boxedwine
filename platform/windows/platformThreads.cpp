@@ -136,7 +136,6 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     }
     
     InException inException(cpu);
-    KMemoryData* mem = getMemData(cpu->memory);
 
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
         kpanic("EXCEPTION_FLT_STACK_CHECK");
@@ -154,7 +153,6 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
-static PVOID pHandler;
 std::atomic<int> platformThreadCount = 0;
 
 #ifdef __TEST

@@ -3,7 +3,7 @@
 #include "../../io/fszip.h"
 #include "../../util/threadutils.h"
 
-UnzipDlg::UnzipDlg(int title, BString label, BString zipFilePath, BString destDirPath, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 170), label(label), onCompleted(onCompleted) {
+UnzipDlg::UnzipDlg(Msg title, BString label, BString zipFilePath, BString destDirPath, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 170), label(label), onCompleted(onCompleted) {
     runInBackgroundThread([this, zipFilePath, destDirPath]() {
         BString result = FsZip::unzip(zipFilePath, destDirPath, [this](U32 percentDone, BString currentFile) {
             this->percentDone = percentDone;
@@ -29,7 +29,7 @@ void UnzipDlg::unzipCompleted() {
 
 void UnzipDlg::unzipFailed(BString errorMsg) {
     runOnMainUI([errorMsg]() {
-        new OkDlg(GENERIC_DLG_ERROR_TITLE, errorMsg, nullptr, 500, 300);
+        new OkDlg(Msg::GENERIC_DLG_ERROR_TITLE, errorMsg, nullptr, 500, 300);
         return false;
         });
     this->onCompleted(false);

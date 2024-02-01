@@ -199,8 +199,7 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
                 }
             }
             if (success && startingPage < ADDRESS_PROCESS_MMAP_START && i >= ADDRESS_PROCESS_MMAP_START) {
-                success = false; // don't allow user app to allocate in space we reserve for kernel space
-                break;
+                break; // don't allow user app to allocate in space we reserve for kernel space
             }
             if (success) {                
                 *result = i;

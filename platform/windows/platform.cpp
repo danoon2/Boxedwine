@@ -372,7 +372,7 @@ U32 Platform::getPagePermissionGranularity() {
 U32 Platform::allocateNativeMemory(U64 address) {
     if (!VirtualAlloc((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_COMMIT, PAGE_READWRITE)) {
         LPSTR messageBuffer = nullptr;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("allocateNativeMemory: failed to commit memory: page=%x : %s", address, messageBuffer);
     }
     return 0;
@@ -381,7 +381,7 @@ U32 Platform::allocateNativeMemory(U64 address) {
 U32 Platform::freeNativeMemory(U64 address) {
     if (!VirtualFree((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_DECOMMIT)) {
         LPSTR messageBuffer = nullptr;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("failed to release memory: %s", messageBuffer);
     }
     return 0;
@@ -391,7 +391,7 @@ void Platform::releaseNativeMemory(void* address, U64 len) {
     // per Windows spec, if MEM_RELEASE is used, then the dwSize must be 0 and the entire chunk will be released
     if (!VirtualFree(address, 0, MEM_RELEASE)) {
         LPSTR messageBuffer = nullptr;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("failed to release executable memory: %s", messageBuffer);
     }
 }
@@ -399,7 +399,7 @@ void Platform::releaseNativeMemory(void* address, U64 len) {
 void Platform::commitNativeMemory(void* address, U64 len) {
     if (!VirtualAlloc(address, (SIZE_T)len, MEM_COMMIT, PAGE_READWRITE)) {
         LPSTR messageBuffer = nullptr;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("allocNativeMemory: failed to commit memory: %s", messageBuffer);
     }
 }
@@ -410,7 +410,7 @@ U8* Platform::alloc64kBlock(U32 count, bool executable) {
     U8* result = static_cast<U8*>(VirtualAlloc(nullptr, 64 * 1024 * count, MEM_COMMIT, permission));
     if (!result) {
         LPSTR messageBuffer = nullptr;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("alloc64kBlock: failed to commit memory : %s", messageBuffer);
     }
     return result;
@@ -485,11 +485,11 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         }
         U64 mask = 0;
         if (count == 0) {
-            mask = (1 << cores) - 1;
+            mask = (1l << cores) - 1;
         } else if (count == 1) {
             mask = 1 << 1; // rumor has it that core 0 isn't the best one to use
         } else {
-            mask = (1 << count) - 1;
+            mask = (1l << count) - 1;
         }
         klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, mask);
         SetThreadAffinityMask((HANDLE)((BtCPU*)thread->cpu)->nativeHandle, mask);

@@ -16,14 +16,18 @@ public:
 
 U32 sdlDispatch(std::function<U32()> p);
 #define COMMA ,
-#define DISPATCH_MAIN_THREAD_BLOCK_BEGIN sdlDispatch([=]() -> U32 {
+#define DISPATCH_MAIN_THREAD_BLOCK_BEGIN sdlDispatch([=]() -> U32 { 
+#define DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN sdlDispatch([=, this]() -> U32 {
 #define DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(x) sdlDispatch([x]() -> U32 {
 #define DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN return sdlDispatch([=]() -> U32 {
+#define DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN_RETURN return sdlDispatch([=, this]() -> U32 {
 #define DISPATCH_MAIN_THREAD_BLOCK_END return 0;});
 #else
 #define DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+#define DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
 #define DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(x)
 #define DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
+#define DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN_RETURN
 #define DISPATCH_MAIN_THREAD_BLOCK_END
 #endif
 

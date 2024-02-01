@@ -1055,7 +1055,7 @@ void common_runSingleOp(x64CPU* cpu);
 void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg, bool writeHostMemToReg, bool skipAlignmentCheck, bool releaseReg) {
     U8 pageReg = getTmpReg();
     bool memRegNeedsRelease = false;
-    bool fpuMustBeNative = currentOp->inst == FNSAVE || currentOp->inst == FRSTOR || currentOp->inst == FLDENV || currentOp->inst == FNSTENV || currentOp->inst == Fxrstor || currentOp->inst == Fxsave;
+    //bool fpuMustBeNative = currentOp->inst == FNSAVE || currentOp->inst == FRSTOR || currentOp->inst == FLDENV || currentOp->inst == FNSTENV || currentOp->inst == Fxrstor || currentOp->inst == Fxsave;
 
     if (memReg == 0xff) {
         memRegNeedsRelease = true;
@@ -4546,16 +4546,15 @@ void x64_string1Arg(x64CPU* cpu, pfnString1Arg pfn, U32 arg1, U32 size) {
 
 typedef void (*pfnString2Arg)(CPU* cpu, U32 arg1, U32 arg2);
 
-void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {
-    U32 size = arg2 >> 16;
-
-    arg2&=0xFFFF;
+void x64_string2Arg(x64CPU* cpu, pfnString2Arg pfn, U32 arg1, U32 arg2) {        
 #ifdef BOXEDWINE_64BIT_MMU 
+    U32 size = arg2 >> 16;
     BtCodeMemoryWrite w(cpu);
     if (cpu->stringWritesToDi) {
         w.invalidateStringWriteToDi(cpu->stringRepeat!=0, size);
     }
 #endif
+    arg2 &= 0xFFFF;
     pfn(cpu, arg1, arg2);
     cpu->fillFlags();
 }

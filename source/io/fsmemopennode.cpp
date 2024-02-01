@@ -6,7 +6,7 @@ FsMemOpenNode::FsMemOpenNode(U32 flags, BoxedPtr<FsNode> node) : FsOpenNode(node
 }
 
 FsMemOpenNode::~FsMemOpenNode() {
-    this->close();
+    FsMemOpenNode::close();
 }
 
 S64 FsMemOpenNode::length() {

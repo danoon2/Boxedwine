@@ -53,9 +53,9 @@ public:
         graphics(false) {memset(c_cc, 0, sizeof(c_cc));}
 
     // From FsOpenNode
-    virtual U32 ioctl(KThread* thread, U32 request) override;
-    virtual U32 readNative(U8* buffer, U32 len)  override {return 0;}
-    virtual U32 writeNative(U8* buffer, U32 len) override;
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len)  override {return 0;}
+    U32 writeNative(U8* buffer, U32 len) override;
 
 private:
     void readTermios(KMemory* memory, U32 address);
@@ -114,8 +114,8 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (s.contains("WS_getaddrinfo Failed to resolve your host name IP")) {
         return len;
     }
-    if (KSystem::logFile) {
-        fwrite(buffer, len, 1, KSystem::logFile);
+    if (KSystem::logFile.is_open()) {
+        KSystem::logFile.write((char*)buffer, len);
     }
     if (KSystem::watchTTY) {
         KSystem::watchTTY(s);
@@ -123,17 +123,17 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (KSystem::ttyPrepend) {
         thread_local static bool newLine = true;
         if (newLine) {
-            static_cast<void>(::write(1, "TTY:", 4));
+            static_cast<void>(_write(1, "TTY:", 4));
             BString name = KThread::currentThread()->process->name;
-            static_cast<void>(::write(1, name.c_str(), (U32)name.length()));
-            static_cast<void>(::write(1, ":", 1));
+            static_cast<void>(_write(1, name.c_str(), (U32)name.length()));
+            static_cast<void>(_write(1, ":", 1));
             newLine = false;
         }
         if (buffer[len - 1] == '\n') {
             newLine = true;
         }
     }
-    return (U32)::write(1, buffer, len);    
+    return (U32)_write(1, buffer, len);    
 }
 
 

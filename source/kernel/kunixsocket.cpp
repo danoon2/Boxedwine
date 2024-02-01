@@ -345,7 +345,7 @@ S64 KUnixSocketObject::length() {
 
 class UnixSocketNode : public FsNode {
 public:
-    UnixSocketNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent) : FsNode(Socket, id, rdev, path, B(""), B(""), false, parent) {}
+    UnixSocketNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent) : FsNode(Type::Socket, id, rdev, path, B(""), B(""), false, parent) {}
     U32 rename(BString path) override {return -K_EIO;}
     bool remove() override {if (!this->parent) return false; this->removeNodeFromParent(); return true;}
     U64 lastModified() override {return 0;}

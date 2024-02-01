@@ -36,9 +36,9 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	KMemory* memory = process->memory;
 	U32 blockAlign = 0;
 	if (data->sameFormat) {
-		blockAlign = data->fmt.nBlockAlign;
+		blockAlign = data->fmt.ex.nBlockAlign;
 	} else {
-		blockAlign = data->fmt.nBlockAlign * data->cvt.len_mult;
+		blockAlign = data->fmt.ex.nBlockAlign * data->cvt.len_mult;
 	}
 	U32 nframes = len / blockAlign;
 	if (!process->memory->canRead(data->address_lcl_offs_frames, 4)) {
@@ -48,11 +48,11 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	U32 lcl_offs_frames = process->memory->readd(data->address_lcl_offs_frames);
 	U32 held_frames = process->memory->readd(data->address_held_frames);
 
-	U32 lcl_offs_bytes = lcl_offs_frames * data->fmt.nBlockAlign;
+	U32 lcl_offs_bytes = lcl_offs_frames * data->fmt.ex.nBlockAlign;
 	U32 to_copy_frames = nframes < held_frames ? nframes : held_frames;
-	U32 to_copy_bytes = to_copy_frames * data->fmt.nBlockAlign;
+	U32 to_copy_bytes = to_copy_frames * data->fmt.ex.nBlockAlign;
 
-	U32 chunk_bytes = (data->bufsize_frames - lcl_offs_frames) * data->fmt.nBlockAlign;
+	U32 chunk_bytes = (data->bufsize_frames - lcl_offs_frames) * data->fmt.ex.nBlockAlign;
 
 	if (data->sameFormat) {
 		if (to_copy_bytes > chunk_bytes) {
@@ -160,17 +160,17 @@ void KNativeAudioSDL::captureResample(U32 boxedAudioId) {
 }
 
 U32 KNativeAudioSDL::getSdlFormat(BoxedWaveFormatExtensible* pFmt) {
-	if ((pFmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && pFmt->SubFormat == SDL_KSDATAFORMAT_SUBTYPE_PCM) || pFmt->wFormatTag == WAVE_FORMAT_PCM) {
-		if (pFmt->wBitsPerSample == 8) {
+	if ((pFmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && pFmt->SubFormat == SDL_KSDATAFORMAT_SUBTYPE_PCM) || pFmt->ex.wFormatTag == WAVE_FORMAT_PCM) {
+		if (pFmt->ex.wBitsPerSample == 8) {
 			return AUDIO_U8;
-		} else if (pFmt->wBitsPerSample == 16) {
+		} else if (pFmt->ex.wBitsPerSample == 16) {
 			return AUDIO_S16LSB;
-		} else if (pFmt->wBitsPerSample == 32) {
+		} else if (pFmt->ex.wBitsPerSample == 32) {
 			return AUDIO_S32LSB;
 		}
 		return 0;
-	} else if ((pFmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && pFmt->SubFormat == SDL_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT) || pFmt->wFormatTag == WAVE_FORMAT_IEEE_FLOAT){
-		if (pFmt->wBitsPerSample == 32) {
+	} else if ((pFmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && pFmt->SubFormat == SDL_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT) || pFmt->ex.wFormatTag == WAVE_FORMAT_IEEE_FLOAT){
+		if (pFmt->ex.wBitsPerSample == 32) {
 			return AUDIO_F32LSB;
 		} 
 		return 0;
@@ -196,8 +196,8 @@ U32 KNativeAudioSDL::init(std::shared_ptr<KProcess> process, bool isRender, U32 
 
 	data->want.callback = audioCallback;
 	data->want.format = getSdlFormat(&data->fmt);
-	data->want.freq = data->fmt.nSamplesPerSec;
-	data->want.channels = (Uint8)data->fmt.nChannels;
+	data->want.freq = data->fmt.ex.nSamplesPerSec;
+	data->want.channels = (Uint8)data->fmt.ex.nChannels;
 	data->want.userdata = data;
 	data->want.samples = 0;
 
@@ -262,14 +262,14 @@ U32 KNativeAudioSDL::getMixFormat(KThread* thread, U32 boxedAudioId, U32 address
 		return E_FAIL;
 	}
 	BoxedWaveFormatExtensible fmt;
-	fmt.cbSize = 22;
-	fmt.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
-	fmt.nChannels = 2;
-	fmt.wBitsPerSample = 16;
-	fmt.nSamplesPerSec = 44100;
-	fmt.nBlockAlign = (fmt.wBitsPerSample * fmt.nChannels) / 8;
-	fmt.nAvgBytesPerSec = fmt.nSamplesPerSec * fmt.nBlockAlign;		
-	fmt.wValidBitsPerSample = fmt.wBitsPerSample;
+	fmt.ex.cbSize = 22;
+	fmt.ex.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+	fmt.ex.nChannels = 2;
+	fmt.ex.wBitsPerSample = 16;
+	fmt.ex.nSamplesPerSec = 44100;
+	fmt.ex.nBlockAlign = (fmt.ex.wBitsPerSample * fmt.ex.nChannels) / 8;
+	fmt.ex.nAvgBytesPerSec = fmt.ex.nSamplesPerSec * fmt.ex.nBlockAlign;
+	fmt.wValidBitsPerSample = fmt.ex.wBitsPerSample;
 	fmt.dwChannelMask = KSAUDIO_SPEAKER_STEREO;
 	fmt.SubFormat = SDL_KSDATAFORMAT_SUBTYPE_PCM;
 	fmt.write(thread->memory, addressWaveFormat);

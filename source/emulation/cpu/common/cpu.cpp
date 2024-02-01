@@ -273,7 +273,9 @@ void CPU::prepareException(int code, int error) {
 class TTYBufferAccess : public BufferAccess {
 public:
     TTYBufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer) : BufferAccess(node, flags, buffer) {}
-    virtual U32 writeNative(U8* buffer, U32 len);
+
+    // from FsOpenNode
+    U32 writeNative(U8* buffer, U32 len) override;
 };
 
 static BString tty9Buffer;
