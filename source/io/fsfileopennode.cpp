@@ -32,7 +32,7 @@ S64 FsFileOpenNode::seek(S64 pos) {
 
 void FsFileOpenNode::close() {
     if (this->handle!=0xFFFFFFFF)
-        _close(this->handle);
+        ::close(this->handle);
     this->handle = 0xFFFFFFFF;
 }
 
@@ -55,7 +55,7 @@ void FsFileOpenNode::reopen() {
         openFlags|=O_APPEND;
     }
 
-    this->handle = _open(this->fileNode->nativePath.c_str(), openFlags, 0666);
+    this->handle = ::open(this->fileNode->nativePath.c_str(), openFlags, 0666);
 }
 
 U32 FsFileOpenNode::ioctl(KThread* thread, U32 request) {
@@ -92,9 +92,9 @@ bool FsFileOpenNode::canMap() {
 }
 
 U32 FsFileOpenNode::readNative(U8* buffer, U32 len) {
-    return (U32)_read(this->handle, buffer, len);
+    return (U32)::read(this->handle, buffer, len);
 }
 
 U32 FsFileOpenNode::writeNative(U8* buffer, U32 len) {
-    return (U32)_write(this->handle, buffer, len);
+    return (U32)::write(this->handle, buffer, len);
 }

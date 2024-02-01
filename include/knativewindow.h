@@ -88,12 +88,12 @@ public:
     virtual bool waitForEvent(U32 ms) = 0; // if return is true, then event is available
     virtual bool processEvents() = 0; // if return is false, then shutdown    
 
-#ifdef BOXEDWINE_RECORDER
     virtual int mouseMove(int x, int y, bool relative) = 0;
     virtual int mouseWheel(int amount, int x, int y) = 0;
     virtual int mouseButton(U32 down, U32 button, int x, int y) = 0;
     virtual int key(U32 key, U32 down) = 0;  // the key code is specific to the back end
 
+#ifdef BOXEDWINE_RECORDER
     // return true to continue processing for custom handlers
     virtual void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) = 0;
 
@@ -101,7 +101,6 @@ public:
     virtual void popWindowSurface() = 0;
     virtual void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) = 0;
 #endif
-
     virtual void* createVulkanSurface(void* instance) = 0;
 };
 

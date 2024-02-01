@@ -537,7 +537,7 @@ bool StartUpArgs::loadDefaultResource(const char* app) {
                     BString zip = Platform::getResourceFilePath(lines[i+1]);
                     if (!zip.isEmpty() && Fs::doesNativePathExist(zip)) {
                         i++;
-                        ppArgs[i] = _strdup(zip.c_str()); // I'm not worried about leaking this
+                        ppArgs[i] = strdup(zip.c_str()); // I'm not worried about leaking this
                     }
                 }
             }
@@ -730,7 +730,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         }
     } 
     char curdir[1024];
-    char* base = _getcwd(curdir, sizeof(curdir));
+    char* base = getcwd(curdir, sizeof(curdir));
     char pathSeperator = '/';
 
     if (base!=nullptr && strchr(base, '\\') != nullptr) {
