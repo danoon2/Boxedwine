@@ -156,6 +156,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
 std::atomic<int> platformThreadCount = 0;
 
 #ifdef __TEST
+static PVOID pHandler;
 void initThreadForTesting() {
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1, seh_filter);
