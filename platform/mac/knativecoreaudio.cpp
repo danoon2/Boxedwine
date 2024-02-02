@@ -597,27 +597,27 @@ static HRESULT ca_get_audiodesc(AudioStreamBasicDescription *desc, const BoxedWa
 {
     desc->mFormatFlags = 0;
 
-    if (fmt->wFormatTag == WAVE_FORMAT_PCM || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat ==  CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) {
+    if (fmt->ex.wFormatTag == WAVE_FORMAT_PCM || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat ==  CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) {
         desc->mFormatID = kAudioFormatLinearPCM;
-        if(fmt->wBitsPerSample > 8) {
+        if(fmt->ex.wBitsPerSample > 8) {
             desc->mFormatFlags = kAudioFormatFlagIsSignedInteger;
         }
-    } else if (fmt->wFormatTag == WAVE_FORMAT_IEEE_FLOAT || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)){
+    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_IEEE_FLOAT || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)){
         desc->mFormatID = kAudioFormatLinearPCM;
         desc->mFormatFlags = kAudioFormatFlagIsFloat;
-    } else if (fmt->wFormatTag == WAVE_FORMAT_MULAW || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW)) {
+    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_MULAW || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW)) {
         desc->mFormatID = kAudioFormatULaw;
-    } else if (fmt->wFormatTag == WAVE_FORMAT_ALAW || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW)) {
+    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_ALAW || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW)) {
         desc->mFormatID = kAudioFormatALaw;
     } else {
         return AUDCLNT_E_UNSUPPORTED_FORMAT;
     }
-    desc->mSampleRate = fmt->nSamplesPerSec;
-    desc->mBytesPerPacket = fmt->nBlockAlign;
+    desc->mSampleRate = fmt->ex.nSamplesPerSec;
+    desc->mBytesPerPacket = fmt->ex.nBlockAlign;
     desc->mFramesPerPacket = 1;
-    desc->mBytesPerFrame = fmt->nBlockAlign;
-    desc->mChannelsPerFrame = fmt->nChannels;
-    desc->mBitsPerChannel = fmt->wBitsPerSample;
+    desc->mBytesPerFrame = fmt->ex.nBlockAlign;
+    desc->mChannelsPerFrame = fmt->ex.nChannels;
+    desc->mBitsPerChannel = fmt->ex.wBitsPerSample;
     desc->mReserved = 0;
 
     return S_OK;
@@ -697,10 +697,10 @@ static HRESULT ca_setup_audiounit(bool isRender, AudioComponentInstance unit, co
 
 static void silence_buffer(KNativeAudioCoreAudioData *This, U8 *buffer, U32 frames)
 {
-    if((This->fmt.wFormatTag == WAVE_FORMAT_PCM || (This->fmt.wFormatTag == WAVE_FORMAT_EXTENSIBLE && This->fmt.SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) && This->fmt.wBitsPerSample == 8) {
-        memset(buffer, 128, frames * This->fmt.nBlockAlign);
+    if((This->fmt.ex.wFormatTag == WAVE_FORMAT_PCM || (This->fmt.ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && This->fmt.SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) && This->fmt.ex.wBitsPerSample == 8) {
+        memset(buffer, 128, frames * This->fmt.ex.nBlockAlign);
     } else {
-        memset(buffer, 0, frames * This->fmt.nBlockAlign);
+        memset(buffer, 0, frames * This->fmt.ex.nBlockAlign);
     }
 }
 
@@ -722,11 +722,11 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
         U32 held_frames = process->memory->readd(This->address_held_frames);
         U32 lcl_offs_frames = process->memory->readd(This->address_lcl_offs_frames);
         
-        lcl_offs_bytes = lcl_offs_frames * This->fmt.nBlockAlign;
+        lcl_offs_bytes = lcl_offs_frames * This->fmt.ex.nBlockAlign;
         to_copy_frames = std::min(nframes, held_frames);
-        to_copy_bytes = to_copy_frames * This->fmt.nBlockAlign;
+        to_copy_bytes = to_copy_frames * This->fmt.ex.nBlockAlign;
 
-        chunk_bytes = (This->bufsize_frames - lcl_offs_frames) * This->fmt.nBlockAlign;
+        chunk_bytes = (This->bufsize_frames - lcl_offs_frames) * This->fmt.ex.nBlockAlign;
 
         if (to_copy_bytes > chunk_bytes) {
             process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, chunk_bytes);
@@ -1005,7 +1005,7 @@ static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWav
 
     if (ca_layout->mNumberChannelDescriptions == 1)
     {
-        fmt->nChannels = 1;
+        fmt->ex.nChannels = 1;
         fmt->dwChannelMask = ca_mask;
         return;
     }
@@ -1015,55 +1015,55 @@ static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWav
 
     if (ca_layout->mNumberChannelDescriptions <= 2 && (ca_mask & ~KSAUDIO_SPEAKER_STEREO) == 0)
     {
-        fmt->nChannels = 2;
+        fmt->ex.nChannels = 2;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_STEREO;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 4 && (ca_mask & ~KSAUDIO_SPEAKER_QUAD) == 0)
     {
-        fmt->nChannels = 4;
+        fmt->ex.nChannels = 4;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_QUAD;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 4 && (ca_mask & ~KSAUDIO_SPEAKER_SURROUND) == 0)
     {
-        fmt->nChannels = 4;
+        fmt->ex.nChannels = 4;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_SURROUND;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 6 && (ca_mask & ~KSAUDIO_SPEAKER_5POINT1) == 0)
     {
-        fmt->nChannels = 6;
+        fmt->ex.nChannels = 6;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_5POINT1;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 6 && (ca_mask & ~KSAUDIO_SPEAKER_5POINT1_SURROUND) == 0)
     {
-        fmt->nChannels = 6;
+        fmt->ex.nChannels = 6;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_5POINT1_SURROUND;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 8 && (ca_mask & ~KSAUDIO_SPEAKER_7POINT1) == 0)
     {
-        fmt->nChannels = 8;
+        fmt->ex.nChannels = 8;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_7POINT1;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 8 && (ca_mask & ~KSAUDIO_SPEAKER_7POINT1_SURROUND) == 0)
     {
-        fmt->nChannels = 8;
+        fmt->ex.nChannels = 8;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_7POINT1_SURROUND;
         return;
     }
 
     /* oddball format, report truthfully */
-    fmt->nChannels = ca_layout->mNumberChannelDescriptions;
+    fmt->ex.nChannels = ca_layout->mNumberChannelDescriptions;
     fmt->dwChannelMask = ca_mask;
 }
 
@@ -1106,7 +1106,7 @@ U32 KNativeAudioCoreAudio::getMixFormat(KThread* thread, U32 boxedAudioId, U32 a
 	AudioChannelLayout* layout;
 	AudioObjectPropertyAddress addr;
 
-	fmt.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+	fmt.ex.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
 
 	addr.mScope = data->scope;
 	addr.mElement = 0;
@@ -1128,22 +1128,22 @@ U32 KNativeAudioCoreAudio::getMixFormat(KThread* thread, U32 boxedAudioId, U32 a
 			}
 			else {
 				kwarn("Haven't implemented support for this layout tag: 0x%x, guessing at layout\n", layout->mChannelLayoutTag);
-				fmt.nChannels = 0;
+				fmt.ex.nChannels = 0;
 			}
 		}
 		else {
 			klog("Unable to get _PreferredChannelLayout property: %x, guessing at layout\n", (int)sc);
-			fmt.nChannels = 0;
+			fmt.ex.nChannels = 0;
 		}
 
         ::free(layout);
 	}
 	else {
 		kwarn("Unable to get size for _PreferredChannelLayout property: %x, guessing at layout\n", (int)sc);
-		fmt.nChannels = 0;
+		fmt.ex.nChannels = 0;
 	}
 
-	if (fmt.nChannels == 0) {
+	if (fmt.ex.nChannels == 0) {
 		addr.mScope = data->scope;
 		addr.mElement = 0;
 		addr.mSelector = kAudioDevicePropertyStreamConfiguration;
@@ -1166,13 +1166,13 @@ U32 KNativeAudioCoreAudio::getMixFormat(KThread* thread, U32 boxedAudioId, U32 a
 			return osstatus_to_hresult(sc);
 		}
 
-		fmt.nChannels = 0;
+		fmt.ex.nChannels = 0;
 		for (int i = 0; i < buffers->mNumberBuffers; ++i)
-			fmt.nChannels += buffers->mBuffers[i].mNumberChannels;
+			fmt.ex.nChannels += buffers->mBuffers[i].mNumberChannels;
 
         ::free(buffers);
 
-		fmt.dwChannelMask = get_channel_mask(fmt.nChannels);
+		fmt.dwChannelMask = get_channel_mask(fmt.ex.nChannels);
 	}
 
 	addr.mSelector = kAudioDevicePropertyNominalSampleRate;
@@ -1182,16 +1182,16 @@ U32 KNativeAudioCoreAudio::getMixFormat(KThread* thread, U32 boxedAudioId, U32 a
 		kwarn("Unable to get _NominalSampleRate property: %x\n", (int)sc);
 		return osstatus_to_hresult(sc);
 	}
-	fmt.nSamplesPerSec = rate;
+	fmt.ex.nSamplesPerSec = rate;
 
-	fmt.wBitsPerSample = 32;
+	fmt.ex.wBitsPerSample = 32;
 	fmt.SubFormat = CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
 
-	fmt.nBlockAlign = (fmt.wBitsPerSample * fmt.nChannels) / 8;
-	fmt.nAvgBytesPerSec = fmt.nSamplesPerSec * fmt.nBlockAlign;
+	fmt.ex.nBlockAlign = (fmt.ex.wBitsPerSample * fmt.ex.nChannels) / 8;
+	fmt.ex.nAvgBytesPerSec = fmt.ex.nSamplesPerSec * fmt.ex.nBlockAlign;
 
-	fmt.wValidBitsPerSample = fmt.wBitsPerSample;
-	fmt.cbSize = 22;
+	fmt.wValidBitsPerSample = fmt.ex.wBitsPerSample;
+	fmt.ex.cbSize = 22;
 
     fmt.write(thread->memory, addressWaveFormat);
 	return S_OK;
