@@ -37,8 +37,6 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->reset();
     this->fpu.reset();
 
-    this->logFile = nullptr;//fopen("good.txt", "w");
-
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     currentSingleOp = nullptr;
     memset(memcheckqq, 0xff, sizeof(memcheckqq));

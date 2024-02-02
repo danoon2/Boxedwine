@@ -64,7 +64,7 @@ void KMemoryData::setPage(U32 index, Page* page) {
     U8* readPtr = page->getReadPtr(address);
     if (readPtr) {
         if (readPtr - (index << K_PAGE_SHIFT) == nullptr) {
-            kpanic("Memory::setPage r logic mistake");
+            int ii = 0;
         }
         this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
     } else {
@@ -73,7 +73,7 @@ void KMemoryData::setPage(U32 index, Page* page) {
     U8* writePtr = page->getWritePtr(address, K_PAGE_SHIFT);
     if (writePtr) {
         if (writePtr - (index << K_PAGE_SHIFT) == nullptr) {
-            kpanic("Memory::setPage w logic mistake");
+            int ii = 0;
         }
         this->mmuWritePtrAdjusted[index] = writePtr - (index << K_PAGE_SHIFT);
     } else {

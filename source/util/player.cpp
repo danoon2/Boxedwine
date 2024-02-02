@@ -8,13 +8,11 @@ void Player::readCommand() {
     this->nextCommand.clear();
     this->nextValue.clear();
 
-    std::string l;
-    if (!std::getline(file, l)) {
+    BString line;
+    if (!file.readLine(line)) {
         klog("script finished: success");
         exit(0);
     }    
-    BString line(l.c_str(), true);
-    line.trim();
     std::vector<BString> results;
     line.split("=", results);
     if (results.size() == 2) {
@@ -37,10 +35,10 @@ bool Player::start(BString directory) {
     Player::instance = new Player();
     BString script = BString(directory+"/"+RECORDER_SCRIPT);
     instance->directory = directory;
-    instance->file.open(script.c_str(), std::ios::in | std::ios::binary);
+    instance->file.open(script);
     instance->lastCommandTime = 0;
     instance->lastScreenRead = 0;
-    if (!instance->file) {
+    if (!instance->file.isOpen()) {
         klog("script not found: %s error=%d(%s)", script.c_str(), errno, strerror(errno));
         exit(100);
     } else {

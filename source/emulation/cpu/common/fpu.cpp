@@ -22,33 +22,17 @@
 #define FMASK_TEST (CF | PF | AF | ZF | SF | OF)    
 
 #ifdef LOG_FPU
-#include <stdarg.h>
-FILE* fpuLogFile;
-static int fpuLogCount;
+BWriteFile fpuLogFile;
 
-void flog(const char* msg, ...) {
-    va_list argptr;
-    va_start(argptr, msg);
-    BOXEDWINE_CRITICAL_SECTION;
-
+void preFpuLog() {
     if (KThread::currentThread()) {
         KThread* thread = KThread::currentThread();
         CPU* cpu = thread->cpu;
-        BString name = thread->process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);   
+        BString name = thread->process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);
         U32 offset = thread->process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32);
-        fprintf(fpuLogFile, "%s %.08X ", name.c_str(), offset);
+        fpuLogFile.write("%s %.08X ", name.c_str(), offset);
     }
-    vfprintf(fpuLogFile, msg, argptr);
-    fprintf(fpuLogFile, "\n");
-    fpuLogCount++;
-    if (fpuLogCount == 1000) {
-        fclose(fpuLogFile);
-        fpuLogFile = fopen("fpu2.txt", "w");
-        fpuLogCount = 0;
-    }
-    va_end(argptr);    
 }
-
 #define LOG flog
 #else
 #define LOG
@@ -91,19 +75,19 @@ void FPU::LOG_STACK() {
 
     for (i=0;i<8;i++) {
         if (this->tags[STV(i)] == TAG_Empty) {
-            fprintf(fpuLogFile, "    Empty ");
+            fpuLogFile.write("    Empty ");
         } else {
-            fprintf(fpuLogFile, "    Valid ");
+            fpuLogFile.write("    Valid ");
         }
         if (isnan(this->regs[STV(i)].d)) {
-            fprintf(fpuLogFile, "NAN %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+            fpuLogFile.write("NAN %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
         } else if (isinf(this->regs[STV(i)].d)) {
-            fprintf(fpuLogFile, "INF %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+            fpuLogFile.write("INF %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
         } else {            
-            fprintf(fpuLogFile, "%f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+            fpuLogFile.write("%f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
         }
     }
-    fprintf(fpuLogFile, "    Temp  %f %d %d\n", this->regs[8].d, this->tags[8], 8);
+    fpuLogFile.write("    Temp  %f %d %d\n", this->regs[8].d, this->tags[8], 8);
 #endif
 }
 
@@ -167,7 +151,7 @@ void FPU::SetCW(U16 word) {
             r = "Unknown";
             break;
     }
-    fprintf(fpuLogFile, "    SetCW %X (%s)\n", word, r);
+    fpuLogFile.write("    SetCW %X (%s)\n", word, r);
 #endif
 }   
 
@@ -179,8 +163,8 @@ void FPU::SetCW(U16 word) {
 
 void FPU::FINIT() {
 #ifdef LOG_FPU
-    if (!fpuLogFile) {
-        fpuLogFile = fopen("fpu2.txt", "w");
+    if (!fpuLogFile.isOpen()) {
+        fpuLogFile.createNew("fpu2.txt");
     }
 #endif
     SetCW(0x37F);

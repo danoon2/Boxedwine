@@ -1396,64 +1396,64 @@ struct LogInstruction {
 
 static void outXMM(U32 r, CPU* cpu) {
     switch (r) {
-    case 0: fwrite("xmm0", 4, 1, (FILE*)cpu->logFile); break;
-    case 1: fwrite("xmm1", 4, 1, (FILE*)cpu->logFile); break;
-    case 2: fwrite("xmm2", 4, 1, (FILE*)cpu->logFile); break;
-    case 3: fwrite("xmm3", 4, 1, (FILE*)cpu->logFile); break;
-    case 4: fwrite("xmm4", 4, 1, (FILE*)cpu->logFile); break;
-    case 5: fwrite("xmm5", 4, 1, (FILE*)cpu->logFile); break;
-    case 6: fwrite("xmm6", 4, 1, (FILE*)cpu->logFile); break;
-    case 7: fwrite("xmm7", 4, 1, (FILE*)cpu->logFile); break;
+    case 0: cpu->logFile.write("xmm0"); break;
+    case 1: cpu->logFile.write("xmm1"); break;
+    case 2: cpu->logFile.write("xmm2"); break;
+    case 3: cpu->logFile.write("xmm3"); break;
+    case 4: cpu->logFile.write("xmm4"); break;
+    case 5: cpu->logFile.write("xmm5"); break;
+    case 6: cpu->logFile.write("xmm6"); break;
+    case 7: cpu->logFile.write("xmm7"); break;
     }
 }
 
 static void outR32(U32 r, CPU* cpu) {
     switch (r) {
-        case 0: fwrite("EAX", 3, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("ECX", 3, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("EDX", 3, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("EBX", 3, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("ESP", 3, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("EBP", 3, 1, (FILE*)cpu->logFile); break;
-        case 6: fwrite("ESI", 3, 1, (FILE*)cpu->logFile); break;
-        case 7: fwrite("EDI", 3, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("EAX"); break;
+        case 1: cpu->logFile.write("ECX"); break;
+        case 2: cpu->logFile.write("EDX"); break;
+        case 3: cpu->logFile.write("EBX"); break;
+        case 4: cpu->logFile.write("ESP"); break;
+        case 5: cpu->logFile.write("EBP"); break;
+        case 6: cpu->logFile.write("ESI"); break;
+        case 7: cpu->logFile.write("EDI"); break;
     }
 }
 
 static void outR16(U32 r, CPU* cpu) {
     switch (r) {
-        case 0: fwrite("AX", 2, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("CX", 2, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("DX", 2, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("BX", 2, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("SP", 2, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("BP", 2, 1, (FILE*)cpu->logFile); break;
-        case 6: fwrite("SI", 2, 1, (FILE*)cpu->logFile); break;
-        case 7: fwrite("DI", 2, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("AX"); break;
+        case 1: cpu->logFile.write("CX"); break;
+        case 2: cpu->logFile.write("DX"); break;
+        case 3: cpu->logFile.write("BX"); break;
+        case 4: cpu->logFile.write("SP"); break;
+        case 5: cpu->logFile.write("BP"); break;
+        case 6: cpu->logFile.write("SI"); break;
+        case 7: cpu->logFile.write("DI"); break;
     }
 }
 
 static void outR8(U32 r, CPU* cpu) {
     switch (r) {
-        case 0: fwrite("AL", 2, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("CL", 2, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("DL", 2, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("BL", 2, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("AH", 2, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("CH", 2, 1, (FILE*)cpu->logFile); break;
-        case 6: fwrite("DH", 2, 1, (FILE*)cpu->logFile); break;
-        case 7: fwrite("BH", 2, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("AL"); break;
+        case 1: cpu->logFile.write("CL"); break;
+        case 2: cpu->logFile.write("DL"); break;
+        case 3: cpu->logFile.write("BL"); break;
+        case 4: cpu->logFile.write("AH"); break;
+        case 5: cpu->logFile.write("CH"); break;
+        case 6: cpu->logFile.write("DH"); break;
+        case 7: cpu->logFile.write("BH"); break;
     }
 }
 
 static void outS(U32 s, CPU* cpu) {
     switch (s) {
-        case 0: fwrite("ES", 2, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("CS", 2, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("SS", 2, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("DS", 2, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("FS", 2, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("GS", 2, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("ES"); break;
+        case 1: cpu->logFile.write("CS"); break;
+        case 2: cpu->logFile.write("SS"); break;
+        case 3: cpu->logFile.write("DS"); break;
+        case 4: cpu->logFile.write("FS"); break;
+        case 5: cpu->logFile.write("GS"); break;
     }
 }
 
@@ -1462,7 +1462,7 @@ static void outEA32(DecodedOp* op, CPU* cpu) {
 
     if (op->base!=SEG_ZERO) {
         outS(op->base, cpu);
-        fwrite(":", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(":");
     }
     if (op->rm!=8) {
         outR32(op->rm, cpu);
@@ -1470,20 +1470,20 @@ static void outEA32(DecodedOp* op, CPU* cpu) {
     }
     if (op->sibIndex!=8) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
         outR32(op->sibIndex, cpu);
         added = true;
         if (op->sibScale!=0) {
-            fwrite("<<", 2, 1, (FILE*)cpu->logFile);
-            fwrite((op->sibScale==1)?"1":"2", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("<<");
+            cpu->logFile.write((op->sibScale==1)?"1":"2");
         }
     }
     if (op->disp) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
-        fprintf((FILE*)cpu->logFile, "%X", op->disp);
+        cpu->logFile.write("%X");
     }
 }
 
@@ -1492,7 +1492,7 @@ static void outEA16(DecodedOp* op, CPU* cpu) {
 
     if (op->base!=SEG_ZERO) {
         outS(op->base, cpu);
-        fwrite(":", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(":");
     }
     if (op->rm!=8) {
         outR16(op->rm, cpu);
@@ -1500,69 +1500,68 @@ static void outEA16(DecodedOp* op, CPU* cpu) {
     }
     if (op->sibIndex!=8) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
         outR16(op->sibIndex, cpu);
         added = true;
     }
     if (op->disp) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
-        fprintf((FILE*)cpu->logFile, "%X", op->disp);
+        cpu->logFile.write("%X", op->disp);
     }
 }
 
 static void outE64(DecodedOp* op, CPU* cpu) {
-    fwrite("QWORD PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("QWORD PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void outE32(DecodedOp* op, CPU* cpu) {
-    fwrite("DWORD PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("DWORD PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void outE16(DecodedOp* op, CPU* cpu) {
-    fwrite("WORD PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("WORD PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void outE8(DecodedOp* op, CPU* cpu) {
-    fwrite("BYTE PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("BYTE PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write("%s ", inst->name);
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR32(op->rm, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);
     } else {
         kpanic("unknown width: %d in logRR", inst->width);
@@ -1570,19 +1569,19 @@ static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE32(op, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else {
         kpanic("unknown width: %d in logRE", inst->width);
@@ -1590,19 +1589,19 @@ static void logRE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logER(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outE32(op, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR32(op->reg, cpu);        
     } else if (inst->width==16) {        
         outE16(op, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->reg, cpu);        
     } else if (inst->width==8) {        
         outE8(op, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);        
+        cpu->logFile.write(",");
         outR8(op->reg, cpu);
     } else {
         kpanic("unknown width: %d in logER", inst->width);
@@ -1610,19 +1609,19 @@ static void logER(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else {
         kpanic("unknown width: %d in logRE8", inst->width);
@@ -1630,19 +1629,19 @@ static void logRE8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);        
     } else if (inst->width==16) {        
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);        
     } else if (inst->width==8) {        
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);        
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);
     } else {
         kpanic("unknown width: %d in logRR8", inst->width);
@@ -1650,19 +1649,19 @@ static void logRR8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else {
         kpanic("unknown width: %d in logRE16", inst->width);
@@ -1670,19 +1669,19 @@ static void logRE16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);        
     } else if (inst->width==16) {        
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);        
     } else if (inst->width==8) {        
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);        
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);
     } else {
         kpanic("unknown width: %d in logRR16", inst->width);
@@ -1690,8 +1689,8 @@ static void logRR16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
     } else if (inst->width==16) {
@@ -1704,8 +1703,8 @@ static void logR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outE32(op, cpu);
     } else if (inst->width==16) {
@@ -1720,74 +1719,76 @@ static void logE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logS(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logSR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logRS(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logSE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logES(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logName(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
 }
 
 static void logCsEip(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logMM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logME(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logMR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logRM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logEM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logXmmXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s ", inst->name);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     outXMM(op->reg, cpu);
-    fwrite(",", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(",");
     outXMM(op->rm, cpu);
 }
 
 static void logXmmI(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logXmmE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s ", inst->name);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
 
     outXMM(op->reg, cpu);        
-    fwrite(",", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(",");
     if (op->ea16) {
         outE16(op, cpu);
     } else {
@@ -1796,31 +1797,31 @@ static void logXmmE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logEXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s ", inst->name);
-    
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (op->ea16) {
         outE16(op, cpu);
     } else {
         outE32(op, cpu);
     }
-    fwrite(",", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(",");
     outXMM(op->reg, cpu);
 }
 
 static void logXmmR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logXmmM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logMXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 const LogInstruction instructionLog[] = {
@@ -6245,36 +6246,35 @@ const char* DecodedOp::name() {
 
 void DecodedOp::log(CPU* cpu) {
 #ifdef _DEBUG
-    if (cpu->logFile && this->inst >= 0 && this->inst < None) {
+    if (cpu->logFile.isOpen() && this->inst >= 0 && this->inst < None) {
         BOXEDWINE_CRITICAL_SECTION;
-        U32 pos = ftell((FILE*)cpu->logFile); // :TODO: should be 64-bit
-        fprintf((FILE*)cpu->logFile, "%04X %08X ", cpu->thread->id, cpu->eip.u32);
+        U64 pos = cpu->logFile.getPos();
+        cpu->logFile.write("%04X %08X ", cpu->thread->id, cpu->eip.u32);
         instructionLog[this->inst].pfnFormat(&instructionLog[this->inst], this, cpu);
         if (instructionLog[this->inst].imm) {
             if (instructionLog[this->inst].pfnFormat!=logName)
-                fwrite(",", 1, 1, (FILE*)cpu->logFile);
+                cpu->logFile.write(",");
             switch (instructionLog[this->inst].width) {
             case -16:
-                fprintf((FILE*)cpu->logFile, "%X", (S32)((S16)((U16)this->imm)));
+                cpu->logFile.write("%X", (S32)((S16)((U16)this->imm)));
                 break;
             case -32:
-                fprintf((FILE*)cpu->logFile, "%X", this->imm);
+                cpu->logFile.write("%X", this->imm);
                 break;
             case -8:
-                fprintf((FILE*)cpu->logFile, "%X", (S32)((S8)((U8)this->imm)));
+                cpu->logFile.write("%X", (S32)((S8)((U8)this->imm)));
                 break;
             default:
-                fprintf((FILE*)cpu->logFile, "%X", this->imm);
+                cpu->logFile.write("%X", this->imm);
                 break;
             }        
         }
-        U32 endPos = ftell((FILE*)cpu->logFile);
+        U64 endPos = cpu->logFile.getPos();
         if (endPos-pos<55) {
-            fwrite("                                                       ", 55-(endPos-pos), 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("                                                       ", 55-(endPos-pos));
         }
-        fprintf((FILE*)cpu->logFile, " EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
-        fwrite("\n", 1, 1, (FILE*)cpu->logFile);
-        fflush((FILE*)cpu->logFile);
+        cpu->logFile.write(" EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X\n", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
+        cpu->logFile.flush();
     }
 #endif
 }

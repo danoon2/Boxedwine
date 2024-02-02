@@ -581,6 +581,9 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\bfile.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1874,6 +1877,9 @@
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\bfile.h">
       <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>

@@ -26,8 +26,8 @@
 #endif
 
 void internal_kpanic(BString msg) {
-    if (KSystem::logFile.is_open()) {
-        KSystem::logFile << msg.c_str();
+    if (KSystem::logFile.isOpen()) {
+        KSystem::logFile.write(msg);
     }
     fwrite(msg.c_str(), 1, msg.length(), stderr);
 
@@ -45,8 +45,8 @@ void internal_kpanic(BString msg) {
 }
 
 void internal_log(BString msg, FILE* f) {
-    if (KSystem::logFile.is_open()) {
-        KSystem::logFile << msg.c_str();
+    if (KSystem::logFile.isOpen()) {
+        KSystem::logFile.write(msg);
     }
     fwrite(msg.c_str(), 1, msg.length(), f);
 

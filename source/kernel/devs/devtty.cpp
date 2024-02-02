@@ -114,7 +114,7 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (s.contains("WS_getaddrinfo Failed to resolve your host name IP")) {
         return len;
     }
-    if (KSystem::logFile.is_open()) {
+    if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write((char*)buffer, len);
     }
     if (KSystem::watchTTY) {

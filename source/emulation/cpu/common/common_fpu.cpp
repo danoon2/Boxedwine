@@ -516,7 +516,7 @@ void common_FIADD_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FADD_EA();
 #ifdef LOG_FPU
-    flog("FIADD %f + %f (%X) = %f", d, cpu->fpu.regs[8].d, readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIADD %f + %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -528,7 +528,7 @@ void common_FIMUL_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FMUL_EA();
 #ifdef LOG_FPU
-    flog("FIMUL %f * %f (%X) = %f", d, cpu->fpu.regs[8].d, readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIMUL %f * %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -537,7 +537,7 @@ void common_FICOM_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FCOM_EA();
 #ifdef LOG_FPU
-    flog("FICOM %f  %f (%X)", cpu->fpu.regs[8].d, readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FICOM %f  %f (%X)", cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -546,7 +546,7 @@ void common_FICOM_DWORD_INTEGER_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FCOM_EA();
 #ifdef LOG_FPU
-    flog("FICOMP %f  %f (%X)", cpu->fpu.regs[8].d, readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FICOMP %f  %f (%X)", cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
 #endif
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
@@ -561,7 +561,7 @@ void common_FISUB_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FSUB_EA();
 #ifdef LOG_FPU
-    flog("FISUB %f - %f (%X) = %f", d, cpu->fpu.regs[8].d, readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FISUB %f - %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -573,7 +573,7 @@ void common_FISUBR_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FSUBR_EA();
 #ifdef LOG_FPU
-    flog("FISUBR %f (%X) - %f = %f", cpu->fpu.regs[8].d, readd(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FISUBR %f (%X) - %f = %f", cpu->fpu.regs[8].d, cpu->memory->readd(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -585,7 +585,7 @@ void common_FIDIV_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FDIV_EA();
 #ifdef LOG_FPU
-    flog("FIDIV %f / %f (%X) = %f", d, cpu->fpu.regs[8].d, readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIDIV %f / %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -597,7 +597,7 @@ void common_FIDIVR_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
     cpu->fpu.FDIVR_EA();
 #ifdef LOG_FPU
-    flog("FIDIVR %f (%X) / %f = %f", cpu->fpu.regs[8].d, readd(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIDIVR %f (%X) / %f = %f", cpu->fpu.regs[8].d, cpu->memory->readd(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -724,7 +724,7 @@ void common_FISTTP32(CPU* cpu, U32 address) {
     cpu->fpu.FSTT_I32(cpu, address);
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
-    flog("FISTTP32 %d @%.08X", readd(address), address);
+    flog("FISTTP32 %d @%.08X", cpu->memory->readd(address), address);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -732,7 +732,7 @@ void common_FISTTP32(CPU* cpu, U32 address) {
 void common_FIST_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FST_I32(cpu, address);
 #ifdef LOG_FPU
-    flog("FIST I32 %d @%.08X", readd(address), address);
+    flog("FIST I32 %d @%.08X", cpu->memory->readd(address), address);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -741,7 +741,7 @@ void common_FIST_DWORD_INTEGER_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FST_I32(cpu, address);
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
-    flog("FISTP I32 %d @%.08X", readd(address), address);
+    flog("FISTP I32 %d @%.08X", cpu->memory->readd(address), address);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1086,7 +1086,7 @@ void common_FISTTP64(CPU* cpu, U32 address) {
     cpu->fpu.FSTT_I64(cpu, address);
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
-    flog("FISTTP64 %f -> %" PRIx64 " @%.08X", d, readq(address), address);
+    flog("FISTTP64 %f -> %" PRIx64 " @%.08X", d, cpu->memory->readq(address), address);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1168,7 +1168,7 @@ void common_FIADD_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FADD_EA();
 #ifdef LOG_FPU
-    flog("FIADD %f + %f (%X) = %f", d, cpu->fpu.regs[8].d, readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIADD %f + %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1180,7 +1180,7 @@ void common_FIMUL_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FMUL_EA();
 #ifdef LOG_FPU
-    flog("FIMUL %f * %f (%X) = %f", d, cpu->fpu.regs[8].d, readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIMUL %f * %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1189,7 +1189,7 @@ void common_FICOM_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FCOM_EA();
 #ifdef LOG_FPU
-    flog("FICOM %f %f (%X)", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[8].d, readw(address));
+    flog("FICOM %f %f (%X)", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[8].d, cpu->memory->readw(address));
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1198,7 +1198,7 @@ void common_FICOM_WORD_INTEGER_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FCOM_EA();
 #ifdef LOG_FPU
-    flog("FICOM %f %f (%X)", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[8].d, readw(address));
+    flog("FICOM %f %f (%X)", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[8].d, cpu->memory->readw(address));
 #endif
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
@@ -1213,7 +1213,7 @@ void common_FISUB_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FSUB_EA();
 #ifdef LOG_FPU
-    flog("FISUB %f - %f (%X) = %f", d, cpu->fpu.regs[8].d, readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FISUB %f - %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1225,7 +1225,7 @@ void common_FISUBR_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FSUBR_EA();
 #ifdef LOG_FPU
-    flog("FISUBR %f (%X) - f = %f", cpu->fpu.regs[8].d, readw(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FISUBR %f (%X) - f = %f", cpu->fpu.regs[8].d, cpu->memory->readw(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1237,7 +1237,7 @@ void common_FIDIV_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FDIV_EA();
 #ifdef LOG_FPU
-    flog("FIDIV %f / %f (%X) = %f", d, cpu->fpu.regs[8].d, readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIDIV %f / %f (%X) = %f", d, cpu->fpu.regs[8].d, cpu->memory->readw(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1249,7 +1249,7 @@ void common_FIDIVR_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
     cpu->fpu.FDIVR_EA();
 #ifdef LOG_FPU
-    flog("FIDIVR %f (%X) / f = %f", cpu->fpu.regs[8].d, readw(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
+    flog("FIDIVR %f (%X) / f = %f", cpu->fpu.regs[8].d, cpu->memory->readw(address), d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1280,7 +1280,7 @@ void common_FISTTP16(CPU* cpu, U32 address) {
     cpu->fpu.FSTT_I16(cpu, address);
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
-    flog("FISTTP16 %d @%.08X", readw(address), address);
+    flog("FISTTP16 %d @%.08X", cpu->memory->readw(address), address);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1288,7 +1288,7 @@ void common_FISTTP16(CPU* cpu, U32 address) {
 void common_FIST_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FST_I16(cpu, address);
 #ifdef LOG_FPU
-    flog("FIST I16 %d @%.08X", readw(address), address);
+    flog("FIST I16 %d @%.08X", cpu->memory->readw(address), address);
     cpu->fpu.LOG_STACK();
 #endif
 }
@@ -1297,7 +1297,7 @@ void common_FIST_WORD_INTEGER_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FST_I16(cpu, address);
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
-    flog("FISTP I16 %d @%.08X", readw(address), address);
+    flog("FISTP I16 %d @%.08X", cpu->memory->readw(address), address);
     cpu->fpu.LOG_STACK();
 #endif
 }

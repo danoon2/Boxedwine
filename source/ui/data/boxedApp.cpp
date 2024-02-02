@@ -186,16 +186,13 @@ void BoxedApp::launch() {
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 
-BoxedAppIcon::BoxedAppIcon(const unsigned char* data, int width, int height) : width(width), height(height), data(data) {
+BoxedAppIcon::BoxedAppIcon(std::shared_ptr<U8[]> data, int width, int height) : width(width), height(height), data(data) {
     this->texture = std::make_shared<BoxedTexture>([this]() {
-        return MakeRGBATexture(this->data, this->width, this->height);
+        return MakeRGBATexture(this->data.get(), this->width, this->height);
         });
 }
 
 BoxedAppIcon::~BoxedAppIcon() {
-    if (data) {
-        delete[] data;
-    }
 }
 
 const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
@@ -205,7 +202,7 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (!this->iconsBySize.count(iconSize)) {
         int width = 0;
         int height = 0;
-        const unsigned char* data = nullptr;
+        std::shared_ptr<U8[]> data;
         BString nativeExePath = this->container->getNativePathForApp(*this);
 
         if (Fs::doesNativePathExist(nativeExePath)) {

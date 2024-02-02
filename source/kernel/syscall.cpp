@@ -23,7 +23,6 @@
 #include "ksocket.h"
 #include "kepoll.h"
 
-#include <stdarg.h>
 #include <random>
 #include <thread>
 

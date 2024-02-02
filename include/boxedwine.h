@@ -60,6 +60,7 @@
 
 #include "log.h"
 
+#include "../source/util/bfile.h"
 #include "../source/util/klist.h"
 #include "ktimer.h"
 #include "../source/util/synchronization.h"

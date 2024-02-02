@@ -262,8 +262,8 @@ bool StartUpArgs::apply() {
     KSystem::ttyPrepend = this->ttyPrepend;
     KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
-    if (!KSystem::logFile.is_open() && this->logPath.length()) {
-        KSystem::logFile.open(this->logPath.c_str(), std::ios::out);
+    if (!KSystem::logFile.isOpen() && this->logPath.length()) {
+        KSystem::logFile.createNew(this->logPath);
     }
 
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
@@ -553,7 +553,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-log") && i + 1 < argc) {
             this->logPath = BString::copy(argv[i + 1]);
-            KSystem::logFile.open(logPath.c_str(), std::ios::out);
+            KSystem::logFile.createNew(logPath);
             i++;
         }
     }

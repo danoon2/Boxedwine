@@ -5,7 +5,7 @@ class BoxedContainer;
 
 class BoxedAppIcon {
 public:
-    BoxedAppIcon(const unsigned char* data, int width, int height);
+    BoxedAppIcon(std::shared_ptr<U8[]> data, int width, int height);
     ~BoxedAppIcon();
 
     std::shared_ptr<BoxedTexture> texture;
@@ -14,7 +14,7 @@ public:
 private:
     int width;
     int height;
-    const unsigned char* data;
+    std::shared_ptr<U8[]> data;
 };
 
 class BoxedApp {

@@ -96,7 +96,7 @@ public:
     static U32 pollRate;
     static bool showWindowImmediately;
     static U32 skipFrameFPS;
-    static std::fstream logFile;
+    static BWriteFile logFile;
     static std::function<void(BString line)> watchTTY;
     static bool ttyPrepend;
     static BString exePath;

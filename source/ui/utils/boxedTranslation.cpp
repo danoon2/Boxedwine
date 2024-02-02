@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 #include "boxedTranslation.h"
-#include <stdarg.h>
+
 BString translateString(BString s) {
     return s;
 }

@@ -661,6 +661,7 @@
     <ClInclude Include="..\..\..\..\source\ui\utils\readIcons.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h" />
+    <ClInclude Include="..\..\..\..\source\util\bfile.h" />
     <ClInclude Include="..\..\..\..\source\util\boxedptr.h" />
     <ClInclude Include="..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\source\util\concurrentqueue.h" />
@@ -1086,6 +1087,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\bfile.cpp" />
     <ClCompile Include="..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\source\util\crc.cpp" />
     <ClCompile Include="..\..\..\..\source\util\fileutils.cpp" />

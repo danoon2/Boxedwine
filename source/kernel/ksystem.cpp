@@ -70,7 +70,7 @@ bool KSystem::useSingleMemOffset = true;
 U32 KSystem::cpuAffinityCountForApp = 0;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
-std::fstream KSystem::logFile;
+BWriteFile KSystem::logFile;
 std::function<void(BString line)> KSystem::watchTTY;
 bool KSystem::ttyPrepend;
 BString KSystem::exePath;
@@ -123,7 +123,7 @@ void KSystem::destroy() {
 	Fs::shutDown();
     DecodedOp::clearCache();
     NormalCPU::clearCache();
-    if (KSystem::logFile.is_open()) {
+    if (KSystem::logFile.isOpen()) {
         KSystem::logFile.close();
     }
 }

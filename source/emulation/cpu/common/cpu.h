@@ -269,7 +269,7 @@ public:
 
     KThread* thread;
     KMemory* memory;
-    void* logFile;
+    BWriteFile logFile;
 
     DecodedBlock* nextBlock;
     DecodedBlock* delayedFreeBlock;

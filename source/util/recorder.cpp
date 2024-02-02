@@ -7,13 +7,13 @@ Recorder* Recorder::instance;
 void Recorder::start(BString directory) {
     Recorder::instance = new Recorder();
     instance->directory = directory;
-    instance->file.open(BString(directory+"/"+RECORDER_SCRIPT).c_str(), std::ios::out|std::ios::binary);
+    instance->file.createNew(BString(directory+"/"+RECORDER_SCRIPT));
     instance->screenShotCount = 0;
     instance->out("VERSION=1\r\n");
 }
 
 void Recorder::out(const char* s) {
-    file << s;
+    file.write(s);
 }
 
 void Recorder::initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args) {

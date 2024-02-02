@@ -4974,7 +4974,7 @@ static U8 fetchByte(void* p, U32* eip) {
 }
 
 static void arm64log(CPU* cpu) {
-    if (!cpu->logFile)
+    if (!cpu->logFile.isOpen())
         return;
     thread_local static DecodedBlock* block = new DecodedBlock();
     decodeBlock(fetchByte, cpu->memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
@@ -5013,7 +5013,7 @@ void Armv8btAsm::translateInstruction() {
 #endif
     this->ip += this->currentOp->len;
 #ifdef _DEBUG
-    if (this->cpu->logFile) {
+    if (this->cpu->logFile.isOpen()) {
         this->logOp(this->startOfOpIp);
     }
     // just makes debugging the asm output easier
