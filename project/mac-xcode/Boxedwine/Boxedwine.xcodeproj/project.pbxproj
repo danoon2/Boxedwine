@@ -27,6 +27,12 @@
 		1A1551FA2632673F006E0C8A /* SDL2.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; };
 		1A1551FB2632673F006E0C8A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1A1551FF26326C8A006E0C8A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		1A1ADF902B6C989F00D9D5DE /* bfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */; };
+		1A1ADF912B6C989F00D9D5DE /* bfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */; };
+		1A1ADF922B6C989F00D9D5DE /* bfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */; };
+		1A1ADF932B6C989F00D9D5DE /* bfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */; };
+		1A1ADF942B6C989F00D9D5DE /* bfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */; };
+		1A1ADF952B6C989F00D9D5DE /* bfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */; };
 		1A2236372820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
 		1A2236382820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
 		1A2236392820A85200E74D88 /* uptime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2236362820A85200E74D88 /* uptime.cpp */; };
@@ -1406,6 +1412,8 @@
 		1A1551B32632626E006E0C8A /* pugixml.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = pugixml.hpp; path = ../../../../../lib/pugixml/src/pugixml.hpp; sourceTree = "<group>"; };
 		1A1551B42632626E006E0C8A /* pugixml.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pugixml.cpp; path = ../../../../../lib/pugixml/src/pugixml.cpp; sourceTree = "<group>"; };
 		1A1551E82632656D006E0C8A /* SDL2.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SDL2.framework; path = ../../../lib/mac/SDL2.framework; sourceTree = "<group>"; };
+		1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bfile.cpp; sourceTree = "<group>"; };
+		1A1ADF8F2B6C989F00D9D5DE /* bfile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bfile.h; sourceTree = "<group>"; };
 		1A2236352820A84100E74D88 /* uptime.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = uptime.h; sourceTree = "<group>"; };
 		1A2236362820A85200E74D88 /* uptime.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = uptime.cpp; sourceTree = "<group>"; };
 		1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = OpenSSL.xcframework; path = Carthage/Build/OpenSSL.xcframework; sourceTree = "<group>"; };
@@ -2608,6 +2616,8 @@
 		71FBFD4D2433BBBE003F17F1 /* util */ = {
 			isa = PBXGroup;
 			children = (
+				1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */,
+				1A1ADF8F2B6C989F00D9D5DE /* bfile.h */,
 				1AA711AD2B492272008704E2 /* bstring.cpp */,
 				1AA711AE2B492272008704E2 /* bstring.h */,
 				1AA711AF2B492272008704E2 /* concurrentqueue.h */,
@@ -3316,6 +3326,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A1ADF922B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				1A80EE48276EBCC70032A70A /* x32CPU.cpp in Sources */,
 				1A80EE49276EBCC70032A70A /* ksocketobject.cpp in Sources */,
 				1A80EE54276EBCC70032A70A /* glfunctions_ext1.cpp in Sources */,
@@ -3541,6 +3552,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A1ADF932B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				1A80F093276EBF170032A70A /* x32CPU.cpp in Sources */,
 				1A80F094276EBF170032A70A /* ksocketobject.cpp in Sources */,
 				1AC5F2A82772D957001D0FCA /* armv8btOps_string.cpp in Sources */,
@@ -3936,6 +3948,7 @@
 				1AE7E5CC2B5A1C6900D29E4A /* btCodeChunk.cpp in Sources */,
 				71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */,
 				71222B9D2435169100CDBABD /* ksignal.cpp in Sources */,
+				1A1ADF942B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				71222B642435169100CDBABD /* srcgen.cpp in Sources */,
 				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
 				71222B3C2435163100CDBABD /* testSSE.cpp in Sources */,
@@ -4059,6 +4072,7 @@
 				1AC5F2EE2772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				1A55D63A2A0841E2002B7021 /* inftrees.c in Sources */,
 				1AE7E5D42B5A1C7600D29E4A /* btCpu.cpp in Sources */,
+				1A1ADF912B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				71222C2224351CBA00CDBABD /* cpu.cpp in Sources */,
 				71222C2324351CBA00CDBABD /* imgui_impl_opengl3.cpp in Sources */,
 				71222C2424351CBA00CDBABD /* kthread.cpp in Sources */,
@@ -4323,6 +4337,7 @@
 				1AE7E5CD2B5A1C6A00D29E4A /* btCodeChunk.cpp in Sources */,
 				7135DC92264EBCD0005D6AA6 /* ksignal.cpp in Sources */,
 				7135DC93264EBCD0005D6AA6 /* srcgen.cpp in Sources */,
+				1A1ADF952B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				7135DC94264EBCD0005D6AA6 /* kpoll.cpp in Sources */,
 				7135DC95264EBCD0005D6AA6 /* testSSE.cpp in Sources */,
 				1AC5F2E02772D957001D0FCA /* arm8btFlags.cpp in Sources */,
@@ -4446,6 +4461,7 @@
 				71FBFEA62433BBBE003F17F1 /* fsdiropennode.cpp in Sources */,
 				71FBFCB22433B815003F17F1 /* AppDelegate.m in Sources */,
 				71FBFEE72433BBBE003F17F1 /* glMarshalSize.cpp in Sources */,
+				1A1ADF902B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				715F34862440D7D20038F5A4 /* optionsView.cpp in Sources */,
 				710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71FBFECC2433BBBE003F17F1 /* knativesocket.cpp in Sources */,
