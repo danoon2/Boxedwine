@@ -60,7 +60,7 @@ U32 BReadFile::read(U8* buffer, U64 len) {
 }
 
 bool BReadFile::readLine(BString& line) {
-	U8 c = 0;
+	char c = 0;
 	bool result = false;
 
 	while (read(c)) {
@@ -74,6 +74,10 @@ bool BReadFile::readLine(BString& line) {
 		result = true;
 	}
 	return result;
+}
+
+bool BReadFile::read(char& value) {
+	return std::fread(&value, 1, 1, file) == 1;
 }
 
 bool BReadFile::read(U8& value) {

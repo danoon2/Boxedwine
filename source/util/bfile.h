@@ -18,6 +18,7 @@ public:
 	U32 read(U8* buffer, U64 len);
 	bool readLine(BString& line);
 
+	bool read(char& value);
 	bool read(U8& value);
 	bool read(S8& value);
 	bool read(U16& value);
