@@ -289,6 +289,9 @@ int BString::compareTo(const char* s, bool ignoreCase, int offset, int len) cons
         }
         return -1;
     }
+    if (offset < 0) {
+        return -1;
+    }
     if (offset > data->len) {
         offset = data->len;
     }
@@ -329,6 +332,9 @@ bool BString::endsWith(const BString& s, bool ignoreCase) const {
 
 bool BString::endsWith(const char* s, bool ignoreCase) const {
     int len = (int)strlen(s);
+    if (length() < len) {
+        return false;
+    }
     return compareTo(s, ignoreCase, length() - len) == 0;
 }
 
