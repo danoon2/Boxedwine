@@ -11,6 +11,9 @@ void Player::readCommand() {
     BString line;
     if (!file.readLine(line)) {
         klog("script finished: success");
+#ifdef BOXEDWINE_MULTI_THREADED
+        KSystem::destroy();
+#endif
         exit(0);
     }    
     std::vector<BString> results;
@@ -22,11 +25,17 @@ void Player::readCommand() {
         this->nextCommand = results[0];
     } else {
         klog("malformed script.  Line = %s", line.c_str());
+#ifdef BOXEDWINE_MULTI_THREADED
+        KSystem::destroy();
+#endif
         exit(99);
     }    
     this->lastCommandTime = KSystem::getMicroCounter();
     if (this->nextCommand.length()==0) {
         klog("malformed script.  Line = %s", line.c_str());
+#ifdef BOXEDWINE_MULTI_THREADED
+        KSystem::destroy();
+#endif
         exit(99);
     }
 }
