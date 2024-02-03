@@ -30,7 +30,7 @@ void internal_kpanic(BString msg) {
         KSystem::logFile.write(msg);
     }
     fwrite(msg.c_str(), 1, msg.length(), stderr);
-
+    fflush(stderr);
 #ifdef BOXEDWINE_MSVC
     OutputDebugStringA(msg.c_str());
 #endif
@@ -49,7 +49,7 @@ void internal_log(BString msg, FILE* f) {
         KSystem::logFile.write(msg);
     }
     fwrite(msg.c_str(), 1, msg.length(), f);
-
+    fflush(f);
 #ifdef BOXEDWINE_MSVC
     OutputDebugStringA(msg.c_str());
 #endif

@@ -822,7 +822,7 @@ void KProcess::signalProcess(U32 signal) {
     });
 #else
     for (auto& t : this->threads) {
-        KThread* thread = t.second;
+        KThread* thread = t.value;
         thread->runSignals();
     }
 #endif
