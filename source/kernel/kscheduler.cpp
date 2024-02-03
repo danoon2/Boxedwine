@@ -137,7 +137,7 @@ void runThreadSlice(KThread* thread) {
             cpu->run();
         } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
     } catch (...) {
-        cpu->nextBlock = NULL;
+        cpu->nextBlock = nullptr;
     }
 
     cpu->instructionCount+=cpu->blockInstructionCount;

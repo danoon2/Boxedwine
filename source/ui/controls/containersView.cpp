@@ -105,7 +105,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                     GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
                         gotoView(VIEW_CONTAINERS, containerPath);
                     };
-                    }, false, NULL, Msg::CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
+                    }, false, nullptr, Msg::CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
                 dlg->setLabelId(Msg::CONTAINER_VIEW_SELECT_WINE_APP_LABEL);
                 return false;
                 });

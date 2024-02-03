@@ -52,7 +52,7 @@ void KThread::cleanup() {
     if (this->waitingCond) {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(*this->waitingCond);
         this->waitThreadNode.remove();
-        this->waitingCond = NULL;
+        this->waitingCond = nullptr;
     }
 #endif
     this->clearFutexes();    
@@ -640,6 +640,7 @@ void readFromContext(CPU* cpu, U32 context) {
 }
 
 U32 KThread::sigreturn() {
+    kpanic("KThread::sigreturn This code seems wrong, we never did a memcpy to memory of CPU, should this be readContext.  Debug this after finding a program that triggers it");
     memory->memcpy(&this->cpu, this->cpu->reg[4].u32, sizeof(CPU));
     //klog("signal return (threadId=%d)", thread->id);
     return -K_CONTINUE;

@@ -74,10 +74,9 @@ class BoxedWineCondition;
 
 class BoxedWineConditionTimer : public KTimer { 
 public:
-    BoxedWineConditionTimer() : cond(0){};
-    bool run();
+    bool run() override;
 
-    BoxedWineCondition* cond;
+    BoxedWineCondition* cond = nullptr;
 };
 
 class BoxedWineCondition {

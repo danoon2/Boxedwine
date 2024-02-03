@@ -119,10 +119,10 @@ void BoxedWineCondition::signalThread(bool all) {
             kpanic("shouldn't signal a thread that is not waiting");
         }
 #endif
-        thread->waitingCond = NULL;
+        thread->waitingCond = nullptr;
         if (thread->condTimer.active) {
             removeTimer(&thread->condTimer);
-            thread->condTimer.cond = NULL;
+            thread->condTimer.cond = nullptr;
         }
         scheduleThread(thread);
         if (!all) {

@@ -26,7 +26,7 @@ public:
     std::shared_ptr<BoxedTexture> iconTexture;
 
     void buildIconTexture();
-    void install(bool chooseShortCut=true, BoxedContainer* container=NULL);    
+    void install(bool chooseShortCut=true, BoxedContainer* container=nullptr);    
 
     bool operator<(const AppFile& rhs) const { return name < rhs.name; }
 

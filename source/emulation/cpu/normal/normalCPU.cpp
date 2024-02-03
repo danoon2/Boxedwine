@@ -248,7 +248,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
     return nullptr;
 #else
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
-        return NULL;
+        return nullptr;
 
     U32 startIp = (this->big?this->eip.u32:this->eip.u16) + this->seg[CS].address;
     DecodedBlock* block = this->thread->memory->getCodeBlock(startIp);

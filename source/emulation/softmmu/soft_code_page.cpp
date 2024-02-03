@@ -57,7 +57,7 @@ void CodePage::removeEntry(CodePageEntry* entry, U32 offset) {
         }
 
         entry->block->dealloc(true);
-        entry->block = NULL; // so that freeEntries.put won't dealloc it
+        entry->block = nullptr; // so that freeEntries.put won't dealloc it
     }
 #endif
     freeEntries.put(entry);
