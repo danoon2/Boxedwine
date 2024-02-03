@@ -345,7 +345,7 @@ S64 KUnixSocketObject::length() {
 
 class UnixSocketNode : public FsNode {
 public:
-    UnixSocketNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent) : FsNode(Type::Socket, id, rdev, path, B(""), B(""), false, parent) {}
+    UnixSocketNode(U32 id, U32 rdev, BString path, std::shared_ptr<FsNode> parent) : FsNode(Type::Socket, id, rdev, path, B(""), B(""), false, parent) {}
     U32 rename(BString path) override {return -K_EIO;}
     bool remove() override {if (!this->parent) return false; this->removeNodeFromParent(); return true;}
     U64 lastModified() override {return 0;}
@@ -367,13 +367,13 @@ U32 KUnixSocketObject::bind(KThread* thread, KFileDescriptor* fd, U32 address, U
         if (name.length() == 0) {
             return 0; // :TODO: why does XOrg need this
         }
-        BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(thread->process->currentDirectory, name, true);
+        std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(thread->process->currentDirectory, name, true);
         if (node) {
             return -K_EADDRINUSE;
         }        
         BString fullpath = Fs::getFullPath(thread->process->currentDirectory, name);
-        BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(fullpath), true);
-        BoxedPtr<UnixSocketNode> socketNode = new UnixSocketNode(0, 2, fullpath, parentNode);
+        std::shared_ptr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(fullpath), true);
+        std::shared_ptr<UnixSocketNode> socketNode = std::make_shared<UnixSocketNode>(0, 2, fullpath, parentNode);
         parentNode->addChild(socketNode);
         std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
         socketNode->kobject = fd->kobject;
@@ -409,7 +409,7 @@ U32 KUnixSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 address
             return -K_ENOENT;
         }
         if (this->domain==K_AF_UNIX) {
-            BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(thread->process->currentDirectory, BString::copy(this->destAddress.data), true);
+            std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(thread->process->currentDirectory, BString::copy(this->destAddress.data), true);
             std::shared_ptr<KObject> kobject;
             if (node) {
                 kobject = node->kobject.lock();

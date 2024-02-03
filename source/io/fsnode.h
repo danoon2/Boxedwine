@@ -9,7 +9,7 @@ class KProcess;
 class KThread;
 class KObject;
 
-class FsNode : public BoxedPtrBase {
+class FsNode : public std::enable_shared_from_this<FsNode> {
 public:
     enum class Type
     {
@@ -19,7 +19,7 @@ public:
         Socket,
         Memory
     };
-    FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, BoxedPtr<FsNode> parent);
+    FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, std::shared_ptr<FsNode> parent);
 
     virtual U32 rename(BString path)=0; //return 0 if success, else errno
     virtual bool remove()=0;
@@ -39,7 +39,7 @@ public:
 
     U32 getHardLinkCount() {return this->hardLinkCount;}    
     bool isDirectory() {return this->isDir;}
-    BoxedPtr<FsNode> getParent() {return this->parent;}
+    std::shared_ptr<FsNode> getParent() {return this->parent;}
 
     void removeOpenNode(FsOpenNode* node);
     void removeNodeFromParent();
@@ -54,13 +54,13 @@ public:
     const Type type;
     std::weak_ptr<KObject> kobject;
 
-    BoxedPtr<FsNode> getChildByName(BString name);
-    BoxedPtr<FsNode> getChildByNameIgnoreCase(BString name);
+    std::shared_ptr<FsNode> getChildByName(BString name);
+    std::shared_ptr<FsNode> getChildByNameIgnoreCase(BString name);
 
     U32 getChildCount();
-    void addChild(BoxedPtr<FsNode> node);
+    void addChild(std::shared_ptr<FsNode> node);
     void removeChildByName(BString name);
-    void getAllChildren(std::vector<BoxedPtr<FsNode> > & results);
+    void getAllChildren(std::vector<std::shared_ptr<FsNode> > & results);
 
     U32 addLock(KFileLock* lock);
     bool unlock(KFileLock* lock);
@@ -71,7 +71,7 @@ public:
 
     void addOpenNode(KListNode<FsOpenNode*>* node);
 protected:
-    BoxedPtr<FsNode> parent;
+    std::shared_ptr<FsNode> parent;
 
     KList<FsOpenNode*> openNodes;
     BOXEDWINE_MUTEX openNodesMutex;
@@ -80,7 +80,7 @@ private:
     const bool isDir;
     bool hasLoadedChildrenFromFileSystem;    
 
-    std::unordered_map<BString, BoxedPtr<FsNode> > childrenByName;
+    BHashTable<BString, std::shared_ptr<FsNode> > childrenByName;
     BOXEDWINE_MUTEX childrenByNameMutex;
 
     std::vector<KFileLock> locks;       

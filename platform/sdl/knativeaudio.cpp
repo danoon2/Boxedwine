@@ -33,7 +33,7 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 		memset(stream, data->got.silence, len);
 		return;
 	}
-	KMemory* memory = process->memory;
+	KMemory* memory = process->memory;	
 	U32 blockAlign = 0;
 	if (data->sameFormat) {
 		blockAlign = data->fmt.ex.nBlockAlign;

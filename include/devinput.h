@@ -19,9 +19,9 @@
 #ifndef __DEVINPUT_H__
 #define __DEVINPUT_H__
 
-FsOpenNode* openDevInputTouch(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
-FsOpenNode* openDevInputMouse(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
-FsOpenNode* openDevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevInputTouch(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevInputMouse(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevInputKeyboard(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 void onMouseMove(U32 x, U32 y, bool relative);
 void onMouseButtonDown(U32 button);

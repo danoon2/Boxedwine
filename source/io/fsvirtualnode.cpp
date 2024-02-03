@@ -44,7 +44,7 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         kdebug("What about appending a virtual file");
     }
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
     return this->openFunc(node, flags, this->openData);
 }
 

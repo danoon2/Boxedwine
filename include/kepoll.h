@@ -56,7 +56,7 @@ private:
         U64 data;
         U32 events;
     };
-    std::unordered_map<U32, Data*> data;
+    BHashTable<U32, Data*> data;
 };
 
 #endif

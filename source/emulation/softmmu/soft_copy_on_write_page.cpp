@@ -75,19 +75,19 @@ U32 CopyOnWritePage::readd(U32 address) {
     return 0;
 }
 
-U8* CopyOnWritePage::getReadPtr(U32 address, bool makeReady) {
-    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::getReadPtr(address, makeReady);
+U8* CopyOnWritePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    if (memory->canRead(address >> K_PAGE_SHIFT)) {
+        return RWPage::getReadPtr(memory, address, makeReady);
     }
     return nullptr;
 }
 
-U8* CopyOnWritePage::getWritePtr(U32 address, U32 len, bool makeReady) {
+U8* CopyOnWritePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     U32 page = address >> K_PAGE_SHIFT;
-    if (KThread::currentThread()->memory->canWrite(page) && makeReady) {
-        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+    if (memory->canWrite(page) && makeReady) {
+        KMemoryData* data = getMemData(memory);
         copyOnWrite(address);
-        return data->getPage(page)->getWritePtr(address, len, true);
+        return data->getPage(page)->getWritePtr(memory, address, len, true);
     }
     return nullptr;
 }

@@ -5,7 +5,7 @@
 
 class FsDynamicLinkNode : public FsNode {
 public:
-    FsDynamicLinkNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent, bool isDirectory, std::function<BString(void)> getLink);
+    FsDynamicLinkNode(U32 id, U32 rdev, BString path, std::shared_ptr<FsNode> parent, bool isDirectory, std::function<BString(void)> getLink);
 
     // from FsNode
     U32 rename(BString path) override; //return 0 if success, else errno

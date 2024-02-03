@@ -7,7 +7,7 @@ class FsZipNode;
 
 class FsZipOpenNode : public FsOpenNode {
 public:
-    FsZipOpenNode(BoxedPtr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset);
+    FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset);
 
     // From FsOpenNode
     S64 length() override;

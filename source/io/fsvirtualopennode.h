@@ -6,7 +6,7 @@
 
 class FsVirtualOpenNode: public FsOpenNode {
 public:
-    FsVirtualOpenNode(BoxedPtr<FsNode> node, U32 flags) : FsOpenNode(node, flags) {};
+    FsVirtualOpenNode(std::shared_ptr<FsNode> node, U32 flags) : FsOpenNode(node, flags) {};
 
     // From FsOpenNode
     S64 length() override {return 0;}

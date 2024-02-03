@@ -4,13 +4,13 @@
 #include <string>
 
 bool readLinesFromFile(BString filepath, std::vector<BString>& lines) {
-    std::fstream file;
+    BReadFile file;
 
-    file.open(filepath.c_str(), std::ios::in);
-    if (file.is_open()) {
-        std::string line;
-        while (std::getline(file, line)) {
-            lines.push_back(BString::copy(line.c_str()));
+    file.open(filepath);
+    if (file.isOpen()) {
+        BString line;
+        while (file.readLine(line)) {
+            lines.push_back(line);
         }
         file.close();
         return true;
@@ -19,12 +19,13 @@ bool readLinesFromFile(BString filepath, std::vector<BString>& lines) {
 }
 
 bool writeLinesToFile(BString filepath, std::vector<BString>& lines) {
-    std::fstream file;
+    BWriteFile file;
 
-    file.open(filepath.c_str(), std::ios::out);
-    if (file.is_open()) {
+    file.createNew(filepath);
+    if (file.isOpen()) {
         for (auto& line : lines) {
-            file << line.c_str() << "\r\n";
+            file.write(line);
+            file.write("\r\n");
         }
         return true;
     }

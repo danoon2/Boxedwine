@@ -44,7 +44,7 @@ void initWineAudio();
 
 U32 StartUpArgs::uiType;
 
-FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openKernelCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, B(""));
 }
 
@@ -87,23 +87,23 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::makeLocalDirs(B("/proc"));
     Fs::makeLocalDirs(B("/mnt"));
 
-    BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
-    BoxedPtr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
-    BoxedPtr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
-    BoxedPtr<FsNode> procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
-    BoxedPtr<FsNode> procSelfNode = Fs::addFileNode(B("/proc/self"), B(""), B(""), true, procNode);
-    BoxedPtr<FsNode> sysNode = Fs::getNodeFromLocalPath(B(""), B("/sys"), true); 
-    BoxedPtr<FsNode> etcNode = Fs::getNodeFromLocalPath(B(""), B("/etc"), true);
+    std::shared_ptr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
+    std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
+    std::shared_ptr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
+    std::shared_ptr<FsNode> procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
+    std::shared_ptr<FsNode> procSelfNode = Fs::addFileNode(B("/proc/self"), B(""), B(""), true, procNode);
+    std::shared_ptr<FsNode> sysNode = Fs::getNodeFromLocalPath(B(""), B("/sys"), true); 
+    std::shared_ptr<FsNode> etcNode = Fs::getNodeFromLocalPath(B(""), B("/etc"), true);
 
     if (!sysNode) {
         sysNode = Fs::addFileNode(B("/sys"), B(""), B(""), true, rootNode);
     }
-    BoxedPtr<FsNode> devicesNode = Fs::getNodeFromLocalPath(B(""), B("/sys/devices"), true); 
+    std::shared_ptr<FsNode> devicesNode = Fs::getNodeFromLocalPath(B(""), B("/sys/devices"), true); 
     if (!devicesNode) {
         devicesNode = Fs::addFileNode(B("/sys/devices"), B(""), B(""), true, sysNode);
     }
-    BoxedPtr<FsNode> devicesSystemNode = Fs::addFileNode(B("/sys/devices/system"), B(""), B(""), true, devicesNode);
-    BoxedPtr<FsNode> cpuNode = Fs::addFileNode(B("/sys/devices/system/cpu"), B(""), B(""), true, devicesSystemNode);    
+    std::shared_ptr<FsNode> devicesSystemNode = Fs::addFileNode(B("/sys/devices/system"), B(""), B(""), true, devicesNode);
+    std::shared_ptr<FsNode> cpuNode = Fs::addFileNode(B("/sys/devices/system/cpu"), B(""), B(""), true, devicesSystemNode);    
 
     Fs::addVirtualFile(B("/dev/tty0"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
     Fs::addVirtualFile(B("/dev/tty"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
@@ -132,7 +132,7 @@ void StartUpArgs::buildVirtualFileSystem() {
 
     if (Platform::getCpuFreqMHz()) {        
         for (U32 i=0;i<Platform::getCpuCount();i++) {
-            BoxedPtr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu"+BString::valueOf(i), B(""), B(""), true, cpuNode);    
+            std::shared_ptr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu"+BString::valueOf(i), B(""), B(""), true, cpuNode);    
             Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
             Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
             Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
@@ -330,14 +330,14 @@ bool StartUpArgs::apply() {
         klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 
-    BoxedPtr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath(B(""), B("/wineVersion.txt"), false);
+    std::shared_ptr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath(B(""), B("/wineVersion.txt"), false);
     if (wineVersionNode) {
         FsOpenNode* openNode = wineVersionNode->open(K_O_RDONLY);
         if (openNode) {
             U8 tmp[64];
             if (openNode->readNative(tmp, 64) > 5) {
                 if (tmp[5] == '2' || tmp[5] == '1') {
-                    BoxedPtr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath(B(""), B("/usr/lib/i386-linux-gnu/libfreetype.so.6"), false);
+                    std::shared_ptr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath(B(""), B("/usr/lib/i386-linux-gnu/libfreetype.so.6"), false);
                     if (freeTypeNode) {
                         freeTypeNode->link = B("libfreetype.so.6.12.3");
                     }
@@ -377,9 +377,9 @@ bool StartUpArgs::apply() {
 
     for(auto&& info: this->mountInfo) {
         if (info.wine) {
-            BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
-            BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_"+info.localPath, info.nativePath, mntDir);
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+            std::shared_ptr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
+            std::shared_ptr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_"+info.localPath, info.nativePath, mntDir);
+            std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
             Fs::addFileNode("/home/username/.wine/dosdevices/"+info.localPath+":", "/mnt/drive_"+info.localPath, B(""), false, parent); 
         } else {
             BString ext = info.nativePath.substr(info.nativePath.length()-4).toLowerCase();
@@ -398,7 +398,7 @@ bool StartUpArgs::apply() {
                 klog("% not mounted because zlib was not compiled in", info.nativePath.c_str());
     #endif
             } else {
-                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(info.localPath), true);
+                std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(info.localPath), true);
                 Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
             }
         }
@@ -410,7 +410,7 @@ bool StartUpArgs::apply() {
         args.push_back(B("/desktop=shell"));
     }
     if (this->args.size()) {
-        BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
+        std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
 
         bool validLinuxCommand = false;
         if (node) {
@@ -430,14 +430,14 @@ bool StartUpArgs::apply() {
                 BString dir = args[0];
                 dir = Fs::trimTrailingSlash(dir);
                 bool isDir = Fs::isNativePathDirectory(dir);
-                BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
+                std::shared_ptr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
 
                 if (!isDir) {
                     dir = Fs::getNativeParentPath(dir);
                 }
                 
-                BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode(B("/mnt/drive_t"), dir, mntDir);
-                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+                std::shared_ptr<FsNode> drive_d = Fs::addRootDirectoryNode(B("/mnt/drive_t"), dir, mntDir);
+                std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
                 if (parent) {
                     Fs::addFileNode(B("/home/username/.wine/dosdevices/t:"), B("/mnt/drive_t"), B(""), false, parent);
                 }

@@ -199,7 +199,7 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (iconSize==0) {
         iconSize = UiSettings::ICON_SIZE;
     }
-    if (!this->iconsBySize.count(iconSize)) {
+    if (!this->iconsBySize.contains(iconSize)) {
         int width = 0;
         int height = 0;
         std::shared_ptr<U8[]> data;
@@ -215,15 +215,12 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
             Fs::deleteNativeFile(nativePath);
         }
         if (data) {
-            this->iconsBySize[iconSize] = new BoxedAppIcon(data, width, height);
+            this->iconsBySize.set(iconSize, new BoxedAppIcon(data, width, height));
         } else {
-            this->iconsBySize[iconSize] = nullptr;
+            this->iconsBySize.set(iconSize, nullptr);
         }
     }
-    if (this->iconsBySize.count(iconSize)) {
-        return this->iconsBySize[iconSize];
-    }
-    return nullptr;
+    return this->iconsBySize[iconSize];
 }
 
 void BoxedApp::remove() {

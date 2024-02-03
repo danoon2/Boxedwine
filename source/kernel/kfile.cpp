@@ -45,13 +45,13 @@ bool KFile::isAsync() {
 
 void KFile::unlockAll(U32 pid) {
     FsOpenNode* openNode = this->openFile;
-    BoxedPtr<FsNode> node = openNode->node;
+    std::shared_ptr<FsNode> node = openNode->node;
     node->unlockAll(pid);
 }
 
 KFileLock* KFile::getLock(KFileLock* lock) {
     FsOpenNode* openNode = this->openFile;
-    BoxedPtr<FsNode> node = openNode->node;
+    std::shared_ptr<FsNode> node = openNode->node;
     return node->getLock(lock, true);
 }
 
@@ -107,7 +107,7 @@ U32 KFile::readNative(U8* buffer, U32 len) {
 
 U32 KFile::stat(KProcess* process, U32 address, bool is64) {
     FsOpenNode* openNode = this->openFile;
-    BoxedPtr<FsNode> node = openNode->node;
+    std::shared_ptr<FsNode> node = openNode->node;
     U64 len = (U64)openNode->length();
 
     KSystem::writeStat(process, node->path, address, is64, 1, node->id, node->getMode(), node->rdev, len, FS_BLOCK_SIZE, (len+FS_BLOCK_SIZE-1)/FS_BLOCK_SIZE, node->lastModified(), node->getHardLinkCount());

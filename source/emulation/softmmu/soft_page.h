@@ -45,8 +45,11 @@ public:
     virtual void writew(U32 address, U16 value)=0;
     virtual U32 readd(U32 address)=0;
     virtual void writed(U32 address, U32 value)=0;
-    virtual U8* getReadPtr(U32 address, bool makeReady = false)=0; // might have permission, but may not ready
-    virtual U8* getWritePtr(U32 address, U32 len, bool makeReady = false)=0; // might have permission, but may not be ready
+
+    // these two take memory argument so that they won't call KThread::current thread, this makes them safe to call from the audio thread
+    virtual U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false)=0; // might have permission, but may not ready
+    virtual U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false)=0; // might have permission, but may not be ready
+
     virtual bool inRam()=0;
     virtual void close() = 0;    
     virtual Type getType() = 0;    

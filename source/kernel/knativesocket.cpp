@@ -1159,7 +1159,7 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
     return result;
 }
 
-FsOpenNode* openHosts(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openHosts(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     char name[256] = {};
     char buf[256] = {};
     name[0] = 0;
@@ -1168,7 +1168,7 @@ FsOpenNode* openHosts(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, BString::copy(buf));
 }
 
-FsOpenNode* openHostname(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openHostname(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     char buf[256];
     buf[0] = 0;
     gethostname(buf, 256);

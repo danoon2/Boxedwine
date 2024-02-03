@@ -17,7 +17,7 @@
 
 std::atomic_int Fs::nextNodeId=1;
 
-BoxedPtr<FsFileNode> Fs::rootNode;
+std::shared_ptr<FsFileNode> Fs::rootNode;
 BString Fs::nativePathSeperator;
 
 void Fs::shutDown() {
@@ -39,18 +39,18 @@ bool Fs::initFileSystem(BString rootPath) {
         klog("Created root directory: %s", rootPath.c_str());
     }
 
-    BoxedPtr<FsNode> parent(nullptr);
-    rootNode = new FsFileNode(Fs::nextNodeId++, 0, B("/"), B(""), path, true, true, parent);
+    std::shared_ptr<FsNode> parent(nullptr);
+    rootNode = std::make_shared<FsFileNode>(Fs::nextNodeId++, 0, B("/"), B(""), path, true, true, parent);
 
-    BoxedPtr<FsNode> dir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), false, nullptr);
+    std::shared_ptr<FsNode> dir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), false, nullptr);
     if (dir) {
-        std::vector<BoxedPtr<FsNode> > children;
+        std::vector<std::shared_ptr<FsNode> > children;
         dir->getAllChildren(children);
         for (U32 i=0;i<children.size();i++) {
             children[i]->remove();
         }
     }
-    BoxedPtr<FsNode> lock = Fs::getNodeFromLocalPath(B(""), B("/tmp/.X0-lock"), false, nullptr);
+    std::shared_ptr<FsNode> lock = Fs::getNodeFromLocalPath(B(""), B("/tmp/.X0-lock"), false, nullptr);
     if (lock) {
         lock->remove();
     }
@@ -79,20 +79,20 @@ BString Fs::nativeFromLocal(const BString& path) {
     return result;
 }
 
-BoxedPtr<FsNode> Fs::addVirtualFile(BString path, OpenVirtualNode func, U32 mode, U32 rdev, const BoxedPtr<FsNode>& parent, U32 data) {
-    BoxedPtr<FsNode> result = new FsVirtualNode(Fs::nextNodeId++, rdev, path, func, mode, parent, data);
+std::shared_ptr<FsNode> Fs::addVirtualFile(BString path, OpenVirtualNode func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data) {
+    std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, func, mode, parent, data);
     parent->addChild(result);
     return result;
 }
 
-BoxedPtr<FsNode> Fs::addDynamicLinkFile(BString path, U32 rdev, const BoxedPtr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink) {
-    BoxedPtr<FsNode> result = new FsDynamicLinkNode(Fs::nextNodeId++, rdev, path, parent, isDirectory, fnGetLink);
+std::shared_ptr<FsNode> Fs::addDynamicLinkFile(BString path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink) {
+    std::shared_ptr<FsNode> result = std::make_shared<FsDynamicLinkNode>(Fs::nextNodeId++, rdev, path, parent, isDirectory, fnGetLink);
     parent->addChild(result);
     return result;
 }
 
-BoxedPtr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink) {
-    BoxedPtr<FsNode> lastNode;
+std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink) {
+    std::shared_ptr<FsNode> lastNode;
     std::vector<BString> missingParts;
     return Fs::getNodeFromLocalPath(currentDirectory, path, lastNode, missingParts, followLink, isLink);
 }
@@ -131,18 +131,18 @@ bool cleanPath(std::vector<BString>& parts) {
     return true;
 }
 
-BoxedPtr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path, BoxedPtr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink) {
+std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path, std::shared_ptr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink) {
     BString fullpath = Fs::getFullPath(currentDirectory, path);
 
     if (fullpath.length()==0 || fullpath=="/")
         return Fs::rootNode;
     std::vector<BString> parts;
     Fs::splitPath(fullpath, parts);
-    BoxedPtr<FsNode> node = Fs::rootNode;
+    std::shared_ptr<FsNode> node = Fs::rootNode;
     if (!node) {
         return nullptr;
     }
-    std::vector<BoxedPtr<FsNode> > nodes;
+    std::vector<std::shared_ptr<FsNode> > nodes;
 
     nodes.push_back(node);
 
@@ -192,14 +192,14 @@ BoxedPtr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path
     return node;
 }
 
-BoxedPtr<FsNode> Fs::addFileNode(BString path, BString link, BString nativePath, bool isDirectory, const BoxedPtr<FsNode>& parent) {
-    BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, link, nativePath, isDirectory, false, parent);
+std::shared_ptr<FsFileNode> Fs::addFileNode(BString path, BString link, BString nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent) {
+    std::shared_ptr<FsFileNode> result = std::make_shared<FsFileNode>(Fs::nextNodeId++, 0, path, link, nativePath, isDirectory, false, parent);
     parent->addChild(result);
     return result;
 }
 
-BoxedPtr<FsNode> Fs::addRootDirectoryNode(BString path, BString nativePath, const BoxedPtr<FsNode>& parent) {
-    BoxedPtr<FsFileNode> result = new FsFileNode(Fs::nextNodeId++, 0, path, B(""), nativePath, true, false, parent);
+std::shared_ptr<FsNode> Fs::addRootDirectoryNode(BString path, BString nativePath, const std::shared_ptr<FsNode>& parent) {
+    std::shared_ptr<FsFileNode> result = std::make_shared<FsFileNode>(Fs::nextNodeId++, 0, path, B(""), nativePath, true, false, parent);
     parent->addChild(result);
     result->isRootPath = true;
     return result;
@@ -290,10 +290,10 @@ bool Fs::isNativePathDirectory(BString path) {
 }
 
 U32 Fs::makeLocalDirs(BString path) {
-    BoxedPtr<FsNode> lastNode;
+    std::shared_ptr<FsNode> lastNode;
     std::vector<BString> missingParts;
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(B(""), path, lastNode, missingParts, false);    
-    std::vector<BoxedPtr<FsNode> > nodes;
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), path, lastNode, missingParts, false);    
+    std::vector<std::shared_ptr<FsNode> > nodes;
     bool notFound = false;
 
     if (!node) {
@@ -306,7 +306,7 @@ U32 Fs::makeLocalDirs(BString path) {
     }
     std::reverse(nodes.begin(), nodes.end());
     for (U32 i=0;i<nodes.size();i++) {
-        BoxedPtr<FsNode> nodePart = nodes[i];
+        std::shared_ptr<FsNode> nodePart = nodes[i];
         if (!Fs::doesNativePathExist(nodePart->nativePath)) {
             U32 result = MKDIR(nodePart->nativePath.c_str());
             if (result) {
@@ -329,7 +329,7 @@ U32 Fs::makeLocalDirs(BString path) {
             if (result) {
                 return -translateErr(errno);
             }
-            BoxedPtr<FsNode> childNode = Fs::addFileNode(base, B(""), nativePath, true, node);
+            std::shared_ptr<FsNode> childNode = Fs::addFileNode(base, B(""), nativePath, true, node);
         }
     }
     return 0;
@@ -352,7 +352,7 @@ U32 Fs::readNativeFile(BString nativePath, U8* buffer, U32 bufferLen) {
     return 0;
 }
 
-BString Fs::getNativePathFromParentAndLocalFilename(const BoxedPtr<FsNode>& parent, const BString fileName) {
+BString Fs::getNativePathFromParentAndLocalFilename(const std::shared_ptr<FsNode>& parent, const BString fileName) {
     BString nativeFileName = fileName;
     Fs::localNameToRemote(nativeFileName);
     return parent->nativePath ^ nativeFileName;

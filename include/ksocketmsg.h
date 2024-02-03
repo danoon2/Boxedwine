@@ -10,7 +10,7 @@ public:
 };
 
 
-class KSocketMsg : public BoxedPtrBase {
+class KSocketMsg {
 public:
     std::vector<KSocketMsgObject> objects;
     std::vector<U8> data;

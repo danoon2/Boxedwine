@@ -20,19 +20,15 @@
 #define __KPROCESS_H__
 
 #define ADDRESS_PROCESS_MMAP_START		0xD0000
-#define ADDRESS_PROCESS_NATIVE          0xE0000
 #define ADDRESS_PROCESS_LOADER			0xF0000
-#define ADDRESS_PROCESS_STACK_START		0xF4000
-#define ADDRESS_PROCESS_FRAME_BUFFER	0xF8000
-#define ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS 0xF8000000
 
 class MappedFileCache;
 
-class MappedFile : public BoxedPtrBase {
+class MappedFile {
 public:
     MappedFile() = default;
 
-    BoxedPtr<MappedFileCache> systemCacheEntry;
+    std::shared_ptr<MappedFileCache> systemCacheEntry;
     std::shared_ptr<KFile> file;
     U32 address = 0;
     U64 len = 0;
@@ -78,9 +74,9 @@ private:
     std::weak_ptr<KProcess> process;
 };
 
-class AttachedSHM : public BoxedPtrBase {
+class AttachedSHM {
 public:
-    AttachedSHM(const BoxedPtr<SHM>& shm, U32 address, U32 pid) : shm(shm), address(address), pid(pid) {
+    AttachedSHM(const std::shared_ptr<SHM>& shm, U32 address, U32 pid) : shm(shm), address(address), pid(pid) {
         this->shm->atime = KSystem::getSystemTimeAsMicroSeconds();
         this->shm->lpid = pid;
         this->shm->incAttach();
@@ -90,7 +86,7 @@ public:
         this->shm->lpid = pid;
         this->shm->decAttach();
     }
-    BoxedPtr<SHM> shm;
+    std::shared_ptr<SHM> shm;
     const U32 address;
     const U32 pid;
 };
@@ -198,9 +194,9 @@ public:
     U32 memfd_create(BString name, U32 flags);
 
     user_desc* getLDT(U32 index);
-    BoxedPtr<SHM> allocSHM(U32 key, U32 afterIndex);
-    BoxedPtr<SHM> getSHM(U32 key);
-    void attachSHM(U32 address, const BoxedPtr<SHM>& shm);
+    std::shared_ptr<SHM> allocSHM(U32 key, U32 afterIndex);
+    std::shared_ptr<SHM> getSHM(U32 key);
+    void attachSHM(U32 address, const std::shared_ptr<SHM>& shm);
     void printMappedFiles();
 
     U32 id = 0;
@@ -237,7 +233,7 @@ public:
     bool hasSetStackMask = false;
     bool hasSetSeg[8] = { false }; // 8 just to prevent bounds checking
 
-    std::unordered_map<U32, U32> glStrings;    
+    BHashTable<U32, U32> glStrings;    
     U32 glStringsiExtensions = 0;
     std::vector<U32> glStringsiExtensionsOffset;
     U32 numberOfExtensions = 0;
@@ -260,22 +256,22 @@ public:
 #endif
     BOXEDWINE_MUTEX fdsMutex;
 private:
-    std::unordered_map<U32, KFileDescriptor*> fds;    
+    BHashTable<U32, KFileDescriptor*> fds;    
 
-    std::unordered_map<U32, user_desc> ldt;
+    user_desc ldt[LDT_ENTRIES];
     BOXEDWINE_MUTEX ldtMutex;
 
-    std::unordered_map<U32, BoxedPtr<SHM> > privateShm; // key is shmid
+    BHashTable<U32, std::shared_ptr<SHM>> privateShm; // key is shmid
     BOXEDWINE_MUTEX privateShmMutex;
 
-    std::unordered_map<U32, BoxedPtr<AttachedSHM> > attachedShm; // key is attached address
+    BHashTable<U32, std::shared_ptr<AttachedSHM>> attachedShm; // key is attached address
     BOXEDWINE_MUTEX attachedShmMutex;
 
     friend class KMemory;
-    std::unordered_map<U32, BoxedPtr<MappedFile> > mappedFiles; // key is address
+    BHashTable<U32, std::shared_ptr<MappedFile> > mappedFiles; // key is address
     BOXEDWINE_MUTEX mappedFilesMutex;
 
-    std::unordered_map<U32, KThread*> threads;
+    BHashTable<U32, KThread*> threads;
     BOXEDWINE_MUTEX threadsMutex;
 public:
     BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed
@@ -288,13 +284,13 @@ private:
     void cleanupProcess();
     void setupCommandlineNode();
     void initStdio();
-    BoxedPtr<FsNode> findInPath(BString path);
+    std::shared_ptr<FsNode> findInPath(BString path);
     U32 readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize);
     void onExec(KThread* thread);
     U32 getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory);
 
-    BoxedPtr<FsNode> commandLineNode;
-    BoxedPtr<FsNode> procNode;
+    std::shared_ptr<FsNode> commandLineNode;
+    std::shared_ptr<FsNode> procNode;
     bool systemProcess = false;
 };
 

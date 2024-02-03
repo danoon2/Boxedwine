@@ -40,9 +40,8 @@ U32 KSystem::openglType = OPENGL_TYPE_UNAVAILABLE;
 #endif
 bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
-std::unordered_map<void*, SHM*> KSystem::shm;
-std::unordered_map<U32, std::shared_ptr<KProcess> > KSystem::processes;
-std::unordered_map<BString, BoxedPtr<MappedFileCache> > KSystem::fileCache;
+BHashTable<U32, std::shared_ptr<KProcess> > KSystem::processes;
+BHashTable<BString, std::shared_ptr<MappedFileCache> > KSystem::fileCache;
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
@@ -80,7 +79,6 @@ BOXEDWINE_CONDITION KSystem::processesCond(B("KSystem::processesCond"));
 void KSystem::init() {
     KSystem::adjustClock = false;
     KSystem::nextThreadId=10;
-    KSystem::shm.clear();
     KSystem::processes.clear();
 #ifdef BOXEDWINE_DEFAULT_MMU
     KSystem::fileCache.clear();
@@ -102,8 +100,8 @@ void KSystem::destroy() {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
             if (KSystem::processes.size()) {
                 for (auto& process : KSystem::processes) {
-                    if (process.second && process.second->getThreadCount()) {
-                        p = process.second;
+                    if (process.value && process.value->getThreadCount()) {
+                        p = process.value;
                         break;
                     }
                 }
@@ -115,7 +113,6 @@ void KSystem::destroy() {
         p->killAllThreads();
     }
 	KSystem::processes.clear();
-    KSystem::shm.clear();
 #ifdef BOXEDWINE_DEFAULT_MMU
     KSystem::fileCache.clear();
 #endif
@@ -246,7 +243,7 @@ KThread* KSystem::getThreadById(U32 threadId) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
     for (auto& p : processes) {
-        const std::shared_ptr<KProcess>& process = p.second;
+        const std::shared_ptr<KProcess>& process = p.value;
         if (process) {
             result = process->getThreadById(threadId);
         }
@@ -311,7 +308,7 @@ U32 syscall_ioperm(U32 from, U32 num, U32 turn_on) {
 
 void KSystem::printStacks() {
     for (auto& n : KSystem::processes) {
-        const std::shared_ptr<KProcess>& process = n.second;
+        const std::shared_ptr<KProcess>& process = n.value;
 
         klog("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine.c_str());
         process->printStack();
@@ -364,7 +361,7 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
             if (pid==0)
                 pid = thread->process->groupId;
             for (auto& n : KSystem::processes) {
-                std::shared_ptr<KProcess> p = n.second;
+                std::shared_ptr<KProcess> p = n.value;
                 if (p && (p->isStopped() || p->isTerminated())) {
                     if (pid == -1) {
                         if (p->parentId == thread->process->id) {
@@ -529,8 +526,8 @@ void KSystem::writeStat(KProcess* process, BString path, U32 buf, bool is64, U64
      }
 }
 
-static std::unordered_map<U32, BoxedPtr<SHM> > publicShm;
-static std::unordered_map<U32, BoxedPtr<SHM> > shmKey;
+static BHashTable<U32, std::shared_ptr<SHM> > publicShm;
+static BHashTable<U32, std::shared_ptr<SHM> > shmKey;
 
 #define IPC_CREAT  00001000   /* create if key is nonexistent */
 #define IPC_EXCL   00002000   /* fail if key exists */
@@ -545,12 +542,13 @@ SHM::~SHM() {
 
 U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
     S32 index = -1;
-    BoxedPtr<SHM> result;
+    std::shared_ptr<SHM> result;
 
     if (key==0) { // IPC_PRIVATE
         result = thread->process->allocSHM(key, PRIVATE_SHMID);
     } else {
-        if (shmKey.count(key)) {
+        result = shmKey[key];
+        if (result) {
             result = shmKey[key];
             if (flags & IPC_EXCL)
                 return -K_EEXIST;
@@ -559,14 +557,14 @@ U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
             return result->id;
         }
         index=1;
-        while (publicShm.count(index)) {
+        while (publicShm.contains(index)) {
             index++;
             if (index>=0x40000000)
                 return -K_ENOSPC;
         }        
-        result = new SHM(index, key);
-        publicShm[index] = result;
-        shmKey[key] = result;
+        result = std::make_shared<SHM>(index, key);
+        publicShm.set(index, result);
+        shmKey.set(key, result);
     }
     result->cpid = thread->process->id;
     result->cuid = thread->process->effectiveUserId;
@@ -587,12 +585,13 @@ U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
 
 U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
     U32 permissions = 0;
-    BoxedPtr<SHM> shm;
+    std::shared_ptr<SHM> shm;
 
-    if (shmid & PRIVATE_SHMID)
+    if (shmid & PRIVATE_SHMID) {
         shm = thread->process->getSHM(shmid);
-    else if (publicShm.count(shmid))
+    } else {
         shm = publicShm[shmid];
+    }
 
     if (!shm) {
         return -K_EINVAL;
@@ -644,13 +643,14 @@ U32 KSystem::shmdt(KThread* thread, U32 shmaddr) {
                            message sizes, etc. */
 
 U32 KSystem::shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf) {
-    BoxedPtr<SHM> shm;
+    std::shared_ptr<SHM> shm;
     KMemory* memory = thread->memory;
 
-    if (shmid & PRIVATE_SHMID)
+    if (shmid & PRIVATE_SHMID) {
         shm = thread->process->getSHM(shmid);
-    else if (publicShm.count(shmid))
+    } else {
         shm = publicShm[shmid];
+    }
 
     if (!shm) {
         return -K_EINVAL;
@@ -821,30 +821,26 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
 
 std::shared_ptr<KProcess> KSystem::getProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
-    if (KSystem::processes.count(id))
-        return KSystem::processes[id];
-    return NULL;
+    return KSystem::processes[id];
 }
 
 void KSystem::eraseFileCache(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    KSystem::fileCache.erase(name);
+    KSystem::fileCache.remove(name);
 }
 
-BoxedPtr<MappedFileCache> KSystem::getFileCache(BString name) {
+std::shared_ptr<MappedFileCache> KSystem::getFileCache(BString name) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    if (KSystem::fileCache.count(name))
-        return KSystem::fileCache[name];
-    return nullptr;
+    return KSystem::fileCache[name];
 }
 
-void KSystem::setFileCache(BString name, const BoxedPtr<MappedFileCache>& fileCache) {
+void KSystem::setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::fileCacheMutex);
-    KSystem::fileCache[name] = fileCache;
+    KSystem::fileCache.set(name, fileCache);
 }
 
 void KSystem::internalEraseProcess(U32 id) {
-    KSystem::processes.erase(id);
+    KSystem::processes.remove(id);
 }
 
 void KSystem::eraseProcess(U32 id) {
@@ -854,14 +850,14 @@ void KSystem::eraseProcess(U32 id) {
 
 void KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
-    KSystem::processes[id] = process;
+    KSystem::processes.set(id, process);
 }
 
 U32 KSystem::getRunningProcessCount() {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     U32 count = 0;
     for (auto& n : KSystem::processes) {
-        const std::shared_ptr<KProcess>& openProcess = n.second;
+        const std::shared_ptr<KProcess>& openProcess = n.value;
         if (openProcess && !openProcess->isStopped() && !openProcess->isTerminated()) {
             count++;
         }

@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "fsmemopennode.h"
 
-FsMemOpenNode::FsMemOpenNode(U32 flags, BoxedPtr<FsNode> node) : FsOpenNode(node, flags), seals(0), pos(0), isClosed(false) {
+FsMemOpenNode::FsMemOpenNode(U32 flags, std::shared_ptr<FsNode> node) : FsOpenNode(node, flags), seals(0), pos(0), isClosed(false) {
     this->lastModifiedTime = KSystem::getSystemTimeAsMicroSeconds() / 1000l;
 }
 

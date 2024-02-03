@@ -53,7 +53,7 @@ public:
 
 	HMIDIOUT m_out = nullptr;
 
-	std::unordered_map<U32, NativeMidiData> data;
+	BHashTable<U32, std::shared_ptr<NativeMidiData>> data;
 
 	U32 wDevID = 0;
 	U32 eventFd = 0;
@@ -146,54 +146,55 @@ U32 KNativeAudioWindows::midiOutData(U32 wDevID, U32 dwParam) {
 
 U32 KNativeAudioWindows::midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	U32 dataAddress = process->memory->readd(lpMidiHdr);
-	if (this->data.count(dataAddress)==0) {
+	std::shared_ptr<NativeMidiData> hdr = data[dataAddress];
+	if (!hdr) {
 		kwarn("KNativeAudioWindows::midiOutLongData tried to play unprepared buffer");
 		return MIDIERR_UNPREPARED;
 	}
-	NativeMidiData& hdr = data[dataAddress];	
 
-	process->memory->memcpy(&hdr.wineHeader, lpMidiHdr, dwSize);
-	hdr.nativeHeader.dwFlags = hdr.wineHeader.dwFlags;
-	hdr.wineHeader.dwFlags |= MHDR_INQUEUE;
-	hdr.wineHeader.writeFlags(process->memory, lpMidiHdr);
-	U32 result = ::midiOutLongMsg(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
-	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
-	hdr.wineHeader.writeFlags(process->memory, lpMidiHdr);
+	process->memory->memcpy(&hdr->wineHeader, lpMidiHdr, dwSize);
+	hdr->nativeHeader.dwFlags = hdr->wineHeader.dwFlags;
+	hdr->wineHeader.dwFlags |= MHDR_INQUEUE;
+	hdr->wineHeader.writeFlags(process->memory, lpMidiHdr);
+	U32 result = ::midiOutLongMsg(m_out, &hdr->nativeHeader, sizeof(hdr->nativeHeader));
+	hdr->wineHeader.dwFlags = hdr->nativeHeader.dwFlags;
+	hdr->wineHeader.writeFlags(process->memory, lpMidiHdr);
 	return result;
 }
 
 U32 KNativeAudioWindows::midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	U32 dataAddress = process->memory->readd(lpMidiHdr);
-	if (this->data.count(dataAddress)) {
+	std::shared_ptr<NativeMidiData> hdr = data[dataAddress];
+	if (hdr) {
 		kpanic("KNativeAudioWindows::midiOutPrepare tried to prepare already prepared buffer");
 	}
-	NativeMidiData& hdr = data[dataAddress];
-
-	process->memory->memcpy(&hdr.wineHeader, lpMidiHdr, dwSize);
-	hdr.nativeHeader.lpData = (LPSTR)process->memory->lockReadOnlyMemory(hdr.wineHeader.lpData, hdr.wineHeader.dwBufferLength);
-	hdr.nativeHeader.dwBufferLength = hdr.wineHeader.dwBufferLength;
-	hdr.nativeHeader.dwFlags = hdr.wineHeader.dwFlags;
-	hdr.nativeHeader.dwBytesRecorded = hdr.wineHeader.dwBytesRecorded;
-	U32 result = ::midiOutPrepareHeader(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
-	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
-	hdr.wineHeader.writeFlags(process->memory, lpMidiHdr);
+	hdr = std::make_shared<NativeMidiData>();
+	data.set(dataAddress, hdr);
+	process->memory->memcpy(&hdr->wineHeader, lpMidiHdr, dwSize);
+	hdr->nativeHeader.lpData = (LPSTR)process->memory->lockReadOnlyMemory(hdr->wineHeader.lpData, hdr->wineHeader.dwBufferLength);
+	hdr->nativeHeader.dwBufferLength = hdr->wineHeader.dwBufferLength;
+	hdr->nativeHeader.dwFlags = hdr->wineHeader.dwFlags;
+	hdr->nativeHeader.dwBytesRecorded = hdr->wineHeader.dwBytesRecorded;
+	U32 result = ::midiOutPrepareHeader(m_out, &hdr->nativeHeader, sizeof(hdr->nativeHeader));
+	hdr->wineHeader.dwFlags = hdr->nativeHeader.dwFlags;
+	hdr->wineHeader.writeFlags(process->memory, lpMidiHdr);
 	return result;
 }
 
 U32 KNativeAudioWindows::midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
 	U32 dataAddress = process->memory->readd(lpMidiHdr);
-	if (this->data.count(dataAddress)==0) {
+	std::shared_ptr<NativeMidiData> hdr = data[dataAddress];
+	if (!hdr) {
 		return MMSYSERR_NOERROR;
 	}
-	NativeMidiData& hdr = data[dataAddress];
-	U32 result = ::midiOutUnprepareHeader(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
-	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
-	process->memory->memcpy(lpMidiHdr, &hdr.wineHeader, dwSize);
-	if (hdr.wineHeader.lpData) {
-		process->memory->unlockMemory((U8*)hdr.nativeHeader.lpData);
-		hdr.wineHeader.lpData = NULL;
+	U32 result = ::midiOutUnprepareHeader(m_out, &hdr->nativeHeader, sizeof(hdr->nativeHeader));
+	hdr->wineHeader.dwFlags = hdr->nativeHeader.dwFlags;
+	process->memory->memcpy(lpMidiHdr, &hdr->wineHeader, dwSize);
+	if (hdr->wineHeader.lpData) {
+		process->memory->unlockMemory((U8*)hdr->nativeHeader.lpData);
+		hdr->wineHeader.lpData = NULL;
 	}
-	this->data.erase(dataAddress);
+	this->data.remove(dataAddress);
 	return result;
 }
 

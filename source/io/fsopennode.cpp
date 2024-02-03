@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-FsOpenNode::FsOpenNode(BoxedPtr<FsNode> node, U32 flags) : node(node), flags(flags), listNode(this) {
+FsOpenNode::FsOpenNode(std::shared_ptr<FsNode> node, U32 flags) : node(node), flags(flags), listNode(this) {
     node->addOpenNode(&this->listNode);
 }
 
@@ -65,7 +65,7 @@ U32 FsOpenNode::getDirectoryEntryCount() {
     return (U32)this->dirEntries.size();
 }
 
-BoxedPtr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, BString& name) {
+std::shared_ptr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, BString& name) {
     if (!this->node) {
         return nullptr;
     }

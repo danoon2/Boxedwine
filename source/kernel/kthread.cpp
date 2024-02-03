@@ -28,7 +28,10 @@ thread_local KThread* KThread::runningThread;
 
 BOXEDWINE_MUTEX KThread::futexesMutex;
 
-KThread::~KThread() {    
+KThread::~KThread() {  
+    for (auto& callback : callbacksOnExit) {
+        callback(id);
+    }
     this->cleanup();
     CPU* cpu = this->cpu;
     this->cpu = nullptr;
@@ -1002,18 +1005,16 @@ U32 KThread::signalstack(U32 ss, U32 oss) {
     return 0;
 }
 
-KThreadGlContext* KThread::getGlContextById(U32 id) {
-    if (this->glContext.count(id))
-        return &this->glContext[id];
-    return nullptr;
+std::shared_ptr<KThreadGlContext> KThread::getGlContextById(U32 id) {
+    return this->glContext[id];
 }
 
 void KThread::removeGlContextById(U32 id) {
-    this->glContext.erase(id);
+    this->glContext.remove(id);
 }
 
 void KThread::addGlContext(U32 id, void* context) {
-    this->glContext[id] = KThreadGlContext(context);
+    this->glContext.set(id, std::make_shared<KThreadGlContext>(context));
 }
 
 void KThread::removeAllGlContexts() {

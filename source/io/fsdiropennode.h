@@ -7,7 +7,7 @@ class FsFileNode;
 
 class FsDirOpenNode : public FsOpenNode {
 public:
-    FsDirOpenNode(BoxedPtr<FsNode> node, U32 flags);
+    FsDirOpenNode(std::shared_ptr<FsNode> node, U32 flags);
 
     // from FsOpenNode
     S64  length() override;

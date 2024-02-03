@@ -6,13 +6,13 @@
 
 class FsOpenNode {
 public:
-    FsOpenNode(BoxedPtr<FsNode> node, U32 flags);
+    FsOpenNode(std::shared_ptr<FsNode> node, U32 flags);
 
     U32 read(KThread* thread, U32 address, U32 len); // will call into readNative
     U32 write(KThread* thread, U32 address, U32 len); // will call into writeNative
 
     U32 getDirectoryEntryCount();
-    BoxedPtr<FsNode> getDirectoryEntry(U32 index, BString& name);
+    std::shared_ptr<FsNode> getDirectoryEntry(U32 index, BString& name);
 
     virtual ~FsOpenNode();
 
@@ -35,12 +35,12 @@ public:
     virtual bool isOpen()=0;
     virtual BOXEDWINE_MUTEX* getReadMutex() {return nullptr;}
 
-    BoxedPtr<FsNode> const node;
+    std::shared_ptr<FsNode> const node;
     const U32 flags;     
     BString openedPath; // when call fchdir, we should set the current directory to what was passed in, not what was linked to
 
 private:
-    std::vector<BoxedPtr<FsNode> > dirEntries;
+    std::vector<std::shared_ptr<FsNode> > dirEntries;
     void loadDirEntries();
     U32 internalRead(KThread* thread, U32 address, U32 len);
 

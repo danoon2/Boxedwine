@@ -20,11 +20,11 @@ void ROPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_access(address, false, true);
 }
 
-U8* ROPage::getReadPtr(U32 address, bool makeReady) {
+U8* ROPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
     return this->page;
 }
 
-U8* ROPage::getWritePtr(U32 address, U32 len, bool makeReady) {
+U8* ROPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     return nullptr;
 }
 

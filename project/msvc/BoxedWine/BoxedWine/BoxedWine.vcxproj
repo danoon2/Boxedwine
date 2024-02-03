@@ -662,7 +662,7 @@
     <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h" />
     <ClInclude Include="..\..\..\..\source\util\bfile.h" />
-    <ClInclude Include="..\..\..\..\source\util\boxedptr.h" />
+    <ClInclude Include="..\..\..\..\source\util\bhashtable.h" />
     <ClInclude Include="..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\source\util\fileutils.h" />

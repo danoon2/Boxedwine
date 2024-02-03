@@ -7,7 +7,7 @@ class FsMemNode;
 
 class FsMemOpenNode : public FsOpenNode {
 public:
-    FsMemOpenNode(U32 flags, BoxedPtr<FsNode> node);
+    FsMemOpenNode(U32 flags, std::shared_ptr<FsNode> node);
     virtual ~FsMemOpenNode();
 
     // From FsOpenNode

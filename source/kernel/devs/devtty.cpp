@@ -39,7 +39,7 @@ static U32 activeTTY;
 
 class DevTTY : public FsVirtualOpenNode {
 public:
-    DevTTY(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), 
+    DevTTY(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), 
         c_iflag(0),
         c_oflag(0),
         c_cflag(0),
@@ -77,7 +77,7 @@ private:
     bool graphics;
 };
 
-FsOpenNode* openDevTTY(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevTTY(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevTTY(node, flags);
 }
 

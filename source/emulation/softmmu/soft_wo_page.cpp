@@ -23,11 +23,11 @@ U32 WOPage::readd(U32 address) {
     return 0;
 }
 
-U8* WOPage::getReadPtr(U32 address, bool makeReady) {
+U8* WOPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
     return nullptr;
 }
 
-U8* WOPage::getWritePtr(U32 address, U32 len, bool makeReady) {
+U8* WOPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     return this->page;
 }
 

@@ -25,7 +25,7 @@
 
 #include "kprocess.h"
 
-FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index) {
+FilePage* FilePage::alloc(const std::shared_ptr<MappedFile>& mapped, U32 index) {
     return new FilePage(mapped, index);
 }
 
@@ -96,20 +96,20 @@ void FilePage::writed(U32 address, U32 value) {
     data->memory->writed(address, value);
 }
 
-U8* FilePage::getReadPtr(U32 address, bool makeReady) {
-    if (makeReady && KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+U8* FilePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    if (makeReady && memory->canRead(address >> K_PAGE_SHIFT)) {
+        KMemoryData* data = getMemData(memory);
         ondemmandFile(address);
-        return data->getPage(address >> K_PAGE_SHIFT)->getReadPtr(address, true);
+        return data->getPage(address >> K_PAGE_SHIFT)->getReadPtr(memory, address, true);
     }
     return nullptr;
 }
 
-U8* FilePage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    if (makeReady && KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT)) {
-        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+U8* FilePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+    if (makeReady && memory->canWrite(address >> K_PAGE_SHIFT)) {
+        KMemoryData* data = getMemData(memory);
         ondemmandFile(address);
-        return data->getPage(address >> K_PAGE_SHIFT)->getWritePtr(address, len, true);
+        return data->getPage(address >> K_PAGE_SHIFT)->getWritePtr(memory, address, len, true);
     }
     return nullptr;
 }

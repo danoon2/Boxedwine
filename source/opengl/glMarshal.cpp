@@ -703,21 +703,23 @@ public:
     U32 size = 0;
 };
 
-static std::unordered_map<U32, BufferedTarget> bufferedTargets;
+static BHashTable<U32, std::shared_ptr<BufferedTarget>> bufferedTargets;
 
 U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size) {
-    if (bufferedTargets[target].bufferedAddress) {
+    if (bufferedTargets.contains(target)) {
         kpanic("mapBufferRange already mapped");
     }
     U32 result = cpu->memory->mapNativeMemory(buffer, size);
-    bufferedTargets[target] = BufferedTarget(result, (S8*)buffer, size);
+    bufferedTargets.set(target, std::make_shared<BufferedTarget>(result, (S8*)buffer, size));
     return result;
 }
 
 void unmapBuffer(CPU* cpu, GLenum target) {
-    BufferedTarget t = bufferedTargets[target];
-    cpu->memory->unmap(t.bufferedAddress, t.size);
-    bufferedTargets.erase(target);
+    std::shared_ptr<BufferedTarget> t = bufferedTargets[target];
+    if (t) {
+        cpu->memory->unmap(t->bufferedAddress, t->size);
+        bufferedTargets.remove(target);
+    }
 }
 
 // instance is in the instance number within the function, so if the same function calls this 3 times, each call will have a difference instance

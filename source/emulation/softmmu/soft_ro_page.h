@@ -34,8 +34,8 @@ public:
     void writeb(U32 address, U8 value) override;
     void writew(U32 address, U16 value) override;
     void writed(U32 address, U32 value) override;
-    U8* getReadPtr(U32 address, bool makeReady = false) override;
-    U8* getWritePtr(U32 address, U32 len, bool makeReady = false) override;
+    U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false) override;
+    U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false) override;
     Type getType() override { return Type::RO_Page; }
 };
 

@@ -27,7 +27,7 @@ KEPoll::KEPoll() : KObject(KTYPE_EPOLL) {
 
 KEPoll::~KEPoll() {
      for( const auto& n : this->data ) {
-         delete n.second;
+         delete n.value;
     }
 }
 
@@ -131,14 +131,12 @@ void KEPoll::close() {
 
 U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
     KFileDescriptor* targetFD = KThread::currentThread()->process->getFileDescriptor(fd);
-    Data* existing = nullptr;
 
     if (!targetFD) {
         return -K_EBADF;
     }
 
-    if (this->data.count(fd))
-        existing = this->data[fd];
+    Data* existing = this->data[fd];
 
     switch (op) {
         case K_EPOLL_CTL_ADD:
@@ -149,12 +147,12 @@ U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
             existing->fd = fd;
             existing->events = memory->readd(address);
             existing->data = memory->readq(address + 4);
-            this->data[fd] = existing;
+            this->data.set(fd, existing);
             break;
         case K_EPOLL_CTL_DEL:
             if (!existing)
                 return -K_ENOENT;
-            this->data.erase(fd);
+            this->data.remove(fd);
             delete existing;
             break;
         case K_EPOLL_CTL_MOD:
@@ -180,7 +178,7 @@ U32 KEPoll::wait(KThread* thread, U32 events, U32 maxevents, U32 timeout) {
             kpanic("Wasn't expect a poll count of more than 256");
             break;
         }
-        Data* next = n.second;
+        Data* next = n.value;
         pollData[pollCount].events = next->events;
         pollData[pollCount].fd = next->fd;
         pollData[pollCount].data = next->data;

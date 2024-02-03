@@ -16,28 +16,30 @@ ConfigFile::ConfigFile(BString fileName) {
         } else {
             parts[0] = parts[0].trim();
             parts[1] = parts[1].trim();
-            this->values[parts[0]] = parts[1];
+            this->values.set(parts[0], parts[1]);
         }
     }
 }
 
 BString ConfigFile::readString(BString name, BString defaultValue) {
-    if (this->values.count(name)) {
-        return this->values[name];
+    BString value;
+    if (this->values.get(name, value)) {
+        return value;
     }
     return defaultValue;
 }
 
 bool ConfigFile::readBool(BString name, bool defaultValue) {
-    if (this->values.count(name)) {
-        return this->values[name]!="0";
+    BString value;
+    if (this->values.get(name, value)) {
+        return value!="0";
     }
     return defaultValue;
 }
 
 int ConfigFile::readInt(BString name, int defaultValue) {
-    if (this->values.count(name)) {
-        BString value = this->values[name];
+    BString value;
+    if (this->values.get(name, value)) {
         if (value.length()==0) {
             return 0;
         }
@@ -47,21 +49,21 @@ int ConfigFile::readInt(BString name, int defaultValue) {
 }
 
 void ConfigFile::writeString(BString name, BString value) {
-    this->values[name] = value;
+    this->values.set(name, value);
 }
 
 void ConfigFile::writeBool(BString name, bool value) {
-    this->values[name] = B(value?"1":"0");
+    this->values.set(name, B(value?"1":"0"));
 }
 
 void ConfigFile::writeInt(BString name, int value) {
-    this->values[name] = BString::valueOf(value);
+    this->values.set(name, BString::valueOf(value));
 }
 
 bool ConfigFile::saveChanges() {
     std::vector<BString> lines;
     for (auto& n : this->values) {
-        lines.push_back(n.first+"="+n.second);
+        lines.push_back(n.key+"="+n.value);
     }
     return writeLinesToFile(this->fileName, lines);
 }

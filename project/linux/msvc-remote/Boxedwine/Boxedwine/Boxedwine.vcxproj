@@ -1033,7 +1033,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\bfile.h" />
-    <ClInclude Include="..\..\..\..\..\source\util\boxedptr.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\bhashtable.h" />
     <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h" />

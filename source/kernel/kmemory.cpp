@@ -138,7 +138,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
         }
         if (fd) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->mappedFilesMutex);
-            BoxedPtr<MappedFile> mappedFile = new MappedFile();
+            std::shared_ptr<MappedFile> mappedFile = std::make_shared<MappedFile>();
 
             mappedFile->address = pageStart << K_PAGE_SHIFT;
             mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
@@ -150,9 +150,9 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             bool addFileToSystemCache = shared;
 #endif
             if (addFileToSystemCache) {
-                BoxedPtr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
+                std::shared_ptr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
                 if (!cache) {
-                    cache = new MappedFileCache(mappedFile->file->openFile->node->path);
+                    cache = std::make_shared<MappedFileCache>(mappedFile->file->openFile->node->path);
                     KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
                     cache->file = mappedFile->file;
 #ifdef BOXEDWINE_DEFAULT_MMU
@@ -166,7 +166,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                 }
                 mappedFile->systemCacheEntry = cache;
             }
-            this->process->mappedFiles[mappedFile->address] = mappedFile;
+            this->process->mappedFiles.set(mappedFile->address, mappedFile);
             this->data->allocPages(thread, pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
             this->data->allocPages(thread, pageStart, pageCount, permissions, 0, 0, nullptr);

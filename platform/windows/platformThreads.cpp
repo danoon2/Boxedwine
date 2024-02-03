@@ -119,7 +119,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     }
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
     if (ep->ContextRecord->EFlags & AC) {
-        // :TODO: is there a way to clear in now
+        // :TODO: not sure what causes this, seen it in winroids
         ep->ContextRecord->EFlags&=~AC;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -145,18 +145,15 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         ep->ContextRecord->Rip = cpu->handleFpuException(code);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
-		// :TODO: figure out how AC got set, I've only seen this while op logging
-        ep->ContextRecord->EFlags&=~AC;
-        return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
 std::atomic<int> platformThreadCount = 0;
 
-#ifdef __TEST
 static PVOID pHandler;
+
+#ifdef __TEST
 void initThreadForTesting() {
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1, seh_filter);
@@ -167,11 +164,9 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     
-#ifdef BOXEDWINE_64BIT_MMU
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1,seh_filter);
     }
-#endif
     cpu->startThread();
     return 0;
 }

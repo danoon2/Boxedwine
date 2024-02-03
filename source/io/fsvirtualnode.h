@@ -6,7 +6,7 @@
 
 class FsVirtualNode : public FsNode {
 public:
-    FsVirtualNode(U32 id, U32 rdev, BString path, OpenVirtualNode openFunc, U32 mode, BoxedPtr<FsNode> parent, U32 openData=0) : FsNode(Type::Virtual, id, rdev, path, B(""), B(""), false, parent), mode(mode), openData(openData), openFunc(openFunc) {}
+    FsVirtualNode(U32 id, U32 rdev, BString path, OpenVirtualNode openFunc, U32 mode, std::shared_ptr<FsNode> parent, U32 openData=0) : FsNode(Type::Virtual, id, rdev, path, B(""), B(""), false, parent), mode(mode), openData(openData), openFunc(openFunc) {}
 
     // from FsNode
     U32 rename(BString path) override; //return 0 if success, else errno

@@ -2,10 +2,9 @@
 #define __BOXEDWINE_H__
 
 #define BOXEDWINE_VERSION_STR "231"
-#define BOXEDWINE_VERSION_DISPLAY "23.0.2 (beta)"
+#define BOXEDWINE_VERSION_DISPLAY "24.0.0 (pre-beta)"
 
 #include <vector>
-#include <unordered_map>
 #include <memory>
 #include <queue>
 #include <functional>
@@ -52,9 +51,9 @@
 #define MAP_BOXEDWINE 0
 #endif
 
-#include "../source/util/boxedptr.h"
 #include "platformtypes.h"
 #include "../source/util/bstring.h"
+#include "../source/util/bhashtable.h"
 
 #include "platform.h"
 

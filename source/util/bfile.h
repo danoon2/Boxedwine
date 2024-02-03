@@ -33,7 +33,7 @@ public:
 
 	static U64 npos;
 private:
-	std::FILE* file;
+	std::FILE* file = nullptr;
 };
 
 class BWriteFile {

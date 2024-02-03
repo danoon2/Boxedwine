@@ -1686,11 +1686,11 @@ void boxeddrv_wglGetPixelFormat(CPU* cpu) {
 }
 
 #ifdef BOXEDWINE_OPENGL
-std::unordered_map<BString, void*> glFunctionMap;
+BHashTable<BString, void*> glFunctionMap;
 void boxeddrv_wglGetProcAddress(CPU* cpu) {
     BString name = cpu->memory->readString(ARG1);
 
-    if (glFunctionMap.count(name))
+    if (glFunctionMap.contains(name))
         EAX = 1;
     else
         EAX = 0;

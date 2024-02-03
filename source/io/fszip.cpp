@@ -34,7 +34,7 @@ bool FsZip::init(BString zipPath, BString mount) {
 #ifdef BOXEDWINE_ZLIB
     BString strippedMount;
 
-    BoxedPtr<FsNode> root = Fs::getNodeFromLocalPath(B(""), B(""), true);
+    std::shared_ptr<FsNode> root = Fs::getNodeFromLocalPath(B(""), B(""), true);
     deleteFilePath = root->nativePath ^ Fs::getFileNameFromNativePath(zipPath) + ".deleted";
     if (mount.length()) {
         Fs::makeLocalDirs(mount);
@@ -110,12 +110,11 @@ bool FsZip::init(BString zipPath, BString mount) {
                 continue;
             }
             BString parentPath = Fs::getParentPath(localPath);
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), parentPath, true);            
+            std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), parentPath, true);            
             BString localFileName = Fs::getFileNameFromPath(localPath);
             BString nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, localFileName);
-            BoxedPtr<FsFileNode> node = (FsFileNode*)Fs::addFileNode(localPath, zipInfo[i].link, nativePath, zipInfo[i].isDirectory, parent).get();
-            std::shared_ptr<FsZip> thisShared = shared_from_this();
-            node->zipNode = std::make_shared<FsZipNode>(zipInfo[i], thisShared);
+            std::shared_ptr<FsFileNode> node = Fs::addFileNode(localPath, zipInfo[i].link, nativePath, zipInfo[i].isDirectory, parent);
+            node->zipNode = std::make_shared<FsZipNode>(zipInfo[i], shared_from_this());
         }   
         delete[] zipInfo;
     }

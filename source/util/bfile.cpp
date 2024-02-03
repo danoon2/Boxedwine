@@ -62,7 +62,7 @@ U32 BReadFile::read(U8* buffer, U64 len) {
 bool BReadFile::readLine(BString& line) {
 	char c = 0;
 	bool result = false;
-
+	line.removeAll();
 	while (read(c)) {
 		if (c == '\n') {
 			return true;

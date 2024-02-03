@@ -86,24 +86,22 @@ void InvalidPage::writed(U32 address, U32 value) {
     }
 }
 
-U8* InvalidPage::getReadPtr(U32 address, bool makeReady) {
-    KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
+U8* InvalidPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    KMemoryData* data = getMemData(memory);
     U32 page = address >> K_PAGE_SHIFT;
-    if (makeReady && thread->memory->canRead(page)) {
-        ondemmand(thread->memory, page);
-        return data->getPage(page)->getReadPtr(address, true);
+    if (makeReady && memory->canRead(page)) {
+        ondemmand(memory, page);
+        return data->getPage(page)->getReadPtr(memory, address, true);
     }
     return nullptr;
 }
 
-U8* InvalidPage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    KThread* thread = KThread::currentThread();
+U8* InvalidPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     U32 page = address >> K_PAGE_SHIFT;
-    if (makeReady && thread->memory->canWrite(page)) {
-        KMemoryData* data = getMemData(thread->memory);
-        ondemmand(thread->memory, page);
-        return data->getPage(page)->getWritePtr(address, len, true);
+    if (makeReady && memory->canWrite(page)) {
+        KMemoryData* data = getMemData(memory);
+        ondemmand(memory, page);
+        return data->getPage(page)->getWritePtr(memory, address, len, true);
     }
     return nullptr;
 }

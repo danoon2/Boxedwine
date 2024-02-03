@@ -906,9 +906,6 @@
     <ClInclude Include="..\..\..\..\..\include\x64dynamic.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\util\boxedptr.h">
-      <Filter>source\util</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h">
       <Filter>source\util</Filter>
     </ClInclude>
@@ -1880,6 +1877,9 @@
       <Filter>source\util</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\bfile.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\bhashtable.h">
       <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>

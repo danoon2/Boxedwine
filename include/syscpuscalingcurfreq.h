@@ -22,6 +22,6 @@
 class FsOpenNode;
 class FsNode;
 
-FsOpenNode* openSysCpuScalingCurrentFrequency(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openSysCpuScalingCurrentFrequency(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

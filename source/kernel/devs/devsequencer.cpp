@@ -21,7 +21,7 @@
 
 class DevSequencer : public FsVirtualOpenNode {
 public:
-    DevSequencer(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
+    DevSequencer(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
 
 	// From FsOpenNode
     U32 ioctl(KThread* thread, U32 request) override;
@@ -29,7 +29,7 @@ public:
     U32 writeNative(U8* buffer, U32 len) override;
 };
 
-FsOpenNode* openDevSequencer(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevSequencer(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevSequencer(node, flags);
 }
 /*

@@ -51,7 +51,7 @@ private:
 
     BString name;
     BString path;
-    std::unordered_map<int, BoxedAppIcon*> iconsBySize;
+    BHashTable<int, BoxedAppIcon*> iconsBySize;
     BString iconPath;
     BString link;
     BString cmd;    

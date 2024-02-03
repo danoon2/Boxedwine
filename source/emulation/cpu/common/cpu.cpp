@@ -270,7 +270,7 @@ void CPU::prepareException(int code, int error) {
 
 class TTYBufferAccess : public BufferAccess {
 public:
-    TTYBufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer) : BufferAccess(node, flags, buffer) {}
+    TTYBufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, BString buffer) : BufferAccess(node, flags, buffer) {}
 
     // from FsOpenNode
     U32 writeNative(U8* buffer, U32 len) override;
@@ -283,7 +283,7 @@ U32 TTYBufferAccess::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openTTY9(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new TTYBufferAccess(node, flags, B(""));
 }
 
@@ -305,8 +305,8 @@ BString getFunctionName(BString name, U32 moduleEip) {
         return B("");
 
     tty9Buffer="";
-    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
-    BoxedPtr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
+    std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
+    std::shared_ptr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
     process = thread->process;
     process->openFile(B(""), B("/dev/tty9"), K_O_WRONLY, &fd); 
     if (fd) {

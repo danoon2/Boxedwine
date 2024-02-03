@@ -58,7 +58,7 @@ public:
 
 class DevInput : public FsVirtualOpenNode {
 public:
-    DevInput(const BoxedPtr<FsNode>& node, U32 flags) : 
+    DevInput(const std::shared_ptr<FsNode>& node, U32 flags) : 
         FsVirtualOpenNode(node, flags), 
         asyncProcessId(0),
         asyncProcessFd(0), 
@@ -103,7 +103,7 @@ public:
 
 class DevInputTouch : public DevInput {
 public:
-    DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags);
+    DevInputTouch(const std::shared_ptr<FsNode>& node, U32 flags);
 
     // from FsOpenNode
     U32 ioctl(KThread* thread, U32 request) override;
@@ -114,7 +114,7 @@ public:
 
 class DevInputMouse : public DevInput {
 public:
-    DevInputMouse(const BoxedPtr<FsNode>& node, U32 flags);
+    DevInputMouse(const std::shared_ptr<FsNode>& node, U32 flags);
 
     // from FsOpenNode
     U32 ioctl(KThread* thread, U32 request) override;
@@ -122,7 +122,7 @@ public:
 
 class DevInputKeyboard : public DevInput {
 public:
-    DevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags);
+    DevInputKeyboard(const std::shared_ptr<FsNode>& node, U32 flags);
 
     // FsOpenNode
     U32 ioctl(KThread* thread, U32 request) override;
@@ -130,7 +130,7 @@ public:
 
 static DevInputTouch* touchEvents;
 
-FsOpenNode* openDevInputTouch(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevInputTouch(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     touchEvents = new DevInputTouch(node, flags);
     touchEvents->clearOnExit = (DevInput**)&touchEvents;
     return touchEvents;
@@ -138,7 +138,7 @@ FsOpenNode* openDevInputTouch(const BoxedPtr<FsNode>& node, U32 flags, U32 data)
 
 static DevInputMouse* mouseEvents;
 
-FsOpenNode* openDevInputMouse(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevInputMouse(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     mouseEvents = new DevInputMouse(node, flags);
     mouseEvents->clearOnExit = (DevInput**)&mouseEvents;
     return mouseEvents;
@@ -146,7 +146,7 @@ FsOpenNode* openDevInputMouse(const BoxedPtr<FsNode>& node, U32 flags, U32 data)
 
 static DevInputKeyboard* keyboardEvents;
 
-FsOpenNode* openDevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevInputKeyboard(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     keyboardEvents = new DevInputKeyboard(node, flags);
     keyboardEvents->clearOnExit = (DevInput**)&keyboardEvents;
     return keyboardEvents;
@@ -356,7 +356,7 @@ bool DevInput::isReadReady() {
 }
 
 
-DevInputTouch::DevInputTouch(const BoxedPtr<FsNode>& node, U32 flags) : DevInput(node, flags), lastX(0), lastY(0) {
+DevInputTouch::DevInputTouch(const std::shared_ptr<FsNode>& node, U32 flags) : DevInput(node, flags), lastX(0), lastY(0) {
     this->bustype = 3;
     this->vendor = 0;
     this->product = 0;
@@ -423,7 +423,7 @@ U32 DevInputTouch::ioctl(KThread* thread, U32 request) {
     return -1;
 }
 
-DevInputMouse::DevInputMouse(const BoxedPtr<FsNode>& node, U32 flags) : DevInput(node, flags) {
+DevInputMouse::DevInputMouse(const std::shared_ptr<FsNode>& node, U32 flags) : DevInput(node, flags) {
     this->bustype = 3;
     this->vendor = 0x046d;
     this->product = 0xc52b;
@@ -492,7 +492,7 @@ U32 DevInputMouse::ioctl(KThread* thread, U32 request) {
 }
 
 
-DevInputKeyboard::DevInputKeyboard(const BoxedPtr<FsNode>& node, U32 flags) : DevInput(node, flags) {
+DevInputKeyboard::DevInputKeyboard(const std::shared_ptr<FsNode>& node, U32 flags) : DevInput(node, flags) {
     this->bustype = 0x11;
     this->vendor = 1;
     this->product = 1;

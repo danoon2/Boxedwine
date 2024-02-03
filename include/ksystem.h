@@ -44,7 +44,7 @@ class CPU;
 class KProcess;
 class KThread;
 
-class MappedFileCache : public BoxedPtrBase {
+class MappedFileCache {
 public:
     MappedFileCache(BString name) : name(name) {}
     virtual ~MappedFileCache();
@@ -54,7 +54,7 @@ public:
     U32 dataSize = 0;
 };
 
-class SHM : public BoxedPtrBase {
+class SHM {
 public:
     SHM(U32 id, U32 key) : id(id), key(key) {}
     virtual ~SHM();
@@ -109,8 +109,8 @@ public:
     static void writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);
     static std::shared_ptr<KProcess> getProcess(U32 id);
     static void eraseFileCache(BString name);
-    static BoxedPtr<MappedFileCache> getFileCache(BString name);
-    static void setFileCache(BString name, const BoxedPtr<MappedFileCache>& fileCache);
+    static std::shared_ptr<MappedFileCache> getFileCache(BString name);
+    static void setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache);
     static void eraseProcess(U32 id);
     static void addProcess(U32 id, const std::shared_ptr<KProcess>& process);
     static KThread* getThreadById(U32 threadId);
@@ -161,9 +161,8 @@ private:
     static U64 startTimeSystemTime;    
     static bool modesInitialized;
     
-    static std::unordered_map<void*, SHM*> shm;
-    static std::unordered_map<U32, std::shared_ptr<KProcess> > processes;
-    static std::unordered_map<BString, BoxedPtr<MappedFileCache> > fileCache;
+    static BHashTable<U32, std::shared_ptr<KProcess> > processes;
+    static BHashTable<BString, std::shared_ptr<MappedFileCache> > fileCache;
     static BOXEDWINE_MUTEX fileCacheMutex;
 };
 

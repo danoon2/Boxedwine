@@ -18,7 +18,7 @@
 
 std::set<BString> FsFileNode::nonExecFileFullPaths;
 
-FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent) : FsNode(Type::File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
+FsFileNode::FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, bool isRootPath, std::shared_ptr<FsNode> parent) : FsNode(Type::File, id, rdev, path, link, nativePath, isDirectory, parent), isRootPath(isRootPath) {
 }
 
 BString FsFileNode::getNativeTmpPath() {
@@ -40,7 +40,7 @@ static U32 nextTmpId;
 void FsFileNode::getTmpPath(BString& nativePath, BString& localPath) {
     BOXEDWINE_CRITICAL_SECTION;
     Fs::makeLocalDirs(B("/tmp/del"));
-    BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), true);
+    std::shared_ptr<FsNode> delDir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), true);
 
     for (;nextTmpId<100000000;nextTmpId++) {
         BString name = "del"+BString::valueOf(nextTmpId)+".tmp";
@@ -84,7 +84,7 @@ bool FsFileNode::remove() {
         });
         
         Fs::makeLocalDirs(B("/tmp/del"));
-        BoxedPtr<FsNode> delDir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), true);
+        std::shared_ptr<FsNode> delDir = Fs::getNodeFromLocalPath(B(""), B("/tmp/del"), true);
 
         BString newNativePath = FsFileNode::getNativeTmpPath();
 
@@ -145,7 +145,7 @@ void FsFileNode::ensurePathIsLocal() {
         } else {
             BString parentPath = Fs::getParentPath(this->path);
             Fs::makeLocalDirs(parentPath);
-            this->zipNode->moveToFileSystem(this);
+            this->zipNode->moveToFileSystem(shared_from_this());
         }
     } else if (this->parent->type==Type::File) {
         BString parentPath = Fs::getParentPath(this->path);
@@ -158,7 +158,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     U32 openFlags = O_BINARY;
             
     if (this->isDirectory()) {
-        BoxedPtr<FsNode> n = Fs::getNodeFromLocalPath(B(""), this->path, true);
+        std::shared_ptr<FsNode> n = Fs::getNodeFromLocalPath(B(""), this->path, true);
         if (!n) {
             return nullptr;
         }
@@ -198,11 +198,11 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if (!f || f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
-            return this->zipNode->open(this, flags);
+            return this->zipNode->open(shared_from_this(), flags);
 #endif
         return nullptr;
     }
-    return new FsFileOpenNode(this, flags, f);
+    return new FsFileOpenNode(std::dynamic_pointer_cast<FsFileNode>(shared_from_this()), flags, f);
 }
 
 U32 FsFileNode::getType(bool checkForLink) {	
@@ -286,7 +286,7 @@ U32 FsFileNode::rename(BString path) {
         });
     }
 
-    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(path), true);
+    std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(path), true);
     if (!parent) {
         return -K_ENOENT;
     }
@@ -302,7 +302,7 @@ U32 FsFileNode::rename(BString path) {
 
     for (U32 i=0;i<3;i++) {
         if (Fs::doesNativePathExist(nativePath)) {
-            BoxedPtr<FsNode> existingNode = Fs::getNodeFromLocalPath(B(""), path, false);
+            std::shared_ptr<FsNode> existingNode = Fs::getNodeFromLocalPath(B(""), path, false);
             if (!existingNode) {
                 // we must be on windows, nativePath and path are case insensitive the same, but are different case
                 //            
@@ -332,8 +332,8 @@ U32 FsFileNode::rename(BString path) {
             this->nativePath = nativePath;
             this->name = Fs::getFileNameFromPath(path);
             BString parentPath = Fs::getParentPath(path);
-            BoxedPtr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), parentPath, false);
-            parentNode->addChild(this);
+            std::shared_ptr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), parentPath, false);
+            parentNode->addChild(shared_from_this());
             this->parent = parentNode;
         } else {
             result = -translateErr(errno);

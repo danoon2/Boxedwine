@@ -6,11 +6,11 @@
 #include <fcntl.h>
 #include "fszipopennode.h"
 
-FsZipNode::FsZipNode(const fsZipInfo& zipInfo, std::shared_ptr<FsZip>& fsZip) : fsZip(fsZip) {
+FsZipNode::FsZipNode(const fsZipInfo& zipInfo, const std::shared_ptr<FsZip>& fsZip) : fsZip(fsZip) {
     this->zipInfo = zipInfo;
 }
 
-bool FsZipNode::moveToFileSystem(BoxedPtr<FsNode> node) {
+bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
     if (node->isDirectory())
         return false;
     FsOpenNode* from = this->open(node, K_O_RDONLY);
@@ -39,7 +39,7 @@ U64 FsZipNode::length() {
     return this->zipInfo.length;
 }
 
-FsOpenNode* FsZipNode::open(BoxedPtr<FsNode> node, U32 flags) {
+FsOpenNode* FsZipNode::open(std::shared_ptr<FsNode> node, U32 flags) {
     std::shared_ptr<FsZipNode> zipNode = shared_from_this();
     return new FsZipOpenNode(node, zipNode, flags, (U64)this->zipInfo.offset);
 }

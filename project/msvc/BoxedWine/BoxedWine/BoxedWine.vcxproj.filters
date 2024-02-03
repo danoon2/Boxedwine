@@ -816,9 +816,6 @@
     <ClInclude Include="..\..\..\..\source\util\klist.h">
       <Filter>source\util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\util\boxedptr.h">
-      <Filter>source\util</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\karray.h">
       <Filter>source\util</Filter>
     </ClInclude>
@@ -1243,6 +1240,9 @@
       <Filter>source\util</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\bfile.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\bhashtable.h">
       <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>

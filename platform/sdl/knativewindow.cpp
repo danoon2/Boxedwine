@@ -110,7 +110,7 @@ public:
     }
     ~KNativeWindowSdl() {
         for (auto& n : this->cursors) {
-            SDL_FreeCursor(n.second);
+            SDL_FreeCursor(n.value);
         }
         if (primarySurface) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(primarySurface->mutex);
@@ -150,8 +150,8 @@ public:
     Boxed_Surface* primarySurface = nullptr;
 
     BString delayedCreateWindowMsg; // the ui will watch for this message
-    std::unordered_map<BString, SDL_Cursor*> cursors;
-    std::unordered_map<U32, std::shared_ptr<WndSdl>> hwndToWnd;
+    BHashTable<BString, SDL_Cursor*> cursors;
+    BHashTable<U32, std::shared_ptr<WndSdl>> hwndToWnd;
     BOXEDWINE_MUTEX hwndToWndMutex;
 
     void screenResized(KThread* thread);
@@ -225,7 +225,7 @@ public:
     void destroyScreen(KThread* thread);
     void preDrawWindow();
     void displayChanged(KThread* thread);
-    KThreadGlContext* getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id);
+    std::shared_ptr<KThreadGlContext> getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id);
     std::shared_ptr<WndSdl> getWndSdl(U32 hwnd);        
     BString getCursorName(const char* moduleName, const char* resourceName, int resource);
 #ifdef BOXEDWINE_RECORDER
@@ -331,22 +331,18 @@ void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, BStrin
 
 std::shared_ptr<Wnd> KNativeWindowSdl::getWnd(U32 hwnd) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
-    if (hwndToWnd.count(hwnd))
-        return hwndToWnd[hwnd];
-    return NULL;
+    return hwndToWnd[hwnd];
 }
 
 std::shared_ptr<WndSdl> KNativeWindowSdl::getWndSdl(U32 hwnd) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
-    if (hwndToWnd.count(hwnd))
-        return hwndToWnd[hwnd];
-    return NULL;
+    return hwndToWnd[hwnd];
 }
 
 std::shared_ptr<WndSdl> KNativeWindowSdl::getWndFromPoint(int x, int y) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     for (auto& n : hwndToWnd) {
-        std::shared_ptr<WndSdl> wnd = n.second;
+        std::shared_ptr<WndSdl> wnd = n.value;
         if (x>=wnd->windowRect.left && x<=wnd->windowRect.right && y>=wnd->windowRect.top && y<=wnd->windowRect.bottom && wnd->surface) {
             return wnd;
         }
@@ -357,7 +353,7 @@ std::shared_ptr<WndSdl> KNativeWindowSdl::getWndFromPoint(int x, int y) {
 std::shared_ptr<WndSdl> KNativeWindowSdl::getFirstVisibleWnd() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     for (auto& n : hwndToWnd) {
-        std::shared_ptr<WndSdl> wnd = n.second;
+        std::shared_ptr<WndSdl> wnd = n.value;
         if (wnd->sdlTextureWidth || wnd->openGlContext) {
             return wnd;
         }
@@ -380,7 +376,7 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
         for (auto& n : hwndToWnd) {
-            std::shared_ptr<WndSdl> wnd = n.second;
+            std::shared_ptr<WndSdl> wnd = n.value;
             if (wnd->sdlTexture) {
                 SDL_DestroyTexture(wnd->sdlTexture);
                 wnd->sdlTexture = nullptr;
@@ -470,7 +466,7 @@ void shutdownMesaOpenGL();
 #endif
 
 void KNativeWindowSdl::glDeleteContext(KThread* thread, U32 contextId) {
-    KThreadGlContext* threadContext = thread->getGlContextById(contextId);    
+    std::shared_ptr<KThreadGlContext> threadContext = thread->getGlContextById(contextId);    
     if (threadContext && threadContext->context) {
         if (!thread->hasContextBeenMadeCurrentSinceCreation && screen->windowIsGL) {
             // This is a weird one, SDL can believe this is the current context, yet it wasn't recorded as being created on this this thread, did I miss something?
@@ -499,7 +495,7 @@ void KNativeWindowSdl::glUpdateContextForThread(KThread* thread) {
 
 void printOpenGLInfo();
 U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
-    KThreadGlContext* threadContext = thread->getGlContextById(arg);
+    std::shared_ptr<KThreadGlContext> threadContext = thread->getGlContextById(arg);
     if (threadContext && threadContext->context) {
         if (BoxedwineGL::current->makeCurrent(threadContext->context, window)) {
             threadContext->hasBeenMadeCurrent = true;
@@ -532,8 +528,8 @@ U32 KNativeWindowSdl::glMakeCurrent(KThread* thread, U32 arg) {
     return 0;
 }
 
-KThreadGlContext* KNativeWindowSdl::getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id) {
-    KThreadGlContext* result = nullptr;
+std::shared_ptr<KThreadGlContext> KNativeWindowSdl::getGlContextByIdInUnknownThread(const std::shared_ptr<KProcess>& process, U32 id) {
+    std::shared_ptr<KThreadGlContext> result;
 
     process->iterateThreads([id, &result] (KThread* thread) {
         result = thread->getGlContextById(id);
@@ -543,8 +539,8 @@ KThreadGlContext* KNativeWindowSdl::getGlContextByIdInUnknownThread(const std::s
 }
 
 U32 KNativeWindowSdl::glShareLists(KThread* thread, U32 srcContext, U32 destContext) {
-    KThreadGlContext* src = getGlContextByIdInUnknownThread(thread->process, srcContext);
-    KThreadGlContext* dst = getGlContextByIdInUnknownThread(thread->process, destContext);
+    std::shared_ptr<KThreadGlContext> src = getGlContextByIdInUnknownThread(thread->process, srcContext);
+    std::shared_ptr<KThreadGlContext> dst = getGlContextByIdInUnknownThread(thread->process, destContext);
 
     if (BoxedwineGL::current->shareList(src, dst, window)) {
         return 1;
@@ -790,7 +786,7 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
             for (auto& n : hwndToWnd) {
-                std::shared_ptr<WndSdl> wnd = n.second;
+                std::shared_ptr<WndSdl> wnd = n.value;
                 wnd->openGlContext = nullptr;
             }
         }
@@ -1349,13 +1345,13 @@ std::shared_ptr<Wnd> KNativeWindowSdl::createWnd(KThread* thread, U32 processId,
     wnd->hwnd = hwnd;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     lastChildWndCreated = KSystem::getMilliesSinceStart();
-    hwndToWnd[hwnd] = wnd;
+    hwndToWnd.set(hwnd, wnd);
     return wnd;
 }
 
 void WndSdl::destroy() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(screen->hwndToWndMutex);
-    screen->hwndToWnd.erase(hwnd);
+    screen->hwndToWnd.remove(hwnd);
 }
 
 void WndSdl::show(bool bShow) {
@@ -1657,7 +1653,7 @@ bool KNativeWindowSdl::setCursor(const char* moduleName, const char* resourceNam
         return 1;
     } else {
         BString name = getCursorName(moduleName, resourceName, resource);
-        if (cursors.count(name) && !relativeMouse) {
+        if (cursors.contains(name) && !relativeMouse) {
             SDL_Cursor* cursor = cursors[name];
             if (!cursor)
                 return 0;
@@ -1723,7 +1719,7 @@ void KNativeWindowSdl::createAndSetCursor(const char* moduleName, const char* re
     SDL_Cursor* cursor = SDL_CreateCursor(data_bits, mask_bits, width, height, hotX, hotY);
     if (cursor) {
         BString name = getCursorName(moduleName, resourceName, resource);
-        cursors[name] = cursor;
+        cursors.set(name, cursor);
         SDL_SetCursor(cursor);
     }
     DISPATCH_MAIN_THREAD_BLOCK_END

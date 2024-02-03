@@ -49,7 +49,7 @@ public:
     U32 setsockopt(KThread* thread, KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len) override;
     U32 shutdown(KThread* thread, KFileDescriptor* fd, U32 how) override;
 
-    BoxedPtr<FsNode> node;    
+    std::shared_ptr<FsNode> node;    
     std::weak_ptr<KUnixSocketObject> connection;
 
     static U32 unixsocket_write_native_nowait(const std::shared_ptr<KObject>& obj, U8* value, int len);

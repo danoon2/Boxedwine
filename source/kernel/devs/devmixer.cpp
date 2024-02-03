@@ -22,7 +22,7 @@
 
 class DevMixer : public FsVirtualOpenNode {
 public:
-    DevMixer(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
+    DevMixer(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
 
     // From FsOpenNode
     U32 ioctl(KThread* thread, U32 request) override;
@@ -30,7 +30,7 @@ public:
     U32 writeNative(U8* buffer, U32 len) override {return 0;}
 };
 
-FsOpenNode* openDevMixer(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevMixer(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevMixer(node, flags);
 }
 

@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include "fsfilenode.h"
 
-FsFileOpenNode::FsFileOpenNode(BoxedPtr<FsFileNode> node, U32 flags, U32 handle) : FsOpenNode(node, flags), fileNode(node), handle(handle) {
+FsFileOpenNode::FsFileOpenNode(const std::shared_ptr<FsFileNode>& node, U32 flags, U32 handle) : FsOpenNode(node, flags), fileNode(node), handle(handle) {
 }
 
 FsFileOpenNode::~FsFileOpenNode() {

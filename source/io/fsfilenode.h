@@ -15,7 +15,7 @@ public:
     static BString getNativeTmpPath();
     static BString getLocalTmpPath();
 
-    FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativeRootPath, bool isDirectory, bool isRootPath, BoxedPtr<FsNode> parent);
+    FsFileNode(U32 id, U32 rdev, BString path, BString link, BString nativeRootPath, bool isDirectory, bool isRootPath, std::shared_ptr<FsNode> parent);
 
     // from FsNode
     U32 rename(BString path) override; //return 0 if success, else errno

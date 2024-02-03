@@ -9,7 +9,7 @@ template <typename T>
 class KList;
 
 template <typename T>  
-class KListNode : public BoxedPtrBase {
+class KListNode {
 public:
     KListNode(T data) : data(data) {}
     T data;

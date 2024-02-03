@@ -250,8 +250,8 @@ void glcommon_glGetString(CPU* cpu) {
             }
         }
     }
-    if (process->glStrings.count(name)) {
-        U32 previousAddress = process->glStrings[name];
+    U32 previousAddress = 0;
+    if (process->glStrings.get(name, previousAddress)) {
         if (process->memory->memcmp(previousAddress, result, (U32)strlen(result)+1) == 0) {
             EAX = previousAddress;
             return;
@@ -262,7 +262,7 @@ void glcommon_glGetString(CPU* cpu) {
     cpu->memory->memcpy(address, (void*)result, len + 1);
     cpu->thread->process->glStringsiExtensions = address;
 
-    process->glStrings[name] = address;
+    process->glStrings.set(name, address);
     EAX = address;
 }
 

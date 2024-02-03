@@ -22,7 +22,7 @@
 
 class DevZero : public FsVirtualOpenNode {
 public:
-    DevZero(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
+    DevZero(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
 
     // From FsOpenNode
     U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
@@ -52,6 +52,6 @@ bool DevZero::canMap() {
     return true;
 }
 
-FsOpenNode* openDevZero(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevZero(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevZero(node, flags);
 }

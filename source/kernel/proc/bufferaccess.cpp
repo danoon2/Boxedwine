@@ -20,7 +20,7 @@
 
 #include "bufferaccess.h"
 
-BufferAccess::BufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer) : FsOpenNode(node, flags) {	
+BufferAccess::BufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, BString buffer) : FsOpenNode(node, flags) {	
     this->buffer = buffer;
     this->pos = 0;
 }

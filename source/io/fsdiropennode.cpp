@@ -3,7 +3,7 @@
 #include "fsfilenode.h"
 #include "fsdiropennode.h"
 
-FsDirOpenNode::FsDirOpenNode(BoxedPtr<FsNode> node, U32 flags) : FsOpenNode(node, flags), pos(0) {
+FsDirOpenNode::FsDirOpenNode(std::shared_ptr<FsNode> node, U32 flags) : FsOpenNode(node, flags), pos(0) {
 }
 
 S64 FsDirOpenNode::length() {	

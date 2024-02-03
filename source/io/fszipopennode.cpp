@@ -7,7 +7,7 @@
 #include "fszip.h"
 
 
-FsZipOpenNode::FsZipOpenNode(BoxedPtr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset) : FsOpenNode(node, flags), zipNode(zipNode), pos(0), offset(offset) {
+FsZipOpenNode::FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset) : FsOpenNode(node, flags), zipNode(zipNode), pos(0), offset(offset) {
 }
 
 S64 FsZipOpenNode::length() {

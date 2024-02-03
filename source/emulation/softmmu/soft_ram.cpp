@@ -9,13 +9,13 @@ int allocatedRamPages;
 #include "../../util/ptrpool.h"
 
 static PtrPool<U8, false> freeRamPages(0);
-static std::unordered_map<U8*, U32> ramCounts;
+static BHashTable<U8*, U32> ramCounts;
 
 U8* ramPageAlloc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     U8* result = freeRamPages.get();
     if (result) {
-        ramCounts[result] = 1;
+        ramCounts.set(result, 1);
         allocatedRamPages++;
         return result;
     }
@@ -41,25 +41,36 @@ U8* ramPageAlloc() {
 
 void ramPageIncRef(U8* ram) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    if (ramCounts[ram] == 255) {
+    U32 count = 0;
+    if (!ramCounts.get(ram, count) || count == 255) {
         kpanic("max ram page ref count reached");
     }
-    ramCounts[ram]++;
+    ramCounts.set(ram, count+1);
 }
 
 void ramPageDecRef(U8* ram) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    ramCounts[ram]--;
-    if (ramCounts[ram] == 0) {
+    U32 count = 0;
+    if (!ramCounts.get(ram, count)) {
+        kpanic("ramPageDecRef failed to get count");
+    }
+
+    count--;
+    if (count == 0) {
         allocatedRamPages--;
         memset(ram, 0, K_PAGE_SIZE);
         freeRamPages.put(ram);
+        ramCounts.remove(ram);
+    } else {
+        ramCounts.set(ram, count);
     }
 }
 
 U32 ramPageRefCount(U8* ram) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    return ramCounts[ram];
+    U32 count = 0;
+    ramCounts.get(ram, count);
+    return count;
 }
 #else
 U8* ramPageAlloc() {

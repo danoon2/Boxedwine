@@ -35,11 +35,11 @@ void NOPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_access(address, false, true);
 }
 
-U8* NOPage::getReadPtr(U32 address, bool makeReady) {
+U8* NOPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
     return nullptr;
 }
 
-U8* NOPage::getWritePtr(U32 address, U32 len, bool makeReady) {
+U8* NOPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     return nullptr;
 }
 

@@ -27,7 +27,7 @@
 
 class DevDsp : public FsVirtualOpenNode {
 public:
-    DevDsp(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {                
+    DevDsp(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {                
         this->audio = KDspAudio::createDspAudio();
         this->freq = 11025;
         this->channels = 1;
@@ -293,6 +293,6 @@ void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     }
 }
 
-FsOpenNode* openDevDsp(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevDsp(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevDsp(node, flags);
 }

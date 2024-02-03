@@ -7,7 +7,7 @@ class FsFileNode;
 
 class FsFileOpenNode : public FsOpenNode {
 public:
-    FsFileOpenNode(BoxedPtr<FsFileNode> node, U32 flags, U32 handle);
+    FsFileOpenNode(const std::shared_ptr<FsFileNode>& node, U32 flags, U32 handle);
     virtual ~FsFileOpenNode();
 
     // from FsOpenNode
@@ -30,7 +30,7 @@ public:
     bool isOpen() override;
 
 private:
-    BoxedPtr<FsFileNode> fileNode;
+    std::shared_ptr<FsFileNode> fileNode;
     U32 handle;
 };
 

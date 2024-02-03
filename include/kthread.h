@@ -54,6 +54,8 @@ public:
     KThread(U32 id, const std::shared_ptr<KProcess>& process);
     ~KThread();
 
+    void addCallbackOnExit(std::function<void(U32 id)> callback) {callbacksOnExit.push_back(callback);}
+
     void reset();
 
     struct user_desc* getLDT(U32 index);
@@ -107,13 +109,13 @@ public:
     U64 waitingForSignalToEndMaskToRestore = 0;
     U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
-    KThreadGlContext* getGlContextById(U32 id);
+    std::shared_ptr<KThreadGlContext> getGlContextById(U32 id);
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);
     void removeAllGlContexts();
     bool hasContextBeenMadeCurrentSinceCreation;
 
-    std::unordered_map<U32, KThreadGlContext> glContext;
+    BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
 public:
     void* currentContext = nullptr;
     bool log = false; // syscalls
@@ -146,6 +148,8 @@ public:
 
     U32 condStartWaitTime = 0;
 private:
+    std::vector< std::function<void(U32) > > callbacksOnExit;
+
     void clearFutexes();
 
     thread_local static KThread* runningThread;

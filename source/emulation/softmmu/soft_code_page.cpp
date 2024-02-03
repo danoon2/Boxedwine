@@ -329,15 +329,15 @@ void CodePage::writed(U32 address, U32 value) {
     }
 }
 
-U8* CodePage::getReadPtr(U32 address, bool makeReady) {
-    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
+U8* CodePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    if (memory->canRead(address >> K_PAGE_SHIFT)) {
         return this->page;
     }
     return nullptr;
 }
 
-U8* CodePage::getWritePtr(U32 address, U32 len, bool makeReady) {
-    if (KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT) && makeReady) {
+U8* CodePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+    if (memory->canWrite(address >> K_PAGE_SHIFT) && makeReady) {
         removeBlockAt(address, len);
         return this->page;
     }

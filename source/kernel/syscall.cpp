@@ -101,7 +101,7 @@ static U32 syscall_write(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, BString name);
+std::shared_ptr<FsNode> findNode(std::shared_ptr<FsNode> parent, BString name);
 
 static U32 syscall_open(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG1);
@@ -109,7 +109,7 @@ static U32 syscall_open(CPU* cpu, U32 eipCount) {
     U32 result = cpu->thread->process->open(name, ARG2);
 #ifdef _DEBUG
     if (result>1000) {
-        BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
+        std::shared_ptr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
         if (!found) {
             printf("open: name=%s flags=%x result=%X\n", name.c_str(), ARG2, result);
         }
@@ -1282,14 +1282,14 @@ static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-BoxedPtr<FsNode> findNode(BoxedPtr<FsNode> parent, BString name) {
+std::shared_ptr<FsNode> findNode(std::shared_ptr<FsNode> parent, BString name) {
     if (parent->name==name) {
         return parent;
     }
-    std::vector<BoxedPtr<FsNode> > children;
+    std::vector<std::shared_ptr<FsNode> > children;
     parent->getAllChildren(children);
     for (auto& n : children) {
-        BoxedPtr<FsNode> result = findNode(n, name);
+        std::shared_ptr<FsNode> result = findNode(n, name);
         if (result) {
             return result;
         }
@@ -1303,7 +1303,7 @@ static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
 #ifdef _DEBUG
     //if (result>1000) {
-    //    BoxedPtr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
+    //    std::shared_ptr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
     //    if (!found) {
     //        printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
     //    }

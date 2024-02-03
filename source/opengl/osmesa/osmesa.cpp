@@ -90,7 +90,7 @@ public:
     void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) override;
     void swapBuffer(void* window) override;
     void setSwapInterval(U32 vsync) override;
-    bool shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window) override;
+    bool shareList(const std::shared_ptr<KThreadGlContext>& src, const std::shared_ptr<KThreadGlContext>& dst, void* window) override;
 
 private:
     void* internalCreateContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile, OSMesaContext sharedContext);
@@ -177,7 +177,7 @@ void MesaBoxedwineGL::setSwapInterval(U32 vsync) {
 
 }
 
-bool MesaBoxedwineGL::shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window) {
+bool MesaBoxedwineGL::shareList(const std::shared_ptr<KThreadGlContext>& src, const std::shared_ptr<KThreadGlContext>& dst, void* window) {
     if (src && dst) {
         if (dst->hasBeenMadeCurrent) {
             klog("could not share display lists, the destination context has been current already");

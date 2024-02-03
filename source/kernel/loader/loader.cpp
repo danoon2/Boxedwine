@@ -104,11 +104,11 @@ BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
     return B("");
 }
 
-FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs) {
+FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const std::shared_ptr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs) {
     bool isElf = 0;
     FsOpenNode* openNode = nullptr;
-    BoxedPtr<FsNode> interpreterNode;
-    BoxedPtr<FsNode> loaderNode;
+    std::shared_ptr<FsNode> interpreterNode;
+    std::shared_ptr<FsNode> loaderNode;
 
     if (node) {
         openNode = node->open(K_O_RDONLY);

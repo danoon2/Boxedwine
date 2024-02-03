@@ -16,7 +16,7 @@ public:
     bool saveChanges();
 
 private:
-    std::unordered_map<BString,BString> values;
+    BHashTable<BString,BString> values;
     BString fileName;
 };
 #endif
