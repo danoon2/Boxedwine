@@ -3966,6 +3966,7 @@ static struct Data divEax[] = {
 };
 
 static struct Data idivAl[] = {
+        allocData(10, 0xfd, 0x01fd, 0, false, false),
         allocData(10, 3, 0x0103, 0, false, false),
         allocData(10, ((S8)-3) & 0xFF, 0x01FD, 0, false, false),
         allocData(((S16)-1003) & 0xFFFF, ((S8)-100) & 0xFF, 0xFD0A, 0, false, false), // -3 rem, 10 quo
@@ -3973,7 +3974,8 @@ static struct Data idivAl[] = {
 };
 
 static struct Data idivAx[] = {
-        allocDataConstvar2(0, 10, 3, 0, false, false, 3, 1),
+        allocDataConstvar2(0, 10, 0xfffd, 0, false, false, 0xfffd, 1),
+        allocDataConstvar2(0, 10, 3, 0, false, false, 3, 1),        
         allocDataConstvar2(0xCB, 0x8512, 4445, 0, false, false, 3000, 2874), // 13337874 / 3000 = 4445 r 2874
         allocDataConstvar2(0xFF34, 0x7AEE, ((S16)-4445) & 0xFFFF, 0, false, false, 3000, ((S16)-2874) & 0xFFFF), // -13337874 / 3000 = -4445 r -2874
         endData()
@@ -3981,6 +3983,7 @@ static struct Data idivAx[] = {
 
 static struct Data idivEax[] = {
         allocDataConstvar2(0, 10, 3, 0, false, false, 3, 1),
+        allocDataConstvar2(0, 10, -3, 0, false, false, -3, 1),
         allocDataConstvar2(0xCB, 0x85121234, 0xB2D, 0, false, false, 0x12345678, 0x1227B71C), // 874110915124 / 305419896 = 2861 r 304592668
         allocDataConstvar2(0xFFFFFF34, 0x7AEDEDCC, 0xFFFFF4D3, 0, false, false, 0x12345678, 0xEDD848E4), // -874110915124 / 305419896 = -2861 r -304592668
         endData()

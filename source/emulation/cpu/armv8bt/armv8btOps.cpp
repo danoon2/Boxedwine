@@ -1275,7 +1275,10 @@ void idiv16(Armv8btAsm* data, U8 src) {
     data->shiftRegLeftWithValue32(tmpReg, xEDX, 16);
     data->copyBitsFromSourceAtPositionToDest(tmpReg, xEAX, 0, 16, true);
     // quo = num / src;
-    data->signedDivideReg32(quo, tmpReg, src);
+    U8 signedSrc = data->getTmpReg();
+    data->signExtend(signedSrc, src, 16);
+    data->signedDivideReg32(quo, tmpReg, signedSrc);
+    data->releaseTmpReg(signedSrc);
     // rem = (S16)(num % src);
     data->multiplySubtract32(rem, quo, src, tmpReg);
 
@@ -1389,7 +1392,10 @@ void idiv32(Armv8btAsm* data, U8 src) {
     data->shiftRegLeftWithValue64(tmpReg, xEDX, 32);
     data->copyBitsFromSourceAtPositionToDest64(tmpReg, xEAX, 0, 32, true);
     // quo = num / src;
-    data->signedDivideReg64(quo, tmpReg, src);
+    U8 signedSrc = data->getTmpReg();
+    data->signExtend64(signedSrc, src, 32);
+    data->signedDivideReg64(quo, tmpReg, signedSrc);
+    data->releaseTmpReg(signedSrc);
     // rem = (S32)(num % src);
     data->multiplySubtract64(rem, quo, src, tmpReg);
 
