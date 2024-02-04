@@ -3983,7 +3983,7 @@ static struct Data idivAx[] = {
 
 static struct Data idivEax[] = {
         allocDataConstvar2(0, 10, 3, 0, false, false, 3, 1),
-        allocDataConstvar2(0, 10, -3, 0, false, false, -3, 1),
+        allocDataConstvar2(0, 10, 0xfffffffd, 0, false, false, 0xfffffffd, 1),
         allocDataConstvar2(0xCB, 0x85121234, 0xB2D, 0, false, false, 0x12345678, 0x1227B71C), // 874110915124 / 305419896 = 2861 r 304592668
         allocDataConstvar2(0xFFFFFF34, 0x7AEDEDCC, 0xFFFFF4D3, 0, false, false, 0x12345678, 0xEDD848E4), // -874110915124 / 305419896 = -2861 r -304592668
         endData()
