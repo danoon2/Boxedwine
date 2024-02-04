@@ -25,7 +25,10 @@
 #include <Windows.h>
 #endif
 
+static BOXEDWINE_MUTEX logMutex;
+
 void internal_kpanic(BString msg) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(logMutex);
     if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write(msg);
     }
@@ -45,6 +48,7 @@ void internal_kpanic(BString msg) {
 }
 
 void internal_log(BString msg, FILE* f) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(logMutex);
     if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write(msg);
     }

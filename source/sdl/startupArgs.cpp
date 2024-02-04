@@ -509,8 +509,7 @@ bool StartUpArgs::apply() {
 #ifdef GENERATE_SOURCE
     if (gensrc)
         writeSource();
-#endif
-    klog("Boxedwine has shutdown"); // must call before KSystem::destroy()
+#endif    
 	KSystem::destroy();
     KNativeWindow::shutdown();
     KNativeAudio::shutdown();

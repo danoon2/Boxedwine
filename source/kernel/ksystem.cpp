@@ -120,9 +120,6 @@ void KSystem::destroy() {
 	Fs::shutDown();
     DecodedOp::clearCache();
     NormalCPU::clearCache();
-    if (KSystem::logFile.isOpen()) {
-        KSystem::logFile.close();
-    }
 }
 
 U32 KSystem::getProcessCount() {
