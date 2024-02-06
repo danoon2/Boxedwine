@@ -181,7 +181,6 @@
 		1A80EF42276EBCC70032A70A /* syscall.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2D2433BBBE003F17F1 /* syscall.cpp */; };
 		1A80EF44276EBCC70032A70A /* boxedReg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71205458244D01D900C3CB1B /* boxedReg.cpp */; };
 		1A80EF45276EBCC70032A70A /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
-		1A80EF47276EBCC70032A70A /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		1A80EF4C276EBCC70032A70A /* fsdiropennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF52433BBBE003F17F1 /* fsdiropennode.cpp */; };
 		1A80EF50276EBCC70032A70A /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFCB12433B815003F17F1 /* AppDelegate.m */; };
 		1A80EF53276EBCC70032A70A /* glMarshalSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */; };
@@ -320,7 +319,6 @@
 		1A80F0F8276EBF170032A70A /* stringutil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD582433BBBE003F17F1 /* stringutil.cpp */; };
 		1A80F0FE276EBF170032A70A /* common_arith.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8D2433BBBE003F17F1 /* common_arith.cpp */; };
 		1A80F0FF276EBF170032A70A /* cpuscalingmaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE352433BBBE003F17F1 /* cpuscalingmaxfreq.cpp */; };
-		1A80F101276EBF170032A70A /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		1A80F103276EBF170032A70A /* cpumaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE342433BBBE003F17F1 /* cpumaxfreq.cpp */; };
 		1A80F10B276EBF170032A70A /* imgui_impl_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7122285E2433EE5300CDBABD /* imgui_impl_sdl.cpp */; };
 		1A80F110276EBF170032A70A /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550FF263261DF006E0C8A /* mztools.c */; };
@@ -488,12 +486,6 @@
 		1AA711B42B492273008704E2 /* bstring.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711AD2B492272008704E2 /* bstring.cpp */; };
 		1AA711B52B492273008704E2 /* bstring.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711AD2B492272008704E2 /* bstring.cpp */; };
 		1AA711B82B4FBCCB008704E2 /* kmemory_soft.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711B72B4FBCCB008704E2 /* kmemory_soft.cpp */; };
-		1AA711BB2B4FBCD8008704E2 /* kmemory_hard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */; };
-		1AA711BC2B505BA9008704E2 /* kmemory_hard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */; };
-		1AA711BD2B505BAA008704E2 /* kmemory_hard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */; };
-		1AA711BE2B505BAA008704E2 /* kmemory_hard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */; };
-		1AA711BF2B505BAB008704E2 /* kmemory_hard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */; };
-		1AA711C02B505BAC008704E2 /* kmemory_hard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */; };
 		1AA711C12B505C99008704E2 /* kmemory_soft.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711B72B4FBCCB008704E2 /* kmemory_soft.cpp */; };
 		1AA711C22B505C99008704E2 /* kmemory_soft.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711B72B4FBCCB008704E2 /* kmemory_soft.cpp */; };
 		1AA711C32B505C9A008704E2 /* kmemory_soft.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA711B72B4FBCCB008704E2 /* kmemory_soft.cpp */; };
@@ -610,7 +602,6 @@
 		1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
 		1AE7E5C52B5A1BD200D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
-		1AE7E5C62B5A1BD200D29E4A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */; };
 		1AE7E5C72B5A1BD200D29E4A /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BF2B5A1BD100D29E4A /* btData.cpp */; };
 		1AE7E5C82B5A1BD200D29E4A /* btMemory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5C22B5A1BD100D29E4A /* btMemory.cpp */; };
 		1AE7E5C92B5A1C6600D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
@@ -618,11 +609,6 @@
 		1AE7E5CB2B5A1C6800D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
 		1AE7E5CC2B5A1C6900D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
 		1AE7E5CD2B5A1C6A00D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
-		1AE7E5CF2B5A1C6F00D29E4A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */; };
-		1AE7E5D02B5A1C7000D29E4A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */; };
-		1AE7E5D12B5A1C7100D29E4A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */; };
-		1AE7E5D22B5A1C7200D29E4A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */; };
-		1AE7E5D32B5A1C7200D29E4A /* btCodeMemoryWrite.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */; };
 		1AE7E5D42B5A1C7600D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
 		1AE7E5D52B5A1C7700D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
 		1AE7E5D62B5A1C7700D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
@@ -686,9 +672,6 @@
 		7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
 		7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
 		710091502644D42C003413C3 /* sdlcallback.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7100913A2644D42C003413C3 /* sdlcallback.cpp */; };
-		7100915A2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
-		7100915B2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
-		7100915C2644D44E003413C3 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		7100915D2644D44E003413C3 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
 		7100915E2644D44E003413C3 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
 		7100915F2644D44E003413C3 /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
@@ -1055,7 +1038,6 @@
 		7135DC60264EBCD0005D6AA6 /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		7135DC61264EBCD0005D6AA6 /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
 		7135DC62264EBCD0005D6AA6 /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
-		7135DC63264EBCD0005D6AA6 /* memory64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091532644D44E003413C3 /* memory64.cpp */; };
 		7135DC64264EBCD0005D6AA6 /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
 		7135DC65264EBCD0005D6AA6 /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091372644D42B003413C3 /* knativesystem.cpp */; };
 		7135DC66264EBCD0005D6AA6 /* cpuinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */; };
@@ -1448,8 +1430,6 @@
 		1AA711AF2B492272008704E2 /* concurrentqueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = concurrentqueue.h; sourceTree = "<group>"; };
 		1AA711B62B4FBCCB008704E2 /* kmemory_soft.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kmemory_soft.h; sourceTree = "<group>"; };
 		1AA711B72B4FBCCB008704E2 /* kmemory_soft.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = kmemory_soft.cpp; sourceTree = "<group>"; };
-		1AA711B92B4FBCD8008704E2 /* kmemory_hard.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kmemory_hard.h; sourceTree = "<group>"; };
-		1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = kmemory_hard.cpp; sourceTree = "<group>"; };
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
 		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
 		1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsdynamiclinknode.cpp; sourceTree = "<group>"; };
@@ -1491,11 +1471,9 @@
 		1AE7E5BA2B5A1BD100D29E4A /* btMemory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btMemory.h; sourceTree = "<group>"; };
 		1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCpu.cpp; sourceTree = "<group>"; };
 		1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCodeChunk.cpp; sourceTree = "<group>"; };
-		1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCodeMemoryWrite.cpp; sourceTree = "<group>"; };
 		1AE7E5BE2B5A1BD100D29E4A /* btCodeChunk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btCodeChunk.h; sourceTree = "<group>"; };
 		1AE7E5BF2B5A1BD100D29E4A /* btData.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btData.cpp; sourceTree = "<group>"; };
 		1AE7E5C02B5A1BD100D29E4A /* btData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btData.h; sourceTree = "<group>"; };
-		1AE7E5C12B5A1BD100D29E4A /* btCodeMemoryWrite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btCodeMemoryWrite.h; sourceTree = "<group>"; };
 		1AE7E5C22B5A1BD100D29E4A /* btMemory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btMemory.cpp; sourceTree = "<group>"; };
 		1AE7E5C32B5A1BD200D29E4A /* btCpu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btCpu.h; sourceTree = "<group>"; };
 		1AEBC3922AABC0A9007ECB08 /* BoxedwineUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoxedwineUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1523,7 +1501,6 @@
 		710091392644D42C003413C3 /* knativeaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeaudio.cpp; path = ../../../platform/sdl/knativeaudio.cpp; sourceTree = "<group>"; };
 		7100913A2644D42C003413C3 /* sdlcallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = sdlcallback.cpp; path = ../../../platform/sdl/sdlcallback.cpp; sourceTree = "<group>"; };
 		7100913B2644D42C003413C3 /* sdlcallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sdlcallback.h; path = ../../../platform/sdl/sdlcallback.h; sourceTree = "<group>"; };
-		710091532644D44E003413C3 /* memory64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = memory64.cpp; path = ../../../platform/linux/memory64.cpp; sourceTree = "<group>"; };
 		710091542644D44E003413C3 /* platform.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platform.cpp; path = ../../../platform/linux/platform.cpp; sourceTree = "<group>"; };
 		710091552644D44E003413C3 /* platformThreads.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformThreads.cpp; path = ../../../platform/linux/platformThreads.cpp; sourceTree = "<group>"; };
 		710091562644D44E003413C3 /* platformThreads-x64.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = "platformThreads-x64.cpp"; path = "../../../platform/linux/platformThreads-x64.cpp"; sourceTree = "<group>"; };
@@ -1711,7 +1688,6 @@
 		71FBFD4A2433BBBE003F17F1 /* testSSE.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = testSSE.h; sourceTree = "<group>"; };
 		71FBFD4B2433BBBE003F17F1 /* testMMX.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = testMMX.h; sourceTree = "<group>"; };
 		71FBFD4C2433BBBE003F17F1 /* testMMX.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = testMMX.cpp; sourceTree = "<group>"; };
-		71FBFD4E2433BBBE003F17F1 /* boxedptr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boxedptr.h; sourceTree = "<group>"; };
 		71FBFD4F2433BBBE003F17F1 /* crc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = crc.cpp; sourceTree = "<group>"; };
 		71FBFD502433BBBE003F17F1 /* log.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = log.cpp; sourceTree = "<group>"; };
 		71FBFD512433BBBE003F17F1 /* player.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = player.cpp; sourceTree = "<group>"; };
@@ -2185,8 +2161,6 @@
 			children = (
 				1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */,
 				1AE7E5BE2B5A1BD100D29E4A /* btCodeChunk.h */,
-				1AE7E5BD2B5A1BD100D29E4A /* btCodeMemoryWrite.cpp */,
-				1AE7E5C12B5A1BD100D29E4A /* btCodeMemoryWrite.h */,
 				1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */,
 				1AE7E5C32B5A1BD200D29E4A /* btCpu.h */,
 				1AE7E5BF2B5A1BD100D29E4A /* btData.cpp */,
@@ -2264,7 +2238,6 @@
 			isa = PBXGroup;
 			children = (
 				1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */,
-				710091532644D44E003413C3 /* memory64.cpp */,
 				710091542644D44E003413C3 /* platform.cpp */,
 				710091562644D44E003413C3 /* platformThreads-x64.cpp */,
 				710091552644D44E003413C3 /* platformThreads.cpp */,
@@ -2626,7 +2599,6 @@
 				71FBFD562433BBBE003F17F1 /* synchronization.h */,
 				715F348C2440D7FB0038F5A4 /* threadutils.cpp */,
 				715F348F2440D7FC0038F5A4 /* threadutils.h */,
-				71FBFD4E2433BBBE003F17F1 /* boxedptr.h */,
 				71FBFD4F2433BBBE003F17F1 /* crc.cpp */,
 				71FBFD502433BBBE003F17F1 /* log.cpp */,
 				71FBFD512433BBBE003F17F1 /* player.cpp */,
@@ -2647,7 +2619,6 @@
 			children = (
 				71FBFD5C2433BBBE003F17F1 /* cpu */,
 				71FBFDCB2433BBBE003F17F1 /* softmmu */,
-				71FBFDE52433BBBE003F17F1 /* hardmmu */,
 			);
 			path = emulation;
 			sourceTree = "<group>";
@@ -2836,15 +2807,6 @@
 				71FBFDE42433BBBE003F17F1 /* soft_rw_page.cpp */,
 			);
 			path = softmmu;
-			sourceTree = "<group>";
-		};
-		71FBFDE52433BBBE003F17F1 /* hardmmu */ = {
-			isa = PBXGroup;
-			children = (
-				1AA711BA2B4FBCD8008704E2 /* kmemory_hard.cpp */,
-				1AA711B92B4FBCD8008704E2 /* kmemory_hard.h */,
-			);
-			path = hardmmu;
 			sourceTree = "<group>";
 		};
 		71FBFDE82433BBBE003F17F1 /* io */ = {
@@ -3418,12 +3380,10 @@
 				1A80EF3A276EBCC70032A70A /* audiounit.cpp in Sources */,
 				1A80EF3C276EBCC70032A70A /* synchronization.cpp in Sources */,
 				1A80EF3E276EBCC70032A70A /* menubar.cpp in Sources */,
-				1AA711BD2B505BAA008704E2 /* kmemory_hard.cpp in Sources */,
 				1A80EF3F276EBCC70032A70A /* common_pushpop.cpp in Sources */,
 				1A80EF42276EBCC70032A70A /* syscall.cpp in Sources */,
 				1A80EF44276EBCC70032A70A /* boxedReg.cpp in Sources */,
 				1A80EF45276EBCC70032A70A /* startupArgs.cpp in Sources */,
-				1A80EF47276EBCC70032A70A /* memory64.cpp in Sources */,
 				1AC5F2DD2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 				1A80EF4C276EBCC70032A70A /* fsdiropennode.cpp in Sources */,
 				1A80EF50276EBCC70032A70A /* AppDelegate.m in Sources */,
@@ -3435,7 +3395,6 @@
 				1A55D64D2A08428F002B7021 /* deflate.c in Sources */,
 				1A80EF58276EBCC70032A70A /* osmesa.cpp in Sources */,
 				1A80EF59276EBCC70032A70A /* boxedTexture.cpp in Sources */,
-				1AE7E5D02B5A1C7000D29E4A /* btCodeMemoryWrite.cpp in Sources */,
 				1A55D63F2A0841E2002B7021 /* infback.c in Sources */,
 				1AE7E5DF2B5A1C8200D29E4A /* btMemory.cpp in Sources */,
 				1A80EF5B276EBCC70032A70A /* containersView.cpp in Sources */,
@@ -3593,7 +3552,6 @@
 				1A80F0F8276EBF170032A70A /* stringutil.cpp in Sources */,
 				1A80F0FE276EBF170032A70A /* common_arith.cpp in Sources */,
 				1A80F0FF276EBF170032A70A /* cpuscalingmaxfreq.cpp in Sources */,
-				1A80F101276EBF170032A70A /* memory64.cpp in Sources */,
 				1A80F103276EBF170032A70A /* cpumaxfreq.cpp in Sources */,
 				1AC5F2C62772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				1A80F10B276EBF170032A70A /* imgui_impl_sdl.cpp in Sources */,
@@ -3632,7 +3590,6 @@
 				1A80F16C276EBF170032A70A /* soft_ro_page.cpp in Sources */,
 				1AA711C32B505C9A008704E2 /* kmemory_soft.cpp in Sources */,
 				1A55D6622A08428F002B7021 /* uncompr.c in Sources */,
-				1AA711BE2B505BAA008704E2 /* kmemory_hard.cpp in Sources */,
 				1A80F172276EBF170032A70A /* MacPlatform.m in Sources */,
 				1A80F176276EBF170032A70A /* platform.cpp in Sources */,
 				1A80F179276EBF170032A70A /* glMarshal.cpp in Sources */,
@@ -3661,7 +3618,6 @@
 				1A80F1A0276EBF170032A70A /* optionsView.cpp in Sources */,
 				1AC5F2C02772D957001D0FCA /* armv8btData.cpp in Sources */,
 				1A80F1A1276EBF170032A70A /* knativesocket.cpp in Sources */,
-				1AE7E5D12B5A1C7100D29E4A /* btCodeMemoryWrite.cpp in Sources */,
 				1A80F1A2276EBF170032A70A /* pixelformat.cpp in Sources */,
 				1AE7E5E02B5A1C8300D29E4A /* btMemory.cpp in Sources */,
 				1A55D6562A08428F002B7021 /* gzclose.c in Sources */,
@@ -3860,7 +3816,6 @@
 				71222B3E2435163100CDBABD /* testCPU.cpp in Sources */,
 				71222B722435169100CDBABD /* normal_shift.cpp in Sources */,
 				1AC5F2D32772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
-				1AA711BF2B505BAB008704E2 /* kmemory_hard.cpp in Sources */,
 				71222BAD2435169100CDBABD /* knativesocket.cpp in Sources */,
 				71222B9F2435169100CDBABD /* ksystem.cpp in Sources */,
 				71222B8B2435169100CDBABD /* fsopennode.cpp in Sources */,
@@ -3870,7 +3825,6 @@
 				71B2D2FF2668178700010AB6 /* osmesa.cpp in Sources */,
 				1AC5F2C12772D957001D0FCA /* armv8btData.cpp in Sources */,
 				71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */,
-				1AE7E5D22B5A1C7200D29E4A /* btCodeMemoryWrite.cpp in Sources */,
 				71222B6A2435169100CDBABD /* common_other.cpp in Sources */,
 				71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */,
 				71222BB52435169100CDBABD /* loader.cpp in Sources */,
@@ -3891,7 +3845,6 @@
 				1AE7E5D72B5A1C7800D29E4A /* btCpu.cpp in Sources */,
 				71222B942435169100CDBABD /* startupArgs.cpp in Sources */,
 				71222BBC2435169100CDBABD /* glfunctions_ext1.cpp in Sources */,
-				7100915C2644D44E003413C3 /* memory64.cpp in Sources */,
 				71222B952435169100CDBABD /* mainloop.cpp in Sources */,
 				710091472644D42C003413C3 /* knativesystem.cpp in Sources */,
 				71222B992435169100CDBABD /* cpuinfo.cpp in Sources */,
@@ -3988,14 +3941,12 @@
 				71222BE424351CBA00CDBABD /* fsmemopennode.cpp in Sources */,
 				71222BE524351CBA00CDBABD /* fsfileopennode.cpp in Sources */,
 				71222BE624351CBA00CDBABD /* kepoll.cpp in Sources */,
-				1AE7E5CF2B5A1C6F00D29E4A /* btCodeMemoryWrite.cpp in Sources */,
 				71222BE724351CBA00CDBABD /* soft_file_map.cpp in Sources */,
 				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
 				71222BE924351CBA00CDBABD /* stringutil.cpp in Sources */,
 				71222BEA24351CBA00CDBABD /* common_arith.cpp in Sources */,
 				1A55D6502A08428F002B7021 /* crc32.c in Sources */,
 				71222BEB24351CBA00CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
-				7100915B2644D44E003413C3 /* memory64.cpp in Sources */,
 				71222BEC24351CBA00CDBABD /* cpumaxfreq.cpp in Sources */,
 				71222BED24351CBA00CDBABD /* imgui_impl_sdl.cpp in Sources */,
 				1A2236382820A85200E74D88 /* uptime.cpp in Sources */,
@@ -4050,7 +4001,6 @@
 				71222C1624351CBA00CDBABD /* synchronization.cpp in Sources */,
 				1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */,
 				71222C1724351CBA00CDBABD /* menubar.cpp in Sources */,
-				1AA711BC2B505BA9008704E2 /* kmemory_hard.cpp in Sources */,
 				71222C1824351CBA00CDBABD /* common_pushpop.cpp in Sources */,
 				1A155130263261EB006E0C8A /* glew.cpp in Sources */,
 				71222C1924351CBA00CDBABD /* syscall.cpp in Sources */,
@@ -4259,7 +4209,6 @@
 				7135DC4F264EBCD0005D6AA6 /* common_other.cpp in Sources */,
 				7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */,
 				7135DC51264EBCD0005D6AA6 /* loader.cpp in Sources */,
-				1AE7E5D32B5A1C7200D29E4A /* btCodeMemoryWrite.cpp in Sources */,
 				7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */,
 				1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AC5F2C82772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
@@ -4282,7 +4231,6 @@
 				7135DC60264EBCD0005D6AA6 /* soft_wo_page.cpp in Sources */,
 				7135DC61264EBCD0005D6AA6 /* startupArgs.cpp in Sources */,
 				7135DC62264EBCD0005D6AA6 /* glfunctions_ext1.cpp in Sources */,
-				7135DC63264EBCD0005D6AA6 /* memory64.cpp in Sources */,
 				7135DC64264EBCD0005D6AA6 /* mainloop.cpp in Sources */,
 				7135DC65264EBCD0005D6AA6 /* knativesystem.cpp in Sources */,
 				7135DC66264EBCD0005D6AA6 /* cpuinfo.cpp in Sources */,
@@ -4300,7 +4248,6 @@
 				7135DC70264EBCD0005D6AA6 /* x64Asm.cpp in Sources */,
 				1AC5F2F22772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				7135DC71264EBCD0005D6AA6 /* soft_invalid_page.cpp in Sources */,
-				1AA711C02B505BAC008704E2 /* kmemory_hard.cpp in Sources */,
 				7135DC73264EBCD0005D6AA6 /* self.cpp in Sources */,
 				7135DC74264EBCD0005D6AA6 /* knativeaudio.cpp in Sources */,
 				7135DC75264EBCD0005D6AA6 /* kobject.cpp in Sources */,
@@ -4407,7 +4354,6 @@
 				71FBFE7D2433BBBE003F17F1 /* x64CodeChunk.cpp in Sources */,
 				1A55D65F2A08428F002B7021 /* uncompr.c in Sources */,
 				1AC5F2C32772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
-				1AE7E5C62B5A1BD200D29E4A /* btCodeMemoryWrite.cpp in Sources */,
 				71FBFED72433BBBE003F17F1 /* kobject.cpp in Sources */,
 				71FBFECA2433BBBE003F17F1 /* kfile.cpp in Sources */,
 				1AC5F2AB2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
@@ -4439,7 +4385,6 @@
 				71FBFEE32433BBBE003F17F1 /* glMarshal.cpp in Sources */,
 				1A55D64F2A08428F002B7021 /* crc32.c in Sources */,
 				1A55D65B2A08428F002B7021 /* compress.c in Sources */,
-				1AA711BB2B4FBCD8008704E2 /* kmemory_hard.cpp in Sources */,
 				71FBFECF2433BBBE003F17F1 /* cpuonline.cpp in Sources */,
 				71FBFE7F2433BBBE003F17F1 /* x64Asm.cpp in Sources */,
 				71FBFE6D2433BBBE003F17F1 /* boxedwineData.cpp in Sources */,
@@ -4456,7 +4401,6 @@
 				71FBFECB2433BBBE003F17F1 /* syscall.cpp in Sources */,
 				7120545A244D01DA00C3CB1B /* boxedReg.cpp in Sources */,
 				71FBFEB32433BBBE003F17F1 /* startupArgs.cpp in Sources */,
-				7100915A2644D44E003413C3 /* memory64.cpp in Sources */,
 				1AA711B02B492273008704E2 /* bstring.cpp in Sources */,
 				71FBFEA62433BBBE003F17F1 /* fsdiropennode.cpp in Sources */,
 				71FBFCB22433B815003F17F1 /* AppDelegate.m in Sources */,
@@ -4620,7 +4564,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
@@ -4668,7 +4611,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
@@ -4716,7 +4658,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
@@ -4766,7 +4707,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
@@ -4889,7 +4829,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					"SDL2=1",
 					"GLH=<SDL_opengl.h>",
@@ -4924,7 +4863,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					"SDL2=1",
 					"GLH=<SDL_opengl.h>",
@@ -4963,7 +4901,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
@@ -5013,7 +4950,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
@@ -5060,7 +4996,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					"SDL2=1",
 					"GLH=<SDL_opengl.h>",
@@ -5099,7 +5034,6 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					"SDL2=1",
 					"GLH=<SDL_opengl.h>",
@@ -5249,7 +5183,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",
@@ -5297,7 +5230,6 @@
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
-					BOXEDWINE_HAS_SETJMP,
 					BOXEDWINE_64,
 					BOXEDWINE_ZLIB,
 					"SDL2=1",

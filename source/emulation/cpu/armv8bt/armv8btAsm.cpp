@@ -6,7 +6,6 @@
 #include "armv8btOps.h"
 
 #include "../common/common_other.h"
-#include "../../../../source/emulation/hardmmu/kmemory_hard.h"
 #include "../../../../source/emulation/softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 #include "../armv8/llvm_helper.h"
@@ -1402,56 +1401,39 @@ U8 Armv8btAsm::getAddressReg() {
 }
 
 U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool skipAlignmentCheck, S8 tmpReg) {
-#ifdef BOXEDWINE_64BIT_MMU 
-    if (this->useSingleMemOffset) {
-        return xMem;
-    } else {
-#else
-        {
-#endif
-        U8 resultReg = getTmpReg();
-        bool needToReleaseTmpReg = false;
+    U8 resultReg = getTmpReg();
+    bool needToReleaseTmpReg = false;
 
-        if (tmpReg == -1) {
-            tmpReg = getTmpReg();
-            needToReleaseTmpReg = true;
-        }
-
-        shiftRegRightWithValue32(tmpReg, regEmulatedAddress, 12); // get page
-#ifdef BOXEDWINE_64BIT_MMU 
-        readMem64ValueOffset(resultReg, xCPU, CPU_OFFSET_MEMOFFSET);
-        readMem64RegOffset(resultReg, resultReg, tmpReg, 3); // read memOffset, shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
-#else
-        if (width != 8 && width != 16 && width != 32 && width != 64 && width != 128) {
-            kpanic("Armv8btAsm::getHostMem bad width=%d %s", width, currentOp->name());
-        }
-        width = width / 8;
-        readMem64RegOffset(resultReg, (write ? xMemWrite : xMemRead), tmpReg, 3);
-        if (!skipAlignmentCheck && width > 1) {
-            andValue32(tmpReg, regEmulatedAddress, 0xFFF);
-            doIf(tmpReg, K_PAGE_SIZE - width, DO_IF_GREATER_THAN, [=] {
-                writeToRegFromValue(resultReg, 0);
-                });
-        }
-        doIf(resultReg, 0, DO_IF_EQUAL, [=] {
-            emulateSingleOp(currentOp);
-            });
-#endif
-        if (needToReleaseTmpReg) {
-            releaseTmpReg(tmpReg);
-        }
-        return resultReg;
+    if (tmpReg == -1) {
+        tmpReg = getTmpReg();
+        needToReleaseTmpReg = true;
     }
+
+    shiftRegRightWithValue32(tmpReg, regEmulatedAddress, 12); // get page
+
+    if (width != 8 && width != 16 && width != 32 && width != 64 && width != 128) {
+        kpanic("Armv8btAsm::getHostMem bad width=%d %s", width, currentOp->name());
+    }
+    width = width / 8;
+    readMem64RegOffset(resultReg, (write ? xMemWrite : xMemRead), tmpReg, 3);
+    if (!skipAlignmentCheck && width > 1) {
+        andValue32(tmpReg, regEmulatedAddress, 0xFFF);
+        doIf(tmpReg, K_PAGE_SIZE - width, DO_IF_GREATER_THAN, [=] {
+            writeToRegFromValue(resultReg, 0);
+            });
+    }
+    doIf(resultReg, 0, DO_IF_EQUAL, [=] {
+        emulateSingleOp(currentOp);
+        });
+
+    if (needToReleaseTmpReg) {
+        releaseTmpReg(tmpReg);
+    }
+    return resultReg;
 }
 
 void Armv8btAsm::releaseHostMem(U8 reg) {
-#ifdef BOXEDWINE_64BIT_MMU 
-    if (reg != xMem) {
-        releaseTmpReg(reg);
-    }
-#else
     releaseTmpReg(reg);
-#endif
 }
 
 void Armv8btAsm::vReadMemory128(U8 addressReg, U8 dst, bool addMemOffsetToAddress) {
@@ -1513,11 +1495,8 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
         if (lock) {
             kpanic("ArmV8bt: readMemory lock not implement for addMemOffsetToAddress = true");
         }
-#ifdef BOXEDWINE_64BIT_MMU 
-        U8 memReg = getHostMem(addressReg, width, false, false, (addressReg != dst) ? dst : -1);
-#else
         U8 memReg = getHostMem(addressReg, width, false);
-#endif
+
         if (width == 64) {
             readMem64RegOffset(dst, addressReg, memReg, 0);
         } else if (width == 32) {
@@ -2019,63 +1998,37 @@ void Armv8btAsm::branchNativeRegister(U8 reg) {
 }
 
 void Armv8btAsm::jmpRegToxBranchEip(bool mightNeedCS) {
-#ifdef BOXEDWINE_64BIT_MMU
-    if (KSystem::useLargeAddressSpace) {
-        if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
-            addRegs32(xBranchLargeAddressOffset, reg, xCS);
-            addRegs64(xBranchLargeAddressOffset, xLargeAddress, xBranchLargeAddressOffset, 3);
-        } else {
-            addRegs64(xBranchLargeAddressOffset, xLargeAddress, reg, 3);
-        }
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-        U8 tmpIndex = xBranchLargeAddressOffset - xTmp1;
-        this->tmpRegInUse[tmpIndex] = true;
-        // don't let this call overwrite xBranchLargeAddressOffset
-        readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
-        this->tmpRegInUse[tmpIndex] = false;
-#else
-        readMem64ValueOffset(xBranch, xBranchLargeAddressOffset, 0);
-#endif
+    // hard coded regs so that the exception handler will know what to expect
+
+    if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
+        U8 tmpReg = getTmpReg();
+        addRegs32(tmpReg, xBranchEip, xCS);
+        andValue32(xOffset, tmpReg, 0xFFF); // get page offset
+        shiftRegRightWithValue32(xPage, tmpReg, 12); // get page
+        releaseTmpReg(tmpReg);
     } else {
-#else 
-        {
-#endif
-        // hard coded regs so that the exception handler will know what to expect
-
-        if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
-            U8 tmpReg = getTmpReg();
-            addRegs32(tmpReg, xBranchEip, xCS);
-            andValue32(xOffset, tmpReg, 0xFFF); // get page offset            
-            shiftRegRightWithValue32(xPage, tmpReg, 12); // get page
-            releaseTmpReg(tmpReg);
-        } else {
-            andValue32(xOffset, xBranchEip, 0xFFF); // get page offset
-            shiftRegRightWithValue32(xPage, xBranchEip, 12); // get page
-        }
-        readMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_OP_PAGES); // get offset table pages
-        readMem64RegOffset(xBranch, xBranch, xPage, 3); // get offset table for page
-
-#ifndef BOXEDWINE_64BIT_MMU
-        cmpValue64(xBranch, 0);
-        doIf(xBranch, 0, DO_IF_EQUAL, [=] {
-            writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
-            readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
-            branchNativeRegister(xBranch);
-            }, nullptr, nullptr, false, false);
-#endif       
-        readMem64RegOffset(xBranch, xBranch, xOffset, 3); // read value at offset for page
-
-#ifdef BOXEDWINE_64BIT_MMU
-        readMem8ValueOffset(xResult, xBranch, 0); // verify that where we will jump is valid
-#else
-        cmpValue64(xBranch, 0);
-        doIf(xBranch, 0, DO_IF_EQUAL, [=] {
-            writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
-            readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
-            branchNativeRegister(xBranch);
-            }, nullptr, nullptr, false, false);
-#endif        
+        andValue32(xOffset, xBranchEip, 0xFFF); // get page offset
+        shiftRegRightWithValue32(xPage, xBranchEip, 12); // get page
     }
+    readMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_OP_PAGES); // get offset table pages
+    readMem64RegOffset(xBranch, xBranch, xPage, 3); // get offset table for page
+
+    cmpValue64(xBranch, 0);
+    doIf(xBranch, 0, DO_IF_EQUAL, [=] {
+        writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
+        readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
+        branchNativeRegister(xBranch);
+        }, nullptr, nullptr, false, false);
+
+    readMem64RegOffset(xBranch, xBranch, xOffset, 3); // read value at offset for page
+
+    cmpValue64(xBranch, 0);
+    doIf(xBranch, 0, DO_IF_EQUAL, [=] {
+        writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
+        readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
+        branchNativeRegister(xBranch);
+        }, nullptr, nullptr, false, false);
+
 #ifdef _DEBUG
     // make it easier to see where we jumped from
     loadConst(13, this->startOfOpIp);
@@ -2105,7 +2058,6 @@ static void armv8_translateIfNecessary(Armv8btCPU* cpu) {
     cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
 }
 
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
 void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
     syncRegsFromHost(true);
     mov64(0, xCPU); // param 1 (CPU)
@@ -2114,17 +2066,7 @@ void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
     readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
     branchNativeRegister(xBranch);
 }
-#endif
-#ifdef BOXEDWINE_64BIT_MMU
-void Armv8btAsm::createCodeForRetranslateChunk() {
-    syncRegsFromHost(true);
-    callHost((void*)armv8_retranslateChunkAdjustForCS);
-    syncRegsToHost();
-    readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
-    branchNativeRegister(xBranch);
-}
 
-#else
 void common_runSingleOp(BtCPU* cpu);
 void Armv8btAsm::createCodeForDoSingleOp() {
     callSyncRegsFromHost();
@@ -2148,8 +2090,6 @@ void Armv8btAsm::emulateSingleOp(DecodedOp* op) {
     fpuTopRegSet = false;
     clearCachedFpuRegs();
 }
-
-#endif
 
 void signalHandler();
 
@@ -2187,126 +2127,6 @@ void Armv8btAsm::write16Buffer(U8* buffer, U16 value) {
 void Armv8btAsm::callRetranslateChunk() {
     kpanic("callRetranslateChunk not implemented");
 }
-
-#ifdef BOXEDWINE_64BIT_MMU
-// :TODO: assming code is not in shared memory
-void Armv8btAsm::internal_addDynamicCheck(U32 address, U32 len) {
-    U8 addressReg = getRegWithConst(address);    
-    switch (len) {
-    case 1: {
-        U8 tmpReg = getTmpReg();
-        readMem8RegOffset(tmpReg, xMem, addressReg);
-        doIf(tmpReg, cpu->memory->readb(address), DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr);
-        releaseTmpReg(tmpReg);
-        break;
-    }
-    case 2: {
-        U8 tmpReg = getTmpReg();
-        readMem16RegOffset(tmpReg, xMem, addressReg);
-        doIf(tmpReg, cpu->memory->readw(address), DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr);
-        releaseTmpReg(tmpReg);
-        break;
-    }
-    case 3: {
-        U8 tmpReg = getTmpReg();
-        readMem32RegOffset(tmpReg, xMem, addressReg);
-        andValue32(tmpReg, tmpReg, 0xFFFFFF);
-        doIf(tmpReg, cpu->memory->readd(address) & 0x00FFFFFF, DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr);
-        releaseTmpReg(tmpReg);
-        break;
-    }
-    case 4: {
-        U8 tmpReg = getTmpReg();
-        readMem32RegOffset(tmpReg, xMem, addressReg);
-        doIf(tmpReg, cpu->memory->readd(address), DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr);
-        releaseTmpReg(tmpReg);
-        break;
-    }
-    case 5: {
-        U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(cpu->memory->readq(address) & 0xFFFFFFFFFF);
-
-        readMem64RegOffset(tmpReg, xMem, addressReg);
-        andValue64(tmpReg, tmpReg, 0xFFFFFFFFFF);
-        cmpRegs64(tmpReg, valueReg);
-        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr, nullptr, false, false);
-        releaseTmpReg(tmpReg);
-        releaseTmpReg(valueReg);
-        break;
-    }
-    case 6: {
-        U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(cpu->memory->readq(address) & 0xFFFFFFFFFFFF);
-
-        readMem64RegOffset(tmpReg, xMem, addressReg);
-        andValue64(tmpReg, tmpReg, 0xFFFFFFFFFFFF);
-        cmpRegs64(tmpReg, valueReg);
-        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr, nullptr, false, false);
-        releaseTmpReg(tmpReg);
-        releaseTmpReg(valueReg);
-        break;
-    }
-    case 7: {
-        U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(cpu->memory->readq(address) & 0xFFFFFFFFFFFFFF);
-
-        readMem64RegOffset(tmpReg, xMem, addressReg);
-        andValue64(tmpReg, tmpReg, 0xFFFFFFFFFFFFFF);
-        cmpRegs64(tmpReg, valueReg);
-        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr, nullptr, false, false);
-        releaseTmpReg(tmpReg);
-        releaseTmpReg(valueReg);
-        break;
-    }
-    case 8: {
-        U8 tmpReg = getTmpReg();
-        U8 valueReg = getRegWithConst(cpu->memory->readq(address));
-
-        readMem64RegOffset(tmpReg, xMem, addressReg);
-        cmpRegs64(tmpReg, valueReg);
-        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this] {
-            write32(0xcececece);
-            }, nullptr, nullptr, false, false);
-        releaseTmpReg(tmpReg);
-        releaseTmpReg(valueReg);
-        break;
-    }
-    default:
-        kpanic("Armv8btAsm::internal_addDynamicCheck invalid len = %d", len);
-    }
-    releaseTmpReg(addressReg);
-}
-
-void Armv8btAsm::addDynamicCheck(bool panic) {
-    DecodedBlock* block = NormalCPU::getBlockForInspectionButNotUsed(cpu, this->ip + this->cpu->seg[CS].address, this->cpu->isBig());
-    U32 len = block->op->len;
-    U32 address = this->startOfOpIp + this->cpu->seg[CS].address;
-
-    if (!len) {
-        return; // might invalid op
-    }
-    if (len > 8) {
-        internal_addDynamicCheck(address + 8, len - 8);
-        len = 8;
-    }
-    internal_addDynamicCheck(address, len);
-    block->dealloc(false);
-}
-#endif
 
 void Armv8btAsm::addTodoLinkJump(U32 eip) {
     this->todoJump.push_back(TodoJump(eip, this->bufferPos - 4, this->ipAddressCount));
@@ -2415,17 +2235,7 @@ x0 to x7 : used to hold argument values passed to a subroutine, and also hold re
 // regs and flags (x0-x8) are wiped out and will need to saved/loaded
 // all other xRegs (xCPU, xMem, xES, etc) are callee saved will be reloaded as necessary, but already have their values set on the cpu so they don't need to be set
 void Armv8btAsm::syncRegsFromHost(bool eipInBranchReg) {
-    if (eipInBranchReg) {
-#ifdef BOXEDWINE_64BIT_MMU
-        U8 tmpReg = getTmpReg();
-        subRegs64(tmpReg, xBranchLargeAddressOffset, xLargeAddress);
-        shiftRegRightWithValue64(tmpReg, tmpReg, 3);
-        writeMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EIP);
-        releaseTmpReg(tmpReg);
-#else
-        //writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
-#endif
-    } else {
+    if (!eipInBranchReg) {
         U8 tmpReg = getTmpReg();
         loadConst(tmpReg, this->startOfOpIp);
         writeMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EIP);
@@ -4953,19 +4763,8 @@ static void arm_invalidOp(CPU* cpu, U32 op) {
 }
 
 void Armv8btAsm::invalidOp(U32 op) {
-#ifndef BOXEDWINE_64BIT_MMU
     emulateSingleOp(currentOp);
     done = true;
-#else
-    syncRegsFromHost();
-
-    mov64(0, xCPU); // param 1 (CPU)
-    loadConst(1, op); // param 2 (op)
-
-    callHost((void*)arm_invalidOp);
-    syncRegsToHost();
-    doJmp(true);
-#endif
 }
 
 static U8 fetchByte(void* p, U32* eip) {
@@ -4990,27 +4789,12 @@ void Armv8btAsm::logOp(U32 eip) {
 }
 
 void Armv8btAsm::signalIllegalInstruction(int code) {
-#ifndef BOXEDWINE_64BIT_MMU
     emulateSingleOp(currentOp);
     done = true;
-#else
-    syncRegsFromHost();
-
-    mov64(0, xCPU); // param 1 (CPU)
-    loadConst(1, code); // param 2 (op)
-
-    callHost((void*)common_signalIllegalInstruction);
-    syncRegsToHost();
-    doJmp(true);
-#endif
 }
 
 void Armv8btAsm::translateInstruction() {
     this->startOfOpIp = this->ip;
-#ifdef BOXEDWINE_64BIT_MMU
-    KMemoryData* mem = getMemData(cpu->memory);
-    this->useSingleMemOffset = KSystem::useSingleMemOffset && !mem->doesInstructionNeedMemoryOffset(this->ip);
-#endif
     this->ip += this->currentOp->len;
 #ifdef _DEBUG
     if (this->cpu->logFile.isOpen()) {
@@ -5021,16 +4805,6 @@ void Armv8btAsm::translateInstruction() {
     this->loadConst(14, this->startOfOpIp);
     //data->writeMem32ValueOffset(xTmp5, xCPU, CPU_OFFSET_EIP);
 #endif
-#endif
-#ifdef BOXEDWINE_64BIT_MMU
-    if (this->dynamic) {
-        this->addDynamicCheck(false);
-    }
-    else {
-#ifdef _DEBUG
-        //data->addDynamicCheck(true);
-#endif
-    }
 #endif
     armv8btEncoder[this->currentOp->inst](this);
 

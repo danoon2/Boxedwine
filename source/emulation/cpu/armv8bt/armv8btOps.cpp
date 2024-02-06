@@ -2010,28 +2010,8 @@ void opPushSeg16(Armv8btAsm* data) {
 }
 
 void opPopSeg16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->currentOp->reg); // param 2 (seg)
-    data->peekNativeReg16(2, true); // param 3 (value)
-
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, [data]() {                        
-            data->popStack16();
-        }, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->currentOp->reg] = true;
-#endif
 }
 
 void opPushSeg32(Armv8btAsm* data) {
@@ -2042,28 +2022,8 @@ void opPushSeg32(Armv8btAsm* data) {
 }
 
 void opPopSeg32(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->currentOp->reg); // param 2 (seg)
-    data->peekNativeReg32(2); // param 3 (value)
-
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, [data]() {            
-            data->popStack32();
-        }, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->currentOp->reg] = true;
-#endif
 }
 
 void opPushR16(Armv8btAsm* data) {
@@ -2336,88 +2296,29 @@ void opArplMem32(Armv8btAsm* data) {
 }
 
 void opDaa(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-    // void daa(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)daa);
-    data->syncRegsToHost();
-#endif
 }
 
 void opDas(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-    // void das(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)das);
-    data->syncRegsToHost();
-#endif
 }
 void opAaa(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-    // void aaa(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)aaa);
-    data->syncRegsToHost();
-#endif
 }
 void opAas(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-    // void aas(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)aas);
-    data->syncRegsToHost();
-#endif
 }
 void opAam(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-    // U32 aam(CPU * cpu, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->loadConst(1, data->currentOp->imm);
-
-    data->callHost((void*)aam);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        // returned 0, which means a divide CPU exception was run
-        data->doJmp(true);
-        }, nullptr, [data]() {
-            data->syncRegsToHost();
-        });
-#endif
 }
 void opAad(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-
-    // void aad(CPU* cpu, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->loadConst(1, data->currentOp->imm);
-
-    data->callHost((void*)aad);
-    data->syncRegsToHost();
-#endif
 }
 
 void opImulR16E16(Armv8btAsm* data) {
@@ -2722,53 +2623,14 @@ void opMovE16S16(Armv8btAsm* data) {
     data->releaseTmpReg(addressReg);
 }
 
-void opMovS16R16(Armv8btAsm* data) { 
-#ifndef BOXEDWINE_64BIT_MMU
+void opMovS16R16(Armv8btAsm* data) {
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)
-    // read value from reg before we overwrite regs 0 and 1 below
-    data->movRegToReg(2, data->getNativeReg(data->currentOp->reg), 16, true);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->currentOp->rm); // param 2 (seg)
-        
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, nullptr, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->currentOp->rm] = true;
-#endif
 }
 
 void opMovS16E16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    U8 addressReg = data->getAddressReg();    
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)    
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->currentOp->reg); // param 2 (seg)
-    data->readMemory(addressReg, 2, 16, true);
-    data->releaseTmpReg(addressReg);
-
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, nullptr, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->currentOp->reg] = true;
-#endif
 }
 
 
@@ -2960,92 +2822,22 @@ void opCwq(Armv8btAsm* data) {
     data->shiftSignedRegRightWithValue32(xEDX, xEAX, 31);
 }
 void opCallAp(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    // cpu->call(0, op->imm, op->disp, cpu->eip.u32+op->len);
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(2, data->currentOp->imm); // param 3 (selector)
-    data->loadConst(3, data->currentOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);    
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 
 void opCallFar(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    // cpu->call(1, op->imm, op->disp, cpu->eip.u32 + op->len);
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(2, data->currentOp->imm); // param 3 (selector)
-    data->loadConst(3, data->currentOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 
 void opJmpAp(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(2, data->currentOp->imm); // param 3 (selector)
-    data->loadConst(3, data->currentOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 void opJmpFar(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(2, data->currentOp->imm); // param 3 (selector)
-    data->loadConst(3, data->currentOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 void opWait(Armv8btAsm* data) {
     // :TODO: nop?
@@ -3104,22 +2896,8 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
     data->done = true;
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    // kpanic("Need to test");
-    // cpu->ret(0, op->imm);
-    data->syncRegsFromHost();
-    // void common_ret(CPU* cpu, U32 big, U32 bytes)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, big); // param 2
-    data->loadConst(2, data->currentOp->imm); // param 3 (bytes)
-    data->callHost((void*)common_ret);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 void opRetn16Iw(Armv8btAsm* data) {
     doRetn16(data, data->currentOp->imm);
@@ -3173,35 +2951,13 @@ void opInt80(Armv8btAsm* data) {
     data->doJmp(false);
 }
 
-void opInt98(Armv8btAsm* data) {    
-#ifndef BOXEDWINE_64BIT_MMU
+void opInt98(Armv8btAsm* data) {
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_int98(CPU * cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)common_int98);
-    data->syncRegsToHost();
-#endif
 }
 void opInt99(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_int99(CPU * cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)common_int99);
-    data->syncRegsToHost();
-#endif
 }
 void opIntIb(Armv8btAsm* data) {
 #ifdef __TEST
@@ -3216,41 +2972,16 @@ void opIntIb(Armv8btAsm* data) {
     }
 }
 void opInt9A(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    data->syncRegsFromHost();
-
-    // void common_int9A(CPU * cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)common_int9A);
-    data->syncRegsToHost();
-#endif
 }
 void opIntO(Armv8btAsm* data) {
     data->invalidOp(data->currentOp->originalOp);
     data->done = true;
 }
-static void doIret(Armv8btAsm* data, U32 big, U32 eip) {    
-#ifndef BOXEDWINE_64BIT_MMU
+static void doIret(Armv8btAsm* data, U32 big, U32 eip) {
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_iret(CPU * cpu, U32 big, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, big); // param 2
-    data->loadConst(2, eip); // param 3
-
-    data->callHost((void*)common_iret);
-    data->syncRegsToHost();
-    data->doJmp(false);
-    data->done = true;
-#endif
 }
 void opIret(Armv8btAsm* data) {
     doIret(data, 0, data->ip);
@@ -3450,19 +3181,8 @@ void opCPUID(Armv8btAsm* data) {
 
 static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {    
     if (level != 0) {
-#ifndef BOXEDWINE_64BIT_MMU
         data->emulateSingleOp(data->currentOp);
         data->done = true;
-#else
-        data->syncRegsFromHost();
-        // call void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level)
-        data->mov64(0, xCPU); // param 1 (CPU)
-        data->loadConst(1, (big ? 1 : 0)); // param 2 (big)
-        data->loadConst(2, bytes); // param 3 (bytes)
-        data->loadConst(3, level); // param 4 (level)
-        data->callHost((void*)common_enter);
-        data->syncRegsToHost();
-#endif
     } else {
         if (big) {
             data->pushNativeReg32(xEBP);
@@ -3504,45 +3224,8 @@ void opLeave32(Armv8btAsm* data) {
 }
 
 void doLoadSegment(Armv8btAsm* data, bool big) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    // U32 eaa = eaa(cpu, op);
-    // U16 val = readw(eaa);
-    // U32 selector = readw(eaa + 2);
-    // if (cpu->setSegment(op->imm, selector)) {
-    //     cpu->reg[op->reg].u16 = val;
-    //     NEXT();
-    // } else {
-    //     NEXT_DONE();
-    // }
-    U8 addressReg = data->getAddressReg();
-
-    data->syncRegsFromHost();
-    // we need this an not a tmpReg because it needs to survive callHost
-    data->readMemory(addressReg, calleeSavedReg, (big?32:16), true);
-    data->addValue32(addressReg, addressReg, (big?4:2));
-
-    // U32 common_setSegment(CPU * cpu, U32 seg, U32 value)
-    data->readMemory(addressReg, 2, 16, true); // param 3 (sel) : Intentionally 16 for big and small   
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->currentOp->imm); // param 2 (seg)    
-
-    data->releaseTmpReg(addressReg);
-    data->callHost((void*)common_setSegment);
-    U8 valReg = data->getTmpReg();
-    // must move out of calleeSavedReg before syncRegsToHost
-    data->movRegToReg(valReg, calleeSavedReg, 32, 0);
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, [data, valReg, big]() {
-            data->movRegToReg(data->getNativeReg(data->currentOp->reg), valReg, (big ? 32 : 16), false);
-        }, [data]() {
-            data->syncRegsToHost();
-        });
-    data->releaseTmpReg(valReg);
-#endif
 }
 
 void opLoadSegment16(Armv8btAsm* data) {
@@ -3833,61 +3516,12 @@ void opCallE32(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallFarE16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U16 newip = readw(eaa);
-    // U16 newcs = readw(eaa + 2);
-    // cpu->call(0, newcs, newip, cpu->eip.u32 + op->len);    
-
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 16, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 2);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 void opCallFarE32(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    // kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U32 newip = readd(eaa);
-    // U16 newcs = readw(eaa + 4);
-    // cpu->call(1, newcs, newip, cpu->eip.u32 + op->len);
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 32, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 4);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 void opJmpR16(Armv8btAsm* data) {
     // kpanic("Need to test");
@@ -3924,154 +3558,37 @@ void opJmpE32(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpFarE16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    //kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U16 newip = readw(eaa);
-    // U16 newcs = readw(eaa + 2);
-    // cpu->jmp(0, newcs, newip, cpu->eip.u32 + op->len);
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 16, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 2);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 void opJmpFarE32(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    // kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U32 newip = readd(eaa);
-    // U16 newcs = readw(eaa + 4);
-    // cpu->jmp(1, newcs, newip, cpu->eip.u32 + op->len);
-
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 32, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 4);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
-    data->done = true;
-#endif
 }
 
-#ifdef BOXEDWINE_64BIT_MMU
-static void callDstSrc(Armv8btAsm* data, void* pfn) {
-    data->syncRegsFromHost();
-
-    // common_larr16r16(CPU* cpu, U32 dstReg, U32 srcReg)
-    data->loadConst(1, data->currentOp->reg);
-    data->loadConst(2, data->currentOp->rm);
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)pfn);
-    data->syncRegsToHost();
-}
-static void callDstAddress(Armv8btAsm* data, void* pfn) {
-    data->syncRegsFromHost();
-
-    // void common_larr16e16(CPU * cpu, U32 reg, U32 address);
-    U8 addressReg = data->getAddressReg();
-    data->loadConst(1, data->currentOp->reg);
-    data->movRegToReg(2, addressReg, 32, false);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->releaseTmpReg(addressReg);
-
-    data->callHost((void*)pfn);
-    data->syncRegsToHost();
-}
-#endif
 void opLarR16R16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    kpanic("Need to test");
-    // cpu->reg[op->reg].u16 = cpu->lar(cpu->reg[op->rm].u16, cpu->reg[op->reg].u16);
-
-    callDstSrc(data, (void*)common_larr16r16);
-#endif
 }
 void opLarR16E16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    kpanic("Need to test");
-    // cpu->reg[reg].u16 = cpu->lar(readw(address), cpu->reg[reg].u16);
-
-    callDstAddress(data, (void*)common_larr16e16);
-#endif
 }
 void opLslR16R16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    kpanic("Need to test");
-    // cpu->reg[op->reg].u16 = cpu->lsl(cpu->reg[op->rm].u16, cpu->reg[op->reg].u16);
-
-    callDstSrc(data, (void*)common_lslr16r16);
-#endif
 }
 void opLslR16E16(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    kpanic("Need to test");
-    // cpu->reg[reg].u16 = cpu->lsl(readw(address), cpu->reg[reg].u16);
-
-    callDstAddress(data, (void*)common_lslr16e16);
-#endif
 }
 void opLslR32R32(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    kpanic("Need to test");
-    // cpu->reg[op->reg].u32 = cpu->lsl(cpu->reg[op->rm].u32, cpu->reg[op->reg].u32);
-
-    callDstSrc(data, (void*)common_lslr32r32);
-#endif
 }
 void opLslR32E32(Armv8btAsm* data) {
-#ifndef BOXEDWINE_64BIT_MMU
     data->emulateSingleOp(data->currentOp);
     data->done = true;
-#else
-    kpanic("Need to test");
-    // cpu->reg[reg].u32 = cpu->lsl(readw(address), cpu->reg[reg].u32);
-
-    callDstAddress(data, (void*)common_lslr32e32);
-#endif
 }
 
 void opCmovO_R16R16(Armv8btAsm* data) {

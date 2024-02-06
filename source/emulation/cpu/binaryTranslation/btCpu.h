@@ -25,6 +25,7 @@ public:
     int exceptionSigNo = 0;
     int exceptionSigCode = 0;
     U64 exceptionIp = 0;
+    void* jmpAndTranslateIfNecessary = nullptr;
     void* returnToLoopAddress = nullptr;
     void* syncToHostAddress = nullptr;
     void* syncFromHostAddress = nullptr;

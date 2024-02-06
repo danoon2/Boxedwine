@@ -53,13 +53,9 @@ typedef enum {
 // x19 to x29 callee saved
 // These should be one that won't need to be reloaded after a function call
 #define xCPU 19
-#ifdef BOXEDWINE_64BIT_MMU
-#define xMem 20
-#define xLargeAddress 21
-#else
 #define xMemRead 20
 #define xMemWrite 21
-#endif
+
 // addresses, not values
 #define xES 22
 #define xCS 23
@@ -68,10 +64,6 @@ typedef enum {
 #define xFS 26
 #define xGS 27
 #define xStackMask 28
-// calleeSavedReg must only be used between syncRegFromHost and syncRegToHost
-#ifdef BOXEDWINE_64BIT_MMU
-#define calleeSavedReg 28
-#endif
 #define xFpuTop 30
 #define xFpuOffset 29
 
@@ -202,21 +194,12 @@ public:
     void logOp(U32 eip);
     void signalIllegalInstruction(int code);
 
-#ifdef BOXEDWINE_64BIT_MMU
-    void addDynamicCheck(bool panic);
-#endif
 	void saveNativeState();
 	void restoreNativeState();
     void addReturn();
-#ifdef BOXEDWINE_64BIT_MMU
-    void createCodeForRetranslateChunk();    
-#else
     void createCodeForDoSingleOp();
     void emulateSingleOp(DecodedOp* op);
-#endif
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void createCodeForJmpAndTranslateIfNecessary();
-#endif
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
     void createCodeForRunSignal();
@@ -581,9 +564,6 @@ private:
     void vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, bool is1128);
     void vIns(U8 rd, U8 rn, U8 imm4, U8 imm5);
 
-#ifdef BOXEDWINE_64BIT_MMU
-    void internal_addDynamicCheck(U32 address, U32 len);
-#endif
     bool isEipInChunk(U32 eip);
 };
 

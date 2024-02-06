@@ -23,9 +23,7 @@ public:
 	U64 originalCpuRegs[16];	
     void* reTranslateChunkAddress;
     void* reTranslateChunkAddressFromReg;
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void* jmpAndTranslateIfNecessary;
-#endif
 #ifdef _DEBUG
     U32 fromEip;
     U64 exceptionRegs[32];

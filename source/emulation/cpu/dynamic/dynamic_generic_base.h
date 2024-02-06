@@ -292,17 +292,7 @@ static void writeb(U32 address, U8 value) {
     KThread::currentThread()->memory->writeb(address, value);
 }
 
-void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {    
-#ifdef BOXEDWINE_64BIT_MMU
-    if (width == DYN_8bit) {
-        readMem8(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
-    } else if (width == DYN_16bit) {
-        readMem16(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
-    } else {
-        readMem32(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
-    }
-    setRegUsed(DYN_CALL_RESULT);
-#else
+void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     // :TODO: inline
     if (width == DYN_16bit) {
         callHostFunction((void*)readw, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
@@ -311,7 +301,6 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     } else {
         callHostFunction((void*)readb, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
     }
-#endif
     if (doneWithAddressReg) {
         clearRegUsed(addressReg);
     }
@@ -467,31 +456,6 @@ bool isParamTypeReg(DynCallParamType paramType) {
 //      Memory::currentMMU[index]->writed(address, value);		
 //  }
 void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithValueReg) {
-#ifdef BOXEDWINE_64BIT_MMU    
-    U8 regToWrite;
-    bool releaseRegToWrite = false;
-
-    if (isParamTypeReg(paramType)) {
-        regToWrite = value;
-        if (doneWithValueReg) {
-            releaseRegToWrite = true;
-        }
-    } else {
-        regToWrite = getUnsavedTmpReg();
-        setValue(value, paramType, regToWrite);
-        releaseRegToWrite = true;
-    }
-    if (width == DYN_8bit) {
-        writeMem8(regToWrite, addressReg, KThread::currentThread()->memory->id);
-    } else if (width == DYN_16bit) {
-        writeMem16(regToWrite, addressReg, KThread::currentThread()->memory->id);
-    } else {
-        writeMem32(regToWrite, addressReg, KThread::currentThread()->memory->id);
-    }
-    if (releaseRegToWrite) {
-        clearRegUsed(regToWrite);
-    }
-#else
     // :TODO: inline?
     if (width == DYN_16bit) {
         callHostFunction((void*)writew, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
@@ -500,7 +464,6 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     } else {
         callHostFunction((void*)writeb, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     }
-#endif
 }
 
 void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg) {

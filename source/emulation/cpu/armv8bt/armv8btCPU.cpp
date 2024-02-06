@@ -4,12 +4,10 @@
 #include "armv8btCPU.h"
 #include "armv8btAsm.h"
 #include "armv8btOps.h"
-#include "../../hardmmu/kmemory_hard.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 #include "../binaryTranslation/btCodeChunk.h"
 #include "armv8btCodeChunk.h"
-#include "../binaryTranslation/btCodeMemoryWrite.h"
 
 #undef u8
 
@@ -64,10 +62,6 @@ void Armv8btCPU::setSeg(U32 index, U32 address, U32 value) {
 }
 
 void Armv8btCPU::restart() {
-#ifdef BOXEDWINE_64BIT_MMU
-    KMemoryData* mem = getMemData(memory);
-	this->memOffset = mem->id;
-#endif
 	this->exitToStartThreadLoop = true;
 }
 
@@ -78,20 +72,9 @@ void* Armv8btCPU::init() {
     Armv8btCPU* cpu = this;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
-#ifdef BOXEDWINE_64BIT_MMU
-    this->eipToHostInstructionAddressSpaceMapping = mem->eipToHostInstructionAddressSpaceMapping;
-    this->memOffsets = mem->memOffsets;
-#endif
 	data.saveNativeState();
 
     data.writeToRegFromValue(xCPU, (U64)this);
-#ifdef BOXEDWINE_64BIT_MMU
-    data.writeToRegFromValue(xMem, cpu->memOffset);
-
-    if (KSystem::useLargeAddressSpace) {
-        data.writeToRegFromValue(xLargeAddress, (U64)cpu->eipToHostInstructionAddressSpaceMapping);
-    }
-#endif
     data.writeToRegFromValue(xES, (U32)cpu->seg[ES].address);    
     data.writeToRegFromValue(xCS, (U32)cpu->seg[CS].address);
     data.writeToRegFromValue(xSS, (U32)cpu->seg[SS].address);
@@ -134,23 +117,6 @@ void* Armv8btCPU::init() {
         this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
-#ifdef BOXEDWINE_64BIT_MMU
-    if (!this->thread->process->reTranslateChunkAddress) {
-        Armv8btAsm translateData(this);
-        translateData.createCodeForRetranslateChunk();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
-    }
-    this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
-    if (!this->thread->process->reTranslateChunkAddressFromReg) {
-        Armv8btAsm translateData(this);
-        translateData.createCodeForRetranslateChunk();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
-    }
-    this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
-#endif
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         Armv8btAsm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary();
@@ -158,7 +124,6 @@ void* Armv8btCPU::init() {
         this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
-#endif
     if (!this->thread->process->syncToHostAddress) {
         Armv8btAsm translateData(this);
         translateData.createCodeForSyncToHost();
@@ -245,20 +210,10 @@ void Armv8btCPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32
         }
 #endif
     }
-#ifdef BOXEDWINE_64BIT_MMU
-    markCodePageReadOnly(data.get());
-#endif
 }
 
 void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
     KMemoryData* mem = getMemData(memory);
-#ifdef BOXEDWINE_64BIT_MMU    
-    U32 codePage = (data->ip+ this->seg[CS].address) >> K_PAGE_SHIFT;
-    U32 nativePage = mem->getNativePage(codePage);
-    if (mem->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
-        data->dynamic = true;
-    }
-#endif
     data->currentOp = nullptr;
     data->currentBlock = nullptr;
     DecodedOp* prevOp = nullptr;
@@ -294,31 +249,6 @@ void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
                 int ii = 0;
             }
         }
-#ifdef BOXEDWINE_64BIT_MMU
-        if (firstPass) {
-            U32 nextEipLen = firstPass->calculateEipLen(data->ip + this->seg[CS].address);
-            U32 page = (data->ip+ this->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
-
-            if (page!=codePage) {
-                codePage = page;
-                nativePage = mem->getNativePage(codePage);
-                if (data->dynamic) {                    
-                    if (mem->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
-                        // continue to cross from my dynamic page into another dynamic page
-                    } else {
-                        // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
-                    }
-                } else {
-                    if (mem->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
-                        // we crossed a page boundry from a non dynamic page to a dynamic page
-                        data->dynamic = true; // the instructions from this point on will do their own check
-                    } else {
-                        // continue to cross from one non dynamic page into another non dynamic page
-                    }
-                }
-            }
-        }
-#endif
         data->mapAddress(address, data->bufferPos);
         // add a mapping so that if they skip the 1 byte lock they will get mapped to the lock version anyway, libc seems to want to skip the lock sometimes in order to improve performance by a tiny bit
         if (data->currentOp->lock) {
@@ -341,11 +271,7 @@ void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
         data->resetForNewOp();
         prevOp = data->currentOp;
         data->currentOp = data->currentOp->next;
-    }         
-#ifdef BOXEDWINE_64BIT_MMU
-    data->currentBlock->dealloc(false);
-    data->currentBlock = NULL;
-#endif    
+    }            
 }
 
 #endif

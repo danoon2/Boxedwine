@@ -12,9 +12,6 @@ bool Armv8CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, U8* address) {
     Armv8btAsm data(cpu);
     data.ip = eip;
     data.startOfDataIp = eip;
-#ifdef BOXEDWINE_64BIT_MMU
-    data.dynamic = this->dynamic;
-#endif
     data.translateInstruction();
     U32 eipLen = data.ip - data.startOfOpIp;
     U32 hostLen = data.bufferPos;
