@@ -5499,12 +5499,14 @@ void testLahf0x09f() {cpu->big = false;flags(0x9f, lahf, &cpu->reg[0]);}
 void testLahf0x29f() {cpu->big = true;flags(0x9f, lahf, &cpu->reg[0]);}
 
 void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32 str1Len, const char* str2, U32 str2Len, U32 startESI,U32 startEDI, U32 startECX, U32 endESI, U32 endEDI, U32 endECX, bool checkEndFlags, bool endCF, bool endZF, U32 esAddress, U32 eax=0) {
+    memory->writeb(CODE_ADDRESS, 0);
     if (prefix) {
         newInstruction(prefix, startFlags);
         pushCode8(inst);
     } else {
         newInstruction(inst, startFlags);
     }
+    cpu->flags = startFlags; // x64CPU needs this to be setup
     cpu->seg[ES].address = esAddress;
     EDI = startEDI;
     ESI = startESI;
@@ -5533,7 +5535,7 @@ void strTest(U8 width, U8 prefix, U8 inst, U32 startFlags, const char* str1, U32
     runTestCPU();
     assertTrue(EDI==endEDI);
     assertTrue(ESI==endESI);    
-    assertTrue(ECX==endECX);    
+    assertTrue(ECX==endECX);
     if (checkEndFlags) {
         bool hasCF=cpu->getCF()!=0;
         assertTrue(endCF==hasCF);
@@ -5909,6 +5911,7 @@ void testMovsb0x2a4() {
     assertTrue(memory->readb(HEAP_ADDRESS + 256 + 0x20) == '1');
     assertTrue((cpu->flags & FMASK_TEST) == 0);
     assertTrue((cpu->flags & DF) != 0);
+    assertTrue((cpu->flags & FMASK_TEST) == 0);
 
     // Not DF
     strTest(1, 0, 0xa4, OF, "1", 1, "0", 1, 0x40010, 0x40020, 0, 0x40011, 0x40021, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
@@ -6000,6 +6003,14 @@ void testMovsd0x2a5() {
     strTest(4, 0xf2, 0xa5, 0, "abcdefgh", 8, "00000000", 8, 0x40000, 0x40000, 0, 0x40000, 0x40000, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
     assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x30303030);
     assertTrue(memory->readd(HEAP_ADDRESS + 256 + 4) == 0x30303030);
+
+    // repnz (source split page)
+    // will copy 4 bytes, then split
+    strTest(4, 0xf2, 0xa5, AF, "abcdefghijkl", 12, "000000000000", 12, 0x40FFA, 0x40000, 2, 0x41002, 0x40008, 0, false, false, false, HEAP_ADDRESS + 256 - 0x40000);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256) == 0x64636261);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 4) == 0x68676665);
+    assertTrue(memory->readd(HEAP_ADDRESS + 256 + 8) == 0x30303030);
+    assertTrue((cpu->flags & AF) != 0);
 }
 
 void testStosb0x0aa() {

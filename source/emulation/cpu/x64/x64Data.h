@@ -89,6 +89,7 @@ public:
     
     bool skipWriteOp;
     bool isG8bitWritten;
+    bool flagsWrittenToStringFlags;
 };
 #endif
 #endif

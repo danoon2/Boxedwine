@@ -77,6 +77,7 @@ public:
     U32 negSegAddress[6] = { 0 };
 	U8*** eipToHostInstructionPages = nullptr;
     U32 arg5 = 0;
+    U32 stringFlags = 0;
     ALIGN(FxsaveStruct fpuState, 16) = { 0 };
     ALIGN(FxsaveStruct originalFpuState, 16) = { 0 };
     ALIGN(U8 fpuBuffer[512], 16) = { 0 };

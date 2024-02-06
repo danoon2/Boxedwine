@@ -31,6 +31,7 @@
 #define CPU_OFFSET_STRING_REPEAT (U32)(offsetof(x64CPU, stringRepeat))
 #define CPU_OFFSET_STRING_WRITES_DI (U32)(offsetof(x64CPU, stringWritesToDi))
 #define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
+#define CPU_OFFSET_STRING_FLAGS (U32)(offsetof(x64CPU, stringFlags))
 #define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
 #define CPU_OFFSET_FPU_BUFFER (U32)(offsetof(x64CPU, fpuBuffer))
 #define CPU_OFFSET_RETURN_HOST_ADDRESS (U32)(offsetof(x64CPU, returnHostAddress))
@@ -388,19 +389,19 @@ void X64Asm::bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg
 // reg3 is optional, pass -1 to ignore it
 // displacement is optional, pass 0 to ignore it
 void X64Asm::writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck) {
-    if (translateToHost) {     
-        U8 hostMemReg = getTmpReg();
+    if (translateToHost) {             
         if (reg3 >= 0 || displacement) {
             U8 tmpReg = getTmpReg();
             addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
-            checkMemory(tmpReg, true, false, bytes, hostMemReg, false, skipAlignmentCheck);
-            writeToRegFromMem(dst, isDstRex, tmpReg, true, hostMemReg, true, 0, 0, bytes, false);
+            checkMemory(tmpReg, true, false, bytes, 0xff, true, skipAlignmentCheck);
+            writeToRegFromMem(dst, isDstRex, tmpReg, true, -1, false, 0, 0, bytes, false);
             releaseTmpReg(tmpReg);
         } else {
+            U8 hostMemReg = getTmpReg();
             checkMemory(reg2, isReg2Rex, false, bytes, hostMemReg, false, skipAlignmentCheck);
             writeToRegFromMem(dst, isDstRex, reg2, isReg2Rex, hostMemReg, true, 0, 0, bytes, false);
-        }
-        releaseTmpReg(hostMemReg);
+            releaseTmpReg(hostMemReg);
+        }        
     } else {
         doMemoryInstruction(bytes==1?0x8a:0x8b, dst, isDstRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
     }
@@ -932,31 +933,18 @@ void X64Asm::setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit) 
 
 void common_runSingleOp(x64CPU* cpu);
 
-void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg, bool writeHostMemToReg, bool skipAlignmentCheck, bool releaseReg, bool flagsInArg5) {
-    U8 pageReg = getTmpReg();
+void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg, bool writeHostMemToReg, bool skipAlignmentCheck, bool releaseReg) {
     bool memRegNeedsRelease = false;
     //bool fpuMustBeNative = currentOp->inst == FNSAVE || currentOp->inst == FRSTOR || currentOp->inst == FLDENV || currentOp->inst == FNSTENV || currentOp->inst == Fxrstor || currentOp->inst == Fxsave;
 
-    if (memReg == 0xff) {
-        memRegNeedsRelease = true;
-        memReg = getTmpReg();
-    }
-
     bool needFlags = false;
-        
-    if (!flagsInArg5) {
+
+    if (!flagsWrittenToStringFlags) {
         needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
     }
     if (!skipAlignmentCheck && width != 1 && width != 2 && width != 4 && width != 8 && width != 16) {
         //needFlags = true;
     }
-
-    // get page
-    shiftRightNoFlags(reg, isRex, pageReg, K_PAGE_SHIFT, memReg); // hostMemReg is used for tmp
-
-    // if hostMemReg is 0, then we don't have permission            
-    writeToRegFromMem(memReg, true, (isWrite ? HOST_MEM_WRITE : HOST_MEM_READ), true, pageReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]        
-    releaseTmpReg(pageReg);    
 
     if (needFlags) {
         U8 flagsReg = getTmpReg();
@@ -964,6 +952,18 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
         pushNativeReg(flagsReg, true);
         releaseTmpReg(flagsReg);
     }
+
+    if (memReg == 0xff) {
+        memRegNeedsRelease = true;
+        memReg = getTmpReg();
+    }     
+
+    // get page
+    writeToRegFromReg(memReg, true, reg, isRex, 4);
+    shiftRightReg(memReg, true, K_PAGE_SHIFT);
+
+    // if hostMemReg is 0, then we don't have permission            
+    writeToRegFromMem(memReg, true, (isWrite ? HOST_MEM_WRITE : HOST_MEM_READ), true, memReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]            
 
     U8 testReg = memReg;
     U8 testRegReleaseAfterCmp = memRegNeedsRelease;
@@ -1478,24 +1478,29 @@ void X64Asm::andWriteToRegFromCPU(U8 reg, bool isRegRex, U32 offset) {
 //
 // reg3 is optional, pass -1 to ignore it
 // displacement is optional, pass 0 to ignore it
-void X64Asm::writeToMemFromReg(U8 src, bool isSrcRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck) {
-    if (translateToHost) {              
-        U8 hostMemReg = getTmpReg();
-
+void X64Asm::writeToMemFromReg(U8 src, bool isSrcRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck, bool releaseReg3) {
+    if (translateToHost) {                      
         if (reg3 >= 0 || displacement) {
             U8 tmpReg = getTmpReg();
             addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
-            checkMemory(tmpReg, true, true, bytes, hostMemReg, false, skipAlignmentCheck);
-            writeToMemFromReg(src, isSrcRex, tmpReg, true, hostMemReg, true, 0, 0, bytes, false);
+            if (releaseReg3) {
+                releaseTmpReg(reg3);
+            }
+            checkMemory(tmpReg, true, true, bytes, 0xff, true, skipAlignmentCheck);
+            writeToMemFromReg(src, isSrcRex, tmpReg, true, -1, true, 0, 0, bytes, false);
             releaseTmpReg(tmpReg);
         } else {
+            U8 hostMemReg = getTmpReg();
             checkMemory(reg2, isReg2Rex, true, bytes, hostMemReg, false, skipAlignmentCheck);
             writeToMemFromReg(src, isSrcRex, reg2, isReg2Rex, hostMemReg, true, 0, 0, bytes, false);
-        }
-        releaseTmpReg(hostMemReg);
+            releaseTmpReg(hostMemReg);
+        }        
     } else {
         // reg 1 will be ignored
         doMemoryInstruction(bytes==1?0x88:0x89, src, isSrcRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
+        if (reg3 >= 0 && releaseReg3) {
+            releaseTmpReg(reg3);
+        }
     }
 }
 
@@ -3514,8 +3519,9 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
     if (needFlags) {
         U8 flagsReg = getTmpReg();
         pushFlagsToReg(flagsReg, true, true);
-        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
+        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
         releaseTmpReg(flagsReg);
+        flagsWrittenToStringFlags = true;
     }
     if (repeat) {
         // test (e)cx, (e)cx
@@ -3532,218 +3538,185 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
         skipPos = bufferPos;
         write32(0x0);
     }
+    DecodedOp* op = currentBlock->op;
+    int direction = 0;
+
+    while (op && op != currentOp) {
+        if (op->inst == Cld) {
+            direction = 1;
+        } else if (op->inst == Std) {
+            direction = -1;
+        }
+        op = op->next;
+    }
+    if (direction == 0) {
+        direction = cpu->getDirection();
+    }
     U32 pos = bufferPos;
-
-    U8 srcHostReg = 0xff;
-    
-    if (hasSrc) {
-        srcHostReg = getTmpReg();
+    if (hasSrc && hasDst) {
+        U8 tmpReg = getTmpReg();
+        U8 srcReg = 6;
+        bool srcRegIsRex = false;
+        
         if (this->cpu->thread->process->hasSetSeg[ds]) {
-            U8 srcReg = getTmpReg();
-            U8 tmpReg = getTmpReg();
-            U8 esReg = getRegForSeg(ds, tmpReg);
-
-            if (!ea16) {
-                addWithLea(srcReg, true, 6, false, esReg, true, 0, 0, 4);
-            } else {
-                zeroReg(srcReg, true, true);
-                writeToRegFromReg(srcReg, true, 6, false, 2);
-                addWithLea(srcReg, true, srcReg, true, esReg, true, 0, 0, 4);
+            if (ea16) {
+                srcReg = getTmpReg();
+                zeroExtend16to32(srcReg, true, 6, false);
+                srcRegIsRex = true;
             }
-            checkMemory(srcReg, true, false, width, srcHostReg, false, false, true, true); // will release srcReg
-            // srcHostReg represents what we add to esi to make the host movs work and what we will subtract after movs is done to get back to the emulated esi
-            addWithLea(srcHostReg, true, srcHostReg, true, esReg, true, 0, 0, 8); 
-            releaseTmpReg(tmpReg);
-        } else {
-            if (!ea16) {
-                checkMemory(6, false, false, width, srcHostReg, false, false, false, true);
-            } else {
-                U8 srcReg = getTmpReg();
-                zeroReg(srcReg, true, true);
-                writeToRegFromReg(srcReg, true, 6, false, 2);
-                checkMemory(srcReg, true, false, width, srcHostReg, false, false, false, true);
+            writeToRegFromMem(tmpReg, true, srcReg, srcRegIsRex, getRegForSeg(ds, tmpReg), true, 0, 0, width, true);
+            if (ea16) {
                 releaseTmpReg(srcReg);
             }
-        }
-    }
-    U8 dstHostReg = 0xff;
-    
-    if (hasDst) {
-        dstHostReg = getTmpReg();
-        if (this->cpu->thread->process->hasSetSeg[ES]) {
-            U8 dstReg = getTmpReg();
-            U8 tmpReg = getTmpReg();
-
-            if (!ea16) {
-                addWithLea(dstReg, true, 7, false, getRegForSeg(ES, tmpReg), true, 0, 0, 4);
-            } else {
-                zeroReg(dstReg, true, true);
-                writeToRegFromReg(dstReg, true, 7, false, 2);
-                addWithLea(dstReg, true, dstReg, true, getRegForSeg(ES, tmpReg), true, 0, 0, 4);
-            }
-            releaseTmpReg(tmpReg);
-            checkMemory(dstReg, true, true, width, dstHostReg, false, false, true, true); // will release dstReg
-
+        } else {
             if (ea16) {
-                // we need to keep the upper bits
-                pushNativeReg(7, false);
+                zeroExtend16to32(tmpReg, true, 6, false);
+                srcReg = tmpReg;
+                srcRegIsRex = true;
             }
-
-            // need to fetch ds again because we had to release it before checkMemory so that it had at least 1 tmp available
-            tmpReg = getTmpReg();
-            addWithLea(dstHostReg, true, dstHostReg, true, getRegForSeg(ES, tmpReg), true, 0, 0, 8);
-            releaseTmpReg(tmpReg);
-            if (!ea16) {
-                addWithLea(7, false, 7, false, dstHostReg, true, 0, 0, 8);
-            } else {
-                dstReg = getTmpReg();
-                zeroReg(dstReg, true, true);
-                writeToRegFromReg(dstReg, true, 7, false, 2);
-                addWithLea(7, false, dstReg, true, dstHostReg, true, 0, 0, 8);
-                releaseTmpReg(dstReg);
-            }
-        } else {
-            if (!ea16) {
-                checkMemory(7, false, true, width, dstHostReg, false, false, false, true);
-                addWithLea(7, false, 7, false, dstHostReg, true, 0, 0, 8);
-            } else {
-                U8 dstReg = getTmpReg();
-                zeroReg(dstReg, true, true);
-                writeToRegFromReg(dstReg, true, 7, false, 2);
-                checkMemory(dstReg, true, true, width, dstHostReg, false, false, false, true);
-                if (ea16) {
-                    // we need to keep the upper bits
-                    pushNativeReg(7, false);
-                }
-                addWithLea(7, false, dstReg, true, dstHostReg, true, 0, 0, 8);
-                releaseTmpReg(dstReg);
-            }
+            writeToRegFromMem(tmpReg, true, srcReg, srcRegIsRex, -1, false, 0, 0, width, true);
         }
-    }
-    if (hasSrc) {
+
+        U8 dstReg = 7;
+        bool dstRegIsRex = false;
+        U8 tmpDst = 0xff;
+
         if (ea16) {
-            // we need to keep the upper bits
-            pushNativeReg(6, false);
+            tmpDst = getTmpReg();
+            zeroExtend16to32(tmpDst, true, 7, false);
+            dstReg = tmpDst;
+            dstRegIsRex = true;
+        }
+        if (this->cpu->thread->process->hasSetSeg[ES]) {
+            U8 segReg = getTmpReg();
+            writeToMemFromReg(tmpReg, true, dstReg, dstRegIsRex, getRegForSeg(ES, segReg), true, 0, 0, width, true, false, true);
+        } else {
+            writeToMemFromReg(tmpReg, true, dstReg, dstRegIsRex, -1, false, 0, 0, width, true);
+        }
+        if (tmpDst != 0xff) {
+            releaseTmpReg(tmpDst);
+        }
+        releaseTmpReg(tmpReg);
+    } else if (hasSrc) {
+        U8 srcReg = 6;
+        bool srcRegIsRex = false;
+
+        if (ea16) {
+            srcReg = getTmpReg();
+            zeroExtend16to32(srcReg, true, 6, false);
+            srcRegIsRex = true;
         }
 
-        // setup esi to point to host addresses
-        if (!ea16) {
-            addWithLea(6, false, 6, false, srcHostReg, true, 0, 0, 8);
+        if (this->cpu->thread->process->hasSetSeg[ds]) {
+            U8 segReg = getTmpReg();            
+            writeToRegFromMem(0, false, srcReg, srcRegIsRex, getRegForSeg(ds, segReg), true, 0, 0, width, true);
+            releaseTmpReg(segReg);
         } else {
-            U8 srcReg = getTmpReg();
-            zeroReg(srcReg, true, true);
-            writeToRegFromReg(srcReg, true, 6, false, 2);
-            addWithLea(6, false, srcReg, true, srcHostReg, true, 0, 0, 8);
+            writeToRegFromMem(0, false, srcReg, srcRegIsRex, -1, false, 0, 0, width, true);
+        }
+        if (ea16) {
             releaseTmpReg(srcReg);
         }
-    }
-
-    // esi, edi, ecx will be adjusted
-    // since we already checked the memory, we know this won't cause a page fault    
-    if (hasSrc && hasDst) {
-        // movs
-        if (width == 4) {
-            write8(0xa5);
-        } else if (width == 2) {
-            write8(0x66);
-            write8(0xa5);
-        } else if (width == 1) {
-            write8(0xa4);
-        } else {
-            kpanic("X64Asm::string bad width: %d", width);
-        }        
     } else if (hasDst) {
-        // stos
-        if (width == 4) {
-            write8(0xab);
-        } else if (width == 2) {
-            write8(0x66);
-            write8(0xab);
-        } else if (width == 1) {
-            write8(0xaa);
-        } else {
-            kpanic("X64Asm::string bad width: %d", width);
+        U8 dstReg = 7;
+        bool dstRegIsRex = false;
+
+        if (ea16) {
+            dstReg = getTmpReg();
+            zeroExtend16to32(dstReg, true, 7, false);
+            dstRegIsRex = true;
         }
-    } else if (hasSrc) {
-        // lods
-        if (width == 4) {
-            write8(0xad);
-        } else if (width == 2) {
-            write8(0x66);
-            write8(0xad);
-        } else if (width == 1) {
-            write8(0xac);
+
+        if (this->cpu->thread->process->hasSetSeg[ES]) {
+            U8 segReg = getTmpReg();
+            writeToMemFromReg(0, false, dstReg, dstRegIsRex, getRegForSeg(ES, segReg), true, 0, 0, width, true, false, true);
         } else {
-            kpanic("X64Asm::string bad width: %d", width);
+            writeToMemFromReg(0, false, dstReg, dstRegIsRex, -1, false, 0, 0, width, true);
+        }
+        if (ea16) {
+            releaseTmpReg(dstReg);
         }
     } else {
-        kpanic("X64Asm::string no type");
-    }
-
-    // adjust esi/edi back to their emulated values (they were incremented)        
-    if (hasSrc) {
-        subRegs(6, false, srcHostReg, true, true);
-    }
-    if (hasDst) {
-        subRegs(7, false, dstHostReg, true, true);
-    }
-
-    if (ea16) {
-        // we need to restore the top 16-bits of esi/edi (with 16-bit address, they should not change)        
-        if (hasSrc) {
-            writeToRegFromReg(srcHostReg, true, 6, false, 4);
-            popNativeReg(6, false);
-            writeToRegFromReg(6, false, srcHostReg, true, 2);
-        }
-        if (hasDst) {
-            writeToRegFromReg(dstHostReg, true, 7, false, 4);
-            popNativeReg(7, false);
-            writeToRegFromReg(7, false, dstHostReg, true, 2);
-        }        
-    }
-
-    if (hasSrc) {
-        releaseTmpReg(srcHostReg);
-    }
-    if (hasDst) {
-        releaseTmpReg(dstHostReg);
+        kpanic("X64Asm::string oops");
     }
         
-    if (repeat) {
-        U8 tmpReg = getTmpReg();
-        if (ea16) {
-            // loop on cx is not valid on x64
-            writeToRegFromReg(tmpReg, true, 1, false, 4);
-            zeroExtend16to32(1, false, 1, false);
+    if (width == 1) {
+        if (direction == 1) {
+            if (hasSrc) {
+                // inc (e)si
+                if (ea16) {
+                    write8(0x66);
+                }
+                write8(0xff);
+                write8(0xc0 | 6);
+            }
+            if (hasDst) {
+                // inc (e)di
+                if (ea16) {
+                    write8(0x66);
+                }
+                write8(0xff);
+                write8(0xc0 | 7);
+            }
+        } else {
+            if (hasSrc) {
+                // dec (e)si
+                if (ea16) {
+                    write8(0x66);
+                }
+                write8(0xff);
+                write8(0xc8 | 6);
+            }
+            if (hasDst) {
+                // dec (e)di
+                if (ea16) {
+                    write8(0x66);
+                }
+                write8(0xff);
+                write8(0xc8 | 7);
+            }
         }
+    } else {
+        if (hasSrc) {
+            addWithLea(6, false, 6, false, -1, false, 0, direction * width, ea16 ? 2 : 4);
+        }
+        if (hasDst) {
+            addWithLea(7, false, 7, false, -1, false, 0, direction * width, ea16 ? 2 : 4);
+        }
+    }
+
+    if (repeat) {
         S32 diff = (S32)pos - (S32)bufferPos;
         U32 startPos = bufferPos;
 
-        // loop on ecx != 0
-        write8(0xe2);            
-        write8(ea16?6:2);
-
-        // jmp over next jmp (restart)
+        // dec (e)cx
         if (ea16) {
-            addWithLea(1, false, tmpReg, true, -1, false, 0, -1, 4);
+            write8(0x66);
         }
-        write8(0xeb);
-        U32 exitLoopPos = bufferPos;
-        write8(ea16?9:5);
+        write8(0xff);
+        write8(0xc9);
+
+        // cmp (e)cx, 0
+        if (ea16) {
+            write8(0x66);
+        }
+        write8(0x83);
+        write8(0xf9);
+        write8(0x00);
+
+        // jz
+        write8(0x74);            
+        write8(5);
 
         // jmp back to start and do another loop
-        if (ea16) {
-            addWithLea(1, false, tmpReg, true, -1, false, 0, -1, 4);
-        }
         write8(0xe9);
-        write32(diff - (bufferPos - startPos + 4));
-        releaseTmpReg(tmpReg);
+        write32(diff - (bufferPos - startPos + 4));        
 
         write32Buffer(buffer + skipPos, bufferPos - skipPos - 4);
     }
     if (needFlags) {
         U8 flagsReg = getTmpReg();
-        writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
+        writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
         popFlagsFromReg(flagsReg, true, true);
         releaseTmpReg(flagsReg);
     }
