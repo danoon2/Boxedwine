@@ -86,10 +86,6 @@ public:
 	static bool shutingDown;
     static U32 killTime;
     static BString title;
-#ifdef BOXEDWINE_64BIT_MMU
-    static bool useLargeAddressSpace;
-    static bool useSingleMemOffset;
-#endif
 #ifdef BOXEDWINE_MULTI_THREADED
     static U32 cpuAffinityCountForApp;
 #endif

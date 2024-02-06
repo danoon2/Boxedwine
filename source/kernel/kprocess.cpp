@@ -28,10 +28,6 @@
 #include "../io/fsmemopennode.h"
 #include "../io/fsfilenode.h"
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../emulation/cpu/binaryTranslation/btCodeMemoryWrite.h"
-#endif
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -147,12 +143,7 @@ void KProcess::onExec(KThread* thread) {
     syncToHostAddress = nullptr;
     syncFromHostAddress = nullptr;
     doSingleOpAddress = nullptr;
-#ifdef BOXEDWINE_64BIT_MMU
-    reTranslateChunkAddressFromReg = nullptr;
-#endif
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     jmpAndTranslateIfNecessary = nullptr;
-#endif
 #ifdef BOXEDWINE_POSIX
     runSignalAddress = nullptr;
 #endif
@@ -1072,9 +1063,6 @@ U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen)
     if (!fd->canRead()) {
         return -K_EINVAL;
     }
-#ifdef BOXEDWINE_64BIT_MMU
-    BtCodeMemoryWrite w((BtCPU*)thread->cpu, bufferAddress, bufferLen);
-#endif
     return fd->kobject->read(thread, bufferAddress, bufferLen);
 }
 

@@ -1,7 +1,6 @@
 #include "boxedwine.h"
 #include "btCodeChunk.h"
 #include "btCpu.h"
-#include "../../hardmmu/kmemory_hard.h"
 #include "../../softmmu/kmemory_soft.h"
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
@@ -15,9 +14,6 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
     this->hostLen = hostInstructionBufferLen;
     this->emulatedInstructionLen = new U8[instructionCount];
     this->hostInstructionLen = new U32[instructionCount];
-#ifdef BOXEDWINE_64BIT_MMU
-    this->dynamic = dynamic;
-#endif
     this->block = nullptr;
     Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [this]() {
         memset(this->hostAddress, 0xce, this->hostAddressSize);
@@ -49,26 +45,18 @@ void BtCodeChunk::makeLive() {
         KMemoryData* mem = getMemData(cpu->memory);
 
         for (U32 i = 0; i < instructionCount; i++) {
-#ifdef BOXEDWINE_64BIT_MMU 
-            if (KSystem::useLargeAddressSpace) {
-                mem->setEipForHostMapping(eip, host);
-            } else {
-#else
-            {
-#endif
-                U32 page = eip >> K_PAGE_SHIFT;
-                U32 offset = eip & K_PAGE_MASK;
-                U8** table = mem->eipToHostInstructionPages[page];
-                if (!table) {
-                    table = new U8* [K_PAGE_SIZE];
-                    memset(table, 0, sizeof(U8*) * K_PAGE_SIZE);
-                    mem->eipToHostInstructionPages[page] = table;
-                }
-                if (table[offset]) {
-                    kpanic("BtCodeChunk::allocChunk eip already mapped");
-                }
-                table[offset] = host;
+            U32 page = eip >> K_PAGE_SHIFT;
+            U32 offset = eip & K_PAGE_MASK;
+            U8** table = mem->eipToHostInstructionPages[page];
+            if (!table) {
+                table = new U8* [K_PAGE_SIZE];
+                memset(table, 0, sizeof(U8*) * K_PAGE_SIZE);
+                mem->eipToHostInstructionPages[page] = table;
             }
+            if (table[offset]) {
+                kpanic("BtCodeChunk::allocChunk eip already mapped");
+            }
+            table[offset] = host;
             eip += this->emulatedInstructionLen[i];
             host += this->hostInstructionLen[i];
         }
@@ -88,15 +76,8 @@ void BtCodeChunk::detachFromHost(KMemory* memory) {
     }
 
     for (U32 i = 0; i < this->instructionCount; i++) {
-#ifdef BOXEDWINE_64BIT_MMU 
-        if (KSystem::useLargeAddressSpace) {
-            mem->setEipForHostMapping(eip, process ? process->reTranslateChunkAddressFromReg : NULL);
-        } else 
-#endif
-        {
-            if (mem->eipToHostInstructionPages[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
-                mem->eipToHostInstructionPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = nullptr;
-            }
+        if (mem->eipToHostInstructionPages[eip >> K_PAGE_SHIFT]) { // might span multiple pages and the other pages are already deleted
+            mem->eipToHostInstructionPages[eip >> K_PAGE_SHIFT][eip & K_PAGE_MASK] = nullptr;
         }
 
         if (i + 1 < this->instructionCount) {
@@ -187,12 +168,8 @@ void BtCodeChunk::releaseAndRetranslate() {
     // remove this chunk and its mappings from being used (since it is about to be replaced)
     BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
 
-#ifdef BOXEDWINE_64BIT_MMU
-    detachFromHost(cpu->thread->memory);
-#else
     KMemoryData* mem = getMemData(cpu->memory);
     mem->memory->removeCodeBlock(getEip(), getEipLen());    
-#endif
     std::shared_ptr<BtCodeChunk> chunk = cpu->translateChunk(this->emulatedAddress - cpu->seg[CS].address);
     cpu->makePendingCodePagesReadOnly();
     for (auto& link : this->linksFrom) {

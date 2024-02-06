@@ -18,15 +18,6 @@ void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ESI = (U32)ep->ContextRecord->Rsi;
     EDI = (U32)ep->ContextRecord->Rdi;
 
-    cpu->exceptionRSI = (U32)ep->ContextRecord->Rsi;
-    cpu->exceptionRDI = (U32)ep->ContextRecord->Rdi;
-    cpu->exceptionR8 = (U32)ep->ContextRecord->R8;
-    cpu->exceptionR9 = (U32)ep->ContextRecord->R9;
-    cpu->exceptionR10 = (U32)ep->ContextRecord->R10;
-    cpu->destEip = (U32)ep->ContextRecord->R9;
-    cpu->regPage = ep->ContextRecord->R8;
-    cpu->regOffset = ep->ContextRecord->R9;
-
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
     for (int i=0;i<8;i++) {
@@ -60,16 +51,6 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ep->ContextRecord->Rbp = EBP;
     ep->ContextRecord->Rsi = ESI;
     ep->ContextRecord->Rdi = EDI;
-#ifdef BOXEDWINE_64BIT_MMU
-    if (KSystem::useLargeAddressSpace) {
-        ep->ContextRecord->R14 = (U64)cpu->eipToHostInstructionAddressSpaceMapping;
-    } else {
-        ep->ContextRecord->R14 = cpu->seg[SS].address;
-    }
-#else
-    ep->ContextRecord->R14 = cpu->seg[SS].address;
-#endif
-    ep->ContextRecord->R15 = cpu->seg[DS].address;
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
     for (int i=0;i<8;i++) {

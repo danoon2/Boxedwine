@@ -1,7 +1,5 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_invalid_page.h"
 #include "kmemory_soft.h"
 #include "soft_native_page.h"
@@ -665,5 +663,3 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     }
     return result << K_PAGE_SHIFT;
 }
-
-#endif

@@ -35,10 +35,6 @@ void BtData::reset() {
     this->startOfOpIp = 0;
     this->calculatedEipLen = 0;
     this->stopAfterInstruction = -1;
-#ifdef BOXEDWINE_64BIT_MMU
-    this->dynamic = false;
-    this->useSingleMemOffset = true;
-#endif
     this->currentOp = nullptr;
     this->needLargeIfJmpReg = false;
     todoJump.clear();
@@ -140,13 +136,7 @@ void BtData::mapAddress(U32 ip, U32 bufferPos) {
 }
 
 std::shared_ptr<BtCodeChunk> BtData::commit(bool makeLive) {
-    bool dynamic;
-#ifdef BOXEDWINE_64BIT_MMU
-    dynamic = this->dynamic;
-#else
-    dynamic = false;
-#endif
-    std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, dynamic);
+    std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, false);
     chunk->block = this->currentBlock;
     if (makeLive) {
         chunk->makeLive();

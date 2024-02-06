@@ -38,10 +38,6 @@
 #define K_NATIVE_PAGES_PER_PAGE 1
 #endif
 
-#ifndef BOXEDWINE_64BIT_MMU
-#define BOXEDWINE_DEFAULT_MMU 1
-#endif
-
 #ifdef __APPLE__
 #define lseek64 lseek
 #endif
@@ -132,11 +128,8 @@ public:
     static U32 getPageAllocationGranularity();
     static U32 getPagePermissionGranularity(); // assumed to be smaller or equal to getPageAllocationGranularity and that getPageAllocationGranularity / getPagePermissionGranularity is a whole number
     static U32 allocateNativeMemory(U64 address); // page must be aligned to Platform::getAllocationGranularity
-    static U32 freeNativeMemory(U64 address); // page  must be aligned to Platform::getAllocationGranularity
     static U32 updateNativePermission(U64 address, U32 permission, U32 len = 0); // page must be aligned to Platform::getPagePermissionGranularity.  when len == 0, it will default to getPagePermissionGranularity() << K_PAGE_SHIFT
-    static U8* reserveNativeMemory(bool large);
     static void releaseNativeMemory(void* address, U64 len);
-    static void commitNativeMemory(void* address, U64 len);
     static U8* alloc64kBlock(U32 count, bool executable = false);
 
 #ifdef BOXEDWINE_MULTI_THREADED

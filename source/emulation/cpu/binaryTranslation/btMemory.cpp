@@ -5,18 +5,8 @@
 #include "btCodeChunk.h"
 
 BtMemory::BtMemory(KMemory* memory) : memory(memory) {
-#ifdef BOXEDWINE_64BIT_MMU
-    if (!KSystem::useLargeAddressSpace) {
-        this->eipToHostInstructionPages = new void** [K_NUMBER_OF_PAGES];
-        memset(this->eipToHostInstructionPages, 0, K_NUMBER_OF_PAGES * sizeof(void**));
-    } else {
-        this->eipToHostInstructionPages = NULL;
-    }
-    this->eipToHostInstructionAddressSpaceMapping = NULL;
-#else
     this->eipToHostInstructionPages = new U8** [K_NUMBER_OF_PAGES];
     memset(this->eipToHostInstructionPages, 0, K_NUMBER_OF_PAGES * sizeof(void**));
-#endif    
     memset(this->committedEipPages, 0, sizeof(this->committedEipPages));
 }
 
@@ -33,25 +23,11 @@ BtMemory::~BtMemory() {
 
 // call during code translation, this needs to be fast
 U8* BtMemory::getExistingHostAddress(U32 eip) {
-#ifdef BOXEDWINE_64BIT_MMU
-    if (KSystem::useLargeAddressSpace) {
-        if (!this->isEipPageCommitted(eip >> K_PAGE_SHIFT)) {
-            return NULL;
-        }
-        void* result = (void*)(*(U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip * sizeof(void*))));
-        if (result == KThread::currentThread()->process->reTranslateChunkAddressFromReg) {
-            return NULL;
-        }
-        return result;
-    } else 
-#endif
-    {
-        U32 page = eip >> K_PAGE_SHIFT;
-        U32 offset = eip & K_PAGE_MASK;
-        if (this->eipToHostInstructionPages[page])
-            return this->eipToHostInstructionPages[page][offset];
-        return nullptr;
-    }
+    U32 page = eip >> K_PAGE_SHIFT;
+    U32 offset = eip & K_PAGE_MASK;
+    if (this->eipToHostInstructionPages[page])
+        return this->eipToHostInstructionPages[page][offset];
+    return nullptr;
 }
 
 bool BtMemory::isAddressExecutable(U8* address) {
@@ -146,31 +122,5 @@ void BtMemory::addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
 bool BtMemory::isEipPageCommitted(U32 page) {
     return this->committedEipPages[page];
 }
-
-#ifdef BOXEDWINE_64BIT_MMU
-void BtMemory::setEipForHostMapping(U32 eip, void* host) {
-    U32 page = eip >> K_PAGE_SHIFT;
-    if (!this->isEipPageCommitted(page)) {
-        commitHostAddressSpaceMapping(page, 1, (U64)KThread::currentThread()->process->reTranslateChunkAddressFromReg);
-    }
-    U64* address = (U64*)(((U8*)this->eipToHostInstructionAddressSpaceMapping) + ((U64)eip) * sizeof(void*));
-    *address = (U64)host;
-}
-
-void BtMemory::commitHostAddressSpaceMapping(U32 page, U32 pageCount, U64 defaultValue) {
-    for (U32 i = 0; i < pageCount; i++) {
-        if (!this->isEipPageCommitted(page + i)) {
-            U8* address = (U8*)this->eipToHostInstructionAddressSpaceMapping + ((U64)(page + i)) * K_PAGE_SIZE * sizeof(void*);
-            // won't worry about granularity size (Platform::getPageAllocationGranularity()) since Platform::commitNativeMemory doesn't require a multiple of it
-            Platform::commitNativeMemory(address, (sizeof(void*) << K_PAGE_SHIFT));
-            U64* address64 = (U64*)address;
-            for (U32 j = 0; j < K_PAGE_SIZE; j++, address64++) {
-                *address64 = defaultValue;
-            }
-            this->setEipPageCommitted(page + i);
-        }
-    }
-}
-#endif
 
 #endif

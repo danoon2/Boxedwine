@@ -17,8 +17,6 @@
  */
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_file_map.h"
 #include "kmemory_soft.h"
 #include "soft_ram.h"
@@ -113,5 +111,3 @@ U8* FilePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady)
     }
     return nullptr;
 }
-
-#endif

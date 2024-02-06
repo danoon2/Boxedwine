@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../emulation/hardmmu/kmemory_hard.h"
 #include "../emulation/cpu/binaryTranslation/btCpu.h"
 #include "knativethread.h"
 
@@ -237,10 +236,6 @@ void runTestCPU() {
     } while (cpu->nextBlock->op->inst != JumpO && (cpu->nextBlock->op->inst != Custom1 || cpu->nextBlock->op->next->inst != JumpO));
 
 #endif    
-#ifdef BOXEDWINE_64BIT_MMU
-    KMemoryData* mem = getMemData(memory);
-    mem->clearCodePageFromCache(CODE_ADDRESS>>K_PAGE_SHIFT);    
-#endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     BtCPU* c = (BtCPU*)cpu;
     c->postTestRun();
@@ -12452,29 +12447,11 @@ extern "C" {
     int runCpuTestsMac(void);
 }
 int runCpuTestsMac(void) {
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_64BIT_MMU)
-    int result = runCpuTests();
-    KSystem::useSingleMemOffset = false;
-    tearDown();
-    printf("Starting second run with useSingleMemOffset = false\n");
-    result |= runCpuTests();
-    return result;
-#else
     return runCpuTests();
-#endif
 }
 #else
 int main(int argc, char** argv) {
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_64BIT_MMU)
-    int result = runCpuTests();
-    KSystem::useSingleMemOffset = false;
-    tearDown();
-    printf("Starting second run with useSingleMemOffset = false\n");
-    result |= runCpuTests();
-    return result;
-#else
     return runCpuTests();
-#endif
 }
 #endif
 

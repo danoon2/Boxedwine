@@ -1,7 +1,5 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_native_page.h"
 
 NativePage* NativePage::alloc(U8* nativeAddress, U32 address) {
@@ -68,5 +66,3 @@ U8* NativePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeRead
     }
     return nullptr;
 }
-
-#endif

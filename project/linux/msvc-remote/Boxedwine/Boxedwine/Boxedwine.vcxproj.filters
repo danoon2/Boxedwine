@@ -1,9 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\..\platform\linux\memory64.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp">
       <Filter>platform</Filter>
     </ClCompile>
@@ -481,9 +478,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\ui\controls\helpView.cpp">
       <Filter>source\ui\control</Filter>
     </ClCompile>
@@ -572,9 +566,6 @@
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\bstring.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\hardmmu\kmemory_hard.cpp">
-      <Filter>source\emulation\hardmmu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
@@ -606,9 +597,6 @@
     </Filter>
     <Filter Include="source\emulation\softmmu">
       <UniqueIdentifier>{d261536f-bf9d-43fa-ab91-ff7d972ef56e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="source\emulation\hardmmu">
-      <UniqueIdentifier>{923a3afa-b7ca-443d-8e17-a713f5cf788b}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\emulation\cpu\common">
       <UniqueIdentifier>{a9cff077-2edb-4001-bbe7-d5e5fafda715}</UniqueIdentifier>
@@ -1767,9 +1755,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\controls\helpView.h">
       <Filter>source\ui\control</Filter>
     </ClInclude>
@@ -1864,9 +1849,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h" />
     <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\hardmmu\kmemory_hard.h">
-      <Filter>source\emulation\hardmmu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>

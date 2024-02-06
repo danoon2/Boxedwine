@@ -882,9 +882,7 @@ void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
     BoxedwineGL::current->swapBuffer(window);
 }
 
-#if !defined(BOXEDWINE_64BIT_MMU) || defined(BOXEDWINE_LINUX)
 #define BOXEDWINE_FLIP_MANUALLY
-#endif
 
 #if defined(BOXEDWINE_RECORDER) || defined(BOXEDWINE_FLIP_MANUALLY)
 static S8 sdlBuffer[1024*1024*4];

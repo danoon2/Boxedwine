@@ -19,8 +19,6 @@
 #ifndef __SOFT_WO_PAGE_H__
 #define __SOFT_WO_PAGE_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_rw_page.h"
 
 class WOPage : public RWPage {
@@ -38,7 +36,5 @@ public:
     U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false) override;
     Type getType() override { return Type::WO_Page; }
 };
-
-#endif
 
 #endif

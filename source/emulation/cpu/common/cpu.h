@@ -235,10 +235,7 @@ public:
     Seg seg[7];    
     U32 flags;
     Reg eip;
-    U8* reg8[9];
-#ifdef BOXEDWINE_64BIT_MMU
-    U64* memOffsets; // ARM will use one less instruction for shared memory access if the offset of this is in the first 256 bytes
-#endif    
+    U8* reg8[9];  
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     DecodedOp* currentSingleOp;
 #endif

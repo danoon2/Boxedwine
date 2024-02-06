@@ -1,7 +1,5 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_wo_page.h"
 
 WOPage* WOPage::alloc(U8* page, U32 address) {
@@ -30,5 +28,3 @@ U8* WOPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
 U8* WOPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     return this->page;
 }
-
-#endif

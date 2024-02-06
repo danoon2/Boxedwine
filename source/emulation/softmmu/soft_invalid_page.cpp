@@ -1,7 +1,5 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_invalid_page.h"
 #include "kmemory_soft.h"
 
@@ -105,5 +103,3 @@ U8* InvalidPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeRea
     }
     return nullptr;
 }
-
-#endif

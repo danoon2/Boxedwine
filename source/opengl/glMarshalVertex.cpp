@@ -5,7 +5,6 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
-#ifndef BOXEDWINE_64BIT_MMU
 U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     if (ARRAY_BUFFER()) {
         klog("updateVertexPointer might have failed");
@@ -357,5 +356,4 @@ const void* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U
     }
 }
 
-#endif
 #endif

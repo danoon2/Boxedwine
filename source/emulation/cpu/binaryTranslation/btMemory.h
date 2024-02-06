@@ -45,11 +45,6 @@ public:
 	bool committedEipPages[K_NUMBER_OF_PAGES];
 
 	U8*** eipToHostInstructionPages;
-#ifdef BOXEDWINE_64BIT_MMU	
-	void commitHostAddressSpaceMapping(U32 page, U32 pageCount, U64 defaultValue);
-	void setEipForHostMapping(U32 eip, void* host);
-	void* eipToHostInstructionAddressSpaceMapping;
-#endif
 	BOXEDWINE_MUTEX mutex;
 
 protected:

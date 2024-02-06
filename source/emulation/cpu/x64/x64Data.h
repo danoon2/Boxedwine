@@ -28,15 +28,8 @@
 // popseg assumes these won't overlap with params
 #define HOST_ESP          3
 
-#ifdef BOXEDWINE_64BIT_MMU
-#define HOST_MEM          4
-// popseg assumes this won't overlap with params
-#define HOST_LARGE_ADDRESS_SPACE_MAPPING           6
-#define HOST_SMALL_ADDRESS_SPACE_SS                6
-#else
 #define HOST_MEM_READ 4
 #define HOST_MEM_WRITE 6
-#endif
 
 // R13 is good for this one, because R13 can not be used in sib memory encoding, it will translate to 0 instead of the reg, and HOST_CPU will never be used to encode memory
 #define HOST_CPU          5

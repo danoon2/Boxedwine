@@ -19,8 +19,6 @@
 #ifndef __SOFT_COPY_ON_WRITE_PAGE_H__
 #define __SOFT_COPY_ON_WRITE_PAGE_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_rw_page.h"
 
 class CopyOnWritePage : public RWPage {
@@ -44,7 +42,5 @@ public:
 private:
     void copyOnWrite(U32 address);
 };
-
-#endif
 
 #endif

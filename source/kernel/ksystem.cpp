@@ -55,16 +55,6 @@ BString KSystem::title;
 // some simple opengl apps seem to have a hard time starting if this is false
 // Not sure if this is a Boxedwine issue or if its normal for Windows to behave different for OpenGL if the window is hidden
 bool KSystem::showWindowImmediately = false;
-#ifdef BOXEDWINE_64BIT_MMU
-#ifdef BOXEDWINE_SMALL_VIRTUAL_MEMORY
-bool KSystem::useLargeAddressSpace = false;
-#else
-bool KSystem::useLargeAddressSpace = true;
-#endif
-#ifdef BOXEDWINE_64BIT_MMU
-bool KSystem::useSingleMemOffset = true;
-#endif
-#endif
 #ifdef BOXEDWINE_MULTI_THREADED
 U32 KSystem::cpuAffinityCountForApp = 0;
 #endif
@@ -80,9 +70,7 @@ void KSystem::init() {
     KSystem::adjustClock = false;
     KSystem::nextThreadId=10;
     KSystem::processes.clear();
-#ifdef BOXEDWINE_DEFAULT_MMU
     KSystem::fileCache.clear();
-#endif
     KSystem::pentiumLevel = 4;
 	KSystem::shutingDown = false;
     KSystem::startTimeTicks = KNativeSystem::getTicks();
@@ -113,9 +101,7 @@ void KSystem::destroy() {
         p->killAllThreads();
     }
 	KSystem::processes.clear();
-#ifdef BOXEDWINE_DEFAULT_MMU
     KSystem::fileCache.clear();
-#endif
 	KSystem::shutingDown = false;
 	Fs::shutDown();
     DecodedOp::clearCache();

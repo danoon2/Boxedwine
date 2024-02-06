@@ -1,7 +1,5 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_no_page.h"
 
 NOPage* NOPage::alloc(U8* page, U32 address) {
@@ -42,5 +40,3 @@ U8* NOPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
 U8* NOPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     return nullptr;
 }
-
-#endif

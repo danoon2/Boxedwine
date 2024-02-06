@@ -1,7 +1,5 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_copy_on_write_page.h"
 #include "soft_ram.h"
 #include "kmemory_soft.h"
@@ -91,5 +89,3 @@ U8* CopyOnWritePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool mak
     }
     return nullptr;
 }
-
-#endif

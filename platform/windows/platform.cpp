@@ -378,29 +378,12 @@ U32 Platform::allocateNativeMemory(U64 address) {
     return 0;
 }
 
-U32 Platform::freeNativeMemory(U64 address) {
-    if (!VirtualFree((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_DECOMMIT)) {
-        LPSTR messageBuffer = nullptr;
-        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("failed to release memory: %s", messageBuffer);
-    }
-    return 0;
-}
-
 void Platform::releaseNativeMemory(void* address, U64 len) {
     // per Windows spec, if MEM_RELEASE is used, then the dwSize must be 0 and the entire chunk will be released
     if (!VirtualFree(address, 0, MEM_RELEASE)) {
         LPSTR messageBuffer = nullptr;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
         kpanic("failed to release executable memory: %s", messageBuffer);
-    }
-}
-
-void Platform::commitNativeMemory(void* address, U64 len) {
-    if (!VirtualAlloc(address, (SIZE_T)len, MEM_COMMIT, PAGE_READWRITE)) {
-        LPSTR messageBuffer = nullptr;
-        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("allocNativeMemory: failed to commit memory: %s", messageBuffer);
     }
 }
 
@@ -439,18 +422,6 @@ U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
         kpanic("failed to protect memory: %s", messageBuffer);
     }
     return 0;
-}
-
-U8* Platform::reserveNativeMemory(bool large) {
-    U64 i = 1;
-    SIZE_T len = large ? 0x800000000l : 0x100000000l;
-
-    U8* p = (U8*)(i << 32);
-    while (VirtualAlloc(p, len, MEM_RESERVE, PAGE_READWRITE) == nullptr) {
-        i++;
-        p = (U8*)(i << 32);
-    }
-    return p;
 }
 
 U32 Platform::nanoSleep(U64 nano) {

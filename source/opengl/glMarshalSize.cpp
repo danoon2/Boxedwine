@@ -5,7 +5,6 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
-#ifndef BOXEDWINE_64BIT_MMU
 U32 getDataSize(GLenum type) {
     switch (type) {
     case GL_UNSIGNED_BYTE:
@@ -951,6 +950,5 @@ GLsizei marshalHistogramWidth(GLenum target) {
     return result;
 }
 
-#endif
 #endif
 #endif

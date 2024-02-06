@@ -232,9 +232,6 @@
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp">
-      <Filter>platform\windows</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp">
       <Filter>source\emulation\cpu\x32</Filter>
     </ClCompile>
@@ -493,9 +490,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
@@ -540,9 +534,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp">
       <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\hardmmu\kmemory_hard.cpp">
-      <Filter>source\emulation\hardmmu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
@@ -1179,9 +1170,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
@@ -1229,9 +1217,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h">
       <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\hardmmu\kmemory_hard.h">
-      <Filter>source\emulation\hardmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
@@ -1306,9 +1291,6 @@
     </Filter>
     <Filter Include="minizip">
       <UniqueIdentifier>{63031e16-f5cd-4f1e-bb8c-aee7a81314a8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="source\emulation\hardmmu">
-      <UniqueIdentifier>{4f68ad4a-87b4-418f-a461-919898090deb}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\emulation\cpu\x32">
       <UniqueIdentifier>{e80bd918-375f-4341-916a-4301b88a0c8f}</UniqueIdentifier>

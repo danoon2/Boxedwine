@@ -1,7 +1,5 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_rw_page.h"
 #include "soft_ram.h"
 
@@ -73,5 +71,3 @@ U8* RWPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
 U8* RWPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     return this->page;
 }
-
-#endif

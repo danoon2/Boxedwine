@@ -183,7 +183,7 @@ bool runSlice() {
         ChangeThread c(currentThread);
         static U64 rdtsc;
         currentThread->cpu->instructionCount = rdtsc;
-        platformRunThreadSlice(currentThread);
+        runThreadSlice(currentThread);
         rdtsc = currentThread->cpu->instructionCount;
 
         U64 threadEndTime = KSystem::getMicroCounter();
@@ -234,7 +234,7 @@ U32 getMIPS() {
 
 void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread) {
     while (!process->terminated) {
-        platformRunThreadSlice(thread);
+        runThreadSlice(thread);
     }
 }
 #endif

@@ -1,17 +1,12 @@
 #include "boxedwine.h"
 #include "../emulation/softmmu/kmemory_soft.h"
-#include "../emulation/hardmmu/kmemory_hard.h"
 #include "../emulation/cpu/dynamic/dynamic_memory.h"
 #include "../emulation/softmmu/soft_ram.h"
 
 MappedFileCache::~MappedFileCache() {
     for (U32 i = 0; i < this->dataSize; i++) {
         if (this->data[i]) {
-#ifdef BOXEDWINE_DEFAULT_MMU
             ramPageDecRef(this->data[i]);
-#else
-            delete[] this->data[i];
-#endif
         }
     }
     delete[] this->data;
@@ -144,22 +139,14 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
             mappedFile->offset = off;
             mappedFile->file = std::dynamic_pointer_cast<KFile>(fd->kobject);
-#ifdef BOXEDWINE_DEFAULT_MMU
             bool addFileToSystemCache = true;
-#else
-            bool addFileToSystemCache = shared;
-#endif
             if (addFileToSystemCache) {
                 std::shared_ptr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
                 if (!cache) {
                     cache = std::make_shared<MappedFileCache>(mappedFile->file->openFile->node->path);
                     KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
                     cache->file = mappedFile->file;
-#ifdef BOXEDWINE_DEFAULT_MMU
                     U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
-#else
-                    U32 size = 1;
-#endif
                     cache->data = new U8 * [size];
                     cache->dataSize = size;
                     ::memset(cache->data, 0, size * sizeof(U8*));

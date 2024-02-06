@@ -5,7 +5,6 @@
 #include "ksignal.h"
 #include "knativethread.h"
 #include "knativesystem.h"
-#include "../../hardmmu/kmemory_hard.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 
@@ -15,9 +14,6 @@ typedef void (*StartCPU)();
 
 void BtCPU::run() {
     while (true) {
-#ifdef BOXEDWINE_64BIT_MMU
-        this->memOffset = getMemData(memory)->id;
-#endif
         this->exitToStartThreadLoop = 0;
         StartCPU start = (StartCPU)this->init();
         start();
@@ -148,15 +144,6 @@ void* BtCPU::translateEip(U32 ip) {
 }
 
 void BtCPU::makePendingCodePagesReadOnly() {
-#ifdef BOXEDWINE_64BIT_MMU 
-    KMemoryData* mem = getMemData(memory);
-    for (int i = 0; i < (int)this->pendingCodePages.size(); i++) {
-        // the chunk could cross a page and be a mix of dynamic and non dynamic code
-        if (mem->dynamicCodePageUpdateCount[this->pendingCodePages[i]] != MAX_DYNAMIC_CODE_PAGE_COUNT) {
-            mem->makeCodePageReadOnly(this->pendingCodePages[i]);
-        }
-    }
-#endif
     this->pendingCodePages.clear();
 }
 
@@ -296,7 +283,7 @@ static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
 
 #include "../x64/x64CPU.h"
 
-#if !defined(BOXEDWINE_64BIT_MMU) && !defined(BOXEDWINE_X64)
+#if !defined(BOXEDWINE_X64)
 void common_runSingleOp(BtCPU* cpu) {           
     U32 address = cpu->eip.u32;
 

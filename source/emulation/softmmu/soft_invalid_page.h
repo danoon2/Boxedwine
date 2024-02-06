@@ -19,8 +19,6 @@
 #ifndef __SOFT_INVALID_PAGE_H__
 #define __SOFT_INVALID_PAGE_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_page.h"
 
 class InvalidPage : public Page {
@@ -40,7 +38,5 @@ public:
 
     void ondemmand(KMemory* memory, U32 page);
 };
-
-#endif
 
 #endif

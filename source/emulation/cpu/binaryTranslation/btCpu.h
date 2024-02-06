@@ -52,11 +52,6 @@ public:
     void wakeThreadIfWaiting();    
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed
 
-    // used by handleAccessException
-    U32 destEip = 0;
-    U64 regPage = 0;
-    U64 regOffset = 0;
-
     U32 largeAddressJumpInstruction = 0;
     U32 pageJumpInstruction = 0;
     U32 pageOffsetJumpInstruction = 0;

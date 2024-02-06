@@ -1,8 +1,6 @@
 #ifndef __KMEMORY_SOFT_H__
 #define __KMEMORY_SOFT_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 class CodePage;
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
@@ -50,7 +48,5 @@ private:
 };
 
 KMemoryData* getMemData(KMemory* memory);
-
-#endif
 
 #endif

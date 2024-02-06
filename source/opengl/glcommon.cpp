@@ -126,19 +126,14 @@ void glcommon_glViewport(CPU* cpu) {
     GL_FUNC(pglViewport)(x, y, width, height);
 }
 
-#ifndef BOXEDWINE_64BIT_MMU
 static GLfloat* feedbackBuffer;
 static GLsizei feedbackBufferSize;
 static U32 feedbackBufferAddress;
-#endif
 
 void glcommon_glFeedbackBuffer(CPU* cpu) {
     GLsizei size = ARG1;
     GLenum type = ARG2;
-#ifdef BOXEDWINE_64BIT_MMU
-    U32 buffer = ARG3; // GLfloat*
-    GL_FUNC(pglFeedbackBuffer)(size, type, (GLfloat*)getPhysicalAddress(buffer, 0));
-#else
+
     if (size > feedbackBufferSize) {
         if (feedbackBuffer) {
             delete[] feedbackBuffer;
@@ -148,7 +143,6 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
     }
     GL_FUNC(pglFeedbackBuffer)(size, type, feedbackBuffer);
     feedbackBufferAddress = ARG3;
-#endif
 }
 
 // changed this to an invalid value to fix motorhead under windows.  I will need to reevaluate why it was necessary for ma
@@ -168,12 +162,10 @@ void glcommon_glGetIntegerv(CPU* cpu) {
 void glcommon_glRenderMode(CPU* cpu) {
     GLenum mode = ARG1;
     EAX = GL_FUNC(pglRenderMode)(mode);
-#ifndef BOXEDWINE_64BIT_MMU
     // could be -1
     if (EAX < (U32)feedbackBufferSize) {
         marshalBackf(cpu, feedbackBufferAddress, feedbackBuffer, EAX);
     }
-#endif
 }
 
 void printOpenGLInfo() {
@@ -431,15 +423,6 @@ void glcommon_glGetMapiv(CPU* cpu) {
 // GLAPI void APIENTRY glGetPointerv( GLenum pname, GLvoid **params ) {
 void glcommon_glGetPointerv(CPU* cpu) {
     GL_LOG("glGetPointerv GLenum pname=%d, GLvoid **params=%.08x", ARG1, ARG2);
-#ifdef BOXEDWINE_64BIT_MMU
-    {
-        GLvoid* params;
-        GL_FUNC(pglGetPointerv)(ARG1, &params);
-        if ((U64)params>0xFFFFFFFFl)
-            kwarn("problem with glGetPointerv");
-        cpu->memory->writed(ARG2, (U32)(size_t)params);
-    }
-#else
     switch (ARG1) {
     case GL_COLOR_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glColorPointer.ptr); break;
     case GL_EDGE_FLAG_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glEdgeFlagPointer.ptr); break;
@@ -449,7 +432,6 @@ void glcommon_glGetPointerv(CPU* cpu) {
     case GL_VERTEX_ARRAY_POINTER: cpu->memory->writed(cpu->memory->readd(ARG2), cpu->thread->glVertextPointer.ptr); break;
     default: cpu->memory->writed(cpu->memory->readd(ARG2), 0);
     }
-#endif
 }
 
 // GLAPI void APIENTRY glInterleavedArrays( GLenum format, GLsizei stride, const GLvoid *pointer ) {
@@ -457,11 +439,7 @@ void glcommon_glInterleavedArrays(CPU* cpu) {
     GLenum format = ARG1;
     GLsizei stride = ARG2;
     U32 address = ARG3;
-#ifdef BOXEDWINE_64BIT_MMU
-    GL_FUNC(pglInterleavedArrays)(format, stride, getPhysicalAddress(address, 0));
-#else
     GL_FUNC(pglInterleavedArrays)(format, stride, marshalInterleavedPointer(cpu, format, stride, address));
-#endif    
 }
 
 // GLAPI void APIENTRY glReadPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels ) {

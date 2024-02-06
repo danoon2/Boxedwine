@@ -25,10 +25,6 @@ public:
     U32 startOfOpIp = 0;
     U32 calculatedEipLen = 0;
     bool done = false;
-#ifdef BOXEDWINE_64BIT_MMU
-    bool dynamic = false;
-    bool useSingleMemOffset = true;   
-#endif
     U32* ipAddress = nullptr;
     U32* ipAddressBufferPos = nullptr;
     U32 ipAddressCount = 0;

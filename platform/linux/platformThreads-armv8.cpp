@@ -64,16 +64,11 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
     EBP = (U32)context->CONTEXT_REG(xEBP);
     ESI = (U32)context->CONTEXT_REG(xESI);
     EDI = (U32)context->CONTEXT_REG(xEDI);
-    cpu->regPage = context->CONTEXT_REG(xPage);
-    cpu->regOffset = context->CONTEXT_REG(xOffset);
 
 #ifdef _DEBUG
     for (int i = 0; i < 32; i++) {
         cpu->exceptionRegs[i] = context->CONTEXT_REG(i);
     }
-#endif
-#ifdef BOXEDWINE_64BIT_MMU
-    cpu->destEip = (U32)((context->CONTEXT_REG(xBranchLargeAddressOffset) - (U64)cpu->eipToHostInstructionAddressSpaceMapping) >> 3);
 #endif
     cpu->flags = (U32)context->CONTEXT_REG(xFLAGS);
     cpu->lazyFlags = FLAGS_NONE;

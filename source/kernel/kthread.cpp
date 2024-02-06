@@ -72,17 +72,8 @@ void KThread::reset() {
 
 void KThread::setupStack() {  
     U32 stack = memory->mmap(this, 0, MAX_STACK_SIZE, K_PROT_NONE, K_MAP_ANONYMOUS|K_MAP_PRIVATE, -1, 0);
-#ifdef BOXEDWINE_DEFAULT_MMU
     // will all by on demand
     memory->mprotect(this, stack + K_PAGE_SIZE, MAX_STACK_SIZE - 2 * K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);    
-#else
-    // only reserver a small amount to start with, it will grow when it generates an exception
-    // stack + MAX_STACK_SIZE = top of stack
-    // count down K_NATIVE_PAGES_PER_PAGE
-    // count down INITIAL_STACK_PAGES
-    // then allocate that back up INITIAL_STACK_PAGES
-    memory->mprotect(this, stack + MAX_STACK_SIZE - ((K_NATIVE_PAGES_PER_PAGE + INITIAL_STACK_PAGES) << K_PAGE_SHIFT), INITIAL_STACK_PAGES << K_PAGE_SHIFT, K_PROT_READ | K_PROT_WRITE);
-#endif
     this->stackPageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
     this->stackPageStart = stack >> K_PAGE_SHIFT;
     this->stackPageSize = INITIAL_STACK_PAGES + K_NATIVE_PAGES_PER_PAGE; //how far down from the top we allocated, the K_NATIVE_PAGES_PER_PAGE is for the guard page

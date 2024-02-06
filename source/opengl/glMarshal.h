@@ -10,96 +10,6 @@
 // will use 2 temp buffer, in this case GLsizei is mapped to GLint and thus 2 versions of marshali will
 // be used
 
-#ifdef BOXEDWINE_64BIT_MMU
-#define getPhysicalAddress(p, len) cpu->memory->getIntPtr(p)
-#define marshald(cpu, address, count) (GLdouble*)getPhysicalAddress(address, 0)
-#define marshalf(cpu, address, count) (GLfloat*)getPhysicalAddress(address, 0)
-#define marshali(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
-#define marshalc(cpu, address, count) (GLchar*)getPhysicalAddress(address, 0)
-#define marshalac(cpu, address, count) (GLcharARB*)getPhysicalAddress(address, 0)
-#define marshale(cpu, address, count) (GLenum*)getPhysicalAddress(address, 0)
-#define marshal2e(cpu, address, count) (GLenum*)getPhysicalAddress(address, 0)
-#define marshal3e(cpu, address, count) (GLenum*)getPhysicalAddress(address, 0)
-#define marshalui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
-#define marshals(cpu, address, count) (GLshort*)getPhysicalAddress(address, 0)
-#define marshalus(cpu, address, count) (GLushort*)getPhysicalAddress(address, 0)
-#define marshalb(cpu, address, count) (GLbyte*)getPhysicalAddress(address, 0)
-#define marshalub(cpu, address, count) (GLubyte*)getPhysicalAddress(address, 0)
-#define marshalbool(cpu, address, count) (GLboolean*)getPhysicalAddress(address, 0)
-#define marshal2d(cpu, address, count) (GLdouble*)getPhysicalAddress(address, 0)
-#define marshal2f(cpu, address, count) (GLfloat*)getPhysicalAddress(address, 0)
-#define marshal2i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
-#define marshal3i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
-#define marshal4i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
-#define marshal5i(cpu, address, count) (GLint*)getPhysicalAddress(address, 0)
-#define marshal3f(cpu, address, count) (GLfloat*)getPhysicalAddress(address, 0)
-#define marshal3ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
-#define marshali64(cpu, address, count) (GLint64*)getPhysicalAddress(address, 0)
-#define marshalui64(cpu, address, count) (GLuint64*)getPhysicalAddress(address, 0)
-
-#define marshal2ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
-#define marshal3ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
-#define marshal4ui(cpu, address, count) (GLuint*)getPhysicalAddress(address, 0)
-#define marshal2s(cpu, address, count) (GLshort*)getPhysicalAddress(address, 0)
-#define marshal2us(cpu, address, count) (GLushort*)getPhysicalAddress(address, 0)
-#define marshal2b(cpu, address, count) (GLbyte*)getPhysicalAddress(address, 0)
-#define marshal2ub(cpu, address, count) (GLubyte*)getPhysicalAddress(address, 0)
-#define marshal2bool(cpu, address, count) (GLboolean*)getPhysicalAddress(address, 0)
-#define marshalBackd(cpu, address, buffer, count) {}
-#define marshalBackc(cpu, address, buffer, count) {}
-#define marshalBackac(cpu, address, buffer, count) {}
-#define marshalBackf(cpu, address, buffer, count) {}
-#define marshalBacki(cpu, address, buffer, count) {}
-#define marshalBacke(cpu, address, buffer, count) {}
-#define marshalBackui(cpu, address, buffer, count) {}
-#define marshalBackus(cpu, address, buffer, count) {}
-#define marshalBacks(cpu, address, buffer, count) {}
-#define marshalBackb(cpu, address, buffer, count) {}
-#define marshalBackub(cpu, address,  buffer, count) {}
-#define marshalBackbool(cpu, address, buffer, count) {}
-#define marshalBackui64(cpu, address, buffer, count) {}
-#define marshalBacki64(cpu, address, buffer, count) {}
-
-#define marshalsz(cpu, address) (GLchar*)getPhysicalAddress(address, 0)
-#define marshalhf(cpu, address, count) (GLhalfNV*)getPhysicalAddress(address, 0)
-
-const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths);
-const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addressLengths);
-
-#define marshalType(cpu, type, count, address) (GLvoid*)getPhysicalAddress(address, 0)
-#define marshalBackType(cpu, type, count, buffer, address) {}
-
-GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels);
-#define marshalBackPixels(cpu, is3d, width, height, depth, format, type, address, pixels) {}
-
-#define marshalPixel(cpu, format, type, pixel) (GLvoid*)getPhysicalAddress(pixel, 0)
-
-#define updateVertexPointers(cpu, count)
-#define marshalVetextPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalNormalPointer(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalColorPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalIndexPointer(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalTexCoordPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalEdgeFlagPointer(cpu, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalFogPointer(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalSecondaryColorPointer(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalSecondaryColorPointerEXT(cpu, size, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalEdgeFlagPointerEXT(cpu, stride, count, ptr) (GLboolean*)marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-#define marshalFogPointerEXT(cpu, type, stride, ptr) marshalp_and_check_array_buffer(cpu, 0, ptr, 0)
-
-#define getDataSize(x) 1
-#define components_in_format(format) 0
-#define marshalGetColorTableWidth(target) 0
-#define marshalGetColorTableWidthEXT(target) 0
-#define marshalGetColorTableWidthSGI(target) 0
-#define marshalGetCompressedMultiImageSizeEXT(texunit, target, level) 0
-#define marshalGetCompressedImageSizeARB(target, level) 0
-#define marshalGetCompressedImageSize(target, level) 0
-#define marshalGetCompressedTextureSizeEXT(texture, target, lod) 0
-#define marshalGetConvolutionWidth(target) 0
-#define marshalGetConvolutionHeight(target) 0
-#define marshalHistogramWidth(target)  0
-#else
 GLboolean* marshalbool(CPU* cpu, U32 address, U32 count);
 GLboolean* marshal2bool(CPU* cpu, U32 address, U32 count);
 void marshalBackbool(CPU* cpu, U32 address, GLboolean* buffer, U32 count);
@@ -214,7 +124,6 @@ U32 marshalGetConvolutionWidth(U32 target);
 U32 marshalGetConvolutionHeight(U32 target);
 GLint components_in_format(GLenum format );
 GLsizei marshalHistogramWidth(GLenum target);
-#endif
 
 GLintptr* marshalip(CPU* cpu, U32 address, U32 count);
 GLintptr* marshal2ip(CPU* cpu, U32 address, U32 count);

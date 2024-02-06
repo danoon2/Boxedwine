@@ -87,13 +87,13 @@ void Platform::listNodes(BString nativePath, std::vector<ListNodeResult>& result
 
 	dp = opendir(nativePath.c_str());
 	if (dp) {
-        	while(NULL != (dptr = readdir(dp))) {
+        while(NULL != (dptr = readdir(dp))) {
 			if (strcmp(dptr->d_name, ".") && strcmp(dptr->d_name, ".."))  {
 				results.push_back(ListNodeResult(BString::copy(dptr->d_name), (dptr->d_type & DT_DIR)!=0));
 			}
-        	}
-        	closedir(dp);
-    	}
+        }
+        closedir(dp);
+    }
 }
 
 #ifndef __MACH__
@@ -214,11 +214,6 @@ U32 Platform::allocateNativeMemory(U64 address) {
     return 0;
 }
 
-U32 Platform::freeNativeMemory(U64 address) {
-    mprotect((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, PROT_NONE);
-    return 0;
-}
-
 #ifdef __MACH__
 #include <mach/mach.h>
 
@@ -324,15 +319,6 @@ void Platform::releaseNativeMemory(void* address, U64 len) {
     munmap(address, len);
 }
 
-void Platform::commitNativeMemory(void* address, U64 len) {
-    if (((U64)address % getPageAllocationGranularity()) != 0) {
-        kpanic("TODO: handle commitHostAddressSpaceMapping address not aligned");
-    }
-    if (mprotect(address, len, PAGE_READ | PROT_WRITE) < 0) {
-        kpanic("commitHostAddressSpaceMapping mprotect failed: %s", strerror(errno));
-    }
-}
-
 U8* Platform::alloc64kBlock(U32 count, bool executable) {
     int prot = PROT_WRITE | PROT_READ;
     if (executable) {
@@ -343,24 +329,6 @@ U8* Platform::alloc64kBlock(U32 count, bool executable) {
         kpanic("alloc64kBlock: failed to commit memory : %s", strerror(errno));
     }
     return result;
-}
-
-U8* Platform::reserveNativeMemory(bool large) {
-    U8* p;
-
-    U64 len = large ? 0x800000000l : 0x100000000l;
-    while (true) {
-        nextMemoryId++;
-        p = (U8*)(nextMemoryId << 32);
-
-        if (isAddressRangeInUse(p, len)) {
-            continue;
-        }
-        if (mmap(p, len, PROT_NONE, MAP_ANONYMOUS | MAP_FIXED | MAP_PRIVATE, -1, 0) == p) {
-            break;
-        }
-    }
-    return p;
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED

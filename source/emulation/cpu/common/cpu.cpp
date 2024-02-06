@@ -5,9 +5,7 @@
 #include "kstat.h"
 
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../../hardmmu/kmemory_hard.h"
-#else
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
 #include "../normal/normalCPU.h"
 CPU* CPU::allocCPU(KMemory* memory) {
     return new NormalCPU(memory);
@@ -1066,18 +1064,7 @@ void CPU::push16(U16 value) {
 U32 CPU::push16_r(U32 esp, U16 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
-#ifdef BOXEDWINE_64BIT_MMU
-    KMemoryData* mem = getMemData(memory);
-    U32 nativePage = mem->getNativePage(address>>K_PAGE_SHIFT);
-    if (mem->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        mem->clearCodePageReadOnly(nativePage);
-        memory->writew(address ,value);
-        mem->makeCodePageReadOnly(nativePage);
-    } else 
-#endif
-    {
-        memory->writew(address ,value);
-    }
+    memory->writew(address ,value);
     return new_esp;
 }
 
@@ -1091,18 +1078,7 @@ U32 CPU::push32_r(U32 esp, U32 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 4) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 
-#ifdef BOXEDWINE_64BIT_MMU
-    KMemoryData* mem = getMemData(memory);
-    U32 nativePage = mem->getNativePage(address>>K_PAGE_SHIFT);
-    if (mem->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        mem->clearCodePageReadOnly(nativePage);
-        memory->writed(address ,value);
-        mem->makeCodePageReadOnly(nativePage);
-    } else 
-#endif
-    {
-        memory->writed(address ,value);
-    }
+    memory->writed(address ,value);
     return new_esp;
 }
 

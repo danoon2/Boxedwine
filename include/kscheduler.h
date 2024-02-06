@@ -29,11 +29,7 @@ void removeTimer(KTimer* timer);
 
 bool runSlice();
 void runThreadSlice(KThread* thread);
-void platformRunThreadSlice(KThread* thread);
 void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread);
-#ifdef BOXEDWINE_DEFAULT_MMU
-#define platformRunThreadSlice runThreadSlice
-#endif
 U32 getMIPS();
 
 #endif

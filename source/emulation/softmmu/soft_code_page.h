@@ -19,8 +19,6 @@
 #ifndef __CODE_PAGE_H__
 #define __CODE_PAGE_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_rw_page.h"
 
 #define CODE_ENTRIES 128
@@ -109,7 +107,5 @@ private:
     U8 writeCount;
     U8* writeCountsPerByte;
 };
-
-#endif
 
 #endif

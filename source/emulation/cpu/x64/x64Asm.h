@@ -27,11 +27,6 @@
 #define CPU_OFFSET_GS (U32)(offsetof(CPU, seg[GS].value))
 
 #define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, eipToHostInstructionPages))
-#ifdef BOXEDWINE_64BIT_MMU
-#define CPU_OFFSET_MEM (U32)(offsetof(x64CPU, memOffset))
-#define CPU_OFFSET_NEG_MEM (U32)(offsetof(x64CPU, negMemOffset))
-#define CPU_OFFSET_EIP_HOST_MAPPING (U32)(offsetof(x64CPU, eipToHostInstructionAddressSpaceMapping))
-#endif
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
@@ -52,13 +47,9 @@ public:
 
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress = true);
     void writeOp(bool isG8bit=false);
-#ifdef BOXEDWINE_64BIT_MMU
-    void addDynamicCheck(bool panic);
-#else
     void createCodeForDoSingleOp();
     void fpuRead(U8 rm, U32 len);
     void fpuWrite(U8 rm, U32 len);
-#endif
 	void saveNativeState();
 	void restoreNativeState();
     void createCodeForRetranslateChunk(bool includeSetupFromR9=false);
@@ -160,11 +151,6 @@ public:
     bool param2InUse;
     bool param3InUse;
     bool param4InUse;
-    void stos(void* pfn, U32 size, bool repeat);
-    void scas(void* pfn, U32 size, bool repeat, bool repeatZero);
-    void movs(void* pfn, U32 size, bool repeat, U32 base);
-    void lods(void* pfn, U32 size, bool repeat, U32 base);
-    void cmps(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
     void doJmp(bool mightNeedCS);
     void bound32(U8 rm);
     void bound16(U8 rm);
@@ -193,10 +179,6 @@ private:
     void lockParamReg(U8 paramReg, bool paramRex);
     void unlockParamReg(U8 paramReg, bool paramRex);
     U8 getParamSafeTmpReg();
-
-#ifdef BOXEDWINE_64BIT_MMU
-    void internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool useCall, U8 tmpReg3);
-#endif
 
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);
     void pushNativeReg(U8 reg, bool isRegRex);
@@ -234,13 +216,9 @@ private:
     void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress, U8 hostMem);
   
     U8 getHostMem(U8 regEmulatedAddress, bool isRex);
-#ifdef BOXEDWINE_64BIT_MMU
-    U8 getHostMemFromAddress(U32 address);
-#endif
     void releaseHostMem(U8 reg);
 
     U8 getRegForSeg(U8 base, U8 tmpReg);
-    U8 getRegForNegSeg(U8 base, U8 tmpReg);
     void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg, bool calculateHostAddress, U8 hostMem);
 
     void setDisplacement32(U32 disp32);
@@ -273,7 +251,7 @@ private:
     void calculateMemory(U8 reg, bool isRex, U32 rm);
 
     void shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg);    
-#ifndef BOXEDWINE_64BIT_MMU
+
     void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false, bool flagsInArg5 = false);
 public:
     void lods(U32 width) {
@@ -287,7 +265,6 @@ public:
     }
 private:
     void string(U32 width, bool hasSrc, bool hasDst);
-#endif
 };
 #endif
 #endif

@@ -19,8 +19,6 @@
 #ifndef __SOFT_RW_PAGE_H__
 #define __SOFT_RW_PAGE_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_page.h"
 
 class RWPage : public Page {
@@ -48,7 +46,5 @@ public:
     U8* page;
     U32 address;
 };
-
-#endif
 
 #endif

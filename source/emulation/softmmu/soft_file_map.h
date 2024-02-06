@@ -19,8 +19,6 @@
 #ifndef __KFMMAP_H__
 #define __KFMMAP_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_page.h"
 
 class FilePage : public Page {
@@ -48,7 +46,5 @@ public:
     std::shared_ptr<MappedFile> mapped;
     U32 index;
 };
-
-#endif
 
 #endif

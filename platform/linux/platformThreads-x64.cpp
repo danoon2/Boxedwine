@@ -4,7 +4,6 @@
 
 #include "ksignal.h"
 #include "../../source/emulation/cpu/x64/x64CPU.h"
-#include "../../source/emulation/hardmmu/kmemory_hard.h"
 #include "../../source/emulation/softmmu/kmemory_soft.h"
 
 #ifdef __MACH__
@@ -305,25 +304,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
     x64Cpu->exceptionIp = context->CONTEXT_RIP;
-    x64Cpu->exceptionRSP = context->CONTEXT_RSP;
-    x64Cpu->exceptionRSI = context->CONTEXT_RSI;
-    x64Cpu->exceptionRDI = context->CONTEXT_RDI;
-    x64Cpu->exceptionR8 = context->CONTEXT_R8;
-    x64Cpu->exceptionR9 = context->CONTEXT_R9;
-    x64Cpu->exceptionR10 = context->CONTEXT_R10;
-    x64Cpu->destEip = (U32)context->CONTEXT_R9;
-    x64Cpu->regPage = context->CONTEXT_R8;
-    x64Cpu->regOffset = context->CONTEXT_R9;
 
-#ifdef BOXEDWINE_64BIT_MMU
-    if (mem->isAddressExecutable((void*)context->CONTEXT_RIP)) {
-        unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
-        std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingHostAddress(hostAddress);
-        if (chunk && chunk->getEipLen()) { // during start up eip is already set
-            cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
-        }
-    }
-#endif
     context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
 }
 

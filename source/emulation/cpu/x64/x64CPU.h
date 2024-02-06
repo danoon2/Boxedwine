@@ -75,31 +75,14 @@ protected:
 public:
 
     U32 negSegAddress[6] = { 0 };
-#ifdef BOXEDWINE_64BIT_MMU
-    U64 negMemOffset = 0;
-    virtual bool handleStringOp(DecodedOp* op);
-#endif
-    U64 exceptionRSP = 0;
-    U64 exceptionRSI = 0;
-    U64 exceptionRDI = 0;
-    U64 exceptionR8 = 0;
-    U64 exceptionR9 = 0;
-    U64 exceptionR10 = 0;	
 	U8*** eipToHostInstructionPages = nullptr;
-    U32 stringRepeat = 0;
-    U32 stringWritesToDi = 0;
     U32 arg5 = 0;
     ALIGN(FxsaveStruct fpuState, 16) = { 0 };
     ALIGN(FxsaveStruct originalFpuState, 16) = { 0 };
     ALIGN(U8 fpuBuffer[512], 16) = { 0 };
     U64 originalCpuRegs[16] = { 0 };
     void* reTranslateChunkAddress = nullptr;    
-#ifdef BOXEDWINE_64BIT_MMU
-    void* reTranslateChunkAddressFromReg = nullptr;
-#endif
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
     void* jmpAndTranslateIfNecessary = nullptr;
-#endif
     static bool hasBMI2;
 
 #ifdef _DEBUG

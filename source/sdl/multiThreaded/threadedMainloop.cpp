@@ -16,7 +16,6 @@ static U32 lastTitleUpdate = 0;
 
 static thread_local bool isMainThread;
 
-#ifndef BOXEDWINE_64BIT_MMU
 static BString getSize(int pages)
 {
     pages *= 4;
@@ -29,7 +28,7 @@ static BString getSize(int pages)
     return BString::valueOf(pages / 1024 / 1024) + B("GB");
 }
 extern int allocatedRamPages;
-#endif
+
 bool isMainthread() {
     return isMainThread;
 }
@@ -80,16 +79,13 @@ bool doMainLoop() {
             BString title;
             if (KSystem::title.length()) {
                 title = KSystem::title;
-#if !defined(BOXEDWINE_64BIT_MMU) && defined(_DEBUG)
+#if defined(_DEBUG)
                 title.append(" ");
                 title.append(getSize(allocatedRamPages));
 #endif
             } else {
-                title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY);
-#ifndef BOXEDWINE_64BIT_MMU
-                title.append(" ");
+                title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY " ");
                 title.append(getSize(allocatedRamPages));
-#endif
             }
 
             KNativeWindow::getNativeWindow()->setTitle(title);
