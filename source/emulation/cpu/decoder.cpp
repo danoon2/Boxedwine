@@ -6060,10 +6060,8 @@ bool DecodedOp::needsToSetFlags() {
     return DecodedOp::getNeededFlags(DecodedBlock::currentBlock, this, needsToSet)!=0;
 }
 
-#include "normal/normalCPU.h"
-
 U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth) {
-    DecodedOp* n = op;
+    DecodedOp* n = op->next;
     DecodedOp* lastOp = op;
 
     while (n && flags) {
@@ -6091,12 +6089,6 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
     }
     if (flags && (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_1) && depth>0) {
         // :TODO: maybe decode the missing branch?
-        if (!block->next1) {
-            block->next1 = NormalCPU::getBlockForInspectionButNotUsed(KThread::currentThread()->cpu, block->address + block->bytes, KThread::currentThread()->cpu->isBig());
-        }
-        if ((instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2) && !block->next2) {
-            block->next2 = NormalCPU::getBlockForInspectionButNotUsed(KThread::currentThread()->cpu, block->address + block->bytes + lastOp->imm, KThread::currentThread()->cpu->isBig());
-        }
         if (block->next1 && (block->next2 || !(instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2))) {
             U32 needsToSet1 = DecodedOp::getNeededFlags(block->next1, block->next1->op, flags, depth-1);          
 
