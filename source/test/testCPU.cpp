@@ -5571,6 +5571,10 @@ void testCmpsb0x0a6() {
 
     // repnz (DF)
     strTest(1, 0xf2, 0xa6, DF, "abcd", 4, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x1234001C, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS+256);    
+
+    // ecx 0 (maintain flags)
+    strTest(1, 0xf2, 0xa6, SF|ZF, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
+    assertTrue((cpu->flags & FMASK_TEST) == SF|ZF);
 }
 
 void testCmpsb0x2a6() {

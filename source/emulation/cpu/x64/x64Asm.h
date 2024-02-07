@@ -122,7 +122,6 @@ public:
     void writeXchgSpAx();
     void bswapEsp();
     void bswapSp();
-    void string32(bool hasSi, bool hasDi);
     void writeToRegFromValue(U8 reg, bool isRexReg, U64 value, U8 bytes);
     void enter(bool big, U32 bytes, U32 level);
     void leave(bool big);
@@ -188,7 +187,7 @@ private:
     void orRegReg(U8 dst, bool isDstRex, U8 src, bool isSrcRex);
     void andWriteToRegFromCPU(U8 reg, bool isRegRex, U32 offset);
     void writeToMemFromReg(U8 src, bool isSrcRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck = false, bool releaseReg3 = false);
-    void writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck = false);
+    void writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck = false, bool releaseReg3 = false);
     void writeToRegFromReg(U8 toReg, bool isToReg1Rex, U8 fromReg, bool isFromRegRex, U8 bytes);    
     void popReg(U8 reg, bool isRegRex, S8 bytes, bool commit);
     void syncRegsFromHost(bool eipInR9=false);
@@ -263,8 +262,15 @@ public:
     void stos(U32 width) {
         string(width, false, true);
     }
+    void cmps(U32 width) {
+        cmps(width, true);
+    }
+    void scas(U32 width) {
+        cmps(width, false);
+    }
 private:
     void string(U32 width, bool hasSrc, bool hasDst);
+    void cmps(U32 width, bool hasSrc);
 };
 #endif
 #endif

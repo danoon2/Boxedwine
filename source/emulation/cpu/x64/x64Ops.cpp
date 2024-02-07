@@ -1368,7 +1368,12 @@ static U32 movAxOw(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
+    if ((disp & 1) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
+    }
     return 0;
 }
 
@@ -1380,7 +1385,12 @@ static U32 movEaxOd(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
+    if ((disp & 3) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
+    }
     return 0;
 }
 
@@ -1391,7 +1401,7 @@ static U32 movObAl(X64Asm* data) {
         disp = data->fetch16();
     } else {
         disp = data->fetch32();
-    }
+    }    
     data->writeToMemAddressFromReg(data->ds, 0, false, disp, 1);
     return 0;
 }
@@ -1404,7 +1414,12 @@ static U32 movOwAx(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
+    if ((disp & 1) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
+    }
     return 0;
 }
 
@@ -1416,7 +1431,12 @@ static U32 movOdEax(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
+    if ((disp & 3) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
+    }
     return 0;
 }
 
@@ -1446,20 +1466,17 @@ static U32 movsd(X64Asm* data) {
 }
 
 static U32 cmpsb(X64Asm* data) {
-    data->emulateSingleOp(data->currentOp);
-    data->done = true;
+    data->cmps(1);
     return 0;
 }
 
 static U32 cmpsw(X64Asm* data) {
-    data->emulateSingleOp(data->currentOp);
-    data->done = true;
+    data->cmps(2);
     return 0;
 }
 
 static U32 cmpsd(X64Asm* data) {
-    data->emulateSingleOp(data->currentOp);
-    data->done = true;
+    data->cmps(4);
     return 0;
 }
 
@@ -1494,20 +1511,17 @@ static U32 lodsd(X64Asm* data) {
 }
 
 static U32 scasb(X64Asm* data) {
-    data->emulateSingleOp(data->currentOp);
-    data->done = true;
+    data->scas(1);
     return 0;
 }
 
 static U32 scasw(X64Asm* data) {
-    data->emulateSingleOp(data->currentOp);
-    data->done = true;
+    data->scas(2);
     return 0;
 }
 
 static U32 scasd(X64Asm* data) {
-    data->emulateSingleOp(data->currentOp);
-    data->done = true;
+    data->scas(4);
     return 0;
 }
 

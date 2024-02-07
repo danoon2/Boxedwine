@@ -388,11 +388,14 @@ void X64Asm::bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg
 //
 // reg3 is optional, pass -1 to ignore it
 // displacement is optional, pass 0 to ignore it
-void X64Asm::writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck) {
+void X64Asm::writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck, bool releaseReg3) {
     if (translateToHost) {             
         if (reg3 >= 0 || displacement) {
             U8 tmpReg = getTmpReg();
             addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
+            if (releaseReg3) {
+                releaseTmpReg(reg3);
+            }
             checkMemory(tmpReg, true, false, bytes, 0xff, true, skipAlignmentCheck);
             writeToRegFromMem(dst, isDstRex, tmpReg, true, -1, false, 0, 0, bytes, false);
             releaseTmpReg(tmpReg);
@@ -404,6 +407,9 @@ void X64Asm::writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S
         }        
     } else {
         doMemoryInstruction(bytes==1?0x8a:0x8b, dst, isDstRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
+        if (releaseReg3) {
+            releaseTmpReg(reg3);
+        }
     }
 }
 
@@ -1310,38 +1316,102 @@ void X64Asm::popfd() {
     popNativeFlags();
 }
 
-// used by 
-// MOV AL,Ob
-// MOV AX,Ow
-// MOV EAX,Od
+// only used for direct reads, alignment was checked before calling this
 void X64Asm::writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {    
+    U8 tmpReg = getTmpReg();
+    U8 flagsReg = getTmpReg();
+    U8 addressReg = getTmpReg();
+
+    bool needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
+
+    if (needFlags) {
+        pushFlagsToReg(flagsReg, true, true);
+    }
+    // custom check memory (hard coded page, no alignment checks)
     if (this->cpu->thread->process->hasSetSeg[seg]) {
-        U8 tmpReg = getTmpReg();
-        // do 32-bit add before combining with HOST_MEM because of wrapping
-        addWithLea(tmpReg, true, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, 4);
-        writeToRegFromMem(reg, isRegRex, tmpReg, true, -1, false, 0, 0, bytes, true);
-        releaseTmpReg(tmpReg);
-    } else {        
-        U8 tmpReg = getTmpReg();
-        writeToRegFromValue(tmpReg, true, disp, 4);
-        writeToRegFromMem(reg, isRegRex, tmpReg, true, -1, false, 0, 0, bytes, true);
-        releaseTmpReg(tmpReg);
-    } 
+        addWithLea(addressReg, true, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, 4);
+        U8 pageReg = getTmpReg();
+        writeToRegFromReg(pageReg, true, addressReg, true, 4);
+        shiftRightReg(pageReg, true, K_PAGE_SHIFT);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_READ, true, pageReg, true, 3, 0, 8, false);
+        releaseTmpReg(pageReg);
+    } else {
+        writeToRegFromMem(tmpReg, true, HOST_MEM_READ, true, -1, false, 0, (disp >> K_PAGE_SHIFT) << 3, 8, false);
+    }
+
+    doIf(tmpReg, true, 0, [=, this] {
+        if (needFlags) {
+            popFlagsFromReg(flagsReg, true, true);
+        }
+        emulateSingleOp(currentOp);
+        }, nullptr);
+
+    if (needFlags) {
+        popFlagsFromReg(flagsReg, true, true);
+    }
+    // if disp is a 32-bit negative, then it would be subtracted from the 64-bit tmpReg
+    if (this->cpu->thread->process->hasSetSeg[seg]) {
+        writeToRegFromMem(reg, isRegRex, tmpReg, true, addressReg, true, 0, 0, bytes, false);
+    } else  if (disp >= 0x80000000) {
+        U8 dispReg = getTmpReg();
+        writeToRegFromValue(dispReg, true, disp, 4);
+        writeToRegFromMem(reg, isRegRex, tmpReg, true, dispReg, true, 0, 0, bytes, false);
+        releaseTmpReg(dispReg);
+    } else {
+        writeToRegFromMem(reg, isRegRex, tmpReg, true, -1, false, 0, disp, bytes, false);
+    }
+    releaseTmpReg(addressReg);
+    releaseTmpReg(tmpReg);
+    releaseTmpReg(flagsReg);
 }
 
-void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {
+// only used for direct writes, alignment was checked before calling this
+void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes) {     
+    U8 tmpReg = getTmpReg();
+    U8 flagsReg = getTmpReg();        
+    U8 addressReg = getTmpReg();
+
+    bool needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
+
+    if (needFlags) {
+        pushFlagsToReg(flagsReg, true, true);
+    }        
+    // custom check memory (hard coded page, no alignment checks)
     if (this->cpu->thread->process->hasSetSeg[seg]) {
-        U8 tmpReg = getTmpReg();
-        // do 32-bit add before combining with HOST_MEM because of wrapping
-        addWithLea(tmpReg, true, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, 4);
-        writeToMemFromReg(reg, isRegRex, tmpReg, true, -1, false, 0, 0, bytes, true);
-        releaseTmpReg(tmpReg);
-    } else {        
-        U8 tmpReg = getTmpReg();
-        writeToRegFromValue(tmpReg, true, disp, 4);
-        writeToMemFromReg(reg, isRegRex, tmpReg, true, -1, false, 0, 0, bytes, true);        
-        releaseTmpReg(tmpReg);
-    }    
+        addWithLea(addressReg, true, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, 4);
+        U8 pageReg = getTmpReg();
+        writeToRegFromReg(pageReg, true, addressReg, true, 4);
+        shiftRightReg(pageReg, true, K_PAGE_SHIFT);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_WRITE, true, pageReg, true, 3, 0, 8, false);
+        releaseTmpReg(pageReg);
+    } else {
+        writeToRegFromMem(tmpReg, true, HOST_MEM_WRITE, true, -1, false, 0, (disp >> K_PAGE_SHIFT) << 3, 8, false);
+    }
+
+    doIf(tmpReg, true, 0, [=, this] {
+        if (needFlags) {
+            popFlagsFromReg(flagsReg, true, true);                
+        }
+        emulateSingleOp(currentOp);
+        }, nullptr);
+
+    if (needFlags) {
+        popFlagsFromReg(flagsReg, true, true);
+    }
+    // if disp is a 32-bit negative, then it would be subtracted from the 64-bit tmpReg
+    if (this->cpu->thread->process->hasSetSeg[seg]) {
+        writeToMemFromReg(reg, isRegRex, tmpReg, true, addressReg, true, 0, 0, bytes, false);
+    } else  if (disp >= 0x80000000) {
+        U8 dispReg = getTmpReg();
+        writeToRegFromValue(dispReg, true, disp, 4);
+        writeToMemFromReg(reg, isRegRex, tmpReg, true, dispReg, true, 0, 0, bytes, false);
+        releaseTmpReg(dispReg);
+    } else {
+        writeToMemFromReg(reg, isRegRex, tmpReg, true, -1, false, 0, disp, bytes, false);
+    }
+    releaseTmpReg(addressReg);
+    releaseTmpReg(tmpReg);
+    releaseTmpReg(flagsReg);  
 }
 
 void X64Asm::pushReg16(U8 reg, bool isRegRex) {
@@ -3608,7 +3678,7 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
         }
 
         if (this->cpu->thread->process->hasSetSeg[ds]) {
-            U8 segReg = getTmpReg();            
+            U8 segReg = getTmpReg();
             writeToRegFromMem(0, false, srcReg, srcRegIsRex, getRegForSeg(ds, segReg), true, 0, 0, width, true);
             releaseTmpReg(segReg);
         } else {
@@ -3705,12 +3775,12 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
         write8(0x00);
 
         // jz
-        write8(0x74);            
+        write8(0x74);
         write8(5);
 
         // jmp back to start and do another loop
         write8(0xe9);
-        write32(diff - (bufferPos - startPos + 4));        
+        write32(diff - (bufferPos - startPos + 4));
 
         write32Buffer(buffer + skipPos, bufferPos - skipPos - 4);
     }
@@ -3719,6 +3789,176 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
         writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
         popFlagsFromReg(flagsReg, true, true);
         releaseTmpReg(flagsReg);
+    }
+}
+
+void X64Asm::cmps(U32 width, bool hasSrc) {
+    bool repeat = (currentOp->repZero || currentOp->repNotZero);
+    U32 skipPos = 0;
+    bool needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
+
+    if (needFlags) {
+        U8 flagsReg = getTmpReg();
+        pushFlagsToReg(flagsReg, true, true);
+        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+        releaseTmpReg(flagsReg);
+        flagsWrittenToStringFlags = true;
+    }    
+    if (repeat) {        
+        // test (e)cx, (e)cx
+        if (ea16) {
+            write8(0x66);
+        }
+        write8(0x85);
+        write8(0xc9);
+
+        // jz
+        write8(0x0f);
+        write8(0x84);
+
+        skipPos = bufferPos;
+        write32(0x0);
+    }
+    DecodedOp* op = currentBlock->op;
+    int direction = 0;
+
+    while (op && op != currentOp) {
+        if (op->inst == Cld) {
+            direction = 1;
+        } else if (op->inst == Std) {
+            direction = -1;
+        }
+        op = op->next;
+    }
+    if (direction == 0) {
+        direction = cpu->getDirection();
+    }
+    U32 pos = bufferPos;
+    U8 tmpSrc = 0xff;
+    bool tmpSrcRex = true;
+
+    if (!hasSrc) {
+        tmpSrc = 0;
+        tmpSrcRex = false;
+    } else {
+        tmpSrc = getTmpReg();
+        U8 srcReg = 6;
+        bool srcRegIsRex = false;
+
+        if (this->cpu->thread->process->hasSetSeg[ds]) {
+            if (ea16) {
+                srcReg = getTmpReg();
+                zeroExtend16to32(srcReg, true, 6, false);
+                srcRegIsRex = true;
+            }
+            writeToRegFromMem(tmpSrc, true, srcReg, srcRegIsRex, getRegForSeg(ds, tmpSrc), true, 0, 0, width, true);
+            if (ea16) {
+                releaseTmpReg(srcReg);
+            }
+        } else {
+            if (ea16) {
+                zeroExtend16to32(tmpSrc, true, 6, false);
+                srcReg = tmpSrc;
+                srcRegIsRex = true;
+            }
+            writeToRegFromMem(tmpSrc, true, srcReg, srcRegIsRex, -1, false, 0, 0, width, true);
+        }
+    }
+
+    U8 dstReg = 7;
+    bool dstRegIsRex = false;
+    U8 tmpDst = getTmpReg();
+
+    if (this->cpu->thread->process->hasSetSeg[ES]) {
+        U8 segReg = getTmpReg();
+        if (ea16) {
+            dstReg = tmpDst;
+            zeroExtend16to32(dstReg, true, 7, false);
+            dstRegIsRex = true;
+        }
+        writeToRegFromMem(tmpDst, true, dstReg, dstRegIsRex, getRegForSeg(ES, segReg), true, 0, 0, width, true, false, true);
+    } else {
+        if (ea16) {
+            zeroExtend16to32(tmpDst, true, 7, false);
+            dstReg = tmpDst;
+            dstRegIsRex = true;
+        }
+        writeToRegFromMem(tmpDst, true, dstReg, dstRegIsRex, -1, false, 0, 0, width, true);
+    }
+
+    if (width == 2) {
+        write8(0x66);
+    }
+    write8(REX_BASE | REX_MOD_REG | (tmpSrcRex?REX_MOD_RM:0));
+    write8(width==1?0x38:0x39);
+    write8(0xc0 | (tmpDst << 3) | tmpSrc);
+
+    releaseTmpReg(tmpDst);
+    if (hasSrc) {
+        releaseTmpReg(tmpSrc);
+        addWithLea(6, false, 6, false, -1, false, 0, direction * width, ea16 ? 2 : 4);
+    }    
+    addWithLea(7, false, 7, false, -1, false, 0, direction * width, ea16 ? 2 : 4);
+
+    if (repeat) {
+        S32 diff = (S32)pos - (S32)bufferPos;
+        U32 startPos = bufferPos;
+
+        // dec (e)cx
+        addWithLea(1, false, 1, false, -1, false, 0, 0xffffffff, ea16 ? 2 : 4);
+
+        // condition tmpDst - tmpSrc met? then exit loop with that last cmp flags intact
+        if (this->repZeroPrefix) {
+            // jnz
+            write8(0x75);
+            write8(5);
+        } else {
+            // jz
+            write8(0x74);
+            write8(5);
+        }
+        U32 jmpOutFromEcxPos = bufferPos;
+
+        U8 flagsReg = getTmpReg();
+        pushFlagsToReg(flagsReg, true, true);
+        // technically correct, the flags should be set so that they are correct for the next loop, but I'm not sure if its really necessary just in case an exception happens
+        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+
+        // cmp (e)cx, 0
+        if (ea16) {
+            write8(0x66);
+        }
+        write8(0x83);
+        write8(0xf9);
+        write8(0x00);
+
+        // jz
+        write8(0x74);
+        write8(5);        
+
+        // jmp back to start and do another loop
+        write8(0xe9);
+        write32(diff - (bufferPos - startPos + 4));
+
+        // write this skip pos before we restore flags in case we need the flags
+        write32Buffer(buffer + skipPos, bufferPos - skipPos - 4);                
+        
+        popFlagsFromReg(flagsReg, true, true);
+        releaseTmpReg(flagsReg);
+        
+        if (needFlags) {
+            // jmp, this will jump over the ecx==0 case of restoring original flags so that we can exit
+            write8(0xeb);
+            U32 pos = bufferPos;
+            write8(0x0);
+            
+            U8 flagsReg = getTmpReg();
+            writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+            popFlagsFromReg(flagsReg, true, true);
+            releaseTmpReg(flagsReg);
+            buffer[pos] = bufferPos - pos - 1;
+        }
+        buffer[jmpOutFromEcxPos - 1] = bufferPos - jmpOutFromEcxPos; // jmp here if ecx was 0 and we skip cmps
     }
 }
 
