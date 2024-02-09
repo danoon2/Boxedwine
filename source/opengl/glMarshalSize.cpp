@@ -664,6 +664,7 @@ GLint components_in_format(GLenum format )
       case GL_INTENSITY:
          return 1;
       case GL_LUMINANCE_ALPHA:
+      case GL_RG:
      return 2;
       case GL_RGB:
      return 3;

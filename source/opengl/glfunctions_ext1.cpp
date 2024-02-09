@@ -5105,7 +5105,24 @@ void glcommon_glGetCompressedTexImage(CPU* cpu) {
     if (!ext_glGetCompressedTexImage)
         kpanic("ext_glGetCompressedTexImage is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p=nullptr; if (b) p=(GLvoid*)pARG3; else {size = marshalGetCompressedImageSize(ARG1, ARG2); p = (GLvoid*)marshalui(cpu, ARG3, size);}GL_FUNC(ext_glGetCompressedTexImage)(ARG1, ARG2, p);
+    GLboolean b=PIXEL_PACK_BUFFER(); 
+    int size = 0; 
+    GLvoid* p=nullptr; 
+    if (b) 
+        p=(GLvoid*)pARG3; 
+    else {
+        size = marshalGetCompressedImageSize(ARG1, ARG2); 
+        if (size == 0) {
+            GLenum e = glGetError();
+            if (e != GL_NO_ERROR) {
+                cpu->thread->glLastError = e;
+                return;
+            }
+        }
+        p = (GLvoid*)marshalui(cpu, ARG3, size);
+    }
+    GL_FUNC(ext_glGetCompressedTexImage)(ARG1, ARG2, p);    
+
     if (!b) marshalBackui(cpu, ARG3, (GLuint*)p, size);
     GL_LOG ("glGetCompressedTexImage GLenum target=%d, GLint level=%d, void* img=%.08x",ARG1,ARG2,ARG3);
     }

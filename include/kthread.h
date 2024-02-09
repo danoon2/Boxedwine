@@ -118,6 +118,7 @@ public:
     BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
 public:
     void* currentContext = nullptr;
+    U32 glLastError = 0;
     bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer;
     OpenGLVetexPointer glNormalPointer;

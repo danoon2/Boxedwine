@@ -5,7 +5,7 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
-#define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {buffer##p[i] = cpu->memory->read##m(address);address+=s;} return buffer##p;}
+#define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (!count) return (type*)address; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {buffer##p[i] = cpu->memory->read##m(address);address+=s;} return buffer##p;}
 
 #define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {struct conv d; get = cpu->memory->read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
 
@@ -358,6 +358,10 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         bytes_per_comp = 2;
         isSigned = 1;
         break;
+    case GL_UNSIGNED_INT_24_8:
+        bytes_per_comp = 3;
+        isSigned = 1;
+        break;
     case GL_UNSIGNED_INT_8_8_8_8:
     case GL_UNSIGNED_INT_8_8_8_8_REV:
     case GL_UNSIGNED_INT_10_10_10_2:
@@ -371,7 +375,7 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         break;
     case GL_FLOAT:
         bytes_per_comp = 0;
-        break;
+        break;    
     default:
         kpanic("glcommongl.c marshalPixels uknown type: %d", type);
     }
@@ -390,6 +394,12 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
             return marshals(cpu, pixels, len/2);
         } else {
             return marshalus(cpu, pixels, len/2);
+        }
+    } else if (bytes_per_comp == 3) {
+        if (isSigned) {
+            return marshalb(cpu, pixels, len);
+        } else {
+            return marshalub(cpu, pixels, len);
         }
     } else if (bytes_per_comp == 4) {
         if (isSigned) {

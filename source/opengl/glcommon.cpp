@@ -475,6 +475,15 @@ void glcommon_glSamplePass(CPU* cpu) {
     }
 }
 
+void glcommon_glGetError(CPU* cpu) {
+    if (cpu->thread->glLastError) {
+        EAX = cpu->thread->glLastError;
+        cpu->thread->glLastError = 0;
+    } else {
+        EAX = GL_FUNC(pglGetError)();
+    }
+}
+
 // create variables to hold standard opengl calls like glClear
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl##func##_func pgl##func;
