@@ -373,6 +373,7 @@ void opScasd(Armv8btAsm* data) {
 }
 #else
 void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
+    U32 cxZeroSkipPos = 0xffffffff;
     if (data->currentOp->ea16) {
         if (data->currentOp->repZero || data->currentOp->repNotZero) {
             // U32 dBase = cpu->seg[ES].address;
@@ -399,6 +400,10 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             U8 sBaseReg = data->getSegReg(data->currentOp->base);
             U8 incReg = data->getTmpReg();            
             U8 tmpReg = data->getTmpReg();
+
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->cmpValue32(tmpReg, 0);
+            cxZeroSkipPos = data->branchEQ();
 
             // S32 inc = cpu->df
             data->getDF(incReg, width);
@@ -531,6 +536,9 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             U8 incReg = data->getTmpReg();
             U8 tmpReg = data->getTmpReg();
 
+            data->cmpValue32(xECX, 0);
+            cxZeroSkipPos = data->branchEQ();
+
             // S32 inc = cpu->df
             data->getDF(incReg, width);
 
@@ -616,6 +624,9 @@ void cmps(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
         }
     }
     lazyFlags->setFlags(data, data->flagsNeeded());
+    if (data->currentOp->repZero || data->currentOp->repNotZero) {
+        data->writeJumpAmount(cxZeroSkipPos, data->bufferPos);
+    }
 }
 
 void opCmpsb(Armv8btAsm* data) {
@@ -1191,6 +1202,7 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
         }
         siReg = xEAX;
     }
+    U32 cxZeroSkipPos = 0xffffffff;
 
     U8 incReg = data->getTmpReg();
     data->getDF(incReg, width);
@@ -1214,7 +1226,12 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             // }
 
             U8 dBaseReg = data->getSegReg(ES);            
-            U8 tmpReg = data->getTmpReg();
+            U8 tmpReg = data->getTmpReg();            
+
+            data->movRegToReg(tmpReg, xECX, 16, true);
+            data->cmpValue32(tmpReg, 0);
+            cxZeroSkipPos = data->branchEQ();
+
             U32 loopPos = data->bufferPos;
 
             // if (count == 0) break;
@@ -1302,6 +1319,10 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
 
             U8 dBaseReg = data->getSegReg(ES);
             U8 tmpReg = data->getTmpReg();
+
+            data->cmpValue32(xECX, 0);
+            cxZeroSkipPos = data->branchEQ();
+
             U32 loopPos = data->bufferPos;
 
             // if (count == 0) break;
@@ -1358,6 +1379,10 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
     }
     lazyFlags->setFlags(data, flags);
     data->releaseTmpReg(incReg);
+
+    if (data->currentOp->repZero || data->currentOp->repNotZero) {
+        data->writeJumpAmount(cxZeroSkipPos, data->bufferPos);
+    }
 }
 
 void opScasb(Armv8btAsm* data) {

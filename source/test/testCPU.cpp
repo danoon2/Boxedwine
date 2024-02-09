@@ -2447,6 +2447,25 @@ void Pushfd(int instruction) {
     assertTrue((memory->readd(cpu->seg[SS].address+ESP) & (FMASK_TEST|2))==(FMASK_TEST | 2)); // bit 1 is always set
     assertTrue(memory->readd(cpu->seg[SS].address+ESP+4)==0xAAAAAAAA);
     assertTrue(memory->readd(cpu->seg[SS].address+ESP-4)==0xBBBBBBBB);
+
+    // winevdm depends on this working
+    setup(); // reset to clean state    
+    newInstruction(instruction, 0);
+    // if ESP is used instead of SP, it needs to point to valid memory otherwise the binary translator check memory will fail and the entire instruction will just be emulated
+    ESP = ESP | 0x10000; 
+    cpu->stackMask = 0x0000ffff;
+    cpu->stackNotMask = 0xffff0000;
+    cpu->flags = FMASK_TEST;
+    SP -= 4;
+    memory->writed(cpu->seg[SS].address + SP, 0xAAAAAAAA);
+    memory->writed(cpu->seg[SS].address + SP - 4, 0xCCCCCCCC);
+    memory->writed(cpu->seg[SS].address + SP - 8, 0xBBBBBBBB);
+    runTestCPU();
+    assertTrue(SP == 4088);
+    assertTrue(ESP == 0x10ff8);
+    assertTrue((memory->readd(cpu->seg[SS].address + SP) & (FMASK_TEST | 2)) == (FMASK_TEST | 2)); // bit 1 is always set
+    assertTrue(memory->readd(cpu->seg[SS].address + SP + 4) == 0xAAAAAAAA);
+    assertTrue(memory->readd(cpu->seg[SS].address + SP - 4) == 0xBBBBBBBB);
 }
 
 void Pop16(int instruction, Reg* reg) {
@@ -5574,7 +5593,7 @@ void testCmpsb0x0a6() {
 
     // ecx 0 (maintain flags)
     strTest(1, 0xf2, 0xa6, SF|ZF, "abcd", 4, "123d", 4, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, 0x12340000, false, false, false, HEAP_ADDRESS + 256);
-    assertTrue((cpu->flags & FMASK_TEST) == SF|ZF);
+    assertTrue((cpu->flags & FMASK_TEST) == (SF|ZF));
 }
 
 void testCmpsb0x2a6() {
@@ -5705,6 +5724,10 @@ void testScasb0x0ae() {
 
     // repnz (DF)
     strTest(1, 0xf2, 0xae, DF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340010, 0x12340020, 0x1234000C, 0x1234000C, true, false, true, HEAP_ADDRESS + 256, 0x12345664);
+
+    // ecx 0 (maintain flags)
+    strTest(1, 0xf2, 0xae, SF|ZF, NULL, 0, "123d", 4, 0x12340020, 0x12340010, 0x12340000, 0x12340020, 0x12340010, 0x12340000, false, false, false, HEAP_ADDRESS + 256, 0x12345664);
+    assertTrue((cpu->flags & FMASK_TEST) == (SF | ZF));
 }
 
 void testScasb0x2ae() {

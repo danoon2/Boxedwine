@@ -212,7 +212,7 @@ U32 KNativeAudioWindows::midiOutGetNumDevs() {
 U32 KNativeAudioWindows::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) {
 	DWORD volume;
 	U32 result = ::midiOutGetVolume(m_out, &volume);
-	process->memory->writed(lpdwVolume, volume);
+	thread->memory->writed(lpdwVolume, volume);
 	return result;
 }
 

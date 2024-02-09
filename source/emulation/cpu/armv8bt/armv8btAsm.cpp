@@ -1932,7 +1932,8 @@ void Armv8btAsm::pushNativeReg32(U8 reg) {
     } else {               
         U8 tmpReg = getTmpReg();
 
-        addRegs32(tmpReg, addressReg, xSS);
+        andRegs32(tmpReg, addressReg, xStackMask);
+        addRegs32(tmpReg, tmpReg, xSS);
         writeMemory(tmpReg, reg, 32, true);        
         releaseTmpReg(tmpReg);
     }
