@@ -975,6 +975,7 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
     U8 testRegReleaseAfterCmp = memRegNeedsRelease;
 
     if (writeHostMemToReg) {
+        // ram is guaranteed to have 4k alignment, so it's ok that we write this now and test the offset below
         addWithLea(reg, isRex, reg, isRex, memReg, true, 0, 0, 8);
     }
 
@@ -999,9 +1000,9 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
             tmp = reg;
         } else {
             if (!isTmpRegAvailable()) {
-                pushNativeReg(memReg, true);
+                pushNativeReg(HOST_ESP, true);
                 hostMemPushed = true;
-                tmp = memReg;
+                tmp = HOST_ESP;
             } else {
                 tmp = getTmpReg();
             }
@@ -1044,7 +1045,7 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
             write8(0xC0 | (testReg << 3) | tmp);
         }
         if (hostMemPushed) {
-            popNativeReg(memReg, true);
+            popNativeReg(HOST_ESP, true);
         } else {
             releaseTmpReg(tmp);
         }
