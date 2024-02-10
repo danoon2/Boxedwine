@@ -232,6 +232,15 @@ void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
                 std::shared_ptr<BtCodeChunk> chunk = memory->findCodeBlockContaining(address, 1);
                 if (chunk) {
                     data->currentBlock = chunk->block;
+                    if (data->currentBlock) {
+                        data->currentOp = data->currentBlock->getOp(address);
+                        if (!data->currentOp) {
+                            // winfish seems to jump into the middle of an instruction which changes it from cmp to mov
+                            data->currentBlock = nullptr;
+                        }
+                    } else {
+                        int ii = 0;
+                    }
                 }
             }
             if (!data->currentBlock) {

@@ -2054,18 +2054,22 @@ void opPopR32(Armv8btAsm* data) {
     data->popNativeReg32(data->getNativeReg(data->currentOp->reg));
 }
 void opPopE16(Armv8btAsm* data) {    
-    U8 tmpReg = data->getTmpReg();
-    data->popNativeReg16(tmpReg, false);
-    U8 addressReg = data->getAddressReg(); // address calculation must be after pop
+    U8 tmpReg = data->getTmpReg();    
+    U8 addressReg = data->getAddressReg();
+    data->peekNativeReg16(tmpReg, false);  
     data->writeMemory(addressReg, tmpReg, 16, true);
+    // only adjust stack after the write succeeds (winfish depends on this)
+    data->popStack16();
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 void opPopE32(Armv8btAsm* data) {    
     U8 tmpReg = data->getTmpReg();
-    data->popNativeReg32(tmpReg);
-    U8 addressReg = data->getAddressReg(); // address calculation must be after pop
+    U8 addressReg = data->getAddressReg();
+    data->peekNativeReg32(tmpReg);
     data->writeMemory(addressReg, tmpReg, 32, true);
+    // only adjust stack after the write succeeds 
+    data->popStack32();
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
