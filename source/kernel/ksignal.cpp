@@ -78,9 +78,9 @@ bool KSignal::isOpen() {
 
 void KSignal::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, &parentCondition);
     } else {
-        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, nullptr);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->lockCond, &parentCondition);
     }
     if (events & K_POLLOUT) {
         kpanic("waiting on a signal not implemented yet");

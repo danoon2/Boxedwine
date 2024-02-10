@@ -23,14 +23,19 @@ public:
     void wait(std::unique_lock<std::mutex>& lock);
     void waitWithTimeout(std::unique_lock<std::mutex>& lock, U32 ms);
     void unlock();
-    void setParentCondition(BoxedWineCondition* parent);
+    void addParentCondition(BoxedWineCondition* parent);
+    void removeParentCondition(BoxedWineCondition* parent);
+    U32 parentsCount();
 
     const BString name;
 
     std::mutex m;
     std::condition_variable c;
     U32 lockOwner = 0;
-    BoxedWineCondition* parent = nullptr;
+
+private:
+    std::set<BoxedWineCondition*> parents;
+    std::mutex parentsMutex;
 };
 
 class BoxedWineCriticalSectionCond {
@@ -56,7 +61,8 @@ private:
 #define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) (cond).signalAll()
 #define BOXEDWINE_CONDITION_WAIT(cond) (cond).wait(boxedWineCriticalSection)
 #define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, t) (cond).waitWithTimeout(boxedWineCriticalSection, t)
-#define BOXEDWINE_CONDITION_SET_PARENT(cond, parent) (cond).setParentCondition(parent)
+#define BOXEDWINE_CONDITION_ADD_PARENT(cond, parent) (cond).addParentCondition(parent)
+#define BOXEDWINE_CONDITION_REMOVE_PARENT(cond, parent) (cond).removeParentCondition(parent)
 
 #define BoxedWineConditionTimer BoxedWineCondition
 #else

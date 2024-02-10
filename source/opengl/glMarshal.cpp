@@ -541,7 +541,7 @@ static BHashTable<U32, std::shared_ptr<BufferedTarget>> bufferedTargets;
 
 U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size) {
     if (bufferedTargets.contains(target)) {
-        kpanic("mapBufferRange already mapped");
+        kwarn("mapBufferRange already mapped");
     }
     U32 result = cpu->memory->mapNativeMemory(buffer, size);
     bufferedTargets.set(target, std::make_shared<BufferedTarget>(result, (S8*)buffer, size));

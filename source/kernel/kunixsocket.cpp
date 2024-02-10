@@ -101,27 +101,27 @@ void KUnixSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 
     bool addedLock = false;
 
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, &parentCondition);
         addedLock = true;
     }
     if (events & K_POLLOUT) {
         std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
         if (con) {
-            BOXEDWINE_CONDITION_SET_PARENT(con->lockCond, &parentCondition);
+            BOXEDWINE_CONDITION_ADD_PARENT(con->lockCond, &parentCondition);
         } else {
             if (!addedLock) {
-                BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
+                BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, &parentCondition);
                 addedLock = true;
             }
         }
     }
     if (events && ((events & ~(K_POLLIN | K_POLLOUT)) || this->listening)) {
         if (!addedLock) {
-            BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
+            BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, &parentCondition);
         }
     }
     if (events == 0) {
-        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, nullptr);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->lockCond, &parentCondition);
     }
 }
 

@@ -178,9 +178,9 @@ U32 DevInput::writeNative(U8* buffer, U32 len) {
 
 void DevInput::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_SET_PARENT(this->bufferCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->bufferCond, &parentCondition);
     } else {
-        BOXEDWINE_CONDITION_SET_PARENT(this->bufferCond, nullptr);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->bufferCond, &parentCondition);
     }
 }
 

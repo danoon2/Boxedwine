@@ -1490,7 +1490,7 @@ void KNativeWindowSdl::checkMousePos(int& x, int& y) {
         y = (int)height;
         warp = true;
     }
-    if (warp) {
+    if (warp && window) {
         int scaledX = xToScreen(x);
         int scaledY = yToScreen(y);
         SDL_WarpMouseInWindow(window, scaledX, scaledY);

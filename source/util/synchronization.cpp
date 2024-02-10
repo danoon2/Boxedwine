@@ -34,18 +34,27 @@ bool BoxedWineCondition::tryLock() {
 }
 
 void BoxedWineCondition::signal() {
-    BoxedWineCondition* parent = this->parent;
-    if (parent) {
+    std::set<BoxedWineCondition*> parentsCopy;
+    {
+        const std::lock_guard<std::mutex> lock(parentsMutex);
+        parentsCopy = parents;
+    }
+    for (auto& parent : parentsCopy) {
         BoxedWineCondition& p = *parent;
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
         parent->signal();
+        break;
     }
     this->c.notify_one();
 }
 
 void BoxedWineCondition::signalAll() {
-    BoxedWineCondition* parent = this->parent;
-    if (parent) {
+    std::set<BoxedWineCondition*> parentsCopy;
+    {
+        const std::lock_guard<std::mutex> lock(parentsMutex);
+        parentsCopy = parents;
+    }
+    for (auto& parent : parentsCopy) {
         BoxedWineCondition& p = *parent;
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
         parent->signalAll();
@@ -62,7 +71,12 @@ void BoxedWineCondition::wait(std::unique_lock<std::mutex>& lock) {
     if (thread) {
         thread->waitingCond = nullptr;
     }
-    if (parent) {
+    std::set<BoxedWineCondition*> parentsCopy;
+    {
+        const std::lock_guard<std::mutex> lock(parentsMutex);
+        parentsCopy = parents;
+    }
+    for (auto& parent : parentsCopy) {
         BoxedWineCondition& p = *parent;
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
         parent->signalAll();
@@ -78,7 +92,12 @@ void BoxedWineCondition::waitWithTimeout(std::unique_lock<std::mutex>& lock, U32
     if (thread) {
         thread->waitingCond = nullptr;
     }    
-    if (parent) {
+    std::set<BoxedWineCondition*> parentsCopy;
+    {
+        const std::lock_guard<std::mutex> lock(parentsMutex);
+        parentsCopy = parents;
+    }
+    for (auto& parent : parentsCopy) {
         BoxedWineCondition& p = *parent;
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
         parent->signalAll();
@@ -90,11 +109,19 @@ void BoxedWineCondition::unlock() {
     this->m.unlock();
 }
 
-void BoxedWineCondition::setParentCondition(BoxedWineCondition* parent) {
-    if (parent && this->parent) {
-        kpanic("BoxedWineCondition::setParentCondition logic error");
-    }
-    this->parent = parent;
+void BoxedWineCondition::addParentCondition(BoxedWineCondition* parent) {
+    const std::lock_guard<std::mutex> lock(parentsMutex);
+    parents.insert(parent);
+}
+
+void BoxedWineCondition::removeParentCondition(BoxedWineCondition* parent) {
+    const std::lock_guard<std::mutex> lock(parentsMutex);
+    parents.erase(parent);
+}
+
+U32 BoxedWineCondition::parentsCount() {
+    const std::lock_guard<std::mutex> lock(parentsMutex);
+    return parents.size();
 }
 
 #else 
