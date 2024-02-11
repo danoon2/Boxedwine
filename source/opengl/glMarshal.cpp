@@ -551,7 +551,7 @@ U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size
 void unmapBuffer(CPU* cpu, GLenum target) {
     std::shared_ptr<BufferedTarget> t = bufferedTargets[target];
     if (t) {
-        cpu->memory->unmap(t->bufferedAddress, t->size);
+        cpu->memory->unmapNativeMemory(t->bufferedAddress, t->size);
         bufferedTargets.remove(target);
     }
 }

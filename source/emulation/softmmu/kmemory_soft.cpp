@@ -54,7 +54,7 @@ void KMemoryData::setPage(U32 index, Page* page) {
     this->mmu[index] = page;
     U32 address = index << K_PAGE_SHIFT;
     this->mmuReadPtr[index] = page->getReadPtr(memory, address);
-    this->mmuWritePtr[index] = page->getWritePtr(memory, address, K_PAGE_SHIFT);
+    this->mmuWritePtr[index] = page->getWritePtr(memory, address, K_PAGE_SIZE);
     if (p != page) {
         p->close();
     }
@@ -650,13 +650,18 @@ void KMemory::unlockMemory(U8 * lockedPointer) {
     // :TODO: nothing todo until lockReadOnlyMemory supports crossing page boundry
 }
 
+void KMemory::unmapNativeMemory(U32 address, U32 size) {
+    unmap(address - K_PAGE_SIZE, size + 2 * K_PAGE_SIZE);
+}
+
 U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     U32 result = 0;
     U32 pageCount = (size + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-    if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount, &result, false, true, PAGE_MAPPED)) {
+    if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount+2, &result, false, true, PAGE_MAPPED)) {
         return 0;
     }
+    result++;
     for (U32 i = 0; i < pageCount; i++) {
         flags[result + i] = PAGE_MAPPED | PAGE_READ | PAGE_WRITE;
         getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i));
