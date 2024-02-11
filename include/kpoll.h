@@ -28,7 +28,6 @@ public:
     U32 events;
     U32 revents;
     U64 data;
-    KFileDescriptor* pFD;
 };
 
 S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout);

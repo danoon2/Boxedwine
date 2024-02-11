@@ -60,9 +60,10 @@ bool doMainLoop() {
                 title.append(getSize(allocatedRamPages));
                 KNativeWindow::getNativeWindow()->setTitle(title);
             }            
-            checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
         }
-        if (!ran) {
+        if (ran) {
+            checkWaitingNativeSockets(0);
+        } else {
             if (KSystem::getRunningProcessCount()==0) {
                 break;
             }

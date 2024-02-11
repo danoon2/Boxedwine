@@ -52,7 +52,9 @@ void BoxedWineCondition::signalAll() {
     std::set<BoxedWineCondition*> parentsCopy;
     {
         const std::lock_guard<std::mutex> lock(parentsMutex);
-        parentsCopy = parents;
+        if (parents.size()) {
+            parentsCopy = parents;
+        }
     }
     for (auto& parent : parentsCopy) {
         BoxedWineCondition& p = *parent;
@@ -131,7 +133,7 @@ bool BoxedWineConditionTimer::run() {
     return false; // signal will remove timer
 }
 
-BoxedWineCondition::BoxedWineCondition(BString name) : name(name), parent(nullptr) {
+BoxedWineCondition::BoxedWineCondition(BString name) : name(name) {
 }
 
 BoxedWineCondition::~BoxedWineCondition() {
@@ -160,14 +162,14 @@ void BoxedWineCondition::signalThread(bool all) {
 
 void BoxedWineCondition::signal() {
     this->signalThread(false);
-    if (parent) {
+    for (auto& parent : parents) {
         parent->signal();
     }
 }
 
 void BoxedWineCondition::signalAll() {
     this->signalThread(true);
-    if (parent) {
+    for (auto& parent : parents) {
         parent->signalAll();
     }
 }
@@ -191,20 +193,18 @@ U32 BoxedWineCondition::waitWithTimeout(U32 ms) {
 }
  
 U32 BoxedWineCondition::waitCount() {
-    return this->waitingThreads.size() + (parent ? 1 : 0);
+    return this->waitingThreads.size() + (parents.size() > 0 ? 1 : 0);
 }
 
-void BoxedWineCondition::setParentCondition(BoxedWineCondition* parent) {
-#ifndef BOXEDWINE_MULTI_THREADED
-    // poll is re-entrant
-    if (parent == this->parent) {
-        return;
-    }
-#endif
-    if (parent && this->parent) {
-        kpanic("BoxedWineCondition::setParentCondition logic error");
-    }
-    this->parent = parent;
+void BoxedWineCondition::addParentCondition(BoxedWineCondition* parent) {
+    parents.insert(parent);
 }
 
+void BoxedWineCondition::removeParentCondition(BoxedWineCondition* parent) {
+    parents.erase(parent);
+}
+
+U32 BoxedWineCondition::parentsCount() {
+    return parents.size();
+}
 #endif

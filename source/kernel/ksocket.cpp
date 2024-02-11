@@ -212,16 +212,7 @@ U32 ksend(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    s->flags = 0;
-    if (flags == 0x4000) {
-        //  MSG_NOSIGNAL
-    }
-    if (flags & 1) {
-        s->flags|=K_MSG_OOB;
-    } 
-    U32 result = thread->process->write(thread, socket, buffer, len);
-    s->flags = 0;
-    return result;
+    return s->sendto(thread, fd, buffer, len, flags, 0, 0);
 }
 
 U32 krecv(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
@@ -234,19 +225,7 @@ U32 krecv(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    s->flags = 0;
-    if (flags == 0x4000) {
-        //  MSG_NOSIGNAL
-    } 
-    if (flags & 1) {
-        s->flags|=K_MSG_OOB;
-    } 
-    if (flags & 2) {
-        s->flags|=K_MSG_PEEK;
-    } 
-    U32 result = thread->process->read(thread, socket, buffer, len);
-    s->flags = 0;
-    return result;
+    return s->recvfrom(thread, fd, buffer, len, flags, 0, 0);
 }
 
 U32 kshutdown(KThread* thread, U32 socket, U32 how) {

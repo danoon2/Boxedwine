@@ -31,7 +31,7 @@ void CopyOnWritePage::copyOnWrite(U32 address) {
     ramPageDecRef(ram); // setPageRam will increment this
 }
 
-void CopyOnWritePage::writeb( U32 address, U8 value) {
+void CopyOnWritePage::writeb(U32 address, U8 value) {
     KMemoryData* data = getMemData(KThread::currentThread()->memory);
     copyOnWrite(address);
     data->memory->writeb(address, value);

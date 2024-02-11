@@ -44,7 +44,6 @@ public:
     bool inClosed = false;
     bool outClosed = false;
 
-    U32 flags = 0;
     int error = 0;
 
 protected:

@@ -26,7 +26,7 @@ public:
     void addParentCondition(BoxedWineCondition* parent);
     void removeParentCondition(BoxedWineCondition* parent);
     U32 parentsCount();
-
+    U32 waitCount() {return parentsCount();}
     const BString name;
 
     std::mutex m;
@@ -96,12 +96,14 @@ public:
     U32 waitWithTimeout(U32 ms);
     U32 waitCount();
 
-    void setParentCondition(BoxedWineCondition* parent);
-
+    void addParentCondition(BoxedWineCondition* parent);
+    void removeParentCondition(BoxedWineCondition* parent);
+    U32 parentsCount();    
     const BString name;
-    BoxedWineCondition* parent;
 private:
     KList<KThread*> waitingThreads;    
+
+    std::set<BoxedWineCondition*> parents;
 
     friend BoxedWineConditionTimer;
     void signalThread(bool all);
@@ -114,7 +116,8 @@ typedef BoxedWineCondition BOXEDWINE_CONDITION;
 #define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) (cond).signalAll()
 #define BOXEDWINE_CONDITION_WAIT(cond) return (cond).wait()
 #define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, ms) return (cond).waitWithTimeout(ms)
-#define BOXEDWINE_CONDITION_SET_PARENT(cond, parent) cond.setParentCondition(parent)
+#define BOXEDWINE_CONDITION_ADD_PARENT(cond, parent) (cond).addParentCondition(parent)
+#define BOXEDWINE_CONDITION_REMOVE_PARENT(cond, parent) (cond).removeParentCondition(parent)
 
 #endif
 
