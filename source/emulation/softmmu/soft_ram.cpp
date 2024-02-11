@@ -21,12 +21,12 @@ U8* ramPageAlloc() {
     }
 
     U8* pages = (U8*)Platform::alloc64kBlock(1);
-#ifdef _DEBUG1 
+#ifdef _DEBUG
     // the page before and after the allocated ram will be allocated too and set to no permission so that read/write will generate exception
     Platform::updateNativePermission((U64)(pages), 0, K_PAGE_SIZE);
     pages += K_PAGE_SIZE;
     for (int i = 0; i < 7; i++) {
-        freePages.put(pages);
+        freeRamPages.put(pages);
         Platform::updateNativePermission((U64)(pages + K_PAGE_SIZE), 0, K_PAGE_SIZE);
         pages += 2 * K_PAGE_SIZE;
     }

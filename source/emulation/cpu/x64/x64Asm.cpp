@@ -4116,29 +4116,32 @@ void X64Asm::createCodeForRetranslateChunk(bool includeSetupFromR9) {
 static void x64_jmpAndTranslateIfNecessary() {
     x64CPU* cpu = ((x64CPU*)KThread::currentThread()->cpu);
     KMemoryData* mem = getMemData(cpu->memory);
-    while (true) {
-        U32 address = cpu->eip.u32 + cpu->seg[CS].address;
-        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, address);
-        bool wasDynamic = false;
-        if (mem->isAddressDynamic(cpu->eip.u32, op->len)) {
-            cpu->arg5 = 1; // signal to runSingleOp that it is dynamic
-            common_runSingleOp(cpu);
-            wasDynamic = true;
-        } else {
-            CodeBlock block = cpu->memory->findCodeBlockContaining(address, op->len);
-            if (block) {
-                if (block->getEip() == address + 1 && op->lock != 0) {
-                    // the current block was created by skipping the lock, lets replace it
-                    cpu->memory->removeCodeBlock(block->getEip(), block->getEipLen());
+    try {
+        while (true) {
+            U32 address = cpu->eip.u32 + cpu->seg[CS].address;
+            DecodedOp* op = NormalCPU::decodeSingleOp(cpu, address);
+            bool wasDynamic = false;
+            if (mem->isAddressDynamic(cpu->eip.u32, op->len)) {
+                cpu->arg5 = 1; // signal to runSingleOp that it is dynamic
+                common_runSingleOp(cpu);
+                wasDynamic = true;
+            } else {
+                CodeBlock block = cpu->memory->findCodeBlockContaining(address, op->len);
+                if (block) {
+                    if (block->getEip() == address + 1 && op->lock != 0) {
+                        // the current block was created by skipping the lock, lets replace it
+                        cpu->memory->removeCodeBlock(block->getEip(), block->getEipLen());
+                    }
                 }
             }
+            op->dealloc(true);
+            if (wasDynamic) {
+                continue;
+            }
+            break;
         }
-        op->dealloc(true);
-        if (wasDynamic) {
-            continue;
-        }
-        break;
-    }    
+    } catch (...) {
+    }
     cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
 }
 
@@ -4478,14 +4481,13 @@ void X64Asm::translateInstruction() {
         done = true;
         return;
     }
-    
     while (1) {
         this->op = this->fetch8();
         this->inst = this->baseOp + this->op;
         if (!x64Decoder[this->inst](this)) {
             break;
         }
-    }
+    }    
     this->tmp1InUse = false;
     this->tmp2InUse = false;
     this->tmp3InUse = false;
