@@ -33,6 +33,15 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 		memset(stream, data->got.silence, len);
 		return;
 	}
+	KThread* thread = nullptr;
+	process->iterateThreads([&thread](KThread* t) {
+		thread = t;
+		return false;
+		});
+	// some memory pages that might be writen to could be copy on write, in that case KThread::currentThread() will be used to get the current KMemory that should be used.
+	// we don't actually care which thread we use, hopefully the thread won't go away in the middle.
+	// perhaps in the future this could be a shared_ptr or something else to guarantee the thread will be there
+	ChangeThread changeThread(thread);
 	KMemory* memory = process->memory;	
 	U32 blockAlign = 0;
 	if (data->sameFormat) {

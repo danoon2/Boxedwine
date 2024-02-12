@@ -4478,6 +4478,7 @@ void X64Asm::translateInstruction() {
     if (mem->isAddressDynamic(ip, currentOp->len)) {
         mem->markAddressDynamic(ip, currentOp->len);
         emulateSingleOp(nullptr, true);
+        ip += currentOp->len;
         done = true;
         return;
     }

@@ -686,6 +686,7 @@ GLint components_in_format(GLenum format )
       case GL_DU8DV8_ATI:
          return 2;
       default:
+          kpanic("Opengl components_in_format %d", format);
          return -1;
    }
 }

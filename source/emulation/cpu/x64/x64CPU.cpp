@@ -276,9 +276,9 @@ void common_runSingleOp(x64CPU* cpu) {
         }
     }
     bool inSignal = cpu->thread->inSignal;
-    if ((op->inst >= Stosb && op->inst <= Lodsd) || (op->inst >= Movsb && op->inst <= Movsd)) {
+    if (op->inst >= Movsb && op->inst <= Scasd) {
         cpu->flags &= ~(SF | AF | ZF | PF | CF | OF);
-        cpu->flags |= ((cpu->stringFlags >> 8) & 0xff) | ((cpu->stringFlags & 1) << 11);
+        cpu->flags |= ((cpu->stringFlags >> 8) & 0xff) | ((cpu->stringFlags & 1) << 11);    
     }
     try {
         if (!op->lock) {

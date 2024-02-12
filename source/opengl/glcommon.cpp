@@ -153,9 +153,8 @@ void glcommon_glGetIntegerv(CPU* cpu) {
     if (pname == GL_NUM_EXTENSIONS) {
         cpu->memory->writed(ARG2, cpu->thread->process->numberOfExtensions);
     } else {
-        GLint* buffer = marshali(cpu, ARG2, getSize(ARG1));
-        GL_FUNC(pglGetIntegerv)(pname, buffer);
-        marshalBacki(cpu, ARG2, buffer, getSize(ARG1));
+        MarshalReadWrite<GLint> buffer(cpu, ARG2, getSize(ARG1));
+        GL_FUNC(pglGetIntegerv)(pname, buffer.getPtr());
     }
 }
 
@@ -388,7 +387,6 @@ void glcommon_glGetMapiv(CPU* cpu) {
     GL_LOG("glGetMapiv GLenum target=%d, GLenum query=%d, GLint *v=%.08x", ARG1, ARG2, ARG3);
     switch (query) {
     case GL_COEFF: {
-        GLint* buffer = nullptr;
         GLint order[2] = {};
         int count=0;
 
@@ -398,21 +396,18 @@ void glcommon_glGetMapiv(CPU* cpu) {
         } else {
             count = order[0];
         }
-        buffer = marshali(cpu, ARG3, count);
-        GL_FUNC(pglGetMapiv)(target, query, buffer);
-        marshalBacki(cpu, ARG3, buffer, count);
+        MarshalReadWrite<GLint> buffer(cpu, ARG3, count);
+        GL_FUNC(pglGetMapiv)(target, query, buffer.getPtr());
         break;
     }
     case GL_ORDER: {
-        GLint buffer[2] = {};
-        GL_FUNC(pglGetMapiv)(target, query, buffer);
-        marshalBacki(cpu, ARG3, buffer, isMap2(target)?2:1);
+        MarshalReadWrite<GLint> buffer(cpu, ARG3, isMap2(target) ? 2 : 1);
+        GL_FUNC(pglGetMapiv)(target, query, buffer.getPtr());
         break;
     }
     case GL_DOMAIN: {
-        GLint buffer[4] = {};
-        GL_FUNC(pglGetMapiv)(target, query, buffer);
-        marshalBacki(cpu, ARG3, buffer, isMap2(target)?4:2);
+        MarshalReadWrite<GLint> buffer(cpu, ARG3, isMap2(target) ? 4 : 2);
+        GL_FUNC(pglGetMapiv)(target, query, buffer.getPtr());
         break;
     }
     default:
@@ -544,6 +539,7 @@ void callOpenGL(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_OPENGL
     KNativeWindow::getNativeWindow()->preOpenGLCall(index);
     if (index < int99CallbackSize && int99Callback[index]) {
+        cpu->thread->marshalIndex = 0;
         lastGlCallTime = KSystem::getMilliesSinceStart();
         int99Callback[index](cpu);
     } else 

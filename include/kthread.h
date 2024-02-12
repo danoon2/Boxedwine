@@ -132,6 +132,7 @@ public:
     OpenGLVetexPointer glEdgeFlagPointer;
     OpenGLVetexPointer glEdgeFlagPointerEXT;
     OpenGLVetexPointer glInterleavedArray;
+    U32 marshalIndex = 0;
 
     inline static KThread* currentThread() {return runningThread;}
 	inline static void setCurrentThread(KThread* thread) { runningThread = thread; }

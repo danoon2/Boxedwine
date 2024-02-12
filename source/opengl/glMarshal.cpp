@@ -9,76 +9,6 @@
 
 #define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {struct conv d; get = cpu->memory->read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
 
-MARSHAL_TYPE(GLbyte, b, b, 1)
-MARSHAL_TYPE(GLbyte, 2b, b, 1)
-
-GLubyte* marshalub(CPU* cpu, U32 address, U32 count) {
-    return (GLubyte*)marshalb(cpu, address, count);
-}
-
-GLubyte* marshal2ub(CPU* cpu, U32 address, U32 count) {
-    return (GLubyte*)marshal2b(cpu, address, count);
-}
-
-GLboolean* marshalbool(CPU* cpu, U32 address, U32 count) {
-    return (GLboolean*)marshalb(cpu, address, count);
-}
-
-GLboolean* marshal2bool(CPU* cpu, U32 address, U32 count) {
-    return (GLboolean*)marshal2b(cpu, address, count);
-}
-
-MARSHAL_TYPE(GLshort, s, w, 2)
-MARSHAL_TYPE(GLshort, 2s, w, 2)
-
-GLushort* marshalus(CPU* cpu, U32 address, U32 count) {
-    return (GLushort*)marshals(cpu, address, count);
-}
-
-GLushort* marshal2us(CPU* cpu, U32 address, U32 count) {
-    return (GLushort*)marshal2s(cpu, address, count);
-}
-
-MARSHAL_TYPE(GLchar, c, b, 1)
-MARSHAL_TYPE(GLchar, 2c, b, 1)
-MARSHAL_TYPE(GLcharARB, ac, b, 1)
-MARSHAL_TYPE(GLcharARB, 2ac, b, 1)
-MARSHAL_TYPE(GLenum, e, d, 4)
-MARSHAL_TYPE(GLenum, 2e, d, 4)
-MARSHAL_TYPE(GLenum, 3e, d, 4)
-MARSHAL_TYPE(GLint, i, d, 4)
-MARSHAL_TYPE(GLint, 2i, d, 4)
-MARSHAL_TYPE(GLint, 3i, d, 4)
-MARSHAL_TYPE(GLint, 4i, d, 4)
-MARSHAL_TYPE(GLint, 5i, d, 4)
-
-GLuint* marshalui(CPU* cpu, U32 address, U32 count) {
-    return (GLuint*)marshali(cpu, address, count);
-}
-
-GLuint* marshal2ui(CPU* cpu, U32 address, U32 count) {
-    return (GLuint*)marshal2i(cpu, address, count);
-}
-
-GLuint* marshal3ui(CPU* cpu, U32 address, U32 count) {
-    return (GLuint*)marshal3i(cpu, address, count);
-}
-
-GLuint* marshal4ui(CPU* cpu, U32 address, U32 count) {
-    return (GLuint*)marshal4i(cpu, address, count);
-}
-
-GLuint* marshal5ui(CPU* cpu, U32 address, U32 count) {
-    return (GLuint*)marshal5i(cpu, address, count);
-}
-
-MARSHAL_TYPE(GLuint64, ui64, q, 8)
-MARSHAL_TYPE(GLint64, i64, q, 8)
-
-MARSHAL_TYPE(GLsizei, si, d, 4)
-
-MARSHAL_TYPE(GLhalfNV, hf, w, 2)
-
 MARSHAL_TYPE_CUSTOM(GLfloat, f, d, 4, int2Float, d.i, d.f)
 MARSHAL_TYPE_CUSTOM(GLfloat, 2f, d, 4, int2Float, d.i, d.f)
 MARSHAL_TYPE_CUSTOM(GLfloat, 3f, d, 4, int2Float, d.i, d.f)
@@ -179,34 +109,34 @@ GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
         return nullptr;
     switch (type) {
         case GL_UNSIGNED_BYTE:
-            data = marshalub(cpu, address, count);
+            data = marshalArray<GLubyte>(cpu, address, count);
             break;
         case GL_BYTE: 
-            data = marshalb(cpu, address, count);
+            data = marshalArray<GLbyte>(cpu, address, count);
             break;
         case GL_2_BYTES:
-            data = marshalb(cpu, address, count*2);
+            data = marshalArray<GLbyte>(cpu, address, count*2);
             break;
         case GL_UNSIGNED_SHORT:
-            data = marshalus(cpu, address, count);
+            data = marshalArray<GLushort>(cpu, address, count);
             break;
         case GL_SHORT: 
-            data = marshals(cpu, address, count);
+            data = marshalArray<GLshort>(cpu, address, count);
             break;
         case GL_3_BYTES:
-            data = marshalb(cpu, address, count*3);
+            data = marshalArray<GLbyte>(cpu, address, count*3);
             break;
         case GL_4_BYTES:
-            data = marshalb(cpu, address, count*4);
+            data = marshalArray<GLbyte>(cpu, address, count*4);
             break;
         case GL_FLOAT:
             data = marshalf(cpu, address, count);
             break;
         case GL_UNSIGNED_INT:
-            data = marshalui(cpu, address, count);
+            data = marshalArray<GLuint>(cpu, address, count);
             break;
         case GL_INT:
-            data = marshali(cpu, address, count);
+            data = marshalArray<GLint>(cpu, address, count);
             break;
         default:
             kpanic("marshalType unknown type: %d", ARG2);
@@ -263,11 +193,11 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     case GL_UNSIGNED_BYTE_3_3_2:
     case GL_UNSIGNED_BYTE_2_3_3_REV:
     case GL_UNSIGNED_BYTE: 
-        return marshalub(cpu, pixel, 1);
+        return marshalArray<GLubyte>(cpu, pixel, 1);
     case GL_BYTE:
-        return marshalb(cpu, pixel, 1);
+        return marshalArray<GLbyte>(cpu, pixel, 1);
     case GL_BITMAP:
-        return marshalub(cpu, pixel, 1);
+        return marshalArray<GLubyte>(cpu, pixel, 1);
     case GL_UNSIGNED_SHORT_5_6_5:
     case GL_UNSIGNED_SHORT_5_6_5_REV:
     case GL_UNSIGNED_SHORT_4_4_4_4:
@@ -275,17 +205,17 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     case GL_UNSIGNED_SHORT_5_5_5_1:
     case GL_UNSIGNED_SHORT_1_5_5_5_REV:
     case GL_UNSIGNED_SHORT:
-        return marshalus(cpu, pixel, len);
+        return marshalArray<GLushort>(cpu, pixel, len);
     case GL_SHORT:
-        return marshals(cpu, pixel, len);
+        return marshalArray<GLshort>(cpu, pixel, len);
     case GL_UNSIGNED_INT_8_8_8_8:
     case GL_UNSIGNED_INT_8_8_8_8_REV:
     case GL_UNSIGNED_INT_10_10_10_2:
     case GL_UNSIGNED_INT_2_10_10_10_REV:
     case GL_UNSIGNED_INT:
-        return marshalui(cpu, pixel, len);
+        return marshalArray<GLuint>(cpu, pixel, len);
     case GL_INT:
-        return marshali(cpu, pixel, len);
+        return marshalArray<GLint>(cpu, pixel, len);
     case GL_FLOAT:
         return marshalf(cpu, pixel, len);
     default:
@@ -385,27 +315,27 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         return marshalf(cpu, pixels, len/4);
     } else if (bytes_per_comp == 1) {
         if (isSigned) {
-            return marshalb(cpu, pixels, len);
+            return marshalArray<GLbyte>(cpu, pixels, len);
         } else {
-            return marshalub(cpu, pixels, len);
+            return marshalArray<GLubyte>(cpu, pixels, len);
         }
     } else if (bytes_per_comp == 2) {
         if (isSigned) {
-            return marshals(cpu, pixels, len/2);
+            return marshalArray<GLshort>(cpu, pixels, len/2);
         } else {
-            return marshalus(cpu, pixels, len/2);
+            return marshalArray<GLushort>(cpu, pixels, len/2);
         }
     } else if (bytes_per_comp == 3) {
         if (isSigned) {
-            return marshalb(cpu, pixels, len);
+            return marshalArray<GLbyte>(cpu, pixels, len);
         } else {
-            return marshalub(cpu, pixels, len);
+            return marshalArray<GLubyte>(cpu, pixels, len);
         }
     } else if (bytes_per_comp == 4) {
         if (isSigned) {
-            return marshali(cpu, pixels, len/4);
+            return marshalArray<GLint>(cpu, pixels, len/4);
         } else {
-            return marshalui(cpu, pixels, len/4);
+            return marshalArray<GLuint>(cpu, pixels, len/4);
         }
     }
     kpanic("glcommongl.c marshalPixels unknown bytes_per_comp %d", bytes_per_comp);
@@ -564,7 +494,7 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
         return (GLvoid*)(uintptr_t)buffer;
     }
     if ((buffer & 0xFFF) + len > 0xFFF) {
-        return marshalub(cpu, buffer, len);
+        return marshalArray<GLubyte>(cpu, buffer, len);
     }
     // :TODO: a lot of work needs to be done here, marshalp needs to be removed and instead marshal the correct type of array, like marshalf.
     // This is also important to make things work with UNALIGNED_MEMORY
@@ -716,8 +646,9 @@ void* marshalunhandled(const char* func, const char* param, CPU* cpu, U32 addres
     return nullptr;
 }
 
-// GLsizeiptr is 64-bit on x64 and 32-bit on x86
-MARSHAL_TYPE(GLsizeiptr, sip, d, 4)
+GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count) {
+    return marshalArray<GLsizeiptr, 4>(cpu, address, count);
+}
 
 /*
 typedef  struct {
@@ -864,7 +795,10 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
 }
 
 #else
-MARSHAL_TYPE(GLhandleARB, handle, d, 4)
+
+GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
+    return marshalArray<GLhandleARB, 4>(cpu, address, count);
+}
 
 void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {    
     // :TODO:

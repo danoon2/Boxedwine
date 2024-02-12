@@ -1,61 +1,131 @@
 #ifndef __GL_MARSHAL_H__
 #define __GL_MARSHAL_H__
+   
+template <typename T, U32 writeSize = sizeof(T)>
+void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
+    if (address) {
+        if constexpr (writeSize == 1) {
+            cpu->memory->memcpy(address, buffer, count);
+        } else {
+            for (U32 i = 0; i < count; i++) {
+                if constexpr (writeSize == 4) {
+                    cpu->memory->writed(address, buffer[i]);
+                    address += 4;
+                } else if constexpr (writeSize == 2) {
+                    cpu->memory->writew(address, buffer[i]);
+                    address += 2;
+                } else if constexpr (writeSize == 8) {
+                    if constexpr (sizeof(T) != writeSize) {
+                        if (buffer[i] & 0xFFFFFFFF00000000) {
+                            kpanic("oops");
+                        }
+                    }
+                    cpu->memory->writeq(address, buffer[i]);
+                    address += 8;
+                }
+            }
+        }
+    }
+}
 
-// The reason for multiple copies of the same marshal function, like marshalf, marshal2f, marshal3f, etc is
-// that each one will use a different temp buffer.  For a single OpenGL function, each marshalled pointer
-// will need a different temp buffer, so a function like
-//
-// void glMultiDrawArrays(GLenum mode,  GLint * first,  GLsizei * count,  GLsizei primcount);
-//
-// will use 2 temp buffer, in this case GLsizei is mapped to GLint and thus 2 versions of marshali will
-// be used
+template <typename T, U32 readSize = sizeof(T)>
+T* marshalArray(CPU* cpu, U32 address, U32 count) {
+    static T** buffer;
+    static U32* bufferLen;
+    static U32 indexCount;
 
-GLboolean* marshalbool(CPU* cpu, U32 address, U32 count);
-GLboolean* marshal2bool(CPU* cpu, U32 address, U32 count);
-void marshalBackbool(CPU* cpu, U32 address, GLboolean* buffer, U32 count);
+    U32 index = cpu->thread->marshalIndex++;
+    if (!address) {
+        return nullptr;
+    }
+    if (address < 0x1000) {
+        int ii = 0;
+    }
+    if (!count) {
+        return (T*)(U64)address;
+    }
+    U32 len = count * sizeof(T);
+    U32 page = address >> K_PAGE_SHIFT;
+    U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
+    if (page == pageStop && cpu->memory->canRead(page)) {
+        return (T*)cpu->memory->getIntPtr(address);
+    }
+    if (!buffer) {
+        buffer = new T * [index + 1];
+        memset(buffer, 0, sizeof(T*) * (index + 1));
+        bufferLen = new U32[index + 1];
+        memset(bufferLen, 0, sizeof(U32) * (index + 1));
+        indexCount = index + 1;
+    }
+    if (index >= indexCount) {
+        T** newBuffer = new T * [index + 1];
+        U32* newBufferLen = new U32[index + 1];
+        memset(newBuffer, 0, sizeof(T*) * (index + 1));
+        memcpy(newBuffer, buffer, sizeof(T*) * indexCount);
+        memset(newBufferLen, 0, sizeof(U32) * (index + 1));
+        memcpy(newBufferLen, bufferLen, sizeof(U32) * indexCount);
+        delete[] buffer;
+        delete[] bufferLen;
+        buffer = newBuffer;
+        bufferLen = newBufferLen;
+        indexCount = index + 1;
+    }
+    if (buffer[index] && bufferLen[index] < count) {
+        delete[] buffer[index];
+        buffer[index] = nullptr;
+    }
+    if (!buffer[index]) {
+        buffer[index] = new T[count];
+        bufferLen[index] = count;
+    }
+    if constexpr (readSize == 1) {
+        cpu->memory->memcpy(buffer[index], address, count);
+    } else {
+        for (U32 i = 0; i < count; i++) {
+            if constexpr (readSize == 4) {
+                buffer[index][i] = cpu->memory->readd(address);
+                address += 4;
+            } else if constexpr (readSize == 2) {
+                buffer[index][i] = cpu->memory->readw(address);
+                address += 2;
+            } else if constexpr (readSize == 8) {
+                buffer[index][i] = cpu->memory->readq(address);
+                address += 8;
+            } else {
+                kpanic("oops");
+            }
+        }
+    }
+    return buffer[index];
+}
 
-GLbyte* marshalb(CPU* cpu, U32 address, U32 count);
-GLbyte* marshal2b(CPU* cpu, U32 address, U32 count);
-void marshalBackb(CPU* cpu, U32 address, GLbyte* buffer, U32 count);
-
-GLchar* marshalc(CPU* cpu, U32 address, U32 count);
-GLchar* marshal2c(CPU* cpu, U32 address, U32 count);
-void marshalBackc(CPU* cpu, U32 address, GLchar* buffer, U32 count);
-
-GLcharARB* marshalac(CPU* cpu, U32 address, U32 count);
-GLcharARB* marshal2ac(CPU* cpu, U32 address, U32 count);
-void marshalBackac(CPU* cpu, U32 address, GLcharARB* buffer, U32 count);
-
-GLenum* marshale(CPU* cpu, U32 address, U32 count);
-GLenum* marshal2e(CPU* cpu, U32 address, U32 count);
-GLenum* marshal3e(CPU* cpu, U32 address, U32 count);
-void marshalBacke(CPU* cpu, U32 address, GLenum* buffer, U32 count);
-
-GLubyte* marshalub(CPU* cpu, U32 address, U32 count);
-GLubyte* marshal2ub(CPU* cpu, U32 address, U32 count);
-void marshalBackub(CPU* cpu, U32 address, GLubyte* buffer, U32 count);
-
-GLshort* marshals(CPU* cpu, U32 address, U32 count);
-GLshort* marshal2s(CPU* cpu, U32 address, U32 count);
-void marshalBacks(CPU* cpu, U32 address, GLshort* buffer, U32 count);
-
-GLushort* marshalus(CPU* cpu, U32 address, U32 count);
-GLushort* marshal2us(CPU* cpu, U32 address, U32 count);
-void marshalBackus(CPU* cpu, U32 address, GLushort* buffer, U32 count);
-
-GLint* marshali(CPU* cpu, U32 address, U32 count);
-GLint* marshal2i(CPU* cpu, U32 address, U32 count);
-GLint* marshal3i(CPU* cpu, U32 address, U32 count);
-GLint* marshal4i(CPU* cpu, U32 address, U32 count);
-GLint* marshal5i(CPU* cpu, U32 address, U32 count);
-void marshalBacki(CPU* cpu, U32 address, GLint* buffer, U32 count);
-
-GLuint* marshalui(CPU* cpu, U32 address, U32 count);
-GLuint* marshal2ui(CPU* cpu, U32 address, U32 count);
-GLuint* marshal3ui(CPU* cpu, U32 address, U32 count);
-GLuint* marshal4ui(CPU* cpu, U32 address, U32 count);
-GLuint* marshal5ui(CPU* cpu, U32 address, U32 count);
-void marshalBackui(CPU* cpu, U32 address, GLuint* buffer, U32 count);
+template <typename T>
+class MarshalReadWrite {
+    CPU* cpu = nullptr;
+    U32 address = 0;
+    U32 count = 0;
+    T* buffer = nullptr;
+public:
+    MarshalReadWrite(CPU* cpu, U32 address, U32 count) : cpu(cpu), address(address), count(count) {
+    }
+    ~MarshalReadWrite() {
+        if (buffer) {
+            marshalBackArray<T>(cpu, buffer, address, count);
+        }
+    }
+    T* getPtr() {
+        if (!buffer) {
+            U32 len = count * sizeof(T);
+            U32 page = address >> K_PAGE_SHIFT;
+            U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
+            if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
+                return (T*)cpu->memory->getIntPtr(address);
+            }
+            buffer = marshalArray<T>(cpu, address, count);
+        }
+        return buffer;
+    }
+};
 
 GLfloat* marshalf(CPU* cpu, U32 address, U32 count);
 GLfloat* marshal2f(CPU* cpu, U32 address, U32 count);
@@ -63,17 +133,30 @@ GLfloat* marshal3f(CPU* cpu, U32 address, U32 count);
 GLfloat* marshal4f(CPU* cpu, U32 address, U32 count);
 void marshalBackf(CPU* cpu, U32 address, GLfloat* buffer, U32 count);
 
+class MarshalReadWriteFloat {
+    CPU* cpu = nullptr;
+    U32 address = 0;
+    U32 count = 0;
+    GLfloat* buffer = nullptr;
+public:
+    MarshalReadWriteFloat(CPU* cpu, U32 address, U32 count) : cpu(cpu), address(address), count(count) {
+    }
+    ~MarshalReadWriteFloat() {
+        if (buffer) {
+            marshalBackf(cpu, address, buffer, count);
+        }
+    }
+    GLfloat* getPtr() {
+        if (!buffer) {
+            buffer = marshalf(cpu, address, count);
+        }
+        return buffer;
+    }
+};
+
 GLdouble* marshald(CPU* cpu, U32 address, U32 count);
 GLdouble* marshal2d(CPU* cpu, U32 address, U32 count);
 void marshalBackd(CPU* cpu, U32 address, GLdouble* buffer, U32 count);
-
-GLint64* marshali64(CPU* cpu, U32 address, U32 count);
-void marshalBacki64(CPU* cpu, U32 address, GLint64* buffer, U32 count);
-
-GLuint64* marshalui64(CPU* cpu, U32 address, U32 count);
-void marshalBackui64(CPU* cpu, U32 address, GLuint64* buffer, U32 count);
-
-GLhalfNV* marshalhf(CPU* cpu, U32 address, U32 count);
 
 const GLchar* marshalsz(CPU* cpu, U32 address);
 const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths);
@@ -189,5 +272,58 @@ const char* glcommon_glLightv_print_pname(GLenum e);
 const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer);
 const char* glcommon_glLightv_print_name(GLenum e);
 const char* glcommon_glClear_mask(GLbitfield mask);
+
+template <typename T>
+class MarshalReadWritePacked {
+    CPU* cpu = nullptr;
+    U32 address = 0;
+    U32 count = 0;
+    T* buffer = nullptr;
+    bool packed = false;
+    std::function<U32()> fnGetCount;
+public:
+    MarshalReadWritePacked(CPU* cpu, U32 address, U32 count) : cpu(cpu), address(address), count(count) {
+        packed = PIXEL_PACK_BUFFER();
+    }
+    MarshalReadWritePacked(CPU* cpu, U32 address, std::function<U32()> fnGetCount) : cpu(cpu), address(address), fnGetCount(fnGetCount) {
+        packed = PIXEL_PACK_BUFFER();
+    }
+    ~MarshalReadWritePacked() {
+        if (buffer) {
+            marshalBackArray<T>(cpu, buffer, address, count);
+        }
+    }
+    bool isPacked() {
+        return packed;
+    }
+    bool getCount() {
+        if (fnGetCount) {
+            count = fnGetCount();
+            fnGetCount = nullptr;
+        }
+        return count;
+    }
+    T* getPtr() {
+        if (packed) {
+            return (T*)(uintptr_t)(address);
+        }
+        if (!buffer) {
+            if (fnGetCount) {
+                count = fnGetCount();
+                fnGetCount = nullptr;
+            }
+            if (count) {
+                U32 len = count * sizeof(T);
+                U32 page = address >> K_PAGE_SHIFT;
+                U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
+                if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
+                    return (T*)cpu->memory->getIntPtr(address);
+                }
+            }
+            buffer = marshalArray<T>(cpu, address, count);
+        }
+        return buffer;
+    }
+};
 
 #endif
