@@ -195,6 +195,8 @@ U32 KThread::signal(U32 signal, bool wait) {
 
 #define FUTEX_WAIT 0
 #define FUTEX_WAKE 1
+#define FUTEX_WAIT_BITSET 9
+#define FUTEX_WAKE_BITSET 10
 #define FUTEX_WAIT_PRIVATE 128
 #define FUTEX_WAKE_PRIVATE 129
 #define FUTEX_WAIT_BITSET_PRIVATE 137
@@ -268,13 +270,16 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
         kpanic("Could not find futex address: %0.8X", addr);
     }
     op = op & ~FUTEX_CLOCK_REALTIME;
-    if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE || op == FUTEX_WAIT_BITSET_PRIVATE) {
+    if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE || op == FUTEX_WAIT_BITSET_PRIVATE || op == FUTEX_WAIT_BITSET) {
         struct futex* f=getFutex(this, ramAddress);
         U32 expireTime = 0xFFFFFFFF;
 
         if (pTime != 0) {
             U32 seconds = memory->readd(pTime);
             U32 nano = memory->readd(pTime + 4);
+            if (op == FUTEX_WAIT_BITSET) {
+                int ii = 0;
+            }
             expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
         }
         bool checkValue = false;
@@ -282,7 +287,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
         if (!f) {
             checkValue = true;
             f = allocFutex(this, ramAddress, expireTime);
-            if (op == FUTEX_WAIT_BITSET_PRIVATE) {
+            if (op == FUTEX_WAIT_BITSET_PRIVATE || op == FUTEX_WAIT_BITSET) {
                 f->mask = val3;
             }
         }
@@ -325,10 +330,10 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
             }
 #endif
         }
-    } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE || op==FUTEX_WAKE_BITSET_PRIVATE) {
+    } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE || op==FUTEX_WAKE_BITSET_PRIVATE || op == FUTEX_WAKE_BITSET) {
         U32 count = 0;
         for (int i=0;i<MAX_FUTEXES && count<value;i++) {
-            if (system_futex[i].address==ramAddress && !system_futex[i].wake && (op!= FUTEX_WAKE_BITSET_PRIVATE || (system_futex[i].mask & val3))) {
+            if (system_futex[i].address==ramAddress && !system_futex[i].wake && ((op!= FUTEX_WAKE_BITSET_PRIVATE && op!= FUTEX_WAKE_BITSET) || (system_futex[i].mask & val3))) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
                 system_futex[i].wake = true;
                 BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);

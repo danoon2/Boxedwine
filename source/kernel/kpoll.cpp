@@ -153,7 +153,7 @@ U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
 }
 
 
-U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
+U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout, U32 sigmask) {
     S32 result = 0;
     int count = 0;
     U32 pollCount = 0;
@@ -203,7 +203,16 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
             }
         }
     }    
-    result = internal_poll(thread, pollData, pollCount, timeout);
+    if (sigmask) {
+        U32 mask = thread->memory->readd(sigmask);
+        U32 oldMask = thread->sigMask;
+        thread->sigMask = mask;
+
+        result = internal_poll(thread, pollData, pollCount, timeout);
+        thread->sigMask = oldMask;
+    } else {
+        result = internal_poll(thread, pollData, pollCount, timeout);
+    }
     if (result == -K_WAIT || result == -K_CONTINUE) {
         delete[] pollData;
         return result;

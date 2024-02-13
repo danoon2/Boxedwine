@@ -2108,6 +2108,142 @@ U32 KProcess::mkdirat(U32 dirfd, BString path, U32 mode) {
     return this->mkdir(fullPath);
 }
 
+#define K_AT_SYMLINK_FOLLOW	0x400   // Follow symbolic links. 
+#define K_AT_NO_AUTOMOUNT		0x800	// Suppress terminal automount traversal 
+#define K_AT_EMPTY_PATH		0x1000	
+/*
+ 
+struct statx_timestamp {
+        __s64        tv_sec;
+        __u32        tv_nsec;
+        __s32        __reserved;
+};
+
+struct statx {
+    __u32 stx_mask;        // Mask of bits indicating
+                           // filled fields 
+    __u32 stx_blksize;     // Block size for filesystem I/O 
+    __u64 stx_attributes;  // Extra file attribute indicators 
+    __u32 stx_nlink;       // Number of hard links 
+    __u32 stx_uid;         // User ID of owner 
+    __u32 stx_gid;         // Group ID of owner 
+    __u16 stx_mode;        // File type and mode 
+    __u64 stx_ino;         // Inode number 
+    __u64 stx_size;        // Total size in bytes 
+    __u64 stx_blocks;      // Number of 512B blocks allocated 
+    __u64 stx_attributes_mask;
+    // Mask to show what's supported
+    // in stx_attributes 
+
+       // The following fields are file timestamps
+    struct statx_timestamp stx_atime;  // Last access
+    struct statx_timestamp stx_btime;  // Creation
+    struct statx_timestamp stx_ctime;  // Last status change
+    struct statx_timestamp stx_mtime;  // Last modification
+
+    // If this file represents a device, then the next two
+    // fields contain the ID of the device
+    __u32 stx_rdev_major;  // Major ID
+    __u32 stx_rdev_minor;  // Minor ID
+
+    // The next two fields contain the ID of the device
+    // containing the filesystem where the file resides 
+    __u32 stx_dev_major;   // Major ID 
+    __u32 stx_dev_minor;   // Minor ID 
+
+    __u64 stx_mnt_id;      // Mount ID 
+
+    // Direct I/O alignment restrictions 
+    __u32 stx_dio_mem_align;
+    __u32 stx_dio_offset_align;
+};
+
+#define STATX_TYPE		0x00000001U	// Want/got stx_mode & S_IFMT
+#define STATX_MODE		0x00000002U	// Want/got stx_mode & ~S_IFMT
+#define STATX_NLINK		0x00000004U	// Want/got stx_nlink
+#define STATX_UID		0x00000008U	// Want/got stx_uid
+#define STATX_GID		0x00000010U	// Want/got stx_gid
+#define STATX_ATIME		0x00000020U	// Want/got stx_atime
+#define STATX_MTIME		0x00000040U	// Want/got stx_mtime
+#define STATX_CTIME		0x00000080U	// Want/got stx_ctime
+#define STATX_INO		0x00000100U	// Want/got stx_ino
+#define STATX_SIZE		0x00000200U	// Want/got stx_size
+#define STATX_BLOCKS		0x00000400U	// Want/got stx_blocks
+#define STATX_BASIC_STATS	0x000007ffU	// The stuff in the normal stat struct 
+#define STATX_BTIME		0x00000800U	// Want/got stx_btime 
+#define STATX_MNT_ID		0x00001000U	// Got stx_mnt_id 
+#define STATX_DIOALIGN		0x00002000U	// Want/got direct I/O alignment info 
+
+*/
+U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
+    BString dir;
+    U32 result = 0;
+
+    if (path.endsWith("/") || (flags & K_AT_EMPTY_PATH)) {
+        result = getCurrentDirectoryFromDirFD(dirfd, dir);
+        if (result == 0 && (flags & K_AT_EMPTY_PATH)) {
+            path = dir;
+            dir = BString::empty;
+        }
+    }
+    if (result)
+        return result;
+    bool isLink = false;
+
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0, &isLink);
+    if (!node) {
+        return -K_ENOENT;
+    }
+
+    U64 len = node->length();
+    U32 mode = node->getMode();
+    if (node->isLink() || isLink) {
+        mode |= K__S_IFLNK;
+    }
+    U64 t = node->lastModified();
+    U64 seconds = t / 1000;
+    U32 n = (U32)(t % 1000) * 1000000;
+
+    // 0x00
+    memory->writed(buf, 0xfff); buf += 4; // stx_mask
+    memory->writed(buf, 512); buf += 4; // stx_blksize
+    memory->writeq(buf, 0); buf += 8; // stx_attributes
+    // 0x10
+    memory->writed(buf, node->getHardLinkCount()); buf += 4; // stx_nlink
+    memory->writed(buf, userId); buf += 4; // stx_uid
+    memory->writed(buf, groupId); buf += 4; // stx_gid
+    memory->writew(buf, mode); buf += 2; // stx_mode
+    memory->writew(buf, 0); buf += 2; // 
+    // 0x20
+    memory->writeq(buf, node->id); buf += 8; // stx_ino
+    memory->writeq(buf, len); buf += 8; // stx_size
+    memory->writeq(buf, (len+511)/512); buf += 8; // stx_blocks
+    memory->writeq(buf, 0); buf += 8; // stx_attributes_mask
+    // 0x40
+    memory->writeq(buf, seconds); buf += 8; // stx_atime
+    memory->writed(buf, n); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_btime
+    memory->writed(buf, n); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_ctime
+    memory->writed(buf, n); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_mtime
+    memory->writed(buf, n); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    // 0x80
+    memory->writed(buf, node->rdev); buf += 4; // stx_rdev_major
+    memory->writed(buf, 0); buf += 4; // stx_rdev_minor
+    memory->writed(buf, 1); buf += 4; // stx_dev_major
+    memory->writed(buf, 0); buf += 4; // stx_dev_minor
+    // 0x90
+    memory->writeq(buf, 1); buf += 8; // stx_mnt_id
+    memory->writed(buf, 0); buf += 4; // stx_dio_mem_align
+    memory->writed(buf, 0);           // stx_dio_offset_align
+    return 0;
+}
+
 U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
     BString dir;
     U32 result = 0;
@@ -2124,11 +2260,12 @@ U32 KProcess::fstatat64(FD dirfd, BString path, U32 buf, U32 flag) {
         return -K_ENOENT;
     }
 
-    U64 len = node->length();;
+    U64 len = node->length();
     U32 mode = node->getMode();
     if (node->isLink() || isLink) {
         mode|=K__S_IFLNK;
     }
+    
     KSystem::writeStat(this, path, buf, true, 1, node->id, mode, node->rdev, len, 4096, (len + 4095) / 4096, node->lastModified(), node->getHardLinkCount());
     return 0;    
 }

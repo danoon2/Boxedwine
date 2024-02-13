@@ -714,6 +714,13 @@ static U32 syscall_newselect(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_pselect6(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_PROCESS, cpu, "newselect: nfd=%d readfds=%X writefds=%X errorfds=%X timeout=%d sigmask=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    U32 result = kselect(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_flock(CPU* cpu, U32 eipCount) {    
 #ifdef _DEBUG
     klog("flock not implemented");
@@ -909,7 +916,15 @@ static U32 syscall_ftruncate64(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-static U32 syscall_stat64(CPU* cpu, U32 eipCount) {    
+static U32 syscall_statx(CPU* cpu, U32 eipCount) {
+    BString path = cpu->memory->readString(ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "statx: dirfd=%d path=%s flags=%x mask=%x statxbuf=%x", ARG1, path.c_str(), ARG3, ARG4, ARG5);
+    U32 result = cpu->thread->process->statx(ARG1, path, ARG3, ARG4, ARG5);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_stat64(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
     SYS_LOG1(SYSCALL_FILE, cpu, "stat64: path=%s buf=%X", path.c_str(), ARG2);
     U32 result = cpu->thread->process->stat64(path, ARG2);
@@ -1890,7 +1905,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_readlinkat, // 305 __NR_readlinkat
     syscall_fchmodat,   // 306 __NR_fchmodat
     syscall_faccessat,  // 307 __NR_faccessat
-    nullptr,                  // 308
+    syscall_pselect6,   // 308 __NR_pselect6
     nullptr,                  // 309
     nullptr,                  // 310
     syscall_set_robust_list, // 311 __NR_set_robust_list
@@ -1965,10 +1980,10 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 380
     nullptr,                  // 381
     nullptr,                  // 382
-    nullptr,                  // 383 statx
+    syscall_statx,            // 383 __NR_statx
     nullptr,                  // 384
     nullptr,                  // 385
-    nullptr,                  // 386
+    nullptr,                  // 386 __NR_rseq
     nullptr,                  // 387
     nullptr,                  // 388
     nullptr,                  // 389
@@ -1994,7 +2009,34 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 409
     nullptr,                  // 410
     nullptr,                  // 411
-    syscall_utimensat_time64 // 412
+    syscall_utimensat_time64, // 412
+    nullptr,                  // 413
+    nullptr,                  // 414
+    nullptr,                  // 415
+    nullptr,                  // 416
+    nullptr,                  // 417
+    nullptr,                  // 418
+    nullptr,                  // 419
+    nullptr,                  // 420
+    nullptr,                  // 421
+    nullptr,                  // 422
+    nullptr,                  // 423
+    nullptr,                  // 424
+    nullptr,                  // 425
+    nullptr,                  // 426
+    nullptr,                  // 427
+    nullptr,                  // 428
+    nullptr,                  // 429
+    nullptr,                  // 430
+    nullptr,                  // 431
+    nullptr,                  // 432
+    nullptr,                  // 433
+    nullptr,                  // 434
+    nullptr,                  // 435 __NR_clone3
+    nullptr,                  // 436
+    nullptr,                  // 437
+    nullptr,                  // 438
+    nullptr                  // 439 __NR_faccessat2
 };
 
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -2016,7 +2058,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
             return;
         }
     }
-    if (EAX>412) {
+    if (EAX>439) {
         result = -K_ENOSYS;
         kdebug("no syscall for %d", EAX);
     } else if (!syscallFunc[EAX]) {

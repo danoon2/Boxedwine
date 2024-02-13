@@ -149,7 +149,8 @@ public:
     U32 fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg);
     U32 fstat64(FD handle, U32 buf);
     U32 fstatat64(FD dirfd, BString path, U32 buf, U32 flag);
-    U32 fstatfs64(FD fildes, U32 address);    
+    U32 fstatfs64(FD fildes, U32 address);
+    U32 statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf);
     U32 ftruncate64(FD fildes, U64 length);
     U32 getcwd(U32 buffer, U32 size);
     U32 getdents(FD fildes, U32 dirp, U32 count, bool is64);
