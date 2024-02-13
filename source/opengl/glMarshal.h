@@ -24,11 +24,14 @@ void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
             for (U32 i = 0; i < count; i++) {
                 if constexpr (writeSize == 4) {
                     if constexpr (sizeof(T) == 8) {
-                        if (buffer[i] & 0xFFFFFFFF00000000) {
+                        if ((U64)(buffer[i]) & 0xFFFFFFFF00000000) {
                             kpanic("oops");
                         }
+                        cpu->memory->writed(address, (U32)(U64)buffer[i]);
+                    } else {
+                        cpu->memory->writed(address, buffer[i]);
                     }
-                    cpu->memory->writed(address, buffer[i]);
+                    
                     address += 4;
                 } else if constexpr (writeSize == 2) {
                     cpu->memory->writew(address, buffer[i]);
@@ -111,7 +114,7 @@ T* marshalArray(CPU* cpu, U32 address, U32 count) {
     } else {
         for (U32 i = 0; i < count; i++) {
             if constexpr (readSize == 4) {
-                buffer[index][i] = cpu->memory->readd(address);
+                buffer[index][i] = (T)cpu->memory->readd(address);
                 address += 4;
             } else if constexpr (readSize == 2) {
                 buffer[index][i] = cpu->memory->readw(address);
@@ -254,13 +257,8 @@ inline GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count) {
 }
 
 // GLhandleARB is a U32 on Win32, but on Mac it is a void*
-inline GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
-    return marshalArray<GLhandleARB, 4>(cpu, address, count);
-}
-
-inline void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
-    marshalBackArray<GLhandleARB, 4>(cpu, buffer, address, count);
-}
+GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count);
+void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count);
 
 GLsync marshalSync(CPU* cpu, U32 sync);
 U32 marshalBackSync(CPU* cpu, GLsync sync);
