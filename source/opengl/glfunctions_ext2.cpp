@@ -2177,7 +2177,7 @@ void glcommon_glMultTransposeMatrixd(CPU* cpu) {
     if (!ext_glMultTransposeMatrixd)
         kpanic("ext_glMultTransposeMatrixd is NULL");
     {
-    GL_FUNC(ext_glMultTransposeMatrixd)(marshald(cpu, ARG1, 16));
+    GL_FUNC(ext_glMultTransposeMatrixd)(marshalArray<GLdouble>(cpu, ARG1, 16));
     GL_LOG ("glMultTransposeMatrixd const GLdouble* m=%.08x",ARG1);
     }
 }
@@ -2185,7 +2185,7 @@ void glcommon_glMultTransposeMatrixdARB(CPU* cpu) {
     if (!ext_glMultTransposeMatrixdARB)
         kpanic("ext_glMultTransposeMatrixdARB is NULL");
     {
-    GL_FUNC(ext_glMultTransposeMatrixdARB)(marshald(cpu, ARG1, 16));
+    GL_FUNC(ext_glMultTransposeMatrixdARB)(marshalArray<GLdouble>(cpu, ARG1, 16));
     GL_LOG ("glMultTransposeMatrixdARB const GLdouble* m=%.08x",ARG1);
     }
 }
@@ -2193,7 +2193,7 @@ void glcommon_glMultTransposeMatrixf(CPU* cpu) {
     if (!ext_glMultTransposeMatrixf)
         kpanic("ext_glMultTransposeMatrixf is NULL");
     {
-    GL_FUNC(ext_glMultTransposeMatrixf)(marshalf(cpu, ARG1, 16));
+    GL_FUNC(ext_glMultTransposeMatrixf)(marshalArray<GLfloat>(cpu, ARG1, 16));
     GL_LOG ("glMultTransposeMatrixf const GLfloat* m=%.08x",ARG1);
     }
 }
@@ -2201,7 +2201,7 @@ void glcommon_glMultTransposeMatrixfARB(CPU* cpu) {
     if (!ext_glMultTransposeMatrixfARB)
         kpanic("ext_glMultTransposeMatrixfARB is NULL");
     {
-    GL_FUNC(ext_glMultTransposeMatrixfARB)(marshalf(cpu, ARG1, 16));
+    GL_FUNC(ext_glMultTransposeMatrixfARB)(marshalArray<GLfloat>(cpu, ARG1, 16));
     GL_LOG ("glMultTransposeMatrixfARB const GLfloat* m=%.08x",ARG1);
     }
 }
@@ -4577,7 +4577,7 @@ void glcommon_glPointParameterfv(CPU* cpu) {
     if (!ext_glPointParameterfv)
         kpanic("ext_glPointParameterfv is NULL");
     {
-    GL_FUNC(ext_glPointParameterfv)(ARG1, marshalf(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
+    GL_FUNC(ext_glPointParameterfv)(ARG1, marshalArray<GLfloat>(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
     GL_LOG ("glPointParameterfv GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
@@ -4585,7 +4585,7 @@ void glcommon_glPointParameterfvARB(CPU* cpu) {
     if (!ext_glPointParameterfvARB)
         kpanic("ext_glPointParameterfvARB is NULL");
     {
-    GL_FUNC(ext_glPointParameterfvARB)(ARG1, marshalf(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
+    GL_FUNC(ext_glPointParameterfvARB)(ARG1, marshalArray<GLfloat>(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
     GL_LOG ("glPointParameterfvARB GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
@@ -4593,7 +4593,7 @@ void glcommon_glPointParameterfvEXT(CPU* cpu) {
     if (!ext_glPointParameterfvEXT)
         kpanic("ext_glPointParameterfvEXT is NULL");
     {
-    GL_FUNC(ext_glPointParameterfvEXT)(ARG1, marshalf(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
+    GL_FUNC(ext_glPointParameterfvEXT)(ARG1, marshalArray<GLfloat>(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
     GL_LOG ("glPointParameterfvEXT GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
@@ -4601,7 +4601,7 @@ void glcommon_glPointParameterfvSGIS(CPU* cpu) {
     if (!ext_glPointParameterfvSGIS)
         kpanic("ext_glPointParameterfvSGIS is NULL");
     {
-    GL_FUNC(ext_glPointParameterfvSGIS)(ARG1, marshalf(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
+    GL_FUNC(ext_glPointParameterfvSGIS)(ARG1, marshalArray<GLfloat>(cpu, ARG2, ARG1==GL_POINT_DISTANCE_ATTENUATION?3:1));
     GL_LOG ("glPointParameterfvSGIS GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
@@ -6809,7 +6809,7 @@ void glcommon_glSamplerParameterfv(CPU* cpu) {
     if (!ext_glSamplerParameterfv)
         kpanic("ext_glSamplerParameterfv is NULL");
     {
-    GL_FUNC(ext_glSamplerParameterfv)(ARG1, ARG2, marshalf(cpu, ARG3, (ARG2==GL_TEXTURE_BORDER_COLOR)?4:1));
+    GL_FUNC(ext_glSamplerParameterfv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, (ARG2==GL_TEXTURE_BORDER_COLOR)?4:1));
     GL_LOG ("glSamplerParameterfv GLuint sampler=%d, GLenum pname=%d, const GLfloat* param=%.08x",ARG1,ARG2,ARG3);
     }
 }

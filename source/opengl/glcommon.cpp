@@ -47,49 +47,6 @@ double dARG(CPU* cpu, int address) {
     return i.d;
 }
 
-// GLintptr is 32-bit in the emulator, on the host it depends on void* size
-GLintptr* bufferip;
-U32 bufferip_len;
-
-GLintptr* marshalip(CPU* cpu, U32 address, U32 count) {
-    if (!address)
-        return nullptr;
-    if (bufferip && bufferip_len<count) {
-        delete[] bufferip;
-        bufferip=nullptr;
-    }
-    if (!bufferip) {
-        bufferip = new GLintptr[count];
-        bufferip_len = count;
-    }
-    for (U32 i=0;i<count;i++) {
-        bufferip[i] = (GLintptr)cpu->memory->readd(address);
-        address+=4;
-    }
-    return bufferip;
-}
-
-GLintptr* buffer2ip;
-U32 buffer2ip_len;
-
-GLintptr* marshal2ip(CPU* cpu, U32 address, U32 count) {
-    if (!address)
-        return nullptr;
-    if (buffer2ip && buffer2ip_len<count) {
-        delete[] buffer2ip;
-        buffer2ip= nullptr;
-    }
-    if (!buffer2ip) {
-        buffer2ip = new GLintptr[count];
-        buffer2ip_len = count;
-    }
-    for (U32 i=0;i<count;i++) {
-        buffer2ip[i] = (GLintptr)cpu->memory->readd(address);
-        address+=4;
-    }
-    return buffer2ip;
-}
-
 #ifndef DISABLE_GL_EXTENSIONS
 static const char* extentions[] = {
 #include "glfunctions_ext_def.h"
@@ -163,7 +120,7 @@ void glcommon_glRenderMode(CPU* cpu) {
     EAX = GL_FUNC(pglRenderMode)(mode);
     // could be -1
     if (EAX < (U32)feedbackBufferSize) {
-        marshalBackf(cpu, feedbackBufferAddress, feedbackBuffer, EAX);
+        marshalBackArray<GLfloat>(cpu, feedbackBuffer, feedbackBufferAddress, EAX);
     }
 }
 
@@ -250,7 +207,7 @@ void glcommon_glGetString(CPU* cpu) {
     }
     U32 len = (U32)strlen(result) + 1;
     U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
-    cpu->memory->memcpy(address, (void*)result, len + 1);
+    cpu->memory->memcpy(address, (void*)result, len);
     cpu->thread->process->glStringsiExtensions = address;
 
     process->glStrings.set(name, address);
@@ -266,20 +223,10 @@ void glcommon_glGetTexImage(CPU* cpu) {
     GLenum format = ARG3;
     GLenum type = ARG4;
 
-    GLvoid* pixels = nullptr;
-    GLboolean b = PIXEL_PACK_BUFFER();
-
-    //GL_LOG("glGetTexImage GLenum target=%d, GLint level=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5);
-    if (b) {
-        pixels = (GLvoid*)pARG5;
-    } else {
-        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
-        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
-        pixels = marshalPixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG5);
-    }
-    GL_FUNC(pglGetTexImage)(target, level, format, type, pixels);
-    if (!b)
-        marshalBackPixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG5, pixels);
+    GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
+    GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
+    MarshalReadWritePackedPixels pixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG5);
+    GL_FUNC(pglGetTexImage)(target, level, format, type, pixels.getPtr());
 }
 
 U32 isMap2(GLenum target) {
@@ -307,7 +254,6 @@ void glcommon_glGetMapdv(CPU* cpu) {
 
     switch (query) {
     case GL_COEFF: {
-        GLdouble* buffer=nullptr;
         GLint order[2] = {};
         int count=0;
 
@@ -317,21 +263,18 @@ void glcommon_glGetMapdv(CPU* cpu) {
         } else {
             count = order[0];
         }
-        buffer = marshald(cpu, ARG3, count);
-        GL_FUNC(pglGetMapdv)(target, query, buffer);
-        marshalBackd(cpu, ARG3, buffer, count);
+        MarshalReadWrite<GLdouble> buffer(cpu, ARG3, count);
+        GL_FUNC(pglGetMapdv)(target, query, buffer.getPtr());
         break;
     }
     case GL_ORDER: {
-        GLdouble buffer[2] = {};
-        GL_FUNC(pglGetMapdv)(target, query, buffer);
-        marshalBackd(cpu, ARG3, buffer, isMap2(target)?2:1);
+        MarshalReadWrite<GLdouble> buffer(cpu, ARG3, isMap2(target) ? 2 : 1);
+        GL_FUNC(pglGetMapdv)(target, query, buffer.getPtr());
         break;
     }
     case GL_DOMAIN: {
-        GLdouble buffer[4] = {};
-        GL_FUNC(pglGetMapdv)(target, query, buffer);
-        marshalBackd(cpu, ARG3, buffer, isMap2(target)?4:2);
+        MarshalReadWrite<GLdouble> buffer(cpu, ARG3, isMap2(target) ? 4 : 2);
+        GL_FUNC(pglGetMapdv)(target, query, buffer.getPtr());
         break;
     }
     default:
@@ -347,7 +290,6 @@ void glcommon_glGetMapfv(CPU* cpu) {
     GL_LOG("glGetMapfv GLenum target=%d, GLenum query=%d, GLfloat *v=%.08x", ARG1, ARG2, ARG3);
     switch (query) {
     case GL_COEFF: {
-        GLfloat* buffer = nullptr;
         GLint order[2] = {};
         int count = 0;
 
@@ -357,21 +299,18 @@ void glcommon_glGetMapfv(CPU* cpu) {
         } else {
             count = order[0];
         }
-        buffer = marshalf(cpu, ARG3, count);
-        GL_FUNC(pglGetMapfv)(target, query, buffer);
-        marshalBackf(cpu, ARG3, buffer, count);
+        MarshalReadWrite<GLfloat> buffer(cpu, ARG3, count);
+        GL_FUNC(pglGetMapfv)(target, query, buffer.getPtr());
         break;
     }
     case GL_ORDER: {
-        GLfloat buffer[2] = {};
-        GL_FUNC(pglGetMapfv)(target, query, buffer);
-        marshalBackf(cpu, ARG3, buffer, isMap2(target)?2:1);
+        MarshalReadWrite<GLfloat> buffer(cpu, ARG3, isMap2(target) ? 2 : 1);
+        GL_FUNC(pglGetMapfv)(target, query, buffer.getPtr());
         break;
     }
     case GL_DOMAIN: {
-        GLfloat buffer[4] = {};
-        GL_FUNC(pglGetMapfv)(target, query, buffer);
-        marshalBackf(cpu, ARG3, buffer, isMap2(target)?4:2);
+        MarshalReadWrite<GLfloat> buffer(cpu, ARG3, isMap2(target) ? 4 : 2);
+        GL_FUNC(pglGetMapfv)(target, query, buffer.getPtr());
         break;
     }
     default:
@@ -439,22 +378,15 @@ void glcommon_glInterleavedArrays(CPU* cpu) {
 
 // GLAPI void APIENTRY glReadPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *pixels ) {
 void glcommon_glReadPixels(CPU* cpu) {
-    GLvoid* pixels = nullptr;
     GLsizei width = ARG3;
     GLsizei height = ARG4;
     GLenum format = ARG5;
     GLenum type = ARG6;
-    GLboolean b = PIXEL_PACK_BUFFER();
 
     GL_LOG("glReadPixels GLint x=%d, GLint y=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 
-    if (b)
-        pixels = (GLvoid*)pARG7;
-    else
-        pixels = marshalPixels(cpu, 0, width, height, 1, format, type, ARG7);
-    GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, pixels);
-    if (!b)
-        marshalBackPixels(cpu, 0, width, height, 1, format, type, ARG7, pixels);
+    MarshalReadWritePackedPixels pixels(cpu, 0, width, height, 1, format, type, ARG7);
+    GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, pixels.getPtr());
 }
 
 void OPENGL_CALL_TYPE debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {

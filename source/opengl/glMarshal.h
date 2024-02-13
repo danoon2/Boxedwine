@@ -4,22 +4,36 @@
 template <typename T, U32 writeSize = sizeof(T)>
 void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
     if (address) {
-        if constexpr (writeSize == 1) {
+        if constexpr (std::is_same_v<GLfloat, T>) {
+            int2Float f2i;
+            for (U32 i = 0; i < count; i++) {
+                f2i.f = buffer[i];
+                cpu->memory->writed(address, f2i.i);
+                address += 4;
+            }
+        } else if constexpr (std::is_same_v<GLdouble, T>) {
+            long2Double d2l;
+            for (U32 i = 0; i < count; i++) {
+                d2l.d = buffer[i];
+                cpu->memory->writeq(address, d2l.l);
+                address += 8;
+            }
+        } else if constexpr (writeSize == 1) {
             cpu->memory->memcpy(address, buffer, count);
         } else {
             for (U32 i = 0; i < count; i++) {
                 if constexpr (writeSize == 4) {
+                    if constexpr (sizeof(T) == 8) {
+                        if (buffer[i] & 0xFFFFFFFF00000000) {
+                            kpanic("oops");
+                        }
+                    }
                     cpu->memory->writed(address, buffer[i]);
                     address += 4;
                 } else if constexpr (writeSize == 2) {
                     cpu->memory->writew(address, buffer[i]);
                     address += 2;
-                } else if constexpr (writeSize == 8) {
-                    if constexpr (sizeof(T) != writeSize) {
-                        if (buffer[i] & 0xFFFFFFFF00000000) {
-                            kpanic("oops");
-                        }
-                    }
+                } else if constexpr (writeSize == 8) {                    
                     cpu->memory->writeq(address, buffer[i]);
                     address += 8;
                 }
@@ -30,9 +44,9 @@ void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
 
 template <typename T, U32 readSize = sizeof(T)>
 T* marshalArray(CPU* cpu, U32 address, U32 count) {
-    static T** buffer;
-    static U32* bufferLen;
-    static U32 indexCount;
+    thread_local static T** buffer;
+    thread_local static U32* bufferLen;
+    thread_local static U32 indexCount;
 
     U32 index = cpu->thread->marshalIndex++;
     if (!address) {
@@ -78,7 +92,21 @@ T* marshalArray(CPU* cpu, U32 address, U32 count) {
         buffer[index] = new T[count];
         bufferLen[index] = count;
     }
-    if constexpr (readSize == 1) {
+    if constexpr (std::is_same_v<GLfloat, T>) {
+        int2Float i2f;
+        for (U32 i = 0; i < count; i++) {
+            i2f.i = cpu->memory->readd(address);
+            buffer[index][i] = i2f.f;
+            address += 4;
+        }
+    } else if constexpr (std::is_same_v<GLdouble, T>) {
+        long2Double l2d;
+        for (U32 i = 0; i < count; i++) {
+            l2d.l = cpu->memory->readq(address);
+            buffer[index][i] = l2d.d;
+            address += 8;
+        }
+    } else if constexpr (readSize == 1) {
         cpu->memory->memcpy(buffer[index], address, count);
     } else {
         for (U32 i = 0; i < count; i++) {
@@ -127,47 +155,57 @@ public:
     }
 };
 
-GLfloat* marshalf(CPU* cpu, U32 address, U32 count);
-GLfloat* marshal2f(CPU* cpu, U32 address, U32 count);
-GLfloat* marshal3f(CPU* cpu, U32 address, U32 count);
-GLfloat* marshal4f(CPU* cpu, U32 address, U32 count);
-void marshalBackf(CPU* cpu, U32 address, GLfloat* buffer, U32 count);
-
-class MarshalReadWriteFloat {
+class MarshalReadWriteType {
     CPU* cpu = nullptr;
     U32 address = 0;
     U32 count = 0;
-    GLfloat* buffer = nullptr;
+    U32 type = 0;
+    GLvoid* buffer = nullptr;
 public:
-    MarshalReadWriteFloat(CPU* cpu, U32 address, U32 count) : cpu(cpu), address(address), count(count) {
+    MarshalReadWriteType(CPU* cpu, U32 type, U32 address, U32 count) : cpu(cpu), type(type), address(address), count(count) {
     }
-    ~MarshalReadWriteFloat() {
-        if (buffer) {
-            marshalBackf(cpu, address, buffer, count);
-        }
-    }
-    GLfloat* getPtr() {
-        if (!buffer) {
-            buffer = marshalf(cpu, address, count);
-        }
-        return buffer;
-    }
+    ~MarshalReadWriteType();
+    GLvoid* getPtr();
 };
 
-GLdouble* marshald(CPU* cpu, U32 address, U32 count);
-GLdouble* marshal2d(CPU* cpu, U32 address, U32 count);
-void marshalBackd(CPU* cpu, U32 address, GLdouble* buffer, U32 count);
+template <typename T>
+const T** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
+    thread_local static T** bufferszArray;
+    thread_local static U32 bufferszArray_len;
 
-const GLchar* marshalsz(CPU* cpu, U32 address);
-const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths);
-const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addressLengths);
+    if (!bufferszArray || bufferszArray_len < count) {
+        if (bufferszArray) {
+            delete[] bufferszArray;
+        }
+        bufferszArray = new T * [count];
+        bufferszArray_len = count;
+    }
+    for (U32 i = 0; i < count; i++) {
+        S32 len = -1;
+        U32 strAddress = cpu->memory->readd(address + i * 4);
+        if (addressLengths) {
+            len = (S32)cpu->memory->readd(addressLengths + i * 4);
+        }
+        if (len < 0) {
+            if (sizeof(T) != 1) {
+                kpanic("marshalszArray sizeof(GLchar)!=1");
+            }
+            len = cpu->memory->strlen(strAddress);
+        }
+        bufferszArray[i] = marshalArray<GLchar>(cpu, strAddress, len + 1);
+    }
+    return (const T**)bufferszArray;
+}
+
+inline const GLchar* marshalsz(CPU* cpu, U32 address) {
+    return marshalArray<GLchar>(cpu, address, cpu->memory->strlen(address) + 1);
+}
 
 // type can be GL_UNSIGNED_BYTE, GL_BYTE, GL_2_BYTES, GL_UNSIGNED_SHORT, GL_SHORT, GL_3_BYTES, 
 // GL_4_BYTES, GL_FLOAT, GL_UNSIGNED_INT, GL_INT
 //
 // base on the type, the correct marshal function will be called
 GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address);
-void marshalBackType(CPU* cpu, U32 type, U32 count, GLvoid* buffer, U32 address);
 
 // will call the correct marshal function based on the type the count passed to the marshal
 // function will be set to the correct number to include all the data for a single pixel for the format
@@ -178,7 +216,6 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel);
 // This will take into account packing, like GL_UNPACK_ROW_LENGTH, GL_UNPACK_SKIP_PIXELS, GL_UNPACK_SKIP_ROWS,
 // GL_UNPACK_ALIGNMENT, GL_PACK_SKIP_IMAGES
 GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels);
-void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 address, GLvoid* pixels);
 
 void updateVertexPointers(CPU* cpu, U32 count);
 GLvoid* marshalVetextPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
@@ -208,14 +245,22 @@ U32 marshalGetConvolutionHeight(U32 target);
 GLint components_in_format(GLenum format );
 GLsizei marshalHistogramWidth(GLenum target);
 
-GLintptr* marshalip(CPU* cpu, U32 address, U32 count);
-GLintptr* marshal2ip(CPU* cpu, U32 address, U32 count);
+inline GLintptr* marshalip(CPU* cpu, U32 address, U32 count) {
+    return marshalArray<GLintptr, 4>(cpu, address, count);
+}
 
-GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count);
+inline GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count) {
+    return marshalArray<GLsizeiptr, 4>(cpu, address, count);
+}
 
 // GLhandleARB is a U32 on Win32, but on Mac it is a void*
-GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count);
-void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count);
+inline GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
+    return marshalArray<GLhandleARB, 4>(cpu, address, count);
+}
+
+inline void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
+    marshalBackArray<GLhandleARB, 4>(cpu, buffer, address, count);
+}
 
 GLsync marshalSync(CPU* cpu, U32 sync);
 U32 marshalBackSync(CPU* cpu, GLsync sync);
@@ -324,6 +369,29 @@ public:
         }
         return buffer;
     }
+};
+
+class MarshalReadWritePackedPixels {
+    CPU* cpu = nullptr;
+    U32 is3d;
+    GLsizei width;
+    GLsizei height;
+    GLsizei depth;
+    GLenum format;
+    GLenum type;
+    U32 pixels;
+    GLvoid* buffer = nullptr;
+    bool packed = false;
+    int bytes_per_comp = 0;
+    int isSigned = 0;
+    U32 len = 0;
+public:
+    MarshalReadWritePackedPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels) : cpu(cpu), is3d(is3d), width(width), height(height), depth(depth), format(format), type(type), pixels(pixels) {
+        packed = PIXEL_PACK_BUFFER();
+    }
+
+    ~MarshalReadWritePackedPixels();
+    GLvoid* getPtr();
 };
 
 #endif

@@ -700,7 +700,7 @@ void glcommon_glBinormal3dvEXT(CPU* cpu) {
     if (!ext_glBinormal3dvEXT)
         kpanic("ext_glBinormal3dvEXT is NULL");
     {
-    GL_FUNC(ext_glBinormal3dvEXT)(marshald(cpu, ARG1, 3));
+    GL_FUNC(ext_glBinormal3dvEXT)(marshalArray<GLdouble>(cpu, ARG1, 3));
     GL_LOG ("glBinormal3dvEXT const GLdouble* v=%.08x",ARG1);
     }
 }
@@ -716,7 +716,7 @@ void glcommon_glBinormal3fvEXT(CPU* cpu) {
     if (!ext_glBinormal3fvEXT)
         kpanic("ext_glBinormal3fvEXT is NULL");
     {
-    GL_FUNC(ext_glBinormal3fvEXT)(marshalf(cpu, ARG1, 3));
+    GL_FUNC(ext_glBinormal3fvEXT)(marshalArray<GLfloat>(cpu, ARG1, 3));
     GL_LOG ("glBinormal3fvEXT const GLfloat* v=%.08x",ARG1);
     }
 }
@@ -1156,7 +1156,7 @@ void glcommon_glClearBufferfv(CPU* cpu) {
     if (!ext_glClearBufferfv)
         kpanic("ext_glClearBufferfv is NULL");
     {
-    GL_FUNC(ext_glClearBufferfv)(ARG1, ARG2, marshalf(cpu, ARG3, 4));
+    GL_FUNC(ext_glClearBufferfv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, 4));
     GL_LOG ("glClearBufferfv GLenum buffer=%d, GLint drawbuffer=%d, const GLfloat* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -1276,7 +1276,7 @@ void glcommon_glClearNamedFramebufferfv(CPU* cpu) {
     if (!ext_glClearNamedFramebufferfv)
         kpanic("ext_glClearNamedFramebufferfv is NULL");
     {
-    GL_FUNC(ext_glClearNamedFramebufferfv)(ARG1, ARG2, ARG3, marshalf(cpu, ARG4, 4));
+    GL_FUNC(ext_glClearNamedFramebufferfv)(ARG1, ARG2, ARG3, marshalArray<GLfloat>(cpu, ARG4, 4));
     GL_LOG ("glClearNamedFramebufferfv GLuint framebuffer=%d, GLenum buffer=%d, GLint drawbuffer=%d, const GLfloat* value=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -1364,7 +1364,7 @@ void glcommon_glClipPlanefOES(CPU* cpu) {
     if (!ext_glClipPlanefOES)
         kpanic("ext_glClipPlanefOES is NULL");
     {
-    GL_FUNC(ext_glClipPlanefOES)(ARG1, marshalf(cpu, ARG2, 4));
+    GL_FUNC(ext_glClipPlanefOES)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 4));
     GL_LOG ("glClipPlanefOES GLenum plane=%d, const GLfloat* equation=%.08x",ARG1,ARG2);
     }
 }
@@ -1388,7 +1388,7 @@ void glcommon_glColor3fVertex3fvSUN(CPU* cpu) {
     if (!ext_glColor3fVertex3fvSUN)
         kpanic("ext_glColor3fVertex3fvSUN is NULL");
     {
-    GL_FUNC(ext_glColor3fVertex3fvSUN)(marshalf(cpu, ARG1, 3), marshal2f(cpu, ARG2, 3));
+    GL_FUNC(ext_glColor3fVertex3fvSUN)(marshalArray<GLfloat>(cpu, ARG1, 3), marshalArray<GLfloat>(cpu, ARG2, 3));
     GL_LOG ("glColor3fVertex3fvSUN const GLfloat* c=%.08x, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -1436,7 +1436,7 @@ void glcommon_glColor4fNormal3fVertex3fvSUN(CPU* cpu) {
     if (!ext_glColor4fNormal3fVertex3fvSUN)
         kpanic("ext_glColor4fNormal3fVertex3fvSUN is NULL");
     {
-    GL_FUNC(ext_glColor4fNormal3fVertex3fvSUN)(marshalf(cpu, ARG1, 4), marshal2f(cpu, ARG2, 3), marshal3f(cpu, ARG3, 3));
+    GL_FUNC(ext_glColor4fNormal3fVertex3fvSUN)(marshalArray<GLfloat>(cpu, ARG1, 4), marshalArray<GLfloat>(cpu, ARG2, 3), marshalArray<GLfloat>(cpu, ARG3, 3));
     GL_LOG ("glColor4fNormal3fVertex3fvSUN const GLfloat* c=%.08x, const GLfloat* n=%.08x, const GLfloat* v=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -1468,7 +1468,7 @@ void glcommon_glColor4ubVertex2fvSUN(CPU* cpu) {
     if (!ext_glColor4ubVertex2fvSUN)
         kpanic("ext_glColor4ubVertex2fvSUN is NULL");
     {
-    GL_FUNC(ext_glColor4ubVertex2fvSUN)(marshalArray<GLubyte>(cpu, ARG1, 4), marshalf(cpu, ARG2, 2));
+    GL_FUNC(ext_glColor4ubVertex2fvSUN)(marshalArray<GLubyte>(cpu, ARG1, 4), marshalArray<GLfloat>(cpu, ARG2, 2));
     GL_LOG ("glColor4ubVertex2fvSUN const GLubyte* c=%.08x, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -1484,7 +1484,7 @@ void glcommon_glColor4ubVertex3fvSUN(CPU* cpu) {
     if (!ext_glColor4ubVertex3fvSUN)
         kpanic("ext_glColor4ubVertex3fvSUN is NULL");
     {
-    GL_FUNC(ext_glColor4ubVertex3fvSUN)(marshalArray<GLubyte>(cpu, ARG1, 4), marshalf(cpu, ARG2, 3));
+    GL_FUNC(ext_glColor4ubVertex3fvSUN)(marshalArray<GLubyte>(cpu, ARG1, 4), marshalArray<GLfloat>(cpu, ARG2, 3));
     GL_LOG ("glColor4ubVertex3fvSUN const GLubyte* c=%.08x, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -1644,7 +1644,7 @@ void glcommon_glColorTableParameterfv(CPU* cpu) {
     if (!ext_glColorTableParameterfv)
         kpanic("ext_glColorTableParameterfv is NULL");
     {
-    GL_FUNC(ext_glColorTableParameterfv)(ARG1, ARG2, marshalf(cpu, ARG3, 4));
+    GL_FUNC(ext_glColorTableParameterfv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, 4));
     GL_LOG ("glColorTableParameterfv GLenum target=%d, GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -1652,7 +1652,7 @@ void glcommon_glColorTableParameterfvSGI(CPU* cpu) {
     if (!ext_glColorTableParameterfvSGI)
         kpanic("ext_glColorTableParameterfvSGI is NULL");
     {
-    GL_FUNC(ext_glColorTableParameterfvSGI)(ARG1, ARG2, marshalf(cpu, ARG3, 4));
+    GL_FUNC(ext_glColorTableParameterfvSGI)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, 4));
     GL_LOG ("glColorTableParameterfvSGI GLenum target=%d, GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -1708,7 +1708,7 @@ void glcommon_glCombinerParameterfvNV(CPU* cpu) {
     if (!ext_glCombinerParameterfvNV)
         kpanic("ext_glCombinerParameterfvNV is NULL");
     {
-    GL_FUNC(ext_glCombinerParameterfvNV)(ARG1, marshalf(cpu, ARG2, 4));
+    GL_FUNC(ext_glCombinerParameterfvNV)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 4));
     GL_LOG ("glCombinerParameterfvNV GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
@@ -1732,7 +1732,7 @@ void glcommon_glCombinerStageParameterfvNV(CPU* cpu) {
     if (!ext_glCombinerStageParameterfvNV)
         kpanic("ext_glCombinerStageParameterfvNV is NULL");
     {
-    GL_FUNC(ext_glCombinerStageParameterfvNV)(ARG1, ARG2, marshalf(cpu, ARG3, 4));
+    GL_FUNC(ext_glCombinerStageParameterfvNV)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, 4));
     GL_LOG ("glCombinerStageParameterfvNV GLenum stage=%d, GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2052,7 +2052,7 @@ void glcommon_glConvolutionParameterfv(CPU* cpu) {
     if (!ext_glConvolutionParameterfv)
         kpanic("ext_glConvolutionParameterfv is NULL");
     {
-    GL_FUNC(ext_glConvolutionParameterfv)(ARG1, ARG2, marshalf(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_MODE)?1:4));
+    GL_FUNC(ext_glConvolutionParameterfv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_MODE)?1:4));
     GL_LOG ("glConvolutionParameterfv GLenum target=%d, GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2060,7 +2060,7 @@ void glcommon_glConvolutionParameterfvEXT(CPU* cpu) {
     if (!ext_glConvolutionParameterfvEXT)
         kpanic("ext_glConvolutionParameterfvEXT is NULL");
     {
-    GL_FUNC(ext_glConvolutionParameterfvEXT)(ARG1, ARG2, marshalf(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_MODE_EXT)?1:4));
+    GL_FUNC(ext_glConvolutionParameterfvEXT)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_MODE_EXT)?1:4));
     GL_LOG ("glConvolutionParameterfvEXT GLenum target=%d, GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2372,7 +2372,7 @@ void glcommon_glCoverFillPathInstancedNV(CPU* cpu) {
     if (!ext_glCoverFillPathInstancedNV)
         kpanic("ext_glCoverFillPathInstancedNV is NULL");
     {
-    GL_FUNC(ext_glCoverFillPathInstancedNV)(ARG1, ARG2, marshalType(cpu, ARG2, ARG1, ARG3), ARG4, ARG5, ARG6, marshalf(cpu, ARG7, floatPerTransformList(ARG6)*ARG1));
+    GL_FUNC(ext_glCoverFillPathInstancedNV)(ARG1, ARG2, marshalType(cpu, ARG2, ARG1, ARG3), ARG4, ARG5, ARG6, marshalArray<GLfloat>(cpu, ARG7, floatPerTransformList(ARG6)*ARG1));
     GL_LOG ("glCoverFillPathInstancedNV GLsizei numPaths=%d, GLenum pathNameType=%d, const void* paths=%.08x, GLuint pathBase=%d, GLenum coverMode=%d, GLenum transformType=%d, const GLfloat* transformValues=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7);
     }
 }
@@ -2388,7 +2388,7 @@ void glcommon_glCoverStrokePathInstancedNV(CPU* cpu) {
     if (!ext_glCoverStrokePathInstancedNV)
         kpanic("ext_glCoverStrokePathInstancedNV is NULL");
     {
-    GL_FUNC(ext_glCoverStrokePathInstancedNV)(ARG1, ARG2, marshalType(cpu, ARG2, ARG1, ARG3), ARG4, ARG5, ARG6, marshalf(cpu, ARG7, floatPerTransformList(ARG6)*ARG1));
+    GL_FUNC(ext_glCoverStrokePathInstancedNV)(ARG1, ARG2, marshalType(cpu, ARG2, ARG1, ARG3), ARG4, ARG5, ARG6, marshalArray<GLfloat>(cpu, ARG7, floatPerTransformList(ARG6)*ARG1));
     GL_LOG ("glCoverStrokePathInstancedNV GLsizei numPaths=%d, GLenum pathNameType=%d, const void* paths=%.08x, GLuint pathBase=%d, GLenum coverMode=%d, GLenum transformType=%d, const GLfloat* transformValues=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7);
     }
 }
@@ -2412,7 +2412,7 @@ void glcommon_glCoverageModulationTableNV(CPU* cpu) {
     if (!ext_glCoverageModulationTableNV)
         kpanic("ext_glCoverageModulationTableNV is NULL");
     {
-    GL_FUNC(ext_glCoverageModulationTableNV)(ARG1, marshalf(cpu, ARG2, ARG1));
+    GL_FUNC(ext_glCoverageModulationTableNV)(ARG1, marshalArray<GLfloat>(cpu, ARG2, ARG1));
     GL_LOG ("glCoverageModulationTableNV GLsizei n=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -2585,18 +2585,18 @@ void glcommon_glCullParameterdvEXT(CPU* cpu) {
     if (!ext_glCullParameterdvEXT)
         kpanic("ext_glCullParameterdvEXT is NULL");
     {
-    GLdouble* p1=marshald(cpu, ARG2, 4);GL_FUNC(ext_glCullParameterdvEXT)(ARG1, p1);
-    marshalBackd(cpu, ARG2, p1, 4);
-    GL_LOG ("glCullParameterdvEXT GLenum pname=%d, GLdouble* params=%.08x",ARG1,ARG2);
+        MarshalReadWrite<GLdouble> params(cpu, ARG2, 4);
+        GL_FUNC(ext_glCullParameterdvEXT)(ARG1, params.getPtr());
+        GL_LOG ("glCullParameterdvEXT GLenum pname=%d, GLdouble* params=%.08x",ARG1,ARG2);
     }
 }
 void glcommon_glCullParameterfvEXT(CPU* cpu) {
     if (!ext_glCullParameterfvEXT)
         kpanic("ext_glCullParameterfvEXT is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG2, 4);GL_FUNC(ext_glCullParameterfvEXT)(ARG1, p1);
-    marshalBackf(cpu, ARG2, p1, 4);
-    GL_LOG ("glCullParameterfvEXT GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2);
+        MarshalReadWrite<GLfloat> params(cpu, ARG2, 4);
+        GL_FUNC(ext_glCullParameterfvEXT)(ARG1, params.getPtr());
+        GL_LOG ("glCullParameterfvEXT GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
 void glcommon_glCurrentPaletteMatrixARB(CPU* cpu) {
@@ -3013,7 +3013,7 @@ void glcommon_glDepthRangeArrayv(CPU* cpu) {
     if (!ext_glDepthRangeArrayv)
         kpanic("ext_glDepthRangeArrayv is NULL");
     {
-    GL_FUNC(ext_glDepthRangeArrayv)(ARG1, ARG2, marshald(cpu, ARG3, ARG2*2));
+    GL_FUNC(ext_glDepthRangeArrayv)(ARG1, ARG2, marshalArray<GLdouble>(cpu, ARG3, ARG2*2));
     GL_LOG ("glDepthRangeArrayv GLuint first=%d, GLsizei count=%d, const GLdouble* v=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -3077,7 +3077,7 @@ void glcommon_glDetailTexFuncSGIS(CPU* cpu) {
     if (!ext_glDetailTexFuncSGIS)
         kpanic("ext_glDetailTexFuncSGIS is NULL");
     {
-    GL_FUNC(ext_glDetailTexFuncSGIS)(ARG1, ARG2, marshalf(cpu, ARG3, ARG2*2));
+    GL_FUNC(ext_glDetailTexFuncSGIS)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2*2));
     GL_LOG ("glDetailTexFuncSGIS GLenum target=%d, GLsizei n=%d, const GLfloat* points=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -3781,7 +3781,7 @@ void glcommon_glExecuteProgramNV(CPU* cpu) {
     if (!ext_glExecuteProgramNV)
         kpanic("ext_glExecuteProgramNV is NULL");
     {
-    GL_FUNC(ext_glExecuteProgramNV)(ARG1, ARG2, marshalf(cpu, ARG3, 4));
+    GL_FUNC(ext_glExecuteProgramNV)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, 4));
     GL_LOG ("glExecuteProgramNV GLenum target=%d, GLuint id=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -3984,7 +3984,7 @@ void glcommon_glFogCoorddv(CPU* cpu) {
     if (!ext_glFogCoorddv)
         kpanic("ext_glFogCoorddv is NULL");
     {
-    GL_FUNC(ext_glFogCoorddv)(marshald(cpu, ARG1, 1));
+    GL_FUNC(ext_glFogCoorddv)(marshalArray<GLdouble>(cpu, ARG1, 1));
     GL_LOG ("glFogCoorddv const GLdouble* coord=%.08x",ARG1);
     }
 }
@@ -3992,7 +3992,7 @@ void glcommon_glFogCoorddvEXT(CPU* cpu) {
     if (!ext_glFogCoorddvEXT)
         kpanic("ext_glFogCoorddvEXT is NULL");
     {
-    GL_FUNC(ext_glFogCoorddvEXT)(marshald(cpu, ARG1, 1));
+    GL_FUNC(ext_glFogCoorddvEXT)(marshalArray<GLdouble>(cpu, ARG1, 1));
     GL_LOG ("glFogCoorddvEXT const GLdouble* coord=%.08x",ARG1);
     }
 }
@@ -4016,7 +4016,7 @@ void glcommon_glFogCoordfv(CPU* cpu) {
     if (!ext_glFogCoordfv)
         kpanic("ext_glFogCoordfv is NULL");
     {
-    GL_FUNC(ext_glFogCoordfv)(marshalf(cpu, ARG1, 1));
+    GL_FUNC(ext_glFogCoordfv)(marshalArray<GLfloat>(cpu, ARG1, 1));
     GL_LOG ("glFogCoordfv const GLfloat* coord=%.08x",ARG1);
     }
 }
@@ -4024,7 +4024,7 @@ void glcommon_glFogCoordfvEXT(CPU* cpu) {
     if (!ext_glFogCoordfvEXT)
         kpanic("ext_glFogCoordfvEXT is NULL");
     {
-    GL_FUNC(ext_glFogCoordfvEXT)(marshalf(cpu, ARG1, 1));
+    GL_FUNC(ext_glFogCoordfvEXT)(marshalArray<GLfloat>(cpu, ARG1, 1));
     GL_LOG ("glFogCoordfvEXT const GLfloat* coord=%.08x",ARG1);
     }
 }
@@ -4048,7 +4048,7 @@ void glcommon_glFogFuncSGIS(CPU* cpu) {
     if (!ext_glFogFuncSGIS)
         kpanic("ext_glFogFuncSGIS is NULL");
     {
-    GL_FUNC(ext_glFogFuncSGIS)(ARG1, marshalf(cpu, ARG2, ARG1*2));
+    GL_FUNC(ext_glFogFuncSGIS)(ARG1, marshalArray<GLfloat>(cpu, ARG2, ARG1*2));
     GL_LOG ("glFogFuncSGIS GLsizei n=%d, const GLfloat* points=%.08x",ARG1,ARG2);
     }
 }
@@ -4096,7 +4096,7 @@ void glcommon_glFragmentLightModelfvSGIX(CPU* cpu) {
     if (!ext_glFragmentLightModelfvSGIX)
         kpanic("ext_glFragmentLightModelfvSGIX is NULL");
     {
-    GL_FUNC(ext_glFragmentLightModelfvSGIX)(ARG1, marshalf(cpu, ARG2, 1));
+    GL_FUNC(ext_glFragmentLightModelfvSGIX)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 1));
     GL_LOG ("glFragmentLightModelfvSGIX GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
@@ -4128,7 +4128,7 @@ void glcommon_glFragmentLightfvSGIX(CPU* cpu) {
     if (!ext_glFragmentLightfvSGIX)
         kpanic("ext_glFragmentLightfvSGIX is NULL");
     {
-    GL_FUNC(ext_glFragmentLightfvSGIX)(ARG1, ARG2, marshalf(cpu, ARG3, 1));
+    GL_FUNC(ext_glFragmentLightfvSGIX)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, 1));
     GL_LOG ("glFragmentLightfvSGIX GLenum light=%d, GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -4160,7 +4160,7 @@ void glcommon_glFragmentMaterialfvSGIX(CPU* cpu) {
     if (!ext_glFragmentMaterialfvSGIX)
         kpanic("ext_glFragmentMaterialfvSGIX is NULL");
     {
-    GL_FUNC(ext_glFragmentMaterialfvSGIX)(ARG1, ARG2, marshalf(cpu, ARG3, 1));
+    GL_FUNC(ext_glFragmentMaterialfvSGIX)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, 1));
     GL_LOG ("glFragmentMaterialfvSGIX GLenum face=%d, GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -4248,7 +4248,7 @@ void glcommon_glFramebufferSampleLocationsfvARB(CPU* cpu) {
     if (!ext_glFramebufferSampleLocationsfvARB)
         kpanic("ext_glFramebufferSampleLocationsfvARB is NULL");
     {
-    GL_FUNC(ext_glFramebufferSampleLocationsfvARB)(ARG1, ARG2, ARG3, marshalf(cpu, ARG4, ARG3));
+    GL_FUNC(ext_glFramebufferSampleLocationsfvARB)(ARG1, ARG2, ARG3, marshalArray<GLfloat>(cpu, ARG4, ARG3));
     GL_LOG ("glFramebufferSampleLocationsfvARB GLenum target=%d, GLuint start=%d, GLsizei count=%d, const GLfloat* v=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -4256,7 +4256,7 @@ void glcommon_glFramebufferSampleLocationsfvNV(CPU* cpu) {
     if (!ext_glFramebufferSampleLocationsfvNV)
         kpanic("ext_glFramebufferSampleLocationsfvNV is NULL");
     {
-    GL_FUNC(ext_glFramebufferSampleLocationsfvNV)(ARG1, ARG2, ARG3, marshalf(cpu, ARG4, ARG3));
+    GL_FUNC(ext_glFramebufferSampleLocationsfvNV)(ARG1, ARG2, ARG3, marshalArray<GLfloat>(cpu, ARG4, ARG3));
     GL_LOG ("glFramebufferSampleLocationsfvNV GLenum target=%d, GLuint start=%d, GLsizei count=%d, const GLfloat* v=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -4827,9 +4827,9 @@ void glcommon_glGetArrayObjectfvATI(CPU* cpu) {
     if (!ext_glGetArrayObjectfvATI)
         kpanic("ext_glGetArrayObjectfvATI is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetArrayObjectfvATI)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetArrayObjectfvATI GLenum array=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetArrayObjectfvATI)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetArrayObjectfvATI GLenum array=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetArrayObjectivATI(CPU* cpu) {
@@ -4972,9 +4972,9 @@ void glcommon_glGetClipPlanefOES(CPU* cpu) {
     if (!ext_glGetClipPlanefOES)
         kpanic("ext_glGetClipPlanefOES is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG2, 4);GL_FUNC(ext_glGetClipPlanefOES)(ARG1, p1);
-    marshalBackf(cpu, ARG2, p1, 4);
-    GL_LOG ("glGetClipPlanefOES GLenum plane=%d, GLfloat* equation=%.08x",ARG1,ARG2);
+        MarshalReadWrite<GLfloat> equation(cpu, ARG2, 4);
+        GL_FUNC(ext_glGetClipPlanefOES)(ARG1, equation.getPtr());
+        GL_LOG ("glGetClipPlanefOES GLenum plane=%d, GLfloat* equation=%.08x",ARG1,ARG2);
     }
 }
 void glcommon_glGetClipPlanexOES(CPU* cpu) {
@@ -4990,17 +4990,23 @@ void glcommon_glGetColorTable(CPU* cpu) {
     if (!ext_glGetColorTable)
         kpanic("ext_glGetColorTable is NULL");
     {
-    static GLubyte* buffer;static U32 bufferLen; GLubyte* p=nullptr; GLboolean b=PIXEL_PACK_BUFFER(); U32 colors=0; if (b)p=(GLubyte*)pARG4; else {colors=components_in_format(ARG2)*marshalGetColorTableWidth(ARG1);U32 len=colors*getDataSize(ARG3);if (bufferLen<len){if (buffer) delete[] buffer;buffer=new GLubyte[len];bufferLen=len;} p=buffer;}GL_FUNC(ext_glGetColorTable)(ARG1, ARG2, ARG3, p);
-    if (!b) marshalBackType(cpu, ARG3, colors, p, ARG4);
-    GL_LOG ("glGetColorTable GLenum target=%d, GLenum format=%d, GLenum type=%d, void* table=%.08x",ARG1,ARG2,ARG3,ARG4);
+        if (PIXEL_PACK_BUFFER()) {
+            GL_FUNC(ext_glGetColorTable)(ARG1, ARG2, ARG3, (GLvoid*)pARG4);
+        } else {
+            U32 colors = components_in_format(ARG2) * marshalGetColorTableWidth(ARG1);
+            MarshalReadWriteType image(cpu, ARG3, ARG4, colors);
+            GL_FUNC(ext_glGetColorTable)(ARG1, ARG2, ARG3, image.getPtr());
+        }
+        GL_LOG ("glGetColorTable GLenum target=%d, GLenum format=%d, GLenum type=%d, void* table=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
 void glcommon_glGetColorTableEXT(CPU* cpu) {
     if (!ext_glGetColorTableEXT)
         kpanic("ext_glGetColorTableEXT is NULL");
     {
-    static GLubyte* p;static U32 plen;U32 colors=components_in_format(ARG2)*marshalGetColorTableWidthEXT(ARG1);U32 len=colors*getDataSize(ARG3);if (plen<len){if (p) delete[] p;p=new GLubyte[len];plen=len;}GL_FUNC(ext_glGetColorTableEXT)(ARG1, ARG2, ARG3, p);
-    marshalBackType(cpu, ARG3, colors, p, ARG4);
+        U32 colors = components_in_format(ARG2) * marshalGetColorTableWidthEXT(ARG1);
+        MarshalReadWriteType data(cpu, ARG3, ARG4, colors);
+        GL_FUNC(ext_glGetColorTableEXT)(ARG1, ARG2, ARG3, data.getPtr());
     GL_LOG ("glGetColorTableEXT GLenum target=%d, GLenum format=%d, GLenum type=%d, void* data=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -5008,27 +5014,27 @@ void glcommon_glGetColorTableParameterfv(CPU* cpu) {
     if (!ext_glGetColorTableParameterfv)
         kpanic("ext_glGetColorTableParameterfv is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetColorTableParameterfv)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetColorTableParameterfv GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetColorTableParameterfv)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetColorTableParameterfv GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetColorTableParameterfvEXT(CPU* cpu) {
     if (!ext_glGetColorTableParameterfvEXT)
         kpanic("ext_glGetColorTableParameterfvEXT is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetColorTableParameterfvEXT)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetColorTableParameterfvEXT GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetColorTableParameterfvEXT)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetColorTableParameterfvEXT GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetColorTableParameterfvSGI(CPU* cpu) {
     if (!ext_glGetColorTableParameterfvSGI)
         kpanic("ext_glGetColorTableParameterfvSGI is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetColorTableParameterfvSGI)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetColorTableParameterfvSGI GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetColorTableParameterfvSGI)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetColorTableParameterfvSGI GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetColorTableParameteriv(CPU* cpu) {
@@ -5062,18 +5068,19 @@ void glcommon_glGetColorTableSGI(CPU* cpu) {
     if (!ext_glGetColorTableSGI)
         kpanic("ext_glGetColorTableSGI is NULL");
     {
-    static GLubyte* p;static U32 plen;U32 colors=components_in_format(ARG2)*marshalGetColorTableWidthSGI(ARG1);U32 len=colors*getDataSize(ARG3);if (plen<len){if (p) delete[] p;p=new GLubyte[len];plen=len;}GL_FUNC(ext_glGetColorTableSGI)(ARG1, ARG2, ARG3, p);
-    marshalBackType(cpu, ARG3, colors, p, ARG4);
-    GL_LOG ("glGetColorTableSGI GLenum target=%d, GLenum format=%d, GLenum type=%d, void* table=%.08x",ARG1,ARG2,ARG3,ARG4);
+        U32 colors = components_in_format(ARG2) * marshalGetColorTableWidthSGI(ARG1);
+        MarshalReadWriteType data(cpu, ARG3, ARG4, colors);
+        GL_FUNC(ext_glGetColorTableSGI)(ARG1, ARG2, ARG3, data.getPtr());
+        GL_LOG ("glGetColorTableSGI GLenum target=%d, GLenum format=%d, GLenum type=%d, void* table=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
 void glcommon_glGetCombinerInputParameterfvNV(CPU* cpu) {
     if (!ext_glGetCombinerInputParameterfvNV)
         kpanic("ext_glGetCombinerInputParameterfvNV is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG5, 1);GL_FUNC(ext_glGetCombinerInputParameterfvNV)(ARG1, ARG2, ARG3, ARG4, p1);
-    marshalBackf(cpu, ARG5, p1, 1);
-    GL_LOG ("glGetCombinerInputParameterfvNV GLenum stage=%d, GLenum portion=%d, GLenum variable=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5);
+        MarshalReadWrite<GLfloat> params(cpu, ARG5, 1);
+        GL_FUNC(ext_glGetCombinerInputParameterfvNV)(ARG1, ARG2, ARG3, ARG4, params.getPtr());
+        GL_LOG ("glGetCombinerInputParameterfvNV GLenum stage=%d, GLenum portion=%d, GLenum variable=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5);
     }
 }
 void glcommon_glGetCombinerInputParameterivNV(CPU* cpu) {
@@ -5089,9 +5096,9 @@ void glcommon_glGetCombinerOutputParameterfvNV(CPU* cpu) {
     if (!ext_glGetCombinerOutputParameterfvNV)
         kpanic("ext_glGetCombinerOutputParameterfvNV is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG4, 1);GL_FUNC(ext_glGetCombinerOutputParameterfvNV)(ARG1, ARG2, ARG3, p1);
-    marshalBackf(cpu, ARG4, p1, 1);
-    GL_LOG ("glGetCombinerOutputParameterfvNV GLenum stage=%d, GLenum portion=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3,ARG4);
+        MarshalReadWrite<GLfloat> params(cpu, ARG4, 1);
+        GL_FUNC(ext_glGetCombinerOutputParameterfvNV)(ARG1, ARG2, ARG3, params.getPtr());
+        GL_LOG ("glGetCombinerOutputParameterfvNV GLenum stage=%d, GLenum portion=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
 void glcommon_glGetCombinerOutputParameterivNV(CPU* cpu) {
@@ -5107,9 +5114,9 @@ void glcommon_glGetCombinerStageParameterfvNV(CPU* cpu) {
     if (!ext_glGetCombinerStageParameterfvNV)
         kpanic("ext_glGetCombinerStageParameterfvNV is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 4);GL_FUNC(ext_glGetCombinerStageParameterfvNV)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 4);
-    GL_LOG ("glGetCombinerStageParameterfvNV GLenum stage=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 4);
+        GL_FUNC(ext_glGetCombinerStageParameterfvNV)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetCombinerStageParameterfvNV GLenum stage=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetCommandHeaderNV(CPU* cpu) {
@@ -5196,36 +5203,46 @@ void glcommon_glGetConvolutionFilter(CPU* cpu) {
     if (!ext_glGetConvolutionFilter)
         kpanic("ext_glGetConvolutionFilter is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p=nullptr; int count=0; if (b) p=(GLvoid*)pARG4; else {count = components_in_format(ARG2)*marshalGetConvolutionWidth(ARG1)*marshalGetConvolutionWidth(ARG2); p = marshalType(cpu, ARG3, count, ARG4);}GL_FUNC(ext_glGetConvolutionFilter)(ARG1, ARG2, ARG3, p);
-    if (!b) marshalBackType(cpu, ARG3, count, p, ARG4);
-    GL_LOG ("glGetConvolutionFilter GLenum target=%d, GLenum format=%d, GLenum type=%d, void* image=%.08x",ARG1,ARG2,ARG3,ARG4);
+        if (PIXEL_PACK_BUFFER()) {
+            GL_FUNC(ext_glGetConvolutionFilter)(ARG1, ARG2, ARG3, (GLvoid*)pARG4);
+        } else {
+            U32 count = components_in_format(ARG2) * marshalGetConvolutionWidth(ARG1) * marshalGetConvolutionWidth(ARG2);
+            MarshalReadWriteType image(cpu, ARG3, ARG4, count);
+            GL_FUNC(ext_glGetConvolutionFilter)(ARG1, ARG2, ARG3, image.getPtr());
+        }
+        GL_LOG ("glGetConvolutionFilter GLenum target=%d, GLenum format=%d, GLenum type=%d, void* image=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
 void glcommon_glGetConvolutionFilterEXT(CPU* cpu) {
     if (!ext_glGetConvolutionFilterEXT)
         kpanic("ext_glGetConvolutionFilterEXT is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); GLvoid* p=nullptr; int count=0; if (b) p=(GLvoid*)pARG4; else {count = components_in_format(ARG2)*marshalGetConvolutionWidth(ARG1)*marshalGetConvolutionWidth(ARG2); p = marshalType(cpu, ARG3, count, ARG4);}GL_FUNC(ext_glGetConvolutionFilterEXT)(ARG1, ARG2, ARG3, p);
-    if (!b) marshalBackType(cpu, ARG3, count, p, ARG4);
-    GL_LOG ("glGetConvolutionFilterEXT GLenum target=%d, GLenum format=%d, GLenum type=%d, void* image=%.08x",ARG1,ARG2,ARG3,ARG4);
+        if (PIXEL_PACK_BUFFER()) {
+            GL_FUNC(ext_glGetConvolutionFilterEXT)(ARG1, ARG2, ARG3, (GLvoid*)pARG4);
+        } else {
+            U32 count = components_in_format(ARG2) * marshalGetConvolutionWidth(ARG1) * marshalGetConvolutionWidth(ARG2);
+            MarshalReadWriteType image(cpu, ARG3, ARG4, count);
+            GL_FUNC(ext_glGetConvolutionFilterEXT)(ARG1, ARG2, ARG3, image.getPtr());
+        }
+        GL_LOG ("glGetConvolutionFilterEXT GLenum target=%d, GLenum format=%d, GLenum type=%d, void* image=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
 void glcommon_glGetConvolutionParameterfv(CPU* cpu) {
     if (!ext_glGetConvolutionParameterfv)
         kpanic("ext_glGetConvolutionParameterfv is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_COLOR || ARG2==GL_CONVOLUTION_FILTER_SCALE || ARG2==GL_CONVOLUTION_FILTER_BIAS)?4:1);GL_FUNC(ext_glGetConvolutionParameterfv)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, (ARG2==GL_CONVOLUTION_BORDER_COLOR || ARG2==GL_CONVOLUTION_FILTER_SCALE || ARG2==GL_CONVOLUTION_FILTER_BIAS)?4:1);
-    GL_LOG ("glGetConvolutionParameterfv GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_COLOR || ARG2==GL_CONVOLUTION_FILTER_SCALE || ARG2==GL_CONVOLUTION_FILTER_BIAS)?4:1);
+        GL_FUNC(ext_glGetConvolutionParameterfv)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetConvolutionParameterfv GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetConvolutionParameterfvEXT(CPU* cpu) {
     if (!ext_glGetConvolutionParameterfvEXT)
         kpanic("ext_glGetConvolutionParameterfvEXT is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_COLOR || ARG2==GL_CONVOLUTION_FILTER_SCALE || ARG2==GL_CONVOLUTION_FILTER_BIAS)?4:1);GL_FUNC(ext_glGetConvolutionParameterfvEXT)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, (ARG2==GL_CONVOLUTION_BORDER_COLOR || ARG2==GL_CONVOLUTION_FILTER_SCALE || ARG2==GL_CONVOLUTION_FILTER_BIAS)?4:1);
-    GL_LOG ("glGetConvolutionParameterfvEXT GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, (ARG2==GL_CONVOLUTION_BORDER_COLOR || ARG2==GL_CONVOLUTION_FILTER_SCALE || ARG2==GL_CONVOLUTION_FILTER_BIAS)?4:1);
+        GL_FUNC(ext_glGetConvolutionParameterfvEXT)(ARG1, ARG2, params.getPtr());        
+        GL_LOG ("glGetConvolutionParameterfvEXT GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetConvolutionParameteriv(CPU* cpu) {
@@ -5259,9 +5276,9 @@ void glcommon_glGetCoverageModulationTableNV(CPU* cpu) {
     if (!ext_glGetCoverageModulationTableNV)
         kpanic("ext_glGetCoverageModulationTableNV is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG2, ARG1);GL_FUNC(ext_glGetCoverageModulationTableNV)(ARG1, p1);
-    marshalBackf(cpu, ARG2, p1, ARG1);
-    GL_LOG ("glGetCoverageModulationTableNV GLsizei bufsize=%d, GLfloat* v=%.08x",ARG1,ARG2);
+        MarshalReadWrite<GLfloat> v(cpu, ARG2, ARG1);
+        GL_FUNC(ext_glGetCoverageModulationTableNV)(ARG1, v.getPtr());
+        GL_LOG ("glGetCoverageModulationTableNV GLsizei bufsize=%d, GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
 void glcommon_glGetDebugMessageLog(CPU* cpu) {
@@ -5319,27 +5336,27 @@ void glcommon_glGetDoubleIndexedvEXT(CPU* cpu) {
     if (!ext_glGetDoubleIndexedvEXT)
         kpanic("ext_glGetDoubleIndexedvEXT is NULL");
     {
-    GLdouble* p1=marshald(cpu, ARG3, getSize(ARG1));GL_FUNC(ext_glGetDoubleIndexedvEXT)(ARG1, ARG2, p1);
-    marshalBackd(cpu, ARG3, p1, getSize(ARG1));
-    GL_LOG ("glGetDoubleIndexedvEXT GLenum target=%d, GLuint index=%d, GLdouble* data=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLdouble> data(cpu, ARG3, getSize(ARG1));
+        GL_FUNC(ext_glGetDoubleIndexedvEXT)(ARG1, ARG2, data.getPtr());
+        GL_LOG ("glGetDoubleIndexedvEXT GLenum target=%d, GLuint index=%d, GLdouble* data=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetDoublei_v(CPU* cpu) {
     if (!ext_glGetDoublei_v)
         kpanic("ext_glGetDoublei_v is NULL");
     {
-    GLdouble* p1=marshald(cpu, ARG3, getSize(ARG1));GL_FUNC(ext_glGetDoublei_v)(ARG1, ARG2, p1);
-    marshalBackd(cpu, ARG3, p1, getSize(ARG1));
-    GL_LOG ("glGetDoublei_v GLenum target=%d, GLuint index=%d, GLdouble* data=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLdouble> data(cpu, ARG3, getSize(ARG1));
+        GL_FUNC(ext_glGetDoublei_v)(ARG1, ARG2, data.getPtr());
+        GL_LOG ("glGetDoublei_v GLenum target=%d, GLuint index=%d, GLdouble* data=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetDoublei_vEXT(CPU* cpu) {
     if (!ext_glGetDoublei_vEXT)
         kpanic("ext_glGetDoublei_vEXT is NULL");
     {
-    GLdouble* p1=marshald(cpu, ARG3, getSize(ARG1));GL_FUNC(ext_glGetDoublei_vEXT)(ARG1, ARG2, p1);
-    marshalBackd(cpu, ARG3, p1, getSize(ARG1));
-    GL_LOG ("glGetDoublei_vEXT GLenum pname=%d, GLuint index=%d, GLdouble* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLdouble> params(cpu, ARG3, getSize(ARG1));
+        GL_FUNC(ext_glGetDoublei_vEXT)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetDoublei_vEXT GLenum pname=%d, GLuint index=%d, GLdouble* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetFenceivNV(CPU* cpu) {
@@ -5355,9 +5372,9 @@ void glcommon_glGetFinalCombinerInputParameterfvNV(CPU* cpu) {
     if (!ext_glGetFinalCombinerInputParameterfvNV)
         kpanic("ext_glGetFinalCombinerInputParameterfvNV is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetFinalCombinerInputParameterfvNV)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetFinalCombinerInputParameterfvNV GLenum variable=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetFinalCombinerInputParameterfvNV)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetFinalCombinerInputParameterfvNV GLenum variable=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetFinalCombinerInputParameterivNV(CPU* cpu) {
@@ -5391,27 +5408,27 @@ void glcommon_glGetFloatIndexedvEXT(CPU* cpu) {
     if (!ext_glGetFloatIndexedvEXT)
         kpanic("ext_glGetFloatIndexedvEXT is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, getSize(ARG1));GL_FUNC(ext_glGetFloatIndexedvEXT)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, getSize(ARG1));
-    GL_LOG ("glGetFloatIndexedvEXT GLenum target=%d, GLuint index=%d, GLfloat* data=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> data(cpu, ARG3, getSize(ARG1));
+        GL_FUNC(ext_glGetFloatIndexedvEXT)(ARG1, ARG2, data.getPtr());
+        GL_LOG ("glGetFloatIndexedvEXT GLenum target=%d, GLuint index=%d, GLfloat* data=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetFloati_v(CPU* cpu) {
     if (!ext_glGetFloati_v)
         kpanic("ext_glGetFloati_v is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, getSize(ARG1));GL_FUNC(ext_glGetFloati_v)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, getSize(ARG1));
-    GL_LOG ("glGetFloati_v GLenum target=%d, GLuint index=%d, GLfloat* data=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> data(cpu, ARG3, getSize(ARG1));
+        GL_FUNC(ext_glGetFloati_v)(ARG1, ARG2, data.getPtr());
+        GL_LOG ("glGetFloati_v GLenum target=%d, GLuint index=%d, GLfloat* data=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetFloati_vEXT(CPU* cpu) {
     if (!ext_glGetFloati_vEXT)
         kpanic("ext_glGetFloati_vEXT is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, getSize(ARG1));GL_FUNC(ext_glGetFloati_vEXT)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, getSize(ARG1));
-    GL_LOG ("glGetFloati_vEXT GLenum pname=%d, GLuint index=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, getSize(ARG1));
+        GL_FUNC(ext_glGetFloati_vEXT)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetFloati_vEXT GLenum pname=%d, GLuint index=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetFogFuncSGIS(CPU* cpu) {
@@ -5450,9 +5467,9 @@ void glcommon_glGetFragmentLightfvSGIX(CPU* cpu) {
     if (!ext_glGetFragmentLightfvSGIX)
         kpanic("ext_glGetFragmentLightfvSGIX is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, glcommon_glLightv_size(ARG2));GL_FUNC(ext_glGetFragmentLightfvSGIX)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, glcommon_glLightv_size(ARG2));
-    GL_LOG ("glGetFragmentLightfvSGIX GLenum light=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, glcommon_glLightv_size(ARG2));
+        GL_FUNC(ext_glGetFragmentLightfvSGIX)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetFragmentLightfvSGIX GLenum light=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetFragmentLightivSGIX(CPU* cpu) {
@@ -5468,9 +5485,9 @@ void glcommon_glGetFragmentMaterialfvSGIX(CPU* cpu) {
     if (!ext_glGetFragmentMaterialfvSGIX)
         kpanic("ext_glGetFragmentMaterialfvSGIX is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, glcommon_glMaterialv_size(ARG2));GL_FUNC(ext_glGetFragmentMaterialfvSGIX)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, glcommon_glMaterialv_size(ARG2));
-    GL_LOG ("glGetFragmentMaterialfvSGIX GLenum face=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, glcommon_glMaterialv_size(ARG2));
+        GL_FUNC(ext_glGetFragmentMaterialfvSGIX)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetFragmentMaterialfvSGIX GLenum face=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetFragmentMaterialivSGIX(CPU* cpu) {
@@ -5545,36 +5562,38 @@ void glcommon_glGetHistogram(CPU* cpu) {
     if (!ext_glGetHistogram)
         kpanic("ext_glGetHistogram is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p = nullptr; if (b) p=(GLvoid*)pARG5; else {size = marshalHistogramWidth(ARG1); p = marshalPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5);}GL_FUNC(ext_glGetHistogram)(ARG1, bARG2, ARG3, ARG4, p);
-    if (!b) marshalBackPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5, p);
-    GL_LOG ("glGetHistogram GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
+        int width = marshalHistogramWidth(ARG1);
+        MarshalReadWritePackedPixels values(cpu, 0, width, 1, 1, ARG3, ARG4, ARG5);
+        GL_FUNC(ext_glGetHistogram)(ARG1, bARG2, ARG3, ARG4, values.getPtr());
+        GL_LOG ("glGetHistogram GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
     }
 }
 void glcommon_glGetHistogramEXT(CPU* cpu) {
     if (!ext_glGetHistogramEXT)
         kpanic("ext_glGetHistogramEXT is NULL");
     {
-    GLboolean b=PIXEL_PACK_BUFFER(); int size = 0; GLvoid* p = nullptr; if (b) p=(GLvoid*)pARG5; else {size = marshalHistogramWidth(ARG1); p = marshalPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5);}GL_FUNC(ext_glGetHistogramEXT)(ARG1, bARG2, ARG3, ARG4, p);
-    if (!b) marshalBackPixels(cpu, 0, size, 1, 0, ARG3, ARG4, ARG5, p);
-    GL_LOG ("glGetHistogramEXT GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
+        int width = marshalHistogramWidth(ARG1);
+        MarshalReadWritePackedPixels values(cpu, 0, width, 1, 1, ARG3, ARG4, ARG5);
+        GL_FUNC(ext_glGetHistogramEXT)(ARG1, bARG2, ARG3, ARG4, values.getPtr());
+        GL_LOG ("glGetHistogramEXT GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
     }
 }
 void glcommon_glGetHistogramParameterfv(CPU* cpu) {
     if (!ext_glGetHistogramParameterfv)
         kpanic("ext_glGetHistogramParameterfv is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetHistogramParameterfv)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetHistogramParameterfv GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetHistogramParameterfv)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetHistogramParameterfv GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetHistogramParameterfvEXT(CPU* cpu) {
     if (!ext_glGetHistogramParameterfvEXT)
         kpanic("ext_glGetHistogramParameterfvEXT is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetHistogramParameterfvEXT)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetHistogramParameterfvEXT GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetHistogramParameterfvEXT)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetHistogramParameterfvEXT GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetHistogramParameteriv(CPU* cpu) {
@@ -5626,9 +5645,9 @@ void glcommon_glGetImageTransformParameterfvHP(CPU* cpu) {
     if (!ext_glGetImageTransformParameterfvHP)
         kpanic("ext_glGetImageTransformParameterfvHP is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetImageTransformParameterfvHP)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetImageTransformParameterfvHP GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetImageTransformParameterfvHP)(ARG1, ARG2, params.getPtr());
+        GL_LOG ("glGetImageTransformParameterfvHP GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetImageTransformParameterivHP(CPU* cpu) {
@@ -5752,9 +5771,9 @@ void glcommon_glGetInvariantFloatvEXT(CPU* cpu) {
     if (!ext_glGetInvariantFloatvEXT)
         kpanic("ext_glGetInvariantFloatvEXT is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetInvariantFloatvEXT)(ARG1, ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetInvariantFloatvEXT GLuint id=%d, GLenum value=%d, GLfloat* data=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> data(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetInvariantFloatvEXT)(ARG1, ARG2, data.getPtr());
+        GL_LOG ("glGetInvariantFloatvEXT GLuint id=%d, GLenum value=%d, GLfloat* data=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetInvariantIntegervEXT(CPU* cpu) {
@@ -5890,7 +5909,7 @@ void glcommon_glGetMinmaxParameterfv(CPU* cpu) {
     if (!ext_glGetMinmaxParameterfv)
         kpanic("ext_glGetMinmaxParameterfv is NULL");
     {
-        MarshalReadWriteFloat rw(cpu, ARG3, 1);
+        MarshalReadWrite<GLfloat> rw(cpu, ARG3, 1);
         GL_FUNC(ext_glGetMinmaxParameterfv)(ARG1, ARG2, rw.getPtr());
         GL_LOG ("glGetMinmaxParameterfv GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -5899,7 +5918,7 @@ void glcommon_glGetMinmaxParameterfvEXT(CPU* cpu) {
     if (!ext_glGetMinmaxParameterfvEXT)
         kpanic("ext_glGetMinmaxParameterfvEXT is NULL");
     {
-        MarshalReadWriteFloat rw(cpu, ARG3, 1);
+        MarshalReadWrite<GLfloat> rw(cpu, ARG3, 1);
     GL_FUNC(ext_glGetMinmaxParameterfvEXT)(ARG1, ARG2, rw.getPtr());
     GL_LOG ("glGetMinmaxParameterfvEXT GLenum target=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
@@ -6256,9 +6275,9 @@ void glcommon_glGetObjectParameterfvARB(CPU* cpu) {
     if (!ext_glGetObjectParameterfvARB)
         kpanic("ext_glGetObjectParameterfvARB is NULL");
     {
-    GLfloat* p1=marshalf(cpu, ARG3, 1);GL_FUNC(ext_glGetObjectParameterfvARB)(INDEX_TO_HANDLE(hARG1), ARG2, p1);
-    marshalBackf(cpu, ARG3, p1, 1);
-    GL_LOG ("glGetObjectParameterfvARB GLhandleARB obj=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLfloat> params(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetObjectParameterfvARB)(INDEX_TO_HANDLE(hARG1), ARG2, params.getPtr());
+     GL_LOG ("glGetObjectParameterfvARB GLhandleARB obj=%d, GLenum pname=%d, GLfloat* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetObjectParameterivAPPLE(CPU* cpu) {

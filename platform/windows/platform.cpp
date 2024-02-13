@@ -113,7 +113,6 @@ int Platform::nativeSocketPair(S32 socks[2]) {
     if (listener == INVALID_SOCKET) 
         return SOCKET_ERROR;
 
-    memset(&a, 0, sizeof(a));
     a.inaddr.sin_family = AF_INET;
     a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     a.inaddr.sin_port = 0; 

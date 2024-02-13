@@ -7,99 +7,21 @@
 
 #define MARSHAL_TYPE(type, p, m, s) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (!count) return (type*)address; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {buffer##p[i] = cpu->memory->read##m(address);address+=s;} return buffer##p;}
 
-#define MARSHAL_TYPE_CUSTOM(type, p, m, s, conv, get, set) type* buffer##p; U32 buffer##p##_len; type* marshal##p(CPU* cpu, U32 address, U32 count) {if (!address) return nullptr; if (buffer##p && buffer##p##_len<count) { delete[] buffer##p; buffer##p=nullptr;} if (!buffer##p) {buffer##p = new type[count]; buffer##p##_len = count;}for (U32 i=0;i<count;i++) {struct conv d; get = cpu->memory->read##m(address);address+=s;buffer##p[i] = set;} return buffer##p;}
-
-MARSHAL_TYPE_CUSTOM(GLfloat, f, d, 4, int2Float, d.i, d.f)
-MARSHAL_TYPE_CUSTOM(GLfloat, 2f, d, 4, int2Float, d.i, d.f)
-MARSHAL_TYPE_CUSTOM(GLfloat, 3f, d, 4, int2Float, d.i, d.f)
-MARSHAL_TYPE_CUSTOM(GLfloat, 4f, d, 4, int2Float, d.i, d.f)
-
-MARSHAL_TYPE_CUSTOM(GLdouble, d, q, 8, long2Double, d.l, d.d)
-MARSHAL_TYPE_CUSTOM(GLdouble, 2d, q, 8, long2Double, d.l, d.d)
-
-void marshalBackd(CPU* cpu, U32 address, GLdouble* buffer, U32 count) {
-    if (address) {
-        for (U32 i=0;i<count;i++) {
-            struct long2Double d;
-            d.d = buffer[i];
-            cpu->memory->writeq(address, d.l);
-            address+=8;
-        }
+U32 marshalTypeSize(U32 type) {
+    switch (type) {
+    case GL_UNSIGNED_BYTE: return 1;
+    case GL_BYTE: return 1;
+    case GL_2_BYTES: return 2;
+    case GL_UNSIGNED_SHORT: return 2;
+    case GL_SHORT: return 2;
+    case GL_3_BYTES: return 3;
+    case GL_4_BYTES: return 4;
+    case GL_FLOAT: return 4;
+    case GL_UNSIGNED_INT: return 4;
+    case GL_INT: return 4;
+    default:
+        kpanic("marshalType unknown type: %d", type);
     }
-}
-
-void marshalBackf(CPU* cpu, U32 address, GLfloat* buffer, U32 count) {
-    if (address) {
-        for (U32 i=0;i<count;i++) {
-            struct int2Float f;
-            f.f = buffer[i];
-            cpu->memory->writed(address, f.i);
-            address+=4;
-        }
-    }
-}
-
-void marshalBacki(CPU* cpu, U32 address, GLint* buffer, U32 count) {
-    if (address) {
-        for (U32 i=0;i<count;i++) {
-            cpu->memory->writed(address, buffer[i]);
-            address+=4;
-        }
-    }
-}
-
-void marshalBackui(CPU* cpu, U32 address, GLuint* buffer, U32 count) {
-    marshalBacki(cpu, address, (GLint*)buffer, count);
-}
-
-void marshalBacki64(CPU* cpu, U32 address, GLint64* buffer, U32 count) {
-    if (address) {
-        for (U32 i=0;i<count;i++) {
-            cpu->memory->writeq(address, buffer[i]);
-            address+=8;
-        }
-    }
-}
-
-void marshalBackui64(CPU* cpu, U32 address, GLuint64* buffer, U32 count) {
-    marshalBacki64(cpu, address, (GLint64*)buffer, count);
-}
-
-void marshalBackus(CPU* cpu, U32 address, GLushort* buffer, U32 count) {
-    if (address) {
-        for (U32 i=0;i<count;i++) {
-            cpu->memory->writew(address, buffer[i]);
-            address+=2;
-        }
-    }
-}
-
-void marshalBacks(CPU* cpu, U32 address, GLshort* buffer, U32 count) {
-    marshalBackus(cpu, address, (GLushort*)buffer, count);
-}
-
-void marshalBackb(CPU* cpu, U32 address, GLbyte* buffer, U32 count) {
-    cpu->memory->memcpy(address, buffer, count);
-}
-
-void marshalBackc(CPU* cpu, U32 address, GLchar* buffer, U32 count) {
-    cpu->memory->memcpy(address, buffer, count*sizeof(GLchar));
-}
-
-void marshalBacke(CPU* cpu, U32 address, GLenum* buffer, U32 count) {
-    cpu->memory->memcpy(address, buffer, count*sizeof(GLenum));
-}
-
-void marshalBackac(CPU* cpu, U32 address, GLcharARB* buffer, U32 count) {
-    cpu->memory->memcpy(address, buffer, count*sizeof(GLcharARB));
-}
-
-void marshalBackub(CPU* cpu, U32 address, GLubyte* buffer, U32 count) {
-    cpu->memory->memcpy(address, buffer, count);
-}
-
-void marshalBackbool(CPU* cpu, U32 address, GLboolean* buffer, U32 count) {
-    cpu->memory->memcpy(address, buffer, count);
 }
 
 GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
@@ -107,6 +29,14 @@ GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
 
     if (!address)
         return nullptr;
+
+    U32 len = count * marshalTypeSize(type);
+    U32 page = address >> K_PAGE_SHIFT;
+    U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
+    if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
+        return (GLvoid*)cpu->memory->getIntPtr(address);
+    }
+
     switch (type) {
         case GL_UNSIGNED_BYTE:
             data = marshalArray<GLubyte>(cpu, address, count);
@@ -130,7 +60,7 @@ GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
             data = marshalArray<GLbyte>(cpu, address, count*4);
             break;
         case GL_FLOAT:
-            data = marshalf(cpu, address, count);
+            data = marshalArray<GLfloat>(cpu, address, count);
             break;
         case GL_UNSIGNED_INT:
             data = marshalArray<GLuint>(cpu, address, count);
@@ -139,7 +69,7 @@ GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
             data = marshalArray<GLint>(cpu, address, count);
             break;
         default:
-            kpanic("marshalType unknown type: %d", ARG2);
+            kpanic("marshalType unknown type: %d", type);
     }
     return data;
 }
@@ -149,38 +79,51 @@ void marshalBackType(CPU* cpu, U32 type, U32 count, GLvoid* buffer, U32 address)
         return;
     switch (type) {
         case GL_UNSIGNED_BYTE:
-            marshalBackub(cpu, address, (GLubyte*)buffer, count);
+            marshalBackArray<GLubyte>(cpu, (GLubyte*)buffer, address, count);
             break;
         case GL_BYTE: 
-            marshalBackb(cpu, address, (GLbyte*)buffer, count);
+            marshalBackArray<GLbyte>(cpu, (GLbyte*)buffer, address, count);
             break;
         case GL_2_BYTES:
-            marshalBackb(cpu, address, (GLbyte*)buffer, count*2);
+            marshalBackArray<GLbyte>(cpu, (GLbyte*)buffer, address, count*2);
             break;
         case GL_UNSIGNED_SHORT:
-            marshalBackus(cpu, address, (GLushort*)buffer, count);
+            marshalBackArray<GLushort>(cpu, (GLushort*)buffer, address, count);
             break;
         case GL_SHORT: 
-            marshalBacks(cpu, address, (GLshort*)buffer, count);
+            marshalBackArray<GLshort>(cpu, (GLshort*)buffer, address, count);
             break;
         case GL_3_BYTES:
-            marshalBackb(cpu, address, (GLbyte*)buffer, count*3);
+            marshalBackArray<GLbyte>(cpu, (GLbyte*)buffer, address, count*3);
             break;
         case GL_4_BYTES:
-            marshalBackb(cpu, address, (GLbyte*)buffer, count*4);
+            marshalBackArray<GLbyte>(cpu, (GLbyte*)buffer, address, count*4);
             break;
         case GL_FLOAT:
-            marshalBackf(cpu, address, (GLfloat*)buffer, count);
+            marshalBackArray<GLfloat>(cpu, (GLfloat*)buffer, address, count);
             break;
         case GL_UNSIGNED_INT:
-            marshalBackui(cpu, address, (GLuint*)buffer, count);
+            marshalBackArray<GLuint>(cpu, (GLuint*)buffer, address, count);
             break;
         case GL_INT:
-            marshalBacki(cpu, address, (GLint*)buffer, count);
+            marshalBackArray<GLint>(cpu, (GLint*)buffer, address, count);
             break;
         default:
-            kpanic("marshalType unknown type: %d", ARG2);
+            kpanic("marshalType unknown type: %d", type);
     }
+}
+
+MarshalReadWriteType::~MarshalReadWriteType() {
+    if (buffer) {
+        marshalBackType(cpu, type, count, buffer, address);
+    }
+}
+
+GLvoid* MarshalReadWriteType::getPtr() {
+    if (!buffer) {
+        buffer = marshalType(cpu, type, count, address);
+    }
+    return buffer;
 }
 
 GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
@@ -217,28 +160,23 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     case GL_INT:
         return marshalArray<GLint>(cpu, pixel, len);
     case GL_FLOAT:
-        return marshalf(cpu, pixel, len);
+        return marshalArray<GLfloat>(cpu, pixel, len);
     default:
         kpanic("glcommongl.c marshalPixels uknown type: %d", type);
         return nullptr;
     }
 }
 
-GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels) {
-    int bytes_per_comp = 0;
-    int isSigned = 0;
+U32 getPixelsLen(U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, int& bytes_per_comp, int& isSigned) {
     int bytes_per_row = 0;
     int len = 0;
     int remainder = 0;
-    
+
     GLint skipPixels = 0;
     GLint skipRows = 0;
     GLint alignment = 0;
     GLint pixels_per_row = 0;
     GLint skipImages = 0;
-
-    if (!pixels)
-        return nullptr;
 
     GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
     GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
@@ -246,18 +184,18 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
     GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
     if (is3d) {
         GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
-    }    
+    }
 
     if (!pixels_per_row)
         pixels_per_row = width;
     if (type == GL_BITMAP) {
         bytes_per_comp = 1;
-        bytes_per_row = (pixels_per_row+7)/8;
-    } else {		
+        bytes_per_row = (pixels_per_row + 7) / 8;
+    } else {
         int bytes_per_pixel;
 
         bytes_per_pixel = get_bytes_per_pixel(format, type);
-        bytes_per_row = pixels_per_row * bytes_per_pixel;		
+        bytes_per_row = pixels_per_row * bytes_per_pixel;
     }
     remainder = bytes_per_row % alignment;
     if (remainder > 0)
@@ -305,14 +243,16 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         break;
     case GL_FLOAT:
         bytes_per_comp = 0;
-        break;    
+        break;
     default:
-        kpanic("glcommongl.c marshalPixels uknown type: %d", type);
+        kpanic("glcommongl.c marshalBackPixels uknown type: %d", type);
     }
-    len = bytes_per_row*(height+skipRows)*(depth+skipImages);
-    //printf("marshal pixels: width=%d height=%d depth=%d format=%d type=%d pixels_per_row=%d bytes_per_comp=%d len=%d\n", width, height, depth, format, type, pixels_per_row, bytes_per_comp, len);
-    if (bytes_per_comp==0) {
-        return marshalf(cpu, pixels, len/4);
+    return bytes_per_row * (height + skipRows) * (depth + skipImages);
+}
+
+GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U32 len) {
+    if (bytes_per_comp == 0) {
+        return marshalArray<GLfloat>(cpu, pixels, len / 4);
     } else if (bytes_per_comp == 1) {
         if (isSigned) {
             return marshalArray<GLbyte>(cpu, pixels, len);
@@ -321,9 +261,9 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         }
     } else if (bytes_per_comp == 2) {
         if (isSigned) {
-            return marshalArray<GLshort>(cpu, pixels, len/2);
+            return marshalArray<GLshort>(cpu, pixels, len / 2);
         } else {
-            return marshalArray<GLushort>(cpu, pixels, len/2);
+            return marshalArray<GLushort>(cpu, pixels, len / 2);
         }
     } else if (bytes_per_comp == 3) {
         if (isSigned) {
@@ -333,121 +273,86 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         }
     } else if (bytes_per_comp == 4) {
         if (isSigned) {
-            return marshalArray<GLint>(cpu, pixels, len/4);
+            return marshalArray<GLint>(cpu, pixels, len / 4);
         } else {
-            return marshalArray<GLuint>(cpu, pixels, len/4);
+            return marshalArray<GLuint>(cpu, pixels, len / 4);
         }
     }
     kpanic("glcommongl.c marshalPixels unknown bytes_per_comp %d", bytes_per_comp);
     return nullptr;
 }
 
-void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 address, GLvoid* pixels) {
+GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels) {
+    if (!pixels) {
+        return nullptr;
+    }
     int bytes_per_comp = 0;
     int isSigned = 0;
-    int bytes_per_row = 0;
-    int len = 0;
-    int remainder = 0;
+    U32 len = getPixelsLen(is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
 
-    GLint skipPixels = 0;
-    GLint skipRows = 0;
-    GLint alignment = 0;
-    GLint pixels_per_row = 0;
-    GLint skipImages = 0;
+    return marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
+}
 
-    if (!pixels)
-        return;
-
-    GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
-    if (is3d) {
-        GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
-    }    
-
-    if (!pixels_per_row)
-        pixels_per_row = width;
-    if (type == GL_BITMAP) {
-        bytes_per_comp = 1;
-        bytes_per_row = (pixels_per_row+7)/8;
-    } else {		
-        int bytes_per_pixel;
-
-        bytes_per_pixel = get_bytes_per_pixel(format, type);
-        bytes_per_row = pixels_per_row * bytes_per_pixel;		
-    }
-    remainder = bytes_per_row % alignment;
-    if (remainder > 0)
-        bytes_per_row += (alignment - remainder);
-
-    switch (type) {
-    case GL_UNSIGNED_BYTE_3_3_2:
-    case GL_UNSIGNED_BYTE_2_3_3_REV:
-    case GL_UNSIGNED_BYTE: 
-        bytes_per_comp = 1;
-        break;
-    case GL_BYTE:
-        bytes_per_comp = 1;
-        isSigned = 1;
-        break;
-    case GL_BITMAP:
-        break;
-    case GL_UNSIGNED_SHORT_5_6_5:
-    case GL_UNSIGNED_SHORT_5_6_5_REV:
-    case GL_UNSIGNED_SHORT_4_4_4_4:
-    case GL_UNSIGNED_SHORT_4_4_4_4_REV:
-    case GL_UNSIGNED_SHORT_5_5_5_1:
-    case GL_UNSIGNED_SHORT_1_5_5_5_REV:
-    case GL_UNSIGNED_SHORT:
-        bytes_per_comp = 2;
-        break;
-    case GL_SHORT:
-        bytes_per_comp = 2;
-        isSigned = 1;
-        break;
-    case GL_UNSIGNED_INT_8_8_8_8:
-    case GL_UNSIGNED_INT_8_8_8_8_REV:
-    case GL_UNSIGNED_INT_10_10_10_2:
-    case GL_UNSIGNED_INT_2_10_10_10_REV:
-    case GL_UNSIGNED_INT:
-        bytes_per_comp = 4;
-        break;
-    case GL_INT:
-        bytes_per_comp = 4;
-        isSigned = 1;
-        break;
-    case GL_FLOAT:
-        bytes_per_comp = 0;
-        break;
-    default:
-        kpanic("glcommongl.c marshalBackPixels uknown type: %d", type);
-    }
-    len = bytes_per_row*(height+skipRows)*(depth+skipImages);
-
-    if (bytes_per_comp==0) {
-        marshalBackf(cpu, address, (GLfloat*)pixels, len/4);
+void marshalBackPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 address, GLvoid* pixels, U32 len) {
+    if (bytes_per_comp == 0) {
+        marshalBackArray<GLfloat>(cpu, (GLfloat*)pixels, address, len / 4);
     } else if (bytes_per_comp == 1) {
         if (isSigned) {
-            marshalBackb(cpu, address, (GLbyte*)pixels, len);
+            marshalBackArray<GLbyte>(cpu, (GLbyte*)pixels, address, len);
         } else {
-            marshalBackub(cpu, address, (GLubyte*)pixels, len);
+            marshalBackArray<GLubyte>(cpu, (GLubyte*)pixels, address, len);
         }
     } else if (bytes_per_comp == 2) {
         if (isSigned) {
-            marshalBacks(cpu, address, (GLshort*)pixels, len/2);
+            marshalBackArray<GLshort>(cpu, (GLshort*)pixels, address, len / 2);
         } else {
-            marshalBackus(cpu, address, (GLushort*)pixels, len/2);
+            marshalBackArray<GLushort>(cpu, (GLushort*)pixels, address, len / 2);
         }
     } else if (bytes_per_comp == 4) {
         if (isSigned) {
-            marshalBacki(cpu, address, (GLint*)pixels, len/4);
+            marshalBackArray<GLint>(cpu, (GLint*)pixels, address, len / 4);
         } else {
-            marshalBackui(cpu, address, (GLuint*)pixels, len/4);
+            marshalBackArray<GLuint>(cpu, (GLuint*)pixels, address, len / 4);
         }
     } else {
         kpanic("glcommongl.c marshalBackPixels unknown bytes_per_comp %d", bytes_per_comp);
     }
+}
+
+void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 address, GLvoid* pixels) {
+    if (!pixels) {
+        return;
+    }
+
+    int bytes_per_comp = 0;
+    int isSigned = 0;
+    U32 len = getPixelsLen(is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
+    marshalBackPixels(cpu, bytes_per_comp, isSigned, address, pixels, len);    
+}
+
+MarshalReadWritePackedPixels::~MarshalReadWritePackedPixels() {
+    if (buffer) {
+        marshalBackPixels(cpu, bytes_per_comp, isSigned, pixels, buffer, len);
+    }
+}
+
+GLvoid* MarshalReadWritePackedPixels::getPtr() {
+    if (packed) {
+        return (GLvoid*)(uintptr_t)(pixels);
+    }
+    if (!buffer) {
+        len = getPixelsLen(is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
+        if (!len) {
+            return (GLvoid*)pixels;
+        }
+        U32 page = pixels >> K_PAGE_SHIFT;
+        U32 pageStop = (pixels + len - 1) >> K_PAGE_SHIFT;
+        if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
+            return (GLvoid*)cpu->memory->getIntPtr(pixels);
+        }
+        buffer = marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
+    }
+    return buffer;
 }
 
 U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size) { 
@@ -553,101 +458,9 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
     return bufferpp;
 }
 
-const GLchar* marshalsz(CPU* cpu, U32 address) {
-    thread_local static char* tmp;
-    thread_local static U32 tmpLen;
-    U32 len = cpu->memory->strlen(address)+1;
-    if (len>tmpLen) {
-        if (tmpLen!=0)
-            delete[] tmp;
-        tmp = new char[len];
-        tmpLen = len;
-    }
-    cpu->memory->memcpy(tmp, address, tmpLen);
-    return tmp;
-}
-
-GLchar** bufferszArray;
-U32 bufferszArray_len;
-
-const GLchar** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
-    if (bufferszArray) {
-        for (U32 i = 0; i < bufferszArray_len; i++) {
-            if (bufferszArray[i]) {
-                delete[] bufferszArray[i];
-                bufferszArray[i] = nullptr;
-            }
-        }
-    }
-    if (!bufferszArray || bufferszArray_len < count) {
-        if (bufferszArray) {
-            delete[] bufferszArray;
-        }
-        bufferszArray = new GLchar * [count];
-        bufferszArray_len = count;
-    }
-    for (U32 i = 0; i < count; i++) {
-        U32 len = 0;
-        U32 strAddress = cpu->memory->readd(address + i * 4);
-        if (addressLengths) {
-            len = cpu->memory->readd(addressLengths + i * 4);
-        } else {
-            if (sizeof(GLchar) != 1) {
-                kpanic("marshalszArray sizeof(GLchar)!=1");
-            }
-            len = cpu->memory->strlen(strAddress);
-        }
-        bufferszArray[i] = new GLchar[len + 1];
-        cpu->memory->memcpy(bufferszArray[i], strAddress, len*sizeof(GLchar));
-        bufferszArray[i][len] = 0;
-    }
-    return (const GLchar **)bufferszArray;
-}
-
-GLcharARB** bufferszArrayARB;
-U32 bufferszArrayARB_len;
-
-const GLcharARB** marshalszArrayARB(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
-    if (bufferszArray) {
-        for (U32 i = 0; i < bufferszArray_len; i++) {
-            if (bufferszArrayARB[i]) {
-                delete[] bufferszArrayARB[i];
-                bufferszArrayARB[i] = nullptr;
-            }
-        }
-    }
-    if (bufferszArrayARB_len < count) {
-        if (bufferszArrayARB) {
-            delete[] bufferszArrayARB;
-        }
-        bufferszArrayARB = new GLcharARB * [count];
-        bufferszArrayARB_len = count;
-    }
-    for (U32 i = 0; i < count; i++) {
-        U32 len = 0;
-        U32 strAddress = cpu->memory->readd(address + i * 4);
-        if (addressLengths) {
-            len = cpu->memory->readd(addressLengths + i * 4);
-        } else {
-            if (sizeof(GLcharARB) != 1) {
-                kpanic("marshalszArrayARB sizeof(GLcharARB)!=1");
-            }
-            len = cpu->memory->strlen(strAddress);
-        }
-        bufferszArrayARB[i] = new GLcharARB[len + 1];
-        cpu->memory->memcpy(bufferszArrayARB[i], strAddress, len*sizeof(GLcharARB));
-        bufferszArrayARB[i][len] = 0;
-    }
-    return (const GLcharARB**)bufferszArrayARB;
-}
-
 void* marshalunhandled(const char* func, const char* param, CPU* cpu, U32 address) {
     klog("%s parameter in OpenGL function, %s, was not marshalled", func, param);
     return nullptr;
-}
-
-GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count) {
-    return marshalArray<GLsizeiptr, 4>(cpu, address, count);
 }
 
 /*
@@ -716,100 +529,6 @@ GLboolean ELEMENT_ARRAY_BUFFER() {
 GLboolean PIXEL_UNPACK_BUFFER() {
     return marshalGet(GL_PIXEL_UNPACK_BUFFER_BINDING)!=0;
 }
-
-#ifdef BOXEDWINE_GLHANDLE_ARB_POINTER
-GLhandleARB* handleBuffer;
-U32 handleBufferSize;
-
-U32 marshalHandleToIndex(GLhandleARB h) {
-    if (!handleBufferSize) {
-        handleBuffer = new GLhandleARB[1024];
-        handleBufferSize = 1024;
-        memset(handleBuffer, 0, sizeof(GLhandleARB)*handleBufferSize);
-    }
-    for (U32 i=0;i<handleBufferSize;i++) {
-        if (handleBuffer[i]==h) {
-            return i;
-        }
-    }
-    for (U32 i=0;i<handleBufferSize;i++) {
-        if (handleBuffer[i]==NULL) {
-            handleBuffer[i] = h;
-            return i;
-        }
-    }
-    GLhandleARB* b = new GLhandleARB[handleBufferSize*2];
-    memset(handleBuffer, 0, sizeof(GLhandleARB)*handleBufferSize*2);
-    memcpy(b, handleBuffer, handleBufferSize);
-    U32 result = handleBufferSize;
-    handleBufferSize*=2;
-    delete[] handleBuffer;
-    handleBuffer = b;
-    return result;
-}
-
-GLhandleARB marshalIndexToHandle(U32 i) {
-    if (handleBuffer && i<handleBufferSize) {
-        return handleBuffer[i];
-    }
-    return NULL;
-}
-
-void marshalDeleteHandleIndex(U32 i) {
-    if (handleBuffer && i<handleBufferSize) {
-        handleBuffer[i] = NULL;
-    }
-}
-
-GLhandleARB* bufferhandle;
-U32 bufferhandle_len;
-
-GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
-    if (!address)
-        return NULL;
-    if (bufferhandle && bufferhandle_len<count) {
-        delete[] bufferhandle;
-        bufferhandle=NULL;
-    }
-    if (!bufferhandle) {
-        bufferhandle = new GLhandleARB[count];
-        bufferhandle_len = count;
-    }
-    /*
-     // not needed
-    for (i=0;i<count;i++) {
-        bufferhandle[i] = INDEX_TO_HANDLE(readd(address));
-        address+=4;
-    }
-     */
-    return bufferhandle;
-}
-
-void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
-    U32 i;
-    
-    for (i=0;i<count;i++) {
-        cpu->memory->writed(address, HANDLE_TO_INDEX(buffer[i]));
-        address+=4;
-    }
-}
-
-#else
-
-GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
-    return marshalArray<GLhandleARB, 4>(cpu, address, count);
-}
-
-void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {    
-    // :TODO:
-    if (sizeof(GLhandleARB)!=4)
-        kpanic("marshalBackhandle not supported on this platform");
-    for (U32 i=0;i<count;i++) {
-        cpu->memory->writed(address, buffer[i]);
-        address+=4;
-    }
-}
-#endif
 
 const char* glcommon_glLightv_print_name(GLenum e) {
     thread_local static BString buffer; // static so that c_str can be returned
