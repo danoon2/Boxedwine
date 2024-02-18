@@ -194,6 +194,7 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, GLvoid* p) {
     case GL_UNSIGNED_INT: return getLargestValue<GLuint>((GLuint*)p, count);
     default:
         kpanic("marshalType unknown type: %d", type);
+        return 0;
     }
 }
 
