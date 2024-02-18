@@ -19,7 +19,6 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
             if (p->marshal_size) {
                 free(p->marshal);
             }         
-            // :TODO: will probably fail
             p->marshal = cpu->memory->getIntPtr(p->ptr);
             p->marshal_size = 0;
             
@@ -52,13 +51,14 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     return 1;
 }
 
-void updateVertexPointers(CPU* cpu, U32 count) {    
-    if (cpu->thread->glVertextPointer.refreshEachCall) {        
+void updateVertexPointers(CPU* cpu, U32 count) {
+    if (cpu->thread->glVertextPointer.refreshEachCall) {  
         if (updateVertexPointer(cpu, &cpu->thread->glVertextPointer, count))
             GL_FUNC(pglVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
     }
     
     if (cpu->thread->glNormalPointer.refreshEachCall) {
+        cpu->thread->glNormalPointer.size = cpu->thread->glVertextPointer.size;
         if (updateVertexPointer(cpu, &cpu->thread->glNormalPointer, count))
             GL_FUNC(pglNormalPointer)(cpu->thread->glNormalPointer.type, cpu->thread->glNormalPointer.stride, cpu->thread->glNormalPointer.marshal);
     }

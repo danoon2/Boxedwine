@@ -1845,7 +1845,7 @@ void glcommon_glCompressedTexImage2D(CPU* cpu) {
         kpanic("ext_glCompressedTexImage2D is NULL");
     {
     GL_FUNC(ext_glCompressedTexImage2D)(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, PIXEL_UNPACK_BUFFER()?(GLvoid*)pARG8:marshalArray<GLubyte>(cpu, ARG8, ARG7));
-    GL_LOG ("glCompressedTexImage2D GLenum target=%d, GLint level=%d, GLenum internalformat=%d, GLsizei width=%d, GLsizei height=%d, GLint border=%d, GLsizei imageSize=%d, const void* data=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8);
+    GL_LOG ("glCompressedTexImage2D GLenum target=%d, GLint level=%d, GLenum internalformat=%d, GLsizei width=%d, GLsizei height=%d, GLint border=%d, GLsizei imageSize=%d, const void* data=%.08x bound=%d",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8,PIXEL_UNPACK_BUFFER());
     }
 }
 void glcommon_glCompressedTexImage2DARB(CPU* cpu) {

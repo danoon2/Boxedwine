@@ -154,6 +154,70 @@ void glcommon_glRenderMode(CPU* cpu) {
     }
 }
 
+void glcommon_glDisableClientState(CPU* cpu) {
+    GLenum cap = ARG1;
+    GL_FUNC(pglDisableClientState)(cap);
+    if (cap == GL_COLOR_ARRAY) {
+        cpu->thread->glColorPointer.refreshEachCall = 0;
+    } else if (cap == GL_EDGE_FLAG_ARRAY) {
+        cpu->thread->glEdgeFlagPointer.refreshEachCall = 0;
+    } else if (cap == GL_FOG_COORD_ARRAY) {
+        cpu->thread->glFogPointer.refreshEachCall = 0;
+    } else if (cap == GL_INDEX_ARRAY) {
+        cpu->thread->glIndexPointer.refreshEachCall = 0;
+    } else if (cap == GL_NORMAL_ARRAY) {
+        cpu->thread->glNormalPointer.refreshEachCall = 0;
+    } else if (cap == GL_SECONDARY_COLOR_ARRAY) {
+        cpu->thread->glSecondaryColorPointer.refreshEachCall = 0;
+    } else if (cap == GL_TEXTURE_COORD_ARRAY) {
+        cpu->thread->glTexCoordPointer.refreshEachCall = 0;
+    } else if (cap == GL_VERTEX_ARRAY) {
+        cpu->thread->glVertextPointer.refreshEachCall = 0;
+    }
+}
+
+template <typename T>
+U32 getLargestValue(T* p, U32 count) {
+    U32 result = 0;
+    for (U32 i = 0; i < count; i++) {
+        if (p[i] > result) {
+            result = p[i];
+        }
+    }
+    return result;
+}
+
+U32 getLargestIndexInType(GLenum type, GLsizei count, GLvoid* p) {
+    switch (type) {
+    case GL_UNSIGNED_BYTE: return getLargestValue<GLubyte>((GLubyte*)p, count);
+    case GL_UNSIGNED_SHORT: return getLargestValue<GLushort>((GLushort*)p, count);
+    case GL_UNSIGNED_INT: return getLargestValue<GLuint>((GLuint*)p, count);
+    default:
+        kpanic("marshalType unknown type: %d", type);
+    }
+}
+
+void glcommon_glDrawElements(CPU* cpu) {
+    GLenum mode = ARG1;
+    GLsizei count = ARG2;
+    GLenum type = ARG3;
+    U32 indices = ARG4;
+    GLvoid* p = nullptr;
+
+    if (ELEMENT_ARRAY_BUFFER()) {
+        p = (GLvoid*)pARG4;
+        // :TODO: is this correct to use this count?
+        updateVertexPointers(cpu, count);
+        GL_LOG("glDrawElements mode=%x count=%d type=%x", mode, count, type);
+    } else {
+        p = marshalType(cpu, type, count, indices);
+        U32 lastIndex = getLargestIndexInType(type, count, p);
+        updateVertexPointers(cpu, lastIndex+1);
+        GL_LOG("glDrawElements mode=%x count=%d type=%x lastIndex=%d", mode, count, type, lastIndex);
+    }    
+    GL_FUNC(pglDrawElements)(mode, count, type, p);    
+}
+
 void printOpenGLInfo() {
     klog("GL Vendor: %s", (const char*)GL_FUNC(pglGetString)(GL_VENDOR));
     klog("GL Renderer: %s", (const char*)GL_FUNC(pglGetString)(GL_RENDERER));
