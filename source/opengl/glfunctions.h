@@ -307,6 +307,7 @@ GL_FUNCTION_CUSTOM(ReadPixels, void, (GLint x, GLint y, GLsizei width, GLsizei h
 GL_FUNCTION_CUSTOM(InterleavedArrays, void, (GLenum format, GLsizei stride, const GLvoid *pointer))
 GL_FUNCTION_CUSTOM(Viewport, void, (GLint x, GLint y, GLsizei width, GLsizei height))
 GL_FUNCTION_CUSTOM(FeedbackBuffer, void, (GLsizei size, GLenum type, GLfloat* buffer))
+GL_FUNCTION_CUSTOM(SelectBuffer, void, (GLsizei size, GLuint* buffer))
 GL_FUNCTION_CUSTOM(RenderMode, GLint, (GLenum mode))
 GL_FUNCTION_CUSTOM(GetIntegerv, void, (GLenum pname, GLint* params))
 GL_FUNCTION_CUSTOM(GetError, GLenum, ())
@@ -322,7 +323,6 @@ GL_FUNCTION(GetTexLevelParameterfv, void, (GLenum target, GLint level, GLenum pn
 GL_FUNCTION(GetTexLevelParameteriv, void, (GLenum target, GLint level, GLenum pname, GLint *params), (ARG1, ARG2, ARG3, buffer.getPtr()), MarshalReadWrite<GLint> buffer(cpu, ARG4, 1);, ,("glGetTexLevelParameteriv"))
 
 GL_FUNCTION(AreTexturesResident, GLboolean, (GLsizei n, const GLuint *textures, GLboolean *residences), (ARG1, marshalArray<GLuint>(cpu, ARG2, ARG1), buffer.getPtr()), MarshalReadWrite<GLboolean> buffer(cpu, ARG3, ARG1);,,("glAreTexturesResident"))
-GL_FUNCTION(SelectBuffer, void, (GLsizei size, GLuint *buffer), (ARG1, buffer.getPtr()), MarshalReadWrite<GLuint> buffer(cpu, ARG2, ARG1);, ,("glSelectBuffer"))
 GL_FUNCTION(GenTextures, void, (GLsizei n, GLuint *textures), (ARG1, buffer.getPtr()), MarshalReadWrite<GLuint> buffer(cpu, ARG2, ARG1);, ,("glGenTextures"))
 
 GL_FUNCTION(GetBooleanv, void, (GLenum pname, GLboolean *params), (ARG1, rw.getPtr()), MarshalReadWrite<GLboolean> rw(cpu, ARG2, getSize(ARG1));, ,("glGetBooleanv"))

@@ -277,6 +277,7 @@ public:
 static BString tty9Buffer;
 
 U32 TTYBufferAccess::writeNative(U8* buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION;
     tty9Buffer.append((char*)buffer, len);
     return len;
 }

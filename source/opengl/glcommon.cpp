@@ -85,6 +85,7 @@ void glcommon_glViewport(CPU* cpu) {
 
 static GLfloat* feedbackBuffer;
 static GLsizei feedbackBufferSize;
+static GLsizei feedbackSize;
 static U32 feedbackBufferAddress;
 
 void glcommon_glFeedbackBuffer(CPU* cpu) {
@@ -98,8 +99,31 @@ void glcommon_glFeedbackBuffer(CPU* cpu) {
         feedbackBuffer = new GLfloat[size];
         feedbackBufferSize = size;
     }
+    cpu->memory->memcpy(feedbackBuffer, ARG3, size * sizeof(GLfloat));
     GL_FUNC(pglFeedbackBuffer)(size, type, feedbackBuffer);
     feedbackBufferAddress = ARG3;
+    feedbackSize = size;
+}
+
+static GLuint* selectBuffer;
+static GLsizei selectBufferSize;
+static GLsizei selectSize;
+static U32 selectBufferAddress;
+
+void glcommon_glSelectBuffer(CPU* cpu) {
+    GLsizei size = ARG1;
+
+    if (size > selectBufferSize) {
+        if (selectBuffer) {
+            delete[] selectBuffer;
+        }
+        selectBuffer = new GLuint[size];
+        selectBufferSize = size;
+    }
+    cpu->memory->memcpy(selectBuffer, ARG2, size*sizeof(GLuint));
+    GL_FUNC(pglSelectBuffer)(size, selectBuffer);
+    selectBufferAddress = ARG2;
+    selectSize = size;
 }
 
 // changed this to an invalid value to fix motorhead under windows.  I will need to reevaluate why it was necessary for ma
@@ -117,10 +141,16 @@ void glcommon_glGetIntegerv(CPU* cpu) {
 
 void glcommon_glRenderMode(CPU* cpu) {
     GLenum mode = ARG1;
+    GLint current;
+    GL_FUNC(pglGetIntegerv)(GL_RENDER_MODE, &current);
     EAX = GL_FUNC(pglRenderMode)(mode);
     // could be -1
-    if (EAX < (U32)feedbackBufferSize) {
-        marshalBackArray<GLfloat>(cpu, feedbackBuffer, feedbackBufferAddress, EAX);
+    if (mode == GL_RENDER) {
+        if (current == GL_FEEDBACK && EAX < (U32)feedbackBufferSize) {
+            marshalBackArray<GLfloat>(cpu, feedbackBuffer, feedbackBufferAddress, feedbackSize);
+        } if (current == GL_SELECT && EAX < (U32)selectBufferSize) {
+            marshalBackArray<GLuint>(cpu, selectBuffer, selectBufferAddress, selectSize);
+        }
     }
 }
 
