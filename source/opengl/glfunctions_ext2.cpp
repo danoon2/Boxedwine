@@ -1698,7 +1698,8 @@ void glcommon_glMapBuffer(CPU* cpu) {
         kpanic("ext_glMapBuffer is NULL");
     {
     GLint size=0;void* ret=GL_FUNC(ext_glMapBuffer)(ARG1, ARG2);
-    ext_glGetBufferParameteriv(ARG1, GL_BUFFER_SIZE, &size); EAX=marshalBackp(cpu, ret, size);
+    ext_glGetBufferParameteriv(ARG1, GL_BUFFER_SIZE, &size); 
+    EAX = mapBufferRange(cpu, ARG1, ret, 0, size);
     GL_LOG ("glMapBuffer GLenum target=%d, GLenum access=%d",ARG1,ARG2);
     }
 }
@@ -1707,7 +1708,8 @@ void glcommon_glMapBufferARB(CPU* cpu) {
         kpanic("ext_glMapBufferARB is NULL");
     {
     GLint size=0;void* ret=GL_FUNC(ext_glMapBufferARB)(ARG1, ARG2);
-    ext_glGetBufferParameterivARB(ARG1, GL_BUFFER_SIZE, &size); EAX=marshalBackp(cpu, ret, size);
+    ext_glGetBufferParameterivARB(ARG1, GL_BUFFER_SIZE, &size);
+    EAX = mapBufferRange(cpu, ARG1, ret, 0, size); 
     GL_LOG ("glMapBufferARB GLenum target=%d, GLenum access=%d",ARG1,ARG2);
     }
 }
