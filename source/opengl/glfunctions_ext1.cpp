@@ -6946,16 +6946,18 @@ void glcommon_glGetRenderbufferParameteriv(CPU* cpu) {
     if (!ext_glGetRenderbufferParameteriv)
         kpanic("ext_glGetRenderbufferParameteriv is NULL");
     {
-    GL_FUNC(ext_glGetRenderbufferParameteriv)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetRenderbufferParameteriv GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLint> rw(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetRenderbufferParameteriv)(ARG1, ARG2, rw.getPtr());
+        GL_LOG ("glGetRenderbufferParameteriv GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetRenderbufferParameterivEXT(CPU* cpu) {
     if (!ext_glGetRenderbufferParameterivEXT)
         kpanic("ext_glGetRenderbufferParameterivEXT is NULL");
     {
-    GL_FUNC(ext_glGetRenderbufferParameterivEXT)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetRenderbufferParameterivEXT GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
+        MarshalReadWrite<GLint> rw(cpu, ARG3, 1);
+        GL_FUNC(ext_glGetRenderbufferParameterivEXT)(ARG1, ARG2, rw.getPtr());
+        GL_LOG ("glGetRenderbufferParameterivEXT GLenum target=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetSamplerParameterIiv(CPU* cpu) {
