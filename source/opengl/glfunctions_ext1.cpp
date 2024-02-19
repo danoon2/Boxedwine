@@ -6848,80 +6848,122 @@ void glcommon_glGetQueryBufferObjectuiv(CPU* cpu) {
     if (!ext_glGetQueryBufferObjectuiv)
         kpanic("ext_glGetQueryBufferObjectuiv is NULL");
     {
-    GL_FUNC(ext_glGetQueryBufferObjectuiv)(ARG1, ARG2, ARG3, ARG4);
-    GL_LOG ("glGetQueryBufferObjectuiv GLuint id=%d, GLuint buffer=%d, GLenum pname=%d, GLintptr offset=%d",ARG1,ARG2,ARG3,ARG4);
+        MarshalReadWrite<GLint> rw(cpu, ARG4, 1);
+        GL_FUNC(ext_glGetQueryBufferObjectuiv)(ARG1, ARG2, ARG3, ARG4);
+        GL_LOG ("glGetQueryBufferObjectuiv GLuint id=%d, GLuint buffer=%d, GLenum pname=%d, GLintptr offset=%d",ARG1,ARG2,ARG3,ARG4);
     }
 }
 void glcommon_glGetQueryIndexediv(CPU* cpu) {
     if (!ext_glGetQueryIndexediv)
         kpanic("ext_glGetQueryIndexediv is NULL");
     {
-    GL_FUNC(ext_glGetQueryIndexediv)(ARG1, ARG2, ARG3, (GLint*)marshalp(cpu, 0, ARG4, 0));
-    GL_LOG ("glGetQueryIndexediv GLenum target=%d, GLuint index=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3,ARG4);
+        MarshalReadWrite<GLint> rw(cpu, ARG4, 1);
+        GL_FUNC(ext_glGetQueryIndexediv)(ARG1, ARG2, ARG3, rw.getPtr());
+        GL_LOG ("glGetQueryIndexediv GLenum target=%d, GLuint index=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
 void glcommon_glGetQueryObjecti64v(CPU* cpu) {
     if (!ext_glGetQueryObjecti64v)
         kpanic("ext_glGetQueryObjecti64v is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjecti64v)(ARG1, ARG2, (GLint64*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjecti64v GLuint id=%d, GLenum pname=%d, GLint64* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjecti64v)(ARG1, ARG2, (GLint64*)pARG3);
+        } else {
+            MarshalReadWrite<GLint64> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjecti64v)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjecti64v GLuint id=%d, GLenum pname=%d, GLint64* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryObjecti64vEXT(CPU* cpu) {
     if (!ext_glGetQueryObjecti64vEXT)
         kpanic("ext_glGetQueryObjecti64vEXT is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjecti64vEXT)(ARG1, ARG2, (GLint64*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjecti64vEXT GLuint id=%d, GLenum pname=%d, GLint64* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjecti64vEXT)(ARG1, ARG2, (GLint64*)pARG3);
+        } else {
+            MarshalReadWrite<GLint64> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjecti64vEXT)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjecti64vEXT GLuint id=%d, GLenum pname=%d, GLint64* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryObjectiv(CPU* cpu) {
     if (!ext_glGetQueryObjectiv)
         kpanic("ext_glGetQueryObjectiv is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjectiv)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjectiv GLuint id=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjectiv)(ARG1, ARG2, (GLint*)pARG3);
+        } else {
+            MarshalReadWrite<GLint> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjectiv)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjectiv GLuint id=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryObjectivARB(CPU* cpu) {
     if (!ext_glGetQueryObjectivARB)
         kpanic("ext_glGetQueryObjectivARB is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjectivARB)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjectivARB GLuint id=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjectivARB)(ARG1, ARG2, (GLint*)pARG3);
+        } else {
+            MarshalReadWrite<GLint> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjectivARB)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjectivARB GLuint id=%d, GLenum pname=%d, GLint* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryObjectui64v(CPU* cpu) {
     if (!ext_glGetQueryObjectui64v)
         kpanic("ext_glGetQueryObjectui64v is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjectui64v)(ARG1, ARG2, (GLuint64*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjectui64v GLuint id=%d, GLenum pname=%d, GLuint64* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjectui64v)(ARG1, ARG2, (GLuint64*)pARG3);
+        } else {
+            MarshalReadWrite<GLuint64> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjectui64v)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjectui64v GLuint id=%d, GLenum pname=%d, GLuint64* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryObjectui64vEXT(CPU* cpu) {
     if (!ext_glGetQueryObjectui64vEXT)
         kpanic("ext_glGetQueryObjectui64vEXT is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjectui64vEXT)(ARG1, ARG2, (GLuint64*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjectui64vEXT GLuint id=%d, GLenum pname=%d, GLuint64* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjectui64vEXT)(ARG1, ARG2, (GLuint64*)pARG3);
+        } else {
+            MarshalReadWrite<GLuint64> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjectui64vEXT)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjectui64vEXT GLuint id=%d, GLenum pname=%d, GLuint64* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryObjectuiv(CPU* cpu) {
     if (!ext_glGetQueryObjectuiv)
         kpanic("ext_glGetQueryObjectuiv is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjectuiv)(ARG1, ARG2, (GLuint*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjectuiv GLuint id=%d, GLenum pname=%d, GLuint* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjectuiv)(ARG1, ARG2, (GLuint*)pARG3);
+        } else {
+            MarshalReadWrite<GLuint> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjectuiv)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjectuiv GLuint id=%d, GLenum pname=%d, GLuint* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryObjectuivARB(CPU* cpu) {
     if (!ext_glGetQueryObjectuivARB)
         kpanic("ext_glGetQueryObjectuivARB is NULL");
     {
-    GL_FUNC(ext_glGetQueryObjectuivARB)(ARG1, ARG2, (GLuint*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glGetQueryObjectuivARB GLuint id=%d, GLenum pname=%d, GLuint* params=%.08x",ARG1,ARG2,ARG3);
+        if (RESULT_BUFFER()) {
+            GL_FUNC(ext_glGetQueryObjectuivARB)(ARG1, ARG2, (GLuint*)pARG3);
+        } else {
+            MarshalReadWrite<GLuint> rw(cpu, ARG3, 1);
+            GL_FUNC(ext_glGetQueryObjectuivARB)(ARG1, ARG2, rw.getPtr());
+        }
+        GL_LOG ("glGetQueryObjectuivARB GLuint id=%d, GLenum pname=%d, GLuint* params=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glGetQueryiv(CPU* cpu) {

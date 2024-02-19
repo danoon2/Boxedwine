@@ -523,6 +523,10 @@ GLboolean ARRAY_BUFFER() {
     return marshalGet(GL_ARRAY_BUFFER_BINDING)!=0;
 }
 
+GLboolean RESULT_BUFFER() {
+    return marshalGet(GL_QUERY_BUFFER_BINDING) != 0;
+}
+
 GLboolean ELEMENT_ARRAY_BUFFER() {
     return marshalGet(GL_ELEMENT_ARRAY_BUFFER_BINDING)!=0;
 }
