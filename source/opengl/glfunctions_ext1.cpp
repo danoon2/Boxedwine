@@ -6617,11 +6617,9 @@ void glcommon_glGetProgramInfoLog(CPU* cpu) {
     if (!ext_glGetProgramInfoLog)
         kpanic("ext_glGetProgramInfoLog is NULL");
     {
-        GLsizei* length = marshalArray<GLsizei>(cpu, ARG3, 1);
-        GLchar* buffer = marshalArray<GLchar>(cpu, ARG4, ARG2);
-        GL_FUNC(ext_glGetProgramInfoLog)(ARG1, ARG2, length, buffer);
-        marshalBackArray<GLsizei>(cpu, length, ARG3, 1);
-        marshalBackArray<GLchar>(cpu, buffer, ARG3, ARG2);
+        MarshalReadWrite<GLsizei> length(cpu, ARG3, 1);
+        MarshalReadWrite<GLchar> infoLog(cpu, ARG4, ARG2);
+        GL_FUNC(ext_glGetProgramInfoLog)(ARG1, ARG2, length.getPtr(), infoLog.getPtr());
         GL_LOG ("glGetProgramInfoLog GLuint program=%d, GLsizei bufSize=%d, GLsizei* length=%.08x, GLchar* infoLog=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }

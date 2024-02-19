@@ -288,7 +288,7 @@ GL_FUNCTION(CopyTexImage2D, void, (GLenum target, GLint level, GLenum internalfo
 GL_FUNCTION(CopyTexSubImage1D, void, (GLenum target, GLint level, GLint xoffset, GLint x, GLint y, GLsizei width), (ARG1, ARG2, ARG3, ARG4, ARG5, ARG6), , , ("glCopyTexSubImage1D"))
 GL_FUNCTION(CopyTexSubImage2D, void, (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint x, GLint y, GLsizei width, GLsizei height), (ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8), , , ("glCopyTexSubImage2D"))
 GL_FUNCTION(ArrayElement, void, (GLint i), (ARG1), updateVertexPointers(cpu, ARG1); , , ("glArrayElement"))
-GL_FUNCTION(DrawArrays, void, (GLenum mode, GLint first, GLsizei count), (ARG1, ARG2, ARG3), updateVertexPointers(cpu, ARG3); , , ("glDrawArrays mode=%d first=%d count=%d", ARG1, ARG2, ARG3))
+GL_FUNCTION(DrawArrays, void, (GLenum mode, GLint first, GLsizei count), (ARG1, ARG2, ARG3), updateVertexPointers(cpu, ARG2+ARG3); , , ("glDrawArrays mode=%d first=%d count=%d", ARG1, ARG2, ARG3))
 GL_FUNCTION(VertexPointer, void, (GLint size, GLenum type, GLsizei stride, const GLvoid* ptr), (ARG1, ARG2, ARG3, marshalVetextPointer(cpu, ARG1, ARG2, ARG3, ARG4)), , , ("glVertexPointer"))
 GL_FUNCTION(NormalPointer, void, (GLenum type, GLsizei stride, const GLvoid* ptr), (ARG1, ARG2, marshalNormalPointer(cpu, ARG1, ARG2, ARG3)), , , ("glNormalPointer"))
 GL_FUNCTION(ColorPointer, void, (GLint size, GLenum type, GLsizei stride, const GLvoid* ptr), (ARG1, ARG2, ARG3, marshalColorPointer(cpu, ARG1, ARG2, ARG3, ARG4)), , , ("glColorPointer"))
