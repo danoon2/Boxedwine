@@ -514,6 +514,7 @@ U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {
 }
 
 U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(readingCond);
     S32 result = (S32)::recv(this->nativeSocket, (char*)buffer, len, 0);
     if (result < 0) {
         result = (S32)::recv(this->nativeSocket, (char*)buffer, len, 0);
@@ -1080,6 +1081,7 @@ U32 KNativeSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 addre
 }
 
 U32 KNativeSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(readingCond);
     KMemory* memory = thread->memory;
     char tmp[K_PAGE_SIZE] = { 0 };
     MsgHdr hdr = { 0 };
@@ -1165,6 +1167,7 @@ U32 KNativeSocketObject::sendto(KThread* thread, KFileDescriptor* fd, U32 messag
 }
 
 U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(readingCond);
     U32 nativeFlags = 0;
     KMemory* memory = thread->memory;
 
@@ -1194,7 +1197,7 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
     }
     outLen = inLen;
     U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, address_len?(struct sockaddr*)fromBuffer:nullptr, address_len?&outLen:0);
-    LOG_SOCK("%x native socket: %x recvfrom address=%x address_len=%x result=%x", thread->id, nativeSocket, address, address_len, result);
+    LOG_SOCK("%x native socket: %x recvfrom address=%x address_len=%x flags=%x result=%x", thread->id, nativeSocket, address, address_len, flags, result);
     if ((S32)result>=0) {
         memory->memcpy(buffer, tmp, result);
         if (address) {
