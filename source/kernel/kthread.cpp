@@ -352,6 +352,24 @@ static U8 fetchByte(void* data, U32* eip) {
     return memory->readb((*eip)++);
 }
 
+void KThread::signalTrap(U32 code) {
+    KSigAction* action = &this->process->sigActions[K_SIGTRAP];
+    if (action->handlerAndSigAction == K_SIG_DFL) {
+        DecodedBlock block;
+        decodeBlock(fetchByte, memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, &block);
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        kpanic("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
+#else
+        kpanic("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->inst);
+#endif
+    }
+    memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
+    this->process->sigActions[K_SIGTRAP].sigInfo[0] = K_SIGTRAP;
+    this->process->sigActions[K_SIGTRAP].sigInfo[2] = code;
+    this->process->sigActions[K_SIGTRAP].sigInfo[3] = cpu->eip.u32;
+    this->runSignal(K_SIGTRAP, 3, 0);
+}
+
 void KThread::signalIllegalInstruction(int code) {
     KSigAction* action = &this->process->sigActions[K_SIGILL];
     if (action->handlerAndSigAction == K_SIG_DFL) {

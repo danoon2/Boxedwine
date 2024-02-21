@@ -1144,7 +1144,7 @@ static U32 iret32(X64Asm* data) {
 
 // INT 3
 static U32 int3(X64Asm* data) {
-    data->signalIllegalInstruction(5); // 5=ILL_PRVOPC
+    data->signalTrap(1); // 1=TRAP_BRKPT
     data->done = true;
     return 0;
 }

@@ -3207,6 +3207,11 @@ void X64Asm::signalIllegalInstruction(int code) {
     done = true;
 }
 
+void X64Asm::signalTrap(int code) {
+    emulateSingleOp(currentOp);
+    done = true;
+}
+
 static U8 fetchByte(void* p, U32 *eip) {
     KMemory* memory = (KMemory*)p;
     return memory->readb((*eip)++);

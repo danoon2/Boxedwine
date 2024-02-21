@@ -108,6 +108,7 @@ public:
     void retf(U32 big, U32 bytes);
     void iret(U32 big, U32 oldEip);
     void signalIllegalInstruction(int code);
+    void signalTrap(int code);
     void syscall(U32 opLen);
     void int98(U32 opLen);
     void int99(U32 opLen);

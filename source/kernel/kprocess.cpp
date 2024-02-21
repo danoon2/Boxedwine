@@ -1489,7 +1489,7 @@ U32 KProcess::clone3(KThread* thread, U32 args, U32 size) {
     U64 set_tid = memory->readq(args + 64);
     U64 set_tid_size = memory->readq(args + 72);
     U64 cgroup = memory->readq(args + 80);
-    return clone(thread, flags, stack + stack_size, parent_tid, tls, child_tid);
+    return clone(thread, (U32)flags, (U32)(stack + stack_size), (U32)parent_tid, (U32)tls, (U32)child_tid);
 }
 
 U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {    
