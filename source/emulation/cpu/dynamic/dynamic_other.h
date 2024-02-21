@@ -180,6 +180,10 @@ void dynamic_intIb(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_intIb, false, 1, 0, DYN_PARAM_CPU, false);
     blockDone();
 }
+void dynamic_int3(DynamicData* data, DecodedOp* op) {
+    callHostFunction((void*)common_int3, false, 1, 0, DYN_PARAM_CPU, false);
+    blockDone();
+}
 void dynamic_xlat(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[0].u8), DYN_8bit);
     if (op->ea16) {

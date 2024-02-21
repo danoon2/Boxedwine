@@ -175,7 +175,8 @@ void OPCALL normal_retn32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_invalid(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    kpanic("Invalid instruction %x\n", static_cast<int>(op->inst));
+    cpu->thread->signalIllegalInstruction(5);
+    NEXT_DONE();
 }
 void OPCALL normal_int80(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -210,6 +211,11 @@ void OPCALL normal_int9A(CPU* cpu, DecodedOp* op) {
     callVulkan(cpu, index);
 #endif
     NEXT();
+}
+void OPCALL normal_int3(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->thread->signalTrap(1);// 1=TRAP_BRKPT
+    NEXT_DONE();
 }
 void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

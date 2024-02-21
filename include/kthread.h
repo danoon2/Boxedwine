@@ -67,7 +67,8 @@ public:
     void seg_access(U32 address, bool readFault, bool writeFault, bool throwException=true);
     bool runSignals();
     void runSignal(U32 signal, U32 trapNo, U32 errorNo);
-    void signalIllegalInstruction(int code);    
+    void signalIllegalInstruction(int code);   
+    void signalTrap(U32 code);
     void clone(KThread* from);
     void setupStack();
     void setTLS(struct user_desc* desc);
