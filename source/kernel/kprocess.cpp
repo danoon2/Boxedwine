@@ -1416,6 +1416,82 @@ and is now available for re-use. */
 #define K_CLONE_NEWNET            0x40000000      /* New network namespace */
 #define K_CLONE_IO                0x80000000      /* Clone io context */
 
+/**
+ * struct clone_args - arguments for the clone3 syscall
+ * @flags:        Flags for the new process as listed above.
+ *                All flags are valid except for CSIGNAL and
+ *                CLONE_DETACHED.
+ * @pidfd:        If CLONE_PIDFD is set, a pidfd will be
+ *                returned in this argument.
+ * @child_tid:    If CLONE_CHILD_SETTID is set, the TID of the
+ *                child process will be returned in the child's
+ *                memory.
+ * @parent_tid:   If CLONE_PARENT_SETTID is set, the TID of
+ *                the child process will be returned in the
+ *                parent's memory.
+ * @exit_signal:  The exit_signal the parent process will be
+ *                sent when the child exits.
+ * @stack:        Specify the location of the stack for the
+ *                child process.
+ *                Note, @stack is expected to point to the
+ *                lowest address. The stack direction will be
+ *                determined by the kernel and set up
+ *                appropriately based on @stack_size.
+ * @stack_size:   The size of the stack for the child process.
+ * @tls:          If CLONE_SETTLS is set, the tls descriptor
+ *                is set to tls.
+ * @set_tid:      Pointer to an array of type *pid_t. The size
+ *                of the array is defined using @set_tid_size.
+ *                This array is used to select PIDs/TIDs for
+ *                newly created processes. The first element in
+ *                this defines the PID in the most nested PID
+ *                namespace. Each additional element in the array
+ *                defines the PID in the parent PID namespace of
+ *                the original PID namespace. If the array has
+ *                less entries than the number of currently
+ *                nested PID namespaces only the PIDs in the
+ *                corresponding namespaces are set.
+ * @set_tid_size: This defines the size of the array referenced
+ *                in @set_tid. This cannot be larger than the
+ *                kernel's limit of nested PID namespaces.
+ * @cgroup:       If CLONE_INTO_CGROUP is specified set this to
+ *                a file descriptor for the cgroup.
+ *
+ * The structure is versioned by size and thus extensible.
+ * New struct members must go at the end of the struct and
+ * must be properly 64bit aligned.
+ 
+struct clone_args {
+    __aligned_u64 flags;
+    __aligned_u64 pidfd;
+    __aligned_u64 child_tid;
+    __aligned_u64 parent_tid;
+    __aligned_u64 exit_signal;
+    __aligned_u64 stack;
+    __aligned_u64 stack_size;
+    __aligned_u64 tls;
+    __aligned_u64 set_tid;
+    __aligned_u64 set_tid_size;
+    __aligned_u64 cgroup;
+};
+*/
+// :TODO: leaving in for now, but currently clone3 syscall returns ENOSYS and glibc will fall back to the normal clone, 
+// I'm not sure why this doesn't work, seems like eip might be in a different place
+U32 KProcess::clone3(KThread* thread, U32 args, U32 size) {
+    U64 flags = memory->readq(args);
+    U64 pidfd = memory->readq(args+8);
+    U64 child_tid = memory->readq(args + 16);
+    U64 parent_tid = memory->readq(args + 24);
+    U64 exit_signal = memory->readq(args + 32);
+    U64 stack = memory->readq(args + 40);
+    U64 stack_size = memory->readq(args + 48);
+    U64 tls = memory->readq(args + 56);
+    U64 set_tid = memory->readq(args + 64);
+    U64 set_tid_size = memory->readq(args + 72);
+    U64 cgroup = memory->readq(args + 80);
+    return clone(thread, flags, stack + stack_size, parent_tid, tls, child_tid);
+}
+
 U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid) {    
     flags &= ~CSIGNAL;
     

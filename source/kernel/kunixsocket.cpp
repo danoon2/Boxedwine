@@ -628,11 +628,13 @@ U32 KUnixSocketObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 leve
 
     if (level == K_SOL_SOCKET) {
         switch (name) {
+            case K_SO_RCVBUFFORCE:
             case K_SO_RCVBUF:
                 if (len!=4)
                     kpanic("KUnixSocketObject::setsockopt SO_RCVBUF expecting len of 4");
                 this->recvLen = memory->readd(value);
                 break;
+            case K_SO_SNDBUFFORCE:
             case K_SO_SNDBUF:
                 if (len != 4)
                     kpanic("KUnixSocketObject::setsockopt SO_SNDBUF expecting len of 4");

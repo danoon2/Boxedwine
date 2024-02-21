@@ -78,6 +78,7 @@ public:
     U32 signalstack(U32 ss, U32 oss);
     U32 sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize);
     U32 sigreturn();
+    U32 rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig);
     U32 sigsuspend(U32 mask, U32 sigsetSize);
     U32 sleep(U32 ms);
     U32 nanoSleep(U64 nano);

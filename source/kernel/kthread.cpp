@@ -642,6 +642,23 @@ U32 KThread::sigreturn() {
     return -K_CONTINUE;
 }
 
+// https://github.com/torvalds/linux/blob/master/kernel/rseq.c
+/*
+struct rseq {
+    U32 cpu_id_start;
+    U32 cpu_id;
+    U32 rseq_cs;
+    U32 padding;
+    U32 flags;
+};
+*/
+// I'm not sure if this will every be able to be emulated properly, I might be stuck using Debian 11.  Debian 12 glibc uses this.
+U32 KThread::rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig) {
+    memory->writed(rseq, 0);
+    memory->writed(rseq+4, 0);
+    return 0;
+}
+
 void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
     U64 count = cpu->instructionCount;
 

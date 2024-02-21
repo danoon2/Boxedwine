@@ -650,6 +650,23 @@ static U32 syscall_sigreturn(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_rseq(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "struct rseq *rseq=%X rseq_len=%d flags=%X sig=%X", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->rseq(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_clone3(CPU* cpu, U32 eipCount) {
+    return -K_ENOSYS;
+    /*
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "clone3: args=%X size=%X", ARG1, ARG2);
+    U32 result = cpu->thread->process->clone3(cpu->thread, ARG1, ARG2);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+    */
+}
+
 static U32 syscall_clone(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "clone: flags=%X child_stack=%X ptid=%X tls=%X ctid=%X", ARG1, ARG2, ARG3, ARG4, ARG5);
     U32 result = cpu->thread->process->clone(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5);
@@ -1394,6 +1411,14 @@ static U32 syscall_faccessat(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_faccessat2(CPU* cpu, U32 eipCount) {
+    BString pathname = cpu->memory->readString(ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "faccessat2 dirfd=%X pathname=%X(%s) mode=%X flags=%X", ARG1, ARG2, pathname.c_str(), ARG3, ARG4);
+    U32 result = cpu->thread->process->faccessat(ARG1, pathname, ARG3, ARG4);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {    
 #ifdef _DEBUG
         //kwarn("syscall __NR_set_robust_list not implemented");
@@ -1983,7 +2008,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_statx,            // 383 __NR_statx
     nullptr,                  // 384
     nullptr,                  // 385
-    nullptr,                  // 386 __NR_rseq
+    syscall_rseq,             // 386 __NR_rseq
     nullptr,                  // 387
     nullptr,                  // 388
     nullptr,                  // 389
@@ -2032,11 +2057,11 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 432
     nullptr,                  // 433
     nullptr,                  // 434
-    nullptr,                  // 435 __NR_clone3
+    syscall_clone3,           // 435 __NR_clone3
     nullptr,                  // 436
     nullptr,                  // 437
     nullptr,                  // 438
-    nullptr                  // 439 __NR_faccessat2
+    syscall_faccessat2        // 439 __NR_faccessat2
 };
 
 #ifndef BOXEDWINE_MULTI_THREADED

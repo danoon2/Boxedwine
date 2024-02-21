@@ -67,6 +67,8 @@
 #define K_SO_PEERNAME  28
 #define K_SO_TIMESTAMP 29
 #define K_SO_ACCEPTCONN 30
+#define K_SO_SNDBUFFORCE 32
+#define K_SO_RCVBUFFORCE 33
 
 #define K_IPPROTO_IP 0
 #define K_SOL_SOCKET  1
