@@ -49,7 +49,8 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
             for (U32 i = 0; i < count; i++) {
                 KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
                 if (fd) {
-                    fd->kobject->waitForEvents(thread->pollCond, data->events);                    
+                    // even if 0, we still don't want to remove it and should still respond to POLLERR and POLLHUP
+                    fd->kobject->waitForEvents(thread->pollCond, data->events | K_POLLERR);
                 } else {
                     int ii = 0;
                 }
