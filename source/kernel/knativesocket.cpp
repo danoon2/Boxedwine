@@ -207,29 +207,40 @@ void removeWaitingSocket(S32 nativeSocket) {
 #endif
 }
 
-S32 translateNativeSocketError(int error) {
+S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, int error) {
     S32 result = 0;
 #ifdef WIN32
-    if (error == WSAENOTCONN)
+    if (error == WSAENOTCONN) {
         result = -K_ENOTCONN;
-    else if (error == WSAEWOULDBLOCK)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ENOTCONN", result);
+    } else if (error == WSAEWOULDBLOCK) {
         result = -K_EWOULDBLOCK;
-    else if (error == WSAETIMEDOUT)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EWOULDBLOCK", result);
+    } else if (error == WSAETIMEDOUT) {
         result = -K_ETIMEDOUT;
-    else if (error == WSAECONNRESET)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ETIMEDOUT", result);
+    } else if (error == WSAECONNRESET) {
         result = -K_ECONNRESET;
-    else if (error == WSAEDESTADDRREQ)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNRESET", result);
+    } else if (error == WSAEDESTADDRREQ) {
         result = -K_EDESTADDRREQ;
-    else if (error == WSAEHOSTUNREACH)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EDESTADDRREQ", result);
+    } else if (error == WSAEHOSTUNREACH) {
         result = -K_EHOSTUNREACH;
-     else if (error == WSAECONNREFUSED)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EHOSTUNREACH", result);
+    } else if (error == WSAECONNREFUSED) {
         result = -K_ECONNREFUSED;
-    else if (error == WSAEISCONN)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNREFUSED", result);
+    } else if (error == WSAEISCONN) {
         result = -K_EISCONN;
-    else if (error == WSAEMSGSIZE)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNREFUSED", result);
+    } else if (error == WSAEMSGSIZE) {
         result = -K_EMSGSIZE;
-    else
-        result =-K_EIO;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EMSGSIZE", result);
+    } else {
+        result = -K_EIO;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EIO", result);
+    }
 
 #else 
     if (error == ENOTCONN)
@@ -258,11 +269,10 @@ S32 translateNativeSocketError(int error) {
 
 S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool write) {
 #ifdef WIN32
-    S32 result = translateNativeSocketError(WSAGetLastError());
+    S32 result = translateNativeSocketError(s, WSAGetLastError());
 #else
-    S32 result = translateNativeSocketError(errno);
+    S32 result = translateNativeSocketError(s, errno);
 #endif
-    LOG_SOCK("  native socket: %x error %x", s->nativeSocket, result);
     s->error = -result;
 #ifndef BOXEDWINE_MULTI_THREADED
     if (result == -K_EWOULDBLOCK) {
