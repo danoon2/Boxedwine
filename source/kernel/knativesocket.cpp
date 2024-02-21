@@ -581,7 +581,8 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
     U32 result = 0;
     KMemory* memory = thread->memory;
 
-#ifndef BOXEDWINE_MULTI_THREADED
+    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+#ifndef BOXEDWINE_MULTI_THREADED    
     if (this->connecting) {
         if (this->isWriteReady()) {
             this->error = 0;
@@ -597,13 +598,12 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
                 return -K_EIO;
             }
             if (error) {
-                result = translateNativeSocketError(error);
+                result = translateNativeSocketError(t, error);
                 if (result != (U32)(-K_EWOULDBLOCK)) {
                     return result;
                 }
             }
-        }
-        std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+        }        
         addWaitingNativeSocket(t);
         BOXEDWINE_CONDITION_LOCK(this->writingCond);
         BOXEDWINE_CONDITION_WAIT(this->writingCond);
@@ -650,7 +650,6 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
         this->connecting = false;
         return -K_ECONNREFUSED;
     }
-    std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
     result = handleNativeSocketError(t, true);
 #ifdef BOXEDWINE_MSVC
     if (result == -K_EWOULDBLOCK) {
