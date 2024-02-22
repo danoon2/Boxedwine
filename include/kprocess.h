@@ -289,6 +289,7 @@ private:
     std::shared_ptr<FsNode> commandLineNode;
     std::shared_ptr<FsNode> procNode;
     bool systemProcess = false;
+    bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent
 };
 
 #endif

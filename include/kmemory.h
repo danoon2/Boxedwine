@@ -58,8 +58,8 @@ public:
     bool canWrite(U32 address, U32 len);
     bool canRead(U32 address, U32 len);
 
-    void clone(KMemory* from);
-    void execvReset();
+    void clone(KMemory* from, bool cloneVM);
+    void execvReset(bool cloneVM);
 
     void memcpy(U32 address, const void* p, U32 len);
     void memcpy(void* p, U32 address, U32 len);
@@ -98,11 +98,11 @@ public:
     
     U32 getPageFlags(U32 page);
 
-    bool canRead(U32 page) { return (flags[page] & PAGE_READ) != 0; }
-    bool canWrite(U32 page) { return (flags[page] & PAGE_WRITE) != 0; }
-    bool canExec(U32 page) { return (flags[page] & PAGE_EXEC) != 0; }
-    bool mapShared(U32 page) { return (flags[page] & PAGE_SHARED) != 0; }
-    bool isPageMapped(U32 page) { return (flags[page] & PAGE_MAPPED) != 0; }
+    bool canRead(U32 page) { return (getPageFlags(page) & PAGE_READ) != 0; }
+    bool canWrite(U32 page) { return (getPageFlags(page) & PAGE_WRITE) != 0; }
+    bool canExec(U32 page) { return (getPageFlags(page) & PAGE_EXEC) != 0; }
+    bool mapShared(U32 page) { return (getPageFlags(page) & PAGE_SHARED) != 0; }
+    bool isPageMapped(U32 page) { return (getPageFlags(page) & PAGE_MAPPED) != 0; }
 
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
     CodeBlock getCodeBlock(U32 address);
@@ -118,9 +118,7 @@ public:
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
-    friend BtMemory;
-    
-    U8 flags[K_NUMBER_OF_PAGES];
+    friend BtMemory;        
 
     KMemoryData* data;
     KProcess* process;

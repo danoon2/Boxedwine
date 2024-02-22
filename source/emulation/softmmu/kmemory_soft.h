@@ -30,6 +30,7 @@ public:
     Page* mmu[K_NUMBER_OF_PAGES];
     U8* mmuReadPtr[K_NUMBER_OF_PAGES];
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];
+    U8 flags[K_NUMBER_OF_PAGES];
 
     CodePage* getOrCreateCodePage(U32 address);
     bool isAddressDynamic(U32 address, U32 len);

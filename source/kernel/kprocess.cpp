@@ -757,7 +757,8 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
     }
 
     // reset memory must come after we grab the args and env
-    this->memory->execvReset();  
+    this->memory->execvReset(cloneVM);
+    cloneVM = false;
 
     thread->reset();
     this->onExec(thread);
@@ -1510,16 +1511,13 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
             kpanic("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
         }
         std::shared_ptr<KProcess> newProcess = KProcess::create();
-        if (vm) {
-            newProcess->memory = this->memory;
-        } else {            
-            newProcess->memory = KMemory::create(newProcess.get());
-            newProcess->memory->clone(this->memory);
-        }
+        newProcess->memory = KMemory::create(newProcess.get());
+        newProcess->memory->clone(this->memory, vm);
+
         KThread* newThread = newProcess->createThread();
 
         newProcess->parentId = this->id;        
-        
+        newProcess->cloneVM = vm;
         newProcess->clone(shared_from_this());
         newThread->clone(thread);
 
@@ -1626,6 +1624,10 @@ U32 KProcess::exitgroup(KThread* thread, U32 code) {
 
     thread->cleanup(); // must happen before we clear memory
     this->threads.clear();
+    if (cloneVM) {
+        // make sure the shared memory is unhooked from parent
+        this->memory->execvReset(cloneVM);
+    }
     this->cleanupProcess(); // release RAM, sockets, etc now.  No reason to wait to do that until waitpid is called
     this->exitCode = code;
 

@@ -13,8 +13,7 @@ MappedFileCache::~MappedFileCache() {
 }
 
 KMemory::KMemory(KProcess* process) : process(process) {
-    data = new KMemoryData(this);
-    ::memset(flags, 0, sizeof(flags));
+    data = new KMemoryData(this);    
 #ifdef BOXEDWINE_DYNAMIC
     dynamicMemory = nullptr;
 #endif
@@ -292,8 +291,14 @@ bool KMemory::canRead(U32 address, U32 len) {
     return result;
 }
 
-void KMemory::execvReset() {
-    data->execvReset();
+void KMemory::execvReset(bool cloneVM) {
+    if (!cloneVM) {
+        data->execvReset();
+    } else {
+        std::shared_ptr<KProcess> parent = KSystem::getProcess(process->parentId);
+        // data no longer shared with parent
+        data = new KMemoryData(this);
+    }
 }
 
 void KMemory::memcpy(U32 address, const void* p, U32 len) {
@@ -405,5 +410,5 @@ void KMemory::iteratePages(U32 address, U32 len, std::function<bool(U32 page)> c
 }
 
 U32 KMemory::getPageFlags(U32 page) {
-    return flags[page];
+    return data->flags[page];
 }

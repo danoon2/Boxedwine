@@ -28,6 +28,7 @@ KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mm
 KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }
 #endif
 {
+    ::memset(flags, 0, sizeof(flags));
     for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
         this->mmu[i] = invalidPage;
     }
@@ -131,7 +132,7 @@ void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permis
         if (page + i == 0xd06cf) {
             int ii = 0;
         }
-        memory->flags[page + i] = permissions;
+        flags[page + i] = permissions;
     }
     if (ramPages) {
         bool read = permissions & K_PROT_READ;
@@ -185,13 +186,13 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
         if (i + pageCount >= K_NUMBER_OF_PAGES) {
             return false;
         }
-        if (memory->flags[i] == 0 || (canBeReMapped && (memory->flags[i] & PAGE_MAPPED))) {
+        if (flags[i] == 0 || (canBeReMapped && (flags[i] & PAGE_MAPPED))) {
             U32 j = 1;
             bool success = true;
 
             for (; j < pageCount; j++) {
                 U32 nextPage = i + j; // could be done a different way, but this helps the static analysis
-                if (nextPage < K_NUMBER_OF_PAGES && memory->flags[nextPage] != 0 && (!canBeReMapped || !(memory->flags[nextPage] & PAGE_MAPPED))) {
+                if (nextPage < K_NUMBER_OF_PAGES && flags[nextPage] != 0 && (!canBeReMapped || !(flags[nextPage] & PAGE_MAPPED))) {
                     success = false;
                     break;
                 }
@@ -203,7 +204,7 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
                 *result = i;
                 U32 pageEndIndex = i + pageCount;
                 for (U32 pageIndex = i; pageIndex < pageEndIndex && pageIndex < K_NUMBER_OF_PAGES; pageIndex++) {
-                    memory->flags[pageIndex] = reservedFlag;
+                    flags[pageIndex] = reservedFlag;
                 }
                 return true;
             }
@@ -216,10 +217,10 @@ bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, b
 void KMemoryData::protectPage(KThread* thread, U32 i, U32 permissions) {
     Page* page = this->getPage(i);
 
-    U32 newFlags = memory->flags[i];
+    U32 newFlags = flags[i];
     newFlags &= ~PAGE_PERMISSION_MASK;
     newFlags |= (permissions & PAGE_PERMISSION_MASK);
-    memory->flags[i] = newFlags;
+    flags[i] = newFlags;
 
     // we already have ram backing, so we need to preserve it and maybe change the page object
     if (page->getType() == Page::Type::RO_Page || page->getType() == Page::Type::RW_Page || page->getType() == Page::Type::WO_Page || page->getType() == Page::Type::NO_Page) {
@@ -246,13 +247,13 @@ void KMemoryData::protectPage(KThread* thread, U32 i, U32 permissions) {
 }
 
 bool KMemoryData::isPageAllocated(U32 page) {
-    return memory->flags[page] != 0;
+    return flags[page] != 0;
 }
 
 void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
     for (U32 i = page; i < page + pageCount; i++) {
         this->setPage(i, invalidPage);
-        memory->flags[i] = 0;
+        flags[i] = 0;
     }
 }
 
@@ -270,7 +271,7 @@ void KMemoryData::execvReset() {
     KMemoryData* newData = new KMemoryData(memory);
     newData->delayedReset = this;
     memory->data = newData;
-    memset(memory->flags, 0, sizeof(memory->flags));
+    memset(flags, 0, sizeof(flags));
 #else
     setPagesInvalid(0, K_NUMBER_OF_PAGES);    
 #endif    
@@ -381,11 +382,15 @@ U8* KMemory::getIntPtr(U32 address) {
     return data->mmu[index]->getReadPtr(this, address, true) + offset;
 }
 
-void KMemory::clone(KMemory* from) {
-    ::memcpy(flags, from->flags, sizeof(flags));
+void KMemory::clone(KMemory* from, bool vfork) {
+    ::memcpy(data->flags, from->data->flags, sizeof(data->flags));
+    if (vfork) {
+        this->data = from->data;
+        return;
+    }
     for (int i = 0; i < 0x100000; i++) {
         Page* page = from->data->getPage(i);
-        if (page->getType() == Page::Type::Invalid_Page && flags[i] != 0) {
+        if (page->getType() == Page::Type::Invalid_Page && data->flags[i] != 0) {
             if (mapShared(i)) {
                 // convert to regular page with its own ram so that the ram can be shared
                 InvalidPage* p = (InvalidPage*)page;
@@ -663,7 +668,7 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     }
     result++;
     for (U32 i = 0; i < pageCount; i++) {
-        flags[result + i] = PAGE_MAPPED | PAGE_READ | PAGE_WRITE;
+        data->flags[result + i] = PAGE_MAPPED | PAGE_READ | PAGE_WRITE;
         getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i));
     }
     return result << K_PAGE_SHIFT;
