@@ -53,10 +53,12 @@ bool KProcessTimer::run() {
 std::shared_ptr<KProcess> KProcess::create() {
     std::shared_ptr<KProcess> process = std::make_shared<KProcess>(KSystem::getNextThreadId());
     process->processNode = KSystem::addProcess(process->id, process);
-    Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [process] () {
-        return process->exe;
-        });
-    process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
+    if (process->processNode) {
+        Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [process]() {
+            return process->exe;
+            });
+        process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
+    }
     process->timer.process = process; // can't use shared_from_this in constructor
     return process;
 }

@@ -837,9 +837,12 @@ void KSystem::eraseProcess(U32 id) {
 std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::processes.set(id, process);
-    std::shared_ptr<FsNode> processNode = Fs::addFileNode("/proc/"+BString::valueOf(id), B(""), B(""), true, KSystem::procNode);
-    KSystem::procNode->addChild(processNode);
-    return processNode;
+    if (KSystem::procNode) {
+        std::shared_ptr<FsNode> processNode = Fs::addFileNode("/proc/" + BString::valueOf(id), B(""), B(""), true, KSystem::procNode);
+        KSystem::procNode->addChild(processNode);
+        return processNode;
+    }
+    return nullptr;
 }
 
 U32 KSystem::getRunningProcessCount() {
