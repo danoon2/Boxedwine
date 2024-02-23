@@ -323,6 +323,10 @@ bool KUnixSocketObject::canMap() {
     return false;
 }
 
+BString KUnixSocketObject::selfFd() {
+    return B("anon_inode:[pipe]");
+}
+
 S64 KUnixSocketObject::seek(S64 pos) {
     return -K_ESPIPE;
 }

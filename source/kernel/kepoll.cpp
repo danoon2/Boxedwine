@@ -101,6 +101,10 @@ bool KEPoll::canMap() {
     return false;
 }
 
+BString KEPoll::selfFd() {
+    return B("anon_inode:[eventpoll]");
+}
+
 S64 KEPoll::seek(S64 pos) {
     return -K_ESPIPE; // :TODO: is this right?
 }

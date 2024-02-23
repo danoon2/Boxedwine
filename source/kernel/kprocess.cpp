@@ -52,7 +52,11 @@ bool KProcessTimer::run() {
 
 std::shared_ptr<KProcess> KProcess::create() {
     std::shared_ptr<KProcess> process = std::make_shared<KProcess>(KSystem::getNextThreadId());
-    KSystem::addProcess(process->id, process);
+    process->processNode = KSystem::addProcess(process->id, process);
+    Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [process] () {
+        return process->exe;
+        });
+    process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
     process->timer.process = process; // can't use shared_from_this in constructor
     return process;
 }
@@ -225,24 +229,7 @@ FsOpenNode* openCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 
 }
 
 void KProcess::setupCommandlineNode() {
-    // :TODO: this will replace the previous one if it exists and leak memory 
-    if (!this->procNode) {
-        std::shared_ptr<FsNode> proc = Fs::getNodeFromLocalPath(B(""), B("/proc"), true);
-        this->procNode = Fs::addFileNode("/proc/"+BString::valueOf(this->id), B(""), B(""), true, proc);
-    }
-    this->commandLineNode = Fs::addVirtualFile("/proc/"+BString::valueOf(this->id)+"/cmdline", openCommandLine, K__S_IREAD, 0, this->procNode);
-    BString exePath = "/proc/" + BString::valueOf(this->id) + "/exe";
-    std::shared_ptr<FsNode> exeNode = Fs::getNodeFromLocalPath(B(""), exePath, true);
-    if (!exeNode) {
-        U32 id = this->id;
-        Fs::addDynamicLinkFile(exePath, 0, this->procNode, false, [id] {
-            std::shared_ptr<KProcess> p = KSystem::getProcess(id);
-            if (p) {
-                return Fs::getNodeFromLocalPath(B(""), p->exe, true)->path;
-            }
-            return B("(deleted)");
-            });
-    }
+    Fs::addVirtualFile(this->processNode->path +"/cmdline", openCommandLine, K__S_IREAD, 0, this->processNode);
 }
 
 BString KProcess::getAbsoluteExePath() { 
@@ -261,7 +248,11 @@ void KProcess::clone(const std::shared_ptr<KProcess>& from) {
         KFileDescriptor* fromFd = n.value;
         KFileDescriptor* fd = this->allocFileDescriptor(fromFd->kobject, fromFd->accessFlags, fromFd->descriptorFlags, n.key, 0);
         fd->refCount = fromFd->refCount;
-        this->fds.set(n.key, fd);        
+        this->fds.set(n.key, fd);     
+        KObject* kobject = fd->kobject.get();
+        Fs::addDynamicLinkFile(fdNode->path + "/" + BString::valueOf(n.key), k_mdev(0, 0), fdNode, false, [kobject] {
+            return kobject->selfFd();
+            });
     }
     // :TODO: not thread safe if from has multiple threads
     this->mappedFiles = from->mappedFiles;
@@ -444,6 +435,9 @@ KFileDescriptor* KProcess::allocFileDescriptor(const std::shared_ptr<KObject>& k
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     this->fds.set(handle, result);
+    Fs::addDynamicLinkFile(fdNode->path+"/"+BString::valueOf(handle), k_mdev(0, 0), fdNode, false, [kobject] {
+        return kobject->selfFd();
+        });
     return result;
 }
 
@@ -627,6 +621,7 @@ KFileDescriptor* KProcess::getFileDescriptor(FD handle) {
 void KProcess::clearFdHandle(FD handle) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     this->fds.remove(handle);
+    fdNode->removeChildByName(BString::valueOf(handle));
 }
 
 bool KProcess::isStopped() {
@@ -1226,30 +1221,6 @@ U32 KProcess::symlink(BString target, BString linkpath) {
 
 U32 KProcess::readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize) {
     // :TODO: move these to the virtual filesystem
-    if (!strcmp(path.c_str(), "/proc/self/exe")) {
-        U32 len = (U32)exe.length();
-        if (len>bufSize)
-            len = bufSize;
-        memory->memcpy(buffer, exe.c_str(), len);
-        return len;
-    } else if (path.startsWith("/proc/self/fd/")) {
-        FD h = atoi(path.c_str()+14);
-        KFileDescriptor* fd = this->getFileDescriptor(h);
-
-        if (!fd)
-            return -K_EINVAL;
-        if (fd->kobject->type!=KTYPE_FILE) {
-            return -K_EINVAL;
-        }
-        std::shared_ptr<KFile> p = std::dynamic_pointer_cast<KFile>(fd->kobject);
-        BString fdpath =  p->openFile->node->path;
-        U32 len = (U32)fdpath.length();
-        if ((int)fdpath.length()>(int)bufSize)
-            len=bufSize;
-        memory->memcpy(buffer, fdpath.c_str(), len);
-        return len;        
-    }
-
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, path, false);
     if (!node || !node->isLink())
         return -K_EINVAL;
@@ -1767,13 +1738,12 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
     return len;
 }
 
-U32 KProcess::msync(U32 addr, U32 len, U32 flags) {
+U32 KProcess::msync(KThread* thread, U32 addr, U32 len, U32 flags) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         std::shared_ptr<MappedFile> m = n.value;
         if (m->address<=addr && addr+len<m->address+m->len) {
-            klog("msync not implemented");
-            return 0;
+            return m->file->pwrite(thread, addr, addr - m->address + m->offset, len);
         }
     }
     return -K_ENOMEM;

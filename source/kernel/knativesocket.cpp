@@ -551,6 +551,10 @@ bool KNativeSocketObject::canMap() {
     return false;
 }
 
+BString KNativeSocketObject::selfFd() {
+    return B("socket:[")+this->nativeSocket+B("]"); // :TODO: should be inode
+}
+
 U32 KNativeSocketObject::bind(KThread* thread, KFileDescriptor* fd, U32 address, U32 len) {
     KMemory* memory = thread->memory;
 

@@ -129,9 +129,6 @@ void KMemoryData::setPageRam(U8* ram, U32 pageIndex, bool copyOnWrite) {
 
 void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, U8** ramPages) {
     for (U32 i = 0; i < pageCount; i++) {
-        if (page + i == 0xd06cf) {
-            int ii = 0;
-        }
         flags[page + i] = permissions;
     }
     if (ramPages) {

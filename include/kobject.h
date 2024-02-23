@@ -56,6 +56,7 @@ public:
     virtual U32 stat(KProcess* process, U32 address, bool is64)=0;
     virtual U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off)=0;
     virtual bool canMap()=0;
+    virtual BString selfFd()=0;
 
     U32 type;
 };

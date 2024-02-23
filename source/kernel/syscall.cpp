@@ -749,7 +749,7 @@ static U32 syscall_flock(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_msync(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_MEMORY, cpu, "msync addr=%X length=%d flags=%X", ARG1, ARG2, ARG3);
-    U32 result = cpu->thread->process->msync(ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->process->msync(cpu->thread, ARG1, ARG2, ARG3);
     SYS_LOG(SYSCALL_MEMORY, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }

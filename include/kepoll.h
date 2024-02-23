@@ -46,6 +46,7 @@ public:
     U32  stat(KProcess* process, U32 address, bool is64) override;
     U32  map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
     bool canMap() override;
+    BString selfFd() override;
 
     U32 ctl(KMemory* memory, U32 op, FD fd, U32 address);
     U32 wait(KThread* thread, U32 events, U32 maxevents, U32 timeout);

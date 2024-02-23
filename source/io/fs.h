@@ -47,12 +47,14 @@ typedef FsOpenNode* (*OpenVirtualNode)(const std::shared_ptr<FsNode>& node, U32 
 
 class FsFileNode;
 
+#define k_mdev(x,y) ((x << 8) | y)
+
 class Fs {
 public:   
     static bool initFileSystem(BString rootPath);
     static std::shared_ptr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink=nullptr);    
     static std::shared_ptr<FsFileNode> addFileNode(BString path, BString link, BString nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
-    static std::shared_ptr<FsNode> addVirtualFile(BString path, OpenVirtualNode func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data=0);
+    static std::shared_ptr<FsNode> addVirtualFile(BString path, std::function<FsOpenNode*(const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data=0);
     static std::shared_ptr<FsNode> addDynamicLinkFile(BString path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink);
     static std::shared_ptr<FsNode> addRootDirectoryNode(BString path, BString nativePath, const std::shared_ptr<FsNode>& parent);
     static void remoteNameToLocal(BString& path);

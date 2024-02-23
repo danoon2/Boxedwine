@@ -164,7 +164,7 @@ public:
     U32 mkdir(BString path);    
     U32 mkdirat(U32 dirfd, BString path, U32 mode);
     U32 mincore(U32 address, U32 length, U32 vec);    
-    U32 msync(U32 addr, U32 len, U32 flags);
+    U32 msync(KThread* thread, U32 addr, U32 len, U32 flags);
     U32 open(BString path, U32 flags);
     U32 openat(FD dirfd, BString path, U32 flags);
     U32 prctl(U32 option, U32 arg2);
@@ -286,10 +286,10 @@ private:
     void onExec(KThread* thread);
     U32 getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory);
 
-    std::shared_ptr<FsNode> commandLineNode;
-    std::shared_ptr<FsNode> procNode;
     bool systemProcess = false;
     bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent
+    std::shared_ptr<FsNode> processNode; // in /proc/<pid>
+    std::shared_ptr<FsNode> fdNode; // in /proc/<pid>/fd
 };
 
 #endif

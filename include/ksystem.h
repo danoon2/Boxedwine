@@ -108,7 +108,7 @@ public:
     static std::shared_ptr<MappedFileCache> getFileCache(BString name);
     static void setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache);
     static void eraseProcess(U32 id);
-    static void addProcess(U32 id, const std::shared_ptr<KProcess>& process);
+    static std::shared_ptr<FsNode> addProcess(U32 id, const std::shared_ptr<KProcess>& process);
     static KThread* getThreadById(U32 threadId);
     static U32 getRunningProcessCount();
     static U32 getProcessCount();
@@ -145,6 +145,8 @@ public:
     static U32 emulatedMilliesToHost(U32 millies);
     static U32 describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr);
     static PixelFormat* getPixelFormat(U32 index);
+
+    static std::shared_ptr<FsNode> procNode;
 private:
     static void initDisplayModes();
     static void internalEraseProcess(U32 id);

@@ -122,6 +122,10 @@ bool KFile::canMap() {
     return this->openFile->canMap();
 }
 
+BString KFile::selfFd() {
+    return this->openFile->node->path;
+}
+
 S64 KFile::seek(S64 pos) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     return this->openFile->seek(pos);

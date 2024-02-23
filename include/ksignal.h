@@ -134,6 +134,7 @@ public:
     U32 stat(KProcess* process, U32 address, bool is64) override;
     U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
     bool canMap() override;
+    BString selfFd() override;
 
     bool blocking = false;
     U64 mask = 0;

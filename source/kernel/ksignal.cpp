@@ -217,6 +217,10 @@ bool KSignal::canMap() {
     return false;
 }
 
+BString KSignal::selfFd() {
+    return B("anon_inode:[signal]");
+}
+
 S64 KSignal::seek(S64 pos) {
     return -K_ESPIPE; // :TODO: is this right?
 }

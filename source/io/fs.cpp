@@ -79,7 +79,7 @@ BString Fs::nativeFromLocal(const BString& path) {
     return result;
 }
 
-std::shared_ptr<FsNode> Fs::addVirtualFile(BString path, OpenVirtualNode func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data) {
+std::shared_ptr<FsNode> Fs::addVirtualFile(BString path, std::function<FsOpenNode* (const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data) {
     std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, func, mode, parent, data);
     parent->addChild(result);
     return result;

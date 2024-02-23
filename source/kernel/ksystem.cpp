@@ -25,6 +25,7 @@
 #include "../emulation/cpu/normal/normalCPU.h"
 #include "knativesystem.h"
 #include "pixelformat.h"
+#include "../io/fsfilenode.h"
 
 #include <time.h>
 
@@ -63,6 +64,7 @@ BWriteFile KSystem::logFile;
 std::function<void(BString line)> KSystem::watchTTY;
 bool KSystem::ttyPrepend;
 BString KSystem::exePath;
+std::shared_ptr<FsNode> KSystem::procNode;
 
 BOXEDWINE_CONDITION KSystem::processesCond(B("KSystem::processesCond"));
 
@@ -829,11 +831,15 @@ void KSystem::internalEraseProcess(U32 id) {
 void KSystem::eraseProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::internalEraseProcess(id);
+    KSystem::procNode->removeChildByName(BString::valueOf(id));
 }
 
-void KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {
+std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::processes.set(id, process);
+    std::shared_ptr<FsNode> processNode = Fs::addFileNode("/proc/"+BString::valueOf(id), B(""), B(""), true, KSystem::procNode);
+    KSystem::procNode->addChild(processNode);
+    return processNode;
 }
 
 U32 KSystem::getRunningProcessCount() {
