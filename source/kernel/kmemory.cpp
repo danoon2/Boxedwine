@@ -2,6 +2,9 @@
 #include "../emulation/softmmu/kmemory_soft.h"
 #include "../emulation/cpu/dynamic/dynamic_memory.h"
 #include "../emulation/softmmu/soft_ram.h"
+#include "../emulation/softmmu/soft_page.h"
+#include "../emulation/softmmu/soft_rw_page.h"
+#include "../emulation/softmmu/soft_copy_on_write_page.h"
 
 MappedFileCache::~MappedFileCache() {
     for (U32 i = 0; i < this->dataSize; i++) {
@@ -46,7 +49,7 @@ U32 KMemory::mlock(U32 addr, U32 len) {
     return 0;
 }
 
-U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off) {
+U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off, bool remap) {
     bool shared = (flags & K_MAP_SHARED) != 0;
     bool priv = (flags & K_MAP_PRIVATE) != 0;
     bool read = (prot & K_PROT_READ) != 0;
@@ -85,7 +88,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             return -K_EINVAL;
         }
         if (flags & K_MAP_FIXED_NOREPLACE) {
-            if (addr != 0 && pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
+            if (!remap && addr != 0 && pageStart + pageCount > ADDRESS_PROCESS_MMAP_START) {
                 return -K_ENOMEM;
             }
             for (U32 page = pageStart; page < pageStart + pageCount; page++) {
@@ -203,10 +206,11 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         kpanic("mremap not implemented for oldsize==0");
     }
     U32 oldPageCount = oldsize >> K_PAGE_SHIFT;
-    U32 pageFlags = getPageFlags(oldaddress >> K_PAGE_SHIFT);
+    U32 oldPageStart = oldaddress >> K_PAGE_SHIFT;
+    U32 pageFlags = getPageFlags(oldPageStart);
 
     for (U32 i = 0; i < oldPageCount; i++) {
-        if (getPageFlags((oldaddress >> K_PAGE_SHIFT) + i) != pageFlags) {
+        if (getPageFlags(oldPageStart + i) != pageFlags) {
             return -K_EFAULT;
         }
     }
@@ -215,7 +219,7 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         return oldaddress;
     } else {
         U32 prot = 0;
-        U32 f = K_MAP_FIXED;
+        U32 f = 0;
         if (pageFlags & PAGE_READ) {
             prot |= K_PROT_READ;
         }
@@ -229,18 +233,37 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
             f |= K_MAP_SHARED;
         } else {
             f |= K_MAP_PRIVATE;
-        }
-        U32 result = this->mmap(thread, oldaddress + oldsize, newsize - oldsize, prot, f, -1, 0);
+        }        
+        U32 result = this->mmap(thread, oldaddress + oldsize, newsize - oldsize, prot, f | K_MAP_FIXED_NOREPLACE, -1, 0, true);
         if (result == oldaddress + oldsize) {
             return oldaddress;
         }
-
         if ((flags & 1) != 0) { // MREMAP_MAYMOVE
-            kpanic("__NR_mremap not implemented");
-            return -K_ENOMEM;
-        } else {
-            return -K_ENOMEM;
+            result = this->mmap(thread, 0, newsize, prot, f | K_MAP_ANONYMOUS, -1, 0);
+
+            U32 pageStart = result >> K_PAGE_SHIFT;
+            
+            for (int i = 0; i < oldPageCount; i++) {
+                Page* oldPage = data->mmu[oldPageStart + i];
+                Page* newPage = data->mmu[pageStart + i];
+
+                Page::Type oldType = oldPage->getType();
+                if (oldType == Page::Type::Invalid_Page) {
+                    continue; // valid page but hasn't been read from or written to yet
+                } else if (oldType == Page::Type::NO_Page || oldType == Page::Type::RO_Page || oldType == Page::Type::WO_Page || oldType == Page::Type::RW_Page) {
+                    RWPage* rwPage = (RWPage*)oldPage;
+                    data->setPageRam(rwPage->page, pageStart + i);
+                } else if (oldType == Page::Type::Copy_On_Write_Page) {
+                    CopyOnWritePage* rwPage = (CopyOnWritePage*)oldPage;
+                    data->setPageRam(rwPage->page, pageStart + i, true);
+                } else {
+                    kpanic("KMemory::mremap not implemented for page type");
+                }
+            }
+            this->unmap(oldaddress, oldsize);
+            return result;
         }
+        return -K_ENOMEM;
     }
 }
 

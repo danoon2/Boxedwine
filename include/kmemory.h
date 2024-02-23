@@ -45,7 +45,7 @@ public:
     void cleanup(); // called when the process is done but the last thread might still need to return
 
     U32 mlock(U32 addr, U32 len);
-    U32 mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off);
+    U32 mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off, bool remap = false);
     U32 mprotect(KThread* thread, U32 address, U32 len, U32 prot);
     U32 mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U32 flags);
     U32 unmap(U32 address, U32 len);

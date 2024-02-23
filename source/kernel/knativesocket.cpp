@@ -350,6 +350,7 @@ KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : K
 }
 
 KNativeSocketObject::~KNativeSocketObject() {
+    LOG_SOCK("native socket: %x close", nativeSocket);
     closesocket(this->nativeSocket);    
     removeWaitingSocket(this->nativeSocket);
     this->nativeSocket = 0;
@@ -376,7 +377,11 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
             return handleNativeSocketError(t, true);
         }
-        return value;
+        CPU* cpu = thread->cpu;
+        thread->memory->writed(IOCTL_ARG1, value);
+        return 0;
+    } else {
+        kwarn("KNativeSocketObject::ioctl request=%x not implemented", request);
     }
     return -K_ENOTTY;
 }
@@ -1210,7 +1215,7 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
     }
     outLen = inLen;
     U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, address_len?(struct sockaddr*)fromBuffer:nullptr, address_len?&outLen:0);
-    LOG_SOCK("%x native socket: %x recvfrom address=%x address_len=%x flags=%x result=%x", thread->id, nativeSocket, address, address_len, flags, result);
+    LOG_SOCK("%x native socket: %x recvfrom buffer=%x length=%d address=%x address_len=%x flags=%x result=%x", thread->id, nativeSocket, buffer, length, address, address_len, flags, result);
     if ((S32)result>=0) {
         memory->memcpy(buffer, tmp, result);
         if (address) {
