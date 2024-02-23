@@ -119,7 +119,7 @@ U32 KSystem::uname(KThread* thread, U32 address) {
     KMemory* memory = thread->memory;
     memory->strcpy(address, "Linux"); // sysname
     memory->strcpy(address + 65, "Linux"); // nodename
-    memory->strcpy(address + 130, "4.15.0-20-generic"); // release
+    memory->strcpy(address + 130, "5.15.10-20-generic"); // release
 #ifdef BOXEDWINE_MULTI_THREADED
     if (Platform::getCpuCount() > 1 && KSystem::cpuAffinityCountForApp != 1) {
         memory->strcpy(address + 105, "SMP Boxedwine"); // version

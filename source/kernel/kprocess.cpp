@@ -1074,10 +1074,6 @@ U32 KProcess::write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen
 }
 
 U32 KProcess::brk(KThread* thread, U32 address) {    
-    // :TODO: why is this 1MB limit required, without it debian stretch "dpkg -i /var/local/python-crypto_2.6.1-7_i386.deb" will fail
-    if (address!=0 && address-this->loaderBaseAddress>0x00100000) {
-        return this->brkEnd;
-    }
     if (address > this->brkEnd) {
         U32 len = address-this->brkEnd;
         U32 alreadyAllocated = K_ROUND_UP_TO_PAGE(this->brkEnd) - this->brkEnd;
@@ -1098,11 +1094,6 @@ U32 KProcess::brk(KThread* thread, U32 address) {
                 this->brkEnd+=len;
             }				
         }
-    } else if (address!=0 && address < this->brkEnd) {
-        U32 startAddress = (address+4095) & 0xFFFFF000;
-        U32 len = this->brkEnd - startAddress;
-        memory->unmap(startAddress, len);
-        this->brkEnd = startAddress;
     }
     return this->brkEnd; // intentional, should return the new end, even though the libc brk returns the old value
 }
