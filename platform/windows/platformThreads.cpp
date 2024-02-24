@@ -136,6 +136,10 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         ep->ContextRecord->Rip = cpu->handleFpuException(code);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
+    } else if (ep->ExceptionRecord->ExceptionCode == STATUS_INTEGER_DIVIDE_BY_ZERO) {
+        ep->ContextRecord->Rip = cpu->handleFpuException(K_FPE_INTDIV);
+        syncToException(ep, true);
+        return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
