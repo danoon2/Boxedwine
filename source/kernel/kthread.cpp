@@ -45,7 +45,7 @@ void KThread::cleanup() {
     }
     if (!KSystem::shutingDown && this->clear_child_tid && this->process && memory->canWrite(this->clear_child_tid, 4)) {
         memory->writed(this->clear_child_tid, 0);
-        this->futex(this->clear_child_tid, 1, 1, 0, 0, 0);        
+        this->futex(this->clear_child_tid, 1, 1, 0, 0, 0, false);        
     }
 	this->clear_child_tid = 0;
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -137,7 +137,12 @@ U32 KThread::signal(U32 signal, bool wait) {
     if (signal==0) {
         return 0;
     }
-
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->sigWaitCond);
+    if (this->sigWaitMask & signal) {
+        this->foundWaitSignal = signal;
+        BOXEDWINE_CONDITION_SIGNAL(this->sigWaitCond);        
+        return 0;
+    }
     memset(process->sigActions[signal].sigInfo, 0, sizeof(process->sigActions[signal].sigInfo));
     process->sigActions[signal].sigInfo[0] = signal;
     process->sigActions[signal].sigInfo[2] = K_SI_USER;
@@ -263,7 +268,7 @@ void KThread::clearFutexes() {
     }
 }
 
-U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
+U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, bool time64) {
     U8* ramAddress = memory->getIntPtr(addr);
 
     if (ramAddress == nullptr) {
@@ -275,12 +280,21 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) {
         U32 expireTime = 0xFFFFFFFF;
 
         if (pTime != 0) {
-            U32 seconds = memory->readd(pTime);
-            U32 nano = memory->readd(pTime + 4);
-            if (op == FUTEX_WAIT_BITSET) {
-                int ii = 0;
+            if (time64) {
+                U64 seconds = memory->readq(pTime);
+                U32 nano = memory->readd(pTime + 8);
+                if (op == FUTEX_WAIT_BITSET) {
+                    int ii = 0;
+                }
+                expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
+            } else {
+                U32 seconds = memory->readd(pTime);
+                U32 nano = memory->readd(pTime + 4);
+                if (op == FUTEX_WAIT_BITSET) {
+                    int ii = 0;
+                }
+                expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
             }
-            expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
         }
         bool checkValue = false;
 
@@ -986,6 +1000,78 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
         }
     }
     return 0;
+}
+
+U32 KThread::sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool time64) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(sigWaitCond);
+    U64 mask = 0;
+    
+    if (sizeofSet == 8) {
+        mask = memory->readq(set);
+    } else if (sizeofSet == 4) {
+        mask = memory->readd(set);
+    } else {
+        kpanic("KThread::sigtimedwait unhandled sigSetSize %d", sizeofSet);
+    }
+
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+        for (int i = 0; i < 64; i++) {
+            if ((mask & (1 << i)) && (this->pendingSignals & (1 << i))) {
+                this->pendingSignals &= ~(1 << i);
+                return 0;
+            }
+        }
+    }
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->pendingSignalsMutex);
+        for (int i = 0; i < 64; i++) {
+            if ((mask & (1 << i)) && (process->pendingSignals & (1 << i))) {
+                this->pendingSignals &= ~(1 << i);
+                return 0;
+            }
+        }
+    }
+    this->sigWaitMask = mask;
+    if (!timeout) {
+        BOXEDWINE_CONDITION_WAIT(sigWaitCond);
+        if (this->startSignal) {
+            this->startSignal = false;
+            this->sigWaitMask = 0;
+            return -K_CONTINUE;
+        }
+    } else {
+        U32 ms = 0;
+        U64 startTime = KSystem::getMilliesSinceStart();
+        if (time64) {
+            U64 seconds = memory->readq(timeout);
+            U32 nano = memory->readd(timeout + 8);
+            ms = (U32)(seconds * 1000 + nano / 1000000);
+        } else {
+            U32 seconds = memory->readd(timeout);
+            U32 nano = memory->readd(timeout + 4);
+            ms = (U32)(seconds * 1000 + nano / 1000000);
+        }
+        if (ms == 0) {
+            this->sigWaitMask = 0;
+            return -K_EAGAIN;
+        }
+        BOXEDWINE_CONDITION_WAIT_TIMEOUT(sigWaitCond, ms);
+        if (this->startSignal) {
+            this->startSignal = false;
+            this->sigWaitMask = 0;
+            return -K_CONTINUE;
+        }
+        if (!foundWaitSignal && (KSystem::getMilliesSinceStart() - startTime) > ms) {
+            this->sigWaitMask = 0;
+            return -K_EAGAIN;
+        }
+    }
+    this->sigWaitMask = 0;
+    if (foundWaitSignal) {
+        return 0;
+    }
+    return -K_EINTR;
 }
 
 U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {

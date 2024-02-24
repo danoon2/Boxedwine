@@ -2537,6 +2537,15 @@ void KProcess::printStack() {
 U32 KProcess::signal(U32 signal) {
     for (auto& t : this->threads) {
         KThread* thread = t.value;
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
+        if (thread->sigWaitMask & signal) {
+            thread->foundWaitSignal = signal;
+            BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);            
+            return 0;
+        }
+    }
+    for (auto& t : this->threads) {
+        KThread* thread = t.value;
 
         if (((U64)1 << (signal-1)) & ~(thread->inSignal?thread->inSigMask:thread->sigMask)) {
             return thread->signal(signal, true);

@@ -74,13 +74,14 @@ public:
     void setTLS(struct user_desc* desc);
 
     // syscalls
-    U32 futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) ;
+    U32 futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, bool time64) ;
     U32 modify_ldt(U32 func, U32 ptr, U32 count);
     U32 signalstack(U32 ss, U32 oss);
     U32 sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize);
     U32 sigreturn();
     U32 rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig);
     U32 sigsuspend(U32 mask, U32 sigsetSize);
+    U32 sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool time64);
     U32 sleep(U32 ms);
     U32 nanoSleep(U64 nano);
     U32 clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain);
@@ -108,6 +109,10 @@ public:
     U64 kernelTime = 0;
     U32 inSysCall = 0;
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
+    BOXEDWINE_CONDITION sigWaitCond;
+    U32 sigWaitMask = 0;
+    U32 foundWaitSignal = 0;
+
     U64 waitingForSignalToEndMaskToRestore = 0;
     U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;

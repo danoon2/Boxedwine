@@ -106,6 +106,7 @@ BString Fs::getFullPath(BString currentDirectory, BString path) {
         fullpath = currentDirectory+"/"+path;
     if (fullpath.endsWith("/."))
         fullpath = fullpath.substr(0, fullpath.length()-2);
+    fullpath.replace("//", "/");
     return fullpath;
 }
 

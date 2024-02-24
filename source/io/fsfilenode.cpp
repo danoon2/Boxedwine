@@ -147,7 +147,7 @@ void FsFileNode::ensurePathIsLocal() {
             Fs::makeLocalDirs(parentPath);
             this->zipNode->moveToFileSystem(shared_from_this());
         }
-    } else if (this->parent->type==Type::File) {
+    } else if (this->parent && this->parent->type==Type::File) {
         BString parentPath = Fs::getParentPath(this->path);
         Fs::makeLocalDirs(parentPath);
     }

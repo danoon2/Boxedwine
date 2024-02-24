@@ -346,6 +346,13 @@ static U32 syscall_ioctl(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_fcntl(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "syscall_fcntl: fd=%d cmd=%d", ARG1, ARG2);
+    U32 result = cpu->thread->process->fcntrl(cpu->thread, ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_setpgid(CPU* cpu, U32 eipCount) {	
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "setpgid: pid=%d pgid=%d", ARG1, ARG2);
     U32 result = KSystem::setpgid(ARG1, ARG2);
@@ -1181,8 +1188,15 @@ static const char* getFutexOp(U32 op) {
 
 static U32 syscall_futex(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_FUTEX, cpu, "futex start: address=%X op=%s value=%d\n", ARG1, getFutexOp(ARG2), ARG3);
-    U32 result = cpu->thread->futex(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    U32 result = cpu->thread->futex(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, false);
     SYS_LOG1(SYSCALL_FUTEX, cpu, "futex   end: address=%X op=%s value=%d result=%d(0x%X)\n", ARG1, getFutexOp(ARG2), ARG3, result, result);
+    return result;
+}
+
+static U32 syscall_futex_time64(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FUTEX, cpu, "futex time64 start: address=%X op=%s value=%d\n", ARG1, getFutexOp(ARG2), ARG3);
+    U32 result = cpu->thread->futex(ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, true);
+    SYS_LOG1(SYSCALL_FUTEX, cpu, "futex time64   end: address=%X op=%s value=%d result=%d(0x%X)\n", ARG1, getFutexOp(ARG2), ARG3, result, result);
     return result;
 }
 
@@ -1621,6 +1635,13 @@ U32 syscall_shutdown(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+U32 syscall_sigtimedwait_time64(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SOCKET, cpu, "sigtimedwait set=%x info=%x timeout=%x sizeofSet=%d", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->sigtimedwait(ARG1, ARG2, ARG3, ARG4, true);
+    SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 0
     syscall_exit,       // 1 __NR_exit
@@ -1676,10 +1697,10 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 51
     nullptr,                  // 52
     nullptr,                  // 53
-    syscall_ioctl,      // 54 __NR_ioctl
-    nullptr,                  // 55
+    syscall_ioctl,            // 54 __NR_ioctl
+    syscall_fcntl,            // 55
     nullptr,                  // 56
-    syscall_setpgid,    // 57 __NR_setpgid
+    syscall_setpgid,          // 57 __NR_setpgid
     nullptr,                  // 58
     nullptr,                  // 59
     syscall_umask,      // 60 __NR_umask
@@ -2043,8 +2064,8 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 418
     nullptr,                  // 419
     nullptr,                  // 420
-    nullptr,                  // 421
-    nullptr,                  // 422
+    syscall_sigtimedwait_time64,   // 421
+    syscall_futex_time64,     // 422
     nullptr,                  // 423
     nullptr,                  // 424
     nullptr,                  // 425
@@ -2101,7 +2122,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
 #endif
     }    
 #ifdef BOXEDWINE_MULTI_THREADED
-    if (cpu->thread->startSignal) {
+    if (!cpu->thread->terminating && cpu->thread->startSignal) {
         kpanic("syscall %d was not interrupted correctly by signal", syscallNo);
     }
 #endif
