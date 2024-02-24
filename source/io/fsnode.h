@@ -39,7 +39,7 @@ public:
 
     U32 getHardLinkCount() {return this->hardLinkCount;}    
     bool isDirectory() {return this->isDir;}
-    std::shared_ptr<FsNode> getParent() {return this->parent;}
+    std::weak_ptr<FsNode> getParent() {return this->parent;}
 
     void removeOpenNode(FsOpenNode* node);
     void removeNodeFromParent();
@@ -71,7 +71,7 @@ public:
 
     void addOpenNode(KListNode<FsOpenNode*>* node);
 protected:
-    std::shared_ptr<FsNode> parent;
+    std::weak_ptr<FsNode> parent; // the parent holds a strong reference to the children
 
     KList<FsOpenNode*> openNodes;
     BOXEDWINE_MUTEX openNodesMutex;

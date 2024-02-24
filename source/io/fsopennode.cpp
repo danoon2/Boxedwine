@@ -54,8 +54,10 @@ void FsOpenNode::loadDirEntries() {
     if (this->dirEntries.size()==0 && this->node) {
         this->dirEntries.reserve(2 + node->getChildCount());
         this->dirEntries.push_back(this->node);
-        if (this->node->getParent())
-            this->dirEntries.push_back(this->node->getParent());
+        std::shared_ptr<FsNode> parent = this->node->getParent().lock();
+        if (parent) {
+            this->dirEntries.push_back(parent);
+        }
         this->node->getAllChildren(this->dirEntries);        
     }
 }
@@ -72,7 +74,7 @@ std::shared_ptr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, BString& name) 
     this->loadDirEntries();
     if (index==0)
         name = B(".");
-    else if (index==1 && this->node->getParent())
+    else if (index==1 && this->node->getParent().lock())
         name = B("..");
     else
         name = this->dirEntries[index]->name;

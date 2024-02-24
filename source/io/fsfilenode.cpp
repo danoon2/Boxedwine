@@ -150,9 +150,12 @@ void FsFileNode::ensurePathIsLocal() {
             Fs::makeLocalDirs(parentPath);
             this->zipNode->moveToFileSystem(shared_from_this());
         }
-    } else if (this->parent && this->parent->type==Type::File) {
-        BString parentPath = Fs::getParentPath(this->path);
-        Fs::makeLocalDirs(parentPath);
+    } else {
+        std::shared_ptr<FsNode> parent = this->getParent().lock();
+        if (parent && parent->type == Type::File) {
+            BString parentPath = Fs::getParentPath(this->path);
+            Fs::makeLocalDirs(parentPath);
+        }
     }
 #endif
 }
@@ -368,7 +371,10 @@ U32 FsFileNode::removeDir() {
     if (Fs::doesNativePathExist(this->nativePath) && ::rmdir(this->nativePath.c_str()) < 0) {
         return -translateErr(errno);
     }
-    this->getParent()->removeChildByName(this->name);
+    std::shared_ptr<FsNode> parent = this->getParent().lock();
+    if (parent) {
+        parent->removeChildByName(this->name);
+    }
     return 0;
 }
 

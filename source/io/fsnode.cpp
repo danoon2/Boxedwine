@@ -32,8 +32,11 @@ bool FsNode::canWrite() {
 }
 
 void FsNode::removeNodeFromParent() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->parent->childrenByNameMutex);
-    this->parent->childrenByName.remove(this->name);
+    std::shared_ptr<FsNode> parent = this->getParent().lock();
+    if (parent) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenByNameMutex);
+        parent->childrenByName.remove(this->name);
+    }
 }
 
 void FsNode::loadChildren() {

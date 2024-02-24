@@ -303,7 +303,7 @@ U32 Fs::makeLocalDirs(const BString& path) {
     }
     while (node) {
         nodes.push_back(node);
-        node = node->getParent();
+        node = node->getParent().lock();
     }
     std::reverse(nodes.begin(), nodes.end());
     for (U32 i=0;i<nodes.size();i++) {

@@ -11,7 +11,10 @@ KUnixSocketObject::KUnixSocketObject(U32 domain, U32 type, U32 protocol) : KSock
 
 KUnixSocketObject::~KUnixSocketObject() {    
     if (this->node) {
-        this->node->getParent()->removeChildByName(this->node->name); 
+        std::shared_ptr<FsNode> parent = this->node->getParent().lock();
+        if (parent) {
+            parent->removeChildByName(this->node->name);
+        }
     }    
 
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
@@ -351,7 +354,7 @@ class UnixSocketNode : public FsNode {
 public:
     UnixSocketNode(U32 id, U32 rdev, BString path, std::shared_ptr<FsNode> parent) : FsNode(Type::Socket, id, rdev, path, B(""), B(""), false, parent) {}
     U32 rename(BString path) override {return -K_EIO;}
-    bool remove() override {if (!this->parent) return false; this->removeNodeFromParent(); return true;}
+    bool remove() override {if (!this->parent.lock()) return false; this->removeNodeFromParent(); return true;}
     U64 lastModified() override {return 0;}
     U64 length() override {return 0;}
     FsOpenNode* open(U32 flags) override {kwarn("unixsocket_open was called, this shouldn't happen.  syscall_open should detect we have a kobject already"); return nullptr;}
