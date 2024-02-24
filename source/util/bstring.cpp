@@ -161,7 +161,9 @@ BString::BString(char c) {
 }
 
 BString::~BString() {
-    data->decRefCount();
+    if (data) {
+        data->decRefCount();
+    }
 }
 
 const char* BString::c_str() const {
@@ -327,7 +329,7 @@ bool BString::endsWith(const BString& s, bool ignoreCase) const {
     if (s.isEmpty()) {
         return false;
     }
-    return compareTo(s.data->str + length() - s.length(), ignoreCase) == 0;
+    return compareTo(s.data->str, ignoreCase, length() - s.length()) == 0;
 }
 
 bool BString::endsWith(const char* s, bool ignoreCase) const {
@@ -764,9 +766,22 @@ BString& BString::operator+=(S64 i) {
 
 BString& BString::operator = (const BString& other) {
     if (this->data != other.data) {
-        this->data->decRefCount();
+        if (this->data) {
+            this->data->decRefCount();
+        }
         this->data = other.data;
         this->data->incRefCount();
+    }
+    return *this;
+}
+
+BString& BString::operator = (BString&& other) {
+    if (this->data != other.data) {
+        if (this->data) {
+            this->data->decRefCount();
+        }
+        this->data = other.data;
+        other.data = nullptr;
     }
     return *this;
 }
@@ -917,9 +932,9 @@ BString BString::operator^(const char* s) const {
     d->str[d->len] = 0;
     return BString(d);
 }
-#include <string>
+
 BString BString::copy(const char* s) {
-    if (!s) {
+    if (!s || s[0]==0) {
         return empty;
     }
     BString result(allocNewData());

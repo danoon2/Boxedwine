@@ -13,6 +13,10 @@ public:
 	BString();
 	BString(const char*, bool litteral);
 	BString(U32 size, char value);
+	BString(BString&& from) {
+		this->data = from.data;
+		from.data = nullptr;
+	}
 	//BString(const char* s);
 	//BString(const char* s, int len);
 	BString(const BString& s);
@@ -115,6 +119,7 @@ public:
 	BString& operator+=(S64 i);
 
 	BString& operator=(const BString& s);
+	BString& operator=(BString&& s);
 	BString& operator=(const char* s);
 	BString& operator=(bool b);
 	BString& operator=(char c);
