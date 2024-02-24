@@ -110,8 +110,8 @@ public:
     U32 inSysCall = 0;
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
     BOXEDWINE_CONDITION sigWaitCond;
-    U32 sigWaitMask = 0;
-    U32 foundWaitSignal = 0;
+    U64 sigWaitMask = 0;
+    U64 foundWaitSignal = 0;
 
     U64 waitingForSignalToEndMaskToRestore = 0;
     U64 pendingSignals = 0;

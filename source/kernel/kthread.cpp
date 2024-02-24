@@ -89,6 +89,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     process(process),
     memory(process->memory),    
     waitingForSignalToEndCond(B("KThread::waitingForSignalToEndCond")),
+    sigWaitCond(B("KThread::sigWaitCond")),
     pollCond(B("KThread::pollCond")),
 #ifndef BOXEDWINE_MULTI_THREADED
     scheduledThreadNode(this),
@@ -1035,11 +1036,13 @@ U32 KThread::sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool ti
     this->sigWaitMask = mask;
     if (!timeout) {
         BOXEDWINE_CONDITION_WAIT(sigWaitCond);
+#ifdef BOXEDWINE_MULTI_THREADED
         if (this->startSignal) {
             this->startSignal = false;
             this->sigWaitMask = 0;
             return -K_CONTINUE;
         }
+#endif
     } else {
         U32 ms = 0;
         U64 startTime = KSystem::getMilliesSinceStart();
@@ -1057,11 +1060,13 @@ U32 KThread::sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool ti
             return -K_EAGAIN;
         }
         BOXEDWINE_CONDITION_WAIT_TIMEOUT(sigWaitCond, ms);
+#ifdef BOXEDWINE_MULTI_THREADED
         if (this->startSignal) {
             this->startSignal = false;
             this->sigWaitMask = 0;
             return -K_CONTINUE;
         }
+#endif
         if (!foundWaitSignal && (KSystem::getMilliesSinceStart() - startTime) > ms) {
             this->sigWaitMask = 0;
             return -K_EAGAIN;

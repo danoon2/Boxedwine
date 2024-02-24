@@ -98,6 +98,7 @@ bool FsZip::init(BString zipPath, BString mount) {
                 char tmp[MAX_FILEPATH_LEN];
                 zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 5);
                 zipInfo[i].isLink = true;
+                unzSetOffset64(zipfile, zipInfo[i].offset);
                 unzOpenCurrentFile(zipfile);
                 U32 read = unzReadCurrentFile(this->zipfile, tmp, MAX_FILEPATH_LEN);
                 tmp[read] = 0;
