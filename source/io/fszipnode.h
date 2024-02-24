@@ -16,7 +16,7 @@ public:
     FsOpenNode* open(std::shared_ptr<FsNode> node, U32 flags);
     bool moveToFileSystem(std::shared_ptr<FsNode> node);
 
-    std::shared_ptr<FsZip> fsZip;
+    std::weak_ptr<FsZip> fsZip;
 private:
     fsZipInfo zipInfo;
 };

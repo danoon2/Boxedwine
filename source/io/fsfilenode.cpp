@@ -60,7 +60,10 @@ bool FsFileNode::remove() {
 
 #ifdef BOXEDWINE_ZLIB
     if (zipNode) {
-        zipNode->fsZip->remove(this->path);
+        std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+        if (fsZip) {
+            fsZip->remove(this->path);
+        }
         zipNode = nullptr;
         result = true;
     }

@@ -51,36 +51,36 @@ class FsFileNode;
 
 class Fs {
 public:   
-    static bool initFileSystem(BString rootPath);
-    static std::shared_ptr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink=nullptr);    
-    static std::shared_ptr<FsFileNode> addFileNode(BString path, BString link, BString nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
-    static std::shared_ptr<FsNode> addVirtualFile(BString path, std::function<FsOpenNode*(const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data=0);
-    static std::shared_ptr<FsNode> addDynamicLinkFile(BString path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink);
-    static std::shared_ptr<FsNode> addRootDirectoryNode(BString path, BString nativePath, const std::shared_ptr<FsNode>& parent);
+    static bool initFileSystem(const BString& rootPath);
+    static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink=nullptr);    
+    static std::shared_ptr<FsFileNode> addFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
+    static std::shared_ptr<FsNode> addVirtualFile(const BString& path, std::function<FsOpenNode*(const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data=0);
+    static std::shared_ptr<FsNode> addDynamicLinkFile(const BString& path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink);
+    static std::shared_ptr<FsNode> addRootDirectoryNode(const BString& path, const BString& nativePath, const std::shared_ptr<FsNode>& parent);
     static void remoteNameToLocal(BString& path);
     static void localNameToRemote(BString& path);
     static BString localFromNative(const BString& path);
     static BString nativeFromLocal(const BString& path);
-    static U32 makeLocalDirs(BString path);
-    static bool makeNativeDirs(BString path);
-    static U32 deleteNativeFile(BString path);
-    static U32 deleteNativeDirAndAllFilesInDir(BString path);
-    static U32 iterateAllNativeFiles(BString path, bool recursive, bool includeDirs, std::function<U32(BString filePath,bool isDir)> f);
-    static BString getParentPath(BString path);
-    static BString getNativeParentPath(BString path);
-    static BString getFileNameFromPath(BString path);
-    static BString getFileNameFromNativePath(BString path);
-    static U32 readNativeFile(BString nativePath, U8* buffer, U32 bufferLen);
-    static void splitPath(BString path, std::vector<BString>& parts);
-    static bool doesNativePathExist(BString path);
-    static bool isNativeDirectoryEmpty(BString path);
-    static U64 getNativeDirectorySize(BString path, bool recursive);
-    static U64 getNativeFileSize(BString path);
-    static bool isNativePathDirectory(BString path);
-    static BString getFullPath(BString currentDirectory, BString path);
-    static BString getNativePathFromParentAndLocalFilename(const std::shared_ptr<FsNode>& parent, const BString fileName);    
-    static std::vector<BString> getFilesInNativeDirectoryWhereFileMatches(BString dirPath, BString startsWith, BString endsWith, bool ignoreCase);
-    static BString trimTrailingSlash(BString s);
+    static U32 makeLocalDirs(const BString& path);
+    static bool makeNativeDirs(const BString& path);
+    static U32 deleteNativeFile(const BString& path);
+    static U32 deleteNativeDirAndAllFilesInDir(const BString& path);
+    static U32 iterateAllNativeFiles(const BString& path, bool recursive, bool includeDirs, std::function<U32(BString filePath,bool isDir)> f);
+    static BString getParentPath(const BString& path);
+    static BString getNativeParentPath(const BString& path);
+    static BString getFileNameFromPath(const BString& path);
+    static BString getFileNameFromNativePath(const BString& path);
+    static U32 readNativeFile(const BString& nativePath, U8* buffer, U32 bufferLen);
+    static void splitPath(const BString& path, std::vector<BString>& parts);
+    static bool doesNativePathExist(const BString& path);
+    static bool isNativeDirectoryEmpty(const BString& path);
+    static U64 getNativeDirectorySize(const BString& path, bool recursive);
+    static U64 getNativeFileSize(const BString& path);
+    static bool isNativePathDirectory(const BString& path);
+    static BString getFullPath(const BString& currentDirectory, const BString& path);
+    static BString getNativePathFromParentAndLocalFilename(const std::shared_ptr<FsNode>& parent, const BString& fileName);    
+    static std::vector<BString> getFilesInNativeDirectoryWhereFileMatches(const BString& dirPath, const BString& startsWith, const BString& endsWith, bool ignoreCase);
+    static BString trimTrailingSlash(const BString& s);
 
     static BString nativePathSeperator;
 
@@ -89,7 +89,7 @@ public:
 private:
     friend class KUnixSocketObject;
 
-    static std::shared_ptr<FsNode> getNodeFromLocalPath(BString currentDirectory, BString path, std::shared_ptr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink= nullptr);
+    static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, std::shared_ptr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink= nullptr);
 
     static std::atomic_int nextNodeId;
 };

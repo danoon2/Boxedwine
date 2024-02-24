@@ -23,7 +23,7 @@ BString Fs::nativePathSeperator;
 void Fs::shutDown() {
 	rootNode = nullptr;
 }
-bool Fs::initFileSystem(BString rootPath) {
+bool Fs::initFileSystem(const BString& rootPath) {
     Fs::nextNodeId = 1;
     BString path;
     Fs::nativePathSeperator = (char)std::filesystem::path::preferred_separator;
@@ -79,25 +79,25 @@ BString Fs::nativeFromLocal(const BString& path) {
     return result;
 }
 
-std::shared_ptr<FsNode> Fs::addVirtualFile(BString path, std::function<FsOpenNode* (const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data) {
+std::shared_ptr<FsNode> Fs::addVirtualFile(const BString& path, std::function<FsOpenNode* (const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data) {
     std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, func, mode, parent, data);
     parent->addChild(result);
     return result;
 }
 
-std::shared_ptr<FsNode> Fs::addDynamicLinkFile(BString path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink) {
+std::shared_ptr<FsNode> Fs::addDynamicLinkFile(const BString& path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink) {
     std::shared_ptr<FsNode> result = std::make_shared<FsDynamicLinkNode>(Fs::nextNodeId++, rdev, path, parent, isDirectory, fnGetLink);
     parent->addChild(result);
     return result;
 }
 
-std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path, bool followLink, bool* isLink) {
+std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink) {
     std::shared_ptr<FsNode> lastNode;
     std::vector<BString> missingParts;
     return Fs::getNodeFromLocalPath(currentDirectory, path, lastNode, missingParts, followLink, isLink);
 }
 
-BString Fs::getFullPath(BString currentDirectory, BString path) {
+BString Fs::getFullPath(const BString& currentDirectory, const BString& path) {
     BString fullpath;
 
     if (path.startsWith("/"))
@@ -132,7 +132,7 @@ bool cleanPath(std::vector<BString>& parts) {
     return true;
 }
 
-std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BString path, std::shared_ptr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink) {
+std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path, std::shared_ptr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink) {
     BString fullpath = Fs::getFullPath(currentDirectory, path);
 
     if (fullpath.length()==0 || fullpath=="/")
@@ -193,24 +193,24 @@ std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(BString currentDirectory, BStri
     return node;
 }
 
-std::shared_ptr<FsFileNode> Fs::addFileNode(BString path, BString link, BString nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent) {
+std::shared_ptr<FsFileNode> Fs::addFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent) {
     std::shared_ptr<FsFileNode> result = std::make_shared<FsFileNode>(Fs::nextNodeId++, 0, path, link, nativePath, isDirectory, false, parent);
     parent->addChild(result);
     return result;
 }
 
-std::shared_ptr<FsNode> Fs::addRootDirectoryNode(BString path, BString nativePath, const std::shared_ptr<FsNode>& parent) {
+std::shared_ptr<FsNode> Fs::addRootDirectoryNode(const BString& path, const BString& nativePath, const std::shared_ptr<FsNode>& parent) {
     std::shared_ptr<FsFileNode> result = std::make_shared<FsFileNode>(Fs::nextNodeId++, 0, path, B(""), nativePath, true, false, parent);
     parent->addChild(result);
     result->isRootPath = true;
     return result;
 }
 
-BString Fs::getParentPath(BString path) {
+BString Fs::getParentPath(const BString& path) {
     return path.substr(0, path.lastIndexOf('/'));
 }
 
-BString Fs::getNativeParentPath(BString path) {
+BString Fs::getNativeParentPath(const BString& path) {
     int pos = path.lastIndexOf(Fs::nativePathSeperator);
     if (pos != -1) {
         return path.substr(0, pos);
@@ -222,7 +222,7 @@ BString Fs::getNativeParentPath(BString path) {
     return path;
 }
 
-BString Fs::getFileNameFromPath(BString path) {
+BString Fs::getFileNameFromPath(const BString& path) {
     int pos = path.lastIndexOf('/');
     if (pos==-1) {
         return path;
@@ -230,7 +230,7 @@ BString Fs::getFileNameFromPath(BString path) {
     return path.substr(pos+1);
 }
 
-BString Fs::getFileNameFromNativePath(BString path) {
+BString Fs::getFileNameFromNativePath(const BString& path) {
     int pos = path.lastIndexOf(Fs::nativePathSeperator);
     if (pos==-1) {
         return path;
@@ -238,14 +238,14 @@ BString Fs::getFileNameFromNativePath(BString path) {
     return path.substr(pos+1);
 }
 
-bool Fs::doesNativePathExist(BString path) {
+bool Fs::doesNativePathExist(const BString& path) {
     if (::access(path.c_str(), 0)!=-1) {
         return true;
     }
     return false;
 }
 
-bool Fs::isNativeDirectoryEmpty(BString path) {
+bool Fs::isNativeDirectoryEmpty(const BString& path) {
     bool result = true;
     iterateAllNativeFiles(path, false, true, [&result](BString fileName, bool isDir)->U32 {
         result = false;
@@ -254,7 +254,7 @@ bool Fs::isNativeDirectoryEmpty(BString path) {
     return false;
 }
 
-U64 Fs::getNativeFileSize(BString path) {
+U64 Fs::getNativeFileSize(const BString& path) {
     PLATFORM_STAT_STRUCT buf;
     if (PLATFORM_STAT(path.c_str(), &buf)==0) {
         return buf.st_size;
@@ -262,7 +262,7 @@ U64 Fs::getNativeFileSize(BString path) {
     return 0;
 }
 
-U64 Fs::getNativeDirectorySize(BString path, bool recursive) {
+U64 Fs::getNativeDirectorySize(const BString& path, bool recursive) {
     U64 result = 0;
     iterateAllNativeFiles(path, recursive, true, [&result, path](BString fileName, bool isDir)->U32 {
         if (!isDir) {
@@ -273,7 +273,7 @@ U64 Fs::getNativeDirectorySize(BString path, bool recursive) {
     return result;
 }
 
-bool Fs::isNativePathDirectory(BString path) {
+bool Fs::isNativePathDirectory(const BString& path) {
     PLATFORM_STAT_STRUCT buf = {};
 
 #ifdef BOXEDWINE_MSVC
@@ -290,7 +290,7 @@ bool Fs::isNativePathDirectory(BString path) {
     return false;
 }
 
-U32 Fs::makeLocalDirs(BString path) {
+U32 Fs::makeLocalDirs(const BString& path) {
     std::shared_ptr<FsNode> lastNode;
     std::vector<BString> missingParts;
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), path, lastNode, missingParts, false);    
@@ -336,14 +336,15 @@ U32 Fs::makeLocalDirs(BString path) {
     return 0;
 }
 
-void Fs::splitPath(BString path, std::vector<BString>& parts) {
+void Fs::splitPath(const BString& path, std::vector<BString>& parts) {
     if (path.startsWith("/")) {
-        path = path.substr(1);
+        path.substr(1).split('/', parts);
+    } else {
+        path.split('/', parts);
     }
-    path.split('/', parts);
 }
 
-U32 Fs::readNativeFile(BString nativePath, U8* buffer, U32 bufferLen) {
+U32 Fs::readNativeFile(const BString& nativePath, U8* buffer, U32 bufferLen) {
     int f = ::open(nativePath.c_str(), O_RDONLY);
     if (f>0) {
         U32 result = (U32)::read(f, buffer, bufferLen);
@@ -353,13 +354,13 @@ U32 Fs::readNativeFile(BString nativePath, U8* buffer, U32 bufferLen) {
     return 0;
 }
 
-BString Fs::getNativePathFromParentAndLocalFilename(const std::shared_ptr<FsNode>& parent, const BString fileName) {
+BString Fs::getNativePathFromParentAndLocalFilename(const std::shared_ptr<FsNode>& parent, const BString& fileName) {
     BString nativeFileName = fileName;
     Fs::localNameToRemote(nativeFileName);
     return parent->nativePath ^ nativeFileName;
 }
 
-bool Fs::makeNativeDirs(BString path) {
+bool Fs::makeNativeDirs(const BString& path) {
     std::vector<BString> parts;
 
     BString tmp;
@@ -384,16 +385,16 @@ bool Fs::makeNativeDirs(BString path) {
     return true;
 }
 
-U32 Fs::deleteNativeFile(BString path) {
+U32 Fs::deleteNativeFile(const BString& path) {
     return unlink(path.c_str());
 }
 
-U32 Fs::deleteNativeDirAndAllFilesInDir(BString path) {
+U32 Fs::deleteNativeDirAndAllFilesInDir(const BString& path) {
     std::error_code e; // will prevent it from throwing an error
     return (U32)std::filesystem::remove_all(path.c_str(), e);
 }
 
-U32 Fs::iterateAllNativeFiles(BString path, bool recursive, bool includeDirs, std::function<U32(BString, bool isDir)> f) {
+U32 Fs::iterateAllNativeFiles(const BString& path, bool recursive, bool includeDirs, std::function<U32(BString, bool isDir)> f) {
     std::vector<Platform::ListNodeResult> results;
     Platform::listNodes(path, results);
     for (auto& n : results) {
@@ -414,7 +415,7 @@ U32 Fs::iterateAllNativeFiles(BString path, bool recursive, bool includeDirs, st
     return 0;
 }
 
-std::vector<BString> Fs::getFilesInNativeDirectoryWhereFileMatches(BString dirPath, BString startsWith, BString endsWith, bool ignoreCase) {
+std::vector<BString> Fs::getFilesInNativeDirectoryWhereFileMatches(const BString& dirPath, const BString& startsWith, const BString& endsWith, bool ignoreCase) {
     std::vector<BString> results;
     Fs::iterateAllNativeFiles(dirPath, false, false, [&results, startsWith, endsWith, ignoreCase](BString filePath, bool isDir) {
         BString name = Fs::getFileNameFromNativePath(filePath);
@@ -426,7 +427,7 @@ std::vector<BString> Fs::getFilesInNativeDirectoryWhereFileMatches(BString dirPa
     return results;
 }
 
-BString Fs::trimTrailingSlash(BString s) {
+BString Fs::trimTrailingSlash(const BString& s) {
     if (s.endsWith('/') || s.endsWith('\\')) {
         return s.substr(0, s.length() - 1);
     }
