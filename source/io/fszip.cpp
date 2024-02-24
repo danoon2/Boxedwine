@@ -70,15 +70,7 @@ bool FsZip::init(BString zipPath, BString mount) {
             zipInfo[i].filename = BString::copy(tmp);
             zipInfo[i].offset = unzGetOffset64(this->zipfile);
             Fs::remoteNameToLocal(zipInfo[i].filename); // converts special characters like :
-            if (zipInfo[i].filename.endsWith(".link")) {
-                zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 5);
-                zipInfo[i].isLink = true;
-                unzOpenCurrentFile(zipfile);
-                U32 read = unzReadCurrentFile(this->zipfile, tmp, MAX_FILEPATH_LEN);
-                tmp[read]=0;
-                zipInfo[i].link = BString::copy(tmp);                
-                unzCloseCurrentFile(this->zipfile);
-            }                       
+
             if (zipInfo[i].filename.endsWith("/")) {
                 zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 1);
                 zipInfo[i].isDirectory = true;
@@ -95,14 +87,23 @@ bool FsZip::init(BString zipPath, BString mount) {
                 tm.tm_year-=1900;
 
             zipInfo[i].lastModified = ((U64)mktime(&tm))*1000l;
-
+            
             unzGoToNextFile(this->zipfile);
         }
-
         std::vector<BString> deletedLocalPaths;
         readLinesFromFile(deleteFilePath, deletedLocalPaths);
 
         for (U32 i = 0; i < global_info.number_entry; ++i) {
+            if (zipInfo[i].filename.endsWith(".link")) {
+                char tmp[MAX_FILEPATH_LEN];
+                zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 5);
+                zipInfo[i].isLink = true;
+                unzOpenCurrentFile(zipfile);
+                U32 read = unzReadCurrentFile(this->zipfile, tmp, MAX_FILEPATH_LEN);
+                tmp[read] = 0;
+                zipInfo[i].link = BString::copy(tmp);
+                unzCloseCurrentFile(this->zipfile);
+            }
             BString localZipPart = zipInfo[i].filename;
             Fs::remoteNameToLocal(localZipPart);
             BString localPath = strippedMount + localZipPart;
