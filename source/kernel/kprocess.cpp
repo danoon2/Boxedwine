@@ -211,12 +211,11 @@ U32 KProcess::getThreadCount() {
 }
 
 void KProcess::deleteThread(KThread* thread) {
-    thread->cleanup();
+    thread->cleanup();    
+    delete thread;
     if (this->threads.size() == 0) {
         this->memory = nullptr;
     }
-    delete thread;
-    
     // don't call into getProcess while holding threadsCondition
     if (!this->terminated && this->getThreadCount() == 0) {
         std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
@@ -849,7 +848,7 @@ void KProcess::signalALRM() {
     this->sigActions[K_SIGALRM].sigInfo[2] = K_SI_USER;
     this->sigActions[K_SIGALRM].sigInfo[3] = this->id;
     this->sigActions[K_SIGALRM].sigInfo[4] = this->userId;
-    signalProcess(K_SIGALRM);
+    signal(K_SIGALRM);
 }
 
 U32 KProcess::dup(U32 fildes) {

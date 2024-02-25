@@ -120,7 +120,7 @@ public:
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);
     void removeAllGlContexts();
-    bool hasContextBeenMadeCurrentSinceCreation;
+    bool hasContextBeenMadeCurrentSinceCreation = false;
 
     BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
 public:

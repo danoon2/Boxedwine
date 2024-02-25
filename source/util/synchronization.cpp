@@ -12,6 +12,11 @@ BoxedWineCriticalSectionCond::~BoxedWineCriticalSectionCond() {
 BoxedWineCondition::BoxedWineCondition(BString name) : name(name) {
 }
 
+BoxedWineCondition::~BoxedWineCondition() {
+    m.lock(); // race condition when all threads are shuting down, just make sure no one has the lock when we destroy it
+    m.unlock();
+}
+
 void BoxedWineCondition::lock() {
     this->m.lock();
     if (KThread::currentThread()) {

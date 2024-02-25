@@ -15,6 +15,7 @@ class BoxedWineCondition {
 public:
     BoxedWineCondition(BString name);
     BoxedWineCondition() = default;
+    ~BoxedWineCondition();
 
     bool tryLock();
     void lock();
