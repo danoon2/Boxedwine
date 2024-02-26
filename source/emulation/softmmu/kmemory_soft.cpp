@@ -376,10 +376,21 @@ void KMemory::writeb(U32 address, U8 value) {
 U8* KMemory::getIntPtr(U32 address) {
     U32 index = address >> K_PAGE_SHIFT;
     U32 offset = address & K_PAGE_MASK;
-    return data->mmu[index]->getReadPtr(this, address, true) + offset;
+    return data->mmu[index]->getWritePtr(this, address, true) + offset;
+}
+
+U8* KMemory::getPtrForFutex(U32 address) {
+    U32 index = address >> K_PAGE_SHIFT;
+    U32 offset = address & K_PAGE_MASK;
+    // if this page isn't shared, then when we clone, we might make it copy on write which can result it getting a new ram address
+    // we want to prevent that if a futux is using that page
+    data->flags[index] |= PAGE_FUTEX;
+    return data->mmu[index]->getWritePtr(this, address, true) + offset;
 }
 
 void KMemory::clone(KMemory* from, bool vfork) {
+    // don't allow changes to the from pages while we are cloning
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(from->mutex);
     ::memcpy(data->flags, from->data->flags, sizeof(data->flags));
     if (vfork) {
         this->data = from->data;
@@ -420,8 +431,15 @@ void KMemory::clone(KMemory* from, bool vfork) {
                     ::memcpy(ram, p->page, K_PAGE_SIZE);
                     data->setPage(i, NOPage::alloc(ram, p->address));
                 } else {
-                    data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
-                    from->data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
+                    if (data->flags[i] & PAGE_FUTEX) {
+                        U8* ram = ramPageAlloc();
+                        ::memcpy(ram, p->page, K_PAGE_SIZE);
+                        data->setPageRam(ram, i, false);
+                        data->flags[i] &= ~PAGE_FUTEX; // since it's not shared, it doesn't need to know this
+                    } else {                        
+                        data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
+                        from->data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
+                    }
                 }
             } else {
                 if (page->getType() == Page::Type::RO_Page) {

@@ -16,6 +16,7 @@ class DynamicMemory;
 #define PAGE_WRITE 0x02
 #define PAGE_EXEC 0x04
 #define PAGE_SHARED 0x08
+#define PAGE_FUTEX 0x10
 #define PAGE_MAPPED 0x20
 #define PAGE_ALLOCATED 0x40
 #define PAGE_MAPPED_HOST 0x80
@@ -86,7 +87,8 @@ public:
     U8* lockReadOnlyMemory(U32 address, U32 len);
     void unlockMemory(U8* lockedPointer);
 
-    U8* getIntPtr(U32 address); // used by futex, may point to shared memory
+    U8* getIntPtr(U32 address);
+    U8* getPtrForFutex(U32 address);
 
     // caller is responsible for making sure the address+len is valid
     void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);

@@ -270,7 +270,7 @@ void KThread::clearFutexes() {
 }
 
 U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, bool time64) {
-    U8* ramAddress = memory->getIntPtr(addr);
+    U8* ramAddress = memory->getPtrForFutex(addr);
 
     if (ramAddress == nullptr) {
         kpanic("Could not find futex address: %0.8X", addr);
