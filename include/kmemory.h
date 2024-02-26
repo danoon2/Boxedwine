@@ -87,7 +87,7 @@ public:
     U8* lockReadOnlyMemory(U32 address, U32 len);
     void unlockMemory(U8* lockedPointer);
 
-    U8* getIntPtr(U32 address);
+    U8* getIntPtr(U32 address, bool write = false);
     U8* getPtrForFutex(U32 address);
 
     // caller is responsible for making sure the address+len is valid

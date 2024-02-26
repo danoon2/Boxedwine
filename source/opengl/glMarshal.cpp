@@ -349,7 +349,7 @@ GLvoid* MarshalReadWritePackedPixels::getPtr() {
         U32 page = pixels >> K_PAGE_SHIFT;
         U32 pageStop = (pixels + len - 1) >> K_PAGE_SHIFT;
         if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
-            return (GLvoid*)cpu->memory->getIntPtr(pixels);
+            return (GLvoid*)cpu->memory->getIntPtr(pixels, true);
         }
         buffer = marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
     }
