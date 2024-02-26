@@ -373,10 +373,13 @@ void KMemory::writeb(U32 address, U8 value) {
 }
 
 // used by futex, may point to shared memory
-U8* KMemory::getIntPtr(U32 address) {
+U8* KMemory::getIntPtr(U32 address, bool write) {
     U32 index = address >> K_PAGE_SHIFT;
     U32 offset = address & K_PAGE_MASK;
-    return data->mmu[index]->getWritePtr(this, address, true) + offset;
+    if (write) {
+        return data->mmu[index]->getWritePtr(this, address, true) + offset;
+    }
+    return data->mmu[index]->getReadPtr(this, address, true) + offset;
 }
 
 U8* KMemory::getPtrForFutex(U32 address) {
