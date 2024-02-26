@@ -662,11 +662,13 @@ bool uiShow(BString basePath) {
             return false;
             });
     }
+    return uiContinue();    
+}
 
+bool uiContinue() {
     // Main loop
     bool done = false;
-    while (!done && !GlobalSettings::startUpArgs.readyToLaunch && !GlobalSettings::restartUI)
-    {
+    while (!done && !GlobalSettings::startUpArgs.readyToLaunch && !GlobalSettings::restartUI) {
         done = uiLoop();
     }
     if (done || GlobalSettings::restartUI) {

@@ -270,6 +270,8 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "Please Wait";
     case Msg::WAITDLG_LAUNCH_APP_LABEL:
         return "Launching {0} ...";
+    case Msg::WAITDLG_UNZIPPING_APP_LABEL:
+        return "Unzipping ...";
     case Msg::WAITDLG_GET_FILE_LIST_TITLE:
         return "Please Wait";
     case Msg::WAITDLG_GET_FILE_LIST_LABEL:
@@ -368,6 +370,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "Winetricks fonts:";
     case Msg::CONTAINER_VIEW_WINETRICKS_DLLS_LABEL:
         return "Winetricks Dlls:";
+    case Msg::CONTAINER_VIEW_TINY_CORE_LABEL:
+        return "Packages:";
+    case Msg::CONTAINER_OPTIONS_DOWNLOAD_PACKAGE:
+        return "This container uses Tiny Core Linux.  You maybe install a package for it.";
     case Msg::CONTAINER_VIEW_REGEDIT_BUTTON_LABEL:
         return "Regedit";
     case Msg::CONTAINER_VIEW_WINECFG_BUTTON_LABEL:

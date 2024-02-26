@@ -47,7 +47,7 @@ BoxedWinVersion* BoxedwineData::getWinVersionFromName(BString name) {
 void BoxedwineData::startApp() {
 #ifdef BOXEDWINE_UI_LAUNCH_IN_PROCESS
     GlobalSettings::startUpArgs.apply();
-    if (uiIsRunning()) {
+    if (!GlobalSettings::keepUIRunning && uiIsRunning()) {
         uiShutdown();
     }
 #else
@@ -97,7 +97,7 @@ void BoxedwineData::startApp() {
         }
         KNativeThread::sleep(16);
     }  
-    if (uiIsRunning()) {
+    if (!GlobalSettings::keepUIRunning && uiIsRunning()) {
         uiShutdown();
     }
 #endif

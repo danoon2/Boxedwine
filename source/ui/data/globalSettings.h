@@ -54,6 +54,8 @@ public:
     BString depend;
     BString data;
     BString data2;
+    std::vector<BString> tinyCorePackages;
+    BString tinyCoreURL;
     U32 size;
     bool operator<(const WineVersion& rhs) const { return name < rhs.name; }
 };
@@ -130,6 +132,7 @@ public:
     static ImFont* sectionTitleFont;
     static bool restartUI;
     static bool reinit;
+    static std::function<void()> keepUIRunning;
     static float extraVerticalSpacing;
 private:    
     static void initWineVersions();

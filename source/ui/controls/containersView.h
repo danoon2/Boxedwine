@@ -37,6 +37,7 @@ private:
     std::shared_ptr<LayoutComboboxControl> componentsControl;
     std::shared_ptr<LayoutComboboxControl> fontsControl;
     std::shared_ptr<LayoutComboboxControl> dllsControl;
+    std::shared_ptr<LayoutComboboxControl> packagesControl;
 
     std::shared_ptr<LayoutButtonControl> containerNewShortcutButtonControl;
 

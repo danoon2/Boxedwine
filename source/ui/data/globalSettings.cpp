@@ -37,6 +37,7 @@ U32 GlobalSettings::scale=1000;
 bool GlobalSettings::filesListDownloading;
 bool GlobalSettings::restartUI;
 bool GlobalSettings::reinit;
+std::function<void()> GlobalSettings::keepUIRunning;
 U32 GlobalSettings::frameDelayMillies = SLOW_FRAME_DELAY;
 U32 GlobalSettings::fastFrameRateCount = 0;
 U64 GlobalSettings::lastFrameDelayChange = 0;
@@ -211,11 +212,18 @@ void GlobalSettings::lookForFileSystems(BString path) {
             if (FsZip::readFileFromZip(filepath, B("wineVersion.txt"), wineVersion) && wineVersion.length() && !GlobalSettings::getFileFromWineName(wineVersion).length()) {
                 BString fsVersion;
                 BString depend;
+                BString packages;
                 FsZip::readFileFromZip(filepath, B("version.txt"), fsVersion);
                 fsVersion = fsVersion.trim();
                 FsZip::readFileFromZip(filepath, B("depends.txt"), depend);
                 depend = depend.trim();
+                FsZip::readFileFromZip(filepath, B("packages.txt"), packages);
                 GlobalSettings::wineVersions.push_back(WineVersion(wineVersion, fsVersion, filepath, B(""), depend));
+                packages.split("\r\n", GlobalSettings::wineVersions.back().tinyCorePackages);
+                if (GlobalSettings::wineVersions.back().tinyCorePackages.size()) {
+                    GlobalSettings::wineVersions.back().tinyCoreURL = "http://" + GlobalSettings::wineVersions.back().tinyCorePackages[0];
+                    GlobalSettings::wineVersions.back().tinyCorePackages.erase(GlobalSettings::wineVersions.back().tinyCorePackages.begin());                  
+                }
             }
             BString winetricksVersion;
             if (FsZip::readFileFromZip(filepath, B("winetricksVersion.txt"), winetricksVersion) && winetricksVersion.length()) {

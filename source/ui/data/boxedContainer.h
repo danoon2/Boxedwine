@@ -1,6 +1,8 @@
 #ifndef __BOXED_CONTAINER_H__
 #define __BOXED_CONTAINER_H__
 
+class WaitDlg;
+
 class BoxedContainer {
 public:
     BoxedContainer() {}
@@ -52,7 +54,12 @@ public:
     void setWindowsVersion(const BoxedWinVersion& version);    
     BString getLogPath();
 
+    void installTinyCorePackage(BString package);    
 private:
+    void getTinyCorePackages(BString package, std::vector<BString>& todo, std::vector<BString>& needsDownload);
+    void installNextTinyCorePackage(WaitDlg* dlg, std::vector<BString> packages);
+    void doInstallTinyCorePackage(const std::vector<BString>& todo);
+
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);
     void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory);

@@ -136,6 +136,18 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         };
     }
 
+    row = section->addRow(Msg::CONTAINER_VIEW_TINY_CORE_LABEL, Msg::NONE);
+    packagesControl = row->addComboBox();
+
+    std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
+    installButton->onChange = [this]() {
+        if (this->saveChanges()) {
+            BString package = packagesControl->getSelectionStringValue();
+            currentContainer->installTinyCorePackage(package);
+        }
+        };
+    installButton->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_PACKAGE);
+
     if (GlobalSettings::getAvailableWinetricksVersions().size() > 0) {        
         if (GlobalSettings::getInstalledWinetricksVersions().size() == 0) {
             WineVersion version = GlobalSettings::getAvailableWinetricksVersions()[0];
@@ -683,6 +695,19 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         containerRendererControl->setRowHidden(true);
     }
     containerMouseWarpControl->setSelectionStringValue(container->getMouseWarpOverride());
+
+    WineVersion* wine = GlobalSettings::getInstalledWineFromName(this->containerWineVersionControl->getSelectionStringValue());
+    if (wine->tinyCorePackages.size()) {
+        packagesControl->setRowHidden(false);
+        std::vector<ComboboxItem> packages;
+        for (auto& package : wine->tinyCorePackages) {
+            //if (package == "wine.tcz")
+            packages.push_back(ComboboxItem(package));
+        }
+        packagesControl->setOptions(packages);
+    } else {
+        packagesControl->setRowHidden(true);
+    }
 }
 
 void ContainersView::showAppSection(bool show) {

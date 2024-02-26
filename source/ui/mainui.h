@@ -2,6 +2,7 @@
 #define __MAIN_UI_H__
 
 bool uiShow(BString basePath); // returns true if should launch app
+bool uiContinue();
 
 bool uiLoop();
 void uiShutdown();

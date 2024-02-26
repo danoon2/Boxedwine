@@ -1,6 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 #include "../../io/fszip.h"
+#include "../../util/networkutils.h"
 
 bool BoxedContainer::load(BString dirPath) {
     this->dirPath = dirPath;
@@ -505,4 +506,134 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
 
 BString BoxedContainer::getLogPath() {
     return this->dirPath ^ "lastLog.txt";    
+}
+
+void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& todo, std::vector<BString>& needsDownload) {
+    // libv4l2.tcz used for webcams
+    // libgphoto2.tcz digital camera access
+    // libdrm (direct rendering management)
+    // libxshmfence (shared-memory fences for synchronization between the X server and direct-rendering clients)
+    // libcups.tcz (printers)
+    if (package == "Xorg-7.7.tcz" || package == "libasound.tcz" || package == "libpulseaudio.tcz" || package == "libpcap.tcz" || package == "libsane.tcz" || package == "libv4l2.tcz" || package == "libgphoto2.tcz" || package == "libXdamage.tcz" || package == "libXxf86vm.tcz" || package == "libdrm.tcz" || package == "libxshmfence.tcz" || package == "Xorg-7.7-3d.tcz" || package == "libcups.tcz") {
+        return;
+    }
+    if (package == "v4l-dvb-KERNEL.tcz") {
+        return;
+    }
+    BString location = GlobalSettings::getDataFolder() ^ "tcCache";
+    BString root = this->dirPath ^ "root";
+    BString installCheckDir = root ^ "usr" ^ "local" ^ "tce.installed";
+    BString installCheck = installCheckDir ^ package.substr(0, package.length() - 4);
+    if (vectorContainsIgnoreCase(todo, package)) {
+        return;
+    }
+    BString cachedLocation = location ^ package;
+    WineVersion* wine = GlobalSettings::getInstalledWineFromName(wineVersion);
+    
+    if (!Fs::doesNativePathExist(cachedLocation)) {
+        needsDownload.push_back(package);        
+    }
+    if (package != "wine.tcz") {
+        todo.push_back(package);
+    }
+
+    BString dep;
+    if (FsZip::readFileFromZip(wine->filePath, "dep/" + package + ".dep", dep)) {
+        std::vector<BString> lines;
+        dep.split("\n", lines);
+        for (auto& line : lines) {
+            if (line.trim().length() > 0) {
+                getTinyCorePackages(line.trim(), todo, needsDownload);
+            }
+        }
+    }
+}
+
+void BoxedContainer::doInstallTinyCorePackage(const std::vector<BString>& todo) {
+    static WaitDlg* dlg;    
+
+    runOnMainUI([todo, this]() {
+        dlg = new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslation(Msg::WAITDLG_UNZIPPING_APP_LABEL));
+        installNextTinyCorePackage(dlg, todo);
+        return false;
+        });    
+}
+
+void BoxedContainer::installTinyCorePackage(BString package) {
+    std::vector<BString> todo;
+    std::vector<BString> needsDownload;
+
+    todo.push_back(B("")); // signal last package, should do ldconfig
+    getTinyCorePackages(package, todo, needsDownload);
+
+    if (todo.size()==1) {
+        return;
+    }    
+    if (!needsDownload.size()) {
+        doInstallTinyCorePackage(todo);
+    } else {
+        BString location = GlobalSettings::getDataFolder() ^ "tcCache";
+        if (!Fs::doesNativePathExist(location)) {
+            Fs::makeNativeDirs(location);
+        }
+        WineVersion* wine = GlobalSettings::getInstalledWineFromName(wineVersion);
+        std::vector<DownloadItem> items;
+        for (auto& package : needsDownload) {
+            items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, package), wine->tinyCoreURL + package, B(""), location ^ package, 0));
+        }
+        runOnMainUI([this, items, todo]() {
+            new DownloadDlg(Msg::DOWNLOADDLG_TITLE, items, [this, todo](bool success) {
+                runOnMainUI([success, this, todo]() {
+                    if (success) {
+                        doInstallTinyCorePackage(todo);
+                    }
+                    return false;
+                    });
+                });
+            return false;
+            });
+    }
+    
+}
+
+void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BString> packages) {
+    if (packages.size() == 0) {
+        return;
+    }
+    BString package = packages.back();
+    packages.pop_back();
+    GlobalSettings::startUpArgs = StartUpArgs();
+    this->launch();
+    if (packages.size()) {
+        GlobalSettings::startUpArgs.setWorkingDir(B("/"));
+        GlobalSettings::startUpArgs.addArg(B("/usr/local/bin/unsquashfs"));
+        GlobalSettings::startUpArgs.addArg(B("-f"));
+        GlobalSettings::startUpArgs.addArg(B("-d"));
+        GlobalSettings::startUpArgs.addArg(B("/"));
+        GlobalSettings::startUpArgs.addArg("/tcCache/" + package);
+        GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), GlobalSettings::getDataFolder() ^ "tcCache", false));
+        dlg->addSubLabel("Extracting " + package, 5);
+    } else {        
+        GlobalSettings::startUpArgs.setWorkingDir(B("/sbin"));        
+        GlobalSettings::startUpArgs.addArg(B("/sbin/ldconfig"));        
+        dlg->addSubLabel(B("Running ldconfig"), 5);
+    }
+    GlobalSettings::startUpArgs.readyToLaunch = true;
+    GlobalSettings::startUpArgs.userId = 0;
+#ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
+    GlobalSettings::startUpArgs.ttyPrepend = true;
+#endif
+    if (packages.size()) {
+        GlobalSettings::keepUIRunning = [dlg, packages, this]() {
+            runOnMainUI([dlg, packages, this]() {
+                installNextTinyCorePackage(dlg, packages);
+                return false;
+                });
+        };
+    } else {
+        BString containerPath = dirPath;
+        GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
+            gotoView(VIEW_CONTAINERS, containerPath);
+            };
+    }
 }
