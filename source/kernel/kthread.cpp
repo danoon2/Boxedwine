@@ -161,17 +161,22 @@ U32 KThread::signal(U32 signal, bool wait) {
 #ifdef BOXEDWINE_MULTI_THREADED                     
         else {
             // :TODO: how to interrupt the thread (the current approache assumes the thread will yield to the signal)
-            {
-                {
-                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
-                    this->pendingSignals |= ((U64)1 << (signal - 1));
-                }
-                if (signal == K_SIGQUIT && waitingCond) {
-                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->waitingCondSync);
+            {    
+                bool handled = false;
+
+                BOXEDWINE_CONDITION* cond = waitingCond;
+                if (signal == K_SIGQUIT && cond) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(*cond);
                     if (waitingCond) {
                         this->startSignal = true;
                         this->runSignal(K_SIGQUIT, -1, 0);
+                        BOXEDWINE_CONDITION_SIGNAL(*cond);
+                        handled = true;
                     }
+                }
+                if (!handled) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
+                    this->pendingSignals |= ((U64)1 << (signal - 1));
                 }
             }
             if (wait) {
@@ -199,21 +204,31 @@ U32 KThread::signal(U32 signal, bool wait) {
     return 0;
 }
 
-#define FUTEX_WAIT 0
-#define FUTEX_WAKE 1
-#define FUTEX_WAIT_BITSET 9
-#define FUTEX_WAKE_BITSET 10
-#define FUTEX_WAIT_PRIVATE 128
-#define FUTEX_WAKE_PRIVATE 129
-#define FUTEX_WAIT_BITSET_PRIVATE 137
-#define FUTEX_WAKE_BITSET_PRIVATE 138
-#define FUTEX_CLOCK_REALTIME 256
+#define FUTEX_PRIVATE_FLAG 0x80
+
+#define FUTEX_WAIT		0
+#define FUTEX_WAKE		1
+#define FUTEX_FD		2
+#define FUTEX_REQUEUE		3
+#define FUTEX_CMP_REQUEUE	4
+#define FUTEX_WAKE_OP		5
+#define FUTEX_LOCK_PI		6
+#define FUTEX_UNLOCK_PI		7
+#define FUTEX_TRYLOCK_PI	8
+#define FUTEX_WAIT_BITSET	9
+#define FUTEX_WAKE_BITSET	10
+#define FUTEX_WAIT_REQUEUE_PI	11
+#define FUTEX_CMP_REQUEUE_PI	12
+
+#define FUTEX_PRIVATE_FLAG	128
+#define FUTEX_CLOCK_REALTIME	256
+#define FUTEX_CMD_MASK		~(FUTEX_PRIVATE_FLAG | FUTEX_CLOCK_REALTIME)
 
 struct futex {
 public:
     futex() : cond(B("futex")) {}
     KThread* thread = nullptr;
-    U8* address = nullptr;  
+    U64 address = 0;  
     U32 expireTimeInMillies = 0;
     U32 mask = 0;
     bool wake = false;
@@ -224,7 +239,7 @@ public:
 
 struct futex system_futex[MAX_FUTEXES];
 
-struct futex* getFutex(KThread* thread, U8* address) {
+struct futex* getFutex(KThread* thread, U64 address) {
     int i=0;
 
     for (i=0;i<MAX_FUTEXES;i++) {
@@ -235,7 +250,7 @@ struct futex* getFutex(KThread* thread, U8* address) {
     return nullptr;
 }
 
-struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
+struct futex* allocFutex(KThread* thread, U64 address, U32 millies) {
     BOXEDWINE_CRITICAL_SECTION;
     int i=0;
 
@@ -255,7 +270,7 @@ struct futex* allocFutex(KThread* thread, U8* address, U32 millies) {
 
 void freeFutex(struct futex* f) {
     f->thread = nullptr;
-    f->address = nullptr;
+    f->address = 0;
 }
 
 void KThread::clearFutexes() {
@@ -270,13 +285,26 @@ void KThread::clearFutexes() {
 }
 
 U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, bool time64) {
-    U8* ramAddress = memory->getPtrForFutex(addr);
+    U64 ramAddress = 0;
+    U32 cmd = (op & FUTEX_CMD_MASK);
+    bool isPrivate = (op & FUTEX_PRIVATE_FLAG) != 0;
 
-    if (ramAddress == nullptr) {
+    if (isPrivate) {
+        ramAddress = addr;
+    } else {
+        ramAddress = (U64)memory->getPtrForFutex(addr);
+    }
+    if (ramAddress == 0) {
         kpanic("Could not find futex address: %0.8X", addr);
     }
-    op = op & ~FUTEX_CLOCK_REALTIME;
-    if (op==FUTEX_WAIT || op==FUTEX_WAIT_PRIVATE || op == FUTEX_WAIT_BITSET_PRIVATE || op == FUTEX_WAIT_BITSET) {
+    /*
+    * from kernel source, if I ever implement one of these I need to note pTime actually contains val2
+    if (cmd == FUTEX_REQUEUE || cmd == FUTEX_CMP_REQUEUE ||
+        cmd == FUTEX_CMP_REQUEUE_PI || cmd == FUTEX_WAKE_OP)
+        val2 = (u32)(unsigned long)utime;
+        */
+    if (cmd ==FUTEX_WAIT || cmd == FUTEX_WAIT_BITSET) {
+        //klog("%x/%x futux WAIT addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
         struct futex* f=getFutex(this, ramAddress);
         U32 expireTime = 0xFFFFFFFF;
 
@@ -284,54 +312,64 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
             if (time64) {
                 U64 seconds = memory->readq(pTime);
                 U32 nano = memory->readd(pTime + 8);
-                if (op == FUTEX_WAIT_BITSET) {
-                    int ii = 0;
+
+                if (cmd == FUTEX_WAIT) {
+                    // FUTEX_WAIT timeout is relative
+                    expireTime = seconds * 1000 + nano / 1000000;
+                } else {
+                    expireTime = (seconds * 1000 + nano / 1000000) - KSystem::getSystemTimeAsMicroSeconds() / 1000;
                 }
-                expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
             } else {
                 U32 seconds = memory->readd(pTime);
                 U32 nano = memory->readd(pTime + 4);
-                if (op == FUTEX_WAIT_BITSET) {
-                    int ii = 0;
-                }
-                expireTime = seconds * 1000 + nano / 1000000 + KSystem::getMilliesSinceStart();
-            }
-        }
-        bool checkValue = false;
 
+                if (cmd == FUTEX_WAIT) {
+                    // FUTEX_WAIT timeout is relative
+                    expireTime = seconds * 1000 + nano / 1000000;
+                } else {
+                    expireTime = (seconds * 1000 + nano / 1000000) - KSystem::getSystemTimeAsMicroSeconds() / 1000;
+                }                                
+            }
+            expireTime += KSystem::getMilliesSinceStart();
+        }
         if (!f) {
-            checkValue = true;
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
+
+            U32 currentValue = memory->readd(addr);
+            if (currentValue != value) {
+                //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
+                return -K_EWOULDBLOCK;
+            }
+
             f = allocFutex(this, ramAddress, expireTime);
-            if (op == FUTEX_WAIT_BITSET_PRIVATE || op == FUTEX_WAIT_BITSET) {
+            if (cmd == FUTEX_WAIT_BITSET) {
                 f->mask = val3;
             }
+        } else {
+            int ii = 0;
         }
-        while (true) {
+        while (true) {                        
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
-            if (checkValue) {
-                checkValue = false;
-                if (memory->readd(addr) != value) { // needs to be protected
-                    freeFutex(f);
-                    return -K_EWOULDBLOCK;
-                } 
-            }
             if (this->pendingSignals) {
                 // I know this is a nested if statement, but it makes setting a break point easier
                 if (runSignals()) {
+                    //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x RAN SIGNAL", id, process->id, addr, op, value, (U32)ramAddress);
                     return -K_CONTINUE;
                 }
             }
             if (f->wake) {
                 freeFutex(f);
                 return 0;
-            }            
+            }       
             if (f->expireTimeInMillies<0x7FFFFFFF) {
                 S32 diff = f->expireTimeInMillies - KSystem::getMilliesSinceStart();
                 if (diff<=0) {
                     freeFutex(f);
                     return -K_ETIMEDOUT;
                 }
+                //klog("   %x/%x futux SLEEPING %x addr=%x op=%x val=%x ram=%x", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress);
                 BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, (U32)diff);
+                //klog("   %x/%x futux DONE SLEEPING %x addr=%x op=%x val=%x ram=%x", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress);
             } else {
                 BOXEDWINE_CONDITION_WAIT(f->cond);
             }
@@ -345,16 +383,28 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
             }
 #endif
         }
-    } else if (op==FUTEX_WAKE_PRIVATE || op==FUTEX_WAKE || op==FUTEX_WAKE_BITSET_PRIVATE || op == FUTEX_WAKE_BITSET) {
+    } else if (cmd ==FUTEX_WAKE || cmd == FUTEX_WAKE_BITSET) {
         U32 count = 0;
-        for (int i=0;i<MAX_FUTEXES && count<value;i++) {
-            if (system_futex[i].address==ramAddress && !system_futex[i].wake && ((op!= FUTEX_WAKE_BITSET_PRIVATE && op!= FUTEX_WAKE_BITSET) || (system_futex[i].mask & val3))) {
-                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
-                system_futex[i].wake = true;
-                BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);
-                count++;
+        //klog("%x/%x futux wake addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);            
+
+            for (int i = 0; i < MAX_FUTEXES && count < value; i++) {
+                if (!system_futex[i].thread) {
+                    continue;
+                }
+                bool processCheck = (!isPrivate || system_futex[i].thread->process->id == this->process->id);
+                bool addressCheck = system_futex[i].address == ramAddress;
+                bool maskCheck = ((cmd != FUTEX_WAKE_BITSET) || (system_futex[i].mask & val3));
+                if (processCheck && addressCheck && !system_futex[i].wake && maskCheck) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
+                    system_futex[i].wake = true;
+                    BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);
+                    count++;
+                }
             }
         }
+        //klog("    %x/%x futux wake finished addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
         return count;
     } else {
         kwarn("syscall __NR_futex op %d not implemented", op);
@@ -825,12 +875,14 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->setSegment(ES, 0x17);
         this->cpu->setIsBig(1);
 #ifdef BOXEDWINE_MULTI_THREADED
-        BOXEDWINE_CONDITION* cond = this->waitingCond;
-        if (cond) {
-            BOXEDWINE_CONDITION& c = *cond;
-            this->startSignal = true;
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(c);
-            BOXEDWINE_CONDITION_SIGNAL_ALL(c);
+        if (!this->startSignal) {
+            BOXEDWINE_CONDITION* cond = this->waitingCond;
+            if (cond) {
+                BOXEDWINE_CONDITION& c = *cond;
+                this->startSignal = true;
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(c);
+                BOXEDWINE_CONDITION_SIGNAL_ALL(c);
+            }
         }
 #endif
     }        
