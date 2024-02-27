@@ -219,7 +219,7 @@ U32 KSystem::clock_getres64(KThread* thread, U32 clk_id, U32 timespecAddress) {
     KMemory* memory = thread->memory;
 
     memory->writeq(timespecAddress, 0);
-    memory->writed(timespecAddress + 4, 1000000);
+    memory->writed(timespecAddress + 8, 1000000);
     return 0;
 }
 
