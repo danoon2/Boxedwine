@@ -2358,7 +2358,7 @@ U32 KProcess::faccessat(U32 dirfd, BString path, U32 mode, U32 flags) {
 #define K_UTIME_NOW 0x3fffffff
 #define K_UTIME_OMIT 0x3ffffffe
 
-U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags) {
+U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64) {
     BString dir;
     U32 result = 0;
     
@@ -2377,10 +2377,17 @@ U32 KProcess::utimesat(FD dirfd, BString path, U32 times, U32 flags) {
     U32 lastModifiedTimeNano = 0;
 
     if (times) {
-        lastAccessTime = memory->readd(times);
-        lastAccessTimeNano = memory->readd(times+4);
-        lastModifiedTime = memory->readd(times+8);
-        lastModifiedTimeNano = memory->readd(times+12);
+        if (time64) {
+            lastAccessTime = memory->readd(times);
+            lastAccessTimeNano = memory->readd(times + 8);
+            lastModifiedTime = memory->readd(times + 12);
+            lastModifiedTimeNano = memory->readd(times + 20);
+        } else {
+            lastAccessTime = memory->readd(times);
+            lastAccessTimeNano = memory->readd(times + 4);
+            lastModifiedTime = memory->readd(times + 8);
+            lastModifiedTimeNano = memory->readd(times + 12);
+        }
     }
     if (lastAccessTimeNano != K_UTIME_OMIT) {
         if (lastAccessTimeNano == K_UTIME_NOW) {

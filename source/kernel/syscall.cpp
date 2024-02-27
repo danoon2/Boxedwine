@@ -1458,7 +1458,7 @@ static U32 syscall_sync_file_range(CPU* cpu, U32 eipCount) {
 static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG2);
     SYS_LOG1(SYSCALL_FILE, cpu, "utimensat dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, path.c_str(), ARG3, ARG4);
-    U32 result = cpu->thread->process->utimesat(ARG1, path, ARG3, ARG4);
+    U32 result = cpu->thread->process->utimesat(ARG1, path, ARG3, ARG4, false);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1466,7 +1466,7 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
 static U32 syscall_utimensat_time64(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG2);
     SYS_LOG1(SYSCALL_FILE, cpu, "utimensat_time64 dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, path.c_str(), ARG3, ARG4);
-    U32 result = cpu->thread->process->utimesat(ARG1, path, ARG3, ARG4);
+    U32 result = cpu->thread->process->utimesat(ARG1, path, ARG3, ARG4, true);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }

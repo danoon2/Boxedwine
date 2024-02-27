@@ -189,7 +189,7 @@ public:
     U32 unlinkFile(BString path);
     U32 unlinkat(FD dirfd, BString path, U32 flags);    
     U32 utimes(BString path, U32 times);
-    U32 utimesat(FD dirfd, BString path, U32 times, U32 flags);
+    U32 utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64);
     U32 utimesat64(FD dirfd, BString path, U32 times, U32 flags);
     U32 write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen);
     U32 writev(KThread* thread, FD handle, U32 iov, S32 iovcnt);
