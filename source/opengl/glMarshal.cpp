@@ -283,13 +283,22 @@ GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U3
     return nullptr;
 }
 
-GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels) {
+GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels, U32 xoffset, U32 yoffset, U32 level) {
     if (!pixels) {
         return nullptr;
     }
     int bytes_per_comp = 0;
     int isSigned = 0;
-    U32 len = getPixelsLen(is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
+    GLint w = width + xoffset;
+    GLint h = height;
+    GLint alignment = 0;
+    GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
+
+    if (alignment) {
+        h = (h + alignment - 1) / alignment * alignment; // I don't see any specs on this, but it will crash if I don't do this
+        w = (w + alignment - 1) / alignment * alignment;
+    }
+    U32 len = getPixelsLen(is3d, w, h, depth, format, type, bytes_per_comp, isSigned);
 
     return marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
 }

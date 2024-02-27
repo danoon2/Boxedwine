@@ -218,7 +218,7 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel);
 //
 // This will take into account packing, like GL_UNPACK_ROW_LENGTH, GL_UNPACK_SKIP_PIXELS, GL_UNPACK_SKIP_ROWS,
 // GL_UNPACK_ALIGNMENT, GL_PACK_SKIP_IMAGES
-GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels);
+GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels, U32 xoffset=0, U32 yoffset=0, U32 level=0);
 
 void updateVertexPointers(CPU* cpu, U32 count);
 GLvoid* marshalVetextPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
