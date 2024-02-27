@@ -21,6 +21,7 @@ void BtCPU::run() {
         return;
 #else
         if (this->thread->process->terminated) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
             this->memory->cleanup();
         }
         if (this->thread->terminating) {
