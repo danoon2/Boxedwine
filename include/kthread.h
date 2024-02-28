@@ -92,9 +92,6 @@ public:
     U32 alternateStack = 0;
     U32 alternateStackSize = 0;
     CPU* cpu = nullptr;
-    U32 stackPageStart = 0;
-    U32 stackPageCount = 0;
-    U32 stackPageSize = 0;
     std::shared_ptr<KProcess> process;
     KMemory* const memory;
     bool interrupted = false;

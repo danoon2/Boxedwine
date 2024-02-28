@@ -74,10 +74,9 @@ void KThread::setupStack() {
     U32 stack = memory->mmap(this, 0, MAX_STACK_SIZE, K_PROT_NONE, K_MAP_ANONYMOUS|K_MAP_PRIVATE, -1, 0);
     // will all by on demand
     memory->mprotect(this, stack + K_PAGE_SIZE, MAX_STACK_SIZE - 2 * K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);    
-    this->stackPageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
-    this->stackPageStart = stack >> K_PAGE_SHIFT;
-    this->stackPageSize = INITIAL_STACK_PAGES + K_NATIVE_PAGES_PER_PAGE; //how far down from the top we allocated, the K_NATIVE_PAGES_PER_PAGE is for the guard page
-    this->cpu->reg[4].u32 = (this->stackPageStart + this->stackPageCount - K_NATIVE_PAGES_PER_PAGE) << K_PAGE_SHIFT;  
+    U32 stackPageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
+    U32 stackPageStart = stack >> K_PAGE_SHIFT;
+    this->cpu->reg[4].u32 = (stackPageStart + stackPageCount - 1) << K_PAGE_SHIFT;  
     // touch the first 16 pages now so that they are ready
     for (int i = 1; i < 17; i++) {
         memory->readd(this->cpu->reg[4].u32 - K_PAGE_SIZE * i);
@@ -204,8 +203,6 @@ U32 KThread::signal(U32 signal, bool wait) {
     return 0;
 }
 
-#define FUTEX_PRIVATE_FLAG 0x80
-
 #define FUTEX_WAIT		0
 #define FUTEX_WAKE		1
 #define FUTEX_FD		2
@@ -315,9 +312,9 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
 
                 if (cmd == FUTEX_WAIT) {
                     // FUTEX_WAIT timeout is relative
-                    expireTime = seconds * 1000 + nano / 1000000;
+                    expireTime = (U32)(seconds * 1000 + nano / 1000000);
                 } else {
-                    expireTime = (seconds * 1000 + nano / 1000000) - KSystem::getSystemTimeAsMicroSeconds() / 1000;
+                    expireTime = (U32)((seconds * 1000 + nano / 1000000) - KSystem::getSystemTimeAsMicroSeconds() / 1000);
                 }
             } else {
                 U32 seconds = memory->readd(pTime);
@@ -327,7 +324,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
                     // FUTEX_WAIT timeout is relative
                     expireTime = seconds * 1000 + nano / 1000000;
                 } else {
-                    expireTime = (seconds * 1000 + nano / 1000000) - KSystem::getSystemTimeAsMicroSeconds() / 1000;
+                    expireTime = (U32)((seconds * 1000 + nano / 1000000) - KSystem::getSystemTimeAsMicroSeconds() / 1000);
                 }                                
             }
             expireTime += KSystem::getMilliesSinceStart();
@@ -909,6 +906,7 @@ void KThread::seg_mapper(U32 address, bool readFault, bool writeFault, bool thro
     }
 }
 
+// motorhead demo installer, tomb raider 3 demo will trigger this
 void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool throwException) {
     if (this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && this->process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL) {
 
@@ -927,9 +925,6 @@ void KThread::seg_access(U32 address, bool readFault, bool writeFault, bool thro
 
 void KThread::clone(KThread* from) {    
     this->sigMask = from->sigMask;
-    this->stackPageStart = from->stackPageStart;
-    this->stackPageCount = from->stackPageCount;
-    this->stackPageSize = from->stackPageSize;
     this->waitingForSignalToEndMaskToRestore = from->waitingForSignalToEndMaskToRestore;
     this->cpu->clone(from->cpu);
     this->cpu->thread = this;
@@ -1070,8 +1065,8 @@ U32 KThread::sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool ti
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
         for (int i = 0; i < 64; i++) {
-            if ((mask & (1 << i)) && (this->pendingSignals & (1 << i))) {
-                this->pendingSignals &= ~(1 << i);
+            if ((mask & (1ll << i)) && (this->pendingSignals & (1ll << i))) {
+                this->pendingSignals &= ~(1ll << i);
                 return 0;
             }
         }
@@ -1079,8 +1074,8 @@ U32 KThread::sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool ti
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->pendingSignalsMutex);
         for (int i = 0; i < 64; i++) {
-            if ((mask & (1 << i)) && (process->pendingSignals & (1 << i))) {
-                this->pendingSignals &= ~(1 << i);
+            if ((mask & (1ll << i)) && (process->pendingSignals & (1ll << i))) {
+                this->pendingSignals &= ~(1ll << i);
                 return 0;
             }
         }

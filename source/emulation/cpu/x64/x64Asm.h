@@ -229,9 +229,11 @@ private:
     void doLoop16(U8 inst, U32 eip);
     void jmpReg(U8 reg, bool isRex, bool mightNeedCS);
     void jmpNativeReg(U8 reg, bool isRegRex);
-    void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount);
+    void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith = false);
+    void shiftLeftReg(U8 reg, bool isRegRex, U8 shiftAmount);
     void bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
     void andReg(U8 reg, bool isRegRex, U32 mask);
+    void orReg(U8 reg, bool isRegRex, U32 mask);
     void subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data

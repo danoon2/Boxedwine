@@ -170,7 +170,6 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
 
 U32 getPixelsLen(U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, int& bytes_per_comp, int& isSigned) {
     int bytes_per_row = 0;
-    int len = 0;
     int remainder = 0;
 
     GLint skipPixels = 0;
@@ -353,7 +352,7 @@ GLvoid* MarshalReadWritePackedPixels::getPtr() {
     if (!buffer) {
         len = getPixelsLen(is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
         if (!len) {
-            return (GLvoid*)pixels;
+            return (GLvoid*)(U64)pixels;
         }
         U32 page = pixels >> K_PAGE_SHIFT;
         U32 pageStop = (pixels + len - 1) >> K_PAGE_SHIFT;

@@ -128,7 +128,7 @@ void BoxedWineCondition::removeParentCondition(BoxedWineCondition* parent) {
 
 U32 BoxedWineCondition::parentsCount() {
     const std::lock_guard<std::mutex> lock(parentsMutex);
-    return parents.size();
+    return (U32)parents.size();
 }
 
 #else 

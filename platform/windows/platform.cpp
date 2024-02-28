@@ -365,7 +365,7 @@ U32 Platform::getPageAllocationGranularity() {
 }
 
 U32 Platform::getPagePermissionGranularity() {
-    return K_NATIVE_PAGES_PER_PAGE;
+    return 1;
 }
 
 U32 Platform::allocateNativeMemory(U64 address) {

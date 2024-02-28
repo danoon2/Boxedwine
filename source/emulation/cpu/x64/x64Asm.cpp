@@ -2935,11 +2935,23 @@ void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
     done = true;
 }
 
-void X64Asm::shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount) {
+void X64Asm::shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith) {
     if (isRegRex)
         write8(REX_BASE | REX_MOD_RM);
     write8(0xC1);
-    write8(0xE8 | reg);
+    if (arith) {
+        write8(0xF8 | reg);
+    } else {
+        write8(0xE8 | reg);
+    }
+    write8(shiftAmount);
+}
+
+void X64Asm::shiftLeftReg(U8 reg, bool isRegRex, U8 shiftAmount) {
+    if (isRegRex)
+        write8(REX_BASE | REX_MOD_RM);
+    write8(0xC1);
+    write8(0xE0 | reg);
     write8(shiftAmount);
 }
 
@@ -2948,6 +2960,14 @@ void X64Asm::andReg(U8 reg, bool isRegRex, U32 mask) {
         write8(REX_BASE | REX_MOD_RM);
     write8(0x81);
     write8(0xE0 | reg);
+    write32(mask);
+}
+
+void X64Asm::orReg(U8 reg, bool isRegRex, U32 mask) {
+    if (isRegRex)
+        write8(REX_BASE | REX_MOD_RM);
+    write8(0x81);
+    write8(0xC8 | reg);
     write32(mask);
 }
 
@@ -3614,20 +3634,24 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
         skipPos = bufferPos;
         write32(0x0);
     }
-    DecodedOp* op = currentBlock->op;
-    int direction = 0;
-
-    while (op && op != currentOp) {
-        if (op->inst == Cld) {
-            direction = 1;
-        } else if (op->inst == Std) {
-            direction = -1;
+   
+    // get direction (DF)
+    {
+        U8 tmp = getTmpReg();
+        pushNativeFlags();
+        popNativeReg(tmp, true);
+        shiftLeftReg(tmp, true, 21);
+        shiftRightReg(tmp, true, 31, true);
+        orReg(tmp, true, width);
+        if (width == 2) {
+            andReg(tmp, true, 0xfffffffe);
+        } else if (width == 4) {
+            andReg(tmp, true, 0xfffffffc);
         }
-        op = op->next;
+        writeToMemFromReg(tmp, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
+        releaseTmpReg(tmp);
     }
-    if (direction == 0) {
-        direction = cpu->getDirection();
-    }
+
     U32 pos = bufferPos;
     if (hasSrc && hasDst) {
         U8 tmpReg = getTmpReg();
@@ -3715,50 +3739,17 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
     } else {
         kpanic("X64Asm::string oops");
     }
-        
-    if (width == 1) {
-        if (direction == 1) {
-            if (hasSrc) {
-                // inc (e)si
-                if (ea16) {
-                    write8(0x66);
-                }
-                write8(0xff);
-                write8(0xc0 | 6);
-            }
-            if (hasDst) {
-                // inc (e)di
-                if (ea16) {
-                    write8(0x66);
-                }
-                write8(0xff);
-                write8(0xc0 | 7);
-            }
-        } else {
-            if (hasSrc) {
-                // dec (e)si
-                if (ea16) {
-                    write8(0x66);
-                }
-                write8(0xff);
-                write8(0xc8 | 6);
-            }
-            if (hasDst) {
-                // dec (e)di
-                if (ea16) {
-                    write8(0x66);
-                }
-                write8(0xff);
-                write8(0xc8 | 7);
-            }
-        }
-    } else {
+      
+    {
+        U8 tmpReg = getTmpReg();
+        writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
         if (hasSrc) {
-            addWithLea(6, false, 6, false, -1, false, 0, direction * width, ea16 ? 2 : 4);
+            addWithLea(6, false, 6, false, tmpReg, true, 0, 0, ea16 ? 2 : 4);
         }
         if (hasDst) {
-            addWithLea(7, false, 7, false, -1, false, 0, direction * width, ea16 ? 2 : 4);
+            addWithLea(7, false, 7, false, tmpReg, true, 0, 0, ea16 ? 2 : 4);
         }
+        releaseTmpReg(tmpReg);
     }
 
     if (repeat) {

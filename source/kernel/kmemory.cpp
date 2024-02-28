@@ -243,7 +243,7 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
 
             U32 pageStart = result >> K_PAGE_SHIFT;
             
-            for (int i = 0; i < oldPageCount; i++) {
+            for (U32 i = 0; i < oldPageCount; i++) {
                 Page* oldPage = data->mmu[oldPageStart + i];
                 Page* newPage = data->mmu[pageStart + i];
 

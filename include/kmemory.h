@@ -124,6 +124,7 @@ private:
 
     KMemoryData* data;
     KProcess* process;
+    BHashTable< U8*, std::shared_ptr<U8[]>> lockedMemory;
 };
 
 #endif

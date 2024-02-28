@@ -28,6 +28,7 @@
 #include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #endif
 #include "pixelformat.h"
+#include UNISTD
 
 unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 	struct timeval  tv;
@@ -200,11 +201,13 @@ void Platform::setCurrentThreadPriorityHigh() {
 #endif
 
 U32 Platform::getPageAllocationGranularity() {
-    return K_NATIVE_PAGES_PER_PAGE;
+    static U32 pageSize = getpagesize() / K_PAGE_SIZE;
+    return pageSize;
 }
 
 U32 Platform::getPagePermissionGranularity() {
-    return K_NATIVE_PAGES_PER_PAGE;
+    static U32 pageSize = getpagesize() / K_PAGE_SIZE;
+    return pageSize;
 }
 
 U32 Platform::allocateNativeMemory(U64 address) {

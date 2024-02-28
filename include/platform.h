@@ -30,14 +30,6 @@
 #include "platformtypes.h"
 #define FD S32
 
-#ifndef K_NATIVE_PAGE_SIZE
-#define K_NATIVE_PAGE_SIZE 4096
-#define K_NATIVE_NUMBER_OF_PAGES 0x100000
-#define K_NATIVE_PAGE_MASK 0xFFF
-#define K_NATIVE_PAGE_SHIFT 12
-#define K_NATIVE_PAGES_PER_PAGE 1
-#endif
-
 #ifdef __APPLE__
 #define lseek64 lseek
 #endif

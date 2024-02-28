@@ -170,7 +170,8 @@ void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permis
 }
 
 bool isAlignedNativePage(U32 page) {
-    return (page & ~(K_NATIVE_PAGES_PER_PAGE - 1)) == page;
+    U32 gran = Platform::getPageAllocationGranularity();
+    return (page & ~(gran - 1)) == page;
 }
 
 bool KMemoryData::reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag) {
@@ -664,13 +665,14 @@ U8* KMemory::lockReadOnlyMemory(U32 address, U32 len) {
     if (len <= K_PAGE_SIZE - offset) {
         return page->getReadPtr(this, address, true);
     }
-
-    kpanic("KMemory::lockReadOnlyMemory need to implement");
-    return nullptr;
+    std::shared_ptr<U8[]> p = std::make_shared<U8[]>(len);
+    memcpy(p.get(), address, len);
+    lockedMemory.set(p.get(), p);    
+    return p.get();
 }
 
 void KMemory::unlockMemory(U8 * lockedPointer) {
-    // :TODO: nothing todo until lockReadOnlyMemory supports crossing page boundry
+    lockedMemory.remove(lockedPointer);
 }
 
 void KMemory::unmapNativeMemory(U32 address, U32 size) {

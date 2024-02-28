@@ -431,8 +431,8 @@ void KNativeWindowSdl::destroyScreen(KThread* thread) {
     if (window) {
         DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
         SDL_DestroyWindow(window);
-        DISPATCH_MAIN_THREAD_BLOCK_END
         window = nullptr;
+        DISPATCH_MAIN_THREAD_BLOCK_END        
         windowIsGL = false;
         glWindowVersionMajor = 0;
     }   
@@ -1493,7 +1493,11 @@ void KNativeWindowSdl::checkMousePos(int& x, int& y) {
     if (warp && window) {
         int scaledX = xToScreen(x);
         int scaledY = yToScreen(y);
-        SDL_WarpMouseInWindow(window, scaledX, scaledY);
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+            if (window) {
+                SDL_WarpMouseInWindow(window, scaledX, scaledY);
+            }
+        DISPATCH_MAIN_THREAD_BLOCK_END
     }
 }
 
