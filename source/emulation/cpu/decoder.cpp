@@ -196,20 +196,20 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // XchgR32R32 
 /*0b0*/    {0, 32, 32, 0, 0, 0, 0}, // XchgE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR16R16
-    {0, 16, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR32R32
-    {0, 32, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR16R16
+    {0, 16, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR32R32
+    {0, 32, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR16R16
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR32R32
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR16R16
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtsE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR32R32
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtsE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR16R16 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR32R32 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR16R16 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtrE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR32R32 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtrE32R32
 
     {0, 0, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsfR16R16, 
     {0, 16, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsfR16E16,
@@ -221,28 +221,28 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsrR32R32, 
     {0, 32, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsrR32E32,
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR16R16
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR32R32
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR16R16
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtcE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR32R32
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtcE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR16, 
-    {0, 16, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE16,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR16, 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE16,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR16, 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE16,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR16, 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR16, 
+    {0, 16, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR16, 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtsE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR16, 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtrE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR16, 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtcE16,
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR32, 
-    {0, 32, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE32,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR32, 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE32,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR32, 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE32,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR32, 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR32, 
+    {0, 32, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR32, 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtsE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR32, 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtrE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR32, 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtcE32,
 
     {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlR16R16
     {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlE16R16
