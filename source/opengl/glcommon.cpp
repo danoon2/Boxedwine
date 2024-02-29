@@ -449,6 +449,21 @@ void glcommon_glGetMapiv(CPU* cpu) {
     }	
 }
 
+void glcommon_glTexSubImage2D(CPU* cpu) {
+    GLenum target = ARG1;
+    GLint level = ARG2;
+    GLint xoffset = ARG3;
+    GLint yoffset = ARG4;
+    GLsizei width = ARG5;
+    GLsizei height = ARG6;
+    GLenum format = ARG7;
+    GLenum type = ARG8;
+    const GLvoid* pixels = PIXEL_UNPACK_BUFFER() ? (GLvoid*)pARG9 : marshalPixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG9, xoffset, yoffset, level);
+
+    GL_LOG("glTexSubImage2D GLenum target=%x, GLint level=%d, GLint xoffset=%d, GLint yoffset=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%x, GLenum type=%x, const GLvoid* pixels=%x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
+    GL_FUNC(pglTexSubImage2D)(target, level, xoffset, yoffset, width, height, format, type, pixels);
+}
+
 // GLAPI void APIENTRY glGetPointerv( GLenum pname, GLvoid **params ) {
 void glcommon_glGetPointerv(CPU* cpu) {
     GL_LOG("glGetPointerv GLenum pname=%d, GLvoid **params=%.08x", ARG1, ARG2);

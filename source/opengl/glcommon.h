@@ -24,7 +24,7 @@
 #include <inttypes.h>
 
 //#define GL_LOG klog
-#define GL_LOG if (0) klog
+#define GL_LOG if (1) klog
 
 #ifdef BOXEDWINE_OPENGL_ES
 #define GL_FUNC(name) es_##name

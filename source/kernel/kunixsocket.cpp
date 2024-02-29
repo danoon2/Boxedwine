@@ -3,6 +3,7 @@
 #include "kunixsocket.h"
 #include "ksocket.h"
 #include "kstat.h"
+#include "ksignal.h"
 
 KUnixSocketObject::KUnixSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol), 
     lockCond(B("KUnixSocketObject::lockCond"))
@@ -141,9 +142,9 @@ U32 KUnixSocketObject::internal_write(KThread* thread, const std::shared_ptr<KUn
         }
         return len;
     }
-    if (this->outClosed || !con)
-        return -K_EPIPE;  
-    
+    if (this->outClosed || !con) {
+        return writePipeClosed(thread, false);
+    }
     //printf("internal_write: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->connection->recvBuffer, (int)this->connection->recvBuffer.size(), (int)this->connection->recvBuffer.capacity(), len);
 
     memory->performOnMemory(buffer, len, true, [con](U8* ram, U32 len) {
@@ -202,8 +203,9 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
         return len;
     }
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
-    if (this->outClosed || !con)
-        return -K_EPIPE;
+    if (this->outClosed || !con) {
+        return writePipeClosed(KThread::currentThread(), false);
+    }
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond); 
     con->recvBuffer.insert(con->recvBuffer.end(), buffer, buffer + len);
@@ -705,6 +707,14 @@ U32 KUnixSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 leve
     return 0;
 }
 
+U32 KUnixSocketObject::writePipeClosed(KThread* thread, bool noSignal) {
+    if (noSignal || thread->process->sigActions[K_SIGPIPE].handlerAndSigAction == K_SIG_IGN || !thread->readyForSignal(K_SIGPIPE)) {
+        return -K_EPIPE;
+    }
+    thread->runSignal(K_SIGPIPE, 0, 0);
+    return -K_CONTINUE;
+}
+
 U32 KUnixSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
     MsgHdr hdr = {};
     KMemory* memory = thread->memory;
@@ -718,9 +728,15 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 address
         kpanic("KUnixSocketObject::sendmsg not implemented for type: %d", this->type);
         return 0;
     }
+    bool noSignal = (flags & K_MSG_NOSIGNAL) != 0;
+    flags &= ~K_MSG_NOSIGNAL;
+    if (flags) {
+        kwarn("KUnixSocketObject::sendmsg unhandled flag=%x", flags);
+    }
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
-    if (this->outClosed)
-        return -K_EPIPE;
+    if (this->outClosed) {
+        return writePipeClosed(thread, noSignal);
+    }
     readMsgHdr(thread, address, &hdr);
 
     std::shared_ptr<KSocketMsg> msg = std::make_shared<KSocketMsg>();

@@ -45,7 +45,7 @@ void KThread::cleanup() {
     }
     if (!KSystem::shutingDown && this->clear_child_tid && this->process && memory->canWrite(this->clear_child_tid, 4)) {
         memory->writed(this->clear_child_tid, 0);
-        this->futex(this->clear_child_tid, 1, 1, 0, 0, 0, false);        
+        this->futex(this->clear_child_tid, 1, 0xffffffff, 0, 0, 0, false);        
     }
 	this->clear_child_tid = 0;
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -133,6 +133,10 @@ void KThread::setTLS(struct user_desc* desc) {
     this->tls[desc->entry_number-TLS_ENTRY_START_INDEX] = *desc;   
 }
 
+bool KThread::readyForSignal(U32 signal) {
+    return (((U64)1 << (signal - 1)) & ~(this->inSignal ? this->inSigMask : this->sigMask)) != 0;
+}
+
 U32 KThread::signal(U32 signal, bool wait) {
     if (signal==0) {
         return 0;
@@ -149,7 +153,7 @@ U32 KThread::signal(U32 signal, bool wait) {
     process->sigActions[signal].sigInfo[3] = process->id;
     process->sigActions[signal].sigInfo[4] = process->userId;
 
-    if (((U64)1 << (signal-1)) & ~(this->inSignal?this->inSigMask:this->sigMask)) {
+    if (readyForSignal(signal)) {
         // don't return -K_WAIT, we don't want to re-enter tgkill, instead we will return 0 once the thread wakes up
 
         // must set CPU state before runSignal since it will be stored
@@ -355,12 +359,14 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
                 }
             }
             if (f->wake) {
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
                 freeFutex(f);
                 return 0;
             }       
             if (f->expireTimeInMillies<0x7FFFFFFF) {
                 S32 diff = f->expireTimeInMillies - KSystem::getMilliesSinceStart();
                 if (diff<=0) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
                     freeFutex(f);
                     return -K_ETIMEDOUT;
                 }
@@ -787,7 +793,12 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
 void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
     KSigAction* action = &this->process->sigActions[signal];
     if (action->handlerAndSigAction==K_SIG_DFL) {
-
+        //klog("%x/%x default runSignal %d", this->id, this->process->id, signal);
+        if (signal == K_SIGURG || signal == K_SIGCONT || signal == K_SIGCHLD || signal == K_SIGWINCH) {
+            // ignored by default
+        } else {
+            process->signal(K_SIGKILL);
+        }
     } else if (action->handlerAndSigAction != K_SIG_IGN) {
         U32 context = 0;
         U32 address = 0;
@@ -882,7 +893,9 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
             }
         }
 #endif
-    }        
+    } else {
+        //klog("%x/%x ignore runSignal %d", this->id, this->process->id, signal);
+    }
 }
 
 // bit 0 - 0 = no page found, 1 = protection fault

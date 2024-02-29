@@ -168,7 +168,7 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     }
 }
 
-U32 getPixelsLen(U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, int& bytes_per_comp, int& isSigned) {
+U32 getPixelsLen(bool read, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, int& bytes_per_comp, int& isSigned) {
     int bytes_per_row = 0;
     int remainder = 0;
 
@@ -178,14 +178,23 @@ U32 getPixelsLen(U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum 
     GLint pixels_per_row = 0;
     GLint skipImages = 0;
 
-    GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
-    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
-    GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
-    GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
-    if (is3d) {
-        GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
+    if (read) {
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_ROW_LENGTH, &pixels_per_row);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &skipPixels);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_ROWS, &skipRows);
+        GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
+        if (is3d) {
+            GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_IMAGES, &skipImages);
+        }
+    } else {
+        GL_FUNC(pglGetIntegerv)(GL_PACK_ROW_LENGTH, &pixels_per_row);
+        GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
+        GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
+        GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
+        if (is3d) {
+            GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
+        }
     }
-
     if (!pixels_per_row)
         pixels_per_row = width;
     if (type == GL_BITMAP) {
@@ -291,13 +300,13 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
     GLint w = width + xoffset;
     GLint h = height;
     GLint alignment = 0;
-    GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
+    GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
 
     if (alignment) {
         h = (h + alignment - 1) / alignment * alignment; // I don't see any specs on this, but it will crash if I don't do this
         w = (w + alignment - 1) / alignment * alignment;
     }
-    U32 len = getPixelsLen(is3d, w, h, depth, format, type, bytes_per_comp, isSigned);
+    U32 len = getPixelsLen(true, is3d, w, h, depth, format, type, bytes_per_comp, isSigned);
 
     return marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
 }
@@ -335,7 +344,7 @@ void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsize
 
     int bytes_per_comp = 0;
     int isSigned = 0;
-    U32 len = getPixelsLen(is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
+    U32 len = getPixelsLen(false, is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
     marshalBackPixels(cpu, bytes_per_comp, isSigned, address, pixels, len);    
 }
 
@@ -350,7 +359,7 @@ GLvoid* MarshalReadWritePackedPixels::getPtr() {
         return (GLvoid*)(uintptr_t)(pixels);
     }
     if (!buffer) {
-        len = getPixelsLen(is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
+        len = getPixelsLen(false, is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
         if (!len) {
             return (GLvoid*)(U64)pixels;
         }

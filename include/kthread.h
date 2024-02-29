@@ -61,6 +61,7 @@ public:
     struct user_desc* getLDT(U32 index);
     bool isLdtEmpty(struct user_desc* desc);
     U32 signal(U32 signal, bool wait);
+    bool readyForSignal(U32 signal);
     void cleanup();
 
     void seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException=true);

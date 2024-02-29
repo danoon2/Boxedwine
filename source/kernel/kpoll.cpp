@@ -154,7 +154,7 @@ U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
 }
 
 
-U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout, U32 sigmask, bool time64) {
+U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout, bool timeoutIsTimeVal, U32 sigmask, bool time64) {
     S32 result = 0;
     int count = 0;
     U32 pollCount = 0;
@@ -163,10 +163,12 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
     if (timeout == 0)
         timeout = 0x7FFFFFFF;
     else {
+        // timeval, 2nd part is microseconds
+        // timespec, 2nd part is nanoseconds
         if (time64) {
-            timeout = (U32)(memory->readq(timeout) * 1000 + memory->readd(timeout + 8) / 1000);
+            timeout = (U32)(memory->readq(timeout) * 1000 + memory->readd(timeout + 8) / (timeoutIsTimeVal?1000:1000000));
         } else {
-            timeout = memory->readd(timeout) * 1000 + memory->readd(timeout + 4) / 1000;
+            timeout = memory->readd(timeout) * 1000 + memory->readd(timeout + 4) / (timeoutIsTimeVal ? 1000 : 1000000);
         }
         if (timeout < NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT && nfds == 0) {
             return KThread::currentThread()->sleep(timeout);

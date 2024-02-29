@@ -733,21 +733,21 @@ static U32 syscall_getdents(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_newselect(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "newselect: nfd=%d readfds=%X writefds=%X errorfds=%X timeout=%d", ARG1, ARG2, ARG3, ARG4, ARG5);
-    U32 result = kselect(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5);
+    U32 result = kselect(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, true);
     SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
 static U32 syscall_pselect6(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "pselect6: nfd=%d readfds=%X writefds=%X errorfds=%X timeout=%d sigmask=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
-    U32 result = kselect(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    U32 result = kselect(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, false, ARG6);
     SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
 static U32 syscall_pselect6_time64(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "pselect6_time64: nfd=%d readfds=%X writefds=%X errorfds=%X timeout=%d sigmask=%X", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
-    U32 result = kselect(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, true);
+    U32 result = kselect(cpu->thread, ARG1, ARG2, ARG3, ARG4, ARG5, false, ARG6, true);
     SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }

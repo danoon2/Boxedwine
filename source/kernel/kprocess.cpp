@@ -2541,19 +2541,30 @@ void KProcess::printStack() {
 }
 
 U32 KProcess::signal(U32 signal) {
+    if (signal == K_SIGKILL) {
+        KThread* currentThread = KThread::currentThread();
+        if (currentThread->process->id != id) {
+            currentThread = nullptr;
+        }
+        this->killAllThreads(currentThread);
+        if (currentThread) {
+            terminateCurrentThread(currentThread);
+        }
+        return 0;
+    }
     for (auto& t : this->threads) {
         KThread* thread = t.value;
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
         if (thread->sigWaitMask & signal) {
             thread->foundWaitSignal = signal;
-            BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);            
+            BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
             return 0;
         }
     }
     for (auto& t : this->threads) {
         KThread* thread = t.value;
 
-        if (((U64)1 << (signal-1)) & ~(thread->inSignal?thread->inSigMask:thread->sigMask)) {
+        if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
             return thread->signal(signal, true);
         }
     }
@@ -2565,6 +2576,7 @@ U32 KProcess::signal(U32 signal) {
 }
 
 void KProcess::signalFd(KThread* thread, U32 signal) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     for (auto& n : this->fds) {
         KFileDescriptor* fd = n.value;
         if (fd->kobject->type == KTYPE_SIGNAL) {

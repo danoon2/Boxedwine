@@ -66,6 +66,7 @@ private:
     U32 pid = 0;
 
     U32 internal_write(KThread* thread, const std::shared_ptr<KUnixSocketObject>& con, BOXEDWINE_CONDITION& cond, U32 buffer, U32 len);
+    U32 writePipeClosed(KThread* thread, bool noSignal);
 };
 
 #endif
