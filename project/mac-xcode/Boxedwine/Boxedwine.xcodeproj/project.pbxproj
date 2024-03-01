@@ -600,6 +600,10 @@
 		1AC96020278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AC96021278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
 		1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC96016278FB69600107ED0 /* vulkancommon.cpp */; };
+		1ADBD83F2B91944B0074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
+		1ADBD8402B91944B0074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
+		1ADBD8412B91944B0074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
+		1ADBD8422B91944B0074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
 		1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
 		1AE7E5C52B5A1BD200D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
 		1AE7E5C72B5A1BD200D29E4A /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BF2B5A1BD100D29E4A /* btData.cpp */; };
@@ -1468,6 +1472,10 @@
 		1AC96014278FB69600107ED0 /* vk_host.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vk_host.h; path = vulkan/vk_host.h; sourceTree = "<group>"; };
 		1AC96015278FB69600107ED0 /* vkdef.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vkdef.h; path = vulkan/vkdef.h; sourceTree = "<group>"; };
 		1AC96016278FB69600107ED0 /* vulkancommon.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vulkancommon.cpp; path = vulkan/vulkancommon.cpp; sourceTree = "<group>"; };
+		1ADBD83B2B9194380074867C /* ktimercallback.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ktimercallback.h; sourceTree = "<group>"; };
+		1ADBD83C2B9194380074867C /* kmemory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kmemory.h; sourceTree = "<group>"; };
+		1ADBD83D2B9194380074867C /* devfb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = devfb.h; sourceTree = "<group>"; };
+		1ADBD83E2B91944B0074867C /* devfb.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = devfb.cpp; sourceTree = "<group>"; };
 		1AE7E5BA2B5A1BD100D29E4A /* btMemory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btMemory.h; sourceTree = "<group>"; };
 		1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCpu.cpp; sourceTree = "<group>"; };
 		1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCodeChunk.cpp; sourceTree = "<group>"; };
@@ -2387,6 +2395,9 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1ADBD83D2B9194380074867C /* devfb.h */,
+				1ADBD83C2B9194380074867C /* kmemory.h */,
+				1ADBD83B2B9194380074867C /* ktimercallback.h */,
 				1A2236352820A84100E74D88 /* uptime.h */,
 				1AB0CAFC263BA83A003AF407 /* kdspaudio.h */,
 				71DF8E1B248F29C300EE1E08 /* knativeaudio.h */,
@@ -2918,6 +2929,7 @@
 		71FBFE212433BBBE003F17F1 /* devs */ = {
 			isa = PBXGroup;
 			children = (
+				1ADBD83E2B91944B0074867C /* devfb.cpp */,
 				71FBFE222433BBBE003F17F1 /* devinput.cpp */,
 				71FBFE232433BBBE003F17F1 /* oss.h */,
 				71FBFE242433BBBE003F17F1 /* devsequencer.cpp */,
@@ -3380,6 +3392,7 @@
 				1A80EF3A276EBCC70032A70A /* audiounit.cpp in Sources */,
 				1A80EF3C276EBCC70032A70A /* synchronization.cpp in Sources */,
 				1A80EF3E276EBCC70032A70A /* menubar.cpp in Sources */,
+				1ADBD8412B91944B0074867C /* devfb.cpp in Sources */,
 				1A80EF3F276EBCC70032A70A /* common_pushpop.cpp in Sources */,
 				1A80EF42276EBCC70032A70A /* syscall.cpp in Sources */,
 				1A80EF44276EBCC70032A70A /* boxedReg.cpp in Sources */,
@@ -3603,6 +3616,7 @@
 				1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */,
 				1A55D65A2A08428F002B7021 /* zutil.c in Sources */,
 				1A80F185276EBF170032A70A /* (null) in Sources */,
+				1ADBD8422B91944B0074867C /* devfb.cpp in Sources */,
 				1A80F186276EBF170032A70A /* synchronization.cpp in Sources */,
 				1A80F187276EBF170032A70A /* audiounit.cpp in Sources */,
 				1A80F189276EBF170032A70A /* menubar.cpp in Sources */,
@@ -4011,6 +4025,7 @@
 				71222C1C24351CBA00CDBABD /* AppDelegate.m in Sources */,
 				1A155115263261E7006E0C8A /* ioapi.c in Sources */,
 				71222C1D24351CBA00CDBABD /* glMarshalSize.cpp in Sources */,
+				1ADBD8402B91944B0074867C /* devfb.cpp in Sources */,
 				715F34872440D7D20038F5A4 /* optionsView.cpp in Sources */,
 				71222C1E24351CBA00CDBABD /* knativesocket.cpp in Sources */,
 				1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
@@ -4394,6 +4409,7 @@
 				71FBFE9E2433BBBE003F17F1 /* soft_native_page.cpp in Sources */,
 				1AFC479D2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */,
+				1ADBD83F2B91944B0074867C /* devfb.cpp in Sources */,
 				71FBFE792433BBBE003F17F1 /* synchronization.cpp in Sources */,
 				1A55D6682A0842E8002B7021 /* trees.c in Sources */,
 				71FBFE642433BBBE003F17F1 /* menubar.cpp in Sources */,
