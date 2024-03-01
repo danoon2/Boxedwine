@@ -10,6 +10,7 @@
 #include "soft_copy_on_write_page.h"
 #include "soft_file_map.h"
 #include "soft_code_page.h"
+#include "devfb.h"
 
 #include "soft_ram.h"
 
@@ -468,6 +469,10 @@ void KMemory::clone(KMemory* from, bool vfork) {
             data->setPage(i, NativePage::alloc(p->nativeAddress, p->address));
         } else if (page->getType() == Page::Type::Invalid_Page) {
             
+        } else if (page->getType() == Page::Type::Frame_Buffer_Page) {
+            if (mapShared(i)) {
+                data->setPage(i, allocFBPage());
+            }
         } else {
             kpanic("unhandled case when cloning memory: page type = %d", static_cast<int>(page->getType()));
         }

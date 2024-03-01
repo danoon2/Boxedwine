@@ -1214,7 +1214,7 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
         tmp = new char[length];
     }
     outLen = inLen;
-    U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, address_len?(struct sockaddr*)fromBuffer:nullptr, address_len?&outLen:0);
+    U32 result = (U32)::recvfrom(this->nativeSocket, tmp, length, nativeFlags, address_len?(struct sockaddr*)fromBuffer:nullptr, address_len?&outLen: nullptr);
     LOG_SOCK("%x native socket: %x recvfrom buffer=%x length=%d address=%x address_len=%x flags=%x result=%x", thread->id, nativeSocket, buffer, length, address, address_len, flags, result);
     if ((S32)result>=0) {
         memory->memcpy(buffer, tmp, result);

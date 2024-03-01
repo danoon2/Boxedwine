@@ -775,7 +775,7 @@ BString& BString::operator = (const BString& other) {
     return *this;
 }
 
-BString& BString::operator = (BString&& other) {
+BString& BString::operator = (BString&& other) noexcept {
     if (this->data != other.data) {
         if (this->data) {
             this->data->decRefCount();

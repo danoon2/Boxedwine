@@ -280,8 +280,8 @@ U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<U8*>& pa
     if (startPage == 0 && !data->reserveAddress(ADDRESS_PROCESS_MMAP_START, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
         return 0;        
     }
-    this->data->allocPages(thread, startPage << K_PAGE_SHIFT, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, (U8**)pages.data());
-    return startPage;
+    this->data->allocPages(thread, startPage, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, (U8**)pages.data());
+    return startPage << K_PAGE_SHIFT;
 }
 
 bool KMemory::isPageAllocated(U32 page) {

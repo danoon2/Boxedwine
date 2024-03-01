@@ -35,7 +35,8 @@ public:
         File_Page,
         Code_Page,
         Copy_On_Write_Page,
-        Native_Page
+        Native_Page,
+        Frame_Buffer_Page
     };
     virtual ~Page() {};
 

@@ -17,7 +17,8 @@ public:
         Zip,
         Virtual,
         Socket,
-        Memory
+        Memory,
+        Timer
     };
     FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, std::shared_ptr<FsNode> parent);
 

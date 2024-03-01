@@ -79,7 +79,7 @@ typedef void* BOXEDWINE_MUTEX;
 class KThread;
 class BoxedWineCondition;
 
-class BoxedWineConditionTimer : public KTimer { 
+class BoxedWineConditionTimer : public KTimerCallback {
 public:
     bool run() override;
 

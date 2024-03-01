@@ -18,13 +18,13 @@
 #include "boxedwine.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
-static KList<KTimer*> timers;
+static KList<KTimerCallback*> timers;
 static BOXEDWINE_MUTEX timerMutex;
 void runTimers() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
     U32 millies = KSystem::getMilliesSinceStart();
-    timers.for_each([millies](KListNode<KTimer*>* node) {
-        KTimer* timer = node->data;
+    timers.for_each([millies](KListNode<KTimerCallback*>* node) {
+        KTimerCallback* timer = node->data;
 
         if (timer->millies <= millies) {
             if (timer->run()) {
@@ -39,8 +39,8 @@ U32 getNextTimer() {
     U32 millies = KSystem::getMilliesSinceStart();
     U32 result = 0xFFFFFFFF;
 
-    timers.for_each([millies, &result](KListNode<KTimer*>* node) {
-        KTimer* timer = node->data;
+    timers.for_each([millies, &result](KListNode<KTimerCallback*>* node) {
+        KTimerCallback* timer = node->data;
         U32 next = 0;
 
         if (timer->millies <= millies) {
@@ -56,13 +56,13 @@ U32 getNextTimer() {
     return result;
 }
 
-void addTimer(KTimer* timer) {
+void addTimer(KTimerCallback* timer) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
     timers.addToBack(&timer->node);
     timer->active = true;
 }
 
-void removeTimer(KTimer* timer) {
+void removeTimer(KTimerCallback* timer) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
     timer->node.remove();
     timer->active = false;
@@ -77,14 +77,14 @@ void removeTimer(KTimer* timer) {
 
 KList<KThread*> scheduledThreads;
 KList<KThread*> waitThreads;
-KList<KTimer*> timers;
+KList<KTimerCallback*> timers;
 
-void addTimer(KTimer* timer) {
+void addTimer(KTimerCallback* timer) {
     timers.addToBack(&timer->node);
     timer->active = true;
 }
 
-void removeTimer(KTimer* timer) {
+void removeTimer(KTimerCallback* timer) {
     timer->node.remove();
     timer->active = false;
 }
@@ -145,8 +145,8 @@ void runThreadSlice(KThread* thread) {
 
 void runTimers() {
     U32 millies = KSystem::getMilliesSinceStart();
-    timers.for_each([millies] (KListNode<KTimer*>* node) {
-        KTimer* timer = node->data;
+    timers.for_each([millies] (KListNode<KTimerCallback*>* node) {
+        KTimerCallback* timer = node->data;
 
         if (timer->millies<=millies) {
             if (timer->run()) {                

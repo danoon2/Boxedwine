@@ -541,6 +541,9 @@
     <ClCompile Include="..\..\..\..\source\util\bfile.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devfb.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1229,6 +1232,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\bhashtable.h">
       <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devfb.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ktimercallback.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

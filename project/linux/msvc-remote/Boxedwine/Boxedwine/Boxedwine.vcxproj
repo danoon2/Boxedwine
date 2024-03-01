@@ -239,6 +239,7 @@
     <ClCompile Include="..\..\..\..\..\source\io\fszipnode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\io\fszipopennode.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devdsp.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\devs\devfb.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devinput.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devmixer.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devnull.cpp" />
@@ -507,6 +508,7 @@
     <ClInclude Include="..\..\..\..\..\include\cpuinfo.h" />
     <ClInclude Include="..\..\..\..\..\include\crc.h" />
     <ClInclude Include="..\..\..\..\..\include\devdsp.h" />
+    <ClInclude Include="..\..\..\..\..\include\devfb.h" />
     <ClInclude Include="..\..\..\..\..\include\devinput.h" />
     <ClInclude Include="..\..\..\..\..\include\devmixer.h" />
     <ClInclude Include="..\..\..\..\..\include\devnull.h" />
@@ -542,6 +544,7 @@
     <ClInclude Include="..\..\..\..\..\include\ksystem.h" />
     <ClInclude Include="..\..\..\..\..\include\kthread.h" />
     <ClInclude Include="..\..\..\..\..\include\ktimer.h" />
+    <ClInclude Include="..\..\..\..\..\include\ktimercallback.h" />
     <ClInclude Include="..\..\..\..\..\include\kunixsocket.h" />
     <ClInclude Include="..\..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\..\include\log.h" />

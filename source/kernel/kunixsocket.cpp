@@ -799,8 +799,14 @@ U32 KUnixSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address
             for (U32 i = 0; i < hdr.msg_iovlen; i++) {
                 U32 p = memory->readd(hdr.msg_iov + 8 * i);
                 U32 len = memory->readd(hdr.msg_iov + 8 * i + 4);
-                
-                result+=this->read(thread, p, len);
+
+                U32 count = std::min(len, (U32)this->recvBuffer.size());
+                memory->performOnMemory(p, count, false, [this](U8* ram, U32 len) {
+                    std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + len, ram);
+                    this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + len);
+                    return true;
+                    });
+                result += count;
             }
             if (this->type==K_SOCK_STREAM)
                 memory->writed(address + 4, 0); // msg_namelen, set to 0 for connected sockets
@@ -864,5 +870,11 @@ U32 KUnixSocketObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message,
 }
 
 U32 KUnixSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
+    if (address == 0) {
+        if (flags) {
+            kpanic("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
+        }
+        return read(thread, buffer, length);
+    }
     return 0;
 }

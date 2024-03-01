@@ -568,7 +568,7 @@ U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
 #define SHM_REMAP       040000  /* take-over region on attach */
 #define SHM_EXEC        0100000 /* execution access */
 
-U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr) {
+U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr, U32* nativeRtnAddr) {
     U32 permissions = 0;
     std::shared_ptr<SHM> shm;
 
@@ -590,9 +590,6 @@ U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnA
     if (shmflg & SHM_REMAP) {
         kpanic("syscall_shmat SHM_REMAP not implemented");
     }
-    if (!shmaddr) {
-        shmaddr = ADDRESS_PROCESS_MMAP_START << K_PAGE_SHIFT;
-    }
     if (shmflg & SHM_RDONLY) {
         permissions = K_PROT_READ;
     } else {
@@ -601,6 +598,12 @@ U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnA
     U32 result = thread->process->memory->mapPages(thread, shmaddr >> K_PAGE_SHIFT, shm->pages, permissions);
     if (result == 0) {
         return -K_EINVAL;
+    }
+    if (rtnAddr) {
+        thread->process->memory->writed(rtnAddr, result);
+    }
+    if (nativeRtnAddr) {
+        *nativeRtnAddr = result;
     }
     thread->process->attachSHM(result, shm);
     return 0;
@@ -640,10 +643,15 @@ U32 KSystem::shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf) {
     if (!shm) {
         return -K_EINVAL;
     }
-
+    if (cmd & IPC_64) {
+        cmd &= ~IPC_64;
+    }
+    if (cmd == IPC_RMID) {
+        shm->markedForDelete = 1;
+    }
     if (!buf)
         return -K_EFAULT;
-    if (cmd == (IPC_64 | IPC_STAT)) {
+    if (cmd == IPC_STAT) {
         // ipc_perm
         memory->writed(buf, shm->key); buf+=4;
         memory->writed(buf, shm->cuid); buf += 4;
@@ -665,8 +673,6 @@ U32 KSystem::shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf) {
         memory->writew(buf, shm->nattch); buf += 2;
         memory->writew(buf, 0); buf += 2;
         memory->writed(buf, 0);
-    }  else if (cmd == (IPC_64 | IPC_RMID)) {
-        shm->markedForDelete = 1;
     } else {
         kpanic("Unknown syscall_shmctl cmd=%X", cmd);
     }

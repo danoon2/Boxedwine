@@ -30,6 +30,8 @@
 #define K__S_IWRITE      0x0080
 #define K__S_IEXEC       0x0040
 
+#define K__S_IRGRP       0x0020
+
 #define	K__S_ISUID	 0x800		/* set user id on execution */
 #define	K__S_ISGID	 0x400		/* set group id on execution */
 #define	K__S_ISVTX	 0x200

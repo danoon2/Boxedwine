@@ -51,7 +51,7 @@
 
 #include "../source/util/bfile.h"
 #include "../source/util/klist.h"
-#include "ktimer.h"
+#include "ktimercallback.h"
 #include "../source/util/synchronization.h"
 #include "../source/util/karray.h"
 #include "../source/util/stringutil.h"
@@ -64,6 +64,7 @@
 #include "kthread.h"
 #include "kfilelock.h"
 #include "kobject.h"
+#include "ktimer.h"
 #include "kfiledescriptor.h"
 #include "../source/io/fs.h"
 #include "../source/io/fsnode.h"

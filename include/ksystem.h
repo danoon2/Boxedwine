@@ -39,7 +39,7 @@
 #define OPENGL_TYPE_SDL 2
 #define OPENGL_TYPE_OSMESA 3
 
-class KTimer;
+class KTimerCallback;
 class CPU;
 class KProcess;
 class KThread;
@@ -126,7 +126,7 @@ public:
     static U32 prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32 oldlimit);
     static U32 setpgid(U32 pid, U32 gpid);
     static U32 shmget(KThread* thread, U32 key, U32 size, U32 flags);
-    static U32 shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr);
+    static U32 shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr, U32* nativeRtnAddr);
     static U32 shmdt(KThread* thread, U32 shmaddr);
     static U32 shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf);
     static U32 sysinfo(KThread* thread, U32 address);

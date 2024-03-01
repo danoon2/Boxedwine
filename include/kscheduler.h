@@ -24,8 +24,8 @@ void unscheduleThread(KThread* thread);
 void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId);
 void terminateCurrentThread(KThread* thread);
 
-void addTimer(KTimer* timer);
-void removeTimer(KTimer* timer);
+void addTimer(KTimerCallback* timer);
+void removeTimer(KTimerCallback* timer);
 
 bool runSlice();
 void runThreadSlice(KThread* thread);

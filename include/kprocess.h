@@ -19,8 +19,9 @@
 #ifndef __KPROCESS_H__
 #define __KPROCESS_H__
 
-#define ADDRESS_PROCESS_MMAP_START		0xD0000
-#define ADDRESS_PROCESS_LOADER			0xF0000
+#define ADDRESS_PROCESS_MMAP_START		     0xD0000
+#define ADDRESS_PROCESS_LOADER			     0xF0000
+#define ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS 0xF8000000
 
 class MappedFileCache;
 
@@ -66,7 +67,7 @@ public:
 
 #define K_MADV_DONTNEED 4
 
-class KProcessTimer : public KTimer { 
+class KProcessTimer : public KTimerCallback {
 public:
     bool run() override;
 private:
@@ -193,7 +194,11 @@ public:
     U32 utimesat64(FD dirfd, BString path, U32 times, U32 flags);
     U32 write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen);
     U32 writev(KThread* thread, FD handle, U32 iov, S32 iovcnt);
+    U32 sendFile(U32 outFd, U32 inFd, U32 offset, U32 count);
     U32 memfd_create(BString name, U32 flags);
+    U32 timerfd_create(U32 clockid, U32 flags);
+    U32 timerfd_settime(U32 fd, U32 flags, U32 newValue, U32 oldValue);
+    U32 timerfd_gettime(U32 fd, U32 value);
 
     user_desc* getLDT(U32 index);
     std::shared_ptr<SHM> allocSHM(U32 key, U32 afterIndex);
@@ -221,7 +226,7 @@ public:
     KProcessTimer timer;
     BString commandLine;
     BString exe;
-    BString name;
+    BString name; // mainly used for logging
     std::vector<BString> path;        
     KThread* waitingThread = nullptr;
     U32 loaderBaseAddress = 0;

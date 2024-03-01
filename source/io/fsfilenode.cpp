@@ -221,10 +221,13 @@ U32 FsFileNode::getType(bool checkForLink) {
 
 U32 FsFileNode::getMode() {
     U32 result = K__S_IREAD | (FsFileNode::getType(false) << 12);
+    if (this->path == "/etc/sudoers") {
+        return result | K__S_IRGRP;
+    }
     if (!FsFileNode::nonExecFileFullPaths.count(this->path)) {
         result|=K__S_IEXEC;
     }
-    if (KThread::currentThread()->process->userId == 0 ||  this->path.startsWith("/tmp") ||  this->path.startsWith("/var") ||  this->path.startsWith("/home")) {
+    if (KThread::currentThread()->process->userId == 0 || this->path.startsWith("/tmp") ||  this->path.startsWith("/var") ||  this->path.startsWith("/home")) {
         result|=K__S_IWRITE;
     }
     return result;

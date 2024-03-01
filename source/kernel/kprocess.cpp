@@ -575,8 +575,10 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
         
         if (loader.length())
             args.push_back(loader);
-        if (interpreter.length())
-            args.push_back(interpreter);        
+        if (interpreter.length()) {
+            exe = interpreter;
+            args.push_back(interpreter);
+        }
         args.push_back(BString(Fs::getFullPath(currentDirectory, argValues[0])));
         for (U32 i=1;i<argValues.size();i++) {
             args.push_back(argValues[i]);
@@ -721,27 +723,36 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
     }
     node = this->findInPath(path);
     if (!node) {
-        return 0;
+        return -K_ENOENT;
     }
     openNode = ElfLoader::inspectNode(this->currentDirectory, node, loader, interpreter, interpreterArgs);
     if (!openNode) {
-        return 0;
+        return -K_ENOEXEC;
     }
 #ifdef BOXEDWINE_MULTI_THREADED
     if (KSystem::cpuAffinityCountForApp) {
         Platform::setCpuAffinityForThread(thread, this->isSystemProcess()?0:KSystem::cpuAffinityCountForApp);
     }
-#endif
-    args[0] = BString(Fs::getFullPath(currentDirectory, path)); // if path is a link, we should use the link not the actual path       
+#endif    
     if (interpreter.length()) {
         args.insert(args.begin(), interpreterArgs.begin(), interpreterArgs.end());
         args.insert(args.begin(), interpreter);
+        this->exe = interpreter;
+    } else {        
+        if (path != "/proc/self/exe" && path != "/proc/" + BString::valueOf(id) + "/exe") {
+            // :TODO: why does this need to be changed, seems like a bug
+            args[0] = BString(Fs::getFullPath(currentDirectory, path)); // if path is a link, we should use the link not the actual path
+            this->exe = path;
+        } else {
+            // :TODO: why does this need to be changed, seems like a bug
+            args[0] = BString(Fs::getFullPath(currentDirectory, this->exe));
+        }
     }
     if (loader.length()) {
         args.insert(args.begin(), loader);
-    }
-    this->exe = path; // if path is a link, we should use the link not the actual path       
-    this->name = Fs::getFileNameFromPath(path);
+    }    
+    
+    this->name = Fs::getFileNameFromPath(node->path);
     
     this->commandLine = BString::join("\0", args);
             
@@ -786,7 +797,7 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
 
     thread->cpu->restart();
     
-    return 1;
+    return -K_CONTINUE;
 }
 
 void KProcess::signalProcess(U32 signal) {	
@@ -1061,6 +1072,44 @@ U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen)
         return -K_EINVAL;
     }
     return fd->kobject->read(thread, bufferAddress, bufferLen);
+}
+
+U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
+    KFileDescriptor* fdOut = getFileDescriptor(outFd);
+    KFileDescriptor* fdIn = getFileDescriptor(inFd);
+
+    if (!fdOut || !fdIn) {
+        return -K_EBADFD;
+    }
+    U64 pos;
+
+    if (offset) {
+        pos = fdIn->kobject->getPos();
+        fdIn->kobject->seek(memory->readq(offset));
+    } 
+    
+    U8 buffer[1024];
+    while (count) {
+        U32 todo = count;
+        if (todo > 1024) {
+            todo = 1024;
+        }
+        U32 read = (S32)fdIn->kobject->readNative(buffer, todo);
+        if ((S32)read > 0) {
+            fdOut->kobject->writeNative(buffer, read);
+            count -= read;
+        } else if (read == 0) {
+            break;
+        } else {
+            return -K_EIO;
+        }
+    }
+    if (offset) {
+        memory->writeq(offset, fdIn->kobject->getPos());
+        fdIn->kobject->seek(pos);
+    }
+    return 0;
 }
 
 U32 KProcess::write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen) {
@@ -2441,6 +2490,99 @@ U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
         }
     }
     return node->setTimes(lastAccessTime, lastAccessTimeNano, lastModifiedTime, lastModifiedTimeNano);
+}
+
+U32 KProcess::timerfd_create(U32 clockid, U32 flags) {
+    std::shared_ptr<KTimer> o = std::make_shared<KTimer>();
+    KFileDescriptor* fd = allocFileDescriptor(o, K_O_RDONLY, 0, -1, 0);
+
+    if (flags & K_O_CLOEXEC) {
+        fd->descriptorFlags |= FD_CLOEXEC;
+    }
+    if (flags & K_O_NONBLOCK) {
+        fd->accessFlags |= K_O_NONBLOCK;
+        o->setBlocking(false);
+    }
+    return fd->handle;
+}
+
+U32 KProcess::timerfd_settime(U32 fildes, U32 flags, U32 newValue, U32 oldValue) {
+    KFileDescriptor* fd = getFileDescriptor(fildes);
+    if (!fd) {
+        return -K_EBADF;
+    }
+    if (fd->kobject->type != KTYPE_SIGNAL) {
+        return -K_EINVAL;
+    }
+    if (!newValue) {
+        return -K_EFAULT;
+    }
+    std::shared_ptr<KTimer> timer = std::dynamic_pointer_cast<KTimer>(fd->kobject);
+    if (oldValue) {
+        U64 microNextTimer = timer->getMicroNextTimer();
+        U64 microInterval = timer->getMicroInterval();
+
+        memory->writed(oldValue, (U32)(microInterval / 1000000));
+        memory->writed(oldValue + 4, (U32)((microInterval % 1000000) * 1000));
+
+        if (!microNextTimer) {
+            memory->writed(oldValue + 8, 0);
+            memory->writed(oldValue + 12, 0);
+        } else {
+            U64 currentTime = KSystem::getSystemTimeAsMicroSeconds();
+            S64 diff = (S64)microNextTimer - (S64)currentTime;
+            if (diff < 0) {
+                memory->writed(oldValue + 8, 0);
+                memory->writed(oldValue + 12, 0);
+            } else {
+                memory->writed(oldValue + 8, (U32)(diff / 1000000));
+                memory->writed(oldValue + 12, (U32)((diff % 1000000) * 1000));
+            }
+        }
+    }
+    U64 interval = memory->readd(newValue) * 1000000 + memory->readd(newValue+4) / 1000;
+    U64 next = memory->readd(newValue+8) * 1000000 + memory->readd(newValue + 12) / 1000;
+    // TFD_TIMER_ABSTIME
+    if ((flags & 1) == 0) {
+        next += KSystem::getSystemTimeAsMicroSeconds();
+    }
+    timer->setTimes(interval, next);
+    return 0;
+}
+
+U32 KProcess::timerfd_gettime(U32 fildes, U32 value) {
+    KFileDescriptor* fd = getFileDescriptor(fildes);
+    if (!fd) {
+        return -K_EBADF;
+    }
+    if (fd->kobject->type != KTYPE_SIGNAL) {
+        return -K_EINVAL;
+    }
+    if (!value) {
+        return -K_EFAULT;
+    }
+    std::shared_ptr<KTimer> timer = std::dynamic_pointer_cast<KTimer>(fd->kobject);
+    U64 microNextTimer = timer->getMicroNextTimer();
+    U64 microInterval = timer->getMicroInterval();
+
+    memory->writed(value, (U32)(microInterval / 1000000));
+    memory->writed(value + 4, (U32)((microInterval % 1000000) * 1000));
+
+    if (!microNextTimer) {
+        memory->writed(value + 8, 0);
+        memory->writed(value + 12, 0);
+    } else {
+        U64 currentTime = KSystem::getSystemTimeAsMicroSeconds();
+        S64 diff = (S64)microNextTimer - (S64)currentTime;
+        if (diff < 0) {
+            memory->writed(value + 8, 0);
+            memory->writed(value + 12, 0);
+        } else {
+            memory->writed(value + 8, diff / 1000000);
+            memory->writed(value + 12, (diff % 1000000) * 1000);
+        }
+    }
+    return 0;
 }
 
 user_desc* KProcess::getLDT(U32 index) {

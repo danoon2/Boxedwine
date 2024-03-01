@@ -169,12 +169,9 @@ static U32 syscall_execve(CPU* cpu, U32 eipCount) {
     readStringArray(cpu->memory, ARG3, envs);
 
     SYS_LOG1(SYSCALL_PROCESS, cpu, "execve: path=%X(%s) argv=%X envp=%X", ARG1, path.c_str(), ARG2, ARG3);
-    if (cpu->thread->process->execve(cpu->thread, path, args, envs)) {
-        SYS_LOG(SYSCALL_PROCESS, cpu, "\n");
-        return -K_CONTINUE;
-    }
-    SYS_LOG(SYSCALL_PROCESS, cpu, " result=FAILED\n");
-    return -ENOENT;
+    U32 result = cpu->thread->process->execve(cpu->thread, path, args, envs);
+    SYS_LOG(SYSCALL_PROCESS, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
 }
 
 static U32 syscall_chdir(CPU* cpu, U32 eipCount) {
@@ -214,6 +211,14 @@ static U32 syscall_getpid(CPU* cpu, U32 eipCount) {
     U32 result = cpu->thread->process->id;
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "getpid: result=%d(0x%X)\n", result, result);
     return result;
+}
+
+static U32 syscall_mount(CPU* cpu, U32 eipCount) {
+    BString dev_name = cpu->memory->readString(ARG1);
+    BString dir_name = cpu->memory->readString(ARG2);
+    BString type = cpu->memory->readString(ARG3);
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "mount: dev_name=%s dir_name=%s type=%s flags=%x data=%x\n", dev_name.c_str(), dir_name.c_str(), type.c_str(), ARG4, ARG5);
+    return 0;
 }
 
 static U32 syscall_getuid(CPU* cpu, U32 eipCount) {
@@ -625,7 +630,7 @@ static U32 syscall_ipc(CPU* cpu, U32 eipCount) {
     // ARG5 holds the pointer to be copied
     if (ARG1 == 21) { // IPCOP_shmat
         SYS_LOG1(SYSCALL_SYSTEM|SYSCALL_MEMORY, cpu, "ipc: IPCOP_shmat shmid=%d shmaddr=%d shmflg=%X", ARG2, ARG5, ARG3);
-        result = KSystem::shmat(cpu->thread, ARG2, ARG5, ARG3, ARG4);
+        result = KSystem::shmat(cpu->thread, ARG2, ARG5, ARG3, ARG4, nullptr);
     }  else if (ARG1 == 22) { // IPCOP_shmdt
         SYS_LOG1(SYSCALL_SYSTEM|SYSCALL_MEMORY, cpu, "ipc IPCOP_shmdt shmaddr=%d", ARG5);
         result = KSystem::shmdt(cpu->thread, ARG5);
@@ -660,6 +665,31 @@ static U32 syscall_sigreturn(CPU* cpu, U32 eipCount) {
 static U32 syscall_rseq(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SIGNAL, cpu, "struct rseq *rseq=%X rseq_len=%d flags=%X sig=%X", ARG1, ARG2, ARG3, ARG4);
     U32 result = cpu->thread->rseq(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_shmget(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SYSTEM | SYSCALL_MEMORY, cpu, "ipc: shmget key=%d size=%d flags=%X", ARG1, ARG2, ARG3);
+    U32 result = KSystem::shmget(cpu->thread, ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_shmctl(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SYSTEM | SYSCALL_MEMORY, cpu, "shmctl shmid=%d cmd=%d buf=%X", ARG1, ARG2, ARG3);
+    U32 result = KSystem::shmctl(cpu->thread, ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_shmat(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SYSTEM | SYSCALL_MEMORY, cpu, "shmat shmid=%d shmaddr=%d shmflg=%X", ARG1, ARG2, ARG3);
+    U32 retAddress = 0;
+    U32 result = KSystem::shmat(cpu->thread, ARG1, ARG2, ARG3, 0, &retAddress);
+    if (result == 0) {
+        result = retAddress;
+    }
     SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -1174,6 +1204,13 @@ static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_sendfile64(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "sendfile64: out_fd=%d int_fd=%d offset=%d count=%d", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->process->sendFile(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 #define FUTEX_WAIT 0
 #define FUTEX_WAKE 1
 #define FUTEX_WAIT_PRIVATE 128
@@ -1463,6 +1500,27 @@ static U32 syscall_utimensat(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_timerfd_create(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "timerfd_create clockid=%d flags=%X", ARG1, ARG2);
+    U32 result = cpu->thread->process->timerfd_create(ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_timerfd_settime(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "timerfd_settime fd=%d flags=%X newValue=%X oldValue=%x", ARG1, ARG2, ARG3, ARG4);
+    U32 result = cpu->thread->process->timerfd_settime(ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_timerfd_gettime(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_FILE, cpu, "timerfd_settime fd=%d value=%x", ARG1, ARG2);
+    U32 result = cpu->thread->process->timerfd_gettime(ARG1, ARG2);
+    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
 static U32 syscall_utimensat_time64(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG2);
     SYS_LOG1(SYSCALL_FILE, cpu, "utimensat_time64 dirfd=%d path=%X(%s) times=%X flags=%X", ARG1, ARG2, path.c_str(), ARG3, ARG4);
@@ -1671,7 +1729,7 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 18
     syscall_lseek,      // 19 __NR_lseek
     syscall_getpid,     // 20 __NR_getpid
-    nullptr,                  // 21
+    syscall_mount,            // 21
     nullptr,                  // 22
     nullptr,                  // 23
     syscall_getuid,     // 24 __NR_getuid
@@ -1889,7 +1947,7 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 236
     nullptr,                  // 237
     nullptr,                  // 238 __NR_tkill
-    nullptr,                  // 239
+    syscall_sendfile64,       // 239
     syscall_futex,      // 240 __NR_futex
     syscall_sched_setaffinity, // 241 __NR_sched_setaffinity
     syscall_sched_getaffinity, // 242 __NR_sched_getaffinity
@@ -1972,11 +2030,11 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 319
     syscall_utimensat,  // 320 __NR_utimensat
     nullptr,                  // 321
-    nullptr,                  // 322
+    syscall_timerfd_create,   // 322
     nullptr,                  // 323 
     nullptr,                  // 324 
-    nullptr,                  // 325
-    nullptr,                  // 326
+    syscall_timerfd_settime,  // 325
+    syscall_timerfd_gettime,  // 326
     syscall_signalfd4,  // 327 __NR_signalfd4
     nullptr,                  // 328
     syscall_epoll_create1, // 329 __NR_epoll_create1
@@ -2045,9 +2103,9 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 392
     nullptr,                  // 393
     nullptr,                  // 394
-    nullptr,                  // 395
-    nullptr,                  // 396
-    nullptr,                  // 397
+    syscall_shmget,           // 395
+    syscall_shmctl,           // 396
+    syscall_shmat,            // 397
     nullptr,                  // 398
     nullptr,                  // 399
     nullptr,                  // 400
