@@ -604,6 +604,8 @@
 		1ADBD8402B91944B0074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
 		1ADBD8412B91944B0074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
 		1ADBD8422B91944B0074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
+		1ADBD8432B9196760074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
+		1ADBD8442B9196760074867C /* devfb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD83E2B91944B0074867C /* devfb.cpp */; };
 		1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
 		1AE7E5C52B5A1BD200D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
 		1AE7E5C72B5A1BD200D29E4A /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BF2B5A1BD100D29E4A /* btData.cpp */; };
@@ -3813,6 +3815,7 @@
 				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
 				71222B8A2435169100CDBABD /* fsfilenode.cpp in Sources */,
 				71222B622435169100CDBABD /* x64Ops.cpp in Sources */,
+				1ADBD8432B9196760074867C /* devfb.cpp in Sources */,
 				71222BB12435169100CDBABD /* cpuscalingcurfreq.cpp in Sources */,
 				71222BB42435169100CDBABD /* kthread.cpp in Sources */,
 				1AE7E5DC2B5A1C7E00D29E4A /* btData.cpp in Sources */,
@@ -4197,6 +4200,7 @@
 				7135DC38264EBCD0005D6AA6 /* fsfilenode.cpp in Sources */,
 				1AFC48132665728700EE5FCC /* boxedwineGL.cpp in Sources */,
 				7135DC39264EBCD0005D6AA6 /* x64Ops.cpp in Sources */,
+				1ADBD8442B9196760074867C /* devfb.cpp in Sources */,
 				7135DC3A264EBCD0005D6AA6 /* cpuscalingcurfreq.cpp in Sources */,
 				7135DC3B264EBCD0005D6AA6 /* kthread.cpp in Sources */,
 				1AE7E5DD2B5A1C7F00D29E4A /* btData.cpp in Sources */,
