@@ -50,10 +50,10 @@ bool doMainLoop() {
             }
         }
         if (flipFB()) {
-            defaultTimeout = 17
+            timeout = 17;
         }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
-        if (uiIsRunning()) {
+        else if (uiIsRunning()) {
             timeout = 33;
         }
 #endif
