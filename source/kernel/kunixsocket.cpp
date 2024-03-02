@@ -87,8 +87,7 @@ U32  KUnixSocketObject::setLock(KFileLock* lock, bool wait) {
 }
 
 bool KUnixSocketObject::isOpen() {
-    std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
-    return this->listening || con != nullptr;
+    return this->listening || !connection.expired();
 }
 
 bool KUnixSocketObject::isReadReady() {
@@ -97,8 +96,7 @@ bool KUnixSocketObject::isReadReady() {
 }
 
 bool KUnixSocketObject::isWriteReady() {
-    std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
-    return con != nullptr;
+    return !connection.expired();
 }
 
 void KUnixSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
@@ -167,15 +165,17 @@ U32 KUnixSocketObject::writev(KThread* thread, U32 iov, S32 iovcnt) {
         U32 buf = memory->readd(iov + i * 8);
         U32 toWrite = memory->readd(iov + i * 8 + 4);
         S32 result;
-
-        result = this->internal_write(thread, con, cond, buf, toWrite);
-        if (result<0) {
-            if (i>0) {
-                return len;
+        
+        if (toWrite) {
+            result = this->internal_write(thread, con, cond, buf, toWrite);
+            if (result < 0) {
+                if (i > 0) {
+                    return len;
+                }
+                return result;
             }
-            return result;
+            len += result;
         }
-        len+=result;
     }    
     if (con) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(cond);

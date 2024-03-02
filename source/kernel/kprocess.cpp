@@ -2707,7 +2707,7 @@ U32 KProcess::signal(U32 signal) {
         KThread* thread = t.value;
 
         if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
-            return thread->signal(signal, true);
+            return thread->signal(signal, false);
         }
     }
     // didn't find a thread that could handle it
