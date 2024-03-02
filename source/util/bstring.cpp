@@ -285,6 +285,9 @@ int BString::compareTo(const BString& s, bool ignoreCase, int offset, int len) c
 }
 
 int BString::compareTo(const char* s, bool ignoreCase, int offset, int len) const {
+    if (!s) {
+        return 1;
+    }
     if (isEmpty()) {
         if (strlen(s) == 0) {
             return 0;

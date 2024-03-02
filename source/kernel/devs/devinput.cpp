@@ -158,7 +158,7 @@ U32 DevInput::readNative(U8* buffer, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->bufferCond);
     while (this->eventQueue.size() && result+16<=len) {
         const EventData& e = this->eventQueue.front();
-        U32* b = (U32*)buffer+result;
+        U32* b = (U32*)(buffer+result);
         b[0] = (U32) (e.time / 1000000); // seconds
         b[1] = (U32) (e.time % 1000000); // microseconds
         b[2] = e.type | ((U32)e.code) << 16;

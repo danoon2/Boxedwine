@@ -578,6 +578,27 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devfb.cpp">
       <Filter>source\kernel\devs</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysbus.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysbususb.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysdev.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysdevices.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfb.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfs.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysmouse.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

@@ -23,7 +23,7 @@ extern struct FsOpenNodeFunc fbAccess;
 
 FsOpenNode* openDevFB(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
-void flipFB();
+bool flipFB();
 void fbSetCaption(const char* title, const char* icon);
 void fbSwapOpenGL();
 void flipFBNoCheck();

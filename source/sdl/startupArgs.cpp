@@ -9,10 +9,6 @@
 #include "devdsp.h"
 #include "procselfexe.h"
 #include "cpuinfo.h"
-#include "syscpuonline.h"
-#include "syscpumaxfreq.h"
-#include "syscpuscalingcurfreq.h"
-#include "syscpuscalingmaxfreq.h"
 #include "bufferaccess.h"
 #include "meminfo.h"
 #include "uptime.h"
@@ -40,6 +36,7 @@ void gl_init(BString allowExtensions);
 void vulkan_init();
 void initWine();
 void initWineAudio();
+void createSysfs(const std::shared_ptr<FsNode> rootNode);
 
 U32 StartUpArgs::uiType;
 
@@ -99,18 +96,8 @@ void StartUpArgs::buildVirtualFileSystem() {
         return new BufferAccess(node, flags, B("nodev\tsysfs\nnodev\trootfs\nnodev\tbdev\nnodev\tproc\nnodev\tcpuset\nnodev\tcgroup\nnodev\tcgroup2\nnodev\ttmpfs\nnodev\tdevtmpfs\nnodev\tdebugfs\nnodev\ttracefs\nnodev\tsecurityfs\nnodev\tsockfs\nnodev\tdax\nnodev\tbpf\nnodev\tpipefs\nnodev\thugetlbfs\nnodev\tdevpts\nodev\tmqueue\nnodev\tpstore\next3\next2\next4\nnodev\tautofs\nfuseblk\nnodev\tfuse\nnodev\tfusectl\n"));
         }, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
 
-    std::shared_ptr<FsNode> sysNode = Fs::getNodeFromLocalPath(B(""), B("/sys"), true); 
     std::shared_ptr<FsNode> etcNode = Fs::getNodeFromLocalPath(B(""), B("/etc"), true);
-
-    if (!sysNode) {
-        sysNode = Fs::addFileNode(B("/sys"), B(""), B(""), true, rootNode);
-    }
-    std::shared_ptr<FsNode> devicesNode = Fs::getNodeFromLocalPath(B(""), B("/sys/devices"), true); 
-    if (!devicesNode) {
-        devicesNode = Fs::addFileNode(B("/sys/devices"), B(""), B(""), true, sysNode);
-    }
-    std::shared_ptr<FsNode> devicesSystemNode = Fs::addFileNode(B("/sys/devices/system"), B(""), B(""), true, devicesNode);
-    std::shared_ptr<FsNode> cpuNode = Fs::addFileNode(B("/sys/devices/system/cpu"), B(""), B(""), true, devicesSystemNode);    
+    createSysfs(rootNode);    
 
     Fs::addVirtualFile(B("/dev/tty0"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(4, 0), devNode);
     Fs::addVirtualFile(B("/dev/tty"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(4, 0), devNode);
@@ -135,20 +122,10 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile(B("/dev/input/event4"), openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, k_mdev(0xd, 0x44), inputNode);
 	Fs::addVirtualFile(B("/dev/dsp"), openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 3), devNode);
 	Fs::addVirtualFile(B("/dev/mixer"), openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 0), devNode);
-    Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 1), devNode);
-    Fs::addVirtualFile(B("/sys/devices/system/cpu/online"), openSysCpuOnline, K__S_IREAD, k_mdev(0, 0), cpuNode);
+    Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 1), devNode);    
 
     Fs::addVirtualFile(B("/etc/hostname"), openHosts, K__S_IREAD, k_mdev(0, 0), etcNode);
-    Fs::addVirtualFile(B("/etc/hosts"), openHostname, K__S_IREAD, k_mdev(0, 0), etcNode);
-
-    if (Platform::getCpuFreqMHz()) {        
-        for (U32 i=0;i<Platform::getCpuCount();i++) {
-            std::shared_ptr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu"+BString::valueOf(i), B(""), B(""), true, cpuNode);    
-            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, k_mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, k_mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, k_mdev(0, 0), cpuCoreNode, i);
-        }
-    }
+    Fs::addVirtualFile(B("/etc/hosts"), openHostname, K__S_IREAD, k_mdev(0, 0), etcNode);    
 }
 
 std::vector<BString> StartUpArgs::buildArgs() {

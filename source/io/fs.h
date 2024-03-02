@@ -55,7 +55,9 @@ public:
     static std::shared_ptr<FsNode> getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink=nullptr);    
     static std::shared_ptr<FsFileNode> addFileNode(const BString& path, const BString& link, const BString& nativePath, bool isDirectory, const std::shared_ptr<FsNode>& parent);
     static std::shared_ptr<FsNode> addVirtualFile(const BString& path, std::function<FsOpenNode*(const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data=0);
+    static std::shared_ptr<FsNode> addVirtualFile(const BString& path, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, const BString& value);
     static std::shared_ptr<FsNode> addDynamicLinkFile(const BString& path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, std::function<BString(void)> fnGetLink);
+    static std::shared_ptr<FsNode> addDynamicLinkFile(const BString& path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, const BString& link);
     static std::shared_ptr<FsNode> addRootDirectoryNode(const BString& path, const BString& nativePath, const std::shared_ptr<FsNode>& parent);
     static void remoteNameToLocal(BString& path);
     static void localNameToRemote(BString& path);

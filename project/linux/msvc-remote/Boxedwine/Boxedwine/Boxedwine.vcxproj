@@ -275,6 +275,13 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuonline.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuscalingcurfreq.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuscalingmaxfreq.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysbus.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysbususb.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysdev.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysdevices.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfb.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfs.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysmouse.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\boxedwineGL.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glcommon.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glext.cpp" />

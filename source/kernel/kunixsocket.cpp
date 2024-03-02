@@ -415,6 +415,10 @@ U32 KUnixSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 address
         return 0;
     } else if (this->type==K_SOCK_STREAM) {
         if (this->destAddress.data[0]==0) {
+            // :TODO: why
+            memory->memcpy(this->destAddress.data, address + 3, len - 3);
+        }
+        if (this->destAddress.data[0] == 0) {
             return -K_ENOENT;
         }
         if (this->domain==K_AF_UNIX) {
@@ -495,7 +499,8 @@ U32 KUnixSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 address
             kpanic("connect not implemented for domain %d", this->domain);
         }
     } else {
-        kpanic("connect not implemented for type %d", this->type);
+        kwarn("connect not implemented for type %d", this->type);
+        return -K_ECONNREFUSED;
     }
     // should never get here
     return 0;

@@ -24,10 +24,10 @@ public:
     
     bool load(BoxedContainer* container, BString iniFilepath);
 
-    BString getName() {return this->name;}
-    BString getPath() {return this->path;}
-    BString getCmd() { return this->cmd;}
-    BString getIniFilePath() {return this->iniFilePath;}
+    BString getName() const {return this->name;}
+    BString getPath() const {return this->path;}
+    BString getCmd() const { return this->cmd;}
+    BString getIniFilePath() const {return this->iniFilePath;}
 
     void setName(BString name) {this->name = name;}
     void setArgs(const std::vector<BString>& args) {this->args = args;}
@@ -38,7 +38,8 @@ public:
     const BoxedAppIcon* getIconTexture(int iconSize=0);
 
     BoxedContainer* getContainer() {return this->container;}
-    bool isLink() { return link.length()>0;}
+    bool isLink() { return link.length()>0; }
+    bool usingWine() { return this->isWine; }
     bool saveApp();
     void remove();
 
@@ -72,7 +73,9 @@ private:
     int cpuAffinity = 0;
     int pollRate = DEFAULT_POLL_RATE;
     int skipFramesFPS = 0;
-    
+    int uid = -1;
+    bool isWine = true;
+
     BoxedContainer* container = nullptr;
     BString iniFilePath;
 };

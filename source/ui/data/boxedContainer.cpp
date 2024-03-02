@@ -211,6 +211,14 @@ void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
     app.cmd = B("wineboot");
     app.args.push_back(B("-u"));
     apps.push_back(app);
+
+    app.name = B("startx");
+    app.path = B("/usr/local/bin/");
+    app.cmd = B("startx");
+    app.uid = 0;
+    app.isWine = false;
+    app.args.clear();
+    apps.push_back(app);
     std::sort(apps.begin(), apps.end(), compareApps);
 }
 
@@ -515,7 +523,7 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
     // libxshmfence (shared-memory fences for synchronization between the X server and direct-rendering clients)
     // libcups.tcz (printers)
     if (package == "Xorg-7.7.tcz" || package == "libasound.tcz" || package == "libpulseaudio.tcz" || package == "libpcap.tcz" || package == "libsane.tcz" || package == "libv4l2.tcz" || package == "libgphoto2.tcz" || package == "libXdamage.tcz" || package == "libXxf86vm.tcz" || package == "libdrm.tcz" || package == "libxshmfence.tcz" || package == "Xorg-7.7-3d.tcz" || package == "libcups.tcz") {
-        return;
+        //return;
     }
     if (package == "v4l-dvb-KERNEL.tcz") {
         return;
@@ -604,7 +612,7 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
     packages.pop_back();
     GlobalSettings::startUpArgs = StartUpArgs();
     this->launch();
-    if (packages.size()) {
+    if (package.endsWith(".tcz")) {
         GlobalSettings::startUpArgs.setWorkingDir(B("/"));
         GlobalSettings::startUpArgs.addArg(B("/usr/local/bin/unsquashfs"));
         GlobalSettings::startUpArgs.addArg(B("-f"));
@@ -613,7 +621,17 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
         GlobalSettings::startUpArgs.addArg("/tcCache/" + package);
         GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), GlobalSettings::getDataFolder() ^ "tcCache", false));
         dlg->addSubLabel("Extracting " + package, 5);
-    } else {        
+    } else if (package.length()>0) {
+        GlobalSettings::startUpArgs.setWorkingDir(B("/"));
+        GlobalSettings::startUpArgs.addArg(package);
+        dlg->addSubLabel("Running post install " + Fs::getFileNameFromPath(package), 5);
+    } else {
+        BString installed = GlobalSettings::getRootFolder(this) ^ "usr" ^ "local" ^ "tce.installed";
+        Fs::iterateAllNativeFiles(installed, false, false, [&packages](BString filePath, bool isDir) {
+            BString fileName = Fs::getFileNameFromNativePath(filePath);
+            packages.push_back("/usr/local/tce.installed/" + fileName);
+            return 0;
+            });
         GlobalSettings::startUpArgs.setWorkingDir(B("/sbin"));        
         GlobalSettings::startUpArgs.addArg(B("/sbin/ldconfig"));        
         dlg->addSubLabel(B("Running ldconfig"), 5);

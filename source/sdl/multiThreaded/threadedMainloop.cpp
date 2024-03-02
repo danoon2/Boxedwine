@@ -5,6 +5,7 @@
 #endif
 #include "knativesystem.h"
 #include "knativewindow.h"
+#include "devfb.h"
 
 U32 getNextTimer();
 void runTimers();
@@ -47,6 +48,9 @@ bool doMainLoop() {
             if (t - KSystem::killTime < timeout) {
                 timeout = t - KSystem::killTime;
             }
+        }
+        if (flipFB()) {
+            defaultTimeout = 17
         }
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {

@@ -92,19 +92,15 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                 std::vector<BoxedApp> wineApps;
                 this->currentContainer->getWineApps(wineApps);
                 AppChooserDlg* dlg = new AppChooserDlg(wineApps, [this](BoxedApp app) {
-                    std::vector<BString> args;
-                    args.push_back(B("/bin/wine"));
-                    args.push_back(app.getCmd());
-                    for (auto& arg : app.args) {
-                        args.push_back(arg);
-                    }
-                    this->currentContainer->launch(args, app.getCmd());
-                    GlobalSettings::startUpArgs.title = app.getName();
-                    GlobalSettings::startUpArgs.setWorkingDir(app.getPath());
+                    app.launch();                    
                     BString containerPath = this->currentContainer->getDir();
                     GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
                         gotoView(VIEW_CONTAINERS, containerPath);
                     };
+                    runOnMainUI([app]() {
+                        new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app.getCmd()));
+                        return false;
+                        });
                     }, false, nullptr, Msg::CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE);
                 dlg->setLabelId(Msg::CONTAINER_VIEW_SELECT_WINE_APP_LABEL);
                 return false;
@@ -701,7 +697,6 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         packagesControl->setRowHidden(false);
         std::vector<ComboboxItem> packages;
         for (auto& package : wine->tinyCorePackages) {
-            //if (package == "wine.tcz")
             packages.push_back(ComboboxItem(package));
         }
         packagesControl->setOptions(packages);

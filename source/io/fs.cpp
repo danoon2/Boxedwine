@@ -3,6 +3,7 @@
 #include "fsfilenode.h"
 #include "fsvirtualnode.h"
 #include "fsdynamiclinknode.h"
+#include "bufferaccess.h"
 
 #ifdef BOXEDWINE_ZLIB
 #include "fszip.h"
@@ -81,6 +82,22 @@ BString Fs::nativeFromLocal(const BString& path) {
 
 std::shared_ptr<FsNode> Fs::addVirtualFile(const BString& path, std::function<FsOpenNode* (const std::shared_ptr<FsNode>& node, U32 flags, U32 data)> func, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, U32 data) {
     std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, func, mode, parent, data);
+    parent->addChild(result);
+    return result;
+}
+
+std::shared_ptr<FsNode> Fs::addVirtualFile(const BString& path, U32 mode, U32 rdev, const std::shared_ptr<FsNode>& parent, const BString& value) {
+    std::shared_ptr<FsNode> result = std::make_shared<FsVirtualNode>(Fs::nextNodeId++, rdev, path, [value](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+        return new BufferAccess(node, flags, value);
+        }, mode, parent, 0);
+    parent->addChild(result);
+    return result;
+}
+
+std::shared_ptr<FsNode> Fs::addDynamicLinkFile(const BString& path, U32 rdev, const std::shared_ptr<FsNode>& parent, bool isDirectory, const BString& link) {
+    std::shared_ptr<FsNode> result = std::make_shared<FsDynamicLinkNode>(Fs::nextNodeId++, rdev, path, parent, isDirectory, [link]() {
+        return link;
+        });
     parent->addChild(result);
     return result;
 }

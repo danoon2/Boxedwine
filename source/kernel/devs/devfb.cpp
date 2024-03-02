@@ -269,6 +269,10 @@ static SDL_GLContext sdlContext;
 static SDL_Renderer *sdlRenderer;
 static SDL_Texture* sdlTexture;
 
+U32 fbGetBpp() {
+    return fb_var_screeninfo.bits_per_pixel;
+}
+
 void destroySDL2() {
     if (sdlTexture) {
         SDL_DestroyTexture(sdlTexture);
@@ -556,13 +560,15 @@ bool DevFB::canMap() {
     return true;
 }
 
-void flipFB() {
+bool flipFB() {
     if (!bOpenGL && screenPixels && sdlTexture) {
         SDL_UpdateTexture(sdlTexture, nullptr, screenPixels, fb_fix_screeninfo.line_length);
         SDL_RenderClear(sdlRenderer);
         SDL_RenderCopy(sdlRenderer, sdlTexture, nullptr, nullptr);
         SDL_RenderPresent(sdlRenderer);
+        return true;
     }
+    return false;
 }
 
 void flipFBNoCheck() {

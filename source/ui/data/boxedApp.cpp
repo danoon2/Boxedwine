@@ -166,15 +166,26 @@ void BoxedApp::launch() {
     if (this->skipFramesFPS) {
         GlobalSettings::startUpArgs.skipFrameFPS = this->skipFramesFPS;
     }
+    if (this->uid != -1) {
+        GlobalSettings::startUpArgs.userId = this->uid;
+        GlobalSettings::startUpArgs.effectiveUserId = this->uid;
+    }
     GlobalSettings::startUpArgs.title = this->name;
 
-    GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
-    if (this->link.length()>0) {        
-        GlobalSettings::startUpArgs.addArg(B("C:\\windows\\command\\start.exe"));
-        GlobalSettings::startUpArgs.addArg(this->link);
+    if (isWine) {
+        GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
+        if (this->link.length() > 0) {
+            GlobalSettings::startUpArgs.addArg(B("C:\\windows\\command\\start.exe"));
+            GlobalSettings::startUpArgs.addArg(this->link);
+        } else {
+            GlobalSettings::startUpArgs.addArg(this->cmd);
+            for (U32 i = 0; i < this->args.size(); i++) {
+                GlobalSettings::startUpArgs.addArg(this->args[i]);
+            }
+        }
     } else {
         GlobalSettings::startUpArgs.addArg(this->cmd);
-        for (U32 i=0;i<this->args.size();i++) {
+        for (U32 i = 0; i < this->args.size(); i++) {
             GlobalSettings::startUpArgs.addArg(this->args[i]);
         }
     }
