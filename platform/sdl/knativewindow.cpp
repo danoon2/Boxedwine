@@ -265,7 +265,21 @@ bool KNativeWindowSdl::waitForEvent(U32 ms) {
         ms = 100;
         updateShutdownWindow();
     }
-    return SDL_WaitEventTimeout(nullptr, ms) == 1;
+    SDL_Event e = { 0 };
+    if (SDL_WaitEventTimeout(&e, ms) == 1) {
+#ifdef BOXEDWINE_MULTI_THREADED
+        if (e.type == sdlCustomEvent) {
+            SdlCallback* callback = (SdlCallback*)e.user.data1;
+            callback->result = (U32)callback->pfn();
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
+            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
+            return true;
+        }
+#endif
+        handlSdlEvent(&e);
+        return true;
+    }
+    return false;
 }
 
 bool KNativeWindowSdl::processEvents() {

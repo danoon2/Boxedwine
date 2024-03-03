@@ -630,8 +630,7 @@ void queueEvent(DevInput* queue, U32 type, U32 code, U32 value, U64 time) {
     data.type = type;
     data.code = code;
     data.value = value;
-    if (queue) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(queue->bufferCond);
+    if (queue) {        
         queue->eventQueue.push(data);
     }
 }
@@ -704,13 +703,12 @@ void postSendEvent(DevInput* events, U64 time) {
         if (process) {
             process->signalIO(K_POLL_IN, 0, events->asyncProcessFd);		
         }
-    }
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(events->bufferCond);
-    BOXEDWINE_CONDITION_SIGNAL_ALL(events->bufferCond);
+    }        
 }
 
 void onMouseButtonUp(U32 button) {
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(touchEvents->bufferCond);
 
     if (button == 0)
         queueEvent(touchEvents, K_EV_KEY, K_BTN_LEFT, 0, time);
@@ -721,11 +719,13 @@ void onMouseButtonUp(U32 button) {
     else
         return;
     postSendEvent(touchEvents, time);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(touchEvents->bufferCond);
 }
 
 void onMouseButtonDown(U32 button) {
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(touchEvents->bufferCond);
     if (button == 0)
         queueEvent(touchEvents, K_EV_KEY, K_BTN_LEFT, 1, time);
     else if (button == 2)
@@ -735,10 +735,12 @@ void onMouseButtonDown(U32 button) {
     else
         return;
     postSendEvent(touchEvents, time);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(touchEvents->bufferCond);
 }
 
 void onMouseWheel(S32 value) {
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(touchEvents->bufferCond);
 
     // Up direction (y > 0)
     if (value > 0)  {
@@ -755,6 +757,7 @@ void onMouseWheel(S32 value) {
         return;
 
     postSendEvent(touchEvents, time);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(touchEvents->bufferCond);
 }
 
 void onMouseMove(U32 x, U32 y, bool relative) {
@@ -762,7 +765,8 @@ void onMouseMove(U32 x, U32 y, bool relative) {
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     if (relative) {
-        if (mouseEvents) {            
+        if (mouseEvents) {   
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(mouseEvents->bufferCond);
             if (x) {
                 queueEvent(mouseEvents, K_EV_REL, K_REL_X, x, time);
                 send = 1;
@@ -773,11 +777,13 @@ void onMouseMove(U32 x, U32 y, bool relative) {
             }                        
             if (send) {
                 postSendEvent(mouseEvents, time);
+                BOXEDWINE_CONDITION_SIGNAL_ALL(mouseEvents->bufferCond);
             }
         }
     }
     else {
         if (touchEvents) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(touchEvents->bufferCond);
             // :TODO this is a huge hack, for some reason xorg only picks up the first event so
             // to make the mouse mostly smooth, just alternate which axis is first in the queue
             static int count = 0;
@@ -807,6 +813,7 @@ void onMouseMove(U32 x, U32 y, bool relative) {
             }
             if (send) {
                 postSendEvent(touchEvents, time);
+                BOXEDWINE_CONDITION_SIGNAL_ALL(touchEvents->bufferCond);
             }
         }        
     }
@@ -814,18 +821,22 @@ void onMouseMove(U32 x, U32 y, bool relative) {
 
 void onKeyDown(U32 code) {
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(keyboardEvents->bufferCond);
 
     if (code == 0)
         return;
     queueEvent(keyboardEvents, K_EV_KEY, code, 1, time);
     postSendEvent(keyboardEvents, time);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(keyboardEvents->bufferCond);
 }
 
 void onKeyUp(U32 code) {
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(keyboardEvents->bufferCond);
 
     if (code == 0)
         return;
     queueEvent(keyboardEvents, K_EV_KEY, code, 0, time);
     postSendEvent(keyboardEvents, time);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(keyboardEvents->bufferCond);
 }
