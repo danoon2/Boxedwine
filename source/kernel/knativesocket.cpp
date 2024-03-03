@@ -22,6 +22,8 @@ static int winsock_intialized;
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
+#include <net/if.h>
+
 void closesocket(int socket) { close(socket); }
 
 #if !defined(TCP_KEEPIDLE) && defined(TCP_KEEPALIVE)
@@ -364,7 +366,36 @@ KNativeSocketObject::~KNativeSocketObject() {
     }
 }
 
+/*
+struct ifreq {
+    char ifr_name[IFNAMSIZ]; // Interface name 
+    union {
+        struct sockaddr ifr_addr;
+        struct sockaddr ifr_dstaddr;
+        struct sockaddr ifr_broadaddr;
+        struct sockaddr ifr_netmask;
+        struct sockaddr ifr_hwaddr;
+        short           ifr_flags;
+        int             ifr_ifindex;
+        int             ifr_metric;
+        int             ifr_mtu;
+        struct ifmap    ifr_map;
+        char            ifr_slave[IFNAMSIZ];
+        char            ifr_newname[IFNAMSIZ];
+        char* ifr_data;
+    };
+};
+
+struct ifconf {
+    int                 ifc_len; // size of buffer 
+    union {
+        char* ifc_buf; // buffer address 
+        struct ifreq* ifc_req; // array of structures 
+    };
+};
+*/
 U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
+    CPU* cpu = thread->cpu;
     if (request == 0x541b) {        
 #ifdef WIN32
         u_long value=0;
@@ -376,10 +407,66 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         if (result != 0) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
             return handleNativeSocketError(t, true);
-        }
-        CPU* cpu = thread->cpu;
+        }        
         thread->memory->writed(IOCTL_ARG1, value);
         return 0;
+    } else if (request == 0x8912) {
+        U32 address = IOCTL_ARG1;
+        if (!address) {
+            return -K_EFAULT;
+        }
+#ifdef WIN32
+        INTERFACE_INFO interfaces[20];
+        unsigned long bytes;
+
+        if (this->nativeSocket == SOCKET_ERROR) {
+            return -1;
+        }
+
+        if (WSAIoctl(this->nativeSocket, SIO_GET_INTERFACE_LIST, 0, 0, &interfaces, sizeof(interfaces), &bytes, 0, 0) == SOCKET_ERROR) {
+            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+            return handleNativeSocketError(t, false);
+        }
+
+        U32 count = bytes / sizeof(INTERFACE_INFO);
+        thread->memory->writed(address, count * 40);
+        U32 buf = thread->memory->readd(address + 4);
+        for (U32 i = 0; i < count; i++) {
+            struct sockaddr_in* addr = (struct sockaddr_in*)&(interfaces[i].iiAddress);
+            if (addr->sin_family == AF_INET && (interfaces[i].iiFlags & IFF_LOOPBACK)) {
+                thread->memory->memcpy(buf + 40 * i, "lo", 3);
+            } else {
+                BString s;
+                s += "eth";
+                s += i;
+                thread->memory->memcpy(buf + 40 * i, s.c_str(), s.length()+1);
+            }
+            thread->memory->memcpy(buf + 40 * i + 16, addr, 16); // 16 sizeof addr            
+        }
+        return 0;
+#else        
+        U32 numifs = 64;
+
+#ifdef SIOCGIFNUM
+        ::ioctl(this->nativeSocket, SIOCGIFNUM, (char*)&numifs);
+#endif
+        struct ifreq* ifs = new struct ifreq[numifs];
+        struct ifconf ifconf = { 0 };
+
+        ifconf.ifc_buf = (char*)(ifs);
+        ifconf.ifc_len = sizeof(struct ifreq) * numifs;
+
+        U32 result = ::ioctl(this->nativeSocket, SIOCGIFCONF, &ifconf);
+        if (result == 0xffffffff) {
+            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+            return handleNativeSocketError(t, false);
+        }
+        U32 count = ifconf.ifc_len / sizeof(struct ifreq);
+        thread->memory->writed(address + 4, ifconf.ifc_len);
+        thread->memory->memcpy(thread->memory->readd(address + 4), ifs, ifconf.ifc_len);
+        delete[] ifs;
+        return 0;
+#endif
     } else {
         kwarn("KNativeSocketObject::ioctl request=%x not implemented", request);
     }
