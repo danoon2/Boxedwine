@@ -11,6 +11,8 @@
 #include "cpuinfo.h"
 #include "bufferaccess.h"
 #include "meminfo.h"
+#include "procstat.h"
+
 #include "uptime.h"
 #include "devmixer.h"
 #include "devsequencer.h"
@@ -107,6 +109,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::addVirtualFile(B("/dev/null"), openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(1, 3), devNode);
     Fs::addVirtualFile(B("/dev/zero"), openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(1, 5), devNode);
     Fs::addVirtualFile(B("/proc/meminfo"), openMemInfo, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
+    Fs::addVirtualFile(B("/proc/stat"), openProcStat, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
     Fs::addVirtualFile(B("/proc/uptime"), openUptime, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
     Fs::addVirtualFile(B("/proc/cpuinfo"), openCpuInfo, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
     Fs::addDynamicLinkFile(B("/proc/self"), k_mdev(0, 0), KSystem::procNode, true, [] {

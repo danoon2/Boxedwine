@@ -57,6 +57,7 @@ std::shared_ptr<KProcess> KProcess::create() {
         Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [process]() {
             return process->exe;
             });
+        Fs::addVirtualFile(process->processNode->path + "/loginuid", K__S_IREAD, k_mdev(0, 0), process->processNode, B("1"));
         process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
     }
     process->timer.process = process; // can't use shared_from_this in constructor

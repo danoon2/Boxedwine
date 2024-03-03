@@ -207,7 +207,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -238,7 +238,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Imm32.lib;Winmm.lib;Version.lib;Setupapi.lib;opengl32.lib;..\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Imm32.lib;Winmm.lib;Version.lib;Setupapi.lib;opengl32.lib;..\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -270,7 +270,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;opengl32.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;opengl32.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -302,7 +302,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;Imm32.lib;Winmm.lib;opengl32.lib;..\x64\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;Imm32.lib;Winmm.lib;opengl32.lib;..\x64\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -336,7 +336,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Release\sdl2.lib;..\Release\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Release\sdl2.lib;..\Release\SDL2main.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -370,7 +370,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl.lib;SDLmain.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl.lib;SDLmain.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -402,7 +402,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Release\sdl2.lib;..\x64\Release\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Release\sdl2.lib;..\x64\Release\SDL2main.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -435,7 +435,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -491,6 +491,7 @@
     <ClInclude Include="..\..\..\..\include\mixer.h" />
     <ClInclude Include="..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\include\player.h" />
+    <ClInclude Include="..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\include\recorder.h" />
     <ClInclude Include="..\..\..\..\include\reg.h" />
     <ClInclude Include="..\..\..\..\include\syscpuscalingcurfreq.h" />
@@ -885,6 +886,7 @@
     <ClCompile Include="..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\procstat.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\uptime.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\syscall.cpp" />

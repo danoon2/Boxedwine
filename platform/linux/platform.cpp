@@ -300,6 +300,10 @@ static bool isAddressRangeInUse(void* p, U64 len) {
 
 static U64 nextMemoryId = 2;
 
+BString Platform::procStat() {
+    return BReadFile(B("/proc/stat")).readAll();
+}
+
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     U32 proto = 0;
     if ((permission & PAGE_READ) || (permission & PAGE_EXEC)) {

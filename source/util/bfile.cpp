@@ -47,6 +47,16 @@ void BReadFile::close() {
 	}
 }
 
+BString BReadFile::readAll() {
+	char c = 0;
+	BString line;
+
+	while (read(c)) {
+		line.append(c);
+	}
+	return line;
+}
+
 U32 BReadFile::read(char* buffer, U64 len) {
 	return (U32)std::fread(buffer, 1, len, file);
 }

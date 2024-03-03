@@ -123,6 +123,7 @@ public:
     static U32 updateNativePermission(U64 address, U32 permission, U32 len = 0); // page must be aligned to Platform::getPagePermissionGranularity.  when len == 0, it will default to getPagePermissionGranularity() << K_PAGE_SHIFT
     static void releaseNativeMemory(void* address, U64 len);
     static U8* alloc64kBlock(U32 count, bool executable = false);
+    static BString procStat();
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);

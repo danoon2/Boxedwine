@@ -268,6 +268,7 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\meminfo.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\proc\procstat.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\syscall.cpp" />
@@ -561,6 +562,7 @@
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\..\include\player.h" />
     <ClInclude Include="..\..\..\..\..\include\procselfexe.h" />
+    <ClInclude Include="..\..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\..\include\recorder.h" />
     <ClInclude Include="..\..\..\..\..\include\reg.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpumaxfreq.h" />

@@ -22,6 +22,7 @@
 #include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 #include <VersionHelpers.h>
 #include <Shlwapi.h>
+#include <winternl.h>
 
 char* platform_strcasestr(const char* s1, const char* s2) {
     return StrStrIA(s1, s2);
@@ -29,6 +30,223 @@ char* platform_strcasestr(const char* s1, const char* s2) {
 
 LONGLONG PCFreq;
 LONGLONG CounterStart;
+
+#define NS100PERSEC (10000000LL)
+
+typedef struct _kSYSTEM_PERFORMANCE_INFORMATION
+{
+    LARGE_INTEGER IdleTime;
+    LARGE_INTEGER ReadTransferCount;
+    LARGE_INTEGER WriteTransferCount;
+    LARGE_INTEGER OtherTransferCount;
+    ULONG ReadOperationCount;
+    ULONG WriteOperationCount;
+    ULONG OtherOperationCount;
+    ULONG AvailablePages;
+    ULONG TotalCommittedPages;
+    ULONG TotalCommitLimit;
+    ULONG PeakCommitment;
+    ULONG PageFaults;
+    ULONG WriteCopyFaults;
+    ULONG TransitionFaults;
+    ULONG Reserved1;
+    ULONG DemandZeroFaults;
+    ULONG PagesRead;
+    ULONG PageReadIos;
+    ULONG Reserved2[2];
+    ULONG PagefilePagesWritten;
+    ULONG PagefilePageWriteIos;
+    ULONG MappedFilePagesWritten;
+    ULONG MappedFilePageWriteIos;
+    ULONG PagedPoolUsage;
+    ULONG NonPagedPoolUsage;
+    ULONG PagedPoolAllocs;
+    ULONG PagedPoolFrees;
+    ULONG NonPagedPoolAllocs;
+    ULONG NonPagedPoolFrees;
+    ULONG TotalFreeSystemPtes;
+    ULONG SystemCodePage;
+    ULONG TotalSystemDriverPages;
+    ULONG TotalSystemCodePages;
+    ULONG SmallNonPagedLookasideListAllocateHits;
+    ULONG SmallPagedLookasideListAllocateHits;
+    ULONG Reserved3;
+    ULONG MmSystemCachePage;
+    ULONG PagedPoolPage;
+    ULONG SystemDriverPage;
+    ULONG FastReadNoWait;
+    ULONG FastReadWait;
+    ULONG FastReadResourceMiss;
+    ULONG FastReadNotPossible;
+    ULONG FastMdlReadNoWait;
+    ULONG FastMdlReadWait;
+    ULONG FastMdlReadResourceMiss;
+    ULONG FastMdlReadNotPossible;
+    ULONG MapDataNoWait;
+    ULONG MapDataWait;
+    ULONG MapDataNoWaitMiss;
+    ULONG MapDataWaitMiss;
+    ULONG PinMappedDataCount;
+    ULONG PinReadNoWait;
+    ULONG PinReadWait;
+    ULONG PinReadNoWaitMiss;
+    ULONG PinReadWaitMiss;
+    ULONG CopyReadNoWait;
+    ULONG CopyReadWait;
+    ULONG CopyReadNoWaitMiss;
+    ULONG CopyReadWaitMiss;
+    ULONG MdlReadNoWait;
+    ULONG MdlReadWait;
+    ULONG MdlReadNoWaitMiss;
+    ULONG MdlReadWaitMiss;
+    ULONG ReadAheadIos;
+    ULONG LazyWriteIos;
+    ULONG LazyWritePages;
+    ULONG DataFlushes;
+    ULONG DataPages;
+    ULONG ContextSwitches;
+    ULONG FirstLevelTbFills;
+    ULONG SecondLevelTbFills;
+    ULONG SystemCalls;
+} kSYSTEM_PERFORMANCE_INFORMATION, * kPSYSTEM_PERFORMANCE_INFORMATION;
+
+typedef struct _kSYSTEM_PROCESSOR_PERFORMANCE_INFORMATION
+{
+    LARGE_INTEGER IdleTime;
+    LARGE_INTEGER KernelTime;
+    LARGE_INTEGER UserTime;
+    LARGE_INTEGER DpcTime;
+    LARGE_INTEGER InterruptTime;
+    ULONG InterruptCount;
+} kSYSTEM_PROCESSOR_PERFORMANCE_INFORMATION, * kPSYSTEM_PROCESSOR_PERFORMANCE_INFORMATION;
+
+typedef struct _kSYSTEM_TIMEOFDAY_INFORMATION
+{
+    LARGE_INTEGER BootTime;
+    LARGE_INTEGER CurrentTime;
+    LARGE_INTEGER TimeZoneBias;
+    ULONG CurrentTimeZoneId;
+    BYTE Reserved1[20];		/* Per MSDN.  Always 0. */
+} kSYSTEM_TIMEOFDAY_INFORMATION, * kPSYSTEM_TIMEOFDAY_INFORMATION;
+
+/* 100ns difference between Windows and UNIX timebase. */
+#define FACTOR (0x19db1ded53e8000LL)
+/* # of nanosecs per second. */
+#define NSPERSEC (1000000000LL)
+
+time_t
+to_time_t(PLARGE_INTEGER ptr)
+{
+    /* A file time is the number of 100ns since jan 1 1601
+       stuffed into two long words.
+       A time_t is the number of seconds since jan 1 1970.  */
+
+    int64_t x = ptr->QuadPart;
+
+    /* pass "no time" as epoch */
+    if (x == 0)
+        return 0;
+
+    x -= FACTOR;			/* number of 100ns between 1601 and 1970 */
+    x /= NS100PERSEC;		/* number of 100ns in a second */
+    return x;
+}
+
+// function from https://github.com/cygwin/cygwin
+/* fhandler_proc.cc: fhandler for /proc virtual filesystem
+
+This file is part of Cygwin.
+
+This software is a copyrighted work licensed under the terms of the
+Cygwin license.  Please consult the file "CYGWIN_LICENSE" for
+details. */
+BString Platform::procStat() {
+    U32 pages_in = 0UL, pages_out = 0UL, interrupt_count = 0UL, context_switches = 0UL, swap_in = 0UL, swap_out = 0UL;
+    U32 cpuCount = getCpuCount();
+    time_t boot_time = 0;
+    NTSTATUS status;
+    /* Sizeof SYSTEM_PERFORMANCE_INFORMATION on 64 bit systems.  It
+       appears to contain some trailing additional information from
+       what I can tell after examining the content.
+       FIXME: It would be nice if this could be verified somehow. */
+    const size_t sizeof_spi = sizeof(kSYSTEM_PERFORMANCE_INFORMATION) + 16;
+    kPSYSTEM_PERFORMANCE_INFORMATION spi = (kPSYSTEM_PERFORMANCE_INFORMATION)alloca(sizeof_spi);
+    kSYSTEM_TIMEOFDAY_INFORMATION stodi;
+    BString result;
+
+    kSYSTEM_PROCESSOR_PERFORMANCE_INFORMATION* spt = new kSYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[cpuCount];
+    status = NtQuerySystemInformation(SystemProcessorPerformanceInformation, (PVOID)spt, sizeof spt[0] * cpuCount, NULL);
+    if (!NT_SUCCESS(status))
+        klog("NtQuerySystemInformation(SystemProcessorPerformanceInformation), status %x", status);
+    else {
+        U64 user_time = 0ULL;
+        U64 kernel_time = 0ULL;
+        U64 idle_time = 0ULL;
+
+        for (U32 i = 0; i < cpuCount; i++) {
+            kernel_time += (spt[i].KernelTime.QuadPart - spt[i].IdleTime.QuadPart) * CLOCKS_PER_SEC / NS100PERSEC;
+            user_time += spt[i].UserTime.QuadPart * CLOCKS_PER_SEC / NS100PERSEC;
+            idle_time += spt[i].IdleTime.QuadPart * CLOCKS_PER_SEC / NS100PERSEC;
+        }
+        result += "cpu ";
+        result += user_time;
+        result += " 0 ";
+        result += kernel_time;
+        result += " ";
+        result += idle_time;
+        result += "\n";
+
+        user_time = 0ULL, kernel_time = 0ULL, idle_time = 0ULL;
+        for (U32 i = 0; i < cpuCount; i++) {
+            interrupt_count += spt[i].InterruptCount;
+            kernel_time = (spt[i].KernelTime.QuadPart - spt[i].IdleTime.QuadPart) * CLOCKS_PER_SEC / NS100PERSEC;
+            user_time = spt[i].UserTime.QuadPart * CLOCKS_PER_SEC / NS100PERSEC;
+            idle_time = spt[i].IdleTime.QuadPart * CLOCKS_PER_SEC / NS100PERSEC;
+
+            result += "cpu";
+            result += i;
+            result += " ";
+            result += user_time;
+            result += " 0 ";
+            result += kernel_time;
+            result += " ";
+            result += idle_time;
+            result += "\n";
+        }
+
+        status = NtQuerySystemInformation(SystemPerformanceInformation, (PVOID)spi, sizeof_spi, NULL);
+        if (!NT_SUCCESS(status)) {
+            klog("NtQuerySystemInformation(SystemPerformanceInformation) status %x", status);
+            memset(spi, 0, sizeof_spi);
+        }
+        status = NtQuerySystemInformation(SystemTimeOfDayInformation, (PVOID)&stodi, sizeof stodi, NULL);
+        if (!NT_SUCCESS(status)) {
+            klog("NtQuerySystemInformation(SystemTimeOfDayInformation), status %x", status);
+        }
+    }
+    if (!NT_SUCCESS(status)) {
+        BString::empty;
+    }
+
+    pages_in = spi->PagesRead;
+    pages_out = spi->PagefilePagesWritten + spi->MappedFilePagesWritten;
+    /* Note: there is no distinction made in this structure between pages read
+       from the page file and pages read from mapped files, but there is such
+       a distinction made when it comes to writing.  Goodness knows why.  The
+       value of swap_in, then, will obviously be wrong but its our best guess. */
+    swap_in = spi->PagesRead;
+    swap_out = spi->PagefilePagesWritten;
+    context_switches = spi->ContextSwitches;
+    boot_time = to_time_t(&stodi.BootTime);
+
+    result += "intr ";
+    result += interrupt_count;
+    result += "\nctxt ";
+    result += context_switches;
+    result += "\nbtime ";
+    result += boot_time;
+    return result;
+}
 
 void Platform::init() {
     if (!IsWindows8OrGreater()) {

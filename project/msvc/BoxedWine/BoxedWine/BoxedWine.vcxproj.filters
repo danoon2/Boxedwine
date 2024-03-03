@@ -565,6 +565,9 @@
     <ClCompile Include="..\..\..\..\source\kernel\sys\sysfb.cpp">
       <Filter>source\kernel\sys</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\procstat.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1258,6 +1261,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\ktimercallback.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\procstat.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

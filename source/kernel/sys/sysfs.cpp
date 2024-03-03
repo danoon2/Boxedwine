@@ -34,9 +34,10 @@ void createSysfs(const std::shared_ptr<FsNode> rootNode) {
     if (Platform::getCpuFreqMHz()) {
         for (U32 i = 0; i < Platform::getCpuCount(); i++) {
             std::shared_ptr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu" + BString::valueOf(i), B(""), B(""), true, cpuNode);
-            Fs::addVirtualFile("/sys/devices/system/cpu" + BString::valueOf(i) + "/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, k_mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu" + BString::valueOf(i) + "/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, k_mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu" + BString::valueOf(i) + "/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, k_mdev(0, 0), cpuCoreNode, i);
+            std::shared_ptr<FsNode> cpuFreqCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu" + BString::valueOf(i)+"/cpufreq", B(""), B(""), true, cpuCoreNode);
+            Fs::addVirtualFile("/sys/devices/system/cpu/cpu" + BString::valueOf(i) + "/cpufreq/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, k_mdev(0, 0), cpuFreqCoreNode, i);
+            Fs::addVirtualFile("/sys/devices/system/cpu/cpu" + BString::valueOf(i) + "/cpufreq/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, k_mdev(0, 0), cpuFreqCoreNode, i);
+            Fs::addVirtualFile("/sys/devices/system/cpu/cpu" + BString::valueOf(i) + "/cpufreq/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, k_mdev(0, 0), cpuFreqCoreNode, i);
         }
     }
 
