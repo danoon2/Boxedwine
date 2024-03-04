@@ -648,6 +648,12 @@
 		1ADBD8732B92E7B60074867C /* sysbususb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8512B92E7B60074867C /* sysbususb.cpp */; };
 		1ADBD8742B92E7B60074867C /* sysbususb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8512B92E7B60074867C /* sysbususb.cpp */; };
 		1ADBD8752B92E7B60074867C /* sysbususb.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8512B92E7B60074867C /* sysbususb.cpp */; };
+		1ADBD8772B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
+		1ADBD8782B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
+		1ADBD8792B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
+		1ADBD87A2B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
+		1ADBD87B2B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
+		1ADBD87C2B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
 		1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
 		1AE7E5C52B5A1BD200D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
 		1AE7E5C72B5A1BD200D29E4A /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BF2B5A1BD100D29E4A /* btData.cpp */; };
@@ -1527,6 +1533,8 @@
 		1ADBD84F2B92E7B60074867C /* sysdev.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sysdev.cpp; sourceTree = "<group>"; };
 		1ADBD8502B92E7B60074867C /* sysfs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sysfs.cpp; sourceTree = "<group>"; };
 		1ADBD8512B92E7B60074867C /* sysbususb.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sysbususb.cpp; sourceTree = "<group>"; };
+		1ADBD8762B94249A0074867C /* procstat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = procstat.cpp; sourceTree = "<group>"; };
+		1ADBD87D2B94253F0074867C /* procstat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = procstat.h; sourceTree = "<group>"; };
 		1AE7E5BA2B5A1BD100D29E4A /* btMemory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btMemory.h; sourceTree = "<group>"; };
 		1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCpu.cpp; sourceTree = "<group>"; };
 		1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCodeChunk.cpp; sourceTree = "<group>"; };
@@ -2446,6 +2454,7 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1ADBD87D2B94253F0074867C /* procstat.h */,
 				1ADBD83D2B9194380074867C /* devfb.h */,
 				1ADBD83C2B9194380074867C /* kmemory.h */,
 				1ADBD83B2B9194380074867C /* ktimercallback.h */,
@@ -2968,6 +2977,7 @@
 		71FBFE162433BBBE003F17F1 /* proc */ = {
 			isa = PBXGroup;
 			children = (
+				1ADBD8762B94249A0074867C /* procstat.cpp */,
 				1A2236362820A85200E74D88 /* uptime.cpp */,
 				71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */,
 				71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */,
@@ -3523,6 +3533,7 @@
 				1A55D6652A08428F002B7021 /* adler32.c in Sources */,
 				1A80EFC4276EBCC70032A70A /* mainloop.cpp in Sources */,
 				1A80EFC8276EBCC70032A70A /* instructions.cpp in Sources */,
+				1ADBD8792B94249B0074867C /* procstat.cpp in Sources */,
 				1A80EFCB276EBCC70032A70A /* fpu.cpp in Sources */,
 				1A80EFD3276EBCC70032A70A /* appbar.cpp in Sources */,
 				1A80EFD7276EBCC70032A70A /* appFile.cpp in Sources */,
@@ -3754,6 +3765,7 @@
 				1A80F202276EBF170032A70A /* soft_rw_page.cpp in Sources */,
 				1A80F205276EBF170032A70A /* baseView.cpp in Sources */,
 				1AC5F2E42772D957001D0FCA /* armv8btOps.cpp in Sources */,
+				1ADBD87A2B94249B0074867C /* procstat.cpp in Sources */,
 				1A80F20E276EBF170032A70A /* mainloop.cpp in Sources */,
 				1A80F213276EBF170032A70A /* instructions.cpp in Sources */,
 				1A80F214276EBF170032A70A /* knativewindow.cpp in Sources */,
@@ -3945,6 +3957,7 @@
 				71222BB72435169100CDBABD /* ktimer.cpp in Sources */,
 				1ADBD8682B92E7B60074867C /* sysdev.cpp in Sources */,
 				71222B7F2435169100CDBABD /* soft_ro_page.cpp in Sources */,
+				1ADBD87B2B94249B0074867C /* procstat.cpp in Sources */,
 				71222B702435169100CDBABD /* common_xchg.cpp in Sources */,
 				71222B982435169100CDBABD /* bufferaccess.cpp in Sources */,
 				71222B762435169100CDBABD /* x32CPU.cpp in Sources */,
@@ -4106,6 +4119,7 @@
 				1AC5F2DC2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 				71222C1B24351CBA00CDBABD /* fsdiropennode.cpp in Sources */,
 				71222C1C24351CBA00CDBABD /* AppDelegate.m in Sources */,
+				1ADBD8782B94249B0074867C /* procstat.cpp in Sources */,
 				1A155115263261E7006E0C8A /* ioapi.c in Sources */,
 				71222C1D24351CBA00CDBABD /* glMarshalSize.cpp in Sources */,
 				1ADBD8402B91944B0074867C /* devfb.cpp in Sources */,
@@ -4344,6 +4358,7 @@
 				7135DC66264EBCD0005D6AA6 /* cpuinfo.cpp in Sources */,
 				1ADBD8692B92E7B60074867C /* sysdev.cpp in Sources */,
 				7135DC67264EBCD0005D6AA6 /* kfile.cpp in Sources */,
+				1ADBD87C2B94249B0074867C /* procstat.cpp in Sources */,
 				7135DC68264EBCD0005D6AA6 /* common_bit.cpp in Sources */,
 				7135DC69264EBCD0005D6AA6 /* ktimer.cpp in Sources */,
 				7135DC6A264EBCD0005D6AA6 /* soft_ro_page.cpp in Sources */,
@@ -4505,6 +4520,7 @@
 				71FBFE5A2433BBBE003F17F1 /* boxedTranslation.cpp in Sources */,
 				71FBFEBE2433BBBE003F17F1 /* ksystem.cpp in Sources */,
 				71FBFE9E2433BBBE003F17F1 /* soft_native_page.cpp in Sources */,
+				1ADBD8772B94249B0074867C /* procstat.cpp in Sources */,
 				1AFC479D2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */,
 				1ADBD83F2B91944B0074867C /* devfb.cpp in Sources */,
