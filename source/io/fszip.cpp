@@ -139,6 +139,36 @@ void FsZip::remove(BString localPath) {
     }
 }
 
+bool FsZip::doesFileExist(BString zipFile, BString file) {
+    unzFile z = unzOpen(zipFile.c_str());
+    unz_global_info global_info = {};
+    if (!z) {
+        return false;
+    }
+    if (unzGetGlobalInfo(z, &global_info) != UNZ_OK) {
+        unzClose(z);
+        return false;
+    }
+    for (U32 i = 0; i < global_info.number_entry; ++i) {
+        unz_file_info file_info;
+        char tmp[MAX_FILEPATH_LEN];
+
+        if (unzGetCurrentFileInfo(z, &file_info, tmp, MAX_FILEPATH_LEN, nullptr, 0, nullptr, 0) != UNZ_OK) {
+            unzClose(z);
+            return false;
+        }
+
+        if (file == tmp) {
+            unzCloseCurrentFile(z);
+            unzClose(z);
+            return true;
+        }
+        unzGoToNextFile(z);
+    }
+    unzClose(z);
+    return false;
+}
+
 bool FsZip::readFileFromZip(BString zipFile, BString file, BString& result) {
     unzFile z = unzOpen(zipFile.c_str());
     unz_global_info global_info = {};

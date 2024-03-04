@@ -30,7 +30,7 @@ OptionsView::OptionsView(BString tab) : BaseView(B("OptionsView")) {
         this->runWineOptions();
         });    
 
-    loadWineVersions();
+    loadFileSystemVersions();
 }
 
 void OptionsView::createThemeTab() {
@@ -185,51 +185,51 @@ void OptionsView::createGeneralTab() {
         });
 }
 
-void OptionsView::loadWineVersions() {
+void OptionsView::loadFileSystemVersions() {
     this->wineButtonTotalColumnWidth = 0;
     this->wineButtonFirstColumnWidth = 0;
-    this->wineVersions.clear();
+    this->fileSystemVersions.clear();
 
-    for (WineVersion& wine : GlobalSettings::availableWineVersions) {
+    for (auto& fileSystem : GlobalSettings::availableFileSystemVersions) {
         OptionsViewWineVersion v;
-        v.availableVersion = &wine;
-        v.name = wine.name;
+        v.availableVersion = fileSystem;
+        v.name = fileSystem->name;
 
-        U64 size = wine.size;
-        WineVersion* dep = wine.getMissingDependency();
+        U64 size = fileSystem->size;
+        std::shared_ptr<FileSystemZip> dep = fileSystem->getMissingDependency();
         if (dep) {
             size += dep->size;
         }
         v.size = BString::valueOf(size);
-        this->wineVersions[v.name] = v;
+        this->fileSystemVersions[v.name] = v;
     }
 
-    for (WineVersion& wine : GlobalSettings::wineVersions) {
-        if (wine.size == 0) {
-            wine.size = (U32)(Fs::getNativeFileSize(wine.filePath) / 1024 / 1024);
+    for (auto& fileSystem : GlobalSettings::fileSystemVersions) {
+        if (fileSystem->size == 0) {
+            fileSystem->size = (U32)(Fs::getNativeFileSize(fileSystem->filePath) / 1024 / 1024);
         }
-        if (this->wineVersions.count(wine.name)) {
-            OptionsViewWineVersion& v = this->wineVersions[wine.name];
-            v.currentVersion = &wine;
+        if (this->fileSystemVersions.count(fileSystem->name)) {
+            OptionsViewWineVersion& v = this->fileSystemVersions[fileSystem->name];
+            v.currentVersion = fileSystem;
         } else {
             OptionsViewWineVersion v;
-            v.availableVersion = &wine;
-            v.name = wine.name;
+            v.availableVersion = fileSystem;
+            v.name = fileSystem->name;
             
-            U64 size = wine.size;
-            WineVersion* dep = wine.getMissingDependency();
+            U64 size = fileSystem->size;
+            std::shared_ptr<FileSystemZip> dep = fileSystem->getMissingDependency();
             if (dep) {
                 size += dep->size;
             }
             v.size = BString::valueOf(size);
-            this->wineVersions[v.name] = v;
+            this->fileSystemVersions[v.name] = v;
         }
     }
     float leftColumn = 0;
     float rightColumn = 0;
 
     ImGui::PushFont(GlobalSettings::mediumFont);
-    for (auto& wine : this->wineVersions) {
+    for (auto& wine : this->fileSystemVersions) {
         float width = 0.0f;
         if (wine.second.availableVersion && !wine.second.currentVersion) {
             width += ImGui::CalcTextSize(c_getTranslation(Msg::OPTIONSVIEW_WINE_VERSION_INSTALL)).x;            
@@ -281,7 +281,7 @@ void OptionsView::runWineOptions() {
     ImGui::PushFont(GlobalSettings::mediumFont);
     //ImGui::BeginChildFrame(401, size);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    for (auto& wine : this->wineVersions) {
+    for (auto& wine : this->fileSystemVersions) {
         ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));        
         ImGui::SameLine();
         ImVec2 pos = ImGui::GetCursorPos();
@@ -321,7 +321,7 @@ void OptionsView::runWineOptions() {
                     // run later, we don't want to change versions while we are iterating them
                     runOnMainUI([this]()->bool {
                         GlobalSettings::reloadWineVersions();
-                        this->loadWineVersions();
+                        this->loadFileSystemVersions();
                         return false;
                         });
                 }
@@ -369,11 +369,11 @@ void OptionsView::runWineOptions() {
     //ImGui::EndChildFrame();
 }
 
-void OptionsView::download(WineVersion* version) {
-    GlobalSettings::downloadWine(*version, [this](bool success) {
+void OptionsView::download(const std::shared_ptr<FileSystemZip>& version) {
+    GlobalSettings::downloadFileSystem(version, [this](bool success) {
         if (success) {
             runOnMainUI([this]()->bool {                
-                this->loadWineVersions();
+                this->loadFileSystemVersions();
                 return false;
                 });
         }

@@ -74,6 +74,7 @@ private:
     int pollRate = DEFAULT_POLL_RATE;
     int skipFramesFPS = 0;
     int uid = -1;
+    int euid = -1;
     bool isWine = true;
 
     BoxedContainer* container = nullptr;

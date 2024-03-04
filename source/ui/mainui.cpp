@@ -270,27 +270,16 @@ void loadApps() {
                     });
                 } else {
                     runOnMainUI([app]() {
-                        if (app->getContainer()->doesWineVersionExist()) {
+                        if (app->getContainer()->doesFileSystemExist()) {
                             new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                             app->launch();
                         } else {
-                            if (GlobalSettings::getWineVersions().size()) {                                
-                                BString label = getTranslationWithFormat(Msg::ERROR_MISSING_WINE, true, app->getContainer()->getWineVersion(), GlobalSettings::getWineVersions()[0].name);
-                                new YesNoDlg(Msg::GENERIC_DLG_ERROR_TITLE, label, [app](bool yes) {
+                            std::shared_ptr<FileSystemZip> missingFileSystem = GlobalSettings::getAvailableFileSystemFromName(app->getContainer()->getFileSystemName());
+                            if (missingFileSystem) {
+                                new YesNoDlg(Msg::GENERIC_DLG_ERROR_TITLE, getTranslation(Msg::ERROR_MISSING_FILE_SYSTEM), [missingFileSystem, app](bool yes) {
                                     if (yes) {
-                                        app->getContainer()->setWineVersion(GlobalSettings::getWineVersions()[0].name);
-                                        app->getContainer()->saveContainer();
-                                        new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
-                                        app->launch();
-                                    } 
-                                    });
-                            } else if (GlobalSettings::getAvailableWineVersions().size() != 0) {
-                                new YesNoDlg(Msg::GENERIC_DLG_ERROR_TITLE, getTranslation(Msg::ERROR_NO_WINE), [app](bool yes) {
-                                    if (yes) {
-                                        GlobalSettings::downloadWine(GlobalSettings::getAvailableWineVersions().front(), [app](bool success) {
+                                        GlobalSettings::downloadFileSystem(missingFileSystem, [app](bool success) {
                                             if (success) {
-                                                app->getContainer()->setWineVersion(GlobalSettings::getWineVersions()[0].name);
-                                                app->getContainer()->saveContainer();
                                                 new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, app->getName()));
                                                 app->launch();
                                             }

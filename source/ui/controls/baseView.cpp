@@ -111,12 +111,12 @@ std::shared_ptr<LayoutComboboxControl> BaseView::createWindowsVersionCombobox(co
     return result;
 }
 
-std::shared_ptr<LayoutComboboxControl> BaseView::createWineVersionCombobox(const std::shared_ptr<LayoutSection>& section) {
+std::shared_ptr<LayoutComboboxControl> BaseView::createFileSystemVersionCombobox(const std::shared_ptr<LayoutSection>& section) {
     std::vector<ComboboxItem> wineVersions;
-    for (auto& ver : GlobalSettings::getWineVersions()) {
-        wineVersions.push_back(ComboboxItem(ver.name));
+    for (auto& ver : GlobalSettings::getFileSystemVersions()) {
+        wineVersions.push_back(ComboboxItem(ver->name));
     }
-    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(Msg::COMMON_WINE_VERSION_LABEL, Msg::COMMON_WINE_VERSION_HELP, wineVersions, 0);
+    std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(Msg::COMMON_FILESYSTEM_VERSION_LABEL, Msg::COMMON_FILESYSTEM_VERSION_HELP, wineVersions, 0);
     result->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
     return result;
 }

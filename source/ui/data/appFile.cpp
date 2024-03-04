@@ -66,15 +66,15 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
                 app->cpuAffinity = atoi(s.c_str());
             }
         } else if (option.startsWith("wine=")) {
-            WineVersion* wineVer = GlobalSettings::getInstalledWineFromName(option.substr(5));
+            std::shared_ptr<FileSystemZip> wineVer = GlobalSettings::getInstalledFileSystemFromName(option.substr(5), true);
             if (wineVer) {
-                container->setWineVersion(wineVer->name);
+                container->setFileSystem(wineVer);
                 hasContainerOption = true;
             } else {
-                WineVersion* availableWineVer = GlobalSettings::getAvailableWineFromName(option.substr(5));
+                std::shared_ptr<FileSystemZip> availableWineVer = GlobalSettings::getAvailableFileSystemFromName(option.substr(5), true);
                 if (availableWineVer) {
-                    GlobalSettings::downloadWine(*availableWineVer, [container, availableWineVer](bool success) {
-                        container->setWineVersion(availableWineVer->name);
+                    GlobalSettings::downloadFileSystem(availableWineVer, [container, availableWineVer](bool success) {
+                        container->setFileSystem(availableWineVer);
                         container->saveContainer();
                         }
                     );
@@ -154,7 +154,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container) {
 void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads) {
     if (!container) {
         BString containerFilePath = GlobalSettings::createUniqueContainerPath(this->name);
-        container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getWineVersions()[0].name);
+        container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getFileSystemVersions().front());
         BoxedwineData::addContainer(container);
         container->saveContainer();
     }

@@ -84,6 +84,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::makeLocalDirs(B("/dev"));
     Fs::makeLocalDirs(B("/proc"));
     Fs::makeLocalDirs(B("/mnt"));
+    Fs::makeLocalDirs(B("/etc"));
 
     std::shared_ptr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
     std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
@@ -145,6 +146,14 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (title.length()) {
         args.push_back(B("-title"));
         args.push_back(title);
+    }
+    if (userId != UID) {
+        args.push_back(B("-uid"));
+        args.push_back(BString::valueOf(userId));
+    }
+    if (effectiveUserId != UID) {
+        args.push_back(B("-euid"));
+        args.push_back(BString::valueOf(effectiveUserId));
     }
     if (nozip) {
         args.push_back(B("-nozip"));

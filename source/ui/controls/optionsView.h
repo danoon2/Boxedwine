@@ -6,8 +6,8 @@
 class OptionsViewWineVersion {
 public:
 	OptionsViewWineVersion() = default;
-	WineVersion* currentVersion = nullptr;
-	WineVersion* availableVersion = nullptr;
+	std::shared_ptr<FileSystemZip> currentVersion;
+	std::shared_ptr<FileSystemZip> availableVersion;
 	BString name;
 	BString size;
 };
@@ -24,13 +24,13 @@ private:
 	void createThemeTab();
 
 	void runWineOptions();	
-	void download(WineVersion* version);
-	void loadWineVersions();
+	void download(const std::shared_ptr<FileSystemZip>& version);
+	void loadFileSystemVersions();
 
 	const char* wineTitle;
 	float wineButtonTotalColumnWidth = 0.0f;
 	float wineButtonFirstColumnWidth = 0.0f;
-	std::map<BString, OptionsViewWineVersion, std::greater<BString>> wineVersions;
+	std::map<BString, OptionsViewWineVersion, std::greater<BString>> fileSystemVersions;
 
 	// General
 	std::shared_ptr<LayoutTextInputControl> saveLocationControl;

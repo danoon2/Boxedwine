@@ -820,6 +820,9 @@ void onMouseMove(U32 x, U32 y, bool relative) {
 }
 
 void onKeyDown(U32 code) {
+    if (!keyboardEvents) {
+        return;
+    }
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(keyboardEvents->bufferCond);
 
@@ -831,6 +834,9 @@ void onKeyDown(U32 code) {
 }
 
 void onKeyUp(U32 code) {
+    if (!keyboardEvents) {
+        return;
+    }
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(keyboardEvents->bufferCond);
 

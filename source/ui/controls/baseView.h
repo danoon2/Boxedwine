@@ -31,7 +31,7 @@ protected:
 	void drawToolTip(BString help);
 
 	std::shared_ptr<LayoutComboboxControl> createWindowsVersionCombobox(const std::shared_ptr<LayoutSection>& section);
-	std::shared_ptr<LayoutComboboxControl> createWineVersionCombobox(const std::shared_ptr<LayoutSection>& section);
+	std::shared_ptr<LayoutComboboxControl> createFileSystemVersionCombobox(const std::shared_ptr<LayoutSection>& section);
 
 	BString errorMsg;
 	BString errorMsgString;

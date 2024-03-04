@@ -168,6 +168,8 @@ void BoxedApp::launch() {
     }
     if (this->uid != -1) {
         GlobalSettings::startUpArgs.userId = this->uid;
+    }
+    if (this->euid != -1) {
         GlobalSettings::startUpArgs.effectiveUserId = this->uid;
     }
     GlobalSettings::startUpArgs.title = this->name;
@@ -220,10 +222,18 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
             data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         } else {
             BString nativeDir = this->container->getDir() ^ "tmp";
-            FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), this->path.substr(1) + "/" + this->cmd, nativeDir);
-            BString nativePath = nativeDir ^ this->cmd;
-            data = extractIconFromExe(nativePath, iconSize, &width, &height);
-            Fs::deleteNativeFile(nativePath);
+            std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
+            if (fs) {
+                FsZip::extractFileFromZip(fs->filePath, this->path.substr(1) + "/" + this->cmd, nativeDir);
+                BString nativePath = nativeDir ^ this->cmd;
+                data = extractIconFromExe(nativePath, iconSize, &width, &height);
+                Fs::deleteNativeFile(nativePath);
+            }
+        }
+        if (!data) {
+            if (Fs::doesNativePathExist(this->iconPath)) {
+                data.reset(LoadImageFromFile(this->iconPath.c_str(), &width, &height));
+            }
         }
         if (data) {
             this->iconsBySize.set(iconSize, new BoxedAppIcon(data, width, height));

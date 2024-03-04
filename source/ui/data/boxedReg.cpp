@@ -6,7 +6,10 @@ BoxedReg::BoxedReg(BoxedContainer* container, bool system) {
 	BString root = GlobalSettings::getRootFolder(container);
 	this->filePath = root ^ "home" ^ "username" ^ ".wine" ^ (system?"system.reg":"user.reg");
 	if (!Fs::doesNativePathExist(this->filePath)) {
-		FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), B(system?"home/username/.wine/system.reg":"home/username/.wine/user.reg"), Fs::getNativeParentPath(this->filePath));
+        std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
+        if (fs) {
+            FsZip::extractFileFromZip(fs->filePath, B(system ? "home/username/.wine/system.reg" : "home/username/.wine/user.reg"), Fs::getNativeParentPath(this->filePath));
+        }
 	}
 	readLinesFromFile(this->filePath, lines);
 }

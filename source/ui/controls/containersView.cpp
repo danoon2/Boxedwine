@@ -18,15 +18,25 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         this->currentContainerChanged = true;
     };
 
-    containerWineVersionControl = createWineVersionCombobox(section);
-    containerWineVersionControl->onChange = [this]() {        
+    containerFileSystemControl = createFileSystemVersionCombobox(section);
+    //containerFileSystemControl->setReadOnly(true);
+    containerFileSystemControl->onChange = [this]() {
         this->currentContainerChanged = true;
-        bool renderer = this->currentContainer->getWineVersionAsNumber(this->containerWineVersionControl->getSelectionStringValue()) > 500;
+        bool renderer = this->currentContainer->getWineVersionAsNumber(this->containerFileSystemControl->getSelectionStringValue()) > 500;
         containerGdiControl->setRowHidden(renderer);
         containerRendererControl->setRowHidden(!renderer);
-        WineVersion* wine = GlobalSettings::getInstalledWineFromName(this->containerWineVersionControl->getSelectionStringValue());
-        appDirectDrawAutoRefreshControl->setReadOnly(atoi(wine->fsVersion.c_str()) < 7);
+        std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
+        appDirectDrawAutoRefreshControl->setReadOnly(atoi(fileSystem->fsVersion.c_str()) < 7 || !fileSystem->hasWine());
     };
+
+    std::shared_ptr<LayoutRow> row = section->addRow(Msg::CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, Msg::NONE);
+    containerLocationControl = row->addTextInput(B(""), true);
+    std::shared_ptr<LayoutButtonControl> showButtonControl = row->addButton(getTranslation(Msg::GENERIC_OPEN_BUTTON));
+    showButtonControl->onChange = [this]() {
+        Platform::openFileLocation(currentContainer->getDir());
+        };
+
+    section->addSeparator();
 
     containerWindowsVersionControl = createWindowsVersionCombobox(section);
     containerWindowsVersionControl->onChange = [this]() {        
@@ -64,7 +74,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     for (int i = 3; i < 26; i++) {
         mountDrives.push_back(ComboboxItem(BString((char)('A' + i)) + ":", BString((char)('a' + i))));
     }
-    std::shared_ptr<LayoutRow> row = section->addRow(Msg::CONTAINER_VIEW_MOUNT_DIR_LABEL, Msg::CONTAINER_VIEW_MOUNT_DIR_HELP);
+    row = section->addRow(Msg::CONTAINER_VIEW_MOUNT_DIR_LABEL, Msg::CONTAINER_VIEW_MOUNT_DIR_HELP);
     containerMountDriveControl = row->addComboBox(mountDrives);
     containerMountDriveControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(50));
     containerMountDriveControl->onChange = [this]() {
@@ -76,22 +86,15 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     containerMountPathControl->onChange = [this]() {
         this->currentContainerChanged = true;
         this->currentContainerMountChanged = true;
-    };
+    };    
 
-    row = section->addRow(Msg::CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, Msg::NONE);
-    containerLocationControl = row->addTextInput(B(""), true);
-    std::shared_ptr<LayoutButtonControl> showButtonControl = row->addButton(getTranslation(Msg::GENERIC_OPEN_BUTTON));
-    showButtonControl->onChange = [this]() {
-        Platform::openFileLocation(currentContainer->getDir());
-    };
-
-    std::shared_ptr<LayoutButtonControl> selectWineAppButton = section->addButton(Msg::CONTAINER_VIEW_PROGRAMS_LABEL, Msg::NONE, getTranslation(Msg::CONTAINER_VIEW_RUNE_WINE_APP_BUTTON_LABEL));
+    std::shared_ptr<LayoutButtonControl> selectWineAppButton = section->addButton(Msg::CONTAINER_VIEW_PROGRAMS_LABEL, Msg::NONE, getTranslation(Msg::CONTAINER_VIEW_RUNE_APP_BUTTON_LABEL));
     selectWineAppButton->onChange = [this]() {
         if (saveChanges()) { // need to capture any changes to mount
             runOnMainUI([this] {
-                std::vector<BoxedApp> wineApps;
-                this->currentContainer->getWineApps(wineApps);
-                AppChooserDlg* dlg = new AppChooserDlg(wineApps, [this](BoxedApp app) {
+                std::vector<BoxedApp> apps;
+                this->currentContainer->findApps(apps);
+                AppChooserDlg* dlg = new AppChooserDlg(apps, [this](BoxedApp app) {
                     app.launch();                    
                     BString containerPath = this->currentContainer->getDir();
                     GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
@@ -144,66 +147,36 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         };
     installButton->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_PACKAGE);
 
-    if (GlobalSettings::getAvailableWinetricksVersions().size() > 0) {        
-        if (GlobalSettings::getInstalledWinetricksVersions().size() == 0) {
-            WineVersion version = GlobalSettings::getAvailableWinetricksVersions()[0];
-            row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_LABEL, Msg::NONE);
-            std::shared_ptr<LayoutButtonControl> selectWineTricksButton = row->addButton(getTranslationWithFormat(Msg::GENERIC_DOWNLOAD, true, BString::valueOf(GlobalSettings::getAvailableWinetricksVersions()[0].size)));
-            selectWineTricksButton->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
-            selectWineTricksButton->onChange = [this, version]() {
-                if (this->saveChanges()) {
-                    GlobalSettings::downloadWine(version, [this](bool success) {
-                        if (success) {
-                            // reload container view so that we rebuild this row with the new winetricks options
-                            runOnMainUI([this]()->bool {
-                                gotoView(VIEW_CONTAINERS, currentContainer->getDir());
-                                return false;
-                                });
-                        }
-                        });
-                }
-            };
-        } else {
-            row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_FONTS_LABEL, Msg::NONE);
-            WineVersion version = GlobalSettings::getInstalledWinetricksVersions()[0];
-            std::vector<ComboboxItem> fonts;
-            std::vector<BString> lines;
-            version.data.split('\n', lines);
-            for (auto& line : lines) {
-                BString verb = line.substr(0, line.indexOf(' '));
-                fonts.push_back(ComboboxItem(line.replace("[downloadable]", ""), verb));
+    row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_FONTS_LABEL, Msg::NONE);
+    fontsControl = row->addComboBox();
+
+    std::shared_ptr<LayoutButtonControl> fontInstallButton = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
+    fontInstallButton->onChange = [this]() {
+        if (this->saveChanges()) {
+            BString verb = fontsControl->getSelectionStringValue();
+            std::shared_ptr<FileSystemZip> wineTrickFileSystem = currentContainer->getFileSystem().lock();
+            if (wineTrickFileSystem) {
+                this->winetricks(wineTrickFileSystem, verb);
             }
-            fontsControl = row->addComboBox(fonts, 0);
-
-            std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
-            installButton->onChange = [version, this]() {
-                if (this->saveChanges()) {
-                    BString verb = fontsControl->getSelectionStringValue();
-                    this->winetricks(version, verb);
-                }
-            };
-            installButton->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
-
-            row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_DLLS_LABEL, Msg::NONE);
-            std::vector<ComboboxItem> dlls;
-            lines.clear();
-            version.data2.split('\n', lines);
-            for (auto& line : lines) {
-                BString verb = line.substr(0, line.indexOf(' '));
-                dlls.push_back(ComboboxItem(line.replace("[downloadable]", ""), verb));
-            }
-            dllsControl = row->addComboBox(dlls, 0);
-
-            std::shared_ptr<LayoutButtonControl> installButton2 = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
-            installButton2->onChange = [version, this]() {
-                if (this->saveChanges()) {
-                    BString verb = dllsControl->getSelectionStringValue();
-                    this->winetricks(version, verb);
-                }
-            };
-            installButton2->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
         }
-    }
+    };
+    fontInstallButton->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+
+    row = section->addRow(Msg::CONTAINER_VIEW_WINETRICKS_DLLS_LABEL, Msg::NONE);
+    dllsControl = row->addComboBox();
+
+    std::shared_ptr<LayoutButtonControl> installButton2 = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
+    installButton2->onChange = [this]() {
+        if (this->saveChanges()) {
+            BString verb = dllsControl->getSelectionStringValue();
+            std::shared_ptr<FileSystemZip> wineTrickFileSystem = currentContainer->getFileSystem().lock();
+            if (wineTrickFileSystem) {
+                this->winetricks(wineTrickFileSystem, verb);
+            }
+        }
+    };
+    installButton2->setHelpId(Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS);
+    
 
     section->addSeparator();
     std::shared_ptr<LayoutButtonControl> selectAppButton = section->addButton(Msg::CONTAINER_OPTIONS_DLG_ADD_APP_LABEL, Msg::CONTAINER_OPTIONS_DLG_ADD_APP_HELP, getTranslation(Msg::CONTAINER_OPTIONS_DLG_ADD_APP_BUTTON_LABEL));
@@ -213,7 +186,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
                 std::vector<BoxedApp> items;
                 std::vector<BoxedApp> wineApps;
                 this->currentContainer->getNewApps(items);
-                this->currentContainer->getWineApps(wineApps);
+                this->currentContainer->findApps(wineApps);
                 new AppChooserDlg(items, wineApps, [this](BoxedApp app) {
                     BString iniPath = app.getIniFilePath();
                     this->setCurrentApp(app.getContainer()->getAppByIniFile(iniPath));
@@ -542,9 +515,10 @@ bool ContainersView::saveChanges() {
                     this->currentContainer->addNewMount(MountInfo(this->containerMountDriveControl->getSelectionStringValue(), containerMountPathControl->getText(), true));
                 }
             }
-            this->currentContainer->setWineVersion(this->containerWineVersionControl->getSelectionStringValue());
+            std::shared_ptr<FileSystemZip> fs = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
+            this->currentContainer->setFileSystem(fs);
             this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
-            if (this->currentContainer->getWineVersionAsNumber() > 500) {
+            if (this->currentContainer->getWineVersionAsNumber(fs->wineName) > 500) {
                 this->currentContainer->setGDI(containerRendererControl->getSelectionStringValue() == "gdi");
                 this->currentContainer->setRenderer(containerRendererControl->getSelectionStringValue());
             } else {
@@ -630,8 +604,8 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));
     appShowWindowImmediatelyControl->setCheck(app->showWindowImmediately);
     appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);
-    WineVersion* wine = GlobalSettings::getInstalledWineFromName(this->containerWineVersionControl->getSelectionStringValue());
-    bool hasAutoRefresh = atoi(wine->fsVersion.c_str()) >= 7;
+    std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
+    bool hasAutoRefresh = fileSystem && atoi(fileSystem->fsVersion.c_str()) >= 7 && fileSystem->hasWine();
     appDirectDrawAutoRefreshControl->setReadOnly(!hasAutoRefresh);
     appDirectDrawAutoRefreshControl->setHelpId(hasAutoRefresh ? Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP : Msg::CONTAINER_VIEW_AUTO_REFRESH_MISSING_HELP);
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -652,57 +626,93 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
     this->currentContainerChanged = false;
     this->currentContainerMountChanged = false;
     section->setTitle(container->getName());
-    containerWineVersionControl->setSelectionByLabel(container->getWineVersion());
+    containerFileSystemControl->setSelectionByLabel(container->getFileSystemName());
     containerWindowsVersionControl->setSelectionByLabel(container->getWindowsVersion());
     containerNameControl->setText(container->getName());
     containerLocationControl->setText(container->getDir());
 
     container->updateCachedSize();
+    std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
+    bool hasWine = fs && fs->hasWine();
 
-    if (!container->getMounts().size() || !container->getMounts()[0].wine || container->getMounts()[0].localPath.length() != 1) {
-        containerMountDriveControl->setSelection(0);
-        containerMountPathControl->setText(B(""));
-    } else {
-        const MountInfo& mount = container->getMounts()[0];
-        BString lowerCase = mount.localPath.toLowerCase();
-        containerMountDriveControl->setSelectionStringValue(lowerCase);
-        containerMountPathControl->setText(mount.nativePath);
+    containerMountDriveControl->setRowHidden(!hasWine);
+    containerGdiControl->setRowHidden(!hasWine);
+    containerRendererControl->setRowHidden(!hasWine);
+    containerMouseWarpControl->setRowHidden(!hasWine);
+    componentsControl->setRowHidden(!hasWine);
+    containerWindowsVersionControl->setRowHidden(!hasWine);
+
+    if (hasWine) {
+        if (!container->getMounts().size() || !container->getMounts()[0].wine || container->getMounts()[0].localPath.length() != 1) {
+            containerMountDriveControl->setSelection(0);
+            containerMountPathControl->setText(B(""));
+        } else {
+            const MountInfo& mount = container->getMounts()[0];
+            BString lowerCase = mount.localPath.toLowerCase();
+            containerMountDriveControl->setSelectionStringValue(lowerCase);
+            containerMountPathControl->setText(mount.nativePath);
+        }
+
+        if (this->currentContainer->getWineVersionAsNumber(this->containerFileSystemControl->getSelectionStringValue()) > 500) {
+            containerGdiControl->setCheck(false);
+            containerRendererControl->setSelectionStringValue(container->getRenderer());
+
+            containerGdiControl->setRowHidden(true);
+            containerRendererControl->setRowHidden(false);
+        } else {
+            containerGdiControl->setCheck(container->isGDI());
+            containerRendererControl->setSelectionStringValue(container->getRenderer());
+
+            containerGdiControl->setRowHidden(false);
+            containerRendererControl->setRowHidden(true);
+        }
+        containerMouseWarpControl->setSelectionStringValue(container->getMouseWarpOverride());
     }
-    appPickerControl->setSelection(0);
-    if (this->currentContainer->getApps().size()) {
-        setCurrentApp(this->currentContainer->getApps()[0]);
-        rebuildShortcutsCombobox();        
-    } else {
-        this->currentApp = nullptr;
-    }    
-    showAppSection(this->currentContainer->getApps().size() != 0);
-    if (this->currentContainer->getWineVersionAsNumber() > 500) {
-        containerGdiControl->setCheck(false);        
-        containerRendererControl->setSelectionStringValue(container->getRenderer());
-
-        containerGdiControl->setRowHidden(true);
-        containerRendererControl->setRowHidden(false);
-    }
-    else {        
-        containerGdiControl->setCheck(container->isGDI());
-        containerRendererControl->setSelectionStringValue(container->getRenderer());
-
-        containerGdiControl->setRowHidden(false);
-        containerRendererControl->setRowHidden(true);
-    }
-    containerMouseWarpControl->setSelectionStringValue(container->getMouseWarpOverride());
-
-    WineVersion* wine = GlobalSettings::getInstalledWineFromName(this->containerWineVersionControl->getSelectionStringValue());
-    if (wine->tinyCorePackages.size()) {
+    std::shared_ptr<FileSystemZip> fileSystem = currentContainer->getFileSystem().lock();
+    if (fileSystem && fileSystem->tinyCorePackages.size()) {
         packagesControl->setRowHidden(false);
         std::vector<ComboboxItem> packages;
-        for (auto& package : wine->tinyCorePackages) {
+        for (auto& package : fileSystem->tinyCorePackages) {
             packages.push_back(ComboboxItem(package));
         }
         packagesControl->setOptions(packages);
     } else {
         packagesControl->setRowHidden(true);
     }
+
+    if (fileSystem && fileSystem->hasWineTricks()) {
+        fontsControl->setRowHidden(false);
+        dllsControl->setRowHidden(false);
+
+        std::vector<ComboboxItem> fonts;
+        std::vector<BString> lines;
+        fileSystem->wineTrickFonts.split('\n', lines);
+        for (auto& line : lines) {
+            BString verb = line.substr(0, line.indexOf(' '));
+            fonts.push_back(ComboboxItem(line.replace("[downloadable]", ""), verb));
+        }
+        fontsControl->setOptions(fonts);
+
+        std::vector<ComboboxItem> dlls;
+        fileSystem->wineTrickDlls.split('\n', lines);
+        for (auto& line : lines) {
+            BString verb = line.substr(0, line.indexOf(' '));
+            dlls.push_back(ComboboxItem(line.replace("[downloadable]", ""), verb));
+        }
+        dllsControl->setOptions(dlls);
+    } else {
+        fontsControl->setRowHidden(true);
+        dllsControl->setRowHidden(true);
+    }
+
+    appPickerControl->setSelection(0);
+    if (this->currentContainer->getApps().size()) {
+        setCurrentApp(this->currentContainer->getApps()[0]);
+        rebuildShortcutsCombobox();
+    } else {
+        this->currentApp = nullptr;
+    }
+    showAppSection(this->currentContainer->getApps().size() != 0);
 }
 
 void ContainersView::showAppSection(bool show) {
@@ -710,9 +720,9 @@ void ContainersView::showAppSection(bool show) {
     appPickerControl->setRowHidden(!show);
 }
 
-void ContainersView::winetricks(const WineVersion& winetricks, BString verb) {
+void ContainersView::winetricks(const std::shared_ptr<FileSystemZip>& winetricks, BString verb) {
     GlobalSettings::startUpArgs = StartUpArgs();
-    GlobalSettings::startUpArgs.addZip(winetricks.filePath);
+    GlobalSettings::startUpArgs.addZip(winetricks->filePath);
     currentContainer->launch();     
     GlobalSettings::startUpArgs.title = "Winetricks " + verb;
     GlobalSettings::startUpArgs.addArg(B("/bin/sh"));

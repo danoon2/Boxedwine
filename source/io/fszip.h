@@ -44,7 +44,7 @@ public:
     static bool extractFileFromZip(BString zipFile, BString file, BString path);
     static BString unzip(BString zipFile, BString path, std::function<void(U32, BString)> percentDone);
     static bool iterateFiles(BString zipFile, std::function<void(BString)> it);
-
+    static bool doesFileExist(BString zipFile, BString file);
 private:
     BString deleteFilePath;
 };

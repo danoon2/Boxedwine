@@ -15,11 +15,9 @@
 #define FAST_FRAME_DELAY 1
 
 BString GlobalSettings::dataFolderLocation;
-std::vector<WineVersion> GlobalSettings::wineVersions;
-std::vector<WineVersion> GlobalSettings::winetricksVersions;
-std::vector<WineVersion> GlobalSettings::availableWineVersions;
-std::vector<WineVersion> GlobalSettings::availableWinetricksVersions;
-std::vector<WineVersion> GlobalSettings::availableWineDependencies;
+std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::fileSystemVersions;
+std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::availableFileSystemVersions;
+std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::availableFileSystemDependencies;
 std::vector<AppFile> GlobalSettings::demos;
 std::vector<AppFile> GlobalSettings::components;
 int GlobalSettings::iconSize;
@@ -65,11 +63,9 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::defaultFont = nullptr;
     GlobalSettings::sectionTitleFont = nullptr;
     GlobalSettings::iconFontsLoaded = false;
-    GlobalSettings::availableWineVersions.clear();
-    GlobalSettings::availableWinetricksVersions.clear();
+    GlobalSettings::availableFileSystemVersions.clear();
     GlobalSettings::demos.clear();
-    GlobalSettings::wineVersions.clear();
-    GlobalSettings::winetricksVersions.clear();
+    GlobalSettings::fileSystemVersions.clear();
     GlobalSettings::components.clear();
 
     GlobalSettings::dataFolderLocation = KNativeSystem::getLocalDirectory();
@@ -137,14 +133,17 @@ void GlobalSettings::init(int argc, const char **argv) {
 void GlobalSettings::startUp() {
     GlobalSettings::initWineVersions();
     BString containersPath = GlobalSettings::dataFolderLocation ^ B("Containers");
-    if (!Fs::doesNativePathExist(containersPath) && GlobalSettings::wineVersions.size() > 0) {
-        BString defaultContainerPath = containersPath ^ B("Default");
-        Fs::makeNativeDirs(defaultContainerPath);
-        BoxedContainer* container = BoxedContainer::createContainer(defaultContainerPath, B("Default"), GlobalSettings::wineVersions[0].name);
-        BString nativePath = GlobalSettings::getRootFolder(container) ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ "windows" ^ "system32";
-        Fs::makeNativeDirs(nativePath);
-        BoxedApp app(B("WineMine"), B("/opt/wine/lib/wine/fakedlls"), B("winemine.exe"), container);
-        app.saveApp();
+    if (!Fs::doesNativePathExist(containersPath) && GlobalSettings::fileSystemVersions.size() > 0) {
+        std::shared_ptr<FileSystemZip> fs = GlobalSettings::fileSystemVersions[0];
+        if (fs->hasWine()) {
+            BString defaultContainerPath = containersPath ^ B("Default");
+            Fs::makeNativeDirs(defaultContainerPath);
+            BoxedContainer* container = BoxedContainer::createContainer(defaultContainerPath, B("Default"), fs);
+            BString nativePath = GlobalSettings::getRootFolder(container) ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ "windows" ^ "system32";
+            Fs::makeNativeDirs(nativePath);
+            BoxedApp app(B("WineMine"), B("/opt/wine/lib/wine/fakedlls"), B("winemine.exe"), container);
+            app.saveApp();
+        }
     }
     GlobalSettings::loadFileLists();
     GlobalSettings::checkFileListForUpdate();
@@ -178,69 +177,109 @@ void GlobalSettings::saveConfig() {
     config.saveChanges();
 }
 
-BString GlobalSettings::getFileFromWineName(BString name) {
-    for (auto& ver : GlobalSettings::wineVersions) {
-        if (ver.name.compareTo(name, true) == 0) {
-            return ver.filePath;
+BString GlobalSettings::getFileFromWineVersion(BString name) {
+    for (auto& ver : GlobalSettings::fileSystemVersions) {
+        if (ver->wineName.compareTo(name, true) == 0 && ver->hasWine()) {
+            return ver->filePath;
         }
     }
     return B("");
 }
 
-WineVersion* GlobalSettings::getInstalledWineFromName(BString name) {
-    for (auto& ver : GlobalSettings::wineVersions) {
-        if (ver.name.compareTo(name, true) == 0) {
-            return &ver;
+BString GlobalSettings::getFileFromFileSystemName(BString name) {
+    for (auto& ver : GlobalSettings::fileSystemVersions) {
+        if (ver->name.compareTo(name, true) == 0) {
+            return ver->filePath;
+        }
+    }
+    return B("");
+}
+
+std::shared_ptr<FileSystemZip> GlobalSettings::getInstalledFileSystemFromName(BString name, bool mustHaveWine) {
+    for (auto& ver : GlobalSettings::fileSystemVersions) {
+        if (ver->name.compareTo(name, true) == 0 && (!mustHaveWine || ver->hasWine())) {
+            return ver;
         }
     }
     return nullptr;
 }
 
-WineVersion* GlobalSettings::getAvailableWineFromName(BString name) {
-    for (auto& ver : GlobalSettings::availableWineVersions) {
-        if (ver.name.compareTo(name, true) == 0) {
-            return &ver;
+std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::getWineVersions() {
+    std::vector<std::shared_ptr<FileSystemZip>> results;
+
+    for (auto& fileSystem : fileSystemVersions) {
+        if (fileSystem->hasWine()) {
+            results.push_back(fileSystem);
+        }
+    }
+    return results;
+}
+
+std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::getAvailableWineVersions() {
+    std::vector<std::shared_ptr<FileSystemZip>> results;
+
+    for (auto& fileSystem : availableFileSystemVersions) {
+        if (fileSystem->hasWine()) {
+            results.push_back(fileSystem);
+        }
+    }
+    return results;
+}
+
+std::shared_ptr<FileSystemZip> GlobalSettings::getAvailableFileSystemFromName(BString name, bool mustHaveWine) {
+    for (auto& ver : fileSystemVersions) {
+        if (ver->name.compareTo(name, true) == 0 && (!mustHaveWine || ver->hasWine())) {
+            return ver;
         }
     }
     return nullptr;
 }
 
 void GlobalSettings::lookForFileSystems(BString path) {
-    Fs::iterateAllNativeFiles(path, true, false, [] (BString filepath, bool isDir)->U32 {
+    Fs::iterateAllNativeFiles(path, true, false, [](BString filepath, bool isDir)->U32 {
         if (filepath.endsWith(".zip", true)) {
-            BString wineVersion;
-            if (FsZip::readFileFromZip(filepath, B("wineVersion.txt"), wineVersion) && wineVersion.length() && !GlobalSettings::getFileFromWineName(wineVersion).length()) {
-                BString fsVersion;
+
+            BString fsVersion;
+            if (FsZip::readFileFromZip(filepath, B("version.txt"), fsVersion) && fsVersion.length()) {
+                BString wineVersion;
                 BString depend;
                 BString packages;
-                FsZip::readFileFromZip(filepath, B("version.txt"), fsVersion);
+                BString name;
+
                 fsVersion = fsVersion.trim();
+                FsZip::readFileFromZip(filepath, B("wineVersion.txt"), wineVersion);
+                wineVersion = wineVersion.trim();
+
+                FsZip::readFileFromZip(filepath, B("name.txt"), name);
+                name = name.trim();
+
+                if (name.length() == 0) {
+                    name = wineVersion;
+                }
+
+                if (GlobalSettings::getFileFromFileSystemName(name).length() || (wineVersion.length() && GlobalSettings::getFileFromFileSystemName(wineVersion).length())) {
+                    return 0;
+                }
                 FsZip::readFileFromZip(filepath, B("depends.txt"), depend);
                 depend = depend.trim();
                 FsZip::readFileFromZip(filepath, B("packages.txt"), packages);
-                GlobalSettings::wineVersions.push_back(WineVersion(wineVersion, fsVersion, filepath, B(""), depend));
-                packages.split("\r\n", GlobalSettings::wineVersions.back().tinyCorePackages);
-                if (GlobalSettings::wineVersions.back().tinyCorePackages.size()) {
-                    GlobalSettings::wineVersions.back().tinyCoreURL = "http://" + GlobalSettings::wineVersions.back().tinyCorePackages[0];
-                    GlobalSettings::wineVersions.back().tinyCorePackages.erase(GlobalSettings::wineVersions.back().tinyCorePackages.begin());                  
+                std::shared_ptr<FileSystemZip> fs = std::make_shared<FileSystemZip>(name, wineVersion, fsVersion, filepath, B(""), depend);
+                GlobalSettings::fileSystemVersions.push_back(fs);
+                packages.split("\r\n", fs->tinyCorePackages);
+                if (fs->tinyCorePackages.size()) {
+                    fs->tinyCoreURL = "http://" + fs->tinyCorePackages[0];
+                    fs->tinyCorePackages.erase(fs->tinyCorePackages.begin());
                 }
-            }
-            BString winetricksVersion;
-            if (FsZip::readFileFromZip(filepath, B("winetricksVersion.txt"), winetricksVersion) && winetricksVersion.length()) {
-                BString fsVersion;
-                BString depend;
-                BString dlls;
-                BString fonts;
-                FsZip::readFileFromZip(filepath, B("version.txt"), fsVersion);
-                fsVersion = fsVersion.trim();
-                FsZip::readFileFromZip(filepath, B("depends.txt"), depend);
-                depend = depend.trim();
-                FsZip::readFileFromZip(filepath, B("dlls.txt"), dlls);
-                FsZip::readFileFromZip(filepath, B("fonts.txt"), fonts);
-                WineVersion v = WineVersion(winetricksVersion, fsVersion, filepath, B(""), depend);
-                v.data = fonts;
-                v.data2 = dlls;
-                GlobalSettings::winetricksVersions.push_back(v);
+
+                BString winetricksVersion;
+                if (FsZip::readFileFromZip(filepath, B("winetricksVersion.txt"), winetricksVersion) && winetricksVersion.length()) {
+                    BString dlls;
+                    BString fonts;
+                    FsZip::readFileFromZip(filepath, B("dlls.txt"), dlls);
+                    FsZip::readFileFromZip(filepath, B("fonts.txt"), fonts);
+                    fs->wineTrickFonts = fonts;
+                    fs->wineTrickDlls = dlls;
+                }
             }
         }        
         return 0;
@@ -252,16 +291,16 @@ void GlobalSettings::initWineVersions() {
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ "FileSystems");
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ ".." ^ "FileSystems");
-    std::sort(GlobalSettings::wineVersions.rbegin(), GlobalSettings::wineVersions.rend());
+    std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend());
 }
 
 void GlobalSettings::reloadWineVersions() {
-    GlobalSettings::wineVersions.clear();
+    GlobalSettings::fileSystemVersions.clear();
     GlobalSettings::lookForFileSystems(GlobalSettings::getFileSystemFolder());
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ "FileSystems");
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ ".." ^ "FileSystems");
-    std::sort(GlobalSettings::wineVersions.rbegin(), GlobalSettings::wineVersions.rend());
+    std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend());
 }
 
 BString GlobalSettings::getContainerFolder() {
@@ -327,9 +366,8 @@ void GlobalSettings::reloadApps() {
 void GlobalSettings::loadFileLists() {
     BOXEDWINE_CRITICAL_SECTION;
 
-    GlobalSettings::availableWineVersions.clear();
-    GlobalSettings::availableWinetricksVersions.clear();
-    GlobalSettings::availableWineDependencies.clear();
+    GlobalSettings::availableFileSystemVersions.clear();
+    GlobalSettings::availableFileSystemDependencies.clear();
     GlobalSettings::demos.clear();
     GlobalSettings::components.clear();
 
@@ -344,6 +382,7 @@ void GlobalSettings::loadFileLists() {
         pugi::xml_node node = doc.child("XML");        
         for (pugi::xml_node wine : node.children("Wine")) {
             BString childName = BString::copy(wine.child("Name").text().as_string());
+            BString wineVersion = BString::copy(wine.child("WineVersion").text().as_string());
             BString ver = BString::copy(wine.child("FileVersion").text().as_string());
             BString file = BString::copy(wine.child("FileURL").text().as_string());
             BString file2 = BString::copy(wine.child("FileURL2").text().as_string());
@@ -351,25 +390,13 @@ void GlobalSettings::loadFileLists() {
             int fileSize = wine.child("FileSizeMB").text().as_int();
 
             if (childName.length() && ver.length() && file.length()) {
-                GlobalSettings::availableWineVersions.push_back(WineVersion(childName, ver, file, file2, depend, fileSize));
+                std::shared_ptr<FileSystemZip> fs = std::make_shared<FileSystemZip>(childName, wineVersion, ver, file, file2, depend, fileSize);
+                GlobalSettings::availableFileSystemVersions.push_back(fs);
             }
             else {
                 break;
             }
         }    
-        for (pugi::xml_node wine : node.children("Winetricks")) {
-            BString childName = BString::copy(wine.child("Name").text().as_string());
-            BString ver = BString::copy(wine.child("FileVersion").text().as_string());
-            BString file = BString::copy(wine.child("FileURL").text().as_string());
-            int fileSize = wine.child("FileSizeMB").text().as_int();
-
-            if (childName.length() && ver.length() && file.length()) {
-                GlobalSettings::availableWinetricksVersions.push_back(WineVersion(childName, ver, file, B(""), B(""), fileSize));
-            }
-            else {
-                break;
-            }
-        }
         for (pugi::xml_node wine : node.children("Dependency")) {
             BString childName = BString::copy(wine.child("Name").text().as_string());
             BString ver = BString::copy(wine.child("FileVersion").text().as_string());
@@ -378,7 +405,8 @@ void GlobalSettings::loadFileLists() {
             int fileSize = wine.child("FileSizeMB").text().as_int();
 
             if (childName.length() && ver.length() && file.length()) {
-                GlobalSettings::availableWineDependencies.push_back(WineVersion(childName, ver, file, B(""), depend, fileSize));
+                std::shared_ptr<FileSystemZip> fs = std::make_shared<FileSystemZip>(childName, B(""), ver, file, B(""), depend, fileSize);
+                GlobalSettings::availableFileSystemDependencies.push_back(fs);
             } else {
                 break;
             }
@@ -475,11 +503,11 @@ bool GlobalSettings::isFilesListDownloading() {
     return GlobalSettings::filesListDownloading;
 }
 
-static std::vector<WineVersion> upgradeAvailable;
+static std::vector<std::shared_ptr<FileSystemZip>> upgradeAvailable;
 
 void doUpgrade() {
     if (upgradeAvailable.size()) {
-        GlobalSettings::downloadWine(upgradeAvailable.back(), [](bool onSuccess) {
+        GlobalSettings::downloadFileSystem(upgradeAvailable.back(), [](bool onSuccess) {
             if (onSuccess) {
                 upgradeAvailable.pop_back();
                 doUpgrade();
@@ -547,14 +575,14 @@ void GlobalSettings::updateFileList(BString fileLocation) {
                 if (changed) {
                     upgradeAvailable.clear();
                     BString wineLabel;
-                    for (auto& ver : GlobalSettings::wineVersions) {
-                        for (auto& avail : GlobalSettings::availableWineVersions) {
-                            if (ver.name == avail.name && ver.fsVersion != avail.fsVersion) {
+                    for (auto& ver : GlobalSettings::fileSystemVersions) {
+                        for (auto& avail : GlobalSettings::availableFileSystemVersions) {
+                            if (ver->name == avail->name && ver->fsVersion != avail->fsVersion) {
                                 upgradeAvailable.push_back(avail);
                                 if (wineLabel.length()) {
                                     wineLabel += ", ";
                                 }
-                                wineLabel += ver.name;
+                                wineLabel += ver->name;
                             }
                         }
                     }
@@ -585,11 +613,11 @@ void GlobalSettings::loadFonts() {
     }
     BString zipFilePath;
 
-    if (wineVersions.size()) {
-        zipFilePath = wineVersions[0].getDependFilePath();
+    if (fileSystemVersions.size()) {
+        zipFilePath = fileSystemVersions[0]->getDependFilePath();
 
         if (!zipFilePath.length() || !Fs::doesNativePathExist(zipFilePath)) {
-            zipFilePath = wineVersions[0].filePath;
+            zipFilePath = fileSystemVersions[0]->filePath;
         }
         if (!Fs::doesNativePathExist(zipFilePath)) {
             zipFilePath = B("");
@@ -675,15 +703,15 @@ void GlobalSettings::downloadFile(BString url, BString filePath, BString name, U
         });
 }
 
-void GlobalSettings::downloadWine(const WineVersion& version, std::function<void(bool)> onCompleted) {
+void GlobalSettings::downloadFileSystem(const std::shared_ptr<FileSystemZip>& version, std::function<void(bool)> onCompleted) {
     runOnMainUI([&version, onCompleted]() {
-        BString filePath = version.getLocalFilePath();
+        BString filePath = version->getLocalFilePath();
         if (!Fs::doesNativePathExist(GlobalSettings::getFileSystemFolder())) {
             Fs::makeNativeDirs(GlobalSettings::getFileSystemFolder());
         }
         std::vector<DownloadItem> items;
-        items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, version.name), version.filePath, version.filePathBackup, filePath, ((U64)(version.size)) * 1024 * 1024));
-        WineVersion* depend = version.getMissingDependency();
+        items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, version->name), version->filePath, version->filePathBackup, filePath, ((U64)(version->size)) * 1024 * 1024));
+        std::shared_ptr<FileSystemZip> depend = version->getMissingDependency();
         if (depend) {
             items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, depend->name), depend->filePath, depend->filePathBackup, depend->getLocalFilePath(), ((U64)(depend->size)) * 1024 * 1024));
         }
@@ -753,7 +781,7 @@ BString GlobalSettings::createUniqueContainerPath(BString name) {
     }
 }
 
-BString WineVersion::getDependFilePath() const {
+BString FileSystemZip::getDependFilePath() const {
     if (this->depend.length()) {
         BString result = GlobalSettings::getFileSystemFolder() ^ depend;
         if (!Fs::doesNativePathExist(result)) {
@@ -768,14 +796,14 @@ BString WineVersion::getDependFilePath() const {
     return B("");
 }
 
-WineVersion* WineVersion::getMissingDependency() const {
+std::shared_ptr<FileSystemZip> FileSystemZip::getMissingDependency() const {
     BString dependPath = GlobalSettings::getFileSystemFolder() ^ depend;
-    for (auto& w : GlobalSettings::availableWineDependencies) {
-        if (w.name == this->depend) {
+    for (auto& w : GlobalSettings::availableFileSystemDependencies) {
+        if (w->name == this->depend) {
             BString version;
             if (FsZip::readFileFromZip(dependPath, B("version.txt"), version)) {
-                if (version != w.fsVersion) {
-                    return &w;
+                if (version != w->fsVersion) {
+                    return w;
                 }
             }
         }
@@ -783,9 +811,9 @@ WineVersion* WineVersion::getMissingDependency() const {
     if (this->depend.length()) {
         if (!Fs::doesNativePathExist(this->depend)) {            
             if (!Fs::doesNativePathExist(dependPath)) {
-                for (auto& w : GlobalSettings::availableWineDependencies) {
-                    if (w.name == this->depend) {
-                        return &w;
+                for (auto& w : GlobalSettings::availableFileSystemDependencies) {
+                    if (w->name == this->depend) {
+                        return w;
                     }
                 }
             }
@@ -794,7 +822,7 @@ WineVersion* WineVersion::getMissingDependency() const {
     return nullptr;
 }
 
-BString WineVersion::getLocalFilePath() const {
+BString FileSystemZip::getLocalFilePath() const {
     int pos = this->filePath.lastIndexOf('/');
     if (pos == -1) {
         return B(""); // :TODO: error msg?

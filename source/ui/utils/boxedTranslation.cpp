@@ -224,10 +224,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "Choose App";
     case Msg::CONTAINER_OPTIONS_DOWNLOAD_WINETRICKS:
         return "Winetricks is a helper script to download and install various redistributable runtime libraries needed to run some programs in Wine.";
-    case Msg::COMMON_WINE_VERSION_LABEL:
-        return "Wine Version:";
-    case Msg::COMMON_WINE_VERSION_HELP:
-        return "You should just use the default Wine version, which is the most recent version, unless you know your application needs another version.";
+    case Msg::COMMON_FILESYSTEM_VERSION_LABEL:
+        return "File System:";
+    case Msg::COMMON_FILESYSTEM_VERSION_HELP:
+        return "If you are not sure, then just use the default value which should be the most recent Wine version.";
     case Msg::UNZIP_DLG_TITLE:
         return "Unzipping ...";
     case Msg::GENERIC_BROWSE_BUTTON:
@@ -396,8 +396,8 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "Select which Wine app you would like to run in this container.";
     case Msg::CONTAINER_VIEW_SELECT_WINE_APP_DLG_TITLE:
         return "Run Wine App";
-    case Msg::CONTAINER_VIEW_RUNE_WINE_APP_BUTTON_LABEL:
-        return "Run Wine App";
+    case Msg::CONTAINER_VIEW_RUNE_APP_BUTTON_LABEL:
+        return "Run App";
     case Msg::CONTAINER_VIEW_POLL_RATE_LABEL:
         return "Poll Rate:";
     case Msg::CONTAINER_VIEW_POLL_RATE_HELP:
@@ -410,10 +410,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?";
     case Msg::ERROR_NO_WINE_HIGH_DPI:
         return "There are no versions of Wine installed.  Would you like to install the default version of Wine now?  Installing a version of Wine will also fix the small fonts you are seeing.";
-    case Msg::ERROR_MISSING_WINE:
-        return "{0} is missing.  Would you like to use {1} instead?";
     case Msg::ERROR_NO_FILE_LIST:
         return "Was unable to download the list of Wine versions.  Boxedwine will not work without a Wine file system.  Make sure your internet is working and you can try again by re-launching Boxedwine.  You can also manually download a Wine file system from https://sourceforge.net/projects/boxedwine/files/FileSystems/ and place it in the same directory as the Boxedwine application";
+    case Msg::ERROR_MISSING_FILE_SYSTEM:
+        return "The file system is missing.  Would you like to download it now?";
     case Msg::WINE_UPGRADE_AVAILABLE_TITLE:
         return "Upgrade Wine?";
     case Msg::WINE_UPGRADE_AVAILABLE_LABEL:

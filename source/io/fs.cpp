@@ -61,11 +61,13 @@ bool Fs::initFileSystem(const BString& rootPath) {
 void Fs::remoteNameToLocal(BString& path) {
     path.replace(Fs::nativePathSeperator, "/");
     path.replace("(_colon_)", ":");
+    path.replace("(_at_)", "@");
 }
 
 void Fs::localNameToRemote(BString& path) {
     path.replace("/", Fs::nativePathSeperator);
     path.replace(":", "(_colon_)");
+    path.replace("@", "(_at_)");
 }
 
 BString Fs::localFromNative(const BString& path) {

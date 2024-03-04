@@ -8,7 +8,10 @@ bool BoxedContainer::load(BString dirPath) {
     BString iniFilePath = this->dirPath ^ "container.ini";
     ConfigFile config(iniFilePath);
     this->name = config.readString(B("Name"), B(""));
-    this->wineVersion = config.readString(B("WineVersion"), B(""));
+    BString wineVersion = config.readString(B("WineVersion"), B("")); // compat
+    this->fileSystemZipName = config.readString(B("FileSystemZipName"), wineVersion);
+
+    this->fileSystem = GlobalSettings::getInstalledFileSystemFromName(fileSystemZipName);
 
     int i = 1;
     while (true) {
@@ -25,7 +28,7 @@ bool BoxedContainer::load(BString dirPath) {
         this->mounts.push_back(MountInfo(parts[0], parts[1], parts[0].length() == 1));
         i++;
     }
-    bool result = this->name.length()>0 && this->wineVersion.length()>0;
+    bool result = this->name.length()>0;
     if (result) {
         this->loadApps();
     }
@@ -38,10 +41,10 @@ BoxedContainer::~BoxedContainer() {
     }
 }
 
-BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, BString wineVersion) {
+BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, std::shared_ptr<FileSystemZip> fileSystem) {
     BoxedContainer* container = new BoxedContainer();
     container->name = name;
-    container->wineVersion = wineVersion;
+    container->fileSystem = fileSystem;
     container->dirPath = dirPath;
     if (!Fs::doesNativePathExist(dirPath)) {
         Fs::makeNativeDirs(dirPath);
@@ -58,7 +61,8 @@ bool BoxedContainer::saveContainer() {
     BString iniFilePath = dirPath ^ "container.ini";
     ConfigFile config(iniFilePath);
     config.writeString(B("Name"), this->name);
-    config.writeString(B("WineVersion"), this->wineVersion);
+    std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
+    config.writeString(B("FileSystemZipName"), fs->name);
     for (int i = 0; i < (int)this->mounts.size(); i++) {
         config.writeString("Mount" + BString::valueOf(i + 1), this->mounts[i].localPath + "|" + this->mounts[i].nativePath);
     }
@@ -99,8 +103,8 @@ void BoxedContainer::deleteApp(BoxedApp* app) {
     }
 }
 
-int BoxedContainer::getWineVersionAsNumber() {
-    return getWineVersionAsNumber(this->wineVersion);
+BString BoxedContainer::getFileSystemName() {
+    return this->fileSystemZipName;
 }
 
 int BoxedContainer::getWineVersionAsNumber(BString wineVersion) {
@@ -116,8 +120,9 @@ int BoxedContainer::getWineVersionAsNumber(BString wineVersion) {
     return 0;
 }
 
-bool BoxedContainer::doesWineVersionExist() {
-    return Fs::doesNativePathExist(GlobalSettings::getFileFromWineName(this->wineVersion));
+bool BoxedContainer::doesFileSystemExist() {
+    std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
+    return fs && Fs::doesNativePathExist(fs->filePath);
 }
 
 void BoxedContainer::launch(const std::vector<BString>& args, BString labelForWaitDlg) {
@@ -139,7 +144,8 @@ void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
-    GlobalSettings::startUpArgs.addZip(GlobalSettings::getFileFromWineName(this->wineVersion));
+    std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
+    GlobalSettings::startUpArgs.addZip(fs->filePath);
     BString root = GlobalSettings::getRootFolder(this);
 
     if (!Fs::doesNativePathExist(root)) {
@@ -165,8 +171,9 @@ bool compareApps(BoxedApp& a1, BoxedApp& a2)
     return (a1.getName() < a2.getName());
 }
 
-void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
+void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
     std::set<BString> wineApps;
+
     wineApps.insert(B("taskmgr.exe"));
     wineApps.insert(B("winecfg.exe"));
     wineApps.insert(B("clock.exe"));
@@ -180,45 +187,55 @@ void BoxedContainer::getWineApps(std::vector<BoxedApp>& apps) {
     wineApps.insert(B("regedit.exe"));
     wineApps.insert(B("wordpad.exe"));
     //wineApps.insert("wmplayer.exe");
-    FsZip::iterateFiles(GlobalSettings::getFileFromWineName(this->wineVersion), [this, &apps, &wineApps](BString fileName) {
-        if (!fileName.endsWith('/')) {
-            BString name = Fs::getFileNameFromPath(fileName);
-            BString lname = name.toLowerCase();
+    std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
+    if (fs && fs->hasWine()) {
+        FsZip::iterateFiles(fs->filePath, [this, &apps, &wineApps](BString fileName) {
+            if (!fileName.endsWith('/')) {
+                BString name = Fs::getFileNameFromPath(fileName);
+                BString lname = name.toLowerCase();
 
-            if (wineApps.count(lname)) {
-                bool found = false;
-                for (auto& a : apps) {
-                    if (a.cmd == name) {
-                        found = true;
-                        break;
+                if (wineApps.count(lname)) {
+                    bool found = false;
+                    for (auto& a : apps) {
+                        if (a.cmd == name) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        BoxedApp app;
+                        app.container = this;
+                        app.name = name;
+                        app.path = "/" + Fs::getParentPath(fileName);
+                        app.cmd = app.name;
+                        apps.push_back(app);
                     }
                 }
-                if (!found) {
-                    BoxedApp app;
-                    app.container = this;
-                    app.name = name;
-                    app.path = "/"+Fs::getParentPath(fileName);
-                    app.cmd = app.name;
-                    apps.push_back(app);
-                }
             }
+            });
+        BoxedApp app;
+        app.container = this;
+        app.name = B("wineboot -u");
+        app.path = B("/bin");
+        app.cmd = B("wineboot");
+        app.args.push_back(B("-u"));
+        apps.push_back(app);
+    }    
+    if (doesFileExist(B("/usr/local/bin/startx"))) {
+        BoxedApp app;
+        app.container = this;
+        app.name = B("startx");
+        app.path = B("/usr/local/bin/");
+        app.iconPath = GlobalSettings::getDemoFolder() ^ "startx.png";
+        if (!Fs::doesNativePathExist(app.iconPath)) {
+            FsZip::extractFileFromZip(fs->filePath, B("icons/startx.png"), GlobalSettings::getDemoFolder());
         }
-        });
-    BoxedApp app;
-    app.container = this;
-    app.name = B("wineboot -u");
-    app.path = B("/bin");
-    app.cmd = B("wineboot");
-    app.args.push_back(B("-u"));
-    apps.push_back(app);
-
-    app.name = B("startx");
-    app.path = B("/usr/local/bin/");
-    app.cmd = B("startx");
-    app.uid = 0;
-    app.isWine = false;
-    app.args.clear();
-    apps.push_back(app);
+        app.cmd = B("startx");
+        app.euid = 0;
+        app.isWine = false;
+        app.args.clear();
+        apps.push_back(app);
+    }
     std::sort(apps.begin(), apps.end(), compareApps);
 }
 
@@ -299,6 +316,18 @@ void BoxedContainer::getNewDesktopLinkApps(std::vector<BoxedApp>& apps) {
 
 void BoxedContainer::updateCachedSize() {
     this->cachedSize = getReadableSize(Fs::getNativeDirectorySize(this->getDir(), true));
+}
+
+bool BoxedContainer::doesFileExist(const BString& localFilePath) {
+    BString nativePath = this->dirPath ^ "root" ^ Fs::nativeFromLocal(localFilePath);
+    if (Fs::doesNativePathExist(nativePath)) {
+        return true;
+    }
+    std::shared_ptr<FileSystemZip> fs = fileSystem.lock();
+    if (fs && FsZip::doesFileExist(fs->filePath, localFilePath.substr(1))) {
+        return true;
+    }
+    return false;
 }
 
 BString BoxedContainer::getNativePathForApp(const BoxedApp& app) {
@@ -536,7 +565,7 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
         return;
     }
     BString cachedLocation = location ^ package;
-    WineVersion* wine = GlobalSettings::getInstalledWineFromName(wineVersion);
+    std::shared_ptr<FileSystemZip> fileSystem = this->fileSystem.lock();
     
     if (!Fs::doesNativePathExist(cachedLocation)) {
         needsDownload.push_back(package);        
@@ -546,7 +575,7 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
     }
 
     BString dep;
-    if (FsZip::readFileFromZip(wine->filePath, "dep/" + package + ".dep", dep)) {
+    if (FsZip::readFileFromZip(fileSystem->filePath, "dep/" + package + ".dep", dep)) {
         std::vector<BString> lines;
         dep.split("\n", lines);
         for (auto& line : lines) {
@@ -584,10 +613,10 @@ void BoxedContainer::installTinyCorePackage(BString package) {
         if (!Fs::doesNativePathExist(location)) {
             Fs::makeNativeDirs(location);
         }
-        WineVersion* wine = GlobalSettings::getInstalledWineFromName(wineVersion);
+        std::shared_ptr<FileSystemZip> fileSystem = this->fileSystem.lock();
         std::vector<DownloadItem> items;
         for (auto& package : needsDownload) {
-            items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, package), wine->tinyCoreURL + package, B(""), location ^ package, 0));
+            items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, package), fileSystem->tinyCoreURL + package, B(""), location ^ package, 0));
         }
         runOnMainUI([this, items, todo]() {
             new DownloadDlg(Msg::DOWNLOADDLG_TITLE, items, [this, todo](bool success) {

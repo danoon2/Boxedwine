@@ -162,9 +162,9 @@ void InstallView::createInstallTab(BString initialFileOrDirPath) {
     // Initialize Container Name Control
     containerNameControl = containerSection->addTextInputRow(Msg::INSTALLVIEW_CONTAINER_NAME_LABEL, Msg::INSTALLVIEW_CONTAINER_NAME_HELP);
 
-    // Initialize Wine Version Control
-    wineVersionControl = createWineVersionCombobox(containerSection);
-    wineVersionControl->onChange = [this]() {
+    // Initialize FileSystem Version Control
+    fileSystemVersionControl = createFileSystemVersionCombobox(containerSection);
+    fileSystemVersionControl->onChange = [this]() {
         setWindowsVersionDefault();        
     };
     // Initialize Windows Version Control
@@ -203,7 +203,12 @@ void InstallView::createInstallTab(BString initialFileOrDirPath) {
 }
 
 void InstallView::setWindowsVersionDefault() {
-    BString ver = wineVersionControl->getSelectionStringValue();
+    BString ver = fileSystemVersionControl->getSelectionStringValue();
+    std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getAvailableFileSystemFromName(ver);
+
+    if (fileSystem) {
+        windowsVersionControl->setRowHidden(!fileSystem->hasWine());
+    }
     if (ver.startsWith("Wine ")) {
         ver = ver.substr(5);
         std::vector<BString> parts;
@@ -255,7 +260,7 @@ void InstallView::onInstall() {
     BString location = locationControl->getText();
     int containerIndex = containerControl->getSelection();
     BString containerName = containerNameControl->getText();
-    int wineVersionIndex = wineVersionControl->getSelection();
+    int fileSystemVersionIndex = fileSystemVersionControl->getSelection();
     int windowsVersionIndex = windowsVersionControl->getSelection();
     int installType = installTypeControl->getSelection();
 
@@ -298,7 +303,8 @@ void InstallView::onInstall() {
                 this->errorMsg = this->errorMsgString;
                 return;
             }
-            container = BoxedContainer::createContainer(containerFilePath, containerName, GlobalSettings::getWineVersions()[wineVersionIndex].name);
+            std::shared_ptr<FileSystemZip> fs = GlobalSettings::getFileSystemVersions()[fileSystemVersionIndex];
+            container = BoxedContainer::createContainer(containerFilePath, containerName, fs);
             container->setWindowsVersion(BoxedwineData::getWinVersions()[windowsVersionIndex]);
             containerCreated = true;
         }
