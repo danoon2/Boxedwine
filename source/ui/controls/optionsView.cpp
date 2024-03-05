@@ -15,7 +15,7 @@ OptionsView::OptionsView(BString tab) : BaseView(B("OptionsView")) {
         }
 
     }
-    this->wineTitle = c_getTranslation(Msg::OPTIONSVIEW_TITLE_WINE_VERSISONS);
+    this->wineTitle = c_getTranslation(Msg::OPTIONSVIEW_TITLE_FILESYSTEM);
 
     createGeneralTab();
     createThemeTab();
@@ -372,7 +372,8 @@ void OptionsView::runWineOptions() {
 void OptionsView::download(const std::shared_ptr<FileSystemZip>& version) {
     GlobalSettings::downloadFileSystem(version, [this](bool success) {
         if (success) {
-            runOnMainUI([this]()->bool {                
+            runOnMainUI([this]()->bool {        
+                GlobalSettings::reloadWineVersions();
                 this->loadFileSystemVersions();
                 return false;
                 });

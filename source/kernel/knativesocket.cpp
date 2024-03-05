@@ -462,7 +462,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
             return handleNativeSocketError(t, false);
         }
         U32 count = ifconf.ifc_len / sizeof(struct ifreq);
-        thread->memory->writed(address + 4, ifconf.ifc_len);
+        thread->memory->writed(address, ifconf.ifc_len);
         thread->memory->memcpy(thread->memory->readd(address + 4), ifs, ifconf.ifc_len);
         delete[] ifs;
         return 0;

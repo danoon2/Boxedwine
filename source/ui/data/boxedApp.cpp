@@ -26,7 +26,10 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->pollRate = config.readInt(B("PollRate"), 0);
     this->skipFramesFPS = config.readInt(B("SkipFramesFPS"), 0);
     this->openGlType = config.readInt(B("OpenGL"), OPENGL_TYPE_NOT_SET);
-    
+    this->isWine = config.readBool(B("IsWine"), true);
+    this->uid = config.readInt(B("uid"), -1);
+    this->euid = config.readInt(B("euid"), -1);
+
     int i = 1;
     this->args.clear();
     while (true) {
@@ -78,6 +81,9 @@ bool BoxedApp::saveApp() {
     config.writeInt(B("PollRate"), this->pollRate);
     config.writeInt(B("SkipFramesFPS"), this->skipFramesFPS);
     config.writeInt(B("OpenGL"), this->openGlType);
+    config.writeBool(B("IsWine"), this->isWine);
+    config.writeInt(B("uid"), this->uid);
+    config.writeInt(B("euid"), this->euid);
 
     BString key;
     for (int i = 0; i < (int)this->args.size(); i++) {
@@ -170,7 +176,7 @@ void BoxedApp::launch() {
         GlobalSettings::startUpArgs.userId = this->uid;
     }
     if (this->euid != -1) {
-        GlobalSettings::startUpArgs.effectiveUserId = this->uid;
+        GlobalSettings::startUpArgs.effectiveUserId = this->euid;
     }
     GlobalSettings::startUpArgs.title = this->name;
 

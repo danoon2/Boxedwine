@@ -5,6 +5,7 @@
 #include UNISTD
 #include <fcntl.h>
 #include "fszipopennode.h"
+#include UTIME
 
 FsZipNode::FsZipNode(const fsZipInfo& zipInfo, const std::shared_ptr<FsZip>& fsZip) : fsZip(fsZip) {
     this->zipInfo = zipInfo;
@@ -15,7 +16,7 @@ bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
         return false;
     FsOpenNode* from = this->open(node, K_O_RDONLY);
     bool result = false;
-    U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT, 0666);
+    U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT | O_BINARY, 0666);
     if (to != 0xFFFFFFFF) {
         U8 buffer[4096];
         U32 read = from->readNative(buffer, 4096);
@@ -25,6 +26,13 @@ bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
             read = from->readNative(buffer, 4096);
         }
         ::close(to);
+
+        struct utimbuf settime = { 0, 0 };
+
+        settime.actime = this->zipInfo.lastModified / 1000;
+        settime.modtime = this->zipInfo.lastModified / 1000;
+        utime(node->nativePath.c_str(), &settime);
+
         result = true;
     }
     from->close();

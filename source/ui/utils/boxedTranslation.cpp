@@ -120,8 +120,8 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "General";
     case Msg::OPTIONSVIEW_TITLE_DISPLAY:
         return "Display";
-    case Msg::OPTIONSVIEW_TITLE_WINE_VERSISONS:
-        return "Wine Versions";
+    case Msg::OPTIONSVIEW_TITLE_FILESYSTEM:
+        return "File Systems";
     case Msg::OPTIONSVIEW_WINE_VERSION_UPTODATE:
         return "Up to date, size: ";
     case Msg::OPTIONSVIEW_WINE_VERSION_UPDATE_AVAILABLE:

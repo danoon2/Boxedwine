@@ -231,7 +231,8 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
             FsZip::extractFileFromZip(fs->filePath, B("icons/startx.png"), GlobalSettings::getDemoFolder());
         }
         app.cmd = B("startx");
-        app.euid = 0;
+        app.uid = 0;
+        app.euid = UID;
         app.isWine = false;
         app.args.clear();
         apps.push_back(app);

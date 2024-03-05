@@ -101,18 +101,13 @@ static U32 syscall_write(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-std::shared_ptr<FsNode> findNode(std::shared_ptr<FsNode> parent, BString name);
-
 static U32 syscall_open(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG1);
     SYS_LOG1(SYSCALL_FILE, cpu, "open: name=%s flags=%x", name.c_str(), ARG2);
     U32 result = cpu->thread->process->open(name, ARG2);
 #ifdef _DEBUG
     if (result>1000) {
-        std::shared_ptr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
-        if (!found) {
-            printf("open: name=%s flags=%x result=%X\n", name.c_str(), ARG2, result);
-        }
+        printf("open: name=%s flags=%x result=%X\n", name.c_str(), ARG2, result);
     }
 #endif
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
@@ -1372,31 +1367,13 @@ static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
     return result;
 }
 
-std::shared_ptr<FsNode> findNode(std::shared_ptr<FsNode> parent, BString name) {
-    if (parent->name==name) {
-        return parent;
-    }
-    std::vector<std::shared_ptr<FsNode> > children;
-    parent->getAllChildren(children);
-    for (auto& n : children) {
-        std::shared_ptr<FsNode> result = findNode(n, name);
-        if (result) {
-            return result;
-        }
-    }
-    return nullptr;
-}
-
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
     SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, name.c_str(), ARG3);
     U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
 #ifdef _DEBUG
     if (result>1000) {
-        std::shared_ptr<FsNode> found = findNode(Fs::getNodeFromLocalPath(B(""), B("/"), false), name);
-        if (!found) {
-            printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
-        }
+        printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
     }
 #endif
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);

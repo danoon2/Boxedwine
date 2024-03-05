@@ -61,7 +61,16 @@ public:
     std::vector<BString> tinyCorePackages;
     BString tinyCoreURL;
     U32 size;
-    bool operator<(const FileSystemZip& rhs) const { return name < rhs.name; }
+    bool operator<(const FileSystemZip& rhs) const { 
+        if (wineName.length() && rhs.wineName.length()) {
+            return wineName < rhs.wineName;
+        } else if (wineName.length()) {
+            return false;
+        } else if (rhs.wineName.length()) {
+            return true;
+        }
+        return name < rhs.name; 
+    }
 };
 
 struct ImFont;

@@ -139,7 +139,7 @@ U64 FsFileNode::length() {
     return 0;
 }
 
-void FsFileNode::ensurePathIsLocal() {
+void FsFileNode::ensurePathIsLocal(bool prepareForWrite) {
 #ifdef BOXEDWINE_ZLIB
     BOXEDWINE_CRITICAL_SECTION;
     if (this->zipNode && !Fs::doesNativePathExist(this->nativePath)) {
@@ -150,7 +150,7 @@ void FsFileNode::ensurePathIsLocal() {
             Fs::makeLocalDirs(parentPath);
             this->zipNode->moveToFileSystem(shared_from_this());
         }
-    } else {
+    } else if (prepareForWrite) {
         std::shared_ptr<FsNode> parent = this->getParent().lock();
         if (parent && parent->type == Type::File) {
             BString parentPath = Fs::getParentPath(this->path);
@@ -172,6 +172,12 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     }
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
         openFlags|=O_RDONLY;
+        // make the file local so that it will load faster (no inflate and weird seeking logic)
+#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
+        if (this->zipNode) {
+            ensurePathIsLocal(false);
+        }
+#endif
     } else {
         if ((flags & K_O_ACCMODE)==K_O_WRONLY) {
             openFlags|=O_WRONLY;        
@@ -180,11 +186,11 @@ FsOpenNode* FsFileNode::open(U32 flags) {
         }
         BString parentPath = Fs::getNativeParentPath(this->nativePath);
         if (!Fs::doesNativePathExist(parentPath)) {
-            ensurePathIsLocal();
+            ensurePathIsLocal(true);
         }
 #ifdef BOXEDWINE_ZLIB
         else if (this->zipNode) {
-            ensurePathIsLocal();
+            ensurePathIsLocal(false);
         }
 #endif
     }
@@ -225,10 +231,17 @@ U32 FsFileNode::getMode() {
         return result | K__S_IRGRP;
     }
     if (!FsFileNode::nonExecFileFullPaths.count(this->path)) {
-        result|=K__S_IEXEC;
+        result |= K__S_IEXEC;
+        if (this->path.startsWith("/usr/local/bin") || this->path.startsWith("/usr/bin") || this->path.startsWith("/bin") || this->path.startsWith("/opt/wine/bin")) {
+            result |= K__S_IXGRP | K__S_IXOTH;
+        }
     }
-    if (KThread::currentThread()->process->userId == 0 || this->path.startsWith("/tmp") ||  this->path.startsWith("/var") ||  this->path.startsWith("/home")) {
-        result|=K__S_IWRITE;
+    if (KThread::currentThread()->process->userId == 0 || this->path.startsWith("/tmp") || this->path.startsWith("/var") || this->path.startsWith("/home")) {
+        result |= K__S_IWRITE;
+        // wine server needs to be private, but winetricks check "-w" in the script on /tmp which needs these 2
+        if (!this->path.startsWith("/tmp/.wine")) {
+            result |= K__S_IWGRP | K__S_IWOTH;
+        }
     }
     return result;
 }
@@ -279,7 +292,7 @@ U32 FsFileNode::rename(BString path) {
     U32 result=0;
     std::vector<S64> tmpPos;
 
-    this->ensurePathIsLocal();
+    this->ensurePathIsLocal(false);
     if (this->openNodes.size()) {
         int i=0;
         for (U32 x=0;x<this->openNodes.size();x++) {
@@ -384,7 +397,7 @@ U32 FsFileNode::removeDir() {
 U32 FsFileNode::setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) {
     struct utimbuf settime = {0, 0};
 
-    this->ensurePathIsLocal();
+    this->ensurePathIsLocal(false);
     if (lastAccessTime) {
         settime.actime = lastAccessTime;
     }

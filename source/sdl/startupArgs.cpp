@@ -358,7 +358,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
-    envValues.push_back(B("WINEDLLOVERRIDES=mscoree,mshtml="));
+    //envValues.push_back(B("WINEDLLOVERRIDES=mscoree,mshtml="));
     //envValues.push_back("WINEDEBUG=+ddraw");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu

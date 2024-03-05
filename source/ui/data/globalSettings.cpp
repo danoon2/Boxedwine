@@ -257,7 +257,7 @@ void GlobalSettings::lookForFileSystems(BString path) {
                     name = wineVersion;
                 }
 
-                if (GlobalSettings::getFileFromFileSystemName(name).length() || (wineVersion.length() && GlobalSettings::getFileFromFileSystemName(wineVersion).length())) {
+                if (name.length()==0 || GlobalSettings::getFileFromFileSystemName(name).length() || (wineVersion.length() && GlobalSettings::getFileFromFileSystemName(wineVersion).length())) {
                     return 0;
                 }
                 FsZip::readFileFromZip(filepath, B("depends.txt"), depend);
@@ -291,7 +291,9 @@ void GlobalSettings::initWineVersions() {
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ "FileSystems");
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ ".." ^ "FileSystems");
-    std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend());
+    std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend(), [](auto& l, auto& r) {
+        return *l < *r;
+        });
 }
 
 void GlobalSettings::reloadWineVersions() {
@@ -300,7 +302,9 @@ void GlobalSettings::reloadWineVersions() {
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ "FileSystems");
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ ".." ^ "FileSystems");
-    std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend());
+    std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend(), [](auto& l, auto& r) {
+        return *l < *r;
+        });
 }
 
 BString GlobalSettings::getContainerFolder() {
@@ -396,7 +400,22 @@ void GlobalSettings::loadFileLists() {
             else {
                 break;
             }
-        }    
+        }   
+        for (pugi::xml_node fs : node.children("FileSystem")) {
+            BString childName = BString::copy(fs.child("Name").text().as_string());
+            BString ver = BString::copy(fs.child("FileVersion").text().as_string());
+            BString file = BString::copy(fs.child("FileURL").text().as_string());
+            BString file2 = BString::copy(fs.child("FileURL2").text().as_string());
+            BString depend = BString::copy(fs.child("Depend").text().as_string());
+            int fileSize = fs.child("FileSizeMB").text().as_int();
+
+            if (childName.length() && ver.length() && file.length()) {
+                std::shared_ptr<FileSystemZip> fs = std::make_shared<FileSystemZip>(childName, B(""), ver, file, file2, depend, fileSize);
+                GlobalSettings::availableFileSystemVersions.push_back(fs);
+            } else {
+                break;
+            }
+        }
         for (pugi::xml_node wine : node.children("Dependency")) {
             BString childName = BString::copy(wine.child("Name").text().as_string());
             BString ver = BString::copy(wine.child("FileVersion").text().as_string());

@@ -34,7 +34,7 @@ private:
     friend class FsDirOpenNode;
     friend class Platform;
 
-    void ensurePathIsLocal();
+    void ensurePathIsLocal(bool prepareForWrite);
 #ifdef BOXEDWINE_ZLIB
     friend class FsZip;
     friend class FsZipNode;    
