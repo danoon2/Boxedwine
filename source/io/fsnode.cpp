@@ -57,10 +57,13 @@ void FsNode::loadChildren() {
                 }
                 Fs::remoteNameToLocal(n.name);
                 localPath+=n.name;
-                if (localPath.endsWith(".mixed")) {
+                if (localPath.endsWith(EXT_MIXED)) {
                     localPath.remove(localPath.length() - 6);
                 }
-                if (!localPath.endsWith(".link")) {
+                if (localPath.endsWith(EXT_DOSATTRIB)) {
+                    continue;
+                }
+                if (!localPath.endsWith(EXT_LINK)) {
                     Fs::addFileNode(localPath, B(""), remotePath, n.isDirectory, shared_from_this());
                 } else {
                     U8 tmp[MAX_FILEPATH_LEN];

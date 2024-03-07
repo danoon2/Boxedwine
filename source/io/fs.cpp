@@ -452,3 +452,24 @@ BString Fs::trimTrailingSlash(const BString& s) {
     }
     return s;
 }
+
+/*
+Read - Only = 0x1
+Hidden = 0x2
+System = 0x4
+Archive = 0x20
+*/
+BString Fs::getDosAttrib(const std::shared_ptr<FsNode>& file) {
+    U8 buffer[1024] = { 0 };
+    if (Fs::readNativeFile(file->nativePath + EXT_DOSATTRIB, buffer, 1024)) {
+        return BString::copy((const char*)buffer);
+    }
+    return BString::empty;
+}
+
+void Fs::setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib) {
+    BWriteFile w(file->nativePath + EXT_DOSATTRIB, true);
+    if (w.isOpen()) {
+        w.write(attrib);
+    }
+}

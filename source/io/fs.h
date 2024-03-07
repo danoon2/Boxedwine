@@ -86,6 +86,9 @@ public:
 
     static BString nativePathSeperator;
 
+    static BString getDosAttrib(const std::shared_ptr<FsNode>& file);
+    static void setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib);
+
     static std::shared_ptr<FsFileNode> rootNode;
 	static void shutDown();
 private:

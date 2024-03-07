@@ -488,7 +488,7 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         BString nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, fileName);
         std::shared_ptr<FsNode> mixedSibling = parent->getChildByNameIgnoreCase(fileName);
         if (mixedSibling) {
-            nativePath = nativePath + ".mixed";
+            nativePath = nativePath + EXT_MIXED;
             if (Fs::doesNativePathExist(nativePath)) {
                 kwarn("KProcess::openFileDescriptor mixed file already exists");
             }
@@ -1233,7 +1233,7 @@ U32 symlinkInDirectory(BString currentDirectory, BString target, BString linkpat
     if (!parentNode) {
         return -K_ENOENT;
     }
-    node = Fs::addFileNode(fullPath, target, Fs::getNativePathFromParentAndLocalFilename(parentNode, Fs::getFileNameFromPath(linkpath))+".link", false, parentNode);
+    node = Fs::addFileNode(fullPath, target, Fs::getNativePathFromParentAndLocalFilename(parentNode, Fs::getFileNameFromPath(linkpath))+EXT_LINK, false, parentNode);
 
     if (!node->canWrite()) {
         node->removeNodeFromParent();
@@ -2739,6 +2739,6 @@ void KProcess::printMappedFiles() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         const std::shared_ptr<MappedFile>& mappedFile = n.value;
-        klog("    %.8X - %.8X %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, mappedFile->file->openFile->node->path.c_str());
+        klog("    %.8X - %.8X (offset=%x) %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, (U32)mappedFile->offset, mappedFile->file->openFile->node->path.c_str());
     }
 }

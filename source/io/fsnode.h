@@ -4,6 +4,11 @@
 #include "platform.h"
 #include "kfilelock.h"
 
+// on windows one.txt and One.txt are the same file but on Linux they are different
+#define EXT_MIXED ".mixed"
+#define EXT_DOSATTRIB ".user.DOSATTRIB"
+#define EXT_LINK ".link"
+
 class FsOpenNode;
 class KProcess;
 class KThread;

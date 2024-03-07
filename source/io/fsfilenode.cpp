@@ -68,8 +68,11 @@ bool FsFileNode::remove() {
         result = true;
     }
 #endif
-    if (exists)
-        result = unlink(nativePath.c_str())==0;
+    if (exists) {
+        BString dosAttrib = nativePath + EXT_DOSATTRIB;
+        unlink(dosAttrib.c_str());
+        result = unlink(nativePath.c_str()) == 0;        
+    }
     // if the file failed to be deleted and it exists then its because someone else has it open, 
     // so we need to close all references, move the file then re-open the file for those handles
     // that still have it open.  By moving the file it will appear that it was deleted, but handles
@@ -319,7 +322,7 @@ U32 FsFileNode::rename(BString path) {
     BString originalPath;
 
     if (this->isLink()) {
-        nativePath = nativePath + ".link";
+        nativePath = nativePath + EXT_LINK;
     }
 
     for (U32 i=0;i<3;i++) {
@@ -345,10 +348,15 @@ U32 FsFileNode::rename(BString path) {
             }
         }
         if (originalPath.length()) {     
-            nativePath = nativePath+".mixed";
+            nativePath = nativePath+EXT_MIXED;
         }    
         result = ::rename(this->nativePath.c_str(), nativePath.c_str());
         if (result==0) {
+            BString dosAttrib = this->nativePath + EXT_DOSATTRIB;
+            if (Fs::doesNativePathExist(dosAttrib)) {
+                BString dosAttribDst = nativePath + EXT_DOSATTRIB;
+                ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
+            }
             this->removeNodeFromParent();
             this->path = path;
             this->nativePath = nativePath;
@@ -356,7 +364,7 @@ U32 FsFileNode::rename(BString path) {
             BString parentPath = Fs::getParentPath(path);
             std::shared_ptr<FsNode> parentNode = Fs::getNodeFromLocalPath(B(""), parentPath, false);
             parentNode->addChild(shared_from_this());
-            this->parent = parentNode;
+            this->parent = parentNode;            
         } else {
             result = -translateErr(errno);
             KNativeThread::sleep(100); // not sure why on Windows doesNativePathExist fails sometimes, debian stretch /usr/bin/dpkg -i /var/local/xbitmaps_1.1.1-2_all.deb seems to cause this in a reproducible way

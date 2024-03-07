@@ -94,7 +94,7 @@ bool FsZip::init(BString zipPath, BString mount) {
         readLinesFromFile(deleteFilePath, deletedLocalPaths);
 
         for (U32 i = 0; i < global_info.number_entry; ++i) {
-            if (zipInfo[i].filename.endsWith(".link")) {
+            if (zipInfo[i].filename.endsWith(EXT_LINK)) {
                 char tmp[MAX_FILEPATH_LEN];
                 zipInfo[i].filename = zipInfo[i].filename.substr(0, zipInfo[i].filename.length() - 5);
                 zipInfo[i].isLink = true;

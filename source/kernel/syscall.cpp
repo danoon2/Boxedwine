@@ -1166,7 +1166,21 @@ static U32 syscall_gettid(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {    
     U32 result = -K_ENOTSUP;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsetxattr: result = ENOTSUP IGNORED");
+    BString name = cpu->memory->readString(ARG2);
+
+    KFileDescriptor* fd = cpu->thread->process->getFileDescriptor(ARG1);
+    if (!fd) {
+        result = -K_EBADFD;
+    } else if (name == "user.DOSATTRIB") {
+        BString value = cpu->memory->readString(ARG3);
+        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
+        if (!node) {
+            result = -K_ENOTSUP;
+        } else {
+            Fs::setDosAttrib(node->openFile->node, value);
+        }
+    }
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fsetxattr: result=%x\n", result);
     return result;
 }
 
@@ -1175,7 +1189,23 @@ static U32 syscall_getxattr(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
 
     U32 result = -K_ENOTSUP;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s result = ENOTSUP IGNORED", path.c_str(), name.c_str());
+    if (name == "user.DOSATTRIB") {
+        std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, true);
+        if (!file) {
+            result = -K_ENOENT;
+        } else {
+            BString attr = Fs::getDosAttrib(file);
+            if (attr.length() == 0) {
+                result = -K_ENODATA;
+            } else if (attr.length() < ARG4) {
+                cpu->memory->strcpy(ARG3, attr.c_str());
+                result = 0;
+            } else {
+                result = -K_ERANGE;
+            }
+        }
+    }
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "getxattr: path=%s name=%s result = %x\n", path.c_str(), name.c_str(), result);
     return result;
 }
 
@@ -1183,19 +1213,57 @@ static U32 syscall_lgetxattr(CPU* cpu, U32 eipCount) {
     BString path = cpu->memory->readString(ARG1);
     BString name = cpu->memory->readString(ARG2);
     U32 result = -K_ENOTSUP;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s result = ENOTSUP IGNORED", path.c_str(), name.c_str());
+    if (name == "user.DOSATTRIB") {
+        std::shared_ptr<FsNode> file = Fs::getNodeFromLocalPath(cpu->thread->process->currentDirectory, path, false);
+        if (!file) {
+            result = -K_ENOENT;
+        } else {
+            BString attr = Fs::getDosAttrib(file);
+            if (attr.length() == 0) {
+                result = -K_ENODATA;
+            } else if (attr.length() < ARG4) {
+                cpu->memory->strcpy(ARG3, attr.c_str());
+                result = 0;
+            } else {
+                result = -K_ERANGE;
+            }
+        }
+    }
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "lgetxattr: path=%s name=%s result=%x\n", path.c_str(), name.c_str(), result);
     return result;
 }
 
 static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOTSUP;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: result = ENOTSUP IGNORED");
+    BString name = cpu->memory->readString(ARG2);
+
+    KFileDescriptor* fd = cpu->thread->process->getFileDescriptor(ARG1);
+    if (!fd) {
+        result = -K_EBADFD;
+    } else if (name == "user.DOSATTRIB") {
+        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
+        if (!node) {
+            result = -K_ENOTSUP;
+        } else {
+            BString attr = Fs::getDosAttrib(node->openFile->node);
+            if (attr.length() == 0) {
+                result = -K_ENODATA;
+            } else if (attr.length() < ARG4) {
+                cpu->memory->strcpy(ARG3, attr.c_str());
+                result = 0;
+            } else {
+                result = -K_ERANGE;
+            }
+        }
+    }
+
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fgetxattr: result = %x\n", result);
     return result;
 }
 
 static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOTSUP;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "flistxattr: result = ENOTSUP IGNORED");
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "flistxattr: result = ENOTSUP IGNORED\n");
     return result;
 }
 
