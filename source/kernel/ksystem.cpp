@@ -116,9 +116,19 @@ U32 KSystem::getProcessCount() {
 }
 
 U32 KSystem::uname(KThread* thread, U32 address) {
+    char name[64];
+    strcpy(name, "Boxedwine");
+    std::shared_ptr<FsNode> hostName = Fs::getNodeFromLocalPath(B(""), B("/etc/hostname"), true);
+    if (hostName) {
+        FsOpenNode* openHostName = hostName->open(K_O_RDONLY);
+        if (openHostName) {
+            openHostName->readNative((U8*)name, 64);
+            openHostName->close();
+        }
+    }
     KMemory* memory = thread->memory;
     memory->strcpy(address, "Linux"); // sysname
-    memory->strcpy(address + 65, "Linux"); // nodename
+    memory->strcpy(address + 65, name); // nodename
     memory->strcpy(address + 130, "5.15.10-20-generic"); // release
 #ifdef BOXEDWINE_MULTI_THREADED
     if (Platform::getCpuCount() > 1 && KSystem::cpuAffinityCountForApp != 1) {

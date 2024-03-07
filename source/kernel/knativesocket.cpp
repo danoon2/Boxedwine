@@ -1336,17 +1336,35 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
 }
 
 FsOpenNode* openHosts(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+#ifdef WIN32
+    if (!winsock_intialized) {
+        WSADATA wsaData;
+        static_cast<void>(WSAStartup(0x0202, &wsaData));
+        winsock_intialized = 1;
+    }
+#endif
     char name[256] = {};
     char buf[256] = {};
     name[0] = 0;
-    gethostname(name, 256);
+    if (gethostname(name, 256) != 0) {
+        strcpy(name, "Boxedwine");
+    }
     snprintf(buf, sizeof(buf), "127.0.0.1\tlocalhost\n127.0.1.1\t%s\n::1\tip6-localhost ip6-loopback", name);
     return new BufferAccess(node, flags, BString::copy(buf));
 }
 
 FsOpenNode* openHostname(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+#ifdef WIN32
+    if (!winsock_intialized) {
+        WSADATA wsaData;
+        static_cast<void>(WSAStartup(0x0202, &wsaData));
+        winsock_intialized = 1;
+    }
+#endif
     char buf[256];
     buf[0] = 0;
-    gethostname(buf, 256);
+    if (gethostname(buf, 256) != 0) {
+        strcpy(buf, "Boxedwine");
+    }
     return new BufferAccess(node, flags, BString::copy(buf));
 }

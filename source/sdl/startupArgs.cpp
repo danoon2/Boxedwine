@@ -128,8 +128,8 @@ void StartUpArgs::buildVirtualFileSystem() {
 	Fs::addVirtualFile(B("/dev/mixer"), openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 0), devNode);
     Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 1), devNode);    
 
-    Fs::addVirtualFile(B("/etc/hostname"), openHosts, K__S_IREAD, k_mdev(0, 0), etcNode);
-    Fs::addVirtualFile(B("/etc/hosts"), openHostname, K__S_IREAD, k_mdev(0, 0), etcNode);    
+    Fs::addVirtualFile(B("/etc/hostname"), openHostname, K__S_IREAD, k_mdev(0, 0), etcNode);
+    Fs::addVirtualFile(B("/etc/hosts"), openHosts, K__S_IREAD, k_mdev(0, 0), etcNode);
 }
 
 std::vector<BString> StartUpArgs::buildArgs() {
@@ -370,7 +370,7 @@ bool StartUpArgs::apply() {
     //works
     //envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu");        
     if (userId==0) {
-        envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin"));
+        envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin"));
     } else {
         envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin"));
     }

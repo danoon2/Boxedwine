@@ -226,7 +226,7 @@ std::shared_ptr<FsNode> Fs::addRootDirectoryNode(const BString& path, const BStr
 }
 
 BString Fs::getParentPath(const BString& path) {
-    return path.substr(0, path.lastIndexOf('/'));
+    return path.substr(0, path.lastIndexOf('/', path.length()-2));
 }
 
 BString Fs::getNativeParentPath(const BString& path) {

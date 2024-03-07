@@ -30,9 +30,11 @@ void createSysfs(const std::shared_ptr<FsNode> rootNode) {
     std::shared_ptr<FsNode> devicesSystemNode = Fs::addFileNode(B("/sys/devices/system"), B(""), B(""), true, devicesNode);
     std::shared_ptr<FsNode> cpuNode = Fs::addFileNode(B("/sys/devices/system/cpu"), B(""), B(""), true, devicesSystemNode);
 
+    U32 cpuCount = Platform::getCpuCount();
+    Fs::addVirtualFile(B("/sys/devices/system/cpu/present"), K__S_IREAD, k_mdev(0, 0), cpuNode, "0-"+BString::valueOf(cpuCount-1));
     Fs::addVirtualFile(B("/sys/devices/system/cpu/online"), openSysCpuOnline, K__S_IREAD, k_mdev(0, 0), cpuNode);
     if (Platform::getCpuFreqMHz()) {
-        for (U32 i = 0; i < Platform::getCpuCount(); i++) {
+        for (U32 i = 0; i < cpuCount; i++) {
             std::shared_ptr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu" + BString::valueOf(i), B(""), B(""), true, cpuNode);
             std::shared_ptr<FsNode> cpuFreqCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu" + BString::valueOf(i)+"/cpufreq", B(""), B(""), true, cpuCoreNode);
             Fs::addVirtualFile("/sys/devices/system/cpu/cpu" + BString::valueOf(i) + "/cpufreq/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, k_mdev(0, 0), cpuFreqCoreNode, i);

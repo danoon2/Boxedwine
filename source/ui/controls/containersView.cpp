@@ -694,6 +694,7 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
         fontsControl->setOptions(fonts);
 
         std::vector<ComboboxItem> dlls;
+        lines.clear();
         fileSystem->wineTrickDlls.split('\n', lines);
         for (auto& line : lines) {
             BString verb = line.substr(0, line.indexOf(' '));
@@ -726,8 +727,9 @@ void ContainersView::winetricks(const std::shared_ptr<FileSystemZip>& winetricks
     currentContainer->launch();     
     GlobalSettings::startUpArgs.title = "Winetricks " + verb;
     GlobalSettings::startUpArgs.addArg(B("/bin/sh"));
-    GlobalSettings::startUpArgs.addArg(B("/usr/bin/winetricks"));
-    GlobalSettings::startUpArgs.addArg(verb);    
+    GlobalSettings::startUpArgs.addArg(B("/usr/local/bin/winetricks"));
+    GlobalSettings::startUpArgs.addArg(verb);
+    GlobalSettings::startUpArgs.envValues.push_back(B("WINETRICKS_DOWNLOADER=curl"));
     GlobalSettings::startUpArgs.readyToLaunch = true;
 #ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
     GlobalSettings::startUpArgs.ttyPrepend = true;
