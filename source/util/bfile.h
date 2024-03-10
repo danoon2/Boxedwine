@@ -64,7 +64,7 @@ public:
 	U32 write(BString buffer);
 
 	template <class... Args>
-	U32 write(const char* format, Args&&... args) {
+	U32 writeFormat(const char* format, Args&&... args) {
 		auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 		BString msg(size + 1, '\0');
 		std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);

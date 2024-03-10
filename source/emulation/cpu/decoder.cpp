@@ -1483,7 +1483,7 @@ static void outEA32(DecodedOp* op, CPU* cpu) {
         if (added) {
             cpu->logFile.write("+");
         }
-        cpu->logFile.write("%X");
+        cpu->logFile.writeFormat("%X",op->disp);
     }
 }
 
@@ -1550,7 +1550,7 @@ static void outE8(DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    cpu->logFile.write("%s ", inst->name);
+    cpu->logFile.writeFormat("%s ", inst->name);
     if (inst->width==32) {
         outR32(op->reg, cpu);
         cpu->logFile.write(",");
@@ -6249,31 +6249,31 @@ void DecodedOp::log(CPU* cpu) {
     if (cpu->logFile.isOpen() && this->inst >= 0 && this->inst < None) {
         BOXEDWINE_CRITICAL_SECTION;
         U64 pos = cpu->logFile.getPos();
-        cpu->logFile.write("%04X %08X ", cpu->thread->id, cpu->eip.u32);
+        cpu->logFile.writeFormat("%04X %08X ", cpu->thread->id, cpu->eip.u32);
         instructionLog[this->inst].pfnFormat(&instructionLog[this->inst], this, cpu);
         if (instructionLog[this->inst].imm) {
             if (instructionLog[this->inst].pfnFormat!=logName)
                 cpu->logFile.write(",");
             switch (instructionLog[this->inst].width) {
             case -16:
-                cpu->logFile.write("%X", (S32)((S16)((U16)this->imm)));
+                cpu->logFile.writeFormat("%X", (S32)((S16)((U16)this->imm)));
                 break;
             case -32:
-                cpu->logFile.write("%X", this->imm);
+                cpu->logFile.writeFormat("%X", this->imm);
                 break;
             case -8:
-                cpu->logFile.write("%X", (S32)((S8)((U8)this->imm)));
+                cpu->logFile.writeFormat("%X", (S32)((S8)((U8)this->imm)));
                 break;
             default:
-                cpu->logFile.write("%X", this->imm);
+                cpu->logFile.writeFormat("%X", this->imm);
                 break;
             }        
         }
         U64 endPos = cpu->logFile.getPos();
         if (endPos-pos<55) {
-            cpu->logFile.write("                                                       ", 55-(endPos-pos));
+            cpu->logFile.write(B("                                                       ").substr(0, 55-(endPos-pos)));
         }
-        cpu->logFile.write(" EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X\n", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
+        cpu->logFile.writeFormat(" EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X\n", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
         cpu->logFile.flush();
     }
 #endif
