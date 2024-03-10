@@ -253,6 +253,7 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\kfilelock.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kmemory.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\knativesocket.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\knetlink.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kobject.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kpoll.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kprocess.cpp" />
@@ -539,6 +540,7 @@
     <ClInclude Include="..\..\..\..\..\include\knativesystem.h" />
     <ClInclude Include="..\..\..\..\..\include\knativethread.h" />
     <ClInclude Include="..\..\..\..\..\include\knativewindow.h" />
+    <ClInclude Include="..\..\..\..\..\include\knetlink.h" />
     <ClInclude Include="..\..\..\..\..\include\kobject.h" />
     <ClInclude Include="..\..\..\..\..\include\kpoll.h" />
     <ClInclude Include="..\..\..\..\..\include\kprocess.h" />

@@ -602,6 +602,9 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\procstat.cpp">
       <Filter>source\kernel\proc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\kernel\knetlink.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1898,6 +1901,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\procstat.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knetlink.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

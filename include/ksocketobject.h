@@ -34,7 +34,6 @@ public:
     U64 lastModifiedTime = 0;
     bool blocking = true;
     bool listening = false;
-    U32 nl_port = 0;    
     
     bool connected = false; // this will be 0 and connection will be set while connect is blocking
     KSockAddress destAddress;

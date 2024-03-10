@@ -388,15 +388,6 @@ U32 KUnixSocketObject::bind(KThread* thread, KFileDescriptor* fd, U32 address, U
         socketNode->kobject = fd->kobject;
         s->node = socketNode;
         return 0;
-    } else if (family == K_AF_NETLINK) {
-        std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
-        U32 port = memory->readd(address + 4);
-        if (port == 0) {
-            port = thread->process->id;
-        }
-        s->nl_port = port;
-        s->listening = 1;
-        return 0;
     }
     return -K_EAFNOSUPPORT;
 }
@@ -568,16 +559,7 @@ U32 KUnixSocketObject::getsockname(KThread* thread, KFileDescriptor* fd, U32 add
     KMemory* memory = thread->memory;
 
     U32 len = memory->readd( plen);
-    if (this->domain == K_AF_NETLINK) {
-        if (len>0 && len<12)
-            kpanic("getsocketname: AF_NETLINK wrong address size");
-        memory->writew(address, this->domain);
-        memory->writew(address + 2, 0);
-        memory->writed(address + 4, this->nl_port);
-        memory->writed(address + 8, 0);
-        memory->writed(plen, 12);
-        return 0;
-    } else if (this->domain == K_AF_UNIX) {
+    if (this->domain == K_AF_UNIX) {
         memory->writew(address, this->destAddress.family);
         len-=2;
         if (len>sizeof(this->destAddress.data))
@@ -795,8 +777,6 @@ U32 KUnixSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address
     U32 result = 0;
     KMemory* memory = thread->memory;
 
-    if (this->domain==K_AF_NETLINK)
-        return -K_EIO;
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     while (!this->msgs.size()) {
         if (this->recvBuffer.size()) {

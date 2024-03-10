@@ -23,6 +23,7 @@
 #include "kscheduler.h"
 #include "kunixsocket.h"
 #include "knativesocket.h"
+#include "knetlink.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -51,11 +52,15 @@ BString socketAddressName(KMemory* memory, U32 address, U32 len) {
 }
 
 U32 ksocket(U32 domain, U32 type, U32 protocol) {
-    if (domain==K_AF_UNIX || domain==K_AF_NETLINK) {
+    if (domain==K_AF_UNIX) {
         std::shared_ptr<KUnixSocketObject> kSocket = std::make_shared<KUnixSocketObject>(domain, type, protocol);
         KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
-    } else if (domain == K_AF_INET) {   
+    } else if (domain == K_AF_NETLINK) {
+        std::shared_ptr<KNetLinkObject> kSocket = std::make_shared<KNetLinkObject>(domain, type, protocol);
+        KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
+        return result->handle;
+    } else if (domain == K_AF_INET) {
         std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(domain, type, protocol);
         if (s->error) {
             return s->error;
