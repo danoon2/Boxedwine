@@ -9438,15 +9438,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	InMemoryFileSystem.Name = "InMemory";
 	InMemoryFileSystem.Options = {};
-	
-	/**
-	 * Get the indexedDB constructor for the current browser.
-	 * @hidden
-	 */
-	var indexedDB = global$1.indexedDB ||
-	    global$1.mozIndexedDB ||
-	    global$1.webkitIndexedDB ||
-	    global$1.msIndexedDB;
+
 	/**
 	 * Converts a DOMException or a DOMError from an IndexedDB event into a
 	 * standardized BrowserFS API error.
@@ -9490,20 +9482,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	};
 	IndexedDBROTransaction.prototype.get = function get (key, cb) {
 	    try {
-	        var r = this.store.get(key);
-	        r.onerror = onErrorHandler(cb);
-	        r.onsuccess = function (event) {
-	            // IDB returns the value 'undefined' when you try to get keys that
-	            // don't exist. The caller expects this behavior.
-	            var result = event.target.result;
-	            if (result === undefined) {
-	                cb(null, result);
+	        this.store.get(key).then(function(result, err) {
+	            if (err != null) {
+	                //kev todo onErrorHandler(cb);
+	            } else {
+                    // IDB returns the value 'undefined' when you try to get keys that
+                    // don't exist. The caller expects this behavior.
+                    if (result == null) {
+                        cb(null, undefined);
+                    }
+                    else {
+                        // IDB data is stored as an ArrayBuffer
+                        cb(null, arrayBuffer2Buffer(result));
+                    }
 	            }
-	            else {
-	                // IDB data is stored as an ArrayBuffer
-	                cb(null, arrayBuffer2Buffer(result));
-	            }
-	        };
+	        });
 	    }
 	    catch (e) {
 	        cb(convertError$2(e));
@@ -9525,17 +9518,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	            var arraybuffer = buffer2ArrayBuffer(data);
 	            var r;
 	            if (overwrite) {
-	                r = this.store.put(arraybuffer, key);
+	                this.store.put(arraybuffer, key).then(function(result, err) {
+                        cb(null, true);
+	                });
 	            }
 	            else {
 	                // 'add' will never overwrite an existing key.
-	                r = this.store.add(arraybuffer, key);
+	                this.store.add(arraybuffer, key).then(function(result, err) {
+                        cb(null, true);
+                    });
 	            }
 	            // XXX: NEED TO RETURN FALSE WHEN ADD HAS A KEY CONFLICT. NO ERROR.
-	            r.onerror = onErrorHandler(cb);
-	            r.onsuccess = function (event) {
-	                cb(null, true);
-	            };
+	            // kev need to handle r.onerror = onErrorHandler(cb);
 	        }
 	        catch (e) {
 	            cb(convertError$2(e));
@@ -9546,11 +9540,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	            // NOTE: IE8 has a bug with identifiers named 'delete' unless used as a string
 	            // like this.
 	            // http://stackoverflow.com/a/26479152
-	            var r = this.store['delete'](key);
-	            r.onerror = onErrorHandler(cb);
-	            r.onsuccess = function (event) {
+	            this.store['delete'](key).then(function(result, err) {
 	                cb();
-	            };
+	            });
+	            // kev need to handle r.onerror = onErrorHandler(cb);
 	        }
 	        catch (e) {
 	            cb(convertError$2(e));
@@ -9575,47 +9568,122 @@ return /******/ (function(modules) { // webpackBootstrap
 	
 	    return IndexedDBRWTransaction;
 	}(IndexedDBROTransaction));
-	var IndexedDBStore = function IndexedDBStore(cb, storeName) {
+	var IndexedDBStore = function IndexedDBStore(storeName) {
 	    var this$1 = this;
-	    if ( storeName === void 0 ) storeName = 'browserfs';
+	    let that = this;
+	    storeName = 'browserfs';
 	
 	    this.storeName = storeName;
-	    var openReq = indexedDB.open(this.storeName, 1);
-	    openReq.onupgradeneeded = function (event) {
-	        var db = event.target.result;
-	        // Huh. This should never happen; we're at version 1. Why does another
-	        // database exist?
-	        if (db.objectStoreNames.contains(this$1.storeName)) {
-	            db.deleteObjectStore(this$1.storeName);
-	        }
-	        db.createObjectStore(this$1.storeName);
-	    };
-	    openReq.onsuccess = function (event) {
-	        this$1.db = event.target.result;
-	        cb(null, this$1);
-	    };
-	    openReq.onerror = onErrorHandler(cb, ErrorCode.EACCES);
+	    this.pendingWrites = new Map(); //  filename => value
+        this.pendingReads = new Map(); //   filename => [Promise] Note: possibility of multiple Promise
+
+        this.opfsWorker = new Worker("opfs.js");
+
+        this.opfsWorker.onmessage = function(event) { // reads
+            let message = event.data;
+            const pendingCBs = that.pendingReads.get(message.key);
+            if (pendingCBs != null) {
+                that.pendingReads.delete(message.key);
+                if (message.contents == null) {
+                    pendingCBs.forEach(pendingCb =>
+                        pendingCb(null)
+                    );
+                } else {
+                    pendingCBs.forEach(pendingCb =>
+                        pendingCb(message.contents)
+                    );
+                }
+            }
+        };
+        //var r = this.store.get(key);
+        this$1.get = function get(key) {
+            let prom = new Promise(function(resolve, reject) {
+                let fn = function(val) {
+                    if(val==null){
+                        resolve(null);
+                    } else {
+                        resolve(val);
+                    }
+                };
+                this$1.getOPFSKV(key, fn);
+            });
+            return prom;
+        };
+        //r = this.store.put(arraybuffer, key);
+        this$1.put = function put(arraybuffer, key) {
+            let prom = new Promise(function(resolve, reject) {
+                let fn = function() {
+                    resolve();
+                };
+                this$1.setOPFSKV(key, arraybuffer, fn);
+            });
+            return prom;
+        };
+        // 'add' will never overwrite an existing key.
+        //  r = this.store.add(arraybuffer, key);
+        this$1.add = function add(arraybuffer, key) {
+            return this$1.put(arraybuffer, key);
+        };
+        //var r = this.store['delete'](key);
+        this$1.delete = function del(key) {
+            let prom = new Promise(function(resolve, reject) {
+                let fn = function() {
+                    resolve();
+                };
+                this$1.delOPFSKV(key, fn);
+            });
+            return prom;
+        };
+        this$1.delOPFSKV = function delOPFSKV(key, prom) {
+            that.opfsWorker.postMessage({action: 'del', key: key});
+            prom();
+        };
+        this$1.setOPFSKV = function setOPFSKV(key, value, prom) {
+            if (!that.pendingWrites.has(key)) {
+                that.pendingWrites.set(key, value);
+                that.opfsWorker.postMessage({action: 'set', key: key, value: value});
+                setTimeout(() => { //kev need to be smarter. get callback from write and then delete
+                    that.pendingWrites.delete(key);
+                }, 5000);
+            }
+            prom();
+        };
+        this$1.getOPFSKV = function getOPFSKV(key, prom) {
+            const pending = that.pendingWrites.get(key);
+            if (pending != null) {
+                prom(pending);
+            } else {
+                if (that.pendingReads.has(key)) {
+                    that.pendingReads.get(key).push(prom);
+                } else {
+                    that.pendingReads.set(key, [prom]);
+                    that.opfsWorker.postMessage({action: 'get', key: key});
+                }
+            }
+        };
 	};
 	IndexedDBStore.prototype.name = function name () {
 	    return IndexedDBFileSystem.Name + " - " + this.storeName;
 	};
 	IndexedDBStore.prototype.clear = function clear (cb) {
-	    try {
-	        var tx = this.db.transaction(this.storeName, 'readwrite'), objectStore = tx.objectStore(this.storeName), r = objectStore.clear();
-	        r.onsuccess = function (event) {
-	            // Use setTimeout to commit transaction.
-	            setTimeout(cb, 0);
-	        };
-	        r.onerror = onErrorHandler(cb);
-	    }
-	    catch (e) {
-	        cb(convertError$2(e));
-	    }
+	    let that = this;
+        navigator.storage.getDirectory().then(rootDirectory => {
+	            rootDirectory.removeEntry(that.storeName, { recursive: true }).then(() => {
+                    setTimeout(cb, 0);
+                }).catch(e => {
+                    console.log('OPFS unable to removeEntry:' + e);
+                    cb(convertError$2(e));
+                });
+        }).catch(e => {
+            console.log('OPFS not available:' + e);
+            cb(convertError$2(e));
+        });
 	};
 	IndexedDBStore.prototype.beginTransaction = function beginTransaction (type) {
 	        if ( type === void 0 ) type = 'readonly';
-	
-	    var tx = this.db.transaction(this.storeName, type), objectStore = tx.objectStore(this.storeName);
+
+	    var tx = null;
+	    var objectStore = this;
 	    if (type === 'readwrite') {
 	        return new IndexedDBRWTransaction(tx, objectStore);
 	    }
@@ -9635,16 +9703,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	        if ( deprecateMsg === void 0 ) deprecateMsg = true;
 	
 	        AsyncKeyValueFileSystem$$1.call(this);
-	        this.store = new IndexedDBStore(function (e) {
-	            if (e) {
-	                cb(e);
-	            }
-	            else {
-	                this$1.init(this$1.store, function (e) {
-	                    cb(e, this$1);
-	                });
-	            }
-	        }, storeName);
+	        let that = this;
+	        this.store = new IndexedDBStore();
+            that.init(this.store, function (e) {
+                cb(e, this$1);
+            });
 	        deprecationMessage(deprecateMsg, IndexedDBFileSystem.Name, { storeName: storeName });
 	    }
 	
@@ -9660,16 +9723,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        // tslint:enable-next-line:no-unused-new
 	    };
 	    IndexedDBFileSystem.isAvailable = function isAvailable () {
-	        // In Safari's private browsing mode, indexedDB.open returns NULL.
-	        // In Firefox, it throws an exception.
-	        // In Chrome, it "just works", and clears the database when you leave the page.
-	        // Untested: Opera, IE.
-	        try {
-	            return typeof indexedDB !== 'undefined' && null !== indexedDB.open("__browserfs_test__");
-	        }
-	        catch (e) {
-	            return false;
-	        }
+	        return true;
 	    };
 	
 	    return IndexedDBFileSystem;
