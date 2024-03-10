@@ -654,6 +654,12 @@
 		1ADBD87A2B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
 		1ADBD87B2B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
 		1ADBD87C2B94249B0074867C /* procstat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD8762B94249A0074867C /* procstat.cpp */; };
+		1ADBD8802B9E25DA0074867C /* knetlink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD87F2B9E25DA0074867C /* knetlink.cpp */; };
+		1ADBD8812B9E25DA0074867C /* knetlink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD87F2B9E25DA0074867C /* knetlink.cpp */; };
+		1ADBD8822B9E25DA0074867C /* knetlink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD87F2B9E25DA0074867C /* knetlink.cpp */; };
+		1ADBD8832B9E25DA0074867C /* knetlink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD87F2B9E25DA0074867C /* knetlink.cpp */; };
+		1ADBD8842B9E25DA0074867C /* knetlink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD87F2B9E25DA0074867C /* knetlink.cpp */; };
+		1ADBD8852B9E25DA0074867C /* knetlink.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1ADBD87F2B9E25DA0074867C /* knetlink.cpp */; };
 		1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */; };
 		1AE7E5C52B5A1BD200D29E4A /* btCodeChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */; };
 		1AE7E5C72B5A1BD200D29E4A /* btData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE7E5BF2B5A1BD100D29E4A /* btData.cpp */; };
@@ -1535,6 +1541,8 @@
 		1ADBD8512B92E7B60074867C /* sysbususb.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sysbususb.cpp; sourceTree = "<group>"; };
 		1ADBD8762B94249A0074867C /* procstat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = procstat.cpp; sourceTree = "<group>"; };
 		1ADBD87D2B94253F0074867C /* procstat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = procstat.h; sourceTree = "<group>"; };
+		1ADBD87E2B9E25CC0074867C /* knetlink.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = knetlink.h; sourceTree = "<group>"; };
+		1ADBD87F2B9E25DA0074867C /* knetlink.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = knetlink.cpp; sourceTree = "<group>"; };
 		1AE7E5BA2B5A1BD100D29E4A /* btMemory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = btMemory.h; sourceTree = "<group>"; };
 		1AE7E5BB2B5A1BD100D29E4A /* btCpu.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCpu.cpp; sourceTree = "<group>"; };
 		1AE7E5BC2B5A1BD100D29E4A /* btCodeChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = btCodeChunk.cpp; sourceTree = "<group>"; };
@@ -2454,6 +2462,7 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1ADBD87E2B9E25CC0074867C /* knetlink.h */,
 				1ADBD87D2B94253F0074867C /* procstat.h */,
 				1ADBD83D2B9194380074867C /* devfb.h */,
 				1ADBD83C2B9194380074867C /* kmemory.h */,
@@ -2948,6 +2957,7 @@
 		71FBFE152433BBBE003F17F1 /* kernel */ = {
 			isa = PBXGroup;
 			children = (
+				1ADBD87F2B9E25DA0074867C /* knetlink.cpp */,
 				71FBFE162433BBBE003F17F1 /* proc */,
 				71FBFE1B2433BBBE003F17F1 /* kfilelock.cpp */,
 				71FBFE1C2433BBBE003F17F1 /* ksignal.cpp */,
@@ -3469,6 +3479,7 @@
 				1A80EF42276EBCC70032A70A /* syscall.cpp in Sources */,
 				1A80EF44276EBCC70032A70A /* boxedReg.cpp in Sources */,
 				1A80EF45276EBCC70032A70A /* startupArgs.cpp in Sources */,
+				1ADBD8822B9E25DA0074867C /* knetlink.cpp in Sources */,
 				1AC5F2DD2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 				1A80EF4C276EBCC70032A70A /* fsdiropennode.cpp in Sources */,
 				1A80EF50276EBCC70032A70A /* AppDelegate.m in Sources */,
@@ -3701,6 +3712,7 @@
 				1A80F187276EBF170032A70A /* audiounit.cpp in Sources */,
 				1A80F189276EBF170032A70A /* menubar.cpp in Sources */,
 				1A80F18A276EBF170032A70A /* common_pushpop.cpp in Sources */,
+				1ADBD8832B9E25DA0074867C /* knetlink.cpp in Sources */,
 				1A80F18B276EBF170032A70A /* glew.cpp in Sources */,
 				1A80F18E276EBF170032A70A /* syscall.cpp in Sources */,
 				1A80F190276EBF170032A70A /* boxedReg.cpp in Sources */,
@@ -4010,6 +4022,7 @@
 				71222B9D2435169100CDBABD /* ksignal.cpp in Sources */,
 				1A1ADF942B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				71222B642435169100CDBABD /* srcgen.cpp in Sources */,
+				1ADBD8842B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
 				71222B3C2435163100CDBABD /* testSSE.cpp in Sources */,
 			);
@@ -4176,6 +4189,7 @@
 				715F842D24464C080038F5A4 /* installView.cpp in Sources */,
 				71222C3C24351CBA00CDBABD /* fszipnode.cpp in Sources */,
 				71222C3D24351CBA00CDBABD /* imgui.cpp in Sources */,
+				1ADBD8812B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71222C3E24351CBA00CDBABD /* soft_rw_page.cpp in Sources */,
 				1AC5F2C42772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				715F34892440D7D20038F5A4 /* baseView.cpp in Sources */,
@@ -4411,6 +4425,7 @@
 				7135DC93264EBCD0005D6AA6 /* srcgen.cpp in Sources */,
 				1A1ADF952B6C989F00D9D5DE /* bfile.cpp in Sources */,
 				7135DC94264EBCD0005D6AA6 /* kpoll.cpp in Sources */,
+				1ADBD8852B9E25DA0074867C /* knetlink.cpp in Sources */,
 				7135DC95264EBCD0005D6AA6 /* testSSE.cpp in Sources */,
 				1AC5F2E02772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 			);
@@ -4577,6 +4592,7 @@
 				715EABBA2460C839001B4730 /* unzipDlg.cpp in Sources */,
 				1A155106263261DF006E0C8A /* unzip.c in Sources */,
 				1AC96017278FB69600107ED0 /* vk_host.cpp in Sources */,
+				1ADBD8802B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71FBFEB92433BBBE003F17F1 /* meminfo.cpp in Sources */,
 				71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */,
 				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
