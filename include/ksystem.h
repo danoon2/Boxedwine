@@ -86,6 +86,7 @@ public:
 	static bool shutingDown;
     static U32 killTime;
     static BString title;
+    static U32 wineMajorVersion;
 #ifdef BOXEDWINE_MULTI_THREADED
     static U32 cpuAffinityCountForApp;
 #endif

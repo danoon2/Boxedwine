@@ -65,6 +65,7 @@ std::function<void(BString line)> KSystem::watchTTY;
 bool KSystem::ttyPrepend;
 BString KSystem::exePath;
 std::shared_ptr<FsNode> KSystem::procNode;
+U32 KSystem::wineMajorVersion;
 
 BOXEDWINE_CONDITION KSystem::processesCond(B("KSystem::processesCond"));
 
