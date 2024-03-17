@@ -88,6 +88,7 @@ public:
 
     static BString getDosAttrib(const std::shared_ptr<FsNode>& file);
     static void setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib);
+    static U32 removeDosAttrib(const std::shared_ptr<FsNode>& file);
 
     static std::shared_ptr<FsFileNode> rootNode;
 	static void shutDown();

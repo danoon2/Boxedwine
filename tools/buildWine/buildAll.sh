@@ -74,7 +74,12 @@ do_build()
     done
     rm -rf dlls/winex11.drv/*
     cp -r ../../wineboxed.drv/*.* dlls/winex11.drv/
-    if ((BVERSION == 7110))
+    if ((BVERSION >= 9000))
+    then
+      sed -i 's/MAKE_DEP_UNIX/#pragma makedep unix/g' dlls/winex11.drv/*.c
+      cp dlls/winex11.drv/Makefile.9000.in dlls/winex11.drv/Makefile.in
+      cp dlls/winex11.drv/winex11.drv.9000.spec dlls/winex11.drv/winex11.drv.spec
+    elif ((BVERSION == 7110))
     then
       cp dlls/winex11.drv/Makefile.7110.in dlls/winex11.drv/Makefile.in
     elif ((BVERSION > 7110))
@@ -86,7 +91,10 @@ do_build()
     then
       cp dlls/winex11.drv/Makefile.6170.in dlls/winex11.drv/Makefile.in
     fi
-    if ((BVERSION >= 7190))
+    if ((BVERSION >= 9000))
+    then
+     echo todo auto refresh patch
+    elif ((BVERSION >= 7190))
     then
       git apply ../patches/auto_refresh/auto_refresh719.patch
     elif ((BVERSION >= 4000))
@@ -95,12 +103,16 @@ do_build()
     else
       git apply ../patches/auto_refresh/auto_refresh3.patch
     fi
-    rm -rf dlls/winealsa.drv/*
-    cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
+#    rm -rf dlls/winealsa.drv/*
+#    cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
+#    if ((BVERSION >= 9000))
+#    then
+#      cp ../../wineboxedaudio.drv/winealsa.drv.spec.9000 dlls/winealsa.drv/winealsa.drv.spec
+#    fi
     if [[ $ADD_DEPENDS == 1 ]]
     then
       echo "@MAKE_DLL_RULES@" >> dlls/winex11.drv/Makefile.in
-      echo "@MAKE_DLL_RULES@" >> dlls/winealsa.drv/Makefile.in
+#      echo "@MAKE_DLL_RULES@" >> dlls/winealsa.drv/Makefile.in
     fi
 #for some reason I don't understand the config process will fail when looking for dependencies because the header does not exist, even though I wrapped it in a #ifdef
     touch include/wine/wglext.h
@@ -137,8 +149,11 @@ do_build()
     if [ -d opt/wine/lib/wine/i386-unix ]
     then
         rm opt/wine/lib/wine/i386-unix/winemenubuilder.exe.so
-        rm opt/wine/lib/wine/i386-unix/libwine.so.1
-        printf "libwine.so.1.0" > opt/wine/lib/wine/i386-unix/libwine.so.1.link
+        if [ -f opt/wine/lib/wine/i386-unix/libwine.so.1 ]
+        then
+          rm opt/wine/lib/wine/i386-unix/libwine.so.1
+          printf "libwine.so.1.0" > opt/wine/lib/wine/i386-unix/libwine.so.1.link
+        fi
         mv opt/wine/lib/wine/i386-unix/wineoss.drv.so opt/wine/lib/wine/i386-unix/wineoss.drv.dsp.so
     else
         rm opt/wine/lib/wine/winemenubuilder.exe.so
@@ -183,6 +198,7 @@ then
 # reverted because on slower systems it will fail to create a window, not sure why
   if [[ $ARG1 != "all" ]]
   then
+    do_build 9.2 9020 patch setupapidelay.patch
     do_build 7.0 7000 patch ddraw_waitvblank.patch
     do_build 6.0 6000 patch ddraw_waitvblank.patch
     do_build 5.0 5000 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc

@@ -440,13 +440,16 @@ struct DisplayModes {
 
 // BOOL CDECL macdrv_EnumDisplaySettingsEx(LPCWSTR devname, DWORD mode, LPDEVMODEW devmode, DWORD flags)
 void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
+    U32 name = ARG1;
+    U32 mode = ARG2;
     U32 devmode = ARG3;
+    U32 flags = ARG4;
     static const U16 dev_name[32] = { 'B','o','x','e','d','W','i','n','e',' ','d','r','i','v','e','r',0 };
     static DisplayModes* displayModes;
     static U32 displayModesCount;
     KMemory* memory = cpu->memory;
 
-    if (!displayModesCount) {
+     if (!displayModesCount) {
         U32 desktopCx = 0;
         U32 desktopCy = 0;
         
@@ -543,19 +546,19 @@ void boxeddrv_EnumDisplaySettingsEx(CPU* cpu) {
     memory->writed(devmode + 88, DMDFO_CENTER); // dmDisplayFixedOutput
     
     
-    if (ARG2 == ENUM_REGISTRY_SETTINGS) {
+    if (mode == ENUM_REGISTRY_SETTINGS) {
         memory->writed(devmode + 168, KNativeWindow::defaultScreenBpp);
         memory->writed(devmode + 172, KNativeWindow::defaultScreenWidth);
         memory->writed(devmode + 176, KNativeWindow::defaultScreenHeight);
     }
-    else if (ARG2 == ENUM_CURRENT_SETTINGS) {
+    else if (mode == ENUM_CURRENT_SETTINGS) {
         memory->writed(devmode + 168, KNativeWindow::getNativeWindow()->screenBpp());
         memory->writed(devmode + 172, KNativeWindow::getNativeWindow()->screenWidth());
         memory->writed(devmode + 176, KNativeWindow::getNativeWindow()->screenHeight());
-    } else if (ARG2>=0 && ARG2<displayModesCount) {
-        memory->writed(devmode + 168, displayModes[ARG2].bpp);
-        memory->writed(devmode + 172, displayModes[ARG2].cx);
-        memory->writed(devmode + 176, displayModes[ARG2].cy);
+    } else if (mode >=0 && mode <displayModesCount) {
+        memory->writed(devmode + 168, displayModes[mode].bpp);
+        memory->writed(devmode + 172, displayModes[mode].cx);
+        memory->writed(devmode + 176, displayModes[mode].cy);
     } else {
         EAX = 0;
         return;

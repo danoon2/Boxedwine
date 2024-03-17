@@ -56,13 +56,15 @@ WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 void BOXEDDRV_DisplayDevices_Init(BOOL force) {
 }
 #else
-#if WINE_GDI_DRIVER_VERSION >= 50 && WINE_GDI_DRIVER_VERSION <= 76
-#define WINE_CDECL CDECL
+#if BOXED_WINE_VERSION >= 4120 && BOXED_WINE_VERSION <= 7050
+#define WINE_CDECL
+#define GDI_CDECL
 #else
 #define WINE_CDECL
+#define GDI_CDECL
 #endif
 
-INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
+INT GDI_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
 
 #if WINE_GDI_DRIVER_VERSION < 71
 
@@ -436,9 +438,11 @@ static BOOL BOXEDDRV_InitMonitor(HDEVINFO devinfo, const struct boxed_monitor* m
     /* FIXME:
      * Following properties are Wine specific, see comments in X11DRV_InitAdapter for details */
      /* StateFlags */
+#if BOXED_WINE_VERSION < 9030
     if (!SetupDiSetDevicePropertyW(devinfo, &device_data, &WINE_DEVPROPKEY_MONITOR_STATEFLAGS, DEVPROP_TYPE_UINT32,
         (const BYTE*)&monitor->state_flags, sizeof(monitor->state_flags), 0))
         goto done;
+#endif
     /* RcMonitor */
     if (!SetupDiSetDevicePropertyW(devinfo, &device_data, &WINE_DEVPROPKEY_MONITOR_RCMONITOR, DEVPROP_TYPE_BINARY,
         (const BYTE*)&monitor->rc_monitor, sizeof(monitor->rc_monitor), 0))
@@ -529,6 +533,9 @@ void BOXEDDRV_DisplayDevices_Init(BOOL force)
     gpus[0].subsys_id = 0;
     gpus[0].revision_id = 0;
     memset(&gpus[0].vulkan_uuid, 0, sizeof(gpus[0].vulkan_uuid));
+#if BOXED_WINE_VERSION >= 9000
+    gpus[0].memory_size = 4*1024*1024*1024; // :TODO: get this value
+#endif
 
     gpu_count = 1;
     TRACE("GPU count: %d\n", gpu_count);
@@ -545,7 +552,9 @@ void BOXEDDRV_DisplayDevices_Init(BOOL force)
             */
         adapter_count = 1;
         adapters[0].id = 1;
+#if BOXED_WINE_VERSION < 9030
         adapters[0].state_flags = DISPLAY_DEVICE_PRIMARY_DEVICE | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP;
+#endif
         TRACE("GPU: %#lx %s, adapter count: %d\n", gpus[gpu].id, wine_dbgstr_w(gpus[gpu].name), adapter_count);
 
         for (adapter = 0; adapter < adapter_count; adapter++)
@@ -557,7 +566,9 @@ void BOXEDDRV_DisplayDevices_Init(BOOL force)
             INT width = boxeddrv_GetDeviceCaps(NULL, DESKTOPHORZRES);
             INT height = boxeddrv_GetDeviceCaps(NULL, DESKTOPVERTRES);
             monitor_count = 1;
+#if BOXED_WINE_VERSION < 9030
             monitors[0].state_flags = DISPLAY_DEVICE_ATTACHED | DISPLAY_DEVICE_ACTIVE;
+#endif
             SetRect(&monitors[0].rc_monitor, 0, 0, width, height);
             SetRect(&monitors[0].rc_work, 0, 0, width, height);
             lstrcpyW(monitors[0].name, generic_nonpnp_monitorW);
@@ -636,18 +647,20 @@ void WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* 
     {
         .rc_monitor = r,
         .rc_work = r,
+#if BOXED_WINE_VERSION < 9030
         .state_flags = DISPLAY_DEVICE_ATTACHED | DISPLAY_DEVICE_ACTIVE,
+#endif
     };
 
     if (!force && !force_display_devices_refresh) {
-        TRACE("Not forced\n");
+        TRACE("Not forced %d %d\n", BOXED_WINE_VERSION, WINE_GDI_DRIVER_VERSION);
 #if WINE_GDI_DRIVER_VERSION >= 81
         return TRUE;
 #else
         return;
 #endif
     }
-    TRACE("Forced\n");
+    TRACE("Forced %d %d\n", BOXED_WINE_VERSION, WINE_GDI_DRIVER_VERSION);
     force_display_devices_refresh = FALSE;
         
 
@@ -663,13 +676,21 @@ void WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* 
 #if WINE_GDI_DRIVER_VERSION >= 81 && BOXED_WINE_VERSION >= 7140
     {
         DEVMODEW devMode;
+        DEVMODEW curMode;
         DWORD i = 0;
+        TRACE("adding modes\n");
+        boxeddrv_EnumDisplaySettingsEx(1, -1, &curMode, 2);
         while (boxeddrv_EnumDisplaySettingsEx(0, i, &devMode, 0)) {
-            TRACE("mode: %dx%dx%dbpp @%d Hz, %sstretched %sinterlaced\n", (int)devMode.dmPelsWidth, (int)devMode.dmPelsHeight,
-                (int)devMode.dmBitsPerPel, (int)devMode.dmDisplayFrequency,
+            BOOL isCurrent = memcmp(&curMode, &devMode, sizeof(DEVMODEW)) == 0;
+            TRACE("mode: %dx%dx%dbpp @%d Hz, cur=%d %sstretched %sinterlaced\n", (int)devMode.dmPelsWidth, (int)devMode.dmPelsHeight,
+                (int)devMode.dmBitsPerPel, (int)devMode.dmDisplayFrequency, (int)isCurrent,
                 devMode.dmDisplayFixedOutput == DMDFO_STRETCH ? "" : "un",
                 devMode.dmDisplayFlags & DM_INTERLACED ? "" : "non-");
+#if BOXED_WINE_VERSION >= 8060
+            device_manager->add_mode(&devMode, isCurrent, param);
+#else
             device_manager->add_mode(&devMode, param);
+#endif
             i++;
         }        
     }

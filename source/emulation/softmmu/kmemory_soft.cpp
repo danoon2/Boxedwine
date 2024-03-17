@@ -51,15 +51,11 @@ KMemoryData::~KMemoryData() {
     }
 }
 
-void KMemoryData::setPage(U32 index, Page* page) {
-    Page* p = this->mmu[index];
-    this->mmu[index] = page;
+void KMemoryData::onPageChanged(U32 index) {
+    Page* page = this->mmu[index];
     U32 address = index << K_PAGE_SHIFT;
     this->mmuReadPtr[index] = page->getReadPtr(memory, address);
     this->mmuWritePtr[index] = page->getWritePtr(memory, address, K_PAGE_SIZE);
-    if (p != page) {
-        p->close();
-    }
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8* readPtr = page->getReadPtr(memory, address);
     if (readPtr) {
@@ -80,6 +76,15 @@ void KMemoryData::setPage(U32 index, Page* page) {
         this->mmuWritePtrAdjusted[index] = nullptr;
     }
 #endif
+}
+
+void KMemoryData::setPage(U32 index, Page* page) {
+    Page* p = this->mmu[index];
+    this->mmu[index] = page;
+    onPageChanged(index);
+    if (p != page) {
+        p->close();
+    }
 }
 
 void KMemoryData::addCallback(OpCallback func) {
@@ -242,6 +247,8 @@ void KMemoryData::protectPage(KThread* thread, U32 i, U32 permissions) {
                 this->setPage(i, NOPage::alloc(p->page, p->address));
             }
         }
+    } else {
+        this->onPageChanged(i);
     }
 }
 

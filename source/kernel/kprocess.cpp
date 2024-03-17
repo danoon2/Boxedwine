@@ -649,8 +649,6 @@ BString KProcess::getModuleName(U32 eip) {
 
 U32 KProcess::getModuleEip(U32 eip) {    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
-    if (eip<0xd0000000)
-        return eip;
     for (auto& n : this->mappedFiles) {
         std::shared_ptr<MappedFile> mappedFile = n.value;
         if (eip>=mappedFile->address && eip<mappedFile->address+mappedFile->len)

@@ -24,6 +24,7 @@ public:
     void setPagesInvalid(U32 page, U32 pageCount);
     bool isPageAllocated(U32 page);
     void execvReset();    
+    void onPageChanged(U32 page);
 
     KMemory* memory;
 

@@ -1267,6 +1267,26 @@ static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+static U32 syscall_fremovexattr(CPU* cpu, U32 eipCount) {
+    U32 result = -K_ENOTSUP;
+    BString name = cpu->memory->readString(ARG2);
+
+    KFileDescriptor* fd = cpu->thread->process->getFileDescriptor(ARG1);
+    if (!fd) {
+        result = -K_EBADFD;
+    } else if (name == "user.DOSATTRIB") {
+        std::shared_ptr<KFile> node = std::dynamic_pointer_cast<KFile>(fd->kobject);
+        if (!node) {
+            result = -K_ENOTSUP;
+        } else {
+            result = Fs::removeDosAttrib(node->openFile->node);            
+        }
+    }
+
+    SYS_LOG1(SYSCALL_SYSTEM, cpu, "fremovexattr: fd=%d name=%s result = %x\n", ARG1, name.c_str(), result);
+    return result;
+}
+
 static U32 syscall_sendfile64(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "sendfile64: out_fd=%d int_fd=%d offset=%d count=%d", ARG1, ARG2, ARG3, ARG4);
     U32 result = cpu->thread->process->sendFile(ARG1, ARG2, ARG3, ARG4);
@@ -1990,7 +2010,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_flistxattr, // 234 __NR_flistxattr
     nullptr,                  // 235
     nullptr,                  // 236
-    nullptr,                  // 237
+    syscall_fremovexattr,     // 237
     nullptr,                  // 238 __NR_tkill
     syscall_sendfile64,       // 239
     syscall_futex,      // 240 __NR_futex

@@ -1,8 +1,8 @@
 #ifndef DRIVER_H
-UINT WINE_CDECL boxeddrv_RealizePalette(PHYSDEV dev, HPALETTE hpal, BOOL primary);
-UINT WINE_CDECL boxeddrv_GetSystemPaletteEntries(PHYSDEV dev, UINT start, UINT count, LPPALETTEENTRY entries);
-COLORREF WINE_CDECL boxeddrv_GetNearestColor(PHYSDEV dev, COLORREF color);
-UINT WINE_CDECL boxeddrv_RealizeDefaultPalette(PHYSDEV dev);
+UINT GDI_CDECL boxeddrv_RealizePalette(PHYSDEV dev, HPALETTE hpal, BOOL primary);
+UINT GDI_CDECL boxeddrv_GetSystemPaletteEntries(PHYSDEV dev, UINT start, UINT count, LPPALETTEENTRY entries);
+COLORREF GDI_CDECL boxeddrv_GetNearestColor(PHYSDEV dev, COLORREF color);
+UINT GDI_CDECL boxeddrv_RealizeDefaultPalette(PHYSDEV dev);
 
 #if BOXED_WINE_VERSION >= 6090
 BOOL WINE_CDECL boxeddrv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT* window_rect, const RECT* client_rect, RECT* visible_rect, struct window_surface** surface);
@@ -10,12 +10,11 @@ BOOL WINE_CDECL boxeddrv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT sw
 void WINE_CDECL boxeddrv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT* window_rect, const RECT* client_rect, RECT* visible_rect, struct window_surface** surface);
 #endif
 
-INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
-BOOL WINE_CDECL boxeddrv_SetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp);
-BOOL WINE_CDECL boxeddrv_GetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp);
+INT GDI_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
+BOOL GDI_CDECL boxeddrv_SetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp);
+BOOL GDI_CDECL boxeddrv_GetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp);
 void WINE_CDECL boxeddrv_WindowPosChanged(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT* window_rect, const RECT* client_rect, const RECT* visible_rect, const RECT* valid_rects, struct window_surface* surface);
-INT WINE_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
-BOOL WINE_CDECL boxeddrv_DeleteDC(PHYSDEV dev);
+BOOL GDI_CDECL boxeddrv_DeleteDC(PHYSDEV dev);
 
 #if WINE_GDI_DRIVER_VERSION >= 75
 #if WINE_WGL_DRIVER_VERSION >= 22

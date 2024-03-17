@@ -27,11 +27,11 @@ typedef struct
 } BOXEDDRV_PDEVICE;
 
 #if WINE_GDI_DRIVER_VERSION >= 69
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR device, LPCWSTR output, const DEVMODEW* initData);
+static BOOL GDI_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR device, LPCWSTR output, const DEVMODEW* initData);
 #else
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR driver, LPCWSTR device, LPCWSTR output, const DEVMODEW* initData);
+static BOOL GDI_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR driver, LPCWSTR device, LPCWSTR output, const DEVMODEW* initData);
 #endif
-static BOOL WINE_CDECL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV* pdev);
+static BOOL GDI_CDECL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV* pdev);
 
 // Dec 18, 2012, wine-1.5.20 
 #if WINE_GDI_DRIVER_VERSION == 46
@@ -2789,7 +2789,6 @@ static const struct user_driver_funcs boxeddrv_funcs =
     .pBeep = boxeddrv_Beep,
     .pChangeDisplaySettingsEx = boxeddrv_ChangeDisplaySettingsEx,
     .pClipCursor = boxeddrv_ClipCursor,
-    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
     .pCreateWindow = boxeddrv_CreateWindow,
     .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
     .pDestroyWindow = boxeddrv_DestroyWindow,
@@ -3312,7 +3311,9 @@ static const struct user_driver_funcs boxeddrv_funcs =
 
 // Sep 23, 2022 wine-7.18
 // Move enumeration of available modes out of graphics drivers. 
-#if WINE_GDI_DRIVER_VERSION == 81 && BOXED_WINE_VERSION >= 7180 && BOXED_WINE_VERSION < 8000
+#if WINE_GDI_DRIVER_VERSION == 81
+
+#if BOXED_WINE_VERSION >= 7180 && BOXED_WINE_VERSION < 8000
 static const struct user_driver_funcs boxeddrv_funcs =
 {
     .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
@@ -3377,7 +3378,7 @@ static const struct user_driver_funcs boxeddrv_funcs =
 
 // Jan 9, 2023 wine-8.0-rc4
 // Introduce a get_display_depth() helper to retrieve emulated display depth.
-#if WINE_GDI_DRIVER_VERSION == 81 && BOXED_WINE_VERSION >= 8000
+#if BOXED_WINE_VERSION >= 8000 && BOXED_WINE_VERSION < 8030
 static const struct user_driver_funcs boxeddrv_funcs =
 {
     .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
@@ -3441,6 +3442,214 @@ static const struct user_driver_funcs boxeddrv_funcs =
 };
 #endif
 
+// Feb 22, 2023 wine-8.3
+//  win32u: Expose and use ProcessEvents from drivers instead of MsgWaitForMultipleObjectsEx.
+#if BOXED_WINE_VERSION >= 8030 && BOXED_WINE_VERSION < 8030
+static const struct user_driver_funcs boxeddrv_funcs =
+{
+    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
+    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
+    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
+    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
+    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
+    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
+    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
+    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
+    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
+    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
+    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
+    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
+
+    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
+    .pBeep = boxeddrv_Beep,
+    .pChangeDisplaySettings = boxeddrv_ChangeDisplaySettings,
+    .pClipCursor = boxeddrv_ClipCursor,
+    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
+    .pCreateWindow = boxeddrv_CreateWindow,
+    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
+    .pDestroyWindow = boxeddrv_DestroyWindow,
+    .pGetCurrentDisplaySettings = boxeddrv_GetCurrentDisplaySettings,
+    .pGetDisplayDepth = boxeddrv_GetDisplayDepth,
+    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
+    //.pGetDC = boxeddrv_GetDC,
+    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
+    .pGetCursorPos = boxeddrv_GetCursorPos,
+    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
+    .pGetKeyNameText = boxeddrv_GetKeyNameText,
+    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
+    .pProcessEvents = boxeddrv_ProcessEvents,
+    //.pReleaseDC = boxeddrv_ReleaseDC,
+    //.pScrollDC = boxeddrv_ScrollDC,
+    .pRegisterHotKey = boxeddrv_RegisterHotKey,
+    .pSetCapture = boxeddrv_SetCapture,
+    .pSetCursor = boxeddrv_SetCursor,
+    .pSetCursorPos = boxeddrv_SetCursorPos,
+    .pSetFocus = boxeddrv_SetFocus,
+    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
+    .pSetParent = boxeddrv_SetParent,
+    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
+    .pSetWindowRgn = boxeddrv_SetWindowRgn,
+    .pSetWindowStyle = boxeddrv_SetWindowStyle,
+    .pSetWindowText = boxeddrv_SetWindowText,
+    .pShowWindow = boxeddrv_ShowWindow,
+    .pSysCommand = boxeddrv_SysCommand,
+    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
+    .pThreadDetach = boxeddrv_ThreadDetach,
+    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
+    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
+    .pUpdateClipboard = boxeddrv_UpdateClipboard,
+    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
+    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
+    .pWindowMessage = boxeddrv_WindowMessage,
+    .pWindowPosChanged = boxeddrv_WindowPosChanged,
+    .pWindowPosChanging = boxeddrv_WindowPosChanging,
+    .pwine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
+    .pwine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver,
+};
+#endif
+
+// Feb 22, 2023 wine-8.3
+//  win32u: Expose and use ProcessEvents from drivers instead of MsgWaitForMultipleObjectsEx.
+#if BOXED_WINE_VERSION >= 8030 && BOXED_WINE_VERSION < 8100
+static const struct user_driver_funcs boxeddrv_funcs =
+{
+    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
+    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
+    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
+    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
+    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
+    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
+    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
+    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
+    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
+    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
+    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
+    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
+
+    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
+    .pBeep = boxeddrv_Beep,
+    .pChangeDisplaySettings = boxeddrv_ChangeDisplaySettings,
+    .pClipCursor = boxeddrv_ClipCursor,
+    .pCreateDesktopWindow = boxeddrv_CreateDesktopWindow,
+    .pCreateWindow = boxeddrv_CreateWindow,
+    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
+    .pDestroyWindow = boxeddrv_DestroyWindow,
+    .pGetCurrentDisplaySettings = boxeddrv_GetCurrentDisplaySettings,
+    .pGetDisplayDepth = boxeddrv_GetDisplayDepth,
+    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
+    //.pGetDC = boxeddrv_GetDC,
+    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
+    .pGetCursorPos = boxeddrv_GetCursorPos,
+    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
+    .pGetKeyNameText = boxeddrv_GetKeyNameText,
+    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
+    .pProcessEvents = boxeddrv_ProcessEvents,
+    //.pReleaseDC = boxeddrv_ReleaseDC,
+    //.pScrollDC = boxeddrv_ScrollDC,
+    .pRegisterHotKey = boxeddrv_RegisterHotKey,
+    .pSetCapture = boxeddrv_SetCapture,
+    .pSetCursor = boxeddrv_SetCursor,
+    .pSetCursorPos = boxeddrv_SetCursorPos,
+    .pSetFocus = boxeddrv_SetFocus,
+    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
+    .pSetParent = boxeddrv_SetParent,
+    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
+    .pSetWindowRgn = boxeddrv_SetWindowRgn,
+    .pSetWindowStyle = boxeddrv_SetWindowStyle,
+    .pSetWindowText = boxeddrv_SetWindowText,
+    .pShowWindow = boxeddrv_ShowWindow,
+    .pSysCommand = boxeddrv_SysCommand,
+    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
+    .pThreadDetach = boxeddrv_ThreadDetach,
+    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
+    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
+    .pUpdateClipboard = boxeddrv_UpdateClipboard,
+    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
+    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
+    .pWindowMessage = boxeddrv_WindowMessage,
+    .pWindowPosChanged = boxeddrv_WindowPosChanged,
+    .pWindowPosChanging = boxeddrv_WindowPosChanging,
+    .pwine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
+    .pwine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver,
+};
+#endif
+
+#endif
+
+// May 30, 2023 wine-8.10
+//  win32u: Expose and use ProcessEvents from drivers instead of MsgWaitForMultipleObjectsEx.
+#if BOXED_WINE_VERSION >= 8100
+static const struct user_driver_funcs boxeddrv_funcs =
+{
+    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
+    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
+    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
+    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
+    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
+    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
+    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
+    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
+    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
+    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
+    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
+    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
+
+    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
+    .pBeep = boxeddrv_Beep,
+    .pChangeDisplaySettings = boxeddrv_ChangeDisplaySettings,
+    .pClipCursor = boxeddrv_ClipCursor,
+    .pCreateWindow = boxeddrv_CreateWindow,
+    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
+    .pDestroyWindow = boxeddrv_DestroyWindow,
+    .pGetCurrentDisplaySettings = boxeddrv_GetCurrentDisplaySettings,
+    .pGetDisplayDepth = boxeddrv_GetDisplayDepth,
+    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
+    //.pGetDC = boxeddrv_GetDC,
+    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
+    .pGetCursorPos = boxeddrv_GetCursorPos,
+    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
+    .pGetKeyNameText = boxeddrv_GetKeyNameText,
+    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
+    .pProcessEvents = boxeddrv_ProcessEvents,
+    //.pReleaseDC = boxeddrv_ReleaseDC,
+    //.pScrollDC = boxeddrv_ScrollDC,
+    .pRegisterHotKey = boxeddrv_RegisterHotKey,
+    .pSetCapture = boxeddrv_SetCapture,
+    .pSetCursor = boxeddrv_SetCursor,
+    .pSetCursorPos = boxeddrv_SetCursorPos,
+    .pSetDesktopWindow = boxeddrv_SetDesktopWindow,
+    .pSetFocus = boxeddrv_SetFocus,
+    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
+    .pSetParent = boxeddrv_SetParent,
+    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
+    .pSetWindowRgn = boxeddrv_SetWindowRgn,
+    .pSetWindowStyle = boxeddrv_SetWindowStyle,
+    .pSetWindowText = boxeddrv_SetWindowText,
+    .pShowWindow = boxeddrv_ShowWindow,
+    .pSysCommand = boxeddrv_SysCommand,
+    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
+    .pThreadDetach = boxeddrv_ThreadDetach,
+    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
+    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
+    .pUpdateClipboard = boxeddrv_UpdateClipboard,
+    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
+    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
+    .pWindowMessage = boxeddrv_WindowMessage,
+    .pWindowPosChanged = boxeddrv_WindowPosChanged,
+    .pWindowPosChanging = boxeddrv_WindowPosChanging,
+    .pwine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
+    .pwine_get_vulkan_driver = boxeddrv_wine_get_vulkan_driver,
+};
+#endif
+
+// May 31, 2023 wine-8.10
+// win32u: Don't use WINAPI for the font enumeration function. 
+// 82
+
+// May 31, 2023 wine-8.10
+// win32u: Don't use CDECL for gdi_dc_funcs entries.  
+// 83
+
 const struct gdi_dc_funcs* CDECL boxeddrv_get_gdi_driver(unsigned int version)
 {
     int result;
@@ -3479,7 +3688,7 @@ static BOXEDDRV_PDEVICE* create_boxed_physdev(void)
     return HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(BOXEDDRV_PDEVICE));
 }
 
-static BOOL WINE_CDECL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV* pdev)
+static BOOL GDI_CDECL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV* pdev)
 {
     BOXEDDRV_PDEVICE* physDev = create_boxed_physdev();
 
@@ -3498,10 +3707,10 @@ static BOOL WINE_CDECL boxeddrv_CreateCompatibleDC(PHYSDEV orig, PHYSDEV* pdev)
 }
 
 #if WINE_GDI_DRIVER_VERSION >= 69
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR device,
+static BOOL GDI_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR device,
     LPCWSTR output, const DEVMODEW* initData)
 #else
-static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR driver, LPCWSTR device,
+static BOOL GDI_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR driver, LPCWSTR device,
     LPCWSTR output, const DEVMODEW* initData)
 #endif
 {
@@ -3527,7 +3736,7 @@ static BOOL WINE_CDECL boxeddrv_CreateDC(PHYSDEV* pdev, LPCWSTR driver, LPCWSTR 
     return TRUE;
 }
 
-BOOL WINE_CDECL boxeddrv_DeleteDC(PHYSDEV dev)
+BOOL GDI_CDECL boxeddrv_DeleteDC(PHYSDEV dev)
 {
     BOXEDDRV_PDEVICE* physDev = get_boxeddrv_dev(dev);
 

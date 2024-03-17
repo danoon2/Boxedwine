@@ -473,3 +473,13 @@ void Fs::setDosAttrib(const std::shared_ptr<FsNode>& file, const BString& attrib
         w.write(attrib);
     }
 }
+
+U32 Fs::removeDosAttrib(const std::shared_ptr<FsNode>& file) {
+    BString nativePath = file->nativePath + EXT_DOSATTRIB;
+    if (Fs::doesNativePathExist(nativePath)) {
+        deleteNativeFile(nativePath);
+        return 0;
+    } else {
+        return -K_ENODATA; // ENOATTR
+    }
+}
