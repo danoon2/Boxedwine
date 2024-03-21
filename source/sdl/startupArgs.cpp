@@ -336,6 +336,7 @@ bool StartUpArgs::apply() {
         if (openNode) {
             U8 tmp[64];
             if (openNode->readNative(tmp, 64) > 5) {
+                KSystem::wineMajorVersion = tmp[5] - '0';
                 if (tmp[5] == '2' || tmp[5] == '1') {
                     std::shared_ptr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath(B(""), B("/usr/lib/i386-linux-gnu/libfreetype.so.6"), false);
                     if (freeTypeNode) {

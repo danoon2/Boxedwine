@@ -365,12 +365,14 @@ LONG WINE_CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW dev
         if (flags & (CDS_TEST | CDS_NORESET)) {
             return result;
         }
+#if BOXED_WINE_VERSION <= 7210
         BOXEDDRV_DisplayDevices_Init(TRUE);
         TRACE("SetWindowPos\n");
         SetWindowPos(GetDesktopWindow(), 0, 0, 0, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE | SWP_DEFERERASE );
         TRACE("SendMessageTimeoutW\n");
         SendMessageTimeoutW( HWND_BROADCAST, WM_DISPLAYCHANGE, bpp, MAKELPARAM( cx, cy ), SMTO_ABORTIFHUNG, 2000, NULL );       
         TRACE("SendMessageTimeoutW returned\n");
+#endif
     }    
     return result;
 }
