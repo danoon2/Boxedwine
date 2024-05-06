@@ -23,6 +23,9 @@
 #include "kscheduler.h"
 #include "ksignal.h"
 #include <string.h>
+#include "../io/fsfilenode.h"
+#include "bufferaccess.h"
+#include "kstat.h"
 
 thread_local KThread* KThread::runningThread;
 
@@ -107,7 +110,11 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     if (process->name=="services.exe") {
         this->log=true;
     }
-    
+    this->name = BString::valueOf(id);
+    this->threadNode = Fs::addFileNode(process->taskNode->path + B("/") + BString::valueOf(id), B(""), B(""), true, process->taskNode);
+    this->commNode = Fs::addVirtualFile(threadNode->path + B("/comm"), [this](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+        return new BufferAccess(node, flags, this->name);
+        }, K__S_IREAD | K__S_IWRITE, k_mdev(0, 0), threadNode);
     //BString tmp = BString::valueOf(id);
     //tmp += ".txt";
     //if (id==0x1c)

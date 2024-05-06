@@ -21,7 +21,8 @@
 
 class BufferAccess : public FsOpenNode {
 public:
-    BufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, BString buffer);
+    BufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, const BString& buffer);
+    BufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, BString* buffer);
 
     // from FsOpenNode
     S64  length() override;
@@ -41,9 +42,10 @@ public:
     void close() override;
     void reopen() override;
     bool isOpen() override;
-
-    BString buffer;
+    
 private:
+    BString* buffer;
+    BString storage;
     S32 pos;
 };
 

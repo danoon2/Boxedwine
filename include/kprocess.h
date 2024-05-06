@@ -293,7 +293,10 @@ private:
 
     bool systemProcess = false;
     bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent
+
+public:
     std::shared_ptr<FsNode> processNode; // in /proc/<pid>
+    std::shared_ptr<FsNode> taskNode; // in /proc/<pid>/task
     std::shared_ptr<FsNode> fdNode; // in /proc/<pid>/fd
 };
 

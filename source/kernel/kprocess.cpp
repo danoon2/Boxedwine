@@ -61,6 +61,8 @@ std::shared_ptr<KProcess> KProcess::create() {
         process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
     }
     process->timer.process = process; // can't use shared_from_this in constructor
+
+    process->taskNode = Fs::addFileNode(process->processNode->path + B("/task"), B(""), B(""), true, process->processNode);
     return process;
 }
 

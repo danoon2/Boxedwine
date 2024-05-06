@@ -121,6 +121,7 @@ public:
     bool hasContextBeenMadeCurrentSinceCreation = false;
 
     BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
+    BString name;
 public:
     void* currentContext = nullptr;
     U32 glLastError = 0;
@@ -155,6 +156,9 @@ public:
 
     U32 condStartWaitTime = 0;
 private:
+    std::shared_ptr<FsNode> threadNode; // in /proc/<pid>/task/<tid>
+    std::shared_ptr<FsNode> commNode; // in /proc/<pid>/task/<tid>/comm
+
     std::vector< std::function<void(U32) > > callbacksOnExit;
 
     void clearFutexes();
