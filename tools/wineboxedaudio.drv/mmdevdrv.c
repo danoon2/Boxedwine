@@ -590,7 +590,10 @@ exit:
 		RegCloseKey(drv_key);
 }
 
-static void get_device_guid(EDataFlow flow, AudioDeviceID device, GUID *guid)
+static GUID guid0;
+static GUID guid1;
+
+void WINAPI get_device_guid(EDataFlow flow, AudioDeviceID device, GUID *guid)
 {
 	HKEY key = NULL, dev_key;
 	DWORD type, size = sizeof(*guid);
@@ -628,6 +631,11 @@ static void get_device_guid(EDataFlow flow, AudioDeviceID device, GUID *guid)
 
 	if (key)
 		RegCloseKey(key);
+	if (flow == 0) {
+		guid0 = guid;
+	} else {
+		guid1 = guid;
+	}
 }
 
 static const WCHAR deviceName[] = { 'B','o','x','e', 'd', 'w', 'i', 'n', 'e', ' ', 'a', 'u', 'd', 'i', 'o', 0 };
@@ -3055,3 +3063,15 @@ HRESULT WINAPI AUDDRV_GetAudioSessionManager(IMMDevice *device,
 	return S_OK;
 }
 
+BOOL WINAPI get_device_name_from_guid(GUID* guid, char** name, EDataFlow* flow)
+{
+	if (*guid == guid0) {
+		*flow = 0;
+		*name = strdup("Boxedaudio Render");
+	} else {
+		*flow = 1;
+		*name = strdup("Boxedaudio Capture");
+	}
+
+	return FALSE;
+}

@@ -113,7 +113,7 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     this->name = BString::valueOf(id);
     this->threadNode = Fs::addFileNode(process->taskNode->path + B("/") + BString::valueOf(id), B(""), B(""), true, process->taskNode);
     this->commNode = Fs::addVirtualFile(threadNode->path + B("/comm"), [this](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
-        return new BufferAccess(node, flags, this->name);
+        return new BufferAccess(node, flags, &this->name);
         }, K__S_IREAD | K__S_IWRITE, k_mdev(0, 0), threadNode);
     //BString tmp = BString::valueOf(id);
     //tmp += ".txt";
