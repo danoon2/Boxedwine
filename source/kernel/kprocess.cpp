@@ -59,10 +59,9 @@ std::shared_ptr<KProcess> KProcess::create() {
             });
         Fs::addVirtualFile(process->processNode->path + "/loginuid", K__S_IREAD, k_mdev(0, 0), process->processNode, B("1"));
         process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
+        process->taskNode = Fs::addFileNode(process->processNode->path + B("/task"), B(""), B(""), true, process->processNode);
     }
-    process->timer.process = process; // can't use shared_from_this in constructor
-
-    process->taskNode = Fs::addFileNode(process->processNode->path + B("/task"), B(""), B(""), true, process->processNode);
+    process->timer.process = process; // can't use shared_from_this in constructor    
     return process;
 }
 
