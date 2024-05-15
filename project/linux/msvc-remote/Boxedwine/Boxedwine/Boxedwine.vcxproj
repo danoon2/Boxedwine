@@ -248,6 +248,7 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devurandom.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devzero.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kepoll.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\kevent.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kfile.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kfiledescriptor.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kfilelock.cpp" />
@@ -531,6 +532,7 @@
     <ClInclude Include="..\..\..\..\..\include\kdspaudio.h" />
     <ClInclude Include="..\..\..\..\..\include\kepoll.h" />
     <ClInclude Include="..\..\..\..\..\include\kerror.h" />
+    <ClInclude Include="..\..\..\..\..\include\kevent.h" />
     <ClInclude Include="..\..\..\..\..\include\kfile.h" />
     <ClInclude Include="..\..\..\..\..\include\kfiledescriptor.h" />
     <ClInclude Include="..\..\..\..\..\include\kfilelock.h" />

@@ -269,6 +269,6 @@ U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 f
     } else {
         kpanic("syscall_signalfd4 unknown mask size: %d", maskSize);
     }
-    s->blocking = (fd->accessFlags & K_O_NONBLOCK)!=0;
+    s->blocking = (fd->accessFlags & K_O_NONBLOCK) == 0;
     return fd->handle;
 }

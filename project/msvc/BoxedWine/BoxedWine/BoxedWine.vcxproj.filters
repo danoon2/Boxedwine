@@ -571,6 +571,9 @@
     <ClCompile Include="..\..\..\..\source\kernel\knetlink.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kevent.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1270,6 +1273,9 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\knetlink.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kevent.h">
       <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>

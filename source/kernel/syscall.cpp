@@ -22,6 +22,7 @@
 #include "ksignal.h"
 #include "ksocket.h"
 #include "kepoll.h"
+#include "kevent.h"
 
 #include <random>
 #include <thread>
@@ -1075,7 +1076,7 @@ static U32 syscall_getresuid32(CPU* cpu, U32 eipCount) {
     if (ARG1)
         cpu->memory->writed(ARG1, cpu->thread->process->userId);
     if (ARG2)
-        cpu->memory->writed(ARG2, cpu->thread->process->effectiveUserId);
+        cpu->memory->writed(ARG2, cpu->thread->process->userId);
     if (ARG3)
         cpu->memory->writed(ARG3, cpu->thread->process->userId);
     U32 result = 0;
@@ -1099,7 +1100,7 @@ static U32 syscall_getresgid32(CPU* cpu, U32 eipCount) {
     if (ARG1)
         cpu->memory->writed(ARG1, cpu->thread->process->groupId);
     if (ARG2)
-        cpu->memory->writed(ARG2, cpu->thread->process->effectiveGroupId);
+        cpu->memory->writed(ARG2, cpu->thread->process->groupId);
     if (ARG3)
         cpu->memory->writed(ARG3, cpu->thread->process->groupId);
     U32 result = 0;
@@ -1597,6 +1598,13 @@ static U32 syscall_utimensat_time64(CPU* cpu, U32 eipCount) {
 static U32 syscall_signalfd4(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_SIGNAL, cpu, "signalfd4 fd=%d mask=%X(0x%0.8X%0.8X) size=%d flags=%X", ARG1, ARG2, (ARG3>=8?cpu->memory->readd(ARG2+4):0), cpu->memory->readd(ARG2), ARG3, ARG4);
     U32 result = syscall_signalfd4(cpu->thread, ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_eventfd2(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "eventfd2 value=%d flags=%X", ARG1, ARG2);
+    U32 result = syscall_eventfd2(cpu->thread, ARG1, ARG2);
     SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
@@ -2101,7 +2109,7 @@ static const SyscallFunc syscallFunc[] = {
     syscall_timerfd_settime,  // 325
     syscall_timerfd_gettime,  // 326
     syscall_signalfd4,  // 327 __NR_signalfd4
-    nullptr,                  // 328
+    syscall_eventfd2,   // 328 __NR_eventfd2
     syscall_epoll_create1, // 329 __NR_epoll_create1
     nullptr,                  // 330
     syscall_pipe2,      // 331 __NR_pipe2
