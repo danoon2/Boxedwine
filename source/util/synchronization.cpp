@@ -177,7 +177,7 @@ void BoxedWineCondition::signalAll() {
 
 U32 BoxedWineCondition::wait() {
     this->waitingThreads.addToBack(&KThread::currentThread()->waitThreadNode);
-    KThread::currentThread()->waitingCond = this;
+    KThread::currentThread()->waitingCond = shared_from_this();
     unscheduleThread(KThread::currentThread());
     return -K_WAIT;
 }
@@ -188,7 +188,7 @@ U32 BoxedWineCondition::waitWithTimeout(U32 ms) {
     thread->condTimer.cond = this;
     addTimer(&thread->condTimer);
     this->waitingThreads.addToBack(&KThread::currentThread()->waitThreadNode);
-    KThread::currentThread()->waitingCond = this;
+    KThread::currentThread()->waitingCond = shared_from_this();
     unscheduleThread(KThread::currentThread());
     return -K_WAIT;    
 }
@@ -197,11 +197,11 @@ U32 BoxedWineCondition::waitCount() {
     return this->waitingThreads.size() + (parents.size() > 0 ? 1 : 0);
 }
 
-void BoxedWineCondition::addParentCondition(BoxedWineCondition* parent) {
+void BoxedWineCondition::addParentCondition(const std::shared_ptr<BoxedWineCondition>& parent) {
     parents.insert(parent);
 }
 
-void BoxedWineCondition::removeParentCondition(BoxedWineCondition* parent) {
+void BoxedWineCondition::removeParentCondition(const std::shared_ptr<BoxedWineCondition>& parent) {
     parents.erase(parent);
 }
 

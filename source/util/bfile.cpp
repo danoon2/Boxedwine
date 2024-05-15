@@ -58,15 +58,15 @@ BString BReadFile::readAll() {
 }
 
 U32 BReadFile::read(char* buffer, U64 len) {
-	return (U32)std::fread(buffer, 1, len, file);
+	return (U32)std::fread(buffer, 1, (size_t)len, file);
 }
 
 U32 BReadFile::read(S8* buffer, U64 len) {
-	return (U32)std::fread(buffer, 1, len, file);
+	return (U32)std::fread(buffer, 1, (size_t)len, file);
 }
 
 U32 BReadFile::read(U8* buffer, U64 len) {
-	return (U32)std::fread(buffer, 1, len, file);
+	return (U32)std::fread(buffer, 1, (size_t)len, file);
 }
 
 bool BReadFile::readLine(BString& line) {

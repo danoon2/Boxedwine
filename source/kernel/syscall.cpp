@@ -1198,7 +1198,7 @@ static U32 syscall_getxattr(CPU* cpu, U32 eipCount) {
             BString attr = Fs::getDosAttrib(file);
             if (attr.length() == 0) {
                 result = -K_ENODATA;
-            } else if (attr.length() < ARG4) {
+            } else if ((U32)attr.length() < ARG4) {
                 cpu->memory->strcpy(ARG3, attr.c_str());
                 result = 0;
             } else {
@@ -1222,7 +1222,7 @@ static U32 syscall_lgetxattr(CPU* cpu, U32 eipCount) {
             BString attr = Fs::getDosAttrib(file);
             if (attr.length() == 0) {
                 result = -K_ENODATA;
-            } else if (attr.length() < ARG4) {
+            } else if ((U32)attr.length() < ARG4) {
                 cpu->memory->strcpy(ARG3, attr.c_str());
                 result = 0;
             } else {
@@ -1249,7 +1249,7 @@ static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
             BString attr = Fs::getDosAttrib(node->openFile->node);
             if (attr.length() == 0) {
                 result = -K_ENODATA;
-            } else if (attr.length() < ARG4) {
+            } else if ((U32)attr.length() < ARG4) {
                 cpu->memory->strcpy(ARG3, attr.c_str());
                 result = 0;
             } else {

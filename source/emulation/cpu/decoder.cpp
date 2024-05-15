@@ -6271,7 +6271,7 @@ void DecodedOp::log(CPU* cpu) {
         }
         U64 endPos = cpu->logFile.getPos();
         if (endPos-pos<55) {
-            cpu->logFile.write(B("                                                       ").substr(0, 55-(endPos-pos)));
+            cpu->logFile.write(B("                                                       ").substr(0, (U32)(55-(endPos-pos))));
         }
         cpu->logFile.writeFormat(" EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X\n", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
         cpu->logFile.flush();

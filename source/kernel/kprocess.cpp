@@ -2578,7 +2578,7 @@ U32 KProcess::timerfd_gettime(U32 fildes, U32 value) {
             memory->writed(value + 8, 0);
             memory->writed(value + 12, 0);
         } else {
-            memory->writed(value + 8, diff / 1000000);
+            memory->writed(value + 8, (U32)(diff / 1000000));
             memory->writed(value + 12, (diff % 1000000) * 1000);
         }
     }
