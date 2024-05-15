@@ -227,7 +227,7 @@ std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::getAvailableWineVers
 }
 
 std::shared_ptr<FileSystemZip> GlobalSettings::getAvailableFileSystemFromName(BString name, bool mustHaveWine) {
-    for (auto& ver : fileSystemVersions) {
+    for (auto& ver : availableFileSystemVersions) {
         if (ver->name.compareTo(name, true) == 0 && (!mustHaveWine || ver->hasWine())) {
             return ver;
         }
@@ -394,6 +394,9 @@ void GlobalSettings::loadFileLists() {
             int fileSize = wine.child("FileSizeMB").text().as_int();
 
             if (childName.length() && ver.length() && file.length()) {
+                if (wineVersion.length() == 0) {
+                    wineVersion = childName;
+                }
                 std::shared_ptr<FileSystemZip> fs = std::make_shared<FileSystemZip>(childName, wineVersion, ver, file, file2, depend, fileSize);
                 GlobalSettings::availableFileSystemVersions.push_back(fs);
             }
@@ -723,7 +726,7 @@ void GlobalSettings::downloadFile(BString url, BString filePath, BString name, U
 }
 
 void GlobalSettings::downloadFileSystem(const std::shared_ptr<FileSystemZip>& version, std::function<void(bool)> onCompleted) {
-    runOnMainUI([&version, onCompleted]() {
+    runOnMainUI([version, onCompleted]() {
         BString filePath = version->getLocalFilePath();
         if (!Fs::doesNativePathExist(GlobalSettings::getFileSystemFolder())) {
             Fs::makeNativeDirs(GlobalSettings::getFileSystemFolder());
