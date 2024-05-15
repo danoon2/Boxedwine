@@ -163,6 +163,12 @@ U32 syscall_eventfd2(KThread* thread, U32 initialValue, U32 flags) {
     if (flags & K_O_NONBLOCK) {
         fd->accessFlags |= K_O_NONBLOCK;
     }
+    U32 unusedFlags = flags;
+    unusedFlags &= ~K_O_NONBLOCK;
+    unusedFlags &= ~K_O_CLOEXEC;
+    if (unusedFlags) {
+        kwarn("syscall_eventfd2 unhandled flags=%X", unusedFlags);
+    }
     o->blocking = (fd->accessFlags & K_O_NONBLOCK) == 0;
     return fd->handle;
 }
