@@ -97,6 +97,12 @@
 		1A55D6692A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
 		1A55D66A2A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
 		1A55D66B2A0842E8002B7021 /* trees.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A55D6672A0842E8002B7021 /* trees.c */; };
+		1A6821792BF44BC0001AA732 /* kevent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6821782BF44BC0001AA732 /* kevent.cpp */; };
+		1A68217A2BF44BC0001AA732 /* kevent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6821782BF44BC0001AA732 /* kevent.cpp */; };
+		1A68217B2BF44BC0001AA732 /* kevent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6821782BF44BC0001AA732 /* kevent.cpp */; };
+		1A68217C2BF44BC0001AA732 /* kevent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6821782BF44BC0001AA732 /* kevent.cpp */; };
+		1A68217D2BF44BC0001AA732 /* kevent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6821782BF44BC0001AA732 /* kevent.cpp */; };
+		1A68217E2BF44BC0001AA732 /* kevent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6821782BF44BC0001AA732 /* kevent.cpp */; };
 		1A80EE48276EBCC70032A70A /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
 		1A80EE49276EBCC70032A70A /* ksocketobject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE202433BBBE003F17F1 /* ksocketobject.cpp */; };
 		1A80EE54276EBCC70032A70A /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
@@ -1482,6 +1488,8 @@
 		1A55D6492A08428F002B7021 /* adler32.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = adler32.c; path = ../../../../../lib/zlib/adler32.c; sourceTree = "<group>"; };
 		1A55D64A2A08428F002B7021 /* zutil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = zutil.h; path = ../../../../../lib/zlib/zutil.h; sourceTree = "<group>"; };
 		1A55D6672A0842E8002B7021 /* trees.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = trees.c; path = ../../../../../lib/zlib/trees.c; sourceTree = "<group>"; };
+		1A6821772BF44BB1001AA732 /* kevent.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = kevent.h; sourceTree = "<group>"; };
+		1A6821782BF44BC0001AA732 /* kevent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = kevent.cpp; sourceTree = "<group>"; };
 		1A80F08F276EBCC70032A70A /* BoxedwineAutomationSlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomationSlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A80F2E1276EBF170032A70A /* BoxedwineAutomation.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineAutomation.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A80F2F6276EBFF40032A70A /* BoxedwineX64-Automation.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = "BoxedwineX64-Automation.entitlements"; sourceTree = "<group>"; };
@@ -2462,6 +2470,7 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1A6821772BF44BB1001AA732 /* kevent.h */,
 				1ADBD87E2B9E25CC0074867C /* knetlink.h */,
 				1ADBD87D2B94253F0074867C /* procstat.h */,
 				1ADBD83D2B9194380074867C /* devfb.h */,
@@ -2957,6 +2966,7 @@
 		71FBFE152433BBBE003F17F1 /* kernel */ = {
 			isa = PBXGroup;
 			children = (
+				1A6821782BF44BC0001AA732 /* kevent.cpp */,
 				1ADBD87F2B9E25DA0074867C /* knetlink.cpp */,
 				71FBFE162433BBBE003F17F1 /* proc */,
 				71FBFE1B2433BBBE003F17F1 /* kfilelock.cpp */,
@@ -3400,6 +3410,7 @@
 				1A80EE88276EBCC70032A70A /* ksocket.cpp in Sources */,
 				1A80EE8B276EBCC70032A70A /* cpuinfo.cpp in Sources */,
 				1A80EE99276EBCC70032A70A /* fszip.cpp in Sources */,
+				1A68217B2BF44BC0001AA732 /* kevent.cpp in Sources */,
 				1A80EE9C276EBCC70032A70A /* devzero.cpp in Sources */,
 				1A80EE9D276EBCC70032A70A /* common_xchg.cpp in Sources */,
 				1A80EE9E276EBCC70032A70A /* x64CPU.cpp in Sources */,
@@ -3633,6 +3644,7 @@
 				1A80F0C8276EBF170032A70A /* testCPU.cpp in Sources */,
 				1AC5F2AE2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				1A80F0D1276EBF170032A70A /* ksocket.cpp in Sources */,
+				1A68217C2BF44BC0001AA732 /* kevent.cpp in Sources */,
 				1A80F0D4276EBF170032A70A /* cpuinfo.cpp in Sources */,
 				1AC5F2EA2772D957001D0FCA /* armv8btAsm.cpp in Sources */,
 				1A80F0DC276EBF170032A70A /* kdspaudio.cpp in Sources */,
@@ -3996,6 +4008,7 @@
 				1AC5F2CD2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
 				1AFC479F2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AFC479B26483DE000EE5FCC /* knativecoreaudio.cpp in Sources */,
+				1A68217D2BF44BC0001AA732 /* kevent.cpp in Sources */,
 				1AC5F2DF2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 				71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */,
 				71222B842435169100CDBABD /* fszip.cpp in Sources */,
@@ -4102,6 +4115,7 @@
 				1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
 				71222C0A24351CBA00CDBABD /* self.cpp in Sources */,
 				715F34912440D7FC0038F5A4 /* threadutils.cpp in Sources */,
+				1A68217A2BF44BC0001AA732 /* kevent.cpp in Sources */,
 				71222C0B24351CBA00CDBABD /* testSSE.cpp in Sources */,
 				71222C0C24351CBA00CDBABD /* soft_ro_page.cpp in Sources */,
 				1ADBD8592B92E7B60074867C /* sysdevices.cpp in Sources */,
@@ -4399,6 +4413,7 @@
 				1AC5F2C22772D957001D0FCA /* armv8btData.cpp in Sources */,
 				7135DC7B264EBCD0005D6AA6 /* glMarshal.cpp in Sources */,
 				7135DC7C264EBCD0005D6AA6 /* pugixml.cpp in Sources */,
+				1A68217E2BF44BC0001AA732 /* kevent.cpp in Sources */,
 				7135DC7D264EBCD0005D6AA6 /* normal_strings.cpp in Sources */,
 				7135DC7F264EBCD0005D6AA6 /* audiounit.cpp in Sources */,
 				7135DC80264EBCD0005D6AA6 /* knativecoreaudio.cpp in Sources */,
@@ -4505,6 +4520,7 @@
 				71FBFEDE2433BBBE003F17F1 /* glfunctions_ext2.cpp in Sources */,
 				1A55D6632A08428F002B7021 /* adler32.c in Sources */,
 				1AA711B82B4FBCCB008704E2 /* kmemory_soft.cpp in Sources */,
+				1A6821792BF44BC0001AA732 /* kevent.cpp in Sources */,
 				71FBFEDF2433BBBE003F17F1 /* glcommon.cpp in Sources */,
 				710091602644D44E003413C3 /* platformThreads.cpp in Sources */,
 				1ADBD8582B92E7B60074867C /* sysdevices.cpp in Sources */,
