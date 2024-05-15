@@ -65,7 +65,7 @@ std::shared_ptr<KProcess> KProcess::create() {
     return process;
 }
 
-KProcess::KProcess(U32 id) : id(id), exitOrExecCond(B("KProcess::exitOrExecCond")), threadRemovedCondition(B("KProcess::threadRemovedCondition")) {
+KProcess::KProcess(U32 id) : id(id), exitOrExecCond(std::make_shared<BoxedWineCondition>(B("KProcess::exitOrExecCond"))), threadRemovedCondition(std::make_shared<BoxedWineCondition>(B("KProcess::threadRemovedCondition"))) {
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
         this->ldt[i].read_exec_only = 1;
@@ -2726,7 +2726,7 @@ void KProcess::signalFd(KThread* thread, U32 signal) {
         KFileDescriptor* fd = n.value;
         if (fd->kobject->type == KTYPE_SIGNAL) {
             std::shared_ptr<KSignal> p = std::dynamic_pointer_cast<KSignal>(fd->kobject);
-            if ((p->mask & signal) && (!thread || thread->waitingCond == &p->lockCond)) {
+            if ((p->mask & signal) && (!thread || thread->waitingCond == p->lockCond)) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p->lockCond);
                 p->sigAction = this->sigActions[signal];
                 p->signalingPid = this->id;

@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #ifdef BOXEDWINE_MULTI_THREADED
 
-BoxedWineCriticalSectionCond::BoxedWineCriticalSectionCond(BoxedWineCondition* cond) {
+BoxedWineCriticalSectionCond::BoxedWineCriticalSectionCond(const std::shared_ptr<BoxedWineCondition>& cond) {
     this->cond = cond;
     this->cond->lock();
 }
@@ -39,14 +39,13 @@ bool BoxedWineCondition::tryLock() {
 }
 
 void BoxedWineCondition::signal() {
-    std::set<BoxedWineCondition*> parentsCopy;
+    std::set<std::shared_ptr<BoxedWineCondition>> parentsCopy;
     {
         const std::lock_guard<std::mutex> lock(parentsMutex);
         parentsCopy = parents;
     }
     for (auto& parent : parentsCopy) {
-        BoxedWineCondition& p = *parent;
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(parent);
         parent->signal();
         break;
     }
@@ -54,7 +53,7 @@ void BoxedWineCondition::signal() {
 }
 
 void BoxedWineCondition::signalAll() {
-    std::set<BoxedWineCondition*> parentsCopy;
+    std::set<std::shared_ptr<BoxedWineCondition>> parentsCopy;
     {
         const std::lock_guard<std::mutex> lock(parentsMutex);
         if (parents.size()) {
@@ -62,8 +61,7 @@ void BoxedWineCondition::signalAll() {
         }
     }
     for (auto& parent : parentsCopy) {
-        BoxedWineCondition& p = *parent;
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(parent);
         parent->signalAll();
     }
     this->c.notify_all();
@@ -72,20 +70,19 @@ void BoxedWineCondition::signalAll() {
 void BoxedWineCondition::wait(std::unique_lock<std::mutex>& lock) {
     KThread* thread = KThread::currentThread();
     if (thread) {
-        thread->waitingCond = this;
+        thread->waitingCond = shared_from_this();
     }
     this->c.wait(lock);
     if (thread) {
         thread->waitingCond = nullptr;
     }
-    std::set<BoxedWineCondition*> parentsCopy;
+    std::set<std::shared_ptr<BoxedWineCondition>> parentsCopy;
     {
         const std::lock_guard<std::mutex> lock(parentsMutex);
         parentsCopy = parents;
     }
     for (auto& parent : parentsCopy) {
-        BoxedWineCondition& p = *parent;
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(parent);
         parent->signalAll();
     }
 }
@@ -93,20 +90,19 @@ void BoxedWineCondition::wait(std::unique_lock<std::mutex>& lock) {
 void BoxedWineCondition::waitWithTimeout(std::unique_lock<std::mutex>& lock, U32 ms) {    
     KThread* thread = KThread::currentThread();
     if (thread) {
-        thread->waitingCond = this;
+        thread->waitingCond = shared_from_this();
     }
     this->c.wait_for(lock, std::chrono::milliseconds(KSystem::emulatedMilliesToHost(ms)));
     if (thread) {
         thread->waitingCond = nullptr;
     }    
-    std::set<BoxedWineCondition*> parentsCopy;
+    std::set<std::shared_ptr<BoxedWineCondition>> parentsCopy;
     {
         const std::lock_guard<std::mutex> lock(parentsMutex);
         parentsCopy = parents;
     }
     for (auto& parent : parentsCopy) {
-        BoxedWineCondition& p = *parent;
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(p);
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(parent);
         parent->signalAll();
     }
 }
@@ -116,12 +112,12 @@ void BoxedWineCondition::unlock() {
     this->m.unlock();
 }
 
-void BoxedWineCondition::addParentCondition(BoxedWineCondition* parent) {
+void BoxedWineCondition::addParentCondition(const std::shared_ptr<BoxedWineCondition>& parent) {
     const std::lock_guard<std::mutex> lock(parentsMutex);
     parents.insert(parent);
 }
 
-void BoxedWineCondition::removeParentCondition(BoxedWineCondition* parent) {
+void BoxedWineCondition::removeParentCondition(const std::shared_ptr<BoxedWineCondition>& parent) {
     const std::lock_guard<std::mutex> lock(parentsMutex);
     parents.erase(parent);
 }

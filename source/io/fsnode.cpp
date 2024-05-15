@@ -14,7 +14,7 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString 
     parent(parent),
     isDir(isDirectory),      
     hasLoadedChildrenFromFileSystem(false),
-    locksCS(B("FsNode.lockCS"))
+    locksCS(std::make_shared<BoxedWineCondition>(B("FsNode.lockCS")))
  {   
 }
 

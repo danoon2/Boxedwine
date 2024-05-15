@@ -20,7 +20,7 @@ KTimerCallback::~KTimerCallback() {
     }
 }
 
-KTimer::KTimer() : KObject(KTYPE_TIMER), waitCond(B("KTimer::waitCond")), timer(this) {
+KTimer::KTimer() : KObject(KTYPE_TIMER), waitCond(std::make_shared<BoxedWineCondition>(B("KTimer::waitCond"))), timer(this) {
 }
 
 KTimer::~KTimer() {
@@ -87,9 +87,9 @@ bool KTimer::isWriteReady() {
 
 void KTimer::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_PARENT(this->waitCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->waitCond, parentCondition);
     } else {
-        BOXEDWINE_CONDITION_REMOVE_PARENT(this->waitCond, &parentCondition);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->waitCond, parentCondition);
     }
 }
 

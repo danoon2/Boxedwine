@@ -5,7 +5,7 @@
 
 class SdlCallback {
 public:
-    SdlCallback() = default;
+    SdlCallback() : cond(std::make_shared<BoxedWineCondition>(B("SdlCallback"))) {}
 
     SDL_Event sdlEvent = { 0 };
     BOXEDWINE_CONDITION cond;

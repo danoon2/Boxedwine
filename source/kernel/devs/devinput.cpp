@@ -68,7 +68,7 @@ public:
         version(0),
         mask(0),
         prop(0),
-        bufferCond(B("DevInput::bufferCond")),
+        bufferCond(std::make_shared<BoxedWineCondition>(B("DevInput::bufferCond"))),
         clearOnExit(nullptr) {}
 
     virtual ~DevInput() {
@@ -178,9 +178,9 @@ U32 DevInput::writeNative(U8* buffer, U32 len) {
 
 void DevInput::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_PARENT(this->bufferCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->bufferCond, parentCondition);
     } else {
-        BOXEDWINE_CONDITION_REMOVE_PARENT(this->bufferCond, &parentCondition);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->bufferCond, parentCondition);
     }
 }
 

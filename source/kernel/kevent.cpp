@@ -52,9 +52,9 @@ bool KEvent::isOpen() {
 
 void KEvent::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if ((events & K_POLLIN) || (events & K_POLLOUT)) {
-        BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, parentCondition);
     } else {
-        BOXEDWINE_CONDITION_REMOVE_PARENT(this->lockCond, &parentCondition);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->lockCond, parentCondition);
     }
 }
 

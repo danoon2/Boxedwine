@@ -72,12 +72,12 @@ void updateWaitingList() {
             kpanic("updateWaitingList %s socket is too large to select on", s->nativeSocket);
         }
 #endif
-        if (s->readingCond.parentsCount()) {
+        if (s->readingCond->parentsCount()) {
             FD_SET(s->nativeSocket, &waitingReadset);
             FD_SET(s->nativeSocket, &waitingErrorset);
             errorSet = true;
         }
-        if (s->writingCond.parentsCount()) {
+        if (s->writingCond->parentsCount()) {
             FD_SET(s->nativeSocket, &waitingWriteset);
             if (!errorSet)
                 FD_SET(s->nativeSocket, &waitingErrorset);
@@ -119,10 +119,10 @@ bool checkWaitingNativeSockets(int timeout) {
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);                
 
                 for (auto& s : waitingNativeSockets) {
-                    if ((FD_ISSET(s->nativeSocket, &waitingReadset) || FD_ISSET(s->nativeSocket, &waitingErrorset)) && s->readingCond.waitCount()) {
+                    if ((FD_ISSET(s->nativeSocket, &waitingReadset) || FD_ISSET(s->nativeSocket, &waitingErrorset)) && s->readingCond->waitCount()) {
                         if (conditionCount<1024) conditions[conditionCount++]=&s->readingCond;
                     }
-                    if ((FD_ISSET(s->nativeSocket, &waitingWriteset) || FD_ISSET(s->nativeSocket, &waitingErrorset)) && s->writingCond.waitCount()) {
+                    if ((FD_ISSET(s->nativeSocket, &waitingWriteset) || FD_ISSET(s->nativeSocket, &waitingErrorset)) && s->writingCond->waitCount()) {
                         if (conditionCount<1024) conditions[conditionCount++]=&s->writingCond;
                     }
                 }
@@ -297,8 +297,8 @@ S32 handleNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, bool 
 
 KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_NATIVE_SOCKET, domain, type, protocol), 
     connecting(false),
-    readingCond(B("KNativeSocketObject::readingCond")),
-    writingCond(B("KNativeSocketObject::writingCond")) {
+    readingCond(std::make_shared<BoxedWineCondition>(B("KNativeSocketObject::readingCond"))),
+    writingCond(std::make_shared<BoxedWineCondition>(B("KNativeSocketObject::writingCond"))) {
 #ifdef WIN32
     if (!winsock_intialized) {
         WSADATA wsaData;
@@ -439,7 +439,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
                 BString s;
                 s += "eth";
                 s += i;
-                thread->memory->memcpy(buf + 40 * i, s.c_str(), s.length()+1);
+                thread->memory->memcpy(buf + 40 * i, s.c_str(), s.length() + 1);
             }
             thread->memory->memcpy(buf + 40 * i + 16, addr, 16); // 16 sizeof addr            
         }
@@ -602,14 +602,14 @@ bool KNativeSocketObject::isWriteReady() {
 
 void KNativeSocketObject::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_ADD_PARENT(this->readingCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->readingCond, parentCondition);
     } else {
-        BOXEDWINE_CONDITION_REMOVE_PARENT(this->readingCond, &parentCondition);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->readingCond, parentCondition);
     }
     if (events & K_POLLOUT) {
-        BOXEDWINE_CONDITION_ADD_PARENT(this->writingCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->writingCond, parentCondition);
     } else {
-        BOXEDWINE_CONDITION_REMOVE_PARENT(this->writingCond, &parentCondition);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->writingCond, parentCondition);
     }
     if (events == 0) {
         removeWaitingSocket(this->nativeSocket);

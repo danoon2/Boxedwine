@@ -143,7 +143,7 @@ public:
     inline static KThread* currentThread() {return runningThread;}
 	inline static void setCurrentThread(KThread* thread) { runningThread = thread; }
 
-    BOXEDWINE_CONDITION *waitingCond = nullptr;    
+    BOXEDWINE_CONDITION waitingCond = nullptr;    
     BOXEDWINE_CONDITION pollCond;
 #ifdef BOXEDWINE_MULTI_THREADED
     BOXEDWINE_MUTEX waitingCondSync;

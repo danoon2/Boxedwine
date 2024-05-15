@@ -202,7 +202,7 @@ void BtCPU::startThread() {
 
 // called from another thread
 void BtCPU::wakeThreadIfWaiting() {
-    BoxedWineCondition* cond = thread->waitingCond;
+    const std::shared_ptr<BoxedWineCondition> cond = thread->waitingCond;
 
     // wait up the thread if it is waiting
     if (cond) {

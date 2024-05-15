@@ -90,14 +90,14 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     id(id),   
     process(process),
     memory(process->memory),    
-    waitingForSignalToEndCond(B("KThread::waitingForSignalToEndCond")),
-    sigWaitCond(B("KThread::sigWaitCond")),
-    pollCond(B("KThread::pollCond")),
+    waitingForSignalToEndCond(std::make_shared<BoxedWineCondition>(B("KThread::waitingForSignalToEndCond"))),
+    sigWaitCond(std::make_shared<BoxedWineCondition>(B("KThread::sigWaitCond"))),
+    pollCond(std::make_shared<BoxedWineCondition>(B("KThread::pollCond"))),
 #ifndef BOXEDWINE_MULTI_THREADED
     scheduledThreadNode(this),
     waitThreadNode(this),            
 #endif
-    sleepCond(B("KThread::sleepCond"))
+    sleepCond(std::make_shared<BoxedWineCondition>(B("KThread::sleepCond")))
     {
 
     this->sigMask = 0;
@@ -176,13 +176,13 @@ U32 KThread::signal(U32 signal, bool wait) {
             {    
                 bool handled = false;
 
-                BOXEDWINE_CONDITION* cond = waitingCond;
+                BOXEDWINE_CONDITION cond = waitingCond;
                 if (signal == K_SIGQUIT && cond) {
-                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(*cond);
+                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(cond);
                     if (waitingCond) {
                         this->startSignal = true;
                         this->runSignal(K_SIGQUIT, -1, 0);
-                        BOXEDWINE_CONDITION_SIGNAL(*cond);
+                        BOXEDWINE_CONDITION_SIGNAL(cond);
                         handled = true;
                     }
                 }
@@ -192,10 +192,10 @@ U32 KThread::signal(U32 signal, bool wait) {
                 }
             }
             if (wait) {
-                BOXEDWINE_CONDITION* c = this->waitingCond;
+                BOXEDWINE_CONDITION c = this->waitingCond;
                 if (c) {
-                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(*c);
-                    BOXEDWINE_CONDITION_SIGNAL_ALL(*c);
+                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(c);
+                    BOXEDWINE_CONDITION_SIGNAL_ALL(c);
                 }
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
                 BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
@@ -236,7 +236,7 @@ U32 KThread::signal(U32 signal, bool wait) {
 
 struct futex {
 public:
-    futex() : cond(B("futex")) {}
+    futex() : cond(std::make_shared<BoxedWineCondition>(B("futex"))) {}
     KThread* thread = nullptr;
     U64 address = 0;  
     U32 expireTimeInMillies = 0;
@@ -893,12 +893,11 @@ void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo) {
         this->cpu->setIsBig(1);
 #ifdef BOXEDWINE_MULTI_THREADED
         if (!this->startSignal) {
-            BOXEDWINE_CONDITION* cond = this->waitingCond;
+            BOXEDWINE_CONDITION cond = this->waitingCond;
             if (cond) {
-                BOXEDWINE_CONDITION& c = *cond;
                 this->startSignal = true;
-                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(c);
-                BOXEDWINE_CONDITION_SIGNAL_ALL(c);
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(cond);
+                BOXEDWINE_CONDITION_SIGNAL_ALL(cond);
             }
         }
 #endif

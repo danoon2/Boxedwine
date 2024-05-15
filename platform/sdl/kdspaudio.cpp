@@ -19,7 +19,7 @@ void closeSdlAudio() {
 
 class KDspAudioSdl : public KDspAudio, public std::enable_shared_from_this<KDspAudioSdl> {
 public:
-	KDspAudioSdl() : bufferCond(B("KDspAudioSdl::bufferCond")) {
+	KDspAudioSdl() : bufferCond(std::make_shared<BoxedWineCondition>(B("KDspAudioSdl::bufferCond"))) {
 		this->want.format = AUDIO_U8;
 		this->want.channels = 1;
 		this->want.freq = 11025;

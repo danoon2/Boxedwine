@@ -111,7 +111,7 @@ class KFileLock;
 
 class KSignal : public KObject {
 public:
-    KSignal() : KObject(KTYPE_SIGNAL), lockCond(B("KSignal::lockCond")) {}
+    KSignal() : KObject(KTYPE_SIGNAL), lockCond(std::make_shared<BoxedWineCondition>(B("KSignal::lockCond"))) {}
 
     // from KObject
     U32 ioctl(KThread* thread, U32 request) override;

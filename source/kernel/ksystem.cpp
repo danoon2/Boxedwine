@@ -67,7 +67,7 @@ BString KSystem::exePath;
 std::shared_ptr<FsNode> KSystem::procNode;
 U32 KSystem::wineMajorVersion;
 
-BOXEDWINE_CONDITION KSystem::processesCond(B("KSystem::processesCond"));
+BOXEDWINE_CONDITION KSystem::processesCond(std::make_shared<BoxedWineCondition>(B("KSystem::processesCond")));
 
 void KSystem::init() {
     KSystem::adjustClock = false;

@@ -25,7 +25,7 @@ class KThread;
 
 class KEvent : public KObject {
 public:
-    KEvent() : KObject(KTYPE_EVENT), lockCond(B("KEvent::lockCond")) {}
+    KEvent() : KObject(KTYPE_EVENT), lockCond(std::make_shared<BoxedWineCondition>(B("KEvent::lockCond"))) {}
 
     // from KObject
     U32 ioctl(KThread* thread, U32 request) override;
@@ -52,7 +52,7 @@ public:
 
     bool blocking = false;
     BOXEDWINE_CONDITION lockCond;
-    U32 counter = 0;
+    U64 counter = 0;
 };
 
 U32 syscall_eventfd2(KThread* thread, U32 initialValue, U32 flags);
