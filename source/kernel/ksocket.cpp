@@ -57,11 +57,9 @@ U32 ksocket(U32 domain, U32 type, U32 protocol) {
         KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
     } else if (domain == K_AF_NETLINK) {       
-        return -1;
-        // :TODO: hangs Diablo 2 in a blocking KNetLinkObject readMsg call
-        //std::shared_ptr<KNetLinkObject> kSocket = std::make_shared<KNetLinkObject>(domain, type, protocol);
-        //KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
-        //return result->handle;
+        std::shared_ptr<KNetLinkObject> kSocket = std::make_shared<KNetLinkObject>(domain, type, protocol);
+        KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
+        return result->handle;
     } else if (domain == K_AF_INET) {
         std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(domain, type, protocol);
         if (s->error) {

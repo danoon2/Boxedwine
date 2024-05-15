@@ -392,7 +392,14 @@ U32 KNetLinkObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U
 }
 
 U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {
-    return 0;
+    if (length >= 12) {
+        U32 len = thread->memory->readd(message);
+        U16 type = thread->memory->readw(message + 4);
+        U16 flags = thread->memory->readw(message + 6);
+        if (type == 0) {
+        }
+    }
+    return -1; // if we return 0 here and pretend it succeeded, then some library might call recvfrom on a block thread to get the response and hang the app
 }
 
 U32 KNetLinkObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {

@@ -652,7 +652,7 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
         GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), GlobalSettings::getDataFolder() ^ "tcCache", false));
         dlg->addSubLabel("Extracting " + package, 5);
     } else if (package.length()>0) {
-        GlobalSettings::startUpArgs.setWorkingDir(B("/"));
+        GlobalSettings::startUpArgs.setWorkingDir(B("/usr/local/sbin"));
         GlobalSettings::startUpArgs.addArg(package);
         dlg->addSubLabel("Running post install " + Fs::getFileNameFromPath(package), 5);
     } else {

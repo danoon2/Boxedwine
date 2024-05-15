@@ -376,7 +376,10 @@ U32 Fs::readNativeFile(const BString& nativePath, U8* buffer, U32 bufferLen) {
 BString Fs::getNativePathFromParentAndLocalFilename(const std::shared_ptr<FsNode>& parent, const BString& fileName) {
     BString nativeFileName = fileName;
     Fs::localNameToRemote(nativeFileName);
-    return parent->nativePath ^ nativeFileName;
+    if (parent) {
+        return parent->nativePath ^ nativeFileName;
+    }
+    return nativeFileName;
 }
 
 bool Fs::makeNativeDirs(const BString& path) {

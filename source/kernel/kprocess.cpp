@@ -2694,20 +2694,23 @@ U32 KProcess::signal(U32 signal) {
         }
         return 0;
     }
-    for (auto& t : this->threads) {
-        KThread* thread = t.value;
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
-        if (thread->sigWaitMask & signal) {
-            thread->foundWaitSignal = signal;
-            BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
-            return 0;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+        for (auto& t : this->threads) {
+            KThread* thread = t.value;
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
+            if (thread->sigWaitMask & signal) {
+                thread->foundWaitSignal = signal;
+                BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
+                return 0;
+            }
         }
-    }
-    for (auto& t : this->threads) {
-        KThread* thread = t.value;
+        for (auto& t : this->threads) {
+            KThread* thread = t.value;
 
-        if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
-            return thread->signal(signal, false);
+            if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
+                return thread->signal(signal, false);
+            }
         }
     }
     // didn't find a thread that could handle it

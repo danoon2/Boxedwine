@@ -467,6 +467,21 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         delete[] ifs;
         return 0;
 #endif
+    } else if (request == 0x5421) {
+        U32 address = IOCTL_ARG1;
+#ifdef WIN32
+        u_long value = thread->memory->readd(address);
+        U32 result = ioctlsocket(this->nativeSocket, FIONBIO, &value);
+#else        
+        int value = thread->memory->readd(address);
+        U32 result = ::ioctl(this->nativeSocket, FIONBIO, &value);
+#endif
+        if (result != 0) {
+            std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
+            return handleNativeSocketError(t, true);
+        }
+        thread->memory->writed(IOCTL_ARG1, value);
+        return 0;
     } else {
         kwarn("KNativeSocketObject::ioctl request=%x not implemented", request);
     }

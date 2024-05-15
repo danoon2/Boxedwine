@@ -707,6 +707,9 @@ void postSendEvent(DevInput* events, U64 time) {
 }
 
 void onMouseButtonUp(U32 button) {
+    if (!touchEvents) {
+        return;
+    }
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(touchEvents->bufferCond);
 
@@ -723,6 +726,9 @@ void onMouseButtonUp(U32 button) {
 }
 
 void onMouseButtonDown(U32 button) {
+    if (!touchEvents) {
+        return;
+    }
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(touchEvents->bufferCond);
@@ -739,6 +745,9 @@ void onMouseButtonDown(U32 button) {
 }
 
 void onMouseWheel(S32 value) {
+    if (!touchEvents) {
+        return;
+    }
     U64 time = KSystem::getSystemTimeAsMicroSeconds();
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(touchEvents->bufferCond);
 
