@@ -777,7 +777,7 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
             this->hasSetStackMask = true;
         }
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-        this->emulateFPU = true;
+        this->emulateFPU = false;
 #endif
     }
 

@@ -220,6 +220,17 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
         app.cmd = B("wineboot");
         app.args.push_back(B("-u"));
         apps.push_back(app);
+
+#ifdef _DEBUG
+        BoxedApp app2;
+        app2.container = this;
+        app2.name = B("fc-cache");
+        app2.path = B("/usr/local/bin");
+        app2.cmd = B("fc-cache");
+        app2.args.push_back(B("-f"));
+        app2.isWine = false;
+        apps.push_back(app2);
+#endif
     }    
     if (doesFileExist(B("/usr/local/bin/startx"))) {
         BoxedApp app;

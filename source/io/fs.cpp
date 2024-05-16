@@ -111,9 +111,7 @@ std::shared_ptr<FsNode> Fs::addDynamicLinkFile(const BString& path, U32 rdev, co
 }
 
 std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path, bool followLink, bool* isLink) {
-    std::shared_ptr<FsNode> lastNode;
-    std::vector<BString> missingParts;
-    return Fs::getNodeFromLocalPath(currentDirectory, path, lastNode, missingParts, followLink, isLink);
+    return Fs::getNodeFromLocalPath(currentDirectory, path, nullptr, nullptr, followLink, isLink);
 }
 
 BString Fs::getFullPath(const BString& currentDirectory, const BString& path) {
@@ -151,7 +149,7 @@ bool cleanPath(std::vector<BString>& parts) {
     return true;
 }
 
-std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path, std::shared_ptr<FsNode>& lastNode, std::vector<BString>& missingParts, bool followLink, bool* isLink) {
+std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory, const BString& path, std::shared_ptr<FsNode>* lastNode, std::vector<BString>* missingParts, bool followLink, bool* isLink) {
     BString fullpath = Fs::getFullPath(currentDirectory, path);
 
     if (fullpath.length()==0 || fullpath=="/")
@@ -179,10 +177,14 @@ std::shared_ptr<FsNode> Fs::getNodeFromLocalPath(const BString& currentDirectory
         }
         node = node->getChildByName(parts[i]);
         if (!node) {
-            for (;i<parts.size();i++) {
-                missingParts.push_back(parts[i]);
+            if (missingParts) {
+                for (; i < parts.size(); i++) {
+                    missingParts->push_back(parts[i]);
+                }
             }
-            lastNode = nodes.back();
+            if (lastNode) {
+                *lastNode = nodes.back();
+            }
             return nullptr;
         }
         nodes.push_back(node);
@@ -312,7 +314,7 @@ bool Fs::isNativePathDirectory(const BString& path) {
 U32 Fs::makeLocalDirs(const BString& path) {
     std::shared_ptr<FsNode> lastNode;
     std::vector<BString> missingParts;
-    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), path, lastNode, missingParts, false);    
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), path, &lastNode, &missingParts, false);    
     std::vector<std::shared_ptr<FsNode> > nodes;
     bool notFound = false;
 

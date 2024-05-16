@@ -404,10 +404,12 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         int value=0;
         U32 result = ::ioctl(this->nativeSocket, FIONREAD, &value);        
 #endif
+        LOG_SOCK("  native socket: %x FIONREAD %d", nativeSocket, (int)value);
         if (result != 0) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
             return handleNativeSocketError(t, true);
         }        
+        this->error = 0;
         thread->memory->writed(IOCTL_ARG1, value);
         return 0;
     } else if (request == 0x8912) {
@@ -443,6 +445,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
             }
             thread->memory->memcpy(buf + 40 * i + 16, addr, 16); // 16 sizeof addr            
         }
+        this->error = 0;
         return 0;
 #else        
         U32 numifs = 64;
@@ -465,6 +468,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         thread->memory->writed(address, ifconf.ifc_len);
         thread->memory->memcpy(thread->memory->readd(address + 4), ifs, ifconf.ifc_len);
         delete[] ifs;
+        this->error = 0;
         return 0;
 #endif
     } else if (request == 0x5421) {
@@ -476,11 +480,14 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         int value = thread->memory->readd(address);
         U32 result = ::ioctl(this->nativeSocket, FIONBIO, &value);
 #endif
+        LOG_SOCK("  native socket: %x FIONBIO %d", nativeSocket, (int)value);
         if (result != 0) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
             return handleNativeSocketError(t, true);
         }
+        blocking = value == 0;
         thread->memory->writed(IOCTL_ARG1, value);
+        this->error = 0;
         return 0;
     } else {
         kwarn("KNativeSocketObject::ioctl request=%x not implemented", request);
@@ -633,9 +640,7 @@ U32 KNativeSocketObject::writeNative(U8* buffer, U32 len) {
 U32 KNativeSocketObject::readNative(U8* buffer, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(readingCond);
     S32 result = (S32)::recv(this->nativeSocket, (char*)buffer, len, 0);
-    if (result < 0) {
-        result = (S32)::recv(this->nativeSocket, (char*)buffer, len, 0);
-    }
+
     LOG_SOCK("%x native socket: %x readNative len=%d result=%x", KThread::currentThread()->id, nativeSocket, len, result);
     if (result>=0) {  
         this->error = 0;
@@ -722,16 +727,7 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
     }
 #endif
     memory->memcpy(buffer, address, len);
-#ifdef BOXEDWINE_MULTI_THREADED
-    bool setBlocking = false;
-    
-    //if (!this->blocking) {
-    //    // :TODO: why is this necessary?
-    //    setBlocking = true;
-    //    setNativeBlocking(this->nativeSocket, true);
-    //}
-    
-#endif
+
     U16 family = memory->readw(address);
     if (family == K_AF_INET) {
         if (memory->readb(address + 4) == 127 && memory->readb(address + 5) == 0 && memory->readb(address + 6) == 0 && memory->readb(address + 7) == 1) {
@@ -749,11 +745,7 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
         int error = 0;
         socklen_t optLen = 4;
         ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ERROR, (char*)&error, &optLen);
-#ifdef BOXEDWINE_MULTI_THREADED
-        if (setBlocking) {
-            setNativeBlocking(this->nativeSocket, false);
-        }
-#endif
+
         if (error == 0) {
             this->connected = true;
             return 0;
@@ -771,11 +763,7 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
     if (result == -K_EINPROGRESS) {
         this->connected = true;
     }
-#ifdef BOXEDWINE_MULTI_THREADED
-        if (setBlocking) {
-            setNativeBlocking(this->nativeSocket, false);
-        }
-#else
+#ifndef BOXEDWINE_MULTI_THREADED
     if (result == (U32)(-K_WAIT)) {            
         this->connecting = true;
     }
@@ -788,6 +776,7 @@ U32 KNativeSocketObject::listen(KThread* thread, KFileDescriptor* fd, U32 backlo
     LOG_SOCK("native socket: %x list result=%x", nativeSocket, result);
     if (result>=0) {
         this->listening = true;
+        this->error = 0;
         return result;
     }
     this->listening = false;
@@ -823,6 +812,7 @@ U32 KNativeSocketObject::accept(KThread* thread, KFileDescriptor* fd, U32 addres
         if (len) {
             memory->writed(len, addrlen);
         }
+        this->error = 0;
         return resultFD->handle;
     }
     std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
@@ -875,6 +865,7 @@ U32 KNativeSocketObject::shutdown(KThread* thread, KFileDescriptor* fd, U32 how)
 U32 KNativeSocketObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len) {
     KMemory* memory = thread->memory;
 
+    LOG_SOCK("%x native socket: %x setsockopt level=%x name=%x value=%x", thread->id, nativeSocket, memory->readd(value));
     if (level == K_IPPROTO_IP) {
         U32 v = 0;
         switch (name) {
@@ -1018,6 +1009,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 le
         kwarn("KNativeSocketObject::setsockopt level %d not implemented", level);
         return -K_EINVAL;
     }
+    this->error = 0;
     return 0;
 }
 
@@ -1025,45 +1017,47 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 le
     KMemory* memory = thread->memory;
     socklen_t len = (socklen_t)memory->readd(len_address);
     S32 result = 0;
+    U32 retrievedValue = 0;
 
     if (level == K_SOL_SOCKET) {
         if (name == K_SO_RCVBUF) {
             if (len!=4)
                 kpanic("KNativeSocketObject::getsockopt SO_RCVBUF expecting len of 4");
-            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVBUF, (char*)&this->recvLen, &len);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_RCVBUF, (char*)&retrievedValue, &len);
             if (!result) {
-                memory->writed(value, this->recvLen);
+                memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_SNDBUF) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_SNDBUF expecting len of 4");
-            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (char*)&this->sendLen, &len);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_SNDBUF, (char*)&retrievedValue, &len);
             if (!result) {
-                memory->writed(value, this->sendLen);
+                memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_ERROR) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_ERROR expecting len of 4");
             memory->writed(value, this->error);
-            //this->error = 0;
+            retrievedValue = this->error;            
         } else if (name == K_SO_TYPE) { 
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt K_SO_TYPE expecting len of 4");
             memory->writed(value, this->type);
+            retrievedValue = this->type;
         } else if (name == K_SO_OOBINLINE) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_OOBINLINE expecting len of 4");
-            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_OOBINLINE, (char*)&result, &len);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_OOBINLINE, (char*)&retrievedValue, &len);
             if (!result) {
-                memory->writed(value, result);
+                memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_BROADCAST) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_BROADCAST expecting len of 4");
             U32 result = 0;
-            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&result, &len);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&retrievedValue, &len);
             if (!result) {
-                memory->writed(value, result);
+                memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_RCVTIMEO) {
             if (len != 8)
@@ -1084,6 +1078,7 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 le
             U32 usec = (U32)v.tv_usec;
 #endif
             if (!result) {
+                retrievedValue = sec;
                 memory->writed(value, sec);
                 memory->writed(value + 4, usec);
             }
@@ -1106,22 +1101,23 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 le
             U32 usec = (U32)v.tv_usec;
 #endif
             if (!result) {
+                retrievedValue = sec;
                 memory->writed(value, sec);
                 memory->writed(value + 4, usec);
             }
         } else if (name == K_SO_BROADCAST) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_BROADCAST expecting len of 4");
-            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&result, &len);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (char*)&retrievedValue, &len);
             if (!result) {
-                memory->writed(value, result);
+                memory->writed(value, retrievedValue);
             }
         } else if (name == K_SO_ACCEPTCONN) {
             if (len != 4)
                 kpanic("KNativeSocketObject::getsockopt SO_ACCEPTCONN expecting len of 4");
-            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&result, &len);
+            result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&retrievedValue, &len);
             if (!result) {
-                memory->writed(value, result);
+                memory->writed(value, retrievedValue);
             }
         } else {
             kwarn("KNativeSocketObject::getsockopt name %d not implemented", name);
@@ -1131,10 +1127,12 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 le
         kwarn("KNativeSocketObject::getsockopt level %d not implemented", level);
         return -K_EINVAL;
     }
+    LOG_SOCK("%x native socket: %x getsockopt level=%x name=%x value=%x result=%x", thread->id, nativeSocket, level, name, retrievedValue, result);
     if (result != 0) {
         std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
         return handleNativeSocketError(t, true);
     }
+    this->error = 0;
     return (U32)result;
 }
 
@@ -1239,6 +1237,7 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 addre
             }
             memory->writed(address + 4, inLen);
             result+=r;
+            this->error = 0;
         }
         else if (result) {
             break;

@@ -32,6 +32,7 @@ U32 KObject::read(KThread* thread, U32 address, U32 len) {
     memory->performOnMemory(address, len, true, [&result, this](U8* ram, U32 len) {
         U32 read = this->readNative(ram, len);
         if ((S32)read < 0) {
+            result = read;
             return false;
         }
         result += read;
@@ -47,6 +48,7 @@ U32 KObject::write(KThread* thread, U32 address, U32 len) {
     memory->performOnMemory(address, len, false, [&result, this](U8* ram, U32 len) {
         U32 written = this->writeNative(ram, len);
         if ((S32)written < 0) {
+            result = written;
             return false;
         }
         result += written;

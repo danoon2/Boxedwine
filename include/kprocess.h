@@ -245,7 +245,7 @@ public:
     std::vector<U32> glStringsiExtensionsOffset;
     U32 numberOfExtensions = 0;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    bool emulateFPU = true;
+    bool emulateFPU = false;
     void* reTranslateChunkAddress = nullptr; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
     void* syncToHostAddress = nullptr;
     void* syncFromHostAddress = nullptr;
