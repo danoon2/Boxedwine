@@ -24,7 +24,7 @@ KMemoryData* getMemData(KMemory* memory) {
 }
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }, mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }, delayedReset(nullptr)
+KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }, mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }
 #else
 KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }
 #endif
@@ -41,11 +41,6 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmu
 }
 
 KMemoryData::~KMemoryData() {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    if (delayedReset) {
-        delete delayedReset;
-    }
-#endif
     for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
         mmu[i]->close();
     }
@@ -263,20 +258,8 @@ void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
     }
 }
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-void KMemoryData::clearDelayedReset() {
-    if (delayedReset) {
-        delete delayedReset;
-        delayedReset = nullptr;
-    }
-}
-#endif
-
 void KMemoryData::execvReset() {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    KMemoryData* newData = new KMemoryData(memory);
-    newData->delayedReset = this;
-    memory->data = newData;
     memset(flags, 0, sizeof(flags));
 #else
     setPagesInvalid(0, K_NUMBER_OF_PAGES);    
@@ -434,24 +417,14 @@ void KMemory::clone(KMemory* from, bool vfork) {
         if (page->getType() == Page::Type::RO_Page || page->getType() == Page::Type::RW_Page || page->getType() == Page::Type::WO_Page || page->getType() == Page::Type::NO_Page) {
             RWPage* p = (RWPage*)page;
             if (!mapShared(i)) {
-                if (page->getType() == Page::Type::WO_Page) {
+                if (data->flags[i] & PAGE_FUTEX) {
                     U8* ram = ramPageAlloc();
                     ::memcpy(ram, p->page, K_PAGE_SIZE);
-                    data->setPage(i, WOPage::alloc(ram, p->address));
-                } else if (page->getType() == Page::Type::NO_Page) {
-                    U8* ram = ramPageAlloc();
-                    ::memcpy(ram, p->page, K_PAGE_SIZE);
-                    data->setPage(i, NOPage::alloc(ram, p->address));
-                } else {
-                    if (data->flags[i] & PAGE_FUTEX) {
-                        U8* ram = ramPageAlloc();
-                        ::memcpy(ram, p->page, K_PAGE_SIZE);
-                        data->setPageRam(ram, i, false);
-                        data->flags[i] &= ~PAGE_FUTEX; // since it's not shared, it doesn't need to know this
-                    } else {                        
-                        data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
-                        from->data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
-                    }
+                    data->setPageRam(ram, i, false);
+                    data->flags[i] &= ~PAGE_FUTEX; // since it's not shared, it doesn't need to know this
+                } else {                        
+                    data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
+                    from->data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
                 }
             } else {
                 if (page->getType() == Page::Type::RO_Page) {

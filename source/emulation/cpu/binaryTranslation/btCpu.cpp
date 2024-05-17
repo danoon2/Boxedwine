@@ -28,9 +28,6 @@ void BtCPU::run() {
             break;
         }
 
-        KMemoryData* mem = getMemData(memory);
-        mem->clearDelayedReset();
-
         if (this->inException) {
             this->inException = false;
         }

@@ -42,10 +42,6 @@ public:
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8* mmuReadPtrAdjusted[K_NUMBER_OF_PAGES];
     U8* mmuWritePtrAdjusted[K_NUMBER_OF_PAGES];
-
-    void clearDelayedReset();    
-private:
-    KMemoryData* delayedReset;
 #endif   
 };
 
