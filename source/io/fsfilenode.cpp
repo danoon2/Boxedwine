@@ -142,6 +142,13 @@ U64 FsFileNode::length() {
     return 0;
 }
 
+BString FsFileNode::getLink() {
+#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
+    ensurePathIsLocal(false);
+#endif
+    return this->link; 
+}
+
 void FsFileNode::ensurePathIsLocal(bool prepareForWrite) {
 #ifdef BOXEDWINE_ZLIB
     BOXEDWINE_CRITICAL_SECTION;

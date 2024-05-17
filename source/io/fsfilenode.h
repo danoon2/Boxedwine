@@ -26,6 +26,8 @@ public:
     U32 getType(bool checkForLink) override;
     U32 getMode() override;
     U32 removeDir() override;
+    BString getLink() override;
+
     U32 setTimes(U64 lastAccessTime, U32 lastAccessTimeNano, U64 lastModifiedTime, U32 lastModifiedTimeNano) override;
 
     static std::set<BString> nonExecFileFullPaths;

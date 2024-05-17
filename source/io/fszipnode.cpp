@@ -14,6 +14,13 @@ FsZipNode::FsZipNode(const fsZipInfo& zipInfo, const std::shared_ptr<FsZip>& fsZ
 bool FsZipNode::moveToFileSystem(std::shared_ptr<FsNode> node) {
     if (node->isDirectory())
         return false;
+    if (node->isLink()) {
+        U32 to = ::open((node->nativePath+EXT_LINK).c_str(), O_WRONLY | O_CREAT | O_BINARY, 0666);
+        ::write(to, node->link.c_str(), node->link.length());
+        ::close(to);
+        return true;
+    }
+
     FsOpenNode* from = this->open(node, K_O_RDONLY);
     bool result = false;
     U32 to = ::open(node->nativePath.c_str(), O_WRONLY | O_CREAT | O_BINARY, 0666);
