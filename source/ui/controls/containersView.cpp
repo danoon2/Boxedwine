@@ -19,7 +19,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     };
 
     containerFileSystemControl = createFileSystemVersionCombobox(section);
-    //containerFileSystemControl->setReadOnly(true);
+    containerFileSystemControl->setReadOnly(true);
     containerFileSystemControl->onChange = [this]() {
         this->currentContainerChanged = true;
         bool renderer = this->currentContainer->getWineVersionAsNumber(this->containerFileSystemControl->getSelectionStringValue()) > 500;

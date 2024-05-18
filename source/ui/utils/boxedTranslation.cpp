@@ -227,7 +227,7 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
     case Msg::COMMON_FILESYSTEM_VERSION_LABEL:
         return "File System:";
     case Msg::COMMON_FILESYSTEM_VERSION_HELP:
-        return "If you are not sure, then just use the default value which should be the most recent Wine version.";
+        return "If you are not sure, then just use the default value which should be the most recent Wine version.  This value can not be changed after creation.";
     case Msg::UNZIP_DLG_TITLE:
         return "Unzipping ...";
     case Msg::GENERIC_BROWSE_BUTTON:
@@ -373,7 +373,7 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
     case Msg::CONTAINER_VIEW_TINY_CORE_LABEL:
         return "Packages:";
     case Msg::CONTAINER_OPTIONS_DOWNLOAD_PACKAGE:
-        return "This container uses Tiny Core Linux.  You maybe install a package for it.";
+        return "This container uses Tiny Core Linux.  You maybe install a package for it.  If you find that the file system is missing a package that Wine needs, let me know by creating a github issue.";
     case Msg::CONTAINER_VIEW_REGEDIT_BUTTON_LABEL:
         return "Regedit";
     case Msg::CONTAINER_VIEW_WINECFG_BUTTON_LABEL:

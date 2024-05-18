@@ -147,6 +147,6 @@ void BoxedwineData::addContainer(BoxedContainer* container) {
 
 void BoxedwineData::sortContainers() {
     std::sort(BoxedwineData::containers.begin(), BoxedwineData::containers.end(), [](BoxedContainer* a, BoxedContainer* b) { 
-        return a->getName().compareTo(b->getName()) == -1;
+        return a->getName().compareTo(b->getName(), true) < 0;
         });
 }

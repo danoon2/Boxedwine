@@ -298,7 +298,7 @@ void loadApps() {
         }
     }
     std::sort(appListViewItems.begin(), appListViewItems.end(), [](ListViewItem& a, ListViewItem& b) {
-        return a.text.compareTo(b.text, true) == -1;
+        return a.text.compareTo(b.text, true) < 0;
         });
 }
 
