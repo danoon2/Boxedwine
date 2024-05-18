@@ -118,6 +118,10 @@ U64 FsFileNode::lastModified() {
     PLATFORM_STAT_STRUCT buf;
 
     if (PLATFORM_STAT(this->nativePath.c_str(), &buf)==0) {
+        if (buf.st_mtime == 0) {
+            // I've seen this happen with the Age of Empires installer on Raspberry Pi 5
+            return ((U64)buf.st_ctime) * 1000l;
+        }
         return ((U64)buf.st_mtime)*1000l;
     }
 #ifdef BOXEDWINE_ZLIB
