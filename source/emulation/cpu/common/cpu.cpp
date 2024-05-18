@@ -37,6 +37,7 @@ CPU::CPU(KMemory* memory) : memory(memory) {
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     currentSingleOp = nullptr;
+#ifdef BOXEDWINE_X64
     memset(memcheckqq, 0xff, sizeof(memcheckqq));
     for (int i = 0; i < 15; i++) {
         memcheckqq[K_PAGE_SIZE - 1 - i] = 0;
@@ -51,6 +52,7 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     }
     memset(memcheckw, 0xff, sizeof(memcheckw));
     memcheckw[K_PAGE_SIZE - 1] = 0;
+#endif
 #endif
 }
 

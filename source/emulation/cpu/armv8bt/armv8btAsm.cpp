@@ -264,14 +264,13 @@ void Armv8btAsm::readMem16RegOffset(U8 dst, U8 base, U8 offsetReg, bool signExte
 
 void Armv8btAsm::readMem32ValueOffset(U8 dst, U8 base, S32 offset) {
     if (offset > 255 || offset < -256) {
-        U8 tmp = getRegWithConst(offset);
+        loadConst(dst, offset);
 
         // LDR
         write8(dst | (U8)(base << 5));
         write8(0x68 | (U8)(base >> 3));
-        write8(0x60 | tmp);
+        write8(0x60 | dst);
         write8(0xb8);
-        releaseTmpReg(tmp);
     } else {
         // LDUR
         write8(dst | (U8)(base << 5));

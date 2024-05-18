@@ -946,7 +946,7 @@ typedef void(*shiftRegCl32)(Armv8btAsm* data, U8 dst, U8 src1, U8 cl);
 void arithShiftRegCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtFlags* lazyFlags, U32 width, bool regNeedsZeroExtend = false) {
     U8 tmpReg = data->getTmpReg();
     data->andValue32(tmpReg, xECX, 0x1f);
-    data->doIf(tmpReg, 0, DO_IF_EQUAL, nullptr, [data, tmpReg, width, pfn, lazyFlags, regNeedsZeroExtend] {
+    data->doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [data, tmpReg, width, pfn, lazyFlags, regNeedsZeroExtend] {
             U32 flags;
             bool hardwareFlags, usesSrc, usesDst, usesResult;
             bool resultNeedsZeroExtends = true;
@@ -957,7 +957,7 @@ void arithShiftRegCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtFlags* lazyFlags,
                 data->movRegToReg(xSrc, tmpReg, 32, false);
             }
             if (width == 32 && !usesResult) {
-                pfn(data, readRegDst, readRegDst, tmpReg);
+                pfn(data, data->getNativeReg(data->currentOp->reg), readRegDst, tmpReg);
             } else {
                 pfn(data, xResult, readRegDst, tmpReg);
                 writeResultArithReg(data, usesResult, true, resultNeedsZeroExtends, width);

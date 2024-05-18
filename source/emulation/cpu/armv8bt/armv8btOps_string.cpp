@@ -7,16 +7,8 @@
 #ifdef BOXEDWINE_ARMV8BT_EMULATE_STRINGS
 #include "../normal/normal_strings.h"
 
-void syncDF(Armv8btAsm* data) {
-    U8 tmpReg = data->getTmpReg();
-    data->getDF(tmpReg, 8);
-    data->writeMem32ValueOffset(tmpReg, xCPU, (U32)(offsetof(CPU, df)));
-    data->releaseTmpReg(tmpReg);
-}
-
 void opCmpsb(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU); 
     data->loadConst(1, data->currentOp->repZero);
     data->loadConst(2, data->currentOp->base);
@@ -39,7 +31,6 @@ void opCmpsb(Armv8btAsm* data) {
 
 void opCmpsw(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->repZero);
     data->loadConst(2, data->currentOp->base);
@@ -65,7 +56,6 @@ void opCmpsw(Armv8btAsm* data) {
 
 void opCmpsd(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->repZero);
     data->loadConst(2, data->currentOp->base);
@@ -91,7 +81,6 @@ void opCmpsd(Armv8btAsm* data) {
 
 void opMovsb(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->base);
     if (data->currentOp->ea16) {
@@ -114,7 +103,6 @@ void opMovsb(Armv8btAsm* data) {
 }
 void opMovsw(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->base);
     if (data->currentOp->ea16) {
@@ -137,7 +125,6 @@ void opMovsw(Armv8btAsm* data) {
 }
 void opMovsd(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->base);
     if (data->currentOp->ea16) {
@@ -162,7 +149,6 @@ void opMovsd(Armv8btAsm* data) {
 
 void opStosb(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     if (data->currentOp->ea16) {
         if (data->currentOp->repZero || data->currentOp->repNotZero) {
@@ -184,7 +170,6 @@ void opStosb(Armv8btAsm* data) {
 }
 void opStosw(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     if (data->currentOp->ea16) {
         if (data->currentOp->repZero || data->currentOp->repNotZero) {
@@ -206,7 +191,6 @@ void opStosw(Armv8btAsm* data) {
 }
 void opStosd(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     if (data->currentOp->ea16) {
         if (data->currentOp->repZero || data->currentOp->repNotZero) {
@@ -229,7 +213,6 @@ void opStosd(Armv8btAsm* data) {
 
 void opLodsb(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->base);
     if (data->currentOp->ea16) {
@@ -252,7 +235,6 @@ void opLodsb(Armv8btAsm* data) {
 }
 void opLodsw(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->base);
     if (data->currentOp->ea16) {
@@ -275,7 +257,6 @@ void opLodsw(Armv8btAsm* data) {
 }
 void opLodsd(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->base);
     if (data->currentOp->ea16) {
@@ -299,7 +280,6 @@ void opLodsd(Armv8btAsm* data) {
 
 void opScasb(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->repZero);
     if (data->currentOp->ea16) {
@@ -324,7 +304,6 @@ void opScasb(Armv8btAsm* data) {
 
 void opScasw(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->repZero);
     if (data->currentOp->ea16) {
@@ -349,7 +328,6 @@ void opScasw(Armv8btAsm* data) {
 
 void opScasd(Armv8btAsm* data) {
     data->syncRegsFromHost();
-    syncDF(data);
     data->mov64(0, xCPU);
     data->loadConst(1, data->currentOp->repZero);
     if (data->currentOp->ea16) {
