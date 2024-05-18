@@ -743,7 +743,7 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 address
         for (U32 i=0;i<hdr.msg_controllen/16;i++) {
             KFileDescriptor* f = thread->process->getFileDescriptor(memory->readd(hdr.msg_control + 16 * i + 12));
             if (!f) {
-                kpanic("KUnixSocketObject::sendmsg tried to send a bad file descriptor");
+                return -K_EBADF;
             } else {
                 KSocketMsgObject d;
                 d.object = f->kobject;
