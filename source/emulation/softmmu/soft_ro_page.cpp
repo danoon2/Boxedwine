@@ -2,7 +2,7 @@
 
 #include "soft_ro_page.h"
 
-ROPage* ROPage::alloc(U8* page, U32 address) {
+ROPage* ROPage::alloc(const KRamPtr& page, U32 address) {
     return new ROPage(page, address);
 }
 
@@ -19,7 +19,7 @@ void ROPage::writed(U32 address, U32 value) {
 }
 
 U8* ROPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    return this->page;
+    return this->ram;
 }
 
 U8* ROPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {

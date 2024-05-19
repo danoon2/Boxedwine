@@ -9,11 +9,11 @@
 #define DYNAMIC_MAX 3
 static PtrPool<CodePage::CodePageEntry> freeEntries;
     
-CodePage* CodePage::alloc(U8* page, U32 address) {
+CodePage* CodePage::alloc(const KRamPtr& page, U32 address) {
     return new CodePage(page, address);
 }
 
-CodePage::CodePage(U8* page, U32 address) : RWPage(page, address) {
+CodePage::CodePage(const KRamPtr& page, U32 address) : RWPage(page, address) {
     memset(this->entries, 0, sizeof(this->entries));
     entryCount = 0;
     writeCount = 0;
@@ -279,10 +279,9 @@ CodeBlock CodePage::findCode(U32 eip, U32 len) {
 }
 
 void CodePage::copyOnWrite() {
-    if (!KThread::currentThread()->memory->mapShared(address >> K_PAGE_SHIFT) && ramPageRefCount(page) > 1) {
-        U8* ram = ramPageAlloc();
-        memcpy(ram, page, K_PAGE_SIZE);
-        ramPageDecRef(page);
+    if (!KThread::currentThread()->memory->mapShared(address >> K_PAGE_SHIFT) && page.use_count() > 1) {
+        KRamPtr ram = ramPageAlloc();
+        ::memcpy(ram.get(), page.get(), K_PAGE_SIZE);
         page = ram;
         getMemData(KThread::currentThread()->memory)->setPage(address >> K_PAGE_SHIFT, this);
     }
@@ -330,7 +329,7 @@ void CodePage::writed(U32 address, U32 value) {
 
 U8* CodePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
     if (memory->canRead(address >> K_PAGE_SHIFT)) {
-        return this->page;
+        return this->ram;
     }
     return nullptr;
 }
@@ -338,7 +337,7 @@ U8* CodePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
 U8* CodePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     if (memory->canWrite(address >> K_PAGE_SHIFT) && makeReady) {
         removeBlockAt(address, len);
-        return this->page;
+        return this->ram;
     }
     return nullptr;
 }

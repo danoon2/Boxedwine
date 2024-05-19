@@ -23,10 +23,10 @@
 
 class ROPage : public RWPage {
 private:
-    ROPage(U8* page, U32 address) : RWPage(page, address) {}
+    ROPage(const KRamPtr& page, U32 address) : RWPage(page, address) {}
 
 public:
-    static ROPage* alloc(U8* page, U32 address);
+    static ROPage* alloc(const KRamPtr& page, U32 address);
 
     // from Page
     void writeb(U32 address, U8 value) override;

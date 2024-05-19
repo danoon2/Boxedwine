@@ -212,7 +212,7 @@ U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, 
     }    
     if (sigmask) {
         U32 mask = thread->memory->readd(sigmask);
-        U32 oldMask = thread->sigMask;
+        U64 oldMask = thread->sigMask;
         thread->sigMask = mask;
 
         result = internal_poll(thread, pollData, pollCount, timeout);
