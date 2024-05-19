@@ -19,7 +19,7 @@ U32 sdlDispatch(std::function<U32()> p);
 #define DISPATCH_MAIN_THREAD_BLOCK_BEGIN sdlDispatch([=]() -> U32 { 
 #define DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN sdlDispatch([=, this]() -> U32 {
 #define DISPATCH_MAIN_THREAD_BLOCK_BEGIN_WITH_ARG(x) sdlDispatch([x]() -> U32 {
-#define DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN return sdlDispatch([=]() -> U32 {
+#define DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN return sdlDispatch([=, this]() -> U32 {
 #define DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN_RETURN return sdlDispatch([=, this]() -> U32 {
 #define DISPATCH_MAIN_THREAD_BLOCK_END return 0;});
 #else

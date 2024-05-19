@@ -709,13 +709,14 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
 {
     KNativeAudioCoreAudioData* This = (KNativeAudioCoreAudioData*)user;
     U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
-
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
     std::shared_ptr<KProcess> process = This->process.lock();
     if (!process || process->terminated) {
         silence_buffer(This, ((U8 *)data->mBuffers[0].mData), nframes);
         return noErr;
     }
+    KThread* thread = process->getThread();
+    ChangeThread change(thread);
     os_unfair_lock_lock(&This->lock);
 
     if(This->isPlaying){

@@ -378,7 +378,7 @@ std::shared_ptr<WndSdl> KNativeWindowSdl::getFirstVisibleWnd() {
 static U32 nextGlId = 1;
 
 void KNativeWindowSdl::destroyScreen(KThread* thread) {
-#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && !defined(BOXEDWINE_MSVC)
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && !defined(BOXEDWINE_MSVC) && !defined(BOXEDWINE_MAC_JIT)
     if (uiIsRunning()) {
         uiShutdown();
     }
@@ -866,6 +866,9 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
         delayedCreateWindowMsg = "Creating Window: " + BString::valueOf(cx) + "x" + BString::valueOf(cy);
         fflush(stdout);
         window = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
+        if (!window) {
+            klog("SDL_CreateWindow failed: %s", SDL_GetError());
+        }
         if (window && (flags & SDL_WINDOW_VULKAN)) {
             this->isVulkan = true;
         }
@@ -1378,12 +1381,12 @@ void WndSdl::show(bool bShow) {
 }
 
 U32 KNativeWindowSdl::getGammaRamp(KThread* thread, U32 ramp) {
-    U16 r[256] = { 0 };
-    U16 g[256] = { 0 };
-    U16 b[256] = { 0 };
-    KMemory* memory = thread->memory;
-
     if (KSystem::videoEnabled && window) {
+        DISPATCH_MAIN_THREAD_BLOCK_BEGIN_RETURN
+        U16 r[256] = { 0 };
+        U16 g[256] = { 0 };
+        U16 b[256] = { 0 };
+        KMemory* memory = thread->memory;
         if (SDL_GetWindowGammaRamp(window, r, g, b)==0) {
             int i;
             for (i=0;i<256;i++) {
@@ -1393,6 +1396,8 @@ U32 KNativeWindowSdl::getGammaRamp(KThread* thread, U32 ramp) {
             }
             return 1;
         }
+        return 0;
+        DISPATCH_MAIN_THREAD_BLOCK_END
     }
     return 0;
 }

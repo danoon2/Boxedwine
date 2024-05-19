@@ -280,7 +280,7 @@ void initMesaOpenGL() {
             BString libPath = KSystem::exePath + LIBRARY_NAME;
             pDLL = SDL_LoadObject(libPath.c_str());
             if (!pDLL) {
-                klog("Failed to load %s", libPath.c_str());
+                klog("Failed to load %s %s", libPath.c_str(), SDL_GetError());
                 return;
             }
         }

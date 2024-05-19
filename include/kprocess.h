@@ -276,6 +276,7 @@ private:
     BHashTable<U32, KThread*> threads;
     BOXEDWINE_MUTEX threadsMutex;
 public:
+    KThread* getThread() {return threads.begin()->value;}
     BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed
 private:
 
