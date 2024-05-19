@@ -25,15 +25,17 @@
 
 class DevURandom : public FsVirtualOpenNode {
 public:
-    DevURandom(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual U32 readNative(U8* buffer, U32 len);
-    virtual U32 writeNative(U8* buffer, U32 len) {return 0;}
+    DevURandom(const std::shared_ptr<FsNode>& node, U32 flags);
+
+    // From FsOpenNode
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len)  override {return 0;}
 
     std::mt19937 gen;
     std::uniform_int_distribution<size_t> dist;
 };
 
-DevURandom::DevURandom(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) , gen{std::random_device{}()}, dist{0, 255} {
+DevURandom::DevURandom(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) , gen{std::random_device{}()}, dist{0, 255} {
 }
 
 U32 DevURandom::readNative(U8* buffer, U32 len) {
@@ -43,7 +45,7 @@ U32 DevURandom::readNative(U8* buffer, U32 len) {
     return len;
 }
 
-FsOpenNode* openDevURandom(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevURandom(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevURandom(node, flags);
 }
 

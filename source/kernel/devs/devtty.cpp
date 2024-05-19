@@ -39,7 +39,7 @@ static U32 activeTTY;
 
 class DevTTY : public FsVirtualOpenNode {
 public:
-    DevTTY(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), 
+    DevTTY(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), 
         c_iflag(0),
         c_oflag(0),
         c_cflag(0),
@@ -51,13 +51,15 @@ public:
         relsig(0), 
         acqsig(0),
         graphics(false) {memset(c_cc, 0, sizeof(c_cc));}
-    virtual U32 ioctl(U32 request);
-    virtual U32 readNative(U8* buffer, U32 len) {return 0;}
-    virtual U32 writeNative(U8* buffer, U32 len);
+
+    // From FsOpenNode
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len)  override {return 0;}
+    U32 writeNative(U8* buffer, U32 len) override;
 
 private:
-    void readTermios(U32 address);
-    void writeTermios(U32 address);
+    void readTermios(KMemory* memory, U32 address);
+    void writeTermios(KMemory* memory, U32 address);
 
     U32 c_iflag;               /* input mode flags */
     U32 c_oflag;               /* output mode flags */
@@ -75,30 +77,30 @@ private:
     bool graphics;
 };
 
-FsOpenNode* openDevTTY(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevTTY(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevTTY(node, flags);
 }
 
 
-void DevTTY::readTermios( U32 address) {
-    this->c_iflag = readd(address);
-    this->c_oflag = readd(address+4);
-    this->c_cflag = readd(address+8);
-    this->c_lflag = readd(address+12);
-    this->c_line = readb(address+16);
+void DevTTY::readTermios(KMemory* memory, U32 address) {
+    this->c_iflag = memory->readd(address);
+    this->c_oflag = memory->readd(address+4);
+    this->c_cflag = memory->readd(address+8);
+    this->c_lflag = memory->readd(address+12);
+    this->c_line = memory->readb(address+16);
     for (int i=0;i<19;i++) {
-        this->c_cc[i] = readb(address+17+i);
+        this->c_cc[i] = memory->readb(address+17+i);
     }
 }
 
-void DevTTY::writeTermios(U32 address) {
-    writed(address, this->c_iflag);
-    writed(address+4, this->c_oflag);
-    writed(address+8, this->c_cflag);
-    writed(address+12, this->c_lflag);
-    writeb(address+16, this->c_line);
+void DevTTY::writeTermios(KMemory* memory, U32 address) {
+    memory->writed(address, this->c_iflag);
+    memory->writed(address+4, this->c_oflag);
+    memory->writed(address+8, this->c_cflag);
+    memory->writed(address+12, this->c_lflag);
+    memory->writeb(address+16, this->c_line);
     for (int i=0;i<19;i++) {
-        writeb(address+17+i, this->c_cc[i]);
+        memory->writeb(address+17+i, this->c_cc[i]);
     }
 }
 
@@ -112,19 +114,19 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (s.contains("WS_getaddrinfo Failed to resolve your host name IP")) {
         return len;
     }
-    if (KSystem::logFile) {
-        fwrite(buffer, len, 1, KSystem::logFile);
+    if (KSystem::logFile.isOpen()) {
+        KSystem::logFile.write((char*)buffer, len);
     }
     if (KSystem::watchTTY) {
         KSystem::watchTTY(s);
     }
     if (KSystem::ttyPrepend) {
-        THREAD_LOCAL static bool newLine = true;
+        thread_local static bool newLine = true;
         if (newLine) {
-            ::write(1, "TTY:", 4);
+            static_cast<void>(::write(1, "TTY:", 4));
             BString name = KThread::currentThread()->process->name;
-            ::write(1, name.c_str(), (U32)name.length());
-            ::write(1, ":", 1);
+            static_cast<void>(::write(1, name.c_str(), (U32)name.length()));
+            static_cast<void>(::write(1, ":", 1));
             newLine = false;
         }
         if (buffer[len - 1] == '\n') {
@@ -135,9 +137,9 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
 }
 
 
-U32 DevTTY::ioctl(U32 request) {
-    KThread* thread = KThread::currentThread();
+U32 DevTTY::ioctl(KThread* thread, U32 request) {
     CPU* cpu = thread->cpu;
+    KMemory* memory = thread->memory;
 
     switch (request) {
         case 0x4B32: // KBSETLED
@@ -146,31 +148,31 @@ U32 DevTTY::ioctl(U32 request) {
             this->graphics = IOCTL_ARG1==1;
             break;
         case 0x4B44: // KDGKBMODE
-            writed(IOCTL_ARG1, this->kbMode);
+            memory->writed(IOCTL_ARG1, this->kbMode);
             break;
         case 0x4B45: // KDSKBMODE
             this->kbMode = IOCTL_ARG1;
             break;
         case 0x4B46: { // KDGKBENT
             U32 kbentry = IOCTL_ARG1;
-            U32 table = readb(kbentry);
-            U32 index = readb(kbentry + 1);
+            U32 table = memory->readb(kbentry);
+            U32 index = memory->readb(kbentry + 1);
             //U32 value = readw(kbentry+2);
             switch (table) {
                 case 0: // K_NORMTAB
-                    writew(kbentry + 2, index);
+                    memory->writew(kbentry + 2, index);
                     break;
                 case 1: // K_SHIFTTAB
-                    writew(kbentry + 2, toupper((char)index));
+                    memory->writew(kbentry + 2, toupper((char)index));
                     break;
                 case 2: // K_ALTTAB
-                    writew(kbentry + 2, index);
+                    memory->writew(kbentry + 2, index);
                     break;
                 case 3: // K_ALTSHIFTTAB
-                    writew(kbentry + 2, index);
+                    memory->writew(kbentry + 2, index);
                     break;
                 default:
-                    writew(kbentry + 2, index);
+                    memory->writew(kbentry + 2, index);
                     break;
             }
             break;
@@ -178,42 +180,42 @@ U32 DevTTY::ioctl(U32 request) {
         case 0x4B51: // KDSKBMUTE
             return -1;
         case 0x5401: // TCGETS
-            this->writeTermios(IOCTL_ARG1);
+            this->writeTermios(memory, IOCTL_ARG1);
             break;
         case 0x5402: // TCSETS
-            this->readTermios(IOCTL_ARG1);
+            this->readTermios(memory, IOCTL_ARG1);
             break;
         case 0x5403: // TCSETSW
-            this->readTermios(IOCTL_ARG1);
+            this->readTermios(memory, IOCTL_ARG1);
             break;
         case 0x5404: // TCSETSF
-            this->readTermios(IOCTL_ARG1);
+            this->readTermios(memory, IOCTL_ARG1);
             break;
         case 0x5600: // VT_OPENQRY
-            writed(IOCTL_ARG1, 2);
+            memory->writed(IOCTL_ARG1, 2);
             break;
         case 0x5601: { // VT_GETMODE
             U32 address = IOCTL_ARG1;
-            writeb(address, this->mode);
-            writeb(address + 1, this->waitv); // waitv
-            writew(address + 2, this->relsig); // relsig
-            writew(address + 4, this->acqsig); // acqsig
-            writew(address + 6, 0); // frsig
+            memory->writeb(address, this->mode);
+            memory->writeb(address + 1, this->waitv); // waitv
+            memory->writew(address + 2, this->relsig); // relsig
+            memory->writew(address + 4, this->acqsig); // acqsig
+            memory->writew(address + 6, 0); // frsig
             break;
         }
         case 0x5602: { // VT_SETMODE
             U32 address = IOCTL_ARG1;
-            this->mode = readb(address); // VT_AUTO
-            this->waitv = readb(address + 1); // waitv
-            this->relsig = readw(address + 2); // relsig
-            this->acqsig = readw(address + 4); // acqsig
+            this->mode = memory->readb(address); // VT_AUTO
+            this->waitv = memory->readb(address + 1); // waitv
+            this->relsig = memory->readw(address + 2); // relsig
+            this->acqsig = memory->readw(address + 4); // acqsig
             break;
         }
         case 0x5603: { // VT_GETSTATE
             U32 address = IOCTL_ARG1;
-            writew(address, 0); // v_active
-            writew(address, 0); // v_signal
-            writew(address, 1); // v_state
+            memory->writew(address, 0); // v_active
+            memory->writew(address, 0); // v_signal
+            memory->writew(address, 1); // v_state
             break;
         }
         case 0x5605: { // VT_RELDISP

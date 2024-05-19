@@ -3,11 +3,12 @@
 
 class UnzipDlg : public BaseDlg {
 public:
-    UnzipDlg(int title, BString label, BString zipFilePath, BString destDirPath, std::function<void(bool)> onCompleted);
+    UnzipDlg(Msg title, BString label, BString zipFilePath, BString destDirPath, std::function<void(bool)> onCompleted);
     virtual ~UnzipDlg();
 
 protected:
-    virtual void run();
+    // from BaseDlg
+    void run() override;
 
 private:
     void unzipCompleted();
@@ -15,7 +16,7 @@ private:
 
     BString label;
     BString currentFile;
-    U32 percentDone;
+    U32 percentDone = 0;
     std::function<void(bool)> onCompleted;
 };
 

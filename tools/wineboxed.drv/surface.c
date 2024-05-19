@@ -28,7 +28,7 @@ MAKE_DEP_UNIX
 #if BOXED_WINE_VERSION <= 7110
 #define WINE_UNIX_LIB
 #endif
-#include "config.h"
+//#include "config.h"
 
 #include "wineboxed.h"
 
@@ -37,12 +37,12 @@ MAKE_DEP_UNIX
 #include <pthread.h>
 
 #include "wine/debug.h"
-#include "wine/gdi_driver.h"
 #include "winreg.h"
+#include "wine/gdi_driver.h"
 
-#include "winternl.h"
-#include "winnt.h"
-#include "unixlib.h"
+//#include "winternl.h"
+//#include "winnt.h"
+//#include "unixlib.h"
 
 
 #if BOXED_WINE_VERSION >= 7120
@@ -241,7 +241,7 @@ static void boxeddrv_surface_set_region(struct window_surface *window_surface, H
     window_surface->funcs->unlock(window_surface);
 }
 
-UINT boxeddrv_RealizePaletteEntries(DWORD num_entries, PALETTEENTRY* entries);
+UINT GDI_CDECL boxeddrv_RealizePaletteEntries(DWORD num_entries, PALETTEENTRY* entries);
 static void boxeddrv_surface_flush(struct window_surface *window_surface)
 {
     struct boxeddrv_window_surface *surface = get_boxed_surface(window_surface);
@@ -307,7 +307,7 @@ static const struct window_surface_funcs boxeddrv_surface_funcs =
     boxeddrv_surface_destroy,
 };
 
-UINT boxeddrv_GetSystemPaletteEntries( PHYSDEV dev, UINT start, UINT count, LPPALETTEENTRY entries );
+UINT GDI_CDECL boxeddrv_GetSystemPaletteEntries( PHYSDEV dev, UINT start, UINT count, LPPALETTEENTRY entries );
 static void set_color_info(BITMAPINFO *info)
 {
     DWORD *colors = (DWORD *)((char *)info + info->bmiHeader.biSize);
@@ -354,7 +354,7 @@ static void set_color_info(BITMAPINFO *info)
 /***********************************************************************
  *              create_surface
  */
-INT boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
+INT GDI_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
 struct window_surface *create_surface(HWND window, const RECT *rect, struct window_surface *old_surface, BOOL use_alpha)
 {
     struct boxeddrv_window_surface *surface;
@@ -558,14 +558,14 @@ void WINE_CDECL boxeddrv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT sw
 #endif
 }
 
-BOOL WINE_CDECL boxeddrv_GetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp) {
+BOOL GDI_CDECL boxeddrv_GetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp) {
     int result;
     CALL_2(BOXED_GET_DEVICE_GAMMA_RAMP, dev, ramp);
     TRACE("dev=%p ramp=%p result=%d\n", dev, ramp, result);
     return (BOOL)result;
 }
 
-BOOL WINE_CDECL boxeddrv_SetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp) {
+BOOL GDI_CDECL boxeddrv_SetDeviceGammaRamp(PHYSDEV dev, LPVOID ramp) {
     int result;
     CALL_2(BOXED_SET_DEVICE_GAMMA_RAMP, dev, ramp);
     TRACE("dev=%p ramp=%p result=%d\n", dev, ramp, result);

@@ -5,7 +5,6 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
-#ifndef BOXEDWINE_64BIT_MMU
 U32 getDataSize(GLenum type) {
     switch (type) {
     case GL_UNSIGNED_BYTE:
@@ -665,6 +664,7 @@ GLint components_in_format(GLenum format )
       case GL_INTENSITY:
          return 1;
       case GL_LUMINANCE_ALPHA:
+      case GL_RG:
      return 2;
       case GL_RGB:
      return 3;
@@ -686,6 +686,7 @@ GLint components_in_format(GLenum format )
       case GL_DU8DV8_ATI:
          return 2;
       default:
+          kpanic("Opengl components_in_format %d", format);
          return -1;
    }
 }
@@ -802,7 +803,7 @@ U32 getMap2Count(GLenum target) {
 }
 
 GLint glcommon_glGetPixelMap_size(GLenum map) {
-    GLint len;
+    GLint len = 0;
 
     GL_FUNC(pglGetIntegerv)(map, &len);
     return len;
@@ -951,6 +952,5 @@ GLsizei marshalHistogramWidth(GLenum target) {
     return result;
 }
 
-#endif
 #endif
 #endif

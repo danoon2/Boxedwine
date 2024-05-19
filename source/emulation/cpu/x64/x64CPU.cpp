@@ -4,18 +4,19 @@
 #include "x64Ops.h"
 #include "x64CPU.h"
 #include "x64Asm.h"
-#include "../../hardmmu/hard_memory.h"
 #include "x64CodeChunk.h"
+#include "../../softmmu/kmemory_soft.h"
+#include "../normal/normalCPU.h"
 
-CPU* CPU::allocCPU() {
-    return new x64CPU();
+CPU* CPU::allocCPU(KMemory* memory) {
+    return new x64CPU(memory);
 }
 
 // hard to guage the benifit, seems like 1% to 3% with quake 2 and quake 3
 bool x64CPU::hasBMI2 = true;
 bool x64Intialized = false;
 
-x64CPU::x64CPU() {
+x64CPU::x64CPU(KMemory* memory) : BtCPU(memory), data1(this), data2(this) {
     if (!x64Intialized) {
         x64Intialized = true;
         x64CPU::hasBMI2 = platformHasBMI2();
@@ -31,8 +32,6 @@ void x64CPU::setSeg(U32 index, U32 address, U32 value) {
 }
 
 void x64CPU::restart() {
-	this->memOffset = this->thread->process->memory->id;
-	this->negMemOffset = (U64)(-(S64)this->memOffset);
 	for (int i = 0; i < 6; i++) {
 		this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
 	}
@@ -41,31 +40,22 @@ void x64CPU::restart() {
 
 void* x64CPU::init() {
     X64Asm data(this);
-    void* result;
-    Memory* memory = this->thread->memory;
+    KMemoryData* mem = getMemData(memory);
     x64CPU* cpu = this;
 
-    this->negMemOffset = (U64)(-(S64)this->memOffset);
     for (int i = 0; i < 6; i++) {
         this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
     }
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->executableMemoryMutex);
-    this->eipToHostInstructionAddressSpaceMapping = this->thread->memory->eipToHostInstructionAddressSpaceMapping;
-    this->memOffsets = memory->memOffsets;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
 
     //data.writeToRegFromValue(HOST_CPU, true, (U64)this, 8);
-    data.writeToRegFromValue(HOST_MEM, true, cpu->memOffset, 8);
-
-    if (KSystem::useLargeAddressSpace) {
-        data.writeToRegFromValue(HOST_LARGE_ADDRESS_SPACE_MAPPING, true, (U64)cpu->eipToHostInstructionAddressSpaceMapping, 8);
-    } else {
-        data.writeToRegFromValue(HOST_SMALL_ADDRESS_SPACE_SS, true, (U32)cpu->seg[SS].address, 4);
-    }
-
+    KMemoryData* memData = getMemData(memory);
+    data.writeToRegFromValue(HOST_MEM_READ, true, (U64)memData->mmuReadPtrAdjusted, 8);
+    data.writeToRegFromValue(HOST_MEM_WRITE, true, (U64)memData->mmuWritePtrAdjusted, 8);
     data.setNativeFlags(this->flags, FMASK_TEST|DF);
 
     data.writeToRegFromValue(0, false, EAX, 4);
@@ -80,10 +70,10 @@ void* x64CPU::init() {
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
     data.doJmp(false);
     std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
-    result = chunk->getHostAddress();
+    void* result = chunk->getHostAddress();
     //link(&data, chunk);
     this->pendingCodePages.clear();    
-    this->eipToHostInstructionPages = this->thread->memory->eipToHostInstructionPages;
+    this->eipToHostInstructionPages = mem->eipToHostInstructionPages;
 
     if (!this->thread->process->returnToLoopAddress) {
         X64Asm returnData(this);
@@ -102,14 +92,27 @@ void* x64CPU::init() {
         this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
-    if (!this->thread->process->reTranslateChunkAddressFromReg) {
+    if (!this->thread->process->syncToHostAddress) {
         X64Asm translateData(this);
-        translateData.createCodeForRetranslateChunk(true);
+        translateData.createCodeForSyncToHost();
         std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->reTranslateChunkAddressFromReg = chunk3->getHostAddress();
+        this->thread->process->syncToHostAddress = chunk3->getHostAddress();
     }
-    this->reTranslateChunkAddressFromReg = this->thread->process->reTranslateChunkAddressFromReg;
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
+    this->syncToHostAddress = this->thread->process->syncToHostAddress;
+    if (!this->thread->process->syncFromHostAddress) {
+        X64Asm translateData(this);
+        translateData.createCodeForSyncFromHost();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->syncFromHostAddress = chunk3->getHostAddress();
+    }
+    this->syncFromHostAddress = this->thread->process->syncFromHostAddress;    
+    if (!this->thread->process->doSingleOpAddress) {
+        X64Asm translateData(this);
+        translateData.createCodeForDoSingleOp();
+        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
+    }
+    this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         X64Asm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary(true);
@@ -117,7 +120,6 @@ void* x64CPU::init() {
         this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
-#endif
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
         X64Asm translateData(this);
@@ -129,18 +131,14 @@ void* x64CPU::init() {
     return result;
 }
 
-std::shared_ptr<BtData> x64CPU::createData() {
-    return std::make_shared<X64Asm>(this);
-}
-
 #ifdef __TEST
 void x64CPU::postTestRun() {
     for (int i = 0; i < 8; i++) {
-        reg_mmx[i].q = *((U64*)(fpuState + 32 + i * 16));
+        reg_mmx[i].q = fpuState.st_mm[i].low;
     }
     for (int i = 0; i < 8; i++) {
-        xmm[i].pi.u64[0] = *((U64*)(fpuState + 160 + i * 16));
-        xmm[i].pi.u64[1] = *((U64*)(fpuState + 160 + i * 16 + 8));
+        xmm[i].pi.u64[0] = fpuState.xmm[i].low;
+        xmm[i].pi.u64[1] = fpuState.xmm[i].high;
     }
 }
 
@@ -151,143 +149,183 @@ void x64CPU::addReturnFromTest() {
 }
 #endif
 
-void x64CPU::link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
-    U32 i;
+void x64CPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
     }
-    for (i=0;i<data->todoJump.size();i++) {
-        U32 eip = this->seg[CS].address+data->todoJump[i].eip;        
-        U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
-        U8 size = data->todoJump[i].offsetSize;
+    for (auto& todoJump : data->todoJump) {
+        U32 eip = seg[CS].address + todoJump.eip;
+        U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+todoJump.bufferPos;
 
-        if (size==4 && data->todoJump[i].sameChunk) {
-            U8* host = (U8*)fromChunk->getHostFromEip(eip);
-            if (!host) {
-                kpanic("x64CPU::link can not link into the middle of an instruction");
-            }
-            data->write32Buffer(offset, (U32)(host - offset - 4));            
-        } else if (size==4 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
-
-            if (!toHostAddress) {
-                U8 op = 0xce;
-                U32 hostIndex = 0;
-                std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(1, &eip, &hostIndex, &op, 1, eip-this->seg[CS].address, 1, false);
-                chunk->makeLive();
-                toHostAddress = (U8*)chunk->getHostAddress();            
-            }
-            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
-            if (!toChunk) {
-                kpanic("x64CPU::link to chunk missing");
-            }
-            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, true);
-            data->write32Buffer(offset, (U32)(toHostAddress - offset - 4));            
-        } else if (size==8 && !data->todoJump[i].sameChunk) {
-            U8* toHostAddress = (U8*)this->thread->memory->getExistingHostAddress(eip);
-
-            if (!toHostAddress) {
-                X64Asm returnData(this);
-                returnData.startOfOpIp = eip - this->seg[CS].address;
-                returnData.callRetranslateChunk();
-                U32 hostIndex = 0;
-                std::shared_ptr<X64CodeChunk> chunk = std::make_shared<X64CodeChunk>(1, &eip, &hostIndex, returnData.buffer, returnData.bufferPos, eip - this->seg[CS].address, 1, false);
-                chunk->makeLive();
-                toHostAddress = (U8*)chunk->getHostAddress();
-            }
-            std::shared_ptr<BtCodeChunk> toChunk = this->thread->memory->getCodeChunkContainingHostAddress(toHostAddress);
-            if (!toChunk) {
-                kpanic("x64CPU::link to chunk missing");
-            }
-            std::shared_ptr<BtCodeChunkLink> link = toChunk->addLinkFrom(fromChunk, eip, toHostAddress, offset, false);
-            data->write64Buffer(offset, (U64)&(link->toHostInstruction));
-        } else {
-            kpanic("x64CPU::link unexpected patch size");
+        U8* host = (U8*)fromChunk->getHostFromEip(eip);
+        if (!host) {
+            kpanic("x64CPU::link can not link into the middle of an instruction");
         }
+        data->write32Buffer(offset, (U32)(host - offset - 4));            
     }
-    markCodePageReadOnly(data.get());
 }
 
-void x64CPU::translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass) {
-    U32 codePage = (data->ip+this->seg[CS].address) >> K_PAGE_SHIFT;
-    U32 nativePage = this->thread->memory->getNativePage(codePage);
-    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage]==MAX_DYNAMIC_CODE_PAGE_COUNT) {
-        data->dynamic = true;
-    }
+void x64CPU::translateData(BtData* data, BtData* firstPass) {
+    KMemoryData* mem = getMemData(memory);
+  
+    data->firstPass = firstPass;
+    data->currentOp = nullptr;
+    data->currentBlock = nullptr;
+    DecodedOp* prevOp = nullptr;
+
     while (1) {  
         U32 address = this->seg[CS].address+data->ip;
-        void* hostAddress = this->thread->memory->getExistingHostAddress(address);
+        void* hostAddress = mem->getExistingHostAddress(address);
+        if (!data->currentOp) {
+            U32 address = this->seg[CS].address + data->ip;
+            DecodedBlock* prev = data->currentBlock;
+            if (prev) {
+                data->currentBlock = nullptr; // don't chain to an existing block
+            } else {
+                std::shared_ptr<BtCodeChunk> chunk = memory->findCodeBlockContaining(address, 1);
+                if (chunk) {
+                    data->currentBlock = chunk->block;
+                    if (data->currentBlock) {
+                        data->currentOp = data->currentBlock->getOp(address);
+                        if (!data->currentOp) {
+                            // winfish seems to jump into the middle of an instruction which changes it from cmp to mov
+                            data->currentBlock = nullptr;
+                        }
+                    } else {
+                        int ii = 0;
+                    }
+                }
+            }
+            if (!data->currentBlock) {
+                data->currentBlock = NormalCPU::getBlockForInspectionButNotUsed(this, address, big);
+                if (prev) {
+                    prev->bytes += data->currentBlock->bytes;
+                    prevOp->next = data->currentBlock->op;
+
+                    data->currentBlock->op = nullptr;
+                    data->currentBlock->dealloc(false);
+                    data->currentBlock = prev;
+                }
+            }
+            data->currentOp = data->currentBlock->getOp(address);
+            if (!data->currentOp) {
+                int ii = 0;
+            }
+        }
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
         }
-        if (firstPass) {
-            U32 nextEipLen = firstPass->calculateEipLen(data->ip+this->seg[CS].address);
-            U32 page = (data->ip+this->seg[CS].address+nextEipLen) >> K_PAGE_SHIFT;
-
-            if (page!=codePage) {
-                codePage = page;
-                nativePage = this->thread->memory->getNativePage(codePage);
-                if (data->dynamic) {                    
-                    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
-                        // continue to cross from my dynamic page into another dynamic page
-                    } else {
-                        // we will continue to emit code that will self check for modified code, even though the page we spill into is not dynamic
-                    }
-                } else {
-                    if (this->thread->memory->dynamicCodePageUpdateCount[nativePage] == MAX_DYNAMIC_CODE_PAGE_COUNT) {
-                        // we crossed a page boundry from a non dynamic page to a dynamic page
-                        data->dynamic = true; // the instructions from this point on will do their own check
-                    } else {
-                        // continue to cross from one non dynamic page into another non dynamic page
-                    }
-                }
-            }
-        }
         data->mapAddress(address, data->bufferPos);
         data->translateInstruction();
-        if (data->done) {
+        if (data->done || data->currentOp->inst == Invalid) {
             break;
         }
         if (data->stopAfterInstruction!=-1 && (int)data->ipAddressCount==data->stopAfterInstruction) {
             break;
         }
         data->resetForNewOp();
-    }     
+        prevOp = data->currentOp;
+        data->currentOp = data->currentOp->next;
+    }  
 }
 
-// for string instruction, we modify (add memory offset and segment) rdi and rsi so that the native string instruction can be used, this code will revert it back to the original values
-bool x64CPU::handleStringOp(DecodedOp* op) {
-    if (op->inst == Lodsb || op->inst == Lodsw || op->inst == Lodsd) {
-        THIS_ESI = (U32)(this->exceptionRSI - this->memOffset);
-        if (this->thread->process->hasSetSeg[op->base]) {
-            THIS_ESI -= this->seg[op->base].address;
-        }
-        return true;
-    }
-    // uses di (Examples: diablo 1 will trigger this in the middle of the Stosd when creating a new game)
-    else if (op->inst == Stosb || op->inst == Stosw || op->inst == Stosd ||
-        op->inst == Scasb || op->inst == Scasw || op->inst == Scasd) {
-        THIS_EDI = (U32)(this->exceptionRDI - this->memOffset);
-        if (this->thread->process->hasSetSeg[ES]) {
-            THIS_EDI -= this->seg[ES].address;
-        }
-        return true;
-    }
-    // uses si and di
-    else if (op->inst == Movsb || op->inst == Movsw || op->inst == Movsd ||
-        op->inst == Cmpsb || op->inst == Cmpsw || op->inst == Cmpsd) {
-        THIS_ESI = (U32)(this->exceptionRSI - this->memOffset);
-        THIS_EDI = (U32)(this->exceptionRDI - this->memOffset);
-        if (this->thread->process->hasSetSeg[ES]) {
-            THIS_EDI -= this->seg[ES].address;
-        }
-        if (this->thread->process->hasSetSeg[op->base]) {
-            THIS_ESI -= this->seg[op->base].address;
-        }
-        return true;
-    }
-    return false;
-}
+void common_runSingleOp(x64CPU* cpu) {
+    U32 address = cpu->eip.u32;
 
+    if (cpu->isBig()) {
+        address += cpu->seg[CS].address;
+    } else {
+        address = cpu->seg[CS].address + (address & 0xFFFF);
+    }
+    DecodedOp* op = cpu->currentSingleOp;
+    bool deallocOp = false;
+    bool dynamic = cpu->arg5 != 0;
+    if (dynamic) {
+        op = NormalCPU::decodeSingleOp(cpu, address);
+        deallocOp = true;
+    } else if (!op) {
+        kpanic("common_runSingleOp oops");
+    }
+    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
+            cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
+        }
+    }
+    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
+        U16 controlWord = cpu->fpuState.fcw;
+        U16 statusWord = cpu->fpuState.fsw;
+        U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
+        cpu->fpu.SetCW(controlWord);
+        cpu->fpu.SetSW(statusWord);
+        cpu->fpu.SetTagFromAbridged(tag);
+
+        for (U32 i = 0; i < 8; i++) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            if (!(tag & (1 << i))) {
+                //cpu->fpu.setReg(i, 0.0);
+            } else {
+                double d = cpu->fpu.FLD80(cpu->fpuState.st_mm[index].low, (S16)cpu->fpuState.st_mm[index].high);
+                cpu->fpu.setReg(i, d);
+            }
+        }
+    } else {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
+        }
+    }
+    bool inSignal = cpu->thread->inSignal;
+    if (op->inst >= Movsb && op->inst <= Scasd) {
+        cpu->flags &= ~(SF | AF | ZF | PF | CF | OF);
+        cpu->flags |= ((cpu->stringFlags >> 8) & 0xff) | ((cpu->stringFlags & 1) << 11);    
+    }
+    try {
+        if (!op->lock) {
+            op->pfn(cpu, op);
+        } else {
+            BOXEDWINE_CRITICAL_SECTION;
+            op->pfn(cpu, op);
+        }
+    } catch (...) {
+        int ii = 0;
+    }
+    if (inSignal != (cpu->thread->inSignal!=0)) {
+        // :TODO: move this threads context read/write
+        if (inSignal) {
+            memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
+        } else {
+            memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
+        }
+    }
+    if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
+        cpu->fpuState.fcw = cpu->fpu.CW();
+        cpu->fpuState.fsw = cpu->fpu.SW();
+        cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag();
+        U8 tag = cpu->fpuState.ftw;
+        for (U32 i = 0; i < 8; i++) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            if (!(tag & (1 << i))) {
+                //memset(&((x64CPU*)cpu)->fpuState.st_mm[i].st[0], 0, 10);
+            } else {
+                cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
+            }
+        }
+    } else {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->fpuState.st_mm[i].low = cpu->reg_mmx[i].q;
+        }
+    }
+    if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
+        for (U32 i = 0; i < 8; i++) {
+            cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
+            cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
+        }
+    }
+    cpu->fillFlags();
+    if (deallocOp) {
+        op->dealloc(true);
+    }
+    DecodedBlock::currentBlock = nullptr;
+}
 #endif

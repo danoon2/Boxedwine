@@ -28,13 +28,12 @@ public:
     U32 events;
     U32 revents;
     U64 data;
-    KFileDescriptor* pFD;
 };
 
-S32 internal_poll(KPollData* data, U32 count, U32 timeout);
+S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout);
 
-U32 kpoll(U32 pfds, U32 nfds, U32 timeout);
-U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout);
+U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout);
+U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout, bool timeoutIsTimeVal, U32 sigmask = 0, bool time64 = false);
 
 #define K_POLLIN       0x001
 #define K_POLLPRI      0x002

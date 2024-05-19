@@ -66,7 +66,7 @@ void common_movPqR32(CPU* cpu, U32 r1, U32 r2) {
 
 void common_movPqE32(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* rmrq=&cpu->reg_mmx[reg];
-    rmrq->ud.d0 = readd(address);
+    rmrq->ud.d0 = cpu->memory->readd(address);
     rmrq->ud.d1 = 0;
 }
 
@@ -75,7 +75,7 @@ void common_movR32Pq(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_movE32Pq(CPU* cpu, U32 reg, U32 address) {
-    writed(address, cpu->reg_mmx[reg].ud.d0);
+    cpu->memory->writed(address, cpu->reg_mmx[reg].ud.d0);
 }
 
 void common_movPqMmx(CPU* cpu, U32 r1, U32 r2) {
@@ -83,11 +83,11 @@ void common_movPqMmx(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_movPqE64(CPU* cpu, U32 reg, U32 address) {
-    cpu->reg_mmx[reg].q = readq(address);
+    cpu->reg_mmx[reg].q = cpu->memory->readq(address);
 }
 
 void common_movE64Pq(CPU* cpu, U32 reg, U32 address) {
-    writeq(address, cpu->reg_mmx[reg].q);
+    cpu->memory->writeq(address, cpu->reg_mmx[reg].q);
 }
 
 void common_movMmxPq(CPU* cpu, U32 r1, U32 r2) {
@@ -101,7 +101,7 @@ void common_pxorMmx(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_pxorE64(CPU* cpu, U32 reg, U32 address) {
-    cpu->reg_mmx[reg].q ^= readq(address);
+    cpu->reg_mmx[reg].q ^= cpu->memory->readq(address);
 }
 
 void common_porMmx(CPU* cpu, U32 r1, U32 r2) {
@@ -109,7 +109,7 @@ void common_porMmx(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_porE64(CPU* cpu, U32 reg, U32 address) {
-    cpu->reg_mmx[reg].q |= readq(address);
+    cpu->reg_mmx[reg].q |= cpu->memory->readq(address);
 }
 
 void common_pandMmx(CPU* cpu, U32 r1, U32 r2) {
@@ -117,7 +117,7 @@ void common_pandMmx(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_pandE64(CPU* cpu, U32 reg, U32 address) {
-    cpu->reg_mmx[reg].q &= readq(address);
+    cpu->reg_mmx[reg].q &= cpu->memory->readq(address);
 }
 
 void common_pandnMmx(CPU* cpu, U32 r1, U32 r2) {
@@ -125,7 +125,7 @@ void common_pandnMmx(CPU* cpu, U32 r1, U32 r2) {
 }
 
 void common_pandnE64(CPU* cpu, U32 reg, U32 address) {
-    cpu->reg_mmx[reg].q = ~cpu->reg_mmx[reg].q & readq(address);
+    cpu->reg_mmx[reg].q = ~cpu->reg_mmx[reg].q & cpu->memory->readq(address);
 }
 
 /* Shift */
@@ -147,7 +147,7 @@ void common_psllwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 15) {
         dest->q = 0;
@@ -177,7 +177,7 @@ void common_psrlwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 15) {
         dest->q = 0;
@@ -191,7 +191,7 @@ void common_psrlwE64(CPU* cpu, U32 reg, U32 address) {
 
 void common_psrawMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=&cpu->reg_mmx[r1];
-    U8 shift;
+    U8 shift = 0;
 
     if (cpu->reg_mmx[r2].q > 15) {
         shift = 16;
@@ -208,7 +208,7 @@ void common_psrawE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 15) {
         src.q = 16;
@@ -262,7 +262,7 @@ void common_pslldE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 31) {
         dest->q = 0;
@@ -288,7 +288,7 @@ void common_psrldE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 31) {
         dest->q = 0;
@@ -300,7 +300,7 @@ void common_psrldE64(CPU* cpu, U32 reg, U32 address) {
 
 void common_psradMmx(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* dest=&cpu->reg_mmx[r1];
-    U8 shift;
+    U8 shift = 0;
 
     if (cpu->reg_mmx[r2].q > 31) {
         shift = 32;
@@ -315,7 +315,7 @@ void common_psradE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 31) {
         src.q = 32;
@@ -360,7 +360,7 @@ void common_psllqE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 63) {
         dest->q = 0;
@@ -384,7 +384,7 @@ void common_psrlqE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     if (src.q > 63) {
         dest->q = 0;
@@ -420,7 +420,7 @@ void common_paddbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->ub.b0 += src.ub.b0;
 	dest->ub.b1 += src.ub.b1;
@@ -446,7 +446,7 @@ void common_paddwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->uw.w0 += src.uw.w0;
 	dest->uw.w1 += src.uw.w1;
@@ -466,7 +466,7 @@ void common_padddE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->ud.d0 += src.ud.d0;
 	dest->ud.d1 += src.ud.d1;
@@ -490,7 +490,7 @@ void common_paddsbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->sb.b0 = SaturateWordSToByteS((S16)dest->sb.b0+(S16)src.sb.b0);
 	dest->sb.b1 = SaturateWordSToByteS((S16)dest->sb.b1+(S16)src.sb.b1);
@@ -516,7 +516,7 @@ void common_paddswE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->sw.w0 = SaturateDwordSToWordS((S32)dest->sw.w0+(S32)src.sw.w0);
 	dest->sw.w1 = SaturateDwordSToWordS((S32)dest->sw.w1+(S32)src.sw.w1);
@@ -542,7 +542,7 @@ void common_paddusbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->ub.b0 = SaturateWordSToByteU((S16)dest->ub.b0+(S16)src.ub.b0);
 	dest->ub.b1 = SaturateWordSToByteU((S16)dest->ub.b1+(S16)src.ub.b1);
@@ -568,7 +568,7 @@ void common_padduswE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->uw.w0 = SaturateDwordSToWordU((S32)dest->uw.w0+(S32)src.uw.w0);
 	dest->uw.w1 = SaturateDwordSToWordU((S32)dest->uw.w1+(S32)src.uw.w1);
@@ -594,7 +594,7 @@ void common_psubbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->ub.b0 -= src.ub.b0;
 	dest->ub.b1 -= src.ub.b1;
@@ -620,7 +620,7 @@ void common_psubwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->uw.w0 -= src.uw.w0;
 	dest->uw.w1 -= src.uw.w1;
@@ -640,7 +640,7 @@ void common_psubdE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->ud.d0 -= src.ud.d0;
 	dest->ud.d1 -= src.ud.d1;
@@ -664,7 +664,7 @@ void common_psubsbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->sb.b0 = SaturateWordSToByteS((S16)dest->sb.b0-(S16)src.sb.b0);
 	dest->sb.b1 = SaturateWordSToByteS((S16)dest->sb.b1-(S16)src.sb.b1);
@@ -690,7 +690,7 @@ void common_psubswE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     dest->sw.w0 = SaturateDwordSToWordS((S32)dest->sw.w0-(S32)src.sw.w0);
 	dest->sw.w1 = SaturateDwordSToWordS((S32)dest->sw.w1-(S32)src.sw.w1);
@@ -717,10 +717,10 @@ void common_psubusbMmx(CPU* cpu, U32 r1, U32 r2) {
 
 void common_psubusbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
-    MMX_reg src;
-    MMX_reg result;
+    MMX_reg src = {};
+    MMX_reg result = {};
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     result.q = 0;
 	if (dest->ub.b0>src.ub.b0) result.ub.b0 = dest->ub.b0 - src.ub.b0;
@@ -749,10 +749,10 @@ void common_psubuswMmx(CPU* cpu, U32 r1, U32 r2) {
 
 void common_psubuswE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
-    MMX_reg src;
-    MMX_reg result;
+    MMX_reg src = {};
+    MMX_reg result = {};
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
     result.q = 0;
 	if (dest->uw.w0>src.uw.w0) result.uw.w0 = dest->uw.w0 - src.uw.w0;
@@ -776,7 +776,7 @@ void common_pmulhwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->uw.w0 = (U16)(((S32)dest->sw.w0 * (S32)src.sw.w0) >> 16);
 	dest->uw.w1 = (U16)(((S32)dest->sw.w1 * (S32)src.sw.w1) >> 16);
@@ -798,7 +798,7 @@ void common_pmullwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->uw.w0 = (U16)((S32)dest->sw.w0 * (S32)src.sw.w0);
 	dest->uw.w1 = (U16)((S32)dest->sw.w1 * (S32)src.sw.w1);
@@ -825,7 +825,7 @@ void common_pmaddwdE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	if (dest->ud.d0 == 0x80008000 && src.ud.d0 == 0x80008000)
 		dest->ud.d0 = 0x80000000;
@@ -857,7 +857,7 @@ void common_pcmpeqbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ub.b0 = dest->ub.b0==src.ub.b0?0xff:0;
 	dest->ub.b1 = dest->ub.b1==src.ub.b1?0xff:0;
@@ -883,7 +883,7 @@ void common_pcmpeqwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->uw.w0 = dest->uw.w0==src.uw.w0?0xffff:0;
 	dest->uw.w1 = dest->uw.w1==src.uw.w1?0xffff:0;
@@ -903,7 +903,7 @@ void common_pcmpeqdE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ud.d0 = dest->ud.d0==src.ud.d0?0xffffffff:0;
 	dest->ud.d1 = dest->ud.d1==src.ud.d1?0xffffffff:0;
@@ -927,7 +927,7 @@ void common_pcmpgtbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ub.b0 = dest->sb.b0>src.sb.b0?0xff:0;
 	dest->ub.b1 = dest->sb.b1>src.sb.b1?0xff:0;
@@ -953,7 +953,7 @@ void common_pcmpgtwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->uw.w0 = dest->sw.w0>src.sw.w0?0xffff:0;
 	dest->uw.w1 = dest->sw.w1>src.sw.w1?0xffff:0;
@@ -973,7 +973,7 @@ void common_pcmpgtdE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ud.d0 = dest->sd.d0>src.sd.d0?0xffffffff:0;
 	dest->ud.d1 = dest->sd.d1>src.sd.d1?0xffffffff:0;
@@ -998,7 +998,7 @@ void common_packsswbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->sb.b0 = SaturateWordSToByteS(dest->sw.w0);
 	dest->sb.b1 = SaturateWordSToByteS(dest->sw.w1);
@@ -1024,7 +1024,7 @@ void common_packssdwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->sw.w0 = SaturateDwordSToWordS(dest->sd.d0);
 	dest->sw.w1 = SaturateDwordSToWordS(dest->sd.d1);
@@ -1050,7 +1050,7 @@ void common_packuswbE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ub.b0 = SaturateWordSToByteU(dest->sw.w0);
 	dest->ub.b1 = SaturateWordSToByteU(dest->sw.w1);
@@ -1080,7 +1080,7 @@ void common_punpckhbwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ub.b0 = dest->ub.b4;
 	dest->ub.b1 = src.ub.b4;
@@ -1106,7 +1106,7 @@ void common_punpckhwdE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->uw.w0 = dest->uw.w2;
 	dest->uw.w1 = src.uw.w2;
@@ -1126,7 +1126,7 @@ void common_punpckhdqE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ud.d0 = dest->ud.d1;
 	dest->ud.d1 = src.ud.d1;
@@ -1150,7 +1150,7 @@ void common_punpcklbwE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ub.b7 = src.ub.b3;
 	dest->ub.b6 = dest->ub.b3;
@@ -1176,7 +1176,7 @@ void common_punpcklwdE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->uw.w3 = src.uw.w1;
 	dest->uw.w2 = dest->uw.w1;
@@ -1195,7 +1195,7 @@ void common_punpckldqE64(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* dest=&cpu->reg_mmx[reg];
     MMX_reg src;    
     
-    src.q = readq(address);
+    src.q = cpu->memory->readq(address);
 
 	dest->ud.d1 = src.ud.d0;
 }

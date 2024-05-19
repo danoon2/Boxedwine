@@ -19,6 +19,6 @@
 #ifndef __DEVURANDOM_H__
 #define __DEVURANDOM_H__
 
-FsOpenNode* openDevURandom(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevURandom(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

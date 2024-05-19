@@ -6,7 +6,7 @@
 std::list<BaseDlg*> BaseDlg::activeDialogs;
 
 void BaseDlg::runDialogs() {
-    BaseDlg* toDelete = NULL;
+    BaseDlg* toDelete = nullptr;
     for (auto& dlg : BaseDlg::activeDialogs) {
         if (!dlg->isDone) {
             dlg->runIfVisible();
@@ -30,24 +30,18 @@ void BaseDlg::stopAllDialogs() {
 }
 
 void ComboboxData::dataChanged() {
-    int len = 1;
-    
-    if (dataForCombobox) {
-        delete[] dataForCombobox;
-    }
+    dataForCombobox.clear();
     for (auto& s : data) {
-        len+=((int)s.label.length()+1);
+        if (dataForCombobox.length() == 0) {
+            dataForCombobox.append(s.label);
+        } else {
+            dataForCombobox.appendAfterNull(s.label);
+        }
     }
-    dataForCombobox = new char[len];
-    len = 0;
-    for (auto& s : data) {
-        strcpy(dataForCombobox+len, s.label.c_str());
-        len+=(int)s.label.length()+1;
-    }
-    dataForCombobox[len]=0;
+    dataForCombobox.appendAfterNull("");
 }
 
-BaseDlg::BaseDlg(int title, int width, int height, ImFont* font, BaseDlg* parent) : isDone(false), parent(parent), child(NULL), font(font) {
+BaseDlg::BaseDlg(Msg title, int width, int height, ImFont* font, BaseDlg* parent) : isDone(false), child(nullptr), font(font) {
     this->width = GlobalSettings::scaleIntUI(width);
     this->height = GlobalSettings::scaleIntUI(height);
     this->toolTipWidth = (float)GlobalSettings::scaleIntUI(28);
@@ -68,7 +62,7 @@ void BaseDlg::runIfVisible() {
     if (this->font) {
         ImGui::PushFont(this->font);
     }
-    if (ImGui::BeginPopupModal(this->title, NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse/* | ImGuiWindowFlags_NoMove*/))
+    if (ImGui::BeginPopupModal(this->title, nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoCollapse/* | ImGuiWindowFlags_NoMove*/))
     {
         ImGui::SetWindowSize(ImVec2((float)width, (float)height));        
         this->run();
@@ -100,12 +94,12 @@ void BaseDlg::toolTip(const char* desc) {
 }
 
 void BaseDlg::addOkAndCancelButtons() {
-    float buttonArea = ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_OK)).x+ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_CANCEL)).x;
+    float buttonArea = ImGui::CalcTextSize(c_getTranslation(Msg::GENERIC_DLG_OK)).x+ImGui::CalcTextSize(c_getTranslation(Msg::GENERIC_DLG_CANCEL)).x;
     ImGui::SetCursorPos(ImVec2((float)(this->width-buttonArea-35),(float)(this->height-32)));
 
-    this->onOk(ImGui::Button(c_getTranslation(GENERIC_DLG_OK)));
+    this->onOk(ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_OK)));
     ImGui::SameLine();
-    if (ImGui::Button(c_getTranslation(GENERIC_DLG_CANCEL))) {
+    if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_CANCEL))) {
         this->done();
     }
 }
@@ -123,10 +117,10 @@ float BaseDlg::getOuterFramePadding() {
 }
 
 void BaseDlg::addCancelButton() {
-    float buttonArea = ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_CANCEL)).x+ImGui::GetStyle().FramePadding.x*2;
+    float buttonArea = ImGui::CalcTextSize(c_getTranslation(Msg::GENERIC_DLG_CANCEL)).x+ImGui::GetStyle().FramePadding.x*2;
     ImGui::SetCursorPos(ImVec2((float)(this->width - buttonArea - getOuterFramePadding()), getButtonRowY()));
 
-    if (ImGui::Button(c_getTranslation(GENERIC_DLG_CANCEL))) {
+    if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_CANCEL))) {
         this->done();
     }
 }

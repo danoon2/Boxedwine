@@ -17,7 +17,7 @@ MAKE_DEP_UNIX
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
-UINT WINE_CDECL boxeddrv_RealizePalette(PHYSDEV dev, HPALETTE hpal, BOOL primary) {
+UINT GDI_CDECL boxeddrv_RealizePalette(PHYSDEV dev, HPALETTE hpal, BOOL primary) {
     PALETTEENTRY entries[256];
     WORD num_entries;
     UINT result;
@@ -36,12 +36,12 @@ UINT WINE_CDECL boxeddrv_RealizePalette(PHYSDEV dev, HPALETTE hpal, BOOL primary
     return result;
 }
 
-BOOL WINE_CDECL boxeddrv_UnrealizePalette(HPALETTE hpal)
+BOOL GDI_CDECL boxeddrv_UnrealizePalette(HPALETTE hpal)
 {
     return TRUE;
 }
 
-UINT WINE_CDECL boxeddrv_GetSystemPaletteEntries(PHYSDEV dev, UINT start, UINT count, LPPALETTEENTRY entries)
+UINT GDI_CDECL boxeddrv_GetSystemPaletteEntries(PHYSDEV dev, UINT start, UINT count, LPPALETTEENTRY entries)
 {
     UINT result;
     CALL_3(BOXED_GET_SYSTEM_PALETTE, start, count, entries);
@@ -49,14 +49,14 @@ UINT WINE_CDECL boxeddrv_GetSystemPaletteEntries(PHYSDEV dev, UINT start, UINT c
     return result;
 }
 
-COLORREF WINE_CDECL boxeddrv_GetNearestColor(PHYSDEV dev, COLORREF color)
+COLORREF GDI_CDECL boxeddrv_GetNearestColor(PHYSDEV dev, COLORREF color)
 {
     COLORREF result;
     CALL_1(BOXED_GET_NEAREST_COLOR, color);
     return result;
 }
 
-UINT WINE_CDECL boxeddrv_RealizeDefaultPalette(PHYSDEV dev)
+UINT GDI_CDECL boxeddrv_RealizeDefaultPalette(PHYSDEV dev)
 {
     PALETTEENTRY entries[256];
     int count;

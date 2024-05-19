@@ -14,41 +14,41 @@
 #pragma comment(lib, "urlmon.lib")
 class DownloadProgress : public IBindStatusCallback {
 public:
-    bool* cancel;
+    bool* cancel = nullptr;
     std::function<void(U64 bytesCompleted)> f;
 
-    HRESULT __stdcall QueryInterface(const IID&, void**) {
+    HRESULT __stdcall QueryInterface(const IID&, void**) override {
         return E_NOINTERFACE;
     }
-    ULONG STDMETHODCALLTYPE AddRef(void) {
+    ULONG STDMETHODCALLTYPE AddRef(void) override {
         return 1;
     }
-    ULONG STDMETHODCALLTYPE Release(void) {
+    ULONG STDMETHODCALLTYPE Release(void) override {
         return 1;
     }
-    HRESULT STDMETHODCALLTYPE OnStartBinding(DWORD dwReserved, IBinding* pib) {
+    HRESULT STDMETHODCALLTYPE OnStartBinding(DWORD dwReserved, IBinding* pib) override {
         return E_NOTIMPL;
     }
-    virtual HRESULT STDMETHODCALLTYPE GetPriority(LONG* pnPriority) {
+    HRESULT STDMETHODCALLTYPE GetPriority(LONG* pnPriority) override {
         return E_NOTIMPL;
     }
-    virtual HRESULT STDMETHODCALLTYPE OnLowResource(DWORD reserved) {
+    HRESULT STDMETHODCALLTYPE OnLowResource(DWORD reserved) override {
         return S_OK;
     }
-    virtual HRESULT STDMETHODCALLTYPE OnStopBinding(HRESULT hresult, LPCWSTR szError) {
+    HRESULT STDMETHODCALLTYPE OnStopBinding(HRESULT hresult, LPCWSTR szError) override {
         return E_NOTIMPL;
     }
-    virtual HRESULT STDMETHODCALLTYPE GetBindInfo(DWORD* grfBINDF, BINDINFO* pbindinfo) {
+    HRESULT STDMETHODCALLTYPE GetBindInfo(DWORD* grfBINDF, BINDINFO* pbindinfo) override {
         return E_NOTIMPL;
     }
-    virtual HRESULT STDMETHODCALLTYPE OnDataAvailable(DWORD grfBSCF, DWORD dwSize, FORMATETC* pformatetc, STGMEDIUM* pstgmed) {
+    HRESULT STDMETHODCALLTYPE OnDataAvailable(DWORD grfBSCF, DWORD dwSize, FORMATETC* pformatetc, STGMEDIUM* pstgmed) override {
         return E_NOTIMPL;
     }
-    virtual HRESULT STDMETHODCALLTYPE OnObjectAvailable(REFIID riid, IUnknown* punk) {
+    HRESULT STDMETHODCALLTYPE OnObjectAvailable(REFIID riid, IUnknown* punk) override {
         return E_NOTIMPL;
     }
 
-    virtual HRESULT __stdcall OnProgress(ULONG ulProgress, ULONG ulProgressMax, ULONG ulStatusCode, LPCWSTR szStatusText)
+    HRESULT __stdcall OnProgress(ULONG ulProgress, ULONG ulProgressMax, ULONG ulStatusCode, LPCWSTR szStatusText) override
     {
         f(ulProgress);
 
@@ -65,10 +65,12 @@ bool downloadFile(BString url, BString filePath, std::function<void(U64 bytesCom
     progress.cancel = cancel;
     progress.f = f;
 
-    HRESULT hr = URLDownloadToFile(0, url.c_str(), filePath.c_str(), 0, static_cast<IBindStatusCallback*>(&progress));
+    HRESULT hr = URLDownloadToFile(nullptr, url.c_str(), filePath.c_str(), 0, &progress);
     if (hr != S_OK) {
-        LPSTR messageBuffer = NULL;
-        size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, NULL);
+        LPSTR messageBuffer = nullptr;
+        // the use of FORMAT_MESSAGE_ALLOCATE_BUFFER causes this funky cast
+        LPSTR pArg = reinterpret_cast<LPSTR>(&messageBuffer);
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, hr, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), pArg, 0, nullptr);
         errorMsg = BString::copy(messageBuffer);
         LocalFree(messageBuffer);
     }

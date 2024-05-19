@@ -1,15 +1,12 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_native_page.h"
-#include "soft_memory.h"
 
-NativePage* NativePage::alloc(U8* nativeAddress, U32 address, U32 flags) {
-    return new NativePage(nativeAddress, address, flags);
+NativePage* NativePage::alloc(U8* nativeAddress, U32 address) {
+    return new NativePage(nativeAddress, address);
 }
 
-NativePage::NativePage(U8* nativeAddress, U32 address, U32 flags) : Page(Native_Page, flags), nativeAddress(nativeAddress), address(address) {
+NativePage::NativePage(U8* nativeAddress, U32 address) : nativeAddress(nativeAddress), address(address) {
 }
 
 U8 NativePage::readb(U32 address) {
@@ -56,24 +53,16 @@ void NativePage::writed(U32 address, U32 value) {
 #endif
 }
 
-U8* NativePage::getCurrentReadPtr() {
-    return this->nativeAddress+(address-this->address);
+U8* NativePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
+        return this->nativeAddress + (address - this->address);
+    }
+    return nullptr;
 }
 
-U8* NativePage::getCurrentWritePtr() {
-    return this->nativeAddress+(address-this->address);
+U8* NativePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+    if (KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT)) {
+        return this->nativeAddress + (address - this->address);
+    }
+    return nullptr;
 }
-
-U8* NativePage::getReadAddress(U32 address, U32 len) {    
-    return this->nativeAddress+(address-this->address);
-}
-
-U8* NativePage::getWriteAddress(U32 address, U32 len) {
-    return this->nativeAddress+(address-this->address);
-}
-
-U8* NativePage::getReadWriteAddress(U32 address, U32 len) {
-    return this->nativeAddress+(address-this->address);
-}
-
-#endif

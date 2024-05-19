@@ -1,3 +1,7 @@
+#if 0
+MAKE_DEP_UNIX
+#endif
+
 #include "wineboxed.h"
 #include "shellapi.h"
 #include "boxed_imm.h"

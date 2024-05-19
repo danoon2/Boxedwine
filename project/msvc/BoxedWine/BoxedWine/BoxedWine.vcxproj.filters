@@ -73,9 +73,6 @@
     <ClCompile Include="..\..\..\..\source\kernel\devs\devdsp.cpp">
       <Filter>source\kernel\devs</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\kernel\devs\devfb.cpp">
-      <Filter>source\kernel\devs</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\devs\devinput.cpp">
       <Filter>source\kernel\devs</Filter>
     </ClCompile>
@@ -97,13 +94,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_file_map.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_memory.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp">
@@ -240,12 +231,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp">
       <Filter>source\util</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp">
-      <Filter>platform\windows</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\hardmmu\hard_memory.cpp">
-      <Filter>source\emulation\hardmmu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp">
       <Filter>source\emulation\cpu\x32</Filter>
@@ -505,9 +490,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
@@ -550,15 +532,54 @@
     <ClCompile Include="..\..\..\..\source\util\bstring.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\bfile.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\devs\devfb.cpp">
+      <Filter>source\kernel\devs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysmouse.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysfs.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysbus.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysdevices.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysbususb.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysdev.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysfb.cpp">
+      <Filter>source\kernel\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\proc\procstat.cpp">
+      <Filter>source\kernel\proc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\knetlink.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\kernel\kevent.cpp">
+      <Filter>source\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\devdsp.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\include\devfb.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\devinput.h">
@@ -624,9 +645,6 @@
     <ClInclude Include="..\..\..\..\include\meminfo.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\memory.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\platform.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -652,9 +670,6 @@
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_memory.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\kernel\loader\kelf.h">
@@ -741,9 +756,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
@@ -828,9 +840,6 @@
     <ClInclude Include="..\..\..\..\source\util\klist.h">
       <Filter>source\util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\util\boxedptr.h">
-      <Filter>source\util</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\karray.h">
       <Filter>source\util</Filter>
     </ClInclude>
@@ -839,9 +848,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_jump.h">
       <Filter>source\emulation\cpu\normal</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\hardmmu\hard_memory.h">
-      <Filter>source\emulation\hardmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.h">
       <Filter>source\emulation\cpu\x32</Filter>
@@ -1197,9 +1203,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
@@ -1238,6 +1241,42 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\concurrentqueue.h">
       <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kmemory.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h">
+      <Filter>source\emulation\cpu\binaryTranslation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\ptrpool.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\bfile.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\bhashtable.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devfb.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\ktimercallback.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\procstat.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\knetlink.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kevent.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1300,9 +1339,6 @@
     </Filter>
     <Filter Include="minizip">
       <UniqueIdentifier>{63031e16-f5cd-4f1e-bb8c-aee7a81314a8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="source\emulation\hardmmu">
-      <UniqueIdentifier>{4f68ad4a-87b4-418f-a461-919898090deb}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\emulation\cpu\x32">
       <UniqueIdentifier>{e80bd918-375f-4341-916a-4301b88a0c8f}</UniqueIdentifier>
@@ -1367,6 +1403,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="ClassDiagram.cd" />
+    <None Include="BoxedWine.ruleset" />
+    <None Include="BoxedWine1.ruleset" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\Boxedwine.rc" />

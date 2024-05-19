@@ -1,11 +1,9 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_no_page.h"
 
-NOPage* NOPage::alloc(U8* page, U32 address, U32 flags) {
-    return new NOPage(page, address, flags);
+NOPage* NOPage::alloc(U8* page, U32 address) {
+    return new NOPage(page, address);
 }
 
 U8 NOPage::readb(U32 address) {
@@ -35,24 +33,10 @@ void NOPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_access(address, false, true);
 }
 
-U8* NOPage::getCurrentReadPtr() {
-    return NULL;
+U8* NOPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    return nullptr;
 }
 
-U8* NOPage::getCurrentWritePtr() {
-    return NULL;
+U8* NOPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+    return nullptr;
 }
-
-U8* NOPage::getReadAddress(U32 address, U32 len) {    
-    return NULL;
-}
-
-U8* NOPage::getWriteAddress(U32 address, U32 len) {
-    return NULL;
-}
-
-U8* NOPage::getReadWriteAddress(U32 address, U32 len) {
-    return NULL;
-}
-
-#endif

@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <pthread.h>
 
-U32 platformThreadCount = 0;
+std::atomic<int> platformThreadCount;
 
 void platformHandler(int sig, siginfo_t* info, void* vcontext);
 
@@ -50,7 +50,9 @@ void initThreadForTesting() {
 #endif
 
 void* platformThreadProc(void* param) {
+#ifdef BOXEDWINE_64BIT_MMU
     initHandlers();
+#endif
     KThread* thread = (KThread*)param;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->startThread();

@@ -22,11 +22,13 @@
 
 class DevNull : public FsVirtualOpenNode {
 public:
-    DevNull(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
-    virtual U32 readNative(U8* buffer, U32 len) {return 0;}
-    virtual U32 writeNative(U8* buffer, U32 len) {return len;}
+    DevNull(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
+
+    // From FsOpenNode
+    U32 readNative(U8* buffer, U32 len) override {return 0;}
+    U32 writeNative(U8* buffer, U32 len) override {return len;}
 };
 
-FsOpenNode* openDevNull(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevNull(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevNull(node, flags);
 }

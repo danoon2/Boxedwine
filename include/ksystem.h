@@ -39,13 +39,22 @@
 #define OPENGL_TYPE_SDL 2
 #define OPENGL_TYPE_OSMESA 3
 
-class MappedFileCache;
-class KTimer;
+class KTimerCallback;
 class CPU;
 class KProcess;
 class KThread;
 
-class SHM : public BoxedPtrBase {
+class MappedFileCache {
+public:
+    MappedFileCache(BString name) : name(name) {}
+    virtual ~MappedFileCache();
+    const BString name;
+    std::shared_ptr<KFile> file;
+    U8** data = nullptr;
+    U32 dataSize = 0;
+};
+
+class SHM {
 public:
     SHM(U32 id, U32 key) : id(id), key(key) {}
     virtual ~SHM();
@@ -55,17 +64,17 @@ public:
 
     std::vector<U8*> pages;
     const U32 id;
-    U32 len;
+    U32 len = 0;
     const U32 key;
-    U32 cpid;
-    U32 lpid;
-    U64 ctime;
-    U64 dtime;
-    U64 atime;
-    U32 nattch;
-    U32 markedForDelete;
-    U32 cuid;
-    U32 cgid;
+    U32 cpid = 0;
+    U32 lpid = 0;
+    U64 ctime = 0;
+    U64 dtime = 0;
+    U64 atime = 0;
+    U32 nattch = 0;
+    U32 markedForDelete = 0;
+    U32 cuid = 0;
+    U32 cgid = 0;
 };
 
 class KSystem {
@@ -77,17 +86,14 @@ public:
 	static bool shutingDown;
     static U32 killTime;
     static BString title;
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    static bool useLargeAddressSpace;
-    static bool useSingleMemOffset;
-#endif
+    static U32 wineMajorVersion;
 #ifdef BOXEDWINE_MULTI_THREADED
     static U32 cpuAffinityCountForApp;
 #endif
     static U32 pollRate;
     static bool showWindowImmediately;
     static U32 skipFrameFPS;
-    static FILE* logFile;
+    static BWriteFile logFile;
     static std::function<void(BString line)> watchTTY;
     static bool ttyPrepend;
     static BString exePath;
@@ -97,13 +103,13 @@ public:
     static U32 getNextThreadId();
 
     // helpers
-    static void writeStat(BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);    
+    static void writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);
     static std::shared_ptr<KProcess> getProcess(U32 id);
     static void eraseFileCache(BString name);
-    static BoxedPtr<MappedFileCache> getFileCache(BString name);
-    static void setFileCache(BString name, const BoxedPtr<MappedFileCache>& fileCache);
+    static std::shared_ptr<MappedFileCache> getFileCache(BString name);
+    static void setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache);
     static void eraseProcess(U32 id);
-    static void addProcess(U32 id, const std::shared_ptr<KProcess>& process);
+    static std::shared_ptr<FsNode> addProcess(U32 id, const std::shared_ptr<KProcess>& process);
     static KThread* getThreadById(U32 threadId);
     static U32 getRunningProcessCount();
     static U32 getProcessCount();
@@ -111,25 +117,25 @@ public:
     static void wakeThreadsWaitingOnProcessStateChanged();
 
     // syscalls
-    static U32 clock_getres(U32 clk_id, U32 timespecAddress);
-    static U32 clock_getres64(U32 clk_id, U32 timespecAddress);
-    static U32 clock_gettime(U32 clock_id, U32 tp);
-    static U32 clock_gettime64(U32 clock_id, U32 tp);
+    static U32 clock_getres(KThread* thread, U32 clk_id, U32 timespecAddress);
+    static U32 clock_getres64(KThread* thread, U32 clk_id, U32 timespecAddress);
+    static U32 clock_gettime(KThread* thread, U32 clock_id, U32 tp);
+    static U32 clock_gettime64(KThread* thread, U32 clock_id, U32 tp);
     static U32 getpgid(U32 pid);
-    static U32 gettimeofday(U32 tv, U32 tz);
+    static U32 gettimeofday(KThread* thread, U32 tv, U32 tz);
     static U32 kill(S32 pid, U32 signal);
-    static U32 prlimit64(U32 pid, U32 resource, U32 newlimit, U32 oldlimit);
+    static U32 prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32 oldlimit);
     static U32 setpgid(U32 pid, U32 gpid);
-    static U32 shmget(U32 key, U32 size, U32 flags);
-    static U32 shmat(U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr);
-    static U32 shmdt(U32 shmaddr);
-    static U32 shmctl(U32 shmid, U32 cmd, U32 buf);
-    static U32 sysinfo(U32 address);
-    static U32 times(U32 buf);
+    static U32 shmget(KThread* thread, U32 key, U32 size, U32 flags);
+    static U32 shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnAddr, U32* nativeRtnAddr);
+    static U32 shmdt(KThread* thread, U32 shmaddr);
+    static U32 shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf);
+    static U32 sysinfo(KThread* thread, U32 address);
+    static U32 times(KThread* thread, U32 buf);
     static U32 tgkill(U32 threadGroupId, U32 threadId, U32 signal);
-    static U32 ugetrlimit(U32 resource, U32 rlim);
-    static U32 uname(U32 address);
-    static U32 waitpid(S32 pid, U32 statusAddress, U32 options);        
+    static U32 ugetrlimit(KThread* thread, U32 resource, U32 rlim);
+    static U32 uname(KThread* thread, U32 address);
+    static U32 waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options);
 
     static BOXEDWINE_CONDITION processesCond;
     
@@ -140,6 +146,8 @@ public:
     static U32 emulatedMilliesToHost(U32 millies);
     static U32 describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr);
     static PixelFormat* getPixelFormat(U32 index);
+
+    static std::shared_ptr<FsNode> procNode;
 private:
     static void initDisplayModes();
     static void internalEraseProcess(U32 id);
@@ -152,9 +160,8 @@ private:
     static U64 startTimeSystemTime;    
     static bool modesInitialized;
     
-    static std::unordered_map<void*, SHM*> shm;
-    static std::unordered_map<U32, std::shared_ptr<KProcess> > processes;
-    static std::unordered_map<BString, BoxedPtr<MappedFileCache> > fileCache;
+    static BHashTable<U32, std::shared_ptr<KProcess> > processes;
+    static BHashTable<BString, std::shared_ptr<MappedFileCache> > fileCache;
     static BOXEDWINE_MUTEX fileCacheMutex;
 };
 

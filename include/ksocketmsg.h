@@ -6,11 +6,11 @@
 class KSocketMsgObject {
 public:
     std::shared_ptr<KObject> object;
-    U32 accessFlags;
+    U32 accessFlags = 0;
 };
 
 
-class KSocketMsg : public BoxedPtrBase {
+class KSocketMsg {
 public:
     std::vector<KSocketMsgObject> objects;
     std::vector<U8> data;

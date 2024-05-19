@@ -10,7 +10,7 @@ bool isOpen;
 bool OpenMidi() {
 	if (isOpen) 
         return false;
-	m_event = CreateEvent (NULL, true, true, NULL);
+	m_event = CreateEvent (nullptr, true, true, nullptr);
 	MMRESULT res = MMSYSERR_NOERROR;
     res = midiOutOpen(&m_out, MIDI_MAPPER, (DWORD_PTR)m_event, 0, CALLBACK_EVENT);
 	if (res != MMSYSERR_NOERROR) 

@@ -21,11 +21,12 @@
 
 #include <SDL.h>
 #include "../../io/fsvirtualopennode.h"
-#include "../../emulation//hardmmu/hard_memory.h"
 #include "knativewindow.h"
 #include "../../../platform/sdl/sdlcallback.h"
+#include "../../emulation/softmmu/soft_page.h"
+#include "../../emulation/softmmu/kmemory_soft.h"
 
-static U32 updateAvailable;
+static U32 screenBPP=32;
 static U32 paletteChanged;
 static U8* screenPixels;
 #ifdef BOXEDWINE_64BIT_MMU
@@ -62,35 +63,35 @@ struct fb_cmap {
         U16 blue[256];
 };
 
-void readCMap(U32 address, struct fb_cmap* cmap) {
-    U32 i = readd( address);
-    U32 stop = readd(address+4)+i;
-    U32 red = readd(address+8);
-    U32 green = readd(address+12);
-    U32 blue = readd(address+16);
+void readCMap(KThread* thread, U32 address, struct fb_cmap* cmap) {
+    U32 i = thread->memory->readd(address);
+    U32 stop = thread->memory->readd(address+4)+i;
+    U32 red = thread->memory->readd(address+8);
+    U32 green = thread->memory->readd(address+12);
+    U32 blue = thread->memory->readd(address+16);
 
     for (;i<stop;i++) {
-        writew(red, cmap->red[i]); red+=2;
-        writew(green, cmap->green[i]); green+=2;
-        writew(blue, cmap->blue[i]); blue+=2;
+        thread->memory->writew(red, cmap->red[i]); red+=2;
+        thread->memory->writew(green, cmap->green[i]); green+=2;
+        thread->memory->writew(blue, cmap->blue[i]); blue+=2;
     }
 }
 
-void writeFixInfo(U32 address, struct fb_fix_screeninfo* info) {
-    memcopyFromNative(address, info->id, sizeof(info->id)); address+=16;
-    writed(address, info->smem_start); address+=4;
-    writed(address, info->smem_len); address+=4;
-    writed(address, info->type); address+=4;
-    writed(address, info->type_aux); address+=4;
-    writed(address, info->visual); address+=4;
-    writew(address, info->xpanstep); address+=2;
-    writew(address, info->ypanstep); address+=2;
-    writew(address, info->ywrapstep); address+=2;
-    writed(address, info->line_length); address+=4;
-    writed(address, info->mmio_start); address+=4;
-    writed(address, info->mmio_len); address+=4;
-    writed(address, info->accel); address+=4;
-    writew(address, info->capabilities);
+void writeFixInfo(KThread* thread, U32 address, struct fb_fix_screeninfo* info) {
+    thread->memory->memcpy(address, info->id, sizeof(info->id)); address+=16;
+    thread->memory->writed(address, info->smem_start); address+=4;
+    thread->memory->writed(address, info->smem_len); address+=4;
+    thread->memory->writed(address, info->type); address+=4;
+    thread->memory->writed(address, info->type_aux); address+=4;
+    thread->memory->writed(address, info->visual); address+=4;
+    thread->memory->writew(address, info->xpanstep); address+=2;
+    thread->memory->writew(address, info->ypanstep); address+=2;
+    thread->memory->writew(address, info->ywrapstep); address+=2;
+    thread->memory->writed(address, info->line_length); address+=4;
+    thread->memory->writed(address, info->mmio_start); address+=4;
+    thread->memory->writed(address, info->mmio_len); address+=4;
+    thread->memory->writed(address, info->accel); address+=4;
+    thread->memory->writew(address, info->capabilities);
 }
 
 struct fb_bitfield {
@@ -140,51 +141,51 @@ struct fb_var_screeninfo {
     U32 reserved[4];			  // Reserved for future compatibility
 };
 
-void writeVarInfo(U32 address, struct fb_var_screeninfo* info) {
-    writed(address, info->xres); address+=4;
-    writed(address, info->yres); address+=4;
-    writed(address, info->xres_virtual); address+=4;
-    writed(address, info->yres_virtual); address+=4;
-    writed(address, info->xoffset); address+=4;
-    writed(address, info->yoffset); address+=4;
+void writeVarInfo(KThread* thread, U32 address, struct fb_var_screeninfo* info) {
+    thread->memory->writed(address, info->xres); address+=4;
+    thread->memory->writed(address, info->yres); address+=4;
+    thread->memory->writed(address, info->xres_virtual); address+=4;
+    thread->memory->writed(address, info->yres_virtual); address+=4;
+    thread->memory->writed(address, info->xoffset); address+=4;
+    thread->memory->writed(address, info->yoffset); address+=4;
 
-    writed(address, info->bits_per_pixel); address+=4;
-    writed(address, info->grayscale); address+=4;
+    thread->memory->writed(address, info->bits_per_pixel); address+=4;
+    thread->memory->writed(address, info->grayscale); address+=4;
 
-    writed(address, info->red.offset); address+=4;
-    writed(address, info->red.length); address+=4;
-    writed(address, info->red.msb_right); address+=4;
+    thread->memory->writed(address, info->red.offset); address+=4;
+    thread->memory->writed(address, info->red.length); address+=4;
+    thread->memory->writed(address, info->red.msb_right); address+=4;
 
-    writed(address, info->green.offset); address+=4;
-    writed(address, info->green.length); address+=4;
-    writed(address, info->green.msb_right); address+=4;
+    thread->memory->writed(address, info->green.offset); address+=4;
+    thread->memory->writed(address, info->green.length); address+=4;
+    thread->memory->writed(address, info->green.msb_right); address+=4;
 
-    writed(address, info->blue.offset); address+=4;
-    writed(address, info->blue.length); address+=4;
-    writed(address, info->blue.msb_right); address+=4;
+    thread->memory->writed(address, info->blue.offset); address+=4;
+    thread->memory->writed(address, info->blue.length); address+=4;
+    thread->memory->writed(address, info->blue.msb_right); address+=4;
 
-    writed(address, info->transp.offset); address+=4;
-    writed(address, info->transp.length); address+=4;
-    writed(address, info->transp.msb_right); address+=4;
+    thread->memory->writed(address, info->transp.offset); address+=4;
+    thread->memory->writed(address, info->transp.length); address+=4;
+    thread->memory->writed(address, info->transp.msb_right); address+=4;
 
-    writed(address, info->nonstd); address+=4;
-    writed(address, info->activate); address+=4;
-    writed(address, info->height); address+=4;
-    writed(address, info->width); address+=4;
-    writed(address, info->accel_flags); address+=4;
+    thread->memory->writed(address, info->nonstd); address+=4;
+    thread->memory->writed(address, info->activate); address+=4;
+    thread->memory->writed(address, info->height); address+=4;
+    thread->memory->writed(address, info->width); address+=4;
+    thread->memory->writed(address, info->accel_flags); address+=4;
 
-    writed(address, info->pixclock); address+=4;
-    writed(address, info->left_margin); address+=4;
-    writed(address, info->right_margin); address+=4;
-    writed(address, info->upper_margin); address+=4;
-    writed(address, info->lower_margin); address+=4;
-    writed(address, info->hsync_len); address+=4;
-    writed(address, info->vsync_len); address+=4;
-    writed(address, info->sync); address+=4;
-    writed(address, info->vmode); address+=4;
-    writed(address, info->rotate); address+=4;
-    writed(address, info->colorspace); address+=4;
-    zeroMemory(address, 16);
+    thread->memory->writed(address, info->pixclock); address+=4;
+    thread->memory->writed(address, info->left_margin); address+=4;
+    thread->memory->writed(address, info->right_margin); address+=4;
+    thread->memory->writed(address, info->upper_margin); address+=4;
+    thread->memory->writed(address, info->lower_margin); address+=4;
+    thread->memory->writed(address, info->hsync_len); address+=4;
+    thread->memory->writed(address, info->vsync_len); address+=4;
+    thread->memory->writed(address, info->sync); address+=4;
+    thread->memory->writed(address, info->vmode); address+=4;
+    thread->memory->writed(address, info->rotate); address+=4;
+    thread->memory->writed(address, info->colorspace); address+=4;
+    thread->memory->memset(address, 0, 16);
 }
 
 U32 GET_SHIFT(U32 n) {
@@ -211,50 +212,50 @@ U32 COUNT_BITS(U32 n) {
     return 0;
 }
 
-void readVarInfo(int address, struct fb_var_screeninfo* info) {
-    info->xres = readd(address); address+=4;
-    info->yres = readd(address); address+=4;
-    info->xres_virtual = readd(address); address+=4;
-    info->yres_virtual = readd(address); address+=4;
-    info->xoffset = readd(address); address+=4;
-    info->yoffset = readd(address); address+=4;
+void readVarInfo(KThread* thread, int address, struct fb_var_screeninfo* info) {
+    info->xres = thread->memory->readd(address); address+=4;
+    info->yres = thread->memory->readd(address); address+=4;
+    info->xres_virtual = thread->memory->readd(address); address+=4;
+    info->yres_virtual = thread->memory->readd(address); address+=4;
+    info->xoffset = thread->memory->readd(address); address+=4;
+    info->yoffset = thread->memory->readd(address); address+=4;
 
-    info->bits_per_pixel = readd(address); address+=4;
-    info->grayscale = readd(address); address+=4;
+    info->bits_per_pixel = thread->memory->readd(address); address+=4;
+    info->grayscale = thread->memory->readd(address); address+=4;
 
-    info->red.offset = readd(address); address+=4;
-    info->red.length = readd(address); address+=4;
-    info->red.msb_right = readd(address); address+=4;
+    info->red.offset = thread->memory->readd(address); address+=4;
+    info->red.length = thread->memory->readd(address); address+=4;
+    info->red.msb_right = thread->memory->readd(address); address+=4;
 
-    info->green.offset = readd(address); address+=4;
-    info->green.length = readd(address); address+=4;
-    info->green.msb_right = readd(address); address+=4;
+    info->green.offset = thread->memory->readd(address); address+=4;
+    info->green.length = thread->memory->readd(address); address+=4;
+    info->green.msb_right = thread->memory->readd(address); address+=4;
 
-    info->blue.offset = readd(address); address+=4;
-    info->blue.length = readd(address); address+=4;
-    info->blue.msb_right = readd(address); address+=4;
+    info->blue.offset = thread->memory->readd(address); address+=4;
+    info->blue.length = thread->memory->readd(address); address+=4;
+    info->blue.msb_right = thread->memory->readd(address); address+=4;
 
-    info->transp.offset = readd(address); address+=4;
-    info->transp.length = readd(address); address+=4;
-    info->transp.msb_right = readd(address); address+=4;
+    info->transp.offset = thread->memory->readd(address); address+=4;
+    info->transp.length = thread->memory->readd(address); address+=4;
+    info->transp.msb_right = thread->memory->readd(address); address+=4;
 
-    info->nonstd = readd(address); address+=4;
-    info->activate = readd(address); address+=4;
-    info->height = readd(address); address+=4;
-    info->width = readd(address); address+=4;
-    info->accel_flags = readd(address); address+=4;
+    info->nonstd = thread->memory->readd(address); address+=4;
+    info->activate = thread->memory->readd(address); address+=4;
+    info->height = thread->memory->readd(address); address+=4;
+    info->width = thread->memory->readd(address); address+=4;
+    info->accel_flags = thread->memory->readd(address); address+=4;
 
-    info->pixclock = readd(address); address+=4;
-    info->left_margin = readd(address); address+=4;
-    info->right_margin = readd(address); address+=4;
-    info->upper_margin = readd(address); address+=4;
-    info->lower_margin = readd(address); address+=4;
-    info->hsync_len = readd(address); address+=4;
-    info->vsync_len = readd(address); address+=4;
-    info->sync = readd(address); address+=4;
-    info->vmode = readd(address); address+=4;
-    info->rotate = readd(address); address+=4;
-    info->colorspace = readd(address); address+=4;	
+    info->pixclock = thread->memory->readd(address); address+=4;
+    info->left_margin = thread->memory->readd(address); address+=4;
+    info->right_margin = thread->memory->readd(address); address+=4;
+    info->upper_margin = thread->memory->readd(address); address+=4;
+    info->lower_margin = thread->memory->readd(address); address+=4;
+    info->hsync_len = thread->memory->readd(address); address+=4;
+    info->vsync_len = thread->memory->readd(address); address+=4;
+    info->sync = thread->memory->readd(address); address+=4;
+    info->vmode = thread->memory->readd(address); address+=4;
+    info->rotate = thread->memory->readd(address); address+=4;
+    info->colorspace = thread->memory->readd(address);
 }
 
 struct fb_var_screeninfo fb_var_screeninfo;
@@ -268,35 +269,39 @@ static SDL_GLContext sdlContext;
 static SDL_Renderer *sdlRenderer;
 static SDL_Texture* sdlTexture;
 
+U32 fbGetBpp() {
+    return fb_var_screeninfo.bits_per_pixel;
+}
+
 void destroySDL2() {
     if (sdlTexture) {
         SDL_DestroyTexture(sdlTexture);
     }
     if (sdlRenderer) {
         SDL_DestroyRenderer(sdlRenderer);
-        sdlRenderer = 0;
+        sdlRenderer = nullptr;
     }
     if (sdlContext) {
         SDL_GL_DeleteContext(sdlContext);
-        sdlContext = 0;
+        sdlContext = nullptr;
     }
     if (sdlWindow) {
         SDL_DestroyWindow(sdlWindow);
-        sdlWindow = 0;
+        sdlWindow = nullptr;
     }
 }
 
-void writeCMap(U32 address, struct fb_cmap* cmap) {
-    U32 i = readd(address);
-    U32 stop = readd(address+4)+i;
-    U32 red = readd(address+8);
-    U32 green = readd(address+12);
-    U32 blue = readd(address+16);
+void writeCMap(KThread* thread, U32 address, struct fb_cmap* cmap) {
+    U32 i = thread->memory->readd(address);
+    U32 stop = thread->memory->readd(address+4)+i;
+    U32 red = thread->memory->readd(address+8);
+    U32 green = thread->memory->readd(address+12);
+    U32 blue = thread->memory->readd(address+16);
 
     for (;i<stop;i++) {
-        cmap->red[i] = readw(red); red+=2;
-        cmap->green[i] = readw(green); green+=2;
-        cmap->blue[i] = readw(blue); blue+=2;
+        cmap->red[i] = thread->memory->readw(red); red+=2;
+        cmap->green[i] = thread->memory->readw(green); green+=2;
+        cmap->blue[i] = thread->memory->readw(blue); blue+=2;
     }
     paletteChanged = 1;	
 }
@@ -343,37 +348,29 @@ void fbSetupScreen() {
     fb_var_screeninfo.red.length = 8;			
     fb_var_screeninfo.green.length = 8;		
     fb_var_screeninfo.blue.length = 8;
-    fb_fix_screeninfo.line_length = 4 * fb_var_screeninfo.xres;
-#ifndef BOXEDWINE_64BIT_MMU
-    screenPixels = new U8[fb_fix_screeninfo.line_length*fb_var_screeninfo.yres];
-#endif
-    updateAvailable = 1;
-    
+    fb_fix_screeninfo.line_length = 4 * fb_var_screeninfo.xres;        
     fb_fix_screeninfo.smem_len = fb_fix_screeninfo.line_length*fb_var_screeninfo.yres_virtual;	
 }
 
 class FBPage : public Page {
 public:
-    FBPage(U32 flags) : Page(Frame_Buffer, flags) {}
+    FBPage() : Page() {}
 
-    U8 readb(U32 address);
-    void writeb(U32 address, U8 value);
-    U16 readw(U32 address);
-    void writew(U32 address, U16 value);
-    U32 readd(U32 address);
-    void writed(U32 address, U32 value);
-    U8* getCurrentReadPtr();
-    U8* getCurrentWritePtr();
-    U8* getReadAddress(U32 address, U32 len);
-    U8* getWriteAddress(U32 address, U32 len);
-    U8* getReadWriteAddress(U32 address, U32 len);
-    bool inRam() {return true;}
-    void close() {delete this;}
+    U8 readb(U32 address) override;
+    void writeb(U32 address, U8 value) override;
+    U16 readw(U32 address) override;
+    void writew(U32 address, U16 value) override;
+    U32 readd(U32 address) override;
+    void writed(U32 address, U32 value) override;
+
+    // these two take memory argument so that they won't call KThread::current thread, this makes them safe to call from the audio thread
+    U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false) override; // might have permission, but may not ready
+    U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false) override; // might have permission, but may not be ready
+
+    bool inRam() override { return true; }
+    void close() override { delete this; }
+    Type getType() override { return Page::Type::Frame_Buffer_Page; }
 };
-
-Page* allocFBPage(U32 flags) {
-    return new FBPage(flags);
-}
 
 U8 FBPage::readb(U32 address) {	
     if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
@@ -382,7 +379,6 @@ U8 FBPage::readb(U32 address) {
 }
 
 void FBPage::writeb(U32 address, U8 value) {
-    updateAvailable=1;
     if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
         ((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS] = value;
 }
@@ -394,7 +390,6 @@ U16 FBPage::readw(U32 address) {
 }
 
 void FBPage::writew(U32 address, U16 value) {
-    updateAvailable=1;
     if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
         ((U16*)screenPixels)[(address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)>>1] = value;
 }
@@ -406,52 +401,36 @@ U32 FBPage::readd(U32 address) {
 }
 
 void FBPage::writed(U32 address, U32 value) {
-    updateAvailable=1;
     if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
         ((U32*)screenPixels)[(address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)>>2] = value;
 }
 
-U8* FBPage::getCurrentReadPtr() {
-    return NULL;
+U8* FBPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    return &((U8*)screenPixels)[address - ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
 }
 
-U8* FBPage::getCurrentWritePtr() {
-    return NULL;
-}
-
-U8* FBPage::getReadAddress(U32 address, U32 len) {    
-    updateAvailable=1;
-    return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
-}
-
-U8* FBPage::getWriteAddress(U32 address, U32 len) {
-    updateAvailable=1;
-    return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
-}
-
-U8* FBPage::getReadWriteAddress(U32 address, U32 len) {
-    updateAvailable=1;
-    return &((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
+U8* FBPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+    return &((U8*)screenPixels)[address - ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
 }
 
 class DevFB : public FsVirtualOpenNode {
 public:
-    DevFB(const BoxedPtr<FsNode>& node, U32 flags);
-    virtual S64 length();
-    virtual bool setLength(S64 length);
-    virtual S64 getFilePointer();
-    virtual S64 seek(S64 pos);
-    virtual U32  map( U32 address, U32 len, S32 prot, S32 flags, U64 off);
-    virtual bool canMap();
-    virtual U32 ioctl(U32 request);
-    virtual U32 readNative(U8* buffer, U32 len);
-    virtual U32 writeNative(U8* buffer, U32 len);
-    virtual void close();
+    DevFB(const std::shared_ptr<FsNode>& node, U32 flags);
+    S64 length() override;
+    bool setLength(S64 length) override;
+    S64 getFilePointer() override;
+    S64 seek(S64 pos) override;
+    U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
+    bool canMap() override;
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
+    void close() override;
 
     S64 pos;
 };
 
-DevFB::DevFB(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), pos(0) {
+DevFB::DevFB(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), pos(0) {
     if (!fbinit) {		
         fb_fix_screeninfo.visual = 2; // FB_VISUAL_TRUECOLOR
         fb_fix_screeninfo.type = 0; // FB_TYPE_PACKED_PIXELS
@@ -476,10 +455,6 @@ DevFB::DevFB(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, 
 }
 
 void DevFB::close() {
-#ifdef BOXEDWINE_64BIT_MMU
-    KThread::currentThread()->memory->freeNativeMemory(ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16*1024*1024) >> K_PAGE_SHIFT);
-    isFbActive = false;
-#endif
     FsVirtualOpenNode::close();
 }
 
@@ -518,30 +493,29 @@ U32 DevFB::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-U32 DevFB::ioctl(U32 request) {
-    KThread* thread = KThread::currentThread();
+U32 DevFB::ioctl(KThread* thread, U32 request) {
     CPU* cpu=thread->cpu;
 
     switch(request) {
         case 0x4600: // FBIOGET_VSCREENINFO
-            writeVarInfo(IOCTL_ARG1, &fb_var_screeninfo);
+            writeVarInfo(thread, IOCTL_ARG1, &fb_var_screeninfo);
             break;
         case 0x4601: // FBIOPUT_VSCREENINFO
-            readVarInfo(IOCTL_ARG1, &fb_var_screeninfo);
+            readVarInfo(thread, IOCTL_ARG1, &fb_var_screeninfo);
             fbSetupScreen();
             break;
         case 0x4602: // FBIOGET_FSCREENINFO
-            writeFixInfo(IOCTL_ARG1, &fb_fix_screeninfo);
+            writeFixInfo(thread, IOCTL_ARG1, &fb_fix_screeninfo);
             break;
         case 0x4604: // FBIOGETCMAP
-            readCMap(IOCTL_ARG1, &fb_cmap);
+            readCMap(thread, IOCTL_ARG1, &fb_cmap);
             break;
         case 0x4605: // FBIOPUTCMAP
-            writeCMap(IOCTL_ARG1, &fb_cmap);
+            writeCMap(thread, IOCTL_ARG1, &fb_cmap);
             break;
         case 0x4606: { // FBIOPAN_DISPLAY
             struct fb_var_screeninfo fb;
-            readVarInfo(IOCTL_ARG1, &fb);
+            readVarInfo(thread, IOCTL_ARG1, &fb);
             break;
         }
         case 0x4611: // FBIOBLANK
@@ -552,47 +526,33 @@ U32 DevFB::ioctl(U32 request) {
     return 0;
 }
 
-U32 DevFB::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+Page* allocFBPage() {
+    return new FBPage();
+}
+
+U32 DevFB::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     if ((flags & K_MAP_FIXED) && address!=fb_fix_screeninfo.smem_start) {
         kpanic("Mapping /dev/fb at fixed address not supported");
     }
-#ifdef BOXEDWINE_64BIT_MMU
-    U32 allocFlags = 0;
-    if (prot & K_PROT_READ) {
-        allocFlags |= PAGE_READ;
-    }
-    if (prot & K_PROT_WRITE) {
-        allocFlags |= PAGE_WRITE;
-    }
-    if (flags & K_MAP_SHARED) {
-        allocFlags |= PAGE_SHARED;
-    }
-    KThread::currentThread()->memory->allocNativeMemory(ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS >> K_PAGE_SHIFT, (16 * 1024 * 1024) >> K_PAGE_SHIFT, allocFlags);
-    if (isFbActive) {
-        // :TODO: if and when 64-bit Boxedwine supports page sharing across processes, then we can use that
-        klog("64-bit Boxedwine does not yet support /dev/fb being mapped more than 1 time");
-    }
-    isFbActive = true;
-    screenProcessId = KThread::currentThread()->process->id;
-    screenPixels = (U8*)KThread::currentThread()->memory->id;
-    screenPixels += ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;
-#endif
-#ifdef BOXEDWINE_DEFAULT_MMU
     U32 pageStart = fb_fix_screeninfo.smem_start >> K_PAGE_SHIFT;
     U32 pageCount = (len+K_PAGE_SIZE-1)>>K_PAGE_SHIFT;
-    U32 i;
-    Memory* memory = KThread::currentThread()->memory;
+
+    KMemory* memory = thread->memory;
+    KMemoryData* mem = getMemData(memory);
 
     if (len<fb_fix_screeninfo.smem_len) {
         pageCount=fb_fix_screeninfo.smem_len >> K_PAGE_SHIFT;
-    }    
-    for (i=0;i<pageCount;i++) {
-        if (memory->getPage(i+pageStart)->type!=Page::Type::Invalid_Page && memory->getPage(i+pageStart)->type!=Page::Type::Frame_Buffer) {
+    }
+    if (!screenPixels) {
+        screenPixels = new U8[1280 * 1024 * 4];
+    }
+    for (U32 i=0;i<pageCount;i++) {
+        if (mem->getPage(i+pageStart)->getType()!=Page::Type::Invalid_Page && mem->mmu[i+pageStart]->getType()!=Page::Type::Frame_Buffer_Page) {
             kpanic("Something else got mapped into the framebuffer address");
         }
-        memory->setPage(i+pageStart, new FBPage(flags));
-    }
-#endif
+        mem->setPage(i+pageStart, new FBPage());
+        mem->flags[i + pageStart] = flags;
+    }    
     return fb_fix_screeninfo.smem_start;
 }
 
@@ -600,20 +560,15 @@ bool DevFB::canMap() {
     return true;
 }
 
-void flipFB() {
-#ifdef BOXEDWINE_64BIT_MMU
-    if (isFbActive && !bOpenGL && sdlTexture) {
-#else
-    if (updateAvailable && !bOpenGL) {
-#endif
-
-        SDL_UpdateTexture(sdlTexture, NULL, screenPixels, fb_fix_screeninfo.line_length);
+bool flipFB() {
+    if (!bOpenGL && screenPixels && sdlTexture) {
+        SDL_UpdateTexture(sdlTexture, nullptr, screenPixels, fb_fix_screeninfo.line_length);
         SDL_RenderClear(sdlRenderer);
-        SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+        SDL_RenderCopy(sdlRenderer, sdlTexture, nullptr, nullptr);
         SDL_RenderPresent(sdlRenderer);
-
-        updateAvailable=0;
+        return true;
     }
+    return false;
 }
 
 void flipFBNoCheck() {
@@ -623,9 +578,9 @@ void flipFBNoCheck() {
     }
 #endif
     if (sdlTexture) {
-        SDL_UpdateTexture(sdlTexture, NULL, screenPixels, fb_fix_screeninfo.line_length);
+        SDL_UpdateTexture(sdlTexture, nullptr, screenPixels, fb_fix_screeninfo.line_length);
         SDL_RenderClear(sdlRenderer);
-        SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+        SDL_RenderCopy(sdlRenderer, sdlTexture, nullptr, nullptr);
         SDL_RenderPresent(sdlRenderer);
     }
 }
@@ -639,6 +594,6 @@ void fbSwapOpenGL() {
     SDL_GL_SwapWindow(sdlWindow);
 }
 
-FsOpenNode* openDevFB(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevFB(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevFB(node, flags);
 }

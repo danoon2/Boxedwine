@@ -1,8 +1,13 @@
 #include "boxedwine.h"
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#define NEXT_BRANCH1()
+#define NEXT_BRANCH2()
+#else
 #define NEXT_BRANCH1() if (!DecodedBlock::currentBlock->next1) {DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next1
 #define NEXT_BRANCH2() if (!DecodedBlock::currentBlock->next2) {DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next2
+#endif
 U32 common_bound16(CPU* cpu, U32 reg, U32 address){
-    if (cpu->reg[reg].u16<readw(address) || cpu->reg[reg].u16>readw(address+2)) {
+    if (cpu->reg[reg].u16<cpu->memory->readw(address) || cpu->reg[reg].u16>cpu->memory->readw(address+2)) {
         cpu->prepareException(EXCEPTION_BOUND, 0);
         return 0;
     } else { 
@@ -10,7 +15,7 @@ U32 common_bound16(CPU* cpu, U32 reg, U32 address){
     }
 }
 U32 common_bound32(CPU* cpu, U32 reg, U32 address){
-    if (cpu->reg[reg].u32<readd(address) || cpu->reg[reg].u32>readd(address+4)) {
+    if (cpu->reg[reg].u32<cpu->memory->readd(address) || cpu->reg[reg].u32>cpu->memory->readd(address+4)) {
         cpu->prepareException(EXCEPTION_BOUND, 0);
         return 0;
     } else { 
@@ -39,6 +44,9 @@ void common_int9A(CPU* cpu) {
 }
 void common_intIb(CPU* cpu){
     cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
+}
+void common_int3(CPU* cpu) {
+    cpu->thread->signalTrap(1);// 1=TRAP_BRKPT
 }
 void common_cpuid(CPU* cpu){
     cpu->cpuid();
@@ -125,7 +133,7 @@ void common_larr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
     cpu->reg[dstReg].u16 = cpu->lar(cpu->reg[srcReg].u16, cpu->reg[dstReg].u16);
 }
 void common_larr16e16(CPU* cpu, U32 reg, U32 address){
-    cpu->reg[reg].u16 = cpu->lar(readw(address), cpu->reg[reg].u16);
+    cpu->reg[reg].u16 = cpu->lar(cpu->memory->readw(address), cpu->reg[reg].u16);
 }
 
 U32 common_lar(CPU* cpu, U32 selector, U32 ar) {
@@ -136,14 +144,14 @@ void common_lslr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
     cpu->reg[dstReg].u16 = cpu->lsl(cpu->reg[srcReg].u16, cpu->reg[dstReg].u16);
 }
 void common_lslr16e16(CPU* cpu, U32 reg, U32 address){
-    cpu->reg[reg].u16 = cpu->lsl(readw(address), cpu->reg[reg].u16);
+    cpu->reg[reg].u16 = cpu->lsl(cpu->memory->readw(address), cpu->reg[reg].u16);
 }
 
 void common_lslr32r32(CPU* cpu, U32 dstReg, U32 srcReg){
     cpu->reg[dstReg].u32 = cpu->lsl(cpu->reg[srcReg].u32, cpu->reg[dstReg].u32);
 }
 void common_lslr32e32(CPU* cpu, U32 reg, U32 address){
-    cpu->reg[reg].u32 = cpu->lsl(readw(address), cpu->reg[reg].u32); // intentional 16-bit read
+    cpu->reg[reg].u32 = cpu->lsl(cpu->memory->readw(address), cpu->reg[reg].u32); // intentional 16-bit read
 }
 
 U32 common_lsl(CPU* cpu, U32 selector, U32 limit) {
@@ -151,10 +159,10 @@ U32 common_lsl(CPU* cpu, U32 selector, U32 limit) {
 }
 
 void common_verre16(CPU* cpu, U32 address){
-    cpu->verr(readw(address));
+    cpu->verr(cpu->memory->readw(address));
 }
 void common_verwe16(CPU* cpu, U32 address){
-    cpu->verw(readw(address));
+    cpu->verw(cpu->memory->readw(address));
 }
 
 void common_verr(CPU* cpu, U32 selector){
@@ -166,12 +174,12 @@ void common_verw(CPU* cpu, U32 selector){
 
 void common_cmpxchgg8b(CPU* cpu, U32 address){
     U64 value1 = ((U64)EDX) << 32 | EAX;
-    U64 value2 = readq(address);
+    U64 value2 = cpu->memory->readq(address);
     cpu->fillFlags();
     if (value1 == value2) {
         cpu->addZF();
-        writed(address, EBX);
-        writed(address + 4, ECX);
+        cpu->memory->writed(address, EBX);
+        cpu->memory->writed(address + 4, ECX);
     } else {
         cpu->removeZF();
         EDX = (U32)(value2 >> 32);
@@ -180,47 +188,49 @@ void common_cmpxchgg8b(CPU* cpu, U32 address){
 }
 
 void common_fxsave(CPU* cpu, U32 address) {
-    writew(address + 0, (U16)cpu->fpu.CW());
-    writew(address + 2, (U16)cpu->fpu.SW());
-    writeb(address + 4, cpu->fpu.GetAbridgedTag());
-    writeb(address + 5, 0);
-    writew(address + 6, 0); // fop
-    writed(address + 8, 0); // fip
-    writew(address + 12, 0); // f cs
-    writew(address + 14, 0); // reserved
-    writed(address + 16, 0); // f dp
-    writew(address + 20, 0); // f ds
-    writew(address + 22, 0); // reserved
-    writed(address + 24, 0x1F80); // mxcsr
-    writed(address + 28, 0xFFFF); // mxcsr mask
+    cpu->memory->writew(address + 0, (U16)cpu->fpu.CW());
+    cpu->memory->writew(address + 2, (U16)cpu->fpu.SW());
+    cpu->memory->writeb(address + 4, cpu->fpu.GetAbridgedTag());
+    cpu->memory->writeb(address + 5, 0);
+    cpu->memory->writew(address + 6, 0); // fop
+    cpu->memory->writed(address + 8, 0); // fip
+    cpu->memory->writew(address + 12, 0); // f cs
+    cpu->memory->writew(address + 14, 0); // reserved
+    cpu->memory->writed(address + 16, 0); // f dp
+    cpu->memory->writew(address + 20, 0); // f ds
+    cpu->memory->writew(address + 22, 0); // reserved
+    cpu->memory->writed(address + 24, 0x1F80); // mxcsr
+    cpu->memory->writed(address + 28, 0xFFFF); // mxcsr mask
 
     if (cpu->isMMXinUse()) {
         for (int i=0;i<8;i++) {
-            writeq(address+32+i*16, cpu->reg_mmx[i].q);
-            writeq(address+40+i*16, 0);
+            cpu->memory->writeq(address+32+i*16, cpu->reg_mmx[i].q);
+            cpu->memory->writeq(address+40+i*16, 0);
         }
     } else {
         for (int i=0;i<8;i++) {
-            cpu->fpu.ST80(cpu, address+32+i*16, i);
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            cpu->fpu.ST80(cpu, address+32+index*16, i);
         }
     }
     for (int i=0;i<8;i++) {
-        writeq(address+160+i*16, cpu->xmm[i].pi.u64[0]);
-        writeq(address+168+i*16, cpu->xmm[i].pi.u64[1]);
+        cpu->memory->writeq(address+160+i*16, cpu->xmm[i].pi.u64[0]);
+        cpu->memory->writeq(address+168+i*16, cpu->xmm[i].pi.u64[1]);
     }
 }
 
 void common_fxrstor(CPU* cpu, U32 address) {
-    cpu->fpu.SetCW(readw(address));
-    cpu->fpu.SetSW(readw(address+2));
-    cpu->fpu.SetTagFromAbridged(readb(address+4));
+    cpu->fpu.SetCW(cpu->memory->readw(address));
+    cpu->fpu.SetSW(cpu->memory->readw(address+2));
+    cpu->fpu.SetTagFromAbridged(cpu->memory->readb(address+4));
     for (int i=0;i<8;i++) {
-        cpu->reg_mmx[i].q = readq(address+32+i*16);
-        cpu->fpu.FLD_F80(readq(address+32+i*16), (S16)readw(address+40+i*16));
+        cpu->reg_mmx[i].q = cpu->memory->readq(address+32+i*16);
+        U32 index = (i - cpu->fpu.GetTop()) & 7;
+        cpu->fpu.regs[i].d = cpu->fpu.FLD80(cpu->memory->readq(address+32+index*16), (S16)cpu->memory->readw(address+40+index*16));
     }
     for (int i=0;i<8;i++) {
-        cpu->xmm[i].pi.u64[0] = readq(address+160+i*16);
-        cpu->xmm[i].pi.u64[1] = readq(address+168+i*16);
+        cpu->xmm[i].pi.u64[0] = cpu->memory->readq(address+160+i*16);
+        cpu->xmm[i].pi.u64[1] = cpu->memory->readq(address+168+i*16);
     }
 }
 

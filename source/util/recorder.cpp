@@ -7,13 +7,13 @@ Recorder* Recorder::instance;
 void Recorder::start(BString directory) {
     Recorder::instance = new Recorder();
     instance->directory = directory;
-    instance->file = fopen(BString(directory+"/"+RECORDER_SCRIPT).c_str(), "wb");
+    instance->file.createNew(BString(directory+"/"+RECORDER_SCRIPT));
     instance->screenShotCount = 0;
     instance->out("VERSION=1\r\n");
 }
 
 void Recorder::out(const char* s) {
-    fwrite(s, strlen(s), 1, this->file);
+    file.write(s);
 }
 
 void Recorder::initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args) {
@@ -32,7 +32,7 @@ void Recorder::initCommandLine(BString root, const std::vector<BString>& zips, B
     out("\r\n");
 
     out("ARGC=");    
-    out(BString::valueOf((int)args.size()).c_str());
+    out(BString::valueOf((U32)args.size()).c_str());
     out("\r\n");
 
     for (U32 i=0;i<args.size();i++) {
@@ -163,7 +163,7 @@ void Recorder::onKey(U32 key, U32 down) {
 
 void Recorder::close() {
     out("DONE");
-    fclose(this->file);
+    file.close();
 }
 
 void BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(int x, int y) {
@@ -217,7 +217,7 @@ U32 BOXEDWINE_RECORDER_QUIT() {
         } else {
             klog("script: failed");
             klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
-            KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), NULL);
+            KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr);
         }
     }
     return 1;

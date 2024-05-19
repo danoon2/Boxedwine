@@ -241,34 +241,34 @@ public:
     U32 fileOffset;
 };
 
-void readResourceDirectory(FILE* f, uint32_t resourceVirtualAddress, uint32_t baseResourceFileOffset, unsigned char* resourceBuffer, uint32_t offsetFromBaseResource, uint32_t resourceBufferSize, ImageResourceDirectory* dir, uint16_t type, bool isIcon, std::vector<IconInfo>& icons) {
+void readResourceDirectory(BReadFile& f, uint32_t resourceVirtualAddress, uint32_t baseResourceFileOffset, unsigned char* resourceBuffer, uint32_t offsetFromBaseResource, uint32_t resourceBufferSize, ImageResourceDirectory* dir, uint16_t type, bool isIcon, std::vector<IconInfo>& icons) {
     ImageResourceDirectoryEntry* entry = (ImageResourceDirectoryEntry*)(((unsigned char*)dir)+sizeof(ImageResourceDirectory));
     for (int i=0;i<dir->NumberOfNamedEntries+dir->NumberOfIdEntries;i++, entry++) {
         if (entry->DirectoryInfo.DataIsDirectory) {
             if (entry->DirectoryInfo.OffsetToDirectory<offsetFromBaseResource || entry->DirectoryInfo.OffsetToDirectory+sizeof(ImageResourceDirectory)>=offsetFromBaseResource+resourceBufferSize) {
-                unsigned char buffer[4096];
+                unsigned char buffer[4096] = {};
                 int newOffsetFromBaseResource = entry->DirectoryInfo.OffsetToDirectory & 0xFFFFF000;
-                fseek(f, offsetFromBaseResource+baseResourceFileOffset, SEEK_SET);
-                fread(buffer, 1, 4096, f);
+                f.setPos(offsetFromBaseResource+baseResourceFileOffset);
+                f.read(buffer, 4096);
                 readResourceDirectory(f, resourceVirtualAddress, baseResourceFileOffset, buffer, newOffsetFromBaseResource, 4096, (ImageResourceDirectory*)(entry->DirectoryInfo.OffsetToDirectory+resourceBuffer), entry->Id, isIcon || type==3, icons);
             } else {
                 readResourceDirectory(f, resourceVirtualAddress, baseResourceFileOffset, resourceBuffer, offsetFromBaseResource, resourceBufferSize, (ImageResourceDirectory*)(entry->DirectoryInfo.OffsetToDirectory+resourceBuffer), entry->Id, isIcon || type==3, icons);
             }
         } else {
             if (isIcon) {
-                ImageResourceDataEntry* data;
+                ImageResourceDataEntry* data = nullptr;
                 if (entry->DirectoryInfo.OffsetToDirectory>=offsetFromBaseResource && entry->DirectoryInfo.OffsetToDirectory+sizeof(ImageResourceDirectory)<offsetFromBaseResource+resourceBufferSize) {
                     data = (ImageResourceDataEntry*)(entry->OffsetToData+resourceBuffer);
                 } else {
                     static unsigned char buffer[sizeof(ImageResourceDirectory)];
-                    fseek(f, entry->DirectoryInfo.OffsetToDirectory+baseResourceFileOffset, SEEK_SET);
-                    fread(buffer, 1, sizeof(ImageResourceDirectory), f);
+                    f.setPos(entry->DirectoryInfo.OffsetToDirectory+baseResourceFileOffset);
+                    f.read(buffer, sizeof(ImageResourceDirectory));
                     data = (ImageResourceDataEntry*)buffer;
                 }
                 if (data->Size>0 && data->Size<1024*1024) {
-                    fseek(f, (data->OffsetToData-resourceVirtualAddress)+baseResourceFileOffset, SEEK_SET);
+                    f.setPos((data->OffsetToData-resourceVirtualAddress)+baseResourceFileOffset);
                     IconInfo info;
-                    fread(&info.bih, 1, sizeof(BitmapInfoHeader), f);
+                    f.read((char*)&info.bih, sizeof(BitmapInfoHeader));
                     info.fileOffset = (data->OffsetToData-resourceVirtualAddress)+baseResourceFileOffset;
                     icons.push_back(info);
                 }
@@ -277,7 +277,7 @@ void readResourceDirectory(FILE* f, uint32_t resourceVirtualAddress, uint32_t ba
     }
 }
 
-void readPalette(BitmapInfoHeader& bih, FILE* f, U32* palette) {
+void readPalette(BitmapInfoHeader& bih, BReadFile& f, U32* palette) {
 	int depth = bih.biBitCount;
 	if (depth <= 8) {
 		int numColors = bih.biClrUsed;
@@ -287,18 +287,18 @@ void readPalette(BitmapInfoHeader& bih, FILE* f, U32* palette) {
 			if (numColors > 256)
 				numColors = 256;
 		}
-        fread(palette, 1, numColors*4, f);
+        f.read((char*)palette, numColors*4);
 	}
 }
 
-unsigned char* loadData(BitmapInfoHeader& bih, FILE* f, int stride) {
+std::shared_ptr<U8> loadData(BitmapInfoHeader& bih, BReadFile& f, int stride) {
     if (bih.biCompression != 0) { // BMP_NO_COMPRESSION
         kwarn("Compressed icon was not handled");
-        return NULL;
+        return nullptr;
     }
 	int dataSize = bih.biHeight * stride;
-	unsigned char* data = new unsigned char[dataSize];
-    fread(data, 1, dataSize, f);
+    std::shared_ptr<U8> data = std::make_shared<U8>(dataSize);
+    f.read(data.get(), dataSize);
 	return data;
 }
 
@@ -327,38 +327,40 @@ static void swapRGB(U8* data, int height, int width) {
     }
 }
 
-unsigned char* loadData(BitmapInfoHeader& bih, FILE* f) {
+std::shared_ptr<U8[]> loadData(BitmapInfoHeader& bih, BReadFile& f) {
 	int stride = (bih.biWidth * bih.biBitCount + 7) / 8;
 	stride = (stride + 3) / 4 * 4;
-	unsigned char* result = NULL;
+    std::shared_ptr<U8[]> result;
 
     if (bih.biCompression != 0) { // BMP_NO_COMPRESSION
         kwarn("Compressed icon was not handled");
-        return NULL;
+        return nullptr;
     } else {
 	    int dataSize = bih.biHeight * stride;
-	    result = new unsigned char[dataSize];
-        fread(result, 1, dataSize, f);
+        result = std::make_shared<U8[]>(dataSize);
+        f.read(result.get(), dataSize);
     }
 
     if (result) {
-	    flipBitmap(result, stride, bih.biHeight);
+	    flipBitmap(result.get(), stride, bih.biHeight);
     }
 	return result;
 }
 
-const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height) {
+std::shared_ptr<U8[]> parseIcon(BReadFile& f, IconInfo& info, int* width, int* height) {
     U32 palette[256];
-    fseek(f, info.fileOffset+sizeof(BitmapInfoHeader), SEEK_SET);
+    f.setPos(info.fileOffset+sizeof(BitmapInfoHeader));
     readPalette(info.bih, f, palette);
     info.bih.biHeight/=2;
-    unsigned char* color = loadData(info.bih, f);
+    std::shared_ptr<U8[]> color = loadData(info.bih, f);
+    U8* pColor = color.get();
     int bpp = info.bih.biBitCount;
 	info.bih.biBitCount = 1;
-	unsigned char* maskData = loadData(info.bih, f);
+    std::shared_ptr<U8[]> maskData = loadData(info.bih, f);
+    U8* pMaskData = maskData.get();
 
     if (bpp==32) {
-        swapRGB(color, info.bih.biWidth, info.bih.biHeight);
+        swapRGB(color.get(), info.bih.biWidth, info.bih.biHeight);
         *width = info.bih.biWidth;
         *height = info.bih.biHeight;
         return color;
@@ -366,26 +368,27 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
         int maskStride = (info.bih.biWidth + 31) / 32 * 4;
         *width = info.bih.biWidth;
         *height = info.bih.biHeight;
-        unsigned char* result = new unsigned char[info.bih.biWidth * info.bih.biHeight * 4];
+        std::shared_ptr<U8[]> result = std::make_shared<U8[]>(info.bih.biWidth * info.bih.biHeight * 4);
+        U8* pResult = result.get();
         for (int y=0;y<info.bih.biHeight;y++) {
             for (int x=0;x<info.bih.biWidth;x++) {
                 int maskIndex = y * maskStride + x / 8;
                 int index = y*info.bih.biWidth*4+x*4;
                 U32 byteIndex = y*info.bih.biWidth+x;
-                U8 paletteIndex = color[byteIndex/2];
+                U8 paletteIndex = pColor[byteIndex/2];
                 if (byteIndex & 1) {
                     paletteIndex = paletteIndex & 0xF;
                 } else {
                     paletteIndex = (paletteIndex >> 4) & 0xF;                    
                 }
                 U32 c = palette[paletteIndex];
-                result[index+2] = c & 0xFF;
-                result[index+1] = (c >> 8) & 0xFF;
-                result[index] = (c >> 16) & 0xFF;
-                if (maskData[maskIndex] & (1 << (7-(x % 8)))) {
-                    result[index+3] = 0;
+                pResult[index+2] = c & 0xFF;
+                pResult[index+1] = (c >> 8) & 0xFF;
+                pResult[index] = (c >> 16) & 0xFF;
+                if (pMaskData[maskIndex] & (1 << (7-(x % 8)))) {
+                    pResult[index+3] = 0;
                 } else {
-                    result[index+3] = 0xFF;
+                    pResult[index+3] = 0xFF;
                 }
             }
         }
@@ -394,20 +397,21 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
         int maskStride = (info.bih.biWidth + 31) / 32 * 4;
         *width = info.bih.biWidth;
         *height = info.bih.biHeight;
-        unsigned char* result = new unsigned char[info.bih.biWidth * info.bih.biHeight * 4];
+        std::shared_ptr<U8[]> result = std::make_shared<U8[]>(info.bih.biWidth * info.bih.biHeight * 4);
+        U8* pResult = result.get();
         for (int y=0;y<info.bih.biHeight;y++) {
             for (int x=0;x<info.bih.biWidth;x++) {
                 int maskIndex = y * maskStride + x / 8;
                 int index = y*info.bih.biWidth*4+x*4; // index into 32-bit result
                 int byteIndex = y*info.bih.biWidth+x; // index into icon
-                U32 c = palette[color[byteIndex]];
-                result[index+2] = c & 0xFF;
-                result[index+1] = (c >> 8) & 0xFF;
-                result[index] = (c >> 16) & 0xFF;
-                if (maskData[maskIndex] & (1 << (7-(x % 8)))) {
-                    result[index+3] = 0;
+                U32 c = palette[pColor[byteIndex]];
+                pResult[index+2] = c & 0xFF;
+                pResult[index+1] = (c >> 8) & 0xFF;
+                pResult[index] = (c >> 16) & 0xFF;
+                if (pMaskData[maskIndex] & (1 << (7-(x % 8)))) {
+                    pResult[index+3] = 0;
                 } else {
-                    result[index+3] = 0xFF;
+                    pResult[index+3] = 0xFF;
                 }
             }
         }
@@ -417,26 +421,27 @@ const unsigned char* parseIcon(FILE* f, IconInfo& info, int* width, int* height)
         int maskStride = (info.bih.biWidth + 31) / 32 * 4;
         *width = info.bih.biWidth;
         *height = info.bih.biHeight;
-        unsigned char* result = new unsigned char[info.bih.biWidth * info.bih.biHeight * 4];
+        std::shared_ptr<U8[]> result = std::make_shared<U8[]>(info.bih.biWidth * info.bih.biHeight * 4);
+        U8* pResult = result.get();
         for (int y = 0; y < info.bih.biHeight; y++) {
             for (int x = 0; x < info.bih.biWidth; x++) {
                 int maskIndex = y * maskStride + x / 8;
                 int index = y * info.bih.biWidth * 4 + x * 4; // index into 32-bit result
                 int colorIndex = y * stride + x*3; // index into icon
-                U32 c = *(U32*)(&color[colorIndex]);
-                result[index + 2] = c & 0xFF;
-                result[index + 1] = (c >> 8) & 0xFF;
-                result[index] = (c >> 16) & 0xFF;
-                if (maskData[maskIndex] & (1 << (7 - (x % 8)))) {
-                    result[index + 3] = 0;
+                U32 c = *(U32*)(&pColor[colorIndex]);
+                pResult[index + 2] = c & 0xFF;
+                pResult[index + 1] = (c >> 8) & 0xFF;
+                pResult[index] = (c >> 16) & 0xFF;
+                if (pMaskData[maskIndex] & (1 << (7 - (x % 8)))) {
+                    pResult[index + 3] = 0;
                 } else {
-                    result[index + 3] = 0xFF;
+                    pResult[index + 3] = 0xFF;
                 }
             }
         }
         return result;
     }
-    return NULL;
+    return nullptr;
 }
 
 /*
@@ -505,51 +510,48 @@ following describes the contents of each of these structures:
    DB   ASCII text of the type or name string.
 */
 
-U16 getWord(FILE* f) {
-    U16 result;
-    fread(&result, 2, 1, f);
+U16 getWord(BReadFile& f) {
+    U16 result = 0;
+    f.read(result);
     return result;
 }
 
-U8 getBye(FILE* f) {
-    U8 result;
-    fread(&result, 1, 1, f);
+U8 getBye(BReadFile& f) {
+    U8 result = 0;
+    f.read(result);
     return result;
 }
 
-U32 getDoubleWord(FILE* f) {
-    U32 result;
-    fread(&result, 4, 1, f);
+U32 getDoubleWord(BReadFile& f) {
+    U32 result = 0;
+    f.read(result);
     return result;
 }
 
-const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* width, int* height) {
-    FILE* f = fopen(nativeExePath.c_str(), "rb");
-    if (!f) {
-        return NULL;
+std::shared_ptr<U8[]> extractIconFromExe(BString nativeExePath, int size, int* width, int* height) {
+    BReadFile f(nativeExePath);
+    if (!f.isOpen()) {
+        return nullptr;
     }
     unsigned char* buffer = new unsigned char[32*1024];
-    U32 read = (U32)fread(buffer, 1, 32 * 1024, f);
+    U32 read = (U32)f.read(buffer, 32 * 1024);
     if (buffer[0]!='M' || buffer[1]!='Z') {
-        fclose(f);
-        return NULL;
+        return nullptr;
     }
     U32 nextHeader = READD(buffer, 60);    // e_lfanew File address of new exe header
     if (nextHeader>read-1) {
-        fclose(f);
-        return NULL;
+        return nullptr;
     }
     std::vector<IconInfo> icons;
     if (buffer[nextHeader]=='N' && buffer[nextHeader+1]=='E') {
         ImageOs2Header* header = (ImageOs2Header*)(buffer+nextHeader);
         if (header->ne_rsrctab >= header->ne_restab) {
-            fclose(f);
-            return NULL;
+            return nullptr;
         }
-        fseek(f, nextHeader + header->ne_rsrctab, SEEK_SET);
+        f.setPos(nextHeader + header->ne_rsrctab);
         U16 alignShiftCount = getWord(f);
         //U8* resBuffer = (buffer + nextHeader + header->ne_rsrctab+2);
-        fseek(f, nextHeader + header->ne_rsrctab+2, SEEK_SET);
+        f.setPos(nextHeader + header->ne_rsrctab+2);
 
         while (true) {
             U16 typeId = getWord(f);
@@ -564,8 +566,8 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
                     //U16 resourceLen = getWord(f) << alignShiftCount;
                     //U16 flags = getWord(f);
                     //U16 id = getWord(f);
-                    fseek(f, 8, SEEK_CUR);
-                    fseek(f, 4, SEEK_CUR); // internal use
+                    f.advance(8);
+                    f.advance(4); // internal use
                     // RT_GROUP_ICON structure
                     /*
                     U32 pos = (U32)ftell(f);                    
@@ -583,16 +585,16 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
                     //U16 resourceLen = getWord(f) << alignShiftCount;
                     //U16 flags = getWord(f);
                     //U16 id = getWord(f);
-                    fseek(f, 6, SEEK_CUR);
-                    fseek(f, 4, SEEK_CUR); // internal use
-                    U32 pos = (U32)ftell(f);                    
-                    fseek(f, info.fileOffset, SEEK_SET);
-                    fread(&info.bih, 1, sizeof(BitmapInfoHeader), f);
-                    fseek(f, pos, SEEK_SET);
+                    f.advance(6);
+                    f.advance(4); // internal use
+                    U64 pos = f.getPos();                    
+                    f.setPos(info.fileOffset);
+                    f.read((char*)&info.bih, sizeof(BitmapInfoHeader));
+                    f.setPos(pos);
                     icons.push_back(info);
                 }
             } else {
-                fseek(f, 12*count, SEEK_CUR);
+                f.advance(12*count);
             }
         }
     }
@@ -601,11 +603,9 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
         Pe32OptionalHeader* optionalHeader = (Pe32OptionalHeader*)(buffer+nextHeader+sizeof(PeHeader));
         ImageSectionHeader* sectionHeader = (ImageSectionHeader*)(((unsigned char*)optionalHeader)+header->SizeOfOptionalHeader);
 
-        U32 resourceRVA;
-        U32 resourceSize;
         if (optionalHeader->Magic == 0x010b) {
-            resourceRVA = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+16); // 8 bytes per entry, resources is at 3 rd entry
-            resourceSize = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+20);
+            U32 resourceRVA = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+16); // 8 bytes per entry, resources is at 3 rd entry
+            U32 resourceSize = *(U32*)(buffer+nextHeader+sizeof(PeHeader)+sizeof(Pe32OptionalHeader)+20);
             U32 rawOffset = resourceRVA;
             for (int i=0;i<header->NumberOfSections;i++) {
                 ImageSectionHeader* section = sectionHeader+i;
@@ -616,20 +616,19 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
             }
 
             if (resourceSize) {
-                fseek(f, rawOffset, SEEK_SET);
-                read = (U32)fread(buffer, 1, 32*1024, f);                
+                f.setPos(rawOffset);
+                read = f.read(buffer, 32*1024);
                 readResourceDirectory(f, resourceRVA, rawOffset, buffer, 0, 32*1024, (ImageResourceDirectory*)buffer, 0, false, icons);                                
             }
         } else if (optionalHeader->Magic == 0x020b) {
             kwarn("Icon 20b not implemented");
         } else {
-            fclose(f);
-            return NULL;
+            return nullptr;
         }                
     }
     if (icons.size()>0) {
         IconInfo bestIcon = icons[0];
-        for (int i=1;i<(int)icons.size();i++) {
+        for (size_t i=1;i<icons.size();i++) {
             if (bestIcon.bih.biCompression) {
                 continue;
             }
@@ -641,10 +640,7 @@ const unsigned char* extractIconFromExe(BString nativeExePath, int size, int* wi
                 bestIcon = icons[i];
             }
         }
-        const unsigned char* result = parseIcon(f, bestIcon, width, height);
-        fclose(f);
-        return result;
+        return parseIcon(f, bestIcon, width, height);
     }
-    fclose(f);
-    return NULL;
+    return nullptr;
 }

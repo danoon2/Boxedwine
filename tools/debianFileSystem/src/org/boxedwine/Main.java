@@ -10,6 +10,7 @@ import java.util.HashSet;
 
 public class Main {
     static boolean includeX11 = false;
+    static String release = "bullseye";
 
     public static void add(String name, HashMap<String, DebianPackage> depends, HashSet<String> ignored) {
         DebianPackages.getPackage(name).getDepends(ignored, depends);
@@ -19,9 +20,9 @@ public class Main {
         Settings.fileCachePath = new File("c:\\debianCache");
         Settings.outputDir = new File("c:\\debianCache\\out");
         Settings.extraFiles = new File("C:\\boxedwine\\tools\\debianFileSystem\\fs");
-        Settings.boxedwinePath = "boxedwine"; // find it in the OS path
+        Settings.boxedwinePath = "C:\\Boxedwine\\project\\msvc\\BoxedWine\\x64\\Release\\Boxedwine"; // find it in the OS path
 
-        DebianPackages.instance = new DebianPackages("bullseye");
+        DebianPackages.instance = new DebianPackages(release);
         DebianPackages.instance.prefered = new HashSet<>();
         HashSet<String> ignored = new HashSet<>();
         DebianPackages.instance.prefered.add("fonts-liberation");
@@ -55,6 +56,14 @@ public class Main {
             ignored.add("adwaita-icon-theme");
             ignored.add("ahicolor-icon-theme");
             ignored.add("libgl1");
+            ignored.add("libwayland-client0");
+            ignored.add("libwayland-cursor0");
+            ignored.add("libwayland-egl1");
+            ignored.add("libxcursor1");
+            ignored.add("libxinerama1");
+            ignored.add("libxkbcommon0");
+            ignored.add("libxss1");
+            ignored.add("libxxf86vm1");
         }
 
         HashMap<String, DebianPackage> depends = new HashMap<>();
@@ -80,10 +89,16 @@ public class Main {
         add("gstreamer1.0-plugins-bad", depends, ignored);
         add("gstreamer1.0-plugins-ugly", depends, ignored);
         add("fonts-wine", depends, ignored);
-        add("libosmesa6", depends, ignored);
+        //add("libosmesa6", depends, ignored);
         add("libsdl2-2.0-0", depends, ignored);
         add("ca-certificates", depends, ignored);
         add("findutils", depends, ignored); //arial font in winetricks needs this
+        add("libsdl2-2.0-0", depends, ignored);
+        add("gnutls-bin", depends, ignored);
+        add("libsdl2-2.0-0", depends, ignored);
+        add("apt", depends, ignored);
+        add("wget", depends, ignored);
+        add("git", depends, ignored);
 
         DebianPackages.getPackage("wine32-preloader").getDepends(ignored, depends);
         depends.put("libc-bin", DebianPackages.getPackage("libc-bin"));
@@ -94,7 +109,7 @@ public class Main {
         depends.remove("wine32-preloader");
         depends.remove("wine32");
         depends.remove("libwine");
-        if (includeX11) {
+        if (true) {
             depends.put("dpg", DebianPackages.getPackage("dpkg"));
             DebianPackages.getPackage("dpkg").getDepends(ignored, depends);
             depends.put("dash", DebianPackages.getPackage("dash"));
@@ -109,6 +124,9 @@ public class Main {
             DebianPackages.getPackage("gawk").getDepends(ignored, depends);
             depends.put("bash", DebianPackages.getPackage("bash")); // circular dependency with menu
             DebianPackages.getPackage("bash").getDepends(ignored, depends);
+
+            depends.put("libbz2-1.0", DebianPackages.getPackage("libbz2-1.0")); // circular dependency with menu
+            DebianPackages.getPackage("libbz2-1.0").getDepends(ignored, depends);
         }
         if (Settings.outputDir.exists()) {
             try {
@@ -177,7 +195,7 @@ public class Main {
                 }
             }
 
-            if (includeX11) {
+            if (true) {
                 for (int i=0;i<2;i++) {
                     boolean downloadOnly = i==0;
                     HashSet<String> ignoreDependency = new HashSet<>();
@@ -186,7 +204,8 @@ public class Main {
                     new File(Settings.outputDir + "/var/run/").mkdirs();
                     DPkg.install("dpkg", ignoreDependency, true, downloadOnly);
                     DPkg.install("libbz2-1.0", ignoreDependency, true, downloadOnly); // requires libc
-                    DPkg.install("libgcc1", ignoreDependency, true, downloadOnly); // requires libc
+                    // bullseye
+                    // DPkg.install("libgcc1", ignoreDependency, true, downloadOnly); // requires libc
                     DPkg.install("gawk", ignoreDependency, true, downloadOnly); // requires libc
                     //DPkg.install("libbz2-1.0", ignoreDependency, false);
                     DPkg.install("libc6", ignoreDependency, true, downloadOnly);
@@ -201,55 +220,98 @@ public class Main {
                     DPkg.install("perl", downloadOnly);
                     DPkg.install("libterm-readline-gnu-perl", downloadOnly);
                     DPkg.install("init-system-helpers", downloadOnly); // need for update-rc.d
-                    DPkg.install("menu", downloadOnly);
+                    DPkg.install("menu", downloadOnly); // bash requires menu and menu requires base
                     DPkg.install("grep", downloadOnly);
                     DPkg.install("bash", downloadOnly);
                     DPkg.install("util-linux", downloadOnly); // needed for getopt
+                    DPkg.install("xz-utils", downloadOnly);
+                    DPkg.install("apt", downloadOnly);
+                    DPkg.install("apt-utils", downloadOnly);
+                    DPkg.install("wget", downloadOnly);
+
+                    // don't want x11 dependencies
+                    DPkg.install("git", ignoreDependency, true, downloadOnly);
+
+                    File arch = new File(Settings.outputDir + "/var/lib/dpkg/arch");
+                    FileUtils.writeStringToFile(arch, "i386", "UTF-8");
+
+                    File sources = new File(Settings.outputDir + "/etc/apt/sources.list");
+                    FileUtils.writeStringToFile(sources, "deb http://deb.debian.org/debian/ "+release+" main contrib non-free\n" +
+                            "deb http://deb.debian.org/debian/ "+release+"-updates main contrib non-free\n" +
+                            "deb http://deb.debian.org/debian "+release+"-proposed-updates main contrib non-free\n" +
+                            "deb http://deb.debian.org/debian-security/ "+release+"-security main contrib non-free\n" +
+                            "deb http://deb.debian.org/debian/ "+release+"-backports main contrib non-free\n", "UTF-8");
+                    File machineid = new File(Settings.outputDir + "/etc/machine-id");
+                    FileUtils.writeStringToFile(arch, "b20ee23b73e04574bb24427aaf336ebd\n", "UTF-8");
+
+                    File nsswitch = new File(Settings.outputDir + "/etc/nsswitch.conf");
+                    FileUtils.writeStringToFile(arch, "# /etc/nsswitch.conf\n" +
+                                                        "#\n" +
+                                                        "# Example configuration of GNU Name Service Switch functionality.\n"+
+                                                        "# If you have the `glibc-doc-reference' and `info' packages installed, try:\n"+
+                                                        "# `info libc \"Name Service Switch\"' for information about this file.\n"+
+                                                        "\n"+
+                                                        "passwd:         files systemd\n"+
+                                                        "group:          files systemd\n"+
+                                                        "shadow:         files\n"+
+                                                        "gshadow:        files\n"+
+                                                        "\n"+
+                                                        "hosts:          files mdns4_minimal [NOTFOUND=return] dns\n"+
+                                                        "networks:       files\n"+
+                                                        "\n"+
+                                                        "protocols:      db files\n"+
+                                                        "services:       db files\n"+
+                                                        "ethers:         db files\n"+
+                                                        "rpc:            db files\n"+
+                                                        "\n"+
+                                                        "netgroup:       nis\n", "UTF-8");
 
                     // now ready to install system
-                    DebianPackages.getPackage("xserver-xorg-core").force = true; // depends on udev, which crashes Boxedwine
-                    DPkg.install("xserver-xorg-video-fbdev", downloadOnly); // since xserver-xorg-video-all is ignored in DPkg.install
-                    DPkg.install("xorg", downloadOnly);
-                    DPkg.install("xserver-xorg-input-evdev", downloadOnly);
+                    if (includeX11) {
+                        DebianPackages.getPackage("xserver-xorg-core").force = true; // depends on udev, which crashes Boxedwine
+                        DPkg.install("xserver-xorg-video-fbdev", downloadOnly); // since xserver-xorg-video-all is ignored in DPkg.install
+                        DPkg.install("xorg", downloadOnly);
+                        DPkg.install("xserver-xorg-input-evdev", downloadOnly);
 
 
-                    //DPkg.install("gnome", downloadOnly);
+                        //DPkg.install("gnome", downloadOnly);
 
-                    DPkg.install("icewm", downloadOnly);
-                    DPkg.install("xdemineur", downloadOnly);
-                    DPkg.install("xfe", downloadOnly); // file manager
+                        DPkg.install("icewm", downloadOnly);
+                        DPkg.install("xdemineur", downloadOnly);
+                        DPkg.install("xfe", downloadOnly); // file manager
 
+                        new File(Settings.outputDir + "/sys/class/devices/virtual/graphics/fb0").mkdirs();
+                        new File(Settings.outputDir + "/sys/class/graphics").mkdirs();
+                        new File(Settings.outputDir + "/home/username/.icewm").mkdirs();
+                        File fb0Link = new File(Settings.outputDir + "/sys/class/graphics/fb0.link");
+                        FileUtils.writeStringToFile(fb0Link, "../../devices/virtual/graphics/fb0", "UTF-8");
+                        File xinitrc = new File(Settings.outputDir + "/home/username/.xinitrc");
+                        FileUtils.writeStringToFile(xinitrc, "icewm", "UTF-8");
+                        File xorgConf = new File(Settings.outputDir + "/etc/X11/xorg.conf");
+                        FileUtils.writeStringToFile(xorgConf, Main.xConf, "UTF-8");
+
+                        File menu = new File(Settings.outputDir + "/home/username/.icewm/menu");
+                        FileUtils.writeStringToFile(menu, "menufile Games folder games", "UTF-8");
+                        File games = new File(Settings.outputDir + "/home/username/.icewm/games");
+                        FileUtils.writeStringToFile(games, "prog XDemineur /usr/share/pixmaps/xdemineur-icon.xpm /usr/games/xdemineur", "UTF-8");
+                        File programs = new File(Settings.outputDir + "/home/username/.icewm/programs");
+                        FileUtils.writeStringToFile(programs, "prog \"File Manager (Xfe)\" xfe xfe", "UTF-8");
+                    }
                     // :TODO: add extra packages here
                     // for example
-                    // DPkg.install("git", downloadOnly);
 
-                    new File(Settings.outputDir + "/sys/class/devices/virtual/graphics/fb0").mkdirs();
-                    new File(Settings.outputDir + "/sys/class/graphics").mkdirs();
-                    new File(Settings.outputDir + "/home/username/.icewm").mkdirs();
-                    File fb0Link = new File(Settings.outputDir + "/sys/class/graphics/fb0.link");
-                    FileUtils.writeStringToFile(fb0Link, "../../devices/virtual/graphics/fb0", "UTF-8");
-                    File xinitrc = new File(Settings.outputDir + "/home/username/.xinitrc");
-                    FileUtils.writeStringToFile(xinitrc, "icewm", "UTF-8");
-                    File xorgConf = new File(Settings.outputDir + "/etc/X11/xorg.conf");
-                    FileUtils.writeStringToFile(xorgConf, Main.xConf, "UTF-8");
-
-                    File menu = new File(Settings.outputDir + "/home/username/.icewm/menu");
-                    FileUtils.writeStringToFile(menu, "menufile Games folder games", "UTF-8");
-                    File games = new File(Settings.outputDir + "/home/username/.icewm/games");
-                    FileUtils.writeStringToFile(games, "prog XDemineur /usr/share/pixmaps/xdemineur-icon.xpm /usr/games/xdemineur", "UTF-8");
-                    File programs = new File(Settings.outputDir + "/home/username/.icewm/programs");
-                    FileUtils.writeStringToFile(programs, "prog \"File Manager (Xfe)\" xfe xfe", "UTF-8");
                 }
-                // 230MB vs 400MB
-                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/doc"));
-                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/man"));
-                FileUtils.deleteDirectory(new File(Settings.outputDir+"/var/cache/deb"));
-                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/locale"));
-                FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/lib/i386-linux-gnu/dri"));
                 if (!includeX11) {
                     FileUtils.deleteDirectory(new File(Settings.outputDir+"/home"));
                 }
             }
+            FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/doc"));
+            FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/man"));
+            //FileUtils.deleteDirectory(new File(Settings.outputDir+"/var/cache/deb"));
+            //FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/locale"));
+            FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/help"));
+            FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/share/sounds"));
+            FileUtils.deleteDirectory(new File(Settings.outputDir+"/usr/lib/i386-linux-gnu/dri"));
             // using 7zip created a 3% smaller zip
             //ZipUtil.createZip(Settings.outputDir, Settings.finishedZip);
         } catch (Exception e) {

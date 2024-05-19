@@ -4,6 +4,8 @@
 #include "x32CPU.h"
 #include "../common/lazyFlags.h"
 #include "../dynamic/dynamic.h"
+#include "../dynamic/dynamic_memory.h"
+#include "../../softmmu/kmemory_soft.h"
 
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
 
@@ -13,7 +15,6 @@
 
 #define INCREMENT_EIP(x, y) incrementEip(x, y)
 
-#define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
 // DynReg is a required type, but the values inside are local to this file
@@ -247,7 +248,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             outb(0x66);
             outb(0x03);
             outb(0x47 | (reg << 3));
-            outb(offsetof(CPU, reg[op->rm].u16));
+            outb(CPU::offsetofReg16(op->rm));
         }
 
         // add ax, [cpu->reg[op->sibIndex].u16]
@@ -255,7 +256,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             outb(0x66);
             outb(0x03);
             outb(0x47 | (reg << 3));
-            outb(offsetof(CPU, reg[op->sibIndex].u16));
+            outb(CPU::offsetofReg16(op->sibIndex));
         }
 
         // seg[6] is always 0
@@ -263,7 +264,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             // add eax, [cpu->seg[op->base].address]
             outb(0x03);
             outb(0x47 | (reg << 3));
-            outb(offsetof(CPU, seg[op->base].address));
+            outb(CPU::offsetofSegAddress(op->base));
         }
     } else {
         // cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
@@ -274,7 +275,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             // mov eax, [cpu->reg[op->sibIndex].u32];
             outb(0x8b);
             outb(0x47 | (reg << 3));
-            outb(offsetof(CPU, reg[op->sibIndex].u32));
+            outb(CPU::offsetofReg32(op->sibIndex));
 
             if (op->sibScale) {                
                 // shl eax, op->sibScale
@@ -292,7 +293,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 // add eax, [cpu->seg[op->base].address]
                 outb(0x03);
                 outb(0x47 | (reg << 3));
-                outb(offsetof(CPU, seg[op->base].address));
+                outb(CPU::offsetofSegAddress(op->base));
             }
         } else {
             // seg[6] is always 0
@@ -301,7 +302,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 // mov eax, [cpu->seg[op->base].address]
                 outb(0x8b);
                 outb(0x47 | (reg << 3));
-                outb(offsetof(CPU, seg[op->base].address));
+                outb(CPU::offsetofSegAddress(op->base));
             }
         }
         // add eax, [cpu->reg[op->rm].u32]
@@ -313,7 +314,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
                 outb(0x03); // add
             }
             outb(0x47 | (reg << 3));
-            outb(offsetof(CPU, reg[op->rm].u32));
+            outb(CPU::offsetofReg32(op->rm));
         }
 
         // add eax, op->disp 
@@ -525,6 +526,30 @@ void movToReg(DynReg reg, DynWidth width, U32 imm) {
     }
 }
 
+static U32 readd(U32 address) {
+    return KThread::currentThread()->memory->readd(address);
+}
+
+static U32 readw(U32 address) {
+    return KThread::currentThread()->memory->readw(address);
+}
+
+static U32 readb(U32 address) {
+    return KThread::currentThread()->memory->readb(address);
+}
+
+static void writed(U32 address, U32 value) {
+    KThread::currentThread()->memory->writed(address, value);
+}
+
+static void writew(U32 address, U16 value) {
+    KThread::currentThread()->memory->writew(address, value);
+}
+
+static void writeb(U32 address, U8 value) {
+    KThread::currentThread()->memory->writeb(address, value);
+}
+
 void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     regUsed[DYN_EAX] = true;
     U32 firstCheckPos=0;
@@ -591,7 +616,7 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     outb(0x8b);
     outb(0x04);
     outb(0x85);
-    outd((U32)Memory::currentMMUReadPtr);
+    outd((U32)getMemData(KThread::currentThread()->memory)->mmuReadPtr);
 
     // test eax, eax
     outb(0x85);
@@ -946,7 +971,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     outb(0x8b);
     outb(0x04|(reg1<<3));
     outb(0x85|(reg1<<3));
-    outd((U32)Memory::currentMMUWritePtr);
+    outd((U32)getMemData(KThread::currentThread()->memory)->mmuWritePtr);
 
     // test reg1, reg1
     outb(0x85);
@@ -2234,23 +2259,27 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         outb(0x5f); // pop edi
         outb(0x5b); // pop ebx
         outb(0xc3); // ret
-        Memory* memory = cpu->thread->process->memory;
+        DynamicMemory* memory = cpu->memory->dynamicMemory;
+        if (!memory) {
+            memory = new DynamicMemory();
+            cpu->memory->dynamicMemory = memory;
+        }
         void* mem = NULL;
 
         if (memory->dynamicExecutableMemory.size()==0) {
             int blocks = (outBufferPos+0xffff)/0x10000;
             memory->dynamicExecutableMemoryLen = blocks*0x10000;
-            mem = Platform::allocExecutable64kBlock(blocks);
+            mem = Platform::alloc64kBlock(blocks, true);
             memory->dynamicExecutableMemoryPos = 0;
-            memory->dynamicExecutableMemory.push_back(mem);
+            memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
         } else {
-            mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size()-1];
+            mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size()-1].p;
             if (memory->dynamicExecutableMemoryPos+outBufferPos>=memory->dynamicExecutableMemoryLen) {
                 int blocks = (outBufferPos+0xffff)/0x10000;
                 memory->dynamicExecutableMemoryLen = blocks*0x10000;
-                mem = Platform::allocExecutable64kBlock(blocks);
+                mem = Platform::alloc64kBlock(blocks, true);
                 memory->dynamicExecutableMemoryPos = 0;
-                memory->dynamicExecutableMemory.push_back(mem);
+                memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
             }
         }
         U8* begin = (U8*)mem+memory->dynamicExecutableMemoryPos;

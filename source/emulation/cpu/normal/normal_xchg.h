@@ -27,8 +27,8 @@ void OPCALL normal_xchgr8r8(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_xchge8r8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 address = eaa(cpu, op);
-    U8 tmp = readb(address);
-    writeb(address, *cpu->reg8[op->reg]);
+    U8 tmp = cpu->memory->readb(address);
+    cpu->memory->writeb(address, *cpu->reg8[op->reg]);
     *cpu->reg8[op->reg] = tmp;
     NEXT();
 }
@@ -42,8 +42,8 @@ void OPCALL normal_xchgr16r16(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_xchge16r16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 address = eaa(cpu, op);
-    U16 tmp = readw(address);
-    writew(address, cpu->reg[op->reg].u16);
+    U16 tmp = cpu->memory->readw(address);
+    cpu->memory->writew(address, cpu->reg[op->reg].u16);
     cpu->reg[op->reg].u16 = tmp;
     NEXT();
 }
@@ -57,8 +57,8 @@ void OPCALL normal_xchgr32r32(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_xchge32r32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 address = eaa(cpu, op);
-    U32 tmp = readd(address);
-    writed(address, cpu->reg[op->reg].u32);
+    U32 tmp = cpu->memory->readd(address);
+    cpu->memory->writed(address, cpu->reg[op->reg].u32);
     cpu->reg[op->reg].u32 = tmp;
     NEXT();
 }

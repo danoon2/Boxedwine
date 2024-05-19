@@ -3,7 +3,6 @@
 
 #ifdef BOXEDWINE_X64
 
-#include "x64CPU.h"
 #include "../binaryTranslation/btData.h"
 
 #define REX_BASE 0x40
@@ -28,27 +27,31 @@
 
 // popseg assumes these won't overlap with params
 #define HOST_ESP          3
-#define HOST_MEM          4
+
+#define HOST_MEM_READ 4
+#define HOST_MEM_WRITE 6
 
 // R13 is good for this one, because R13 can not be used in sib memory encoding, it will translate to 0 instead of the reg, and HOST_CPU will never be used to encode memory
 #define HOST_CPU          5
 
-// popseg assumes this won't overlap with params
-#define HOST_LARGE_ADDRESS_SPACE_MAPPING           6
-#define HOST_SMALL_ADDRESS_SPACE_SS                6
-
 #define HOST_TMP4         7
+
+class x64CPU;
 
 class X64Data : public BtData {
 public:
     X64Data(x64CPU* cpu);
     
+    // from BtData
+    void resetForNewOp() override;
+protected:
+    std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) override;
+
+public:
     U8 fetch8();
     U16 fetch16();
     U32 fetch32();    
-    U64 fetch64();
-
-    virtual void resetForNewOp();
+    U64 fetch64();    
 
     U32 op;
     U32 inst; // full op, like 0x200 while op would be 0x00
@@ -86,9 +89,7 @@ public:
     
     bool skipWriteOp;
     bool isG8bitWritten;
-
-protected:
-    virtual std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic);
+    bool flagsWrittenToStringFlags;
 };
 #endif
 #endif

@@ -19,7 +19,7 @@
 #include <sys/stat.h>
 
 unsigned int crc32b(unsigned char *message, int len) {
-    unsigned int h = 0, g;
+    unsigned int h = 0, g = 0;
     int i;
 
     for (i=0;i<len;i++) {
@@ -35,16 +35,14 @@ unsigned int crc32b(unsigned char *message, int len) {
 unsigned int crc32File(BString filePath) {
     PLATFORM_STAT_STRUCT buf;
     if (PLATFORM_STAT(filePath.c_str(), &buf) == 0 && buf.st_size) {
-        FILE* fp = fopen(filePath.c_str(), "rb");
-        if (fp) {
+        BReadFile f(filePath);
+        if (f.isOpen()) {
             unsigned char* buffer = new unsigned char[(int)buf.st_size];
-            if ((U64)fread(buffer, 1, buf.st_size, fp) == (U64)buf.st_size) {
+            if ((U64)f.read(buffer, buf.st_size) == (U64)buf.st_size) {
                 unsigned int result = crc32b(buffer, (int)buf.st_size);
                 delete[] buffer;
-                fclose(fp);
                 return result;
             }
-            fclose(fp);
             delete[] buffer;
         }
     }    

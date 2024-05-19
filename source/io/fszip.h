@@ -15,24 +15,27 @@ extern "C"
 
 class fsZipInfo {
 public:
-    fsZipInfo() : isLink(false), isDirectory(false), length(0), lastModified(0), offset(0) {}
+    fsZipInfo() = default;
     BString filename;
     BString link;
-    bool isLink;
-    bool isDirectory;
-    U64 length;
-    U64 lastModified;
-    U64 offset;
+    bool isLink = false;
+    bool isDirectory = false;
+    U64 length = 0;
+    U64 lastModified = 0;
+    U64 offset = 0;
 };
 
 class FsZip : public std::enable_shared_from_this<FsZip> {
 public:
+    FsZip() = default;
     ~FsZip();
     bool init(BString zipPath, BString mount);
-    unzFile zipfile;
+    unzFile zipfile = nullptr;
 
     U64 lastZipOffset = 0xFFFFFFFFFFFFFFFFl;
-    U64 lastZipFileOffset;
+    U64 lastZipFileOffset = 0;
+
+    BOXEDWINE_MUTEX readMutex;
 
     void setupZipRead(U64 zipOffset, U64 zipFileOffset);
     void remove(BString localPath);
@@ -41,7 +44,7 @@ public:
     static bool extractFileFromZip(BString zipFile, BString file, BString path);
     static BString unzip(BString zipFile, BString path, std::function<void(U32, BString)> percentDone);
     static bool iterateFiles(BString zipFile, std::function<void(BString)> it);
-
+    static bool doesFileExist(BString zipFile, BString file);
 private:
     BString deleteFilePath;
 };

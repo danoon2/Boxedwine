@@ -3,13 +3,14 @@
 
 class AppChooserDlg : public BaseDlg {
 public:
-    AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp)> onSelected, bool saveApp = true, BaseDlg* parent=NULL);
-    AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp)> onSelected, bool saveApp = true, BaseDlg* parent = NULL, int titleId = APPCHOOSER_DLG_TITLE);
+    AppChooserDlg(std::vector<BoxedApp>& items, std::vector<BoxedApp>& wineApps, std::function<void(BoxedApp)> onSelected, bool saveApp = true, BaseDlg* parent=nullptr);
+    AppChooserDlg(std::vector<BoxedApp>& items, std::function<void(BoxedApp)> onSelected, bool saveApp = true, BaseDlg* parent = nullptr, Msg titleId = Msg::APPCHOOSER_DLG_TITLE);
 
-    void setLabelId(int id) {this->labelId = id;}
+    void setLabelId(Msg id) {this->labelId = id;}
 protected:
-    virtual void run();
-    virtual void onOk(bool buttonClicked);
+    // from BaseDlg
+    void run() override;
+    void onOk(bool buttonClicked) override;
 
 private:
     void drawItems(std::vector<BoxedApp>& apps, int startingIndex);
@@ -17,7 +18,7 @@ private:
     std::vector<BoxedApp> items;
     std::vector<BoxedApp> wineApps;
     std::function<void(BoxedApp app)> onSelected;
-    int labelId;
+    Msg labelId;
     bool saveApp;
 };
 

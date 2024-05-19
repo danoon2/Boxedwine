@@ -5,22 +5,21 @@
 #include "glcommon.h"
 #include "glMarshal.h"
 
-#ifndef BOXEDWINE_64BIT_MMU
 U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     if (ARRAY_BUFFER()) {
         klog("updateVertexPointer might have failed");
         return 0;
     }
     if (p->ptr) {        
-        U32 datasize = count * p->size * (p->stride?p->stride:getDataSize(p->type));    
-        U32 available = K_PAGE_SIZE - (p->ptr & K_PAGE_MASK) + (1 << K_PAGE_SHIFT);
+        U32 datasize = count * p->size * (p->stride?p->stride:getDataSize(p->type));
+        U32 available = K_PAGE_SIZE - (p->ptr & K_PAGE_MASK);
 
 #ifndef UNALIGNED_MEMORY
         if (count == 0 || available > datasize) {
             if (p->marshal_size) {
                 free(p->marshal);
-            }            
-            p->marshal = getPhysicalAddress(p->ptr, (datasize?datasize:available));
+            }         
+            p->marshal = cpu->memory->getIntPtr(p->ptr);
             p->marshal_size = 0;
             
             if (p->marshal) {
@@ -41,7 +40,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
             p->marshal = new unsigned char[datasize];
             p->marshal_size = datasize;
         }
-        memcopyToNative(p->ptr, p->marshal, datasize);
+        cpu->memory->memcpy(p->marshal, p->ptr, datasize);
     } else {
         if (p->marshal_size) {
             free(p->marshal);
@@ -52,13 +51,14 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
     return 1;
 }
 
-void updateVertexPointers(CPU* cpu, U32 count) {    
-    if (cpu->thread->glVertextPointer.refreshEachCall) {        
+void updateVertexPointers(CPU* cpu, U32 count) {
+    if (cpu->thread->glVertextPointer.refreshEachCall) {  
         if (updateVertexPointer(cpu, &cpu->thread->glVertextPointer, count))
             GL_FUNC(pglVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
     }
     
     if (cpu->thread->glNormalPointer.refreshEachCall) {
+        cpu->thread->glNormalPointer.size = cpu->thread->glVertextPointer.size;
         if (updateVertexPointer(cpu, &cpu->thread->glNormalPointer, count))
             GL_FUNC(pglNormalPointer)(cpu->thread->glNormalPointer.type, cpu->thread->glNormalPointer.stride, cpu->thread->glNormalPointer.marshal);
     }
@@ -356,5 +356,4 @@ const void* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U
     }
 }
 
-#endif
 #endif

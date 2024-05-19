@@ -234,12 +234,12 @@ namespace ImGui
     {
         static const int        NUMHEADINGS = 3;
 
-        MarkdownLinkCallback*   linkCallback = NULL;
-        MarkdownTooltipCallback* tooltipCallback = NULL;
-        MarkdownImageCallback*  imageCallback = NULL;
+        MarkdownLinkCallback*   linkCallback = nullptr;
+        MarkdownTooltipCallback* tooltipCallback = nullptr;
+        MarkdownImageCallback*  imageCallback = nullptr;
         const char*             linkIcon = "";                      // icon displayd in link tooltip
-        MarkdownHeadingFormat   headingFormats[ NUMHEADINGS ] = { { NULL, true }, { NULL, true }, { NULL, true } };
-        void*                   userData = NULL;
+        MarkdownHeadingFormat   headingFormats[ NUMHEADINGS ] = { { nullptr, true }, { nullptr, true }, { nullptr, true } };
+        void*                   userData = nullptr;
     };
 
     //-----------------------------------------------------------------------------
@@ -389,7 +389,7 @@ namespace ImGui
         }
         else if( line_.isHeading )          // render heading
         {
-            MarkdownHeadingFormat fmt;
+            MarkdownHeadingFormat fmt = {};
             if( line_.headingCount > mdConfig_.NUMHEADINGS )
             {
                 fmt = mdConfig_.headingFormats[ mdConfig_.NUMHEADINGS - 1 ];
@@ -434,7 +434,7 @@ namespace ImGui
     // render markdown
     inline void Markdown( const char* markdown_, size_t markdownLength_, const MarkdownConfig& mdConfig_ )
     {
-        static const char* linkHoverStart = NULL; // we need to preserve status of link hovering between frames
+        static const char* linkHoverStart = nullptr; // we need to preserve status of link hovering between frames
         ImGuiStyle& style = ImGui::GetStyle();
         Line        line;
         Link        link;
@@ -677,7 +677,7 @@ namespace ImGui
             }
             if( !bHovered && *linkHoverStart_ == markdown_ + link_.text.start )
             {
-                *linkHoverStart_ = NULL;
+                *linkHoverStart_ = nullptr;
             }
         }
 }

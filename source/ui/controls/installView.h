@@ -5,7 +5,8 @@ class InstallView : public BaseView {
 public:
 	InstallView(BString initialFileOrDirPath, BString tab=BString());
 
-	virtual bool saveChanges();
+    // from BaseView
+	bool saveChanges() override;
 
 private:
     void createInstallTab(BString initialFileOrDirPath);
@@ -21,7 +22,7 @@ private:
     std::shared_ptr<LayoutComboboxControl> containerControl;
     std::shared_ptr<LayoutSection> containerSection;
     std::shared_ptr<LayoutTextInputControl> containerNameControl;
-    std::shared_ptr<LayoutComboboxControl> wineVersionControl;
+    std::shared_ptr<LayoutComboboxControl> fileSystemVersionControl;
     std::shared_ptr<LayoutComboboxControl> windowsVersionControl;
 };
 

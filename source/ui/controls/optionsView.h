@@ -5,9 +5,9 @@
 
 class OptionsViewWineVersion {
 public:
-	OptionsViewWineVersion() : currentVersion(NULL), availableVersion(NULL) {}
-	WineVersion* currentVersion;
-	WineVersion* availableVersion;
+	OptionsViewWineVersion() = default;
+	std::shared_ptr<FileSystemZip> currentVersion;
+	std::shared_ptr<FileSystemZip> availableVersion;
 	BString name;
 	BString size;
 };
@@ -16,22 +16,21 @@ class OptionsView : public BaseView {
 public:
 	OptionsView(BString tab);
 
-	virtual bool saveChanges();
+	// from BaseView
+	bool saveChanges() override;
 
 private:
 	void createGeneralTab();
 	void createThemeTab();
 
 	void runWineOptions();	
-	void download(WineVersion* version);
-	void loadWineVersions();
+	void download(const std::shared_ptr<FileSystemZip>& version);
+	void loadFileSystemVersions();
 
 	const char* wineTitle;
-	float leftColumnWidthWine;
-	float rightColumnWidth;	
-	float wineButtonTotalColumnWidth;
-	float wineButtonFirstColumnWidth;
-	std::map<BString, OptionsViewWineVersion, std::greater<BString>> wineVersions;
+	float wineButtonTotalColumnWidth = 0.0f;
+	float wineButtonFirstColumnWidth = 0.0f;
+	std::map<BString, OptionsViewWineVersion, std::greater<BString>> fileSystemVersions;
 
 	// General
 	std::shared_ptr<LayoutTextInputControl> saveLocationControl;

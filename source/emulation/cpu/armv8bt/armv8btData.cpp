@@ -4,7 +4,6 @@
 
 #include "armv8btAsm.h"
 #include "../binaryTranslation/btCodeChunk.h"
-#include "../../hardmmu/hard_memory.h"
 #include "armv8btCodeChunk.h"
 
 Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
@@ -17,6 +16,13 @@ Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
 
 void Armv8btData::clearCachedFpuRegs() {
     memset(this->isFpuRegCached, 0, sizeof(isFpuRegCached));
+}
+
+void Armv8btData::reset() {
+    BtData::reset();
+    clearCachedFpuRegs();
+    this->fpuTopRegSet = false;
+    this->fpuOffsetRegSet = false;
 }
 
 void Armv8btData::resetForNewOp() {

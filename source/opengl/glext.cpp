@@ -4,13 +4,12 @@
 #include GLH
 #include "glcommon.h"
 
-extern std::unordered_map<BString, void*> glFunctionMap;
+extern BHashTable<BString, void*> glFunctionMap;
 
 const char* glIsLoaded[GL_FUNC_COUNT];
 
 void glExtensionsLoaded() {
-    void* pfn = NULL;
-    U32 i;
+    void* pfn = nullptr;
 
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) glIsLoaded[func]="gl"#func;
@@ -22,9 +21,9 @@ void glExtensionsLoaded() {
 #define GL_EXT_FUNCTION(func, RET, PARAMS) if (ext_gl##func) glIsLoaded[func]="gl"#func;
 
 #include "glfunctions.h"
-    for (i=0;i<GL_FUNC_COUNT;i++) {
+    for (U32 i=0;i<GL_FUNC_COUNT;i++) {
         if (glIsLoaded[i])
-            glFunctionMap[B(glIsLoaded[i])] = pfn;
+            glFunctionMap.set(B(glIsLoaded[i]), pfn);
     }
 
 }

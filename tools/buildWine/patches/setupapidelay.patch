@@ -1,0 +1,42 @@
+diff --git a/dlls/gdi32/Makefile.in b/dlls/gdi32/Makefile.in
+index 8c5a299933d..632ea18e982 100644
+--- a/dlls/gdi32/Makefile.in
++++ b/dlls/gdi32/Makefile.in
+@@ -1,8 +1,8 @@
+ EXTRADEFS = -D_GDI32_
+ MODULE    = gdi32.dll
+ IMPORTLIB = gdi32
+-IMPORTS   = user32 advapi32 win32u
+-DELAYIMPORTS = setupapi winspool
++IMPORTS   = user32 advapi32 win32u setupapi
++DELAYIMPORTS = winspool
+ 
+ SOURCES = \
+ 	dc.c \
+diff --git a/dlls/ntoskrnl.exe/Makefile.in b/dlls/ntoskrnl.exe/Makefile.in
+index a04a75e7f52..1f979fbd0fd 100644
+--- a/dlls/ntoskrnl.exe/Makefile.in
++++ b/dlls/ntoskrnl.exe/Makefile.in
+@@ -1,7 +1,7 @@
+ MODULE    = ntoskrnl.exe
+ IMPORTLIB = ntoskrnl
+-IMPORTS   = advapi32 hal msvcrt
+-DELAYIMPORTS = rpcrt4 setupapi
++IMPORTS   = advapi32 hal msvcrt setupapi
++DELAYIMPORTS = rpcrt4
+ 
+ SOURCES = \
+ 	instr.c \
+diff --git a/programs/wineboot/Makefile.in b/programs/wineboot/Makefile.in
+index 7c61102c40e..53dfc7bc72a 100644
+--- a/programs/wineboot/Makefile.in
++++ b/programs/wineboot/Makefile.in
+@@ -1,6 +1,6 @@
+ MODULE    = wineboot.exe
+-IMPORTS   = uuid advapi32 ws2_32 kernelbase
+-DELAYIMPORTS = shell32 shlwapi version user32 setupapi newdev
++IMPORTS   = uuid advapi32 ws2_32 kernelbase setupapi
++DELAYIMPORTS = shell32 shlwapi version user32 newdev
+ 
+ EXTRADLLFLAGS = -mconsole
+ 

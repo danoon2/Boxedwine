@@ -1,7 +1,6 @@
 #include "boxedwine.h"
 #ifndef BOXEDWINE_MULTI_THREADED
 #include "recorder.h"
-#include "devfb.h"
 #include "knativesocket.h"
 #include "knativewindow.h"
 #include "knativethread.h"
@@ -14,6 +13,19 @@ static U32 lastTitleUpdate = 0;
 bool isMainthread() {
     return true;
 }
+
+static BString getSize(int pages)
+{
+    pages *= 4;
+    if (pages < 2048) {
+        return BString::valueOf(pages) + B("KB");
+    }
+    if (pages < 2048 * 1024) {
+        return BString::valueOf(pages / 1024) + B("MB");
+    }
+    return BString::valueOf(pages / 1024 / 1024) + B("GB");
+}
+extern int allocatedRamPages;
 bool doMainLoop() {
     bool shouldQuit = false;
 
@@ -44,11 +56,14 @@ bool doMainLoop() {
                 BString title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY );
                 title.append(" MIPS");
                 title.append(getMIPS());
+                title.append(" : ");
+                title.append(getSize(allocatedRamPages));
                 KNativeWindow::getNativeWindow()->setTitle(title);
             }            
-            checkWaitingNativeSockets(0); // just so it doesn't starve if the system is busy
         }
-        if (!ran) {
+        if (ran) {
+            checkWaitingNativeSockets(0);
+        } else {
             if (KSystem::getRunningProcessCount()==0) {
                 break;
             }

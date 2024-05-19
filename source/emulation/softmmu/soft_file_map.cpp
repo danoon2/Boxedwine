@@ -17,34 +17,32 @@
  */
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
-#include "soft_memory.h"
 #include "soft_file_map.h"
-#include "soft_ro_page.h"
-#include "soft_rw_page.h"
-#include "soft_invalid_page.h"
-#include "soft_wo_page.h"
-#include "soft_no_page.h"
+#include "kmemory_soft.h"
 #include "soft_ram.h"
-#include "soft_copy_on_write_page.h"
 
-FilePage* FilePage::alloc(const BoxedPtr<MappedFile>& mapped, U32 index, U32 flags) {
-    return new FilePage(mapped, index, flags);
+#include "kprocess.h"
+
+FilePage* FilePage::alloc(const std::shared_ptr<MappedFile>& mapped, U32 index) {
+    return new FilePage(mapped, index);
 }
 
 // :TODO: what about sync'ing the writes back to the file?
 void FilePage::ondemmandFile(U32 address) {
-    Memory* memory = KThread::currentThread()->process->memory;
+    KMemory* memory = KThread::currentThread()->memory;
+    KMemoryData* mem = getMemData(memory);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
-    bool read = this->canRead() || this->canExec();
-    bool write = this->canWrite();
-    bool shared = this->mapShared();
-    U8* ram=NULL;
+    U8* ram= nullptr;
 
-    address = address & (~K_PAGE_MASK);
-    if ((read && !write) || shared) {
-        ram = mapped->systemCacheEntry->data[this->index];   
+    if (mem->getPage(page) != this) {
+        return;
+    }
+
+    if (1) {
+        if (index < mapped->systemCacheEntry->dataSize) {
+            ram = mapped->systemCacheEntry->data[this->index];
+        }
     } 
     if (!ram) {
         ram = ramPageAlloc();
@@ -52,78 +50,64 @@ void FilePage::ondemmandFile(U32 address) {
         this->mapped->file->seek(((U64)this->index) << K_PAGE_SHIFT);
         this->mapped->file->readNative(ram, K_PAGE_SIZE);
         this->mapped->file->seek(pos);
-        if (!write || shared) {
+        if (index < mapped->systemCacheEntry->dataSize) {
             mapped->systemCacheEntry->data[this->index] = ram;
-            ramPageIncRef(ram);
         }
     }
 
-    if (read && write) {
-        memory->setPage(page, RWPage::alloc(ram, address, this->flags));
-    } else if (write) {
-        memory->setPage(page, WOPage::alloc(ram, address, this->flags));
-    } else if (read) { 
-        memory->setPage(page, CopyOnWritePage::alloc(ram, address, this->flags));
-    } else {
-        memory->setPage(page, NOPage::alloc(ram, address, this->flags));
-    }
+    getMemData(memory)->setPageRam(ram, page, true);
 }
 
 U8 FilePage::readb(U32 address) {	
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     ondemmandFile(address);	
-    return ::readb(address);
+    return data->memory->readb(address);
 }
 
 void FilePage::writeb(U32 address, U8 value) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     ondemmandFile(address);	
-    ::writeb(address, value);
+    data->memory->writeb(address, value);
 }
 
 U16 FilePage::readw(U32 address) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     ondemmandFile(address);	
-    return ::readw(address);
+    return data->memory->readw(address);
 }
 
 void FilePage::writew(U32 address, U16 value) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     ondemmandFile(address);	
-    ::writew(address, value);
+    data->memory->writew(address, value);
 }
 
 U32 FilePage::readd(U32 address) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     ondemmandFile(address);	
-    return ::readd(address);
+    return data->memory->readd(address);
 }
 
 void FilePage::writed(U32 address, U32 value) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
     ondemmandFile(address);	
-    ::writed(address, value);
+    data->memory->writed(address, value);
 }
 
-U8* FilePage::getCurrentReadPtr() {
-    return NULL;
+U8* FilePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+    if (makeReady && memory->canRead(address >> K_PAGE_SHIFT)) {
+        KMemoryData* data = getMemData(memory);
+        ondemmandFile(address);
+        return data->getPage(address >> K_PAGE_SHIFT)->getReadPtr(memory, address, true);
+    }
+    return nullptr;
 }
 
-U8* FilePage::getCurrentWritePtr() {
-    return NULL;
+U8* FilePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+    if (makeReady && memory->canWrite(address >> K_PAGE_SHIFT)) {
+        KMemoryData* data = getMemData(memory);
+        ondemmandFile(address);
+        return data->getPage(address >> K_PAGE_SHIFT)->getWritePtr(memory, address, len, true);
+    }
+    return nullptr;
 }
-
-U8* FilePage::getReadAddress(U32 address, U32 len) {    
-    ondemmandFile(address);
-    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getReadAddress(address, len);
-}
-
-U8* FilePage::getWriteAddress(U32 address, U32 len) {
-    if (!this->canWrite())
-        return NULL;
-    ondemmandFile(address);
-    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getWriteAddress(address, len);
-}
-
-U8* FilePage::getReadWriteAddress(U32 address, U32 len) {
-    if (!this->canWrite())
-        return NULL;
-    ondemmandFile(address);
-    return KThread::currentThread()->memory->getPage(address>>K_PAGE_SHIFT)->getReadWriteAddress(address, len);
-}
-
-#endif

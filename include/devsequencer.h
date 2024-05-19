@@ -19,6 +19,6 @@
 #ifndef __DEVSEQUENCER_H__
 #define __DEVSEQUENCER_H__
 
-FsOpenNode* openDevSequencer(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevSequencer(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

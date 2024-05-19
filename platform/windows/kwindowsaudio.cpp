@@ -17,12 +17,8 @@ struct WineMidiHdr {
 	U32       dwOffset;             /* Callback offset into buffer */
 	U32       dwReserved[8];        /* Reserved for MMSYSTEM */
 
-	// boxedwine stuff
-	void* buffer;
-	U32 bufferSize;
-
-	void writeFlags(U32 address) {
-		writed(address+16, dwFlags);
+	void writeFlags(KMemory* memory, U32 address) {
+		memory->writed(address+16, dwFlags);
 	}
 }
 );
@@ -39,33 +35,35 @@ public:
 
 class KNativeAudioWindows : public KNativeAudioSDL, public std::enable_shared_from_this<KNativeAudioWindows> {
 public:
-	KNativeAudioWindows() : m_out(0), wDevID(0), eventFd(0), hMidi(0), dwCallback(0), dwInstance(0), wFlags(0) {}
+	KNativeAudioWindows() = default;
 	virtual ~KNativeAudioWindows() {}
 
-	virtual U32 midiOutOpen(U32 fd, U32 wDevID, U32 lpDesc, U32 dwFlags);
-	virtual U32 midiOutClose(U32 wDevID);
-	virtual U32 midiOutData(U32 wDevID, U32 dwParam);
-	virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-	virtual U32 midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-	virtual U32 midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-	virtual U32 midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize);
-	virtual U32 midiOutGetNumDevs();
-	virtual U32 midiOutGetVolume(U32 wDevID, U32 lpdwVolume);
-	virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume);
-	virtual U32 midiOutReset(U32 wDevID);
+	// from KNativeAudio
+	U32 midiOutOpen(KProcess* process, U32 fd, U32 wDevID, U32 lpDesc, U32 dwFlags) override;
+	U32 midiOutClose(U32 wDevID) override;
+	U32 midiOutData(U32 wDevID, U32 dwParam) override;
+	U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+	U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) override;
+	U32 midiOutGetNumDevs() override;
+	U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) override;
+	U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) override;
+	U32 midiOutReset(U32 wDevID) override;
 
-	HMIDIOUT m_out;
+	HMIDIOUT m_out = nullptr;
 
-	std::unordered_map<U32, NativeMidiData> data;
+	BHashTable<U32, std::shared_ptr<NativeMidiData>> data;
 
-	std::shared_ptr<KProcess> process;
-	U32 wDevID;
-	U32 eventFd;
+	U32 wDevID = 0;
+	U32 eventFd = 0;
 
-	U32 hMidi;
-	U32 dwCallback;
-	U32 dwInstance;
-	U32 wFlags;
+	U32 hMidi = 0;
+	U32 dwCallback = 0;
+	U32 dwInstance = 0;
+	U32 wFlags = 0;
+
+	KProcess* process = nullptr;
 };
 
 static void write32(U8* buffer, U32 data) {
@@ -113,14 +111,16 @@ typedef struct {
 } MIDIOPENDESC, * LPMIDIOPENDESC;
 */
 
-U32 KNativeAudioWindows::midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) {
-	this->process = KThread::currentThread()->process;
+U32 KNativeAudioWindows::midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) {
+	KMemory* memory = process->memory;
+
+	this->process = process;
 	this->wDevID = wDevID;
 	this->eventFd = fd;
 	if (lpDesc) {
-		this->hMidi = readd(lpDesc);
-		this->dwCallback = readd(lpDesc+4);
-		this->dwInstance = readd(lpDesc+8);
+		this->hMidi = memory->readd(lpDesc);
+		this->dwCallback = memory->readd(lpDesc+4);
+		this->dwInstance = memory->readd(lpDesc+8);
 	}
 	this->wFlags = HIWORD(dwFlags & CALLBACK_TYPEMASK);
 
@@ -135,7 +135,8 @@ U32 KNativeAudioWindows::midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd
 
 U32 KNativeAudioWindows::midiOutClose(U32 wDevID) {
 	U32 result = ::midiOutClose(m_out);
-	m_out = NULL;
+	m_out = nullptr;
+	process = nullptr;
 	return result;
 }
 
@@ -143,67 +144,64 @@ U32 KNativeAudioWindows::midiOutData(U32 wDevID, U32 dwParam) {
 	return ::midiOutShortMsg(m_out, dwParam);
 }
 
-U32 KNativeAudioWindows::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	U32 dataAddress = readd(lpMidiHdr);
-	if (this->data.count(dataAddress)==0) {
+U32 KNativeAudioWindows::midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+	U32 dataAddress = process->memory->readd(lpMidiHdr);
+	std::shared_ptr<NativeMidiData> hdr = data[dataAddress];
+	if (!hdr) {
 		kwarn("KNativeAudioWindows::midiOutLongData tried to play unprepared buffer");
 		return MIDIERR_UNPREPARED;
 	}
-	NativeMidiData& hdr = data[dataAddress];
-	memcopyToNative(lpMidiHdr, &hdr.wineHeader, dwSize);
-	hdr.nativeHeader.dwFlags = hdr.wineHeader.dwFlags;
-	hdr.wineHeader.dwFlags |= MHDR_INQUEUE;
-	hdr.wineHeader.writeFlags(lpMidiHdr);
-	U32 result = ::midiOutLongMsg(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
-	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
-	hdr.wineHeader.writeFlags(lpMidiHdr);
+
+	process->memory->memcpy(&hdr->wineHeader, lpMidiHdr, dwSize);
+	hdr->nativeHeader.dwFlags = hdr->wineHeader.dwFlags;
+	hdr->wineHeader.dwFlags |= MHDR_INQUEUE;
+	hdr->wineHeader.writeFlags(process->memory, lpMidiHdr);
+	U32 result = ::midiOutLongMsg(m_out, &hdr->nativeHeader, sizeof(hdr->nativeHeader));
+	hdr->wineHeader.dwFlags = hdr->nativeHeader.dwFlags;
+	hdr->wineHeader.writeFlags(process->memory, lpMidiHdr);
 	return result;
 }
 
-U32 KNativeAudioWindows::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	U32 dataAddress = readd(lpMidiHdr);
-	if (this->data.count(dataAddress)) {
+U32 KNativeAudioWindows::midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+	U32 dataAddress = process->memory->readd(lpMidiHdr);
+	std::shared_ptr<NativeMidiData> hdr = data[dataAddress];
+	if (hdr) {
 		kpanic("KNativeAudioWindows::midiOutPrepare tried to prepare already prepared buffer");
 	}
-	NativeMidiData& hdr = data[dataAddress];
-
-	memcopyToNative(lpMidiHdr, &hdr.wineHeader, dwSize);
-	hdr.nativeHeader.lpData = (LPSTR)getPhysicalAddress(hdr.wineHeader.lpData, hdr.wineHeader.dwBufferLength);
-	if (!hdr.nativeHeader.lpData) {
-		hdr.wineHeader.buffer = malloc(hdr.wineHeader.dwBufferLength);
-		memcopyToNative(hdr.wineHeader.lpData, hdr.wineHeader.buffer, hdr.wineHeader.dwBufferLength);
-		hdr.nativeHeader.lpData = (LPSTR)hdr.wineHeader.buffer;
-	}
-	hdr.nativeHeader.dwBufferLength = hdr.wineHeader.dwBufferLength;
-	hdr.nativeHeader.dwFlags = hdr.wineHeader.dwFlags;
-	hdr.nativeHeader.dwBytesRecorded = hdr.wineHeader.dwBytesRecorded;
-	U32 result = ::midiOutPrepareHeader(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
-	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
-	hdr.wineHeader.writeFlags(lpMidiHdr);
+	hdr = std::make_shared<NativeMidiData>();
+	data.set(dataAddress, hdr);
+	process->memory->memcpy(&hdr->wineHeader, lpMidiHdr, dwSize);
+	hdr->nativeHeader.lpData = (LPSTR)process->memory->lockReadOnlyMemory(hdr->wineHeader.lpData, hdr->wineHeader.dwBufferLength);
+	hdr->nativeHeader.dwBufferLength = hdr->wineHeader.dwBufferLength;
+	hdr->nativeHeader.dwFlags = hdr->wineHeader.dwFlags;
+	hdr->nativeHeader.dwBytesRecorded = hdr->wineHeader.dwBytesRecorded;
+	U32 result = ::midiOutPrepareHeader(m_out, &hdr->nativeHeader, sizeof(hdr->nativeHeader));
+	hdr->wineHeader.dwFlags = hdr->nativeHeader.dwFlags;
+	hdr->wineHeader.writeFlags(process->memory, lpMidiHdr);
 	return result;
 }
 
-U32 KNativeAudioWindows::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
-	U32 dataAddress = readd(lpMidiHdr);
-	if (this->data.count(dataAddress)==0) {
+U32 KNativeAudioWindows::midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+	U32 dataAddress = process->memory->readd(lpMidiHdr);
+	std::shared_ptr<NativeMidiData> hdr = data[dataAddress];
+	if (!hdr) {
 		return MMSYSERR_NOERROR;
 	}
-	NativeMidiData& hdr = data[dataAddress];
-	U32 result = ::midiOutUnprepareHeader(m_out, &hdr.nativeHeader, sizeof(hdr.nativeHeader));
-	hdr.wineHeader.dwFlags = hdr.nativeHeader.dwFlags;
-	memcopyFromNative(lpMidiHdr, &hdr.wineHeader, dwSize);
-	if (hdr.wineHeader.buffer) {
-		::free(hdr.wineHeader.buffer);
-		hdr.wineHeader.buffer = NULL;
+	U32 result = ::midiOutUnprepareHeader(m_out, &hdr->nativeHeader, sizeof(hdr->nativeHeader));
+	hdr->wineHeader.dwFlags = hdr->nativeHeader.dwFlags;
+	process->memory->memcpy(lpMidiHdr, &hdr->wineHeader, dwSize);
+	if (hdr->wineHeader.lpData) {
+		process->memory->unlockMemory((U8*)hdr->nativeHeader.lpData);
+		hdr->wineHeader.lpData = NULL;
 	}
-	this->data.erase(dataAddress);
+	this->data.remove(dataAddress);
 	return result;
 }
 
-U32 KNativeAudioWindows::midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) {
+U32 KNativeAudioWindows::midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) {
 	MIDIOUTCAPSW caps;
 	U32 result = ::midiOutGetDevCapsW(wDevID, &caps, sizeof(caps));
-	memcopyFromNative(lpCaps, &caps, dwSize);
+	thread->memory->memcpy(lpCaps, &caps, dwSize);
 	return result;
 }
 
@@ -211,10 +209,10 @@ U32 KNativeAudioWindows::midiOutGetNumDevs() {
 	return ::midiOutGetNumDevs();
 }
 
-U32 KNativeAudioWindows::midiOutGetVolume(U32 wDevID, U32 lpdwVolume) {
+U32 KNativeAudioWindows::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) {
 	DWORD volume;
 	U32 result = ::midiOutGetVolume(m_out, &volume);
-	writed(lpdwVolume, volume);
+	thread->memory->writed(lpdwVolume, volume);
 	return result;
 }
 

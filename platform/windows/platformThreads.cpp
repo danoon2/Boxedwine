@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 #include <windows.h>
-#include "../source/emulation/hardmmu/hard_memory.h"
+#include "../source/emulation/softmmu/kmemory_soft.h"
 #include "../source/emulation/cpu/normal/normalCPU.h"
 #include "ksignal.h"
 #include "../source/emulation/cpu/x64/x64CPU.h"
@@ -17,15 +17,6 @@ void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     EBP = (U32)ep->ContextRecord->Rbp;
     ESI = (U32)ep->ContextRecord->Rsi;
     EDI = (U32)ep->ContextRecord->Rdi;
-
-    cpu->exceptionRSI = (U32)ep->ContextRecord->Rsi;
-    cpu->exceptionRDI = (U32)ep->ContextRecord->Rdi;
-    cpu->exceptionR8 = (U32)ep->ContextRecord->R8;
-    cpu->exceptionR9 = (U32)ep->ContextRecord->R9;
-    cpu->exceptionR10 = (U32)ep->ContextRecord->R10;
-    cpu->destEip = (U32)ep->ContextRecord->R9;
-    cpu->regPage = ep->ContextRecord->R8;
-    cpu->regOffset = ep->ContextRecord->R9;
 
     cpu->flags = ep->ContextRecord->EFlags;
     cpu->lazyFlags = FLAGS_NONE;
@@ -60,12 +51,6 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ep->ContextRecord->Rbp = EBP;
     ep->ContextRecord->Rsi = ESI;
     ep->ContextRecord->Rdi = EDI;
-    if (KSystem::useLargeAddressSpace) {
-        ep->ContextRecord->R14 = (U64)cpu->eipToHostInstructionAddressSpaceMapping;
-    } else {
-        ep->ContextRecord->R14 = cpu->seg[SS].address;
-    }
-    ep->ContextRecord->R15 = cpu->seg[DS].address;
     cpu->fillFlags();
     ep->ContextRecord->EFlags = cpu->flags;
     for (int i=0;i<8;i++) {
@@ -115,14 +100,24 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     }
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
     if (ep->ContextRecord->EFlags & AC) {
-        // :TODO: is there a way to clear in now
+        // :TODO: not sure what causes this, seen it in winroids
         ep->ContextRecord->EFlags&=~AC;
         return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    KMemoryData* mem = getMemData(cpu->memory);
+    bool inBinaryTranslator = mem->isAddressExecutable((U8*)ep->ContextRecord->Rip);
+
+    if (!inBinaryTranslator) {
+        // might be in a c++ exception
+        //
+        // motorhead installer will trigger this a few time
+        // caesar 3 installer will trigger this when it exits
+        return EXCEPTION_CONTINUE_SEARCH;
     }
     if (cpu!=(BtCPU*)ep->ContextRecord->R13) {
         return EXCEPTION_CONTINUE_SEARCH;
     }	
-
+    
     syncFromException(ep, true);
     U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);
     if (result) {
@@ -132,23 +127,8 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     }
     
     InException inException(cpu);
-    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ILLEGAL_INSTRUCTION) {
-        if (ep->ContextRecord->Rsp & 0xf) {
-            kpanic("seh_filter: bad stack alignment");
-        }
-        U64 rip = cpu->handleIllegalInstruction(ep->ContextRecord->Rip);
-        if (rip) {
-            ep->ContextRecord->Rip = rip;
-            return EXCEPTION_CONTINUE_EXECUTION;
-        }
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && cpu->thread->memory->isAddressExecutable((void*)ep->ContextRecord->Rip)) {        
-        U64 rip = cpu->handleAccessException(ep->ContextRecord->Rip, ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);        
-        if (rip) {
-            syncToException(ep, true);
-            ep->ContextRecord->Rip = rip;
-        }
-        return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
+
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
         kpanic("EXCEPTION_FLT_STACK_CHECK");
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_DIVIDE_BY_ZERO) {
         int code = getFpuException(ep->ContextRecord->FltSave.ControlWord, ep->ContextRecord->FltSave.StatusWord);
@@ -156,16 +136,17 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         ep->ContextRecord->Rip = cpu->handleFpuException(code);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
-		// :TODO: figure out how AC got set, I've only seen this while op logging
-        ep->ContextRecord->EFlags&=~AC;
+    } else if (ep->ExceptionRecord->ExceptionCode == STATUS_INTEGER_DIVIDE_BY_ZERO) {
+        ep->ContextRecord->Rip = cpu->handleFpuException(K_FPE_INTDIV);
+        syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
 
+std::atomic<int> platformThreadCount = 0;
+
 static PVOID pHandler;
-U32 platformThreadCount = 0;
 
 #ifdef __TEST
 void initThreadForTesting() {
@@ -188,7 +169,11 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     BtCPU* cpu = (BtCPU*)thread->cpu;
-    cpu->nativeHandle = (U64)CreateThread(NULL, 0, platformThreadProc, thread, CREATE_SUSPENDED, 0);
+    cpu->nativeHandle = (U64)CreateThread(nullptr, 0, platformThreadProc, thread, CREATE_SUSPENDED, nullptr);
+    if (!cpu->nativeHandle) {
+        kpanic("scheduleThread failed to create thread");
+        return;
+    }
 #ifdef BOXEDWINE_MULTI_THREADED
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
         Platform::setCpuAffinityForThread(KThread::currentThread(), KSystem::cpuAffinityCountForApp);

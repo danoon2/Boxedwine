@@ -64,7 +64,6 @@ gcc -std=c++17 -O2 -no-pie \
   -lstdc++fs \
   -DBOXEDWINE_RECORDER \
   -DBOXEDWINE_ZLIB \
-  -DBOXEDWINE_HAS_SETJMP \
   -DSDL2=1 \
   "-DGLH=<SDL_opengl.h>" \
   -DBOXEDWINE_OPENGL_SDL \
@@ -74,7 +73,6 @@ gcc -std=c++17 -O2 -no-pie \
   `sdl2-config --cflags --static-libs` \
   -DSIMDE_SSE2_NO_NATIVE \
   -DBOXEDWINE_64 \
-  -DBOXEDWINE_64BIT_MMU \
   -DBOXEDWINE_X64 \
   -DBOXEDWINE_MULTI_THREADED \
   -DBOXEDWINE_POSIX \

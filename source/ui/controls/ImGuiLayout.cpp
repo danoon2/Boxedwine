@@ -138,7 +138,7 @@ void LayoutComboboxControl::draw(int width) {
 		ImGui::PushItemWidth((float)width);
 	}
 	ImGui::PushID(this);
-	if (ImGui::Combo("##Combo", &this->options.currentSelectedIndex, this->options.dataForCombobox) && this->onChange) {
+	if (ImGui::Combo("##Combo", &this->options.currentSelectedIndex, this->options.dataForCombobox.str()) && this->onChange) {
 		this->onChange();
 	}
 	ImGui::PopID();
@@ -159,7 +159,7 @@ void LayoutTextInputControl::draw(int width) {
 	bool browseButton = this->browseButtonType != BROWSE_BUTTON_NONE;
 
 	if (browseButton && !this->browseButtonLabel) {
-		this->browseButtonLabel = c_getTranslation(GENERIC_BROWSE_BUTTON);
+		this->browseButtonLabel = c_getTranslation(Msg::GENERIC_BROWSE_BUTTON);
 		this->browseButtonWidth = ImGui::CalcTextSize(this->browseButtonLabel).x + ImGui::GetStyle().FramePadding.x * 2 + ImGui::GetStyle().ItemSpacing.x;
 	}
 	if (this->isReadOnly()) {
@@ -192,12 +192,13 @@ void LayoutTextInputControl::draw(int width) {
 		ImGui::SameLine();
 		if (ImGui::Button(this->browseButtonLabel)) {
 			if (this->browseButtonType == BROWSE_BUTTON_FILE) {
-				char** types = (char**)alloca(sizeof(char*) * this->browseFileTypes.size());
-				for (int i=0;i<(int)this->browseFileTypes.size();i++) {
-					types[i] = (char*)alloca(this->browseFileTypes[i].length() + 1);
-					strcpy(types[i], this->browseFileTypes[i].c_str());
+				int count = (int)this->browseFileTypes.size();
+				const char** types = new const char*[count];
+				for (int i=0;i<count;i++) {
+					types[i] = this->browseFileTypes[i].c_str();
 				}
-				const char* result = tfd::openFileDialog(c_getTranslation(INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, NULL, 0);
+				const char* result = tfd::openFileDialog(c_getTranslation(Msg::INSTALLVIEW_OPEN_SETUP_FILE_TITLE), this->text, 1, types, nullptr, 0);
+				delete[] types;
 				if (result) {
 					strcpy(this->text, result);
 					if (this->onChange) {
@@ -208,7 +209,7 @@ void LayoutTextInputControl::draw(int width) {
 					}
 				}
 			} else {
-				const char* result = tfd::selectFolderDialog(c_getTranslation(GENERIC_OPEN_FOLDER_TITLE), this->text);
+				const char* result = tfd::selectFolderDialog(c_getTranslation(Msg::GENERIC_OPEN_FOLDER_TITLE), this->text);
 				if (result) {
 					strcpy(this->text, result);
 					if (this->onChange) {
@@ -235,9 +236,9 @@ void LayoutButtonControl::draw(int width) {
 	ImGui::PopID();
 }
 
-std::shared_ptr<LayoutSection> ImGuiLayout::addSection(int titleId) {
+std::shared_ptr<LayoutSection> ImGuiLayout::addSection(Msg titleId) {
 	std::shared_ptr<LayoutSection> section = std::make_shared<LayoutSection>();
-	if (titleId) {
+	if (titleId != Msg::NONE) {
 		section->setTitle(getTranslation(titleId));
 	}
 	this->sections.push_back(section);
@@ -269,44 +270,44 @@ void LayoutSection::doLayout() {
 	leftColumnWidth += ImGui::GetStyle().ItemSpacing.x;
 }
 
-std::shared_ptr<LayoutRow> LayoutSection::addRow(int labelId, int helpId) {
+std::shared_ptr<LayoutRow> LayoutSection::addRow(Msg labelId, Msg helpId) {
 	std::shared_ptr<LayoutRow> row = std::make_shared<LayoutRow>();
-	if (labelId) {
+	if (labelId != Msg::NONE) {
 		row->label = getTranslation(labelId);
 	}
-	if (helpId) {
+	if (helpId != Msg::NONE) {
 		row->help = getTranslation(helpId, false);
 	}
 	this->rows.push_back(row);
 	return row;
 }
 
-std::shared_ptr<LayoutTextInputControl> LayoutSection::addTextInputRow(int labelId, int helpId, BString initialValue, bool readOnly) {
+std::shared_ptr<LayoutTextInputControl> LayoutSection::addTextInputRow(Msg labelId, Msg helpId, BString initialValue, bool readOnly) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addTextInput(initialValue, readOnly);
 }
 
-std::shared_ptr<LayoutComboboxControl> LayoutSection::addComboboxRow(int labelId, int helpId, const std::vector<ComboboxItem>& options, int selected) {
+std::shared_ptr<LayoutComboboxControl> LayoutSection::addComboboxRow(Msg labelId, Msg helpId, const std::vector<ComboboxItem>& options, int selected) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addComboBox(options, selected);
 }
 
-std::shared_ptr< LayoutCheckboxControl> LayoutSection::addCheckbox(int labelId, int helpId, bool value) {
+std::shared_ptr< LayoutCheckboxControl> LayoutSection::addCheckbox(Msg labelId, Msg helpId, bool value) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addCheckbox(value);
 }
 
-std::shared_ptr<LayoutTextControl> LayoutSection::addText(int labelId, int helpId, BString text) {
+std::shared_ptr<LayoutTextControl> LayoutSection::addText(Msg labelId, Msg helpId, BString text) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addText(text);
 }
 
 std::shared_ptr<LayoutSeparatorControl> LayoutSection::addSeparator() {
-	std::shared_ptr<LayoutRow> row = this->addRow(0, 0);
+	std::shared_ptr<LayoutRow> row = this->addRow(Msg::NONE, Msg::NONE);
 	return row->addSeparator();
 }
 
-std::shared_ptr<LayoutButtonControl> LayoutSection::addButton(int labelId, int helpId, BString buttonLabel) {
+std::shared_ptr<LayoutButtonControl> LayoutSection::addButton(Msg labelId, Msg helpId, BString buttonLabel) {
 	std::shared_ptr<LayoutRow> row = this->addRow(labelId, helpId);
 	return row->addButton(buttonLabel);
 }
@@ -323,7 +324,7 @@ std::shared_ptr<LayoutTextInputControl> LayoutRow::addTextInput(BString initialV
 	return control;
 }
 
-void LayoutRow::setHelp(int helpId) {
+void LayoutRow::setHelp(Msg helpId) {
 	this->help = getTranslation(helpId, false);
 }
 
@@ -413,7 +414,7 @@ bool LayoutComboboxControl::setSelectionIntValue(int value) {
 	return false;
 }
 
-LayoutControl::LayoutControl(std::shared_ptr<LayoutRow> row, LayoutControlType type) : row(row), width(-1), type(type), readOnly(false), font(NULL) {
+LayoutControl::LayoutControl(std::shared_ptr<LayoutRow> row, LayoutControlType type) : row(row), width(-1), type(type), readOnly(false), font(nullptr) {
 }
 
 void LayoutControl::setRowHidden(bool hidden) {
@@ -422,7 +423,7 @@ void LayoutControl::setRowHidden(bool hidden) {
 		row->setHidden(hidden);
 	}
 }
-void LayoutControl::setHelpId(int helpId) {
+void LayoutControl::setHelpId(Msg helpId) {
 	std::shared_ptr<LayoutRow> r = this->row.lock();
 	if (r) {
 		r->setHelp(helpId);
@@ -450,13 +451,13 @@ void Markdown(BString markdown_)
 	// > C++14 can use ImGui::MarkdownConfig mdConfig{ LinkCallback, NULL, ImageCallback, ICON_FA_LINK, { { H1, true }, { H2, true }, { H3, false } }, NULL };
 	ImGui::MarkdownConfig mdConfig;
 	mdConfig.linkCallback = LinkCallback;
-	mdConfig.tooltipCallback = NULL;
+	mdConfig.tooltipCallback = nullptr;
 	//mdConfig.imageCallback = ImageCallback;
 	//mdConfig.linkIcon = ICON_FA_LINK;
 	mdConfig.headingFormats[0] = { GlobalSettings::largeFont, true };
 	mdConfig.headingFormats[1] = { GlobalSettings::mediumFont, true };
 	mdConfig.headingFormats[2] = { GlobalSettings::defaultFont, false };
-	mdConfig.userData = NULL;
+	mdConfig.userData = nullptr;
 	ImGui::Markdown(markdown_.c_str(), markdown_.length(), mdConfig);
 }
 

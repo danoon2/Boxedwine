@@ -1,0 +1,10 @@
+MODULE    = winex11.drv
+UNIXLIB   = winex11.so
+IMPORTS   = uuid setupapi rpcrt4 user32 gdi32 advapi32 win32u
+DELAYIMPORTS = comctl32 ole32 shell32 imm32
+UNIX_CFLAGS  = $(X_CFLAGS)
+UNIX_LIBS    = -lwin32u $(X_LIBS) $(X_EXTRA_LIBS) $(PTHREAD_LIBS) -lm -ldl -lpthread
+
+SOURCES = wineboxed.c surface.c display.c imm.c palette.c driver.c opengl.c vulkan.c event.c dllmain.c
+
+RC_SRCS = wineboxed.rc

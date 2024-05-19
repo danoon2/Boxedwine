@@ -22,14 +22,14 @@ static void dshl16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     if (ARM8BT_FLAGS_DSHL16->usesDst(flags)) {
         data->movRegToReg(xDst, dst, 16, true);
     }
-    if (data->decodedOp->imm == 16) {
+    if (data->currentOp->imm == 16) {
         data->movRegToReg(result, src, 16, false);
-    } else if (data->decodedOp->imm < 16) {
-        data->copyBitsFromSourceToDestAtPosition(result, dst, data->decodedOp->imm, 16 - data->decodedOp->imm, true);
-        data->copyBitsFromSourceAtPositionToDest(result, src, 16 - data->decodedOp->imm, data->decodedOp->imm, true);
+    } else if (data->currentOp->imm < 16) {
+        data->copyBitsFromSourceToDestAtPosition(result, dst, data->currentOp->imm, 16 - data->currentOp->imm, true);
+        data->copyBitsFromSourceAtPositionToDest(result, src, 16 - data->currentOp->imm, data->currentOp->imm, true);
     } else {
         // If a count is greater than the operand size, the result is undefined.
-        U8 amount = data->decodedOp->imm & 0xF;
+        U8 amount = data->currentOp->imm & 0xF;
         data->copyBitsFromSourceToDestAtPosition(result, src, amount, 16 - amount, true);
         data->copyBitsFromSourceAtPositionToDest(result, src, 16 - amount, amount, true);
     }
@@ -55,14 +55,14 @@ static void dshr16(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
     if (ARM8BT_FLAGS_DSHR16->usesDst(flags)) {
         data->movRegToReg(xDst, dst, 16, true);
     }
-    if (data->decodedOp->imm == 16) {
+    if (data->currentOp->imm == 16) {
         data->movRegToReg(result, src, 16, false);
-    } else if (data->decodedOp->imm < 16) {
-        data->copyBitsFromSourceAtPositionToDest(result, dst, data->decodedOp->imm, 16 - data->decodedOp->imm, true);
-        data->copyBitsFromSourceToDestAtPosition(result, src, 16-data->decodedOp->imm, data->decodedOp->imm, true);        
+    } else if (data->currentOp->imm < 16) {
+        data->copyBitsFromSourceAtPositionToDest(result, dst, data->currentOp->imm, 16 - data->currentOp->imm, true);
+        data->copyBitsFromSourceToDestAtPosition(result, src, 16-data->currentOp->imm, data->currentOp->imm, true);        
     } else {
         // If a count is greater than the operand size, the result is undefined.
-        U8 amount = data->decodedOp->imm & 0xF;
+        U8 amount = data->currentOp->imm & 0xF;
         data->copyBitsFromSourceToDestAtPosition(result, src, 16 - amount, amount, true);
         data->copyBitsFromSourceAtPositionToDest(result, src, amount, 16 - amount, true);
     }
@@ -84,8 +84,8 @@ static void dshl32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
         data->movRegToReg(xDst, dst, 32, false);
     }
     // imm should already be masked to 0-31
-    data->copyBitsFromSourceToDestAtPosition(result, dst, data->decodedOp->imm, 32 - data->decodedOp->imm, true);
-    data->copyBitsFromSourceAtPositionToDest(result, src, 32 - data->decodedOp->imm, data->decodedOp->imm, true);
+    data->copyBitsFromSourceToDestAtPosition(result, dst, data->currentOp->imm, 32 - data->currentOp->imm, true);
+    data->copyBitsFromSourceAtPositionToDest(result, src, 32 - data->currentOp->imm, data->currentOp->imm, true);
     if (flags && ARM8BT_FLAGS_DSHL32->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, dst, 32, false);
     }
@@ -104,8 +104,8 @@ static void dshr32(Armv8btAsm* data, U8 result, U8 dst, U8 src) {
         data->movRegToReg(xDst, dst, 32, false);
     }
     // imm should already be masked to 0-31
-    data->copyBitsFromSourceAtPositionToDest(result, dst, data->decodedOp->imm, 32 - data->decodedOp->imm, true);
-    data->copyBitsFromSourceToDestAtPosition(result, src, 32 - data->decodedOp->imm, data->decodedOp->imm, true);
+    data->copyBitsFromSourceAtPositionToDest(result, dst, data->currentOp->imm, 32 - data->currentOp->imm, true);
+    data->copyBitsFromSourceToDestAtPosition(result, src, 32 - data->currentOp->imm, data->currentOp->imm, true);
     if (ARM8BT_FLAGS_DSHR32->usesResult(flags) && result != xResult) {
         data->movRegToReg(xResult, dst, 32, false);
     }
@@ -291,164 +291,164 @@ static void dshr32Cl(Armv8btAsm* data, U8 result, U8 dst, U8 src, std::function<
 }
 
 void opDshlR16R16(Armv8btAsm* data) {
-    dshl16(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm);
+    dshl16(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm);
 }
 
 void opDshlE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 16, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
-    dshl16(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 16, false, data->currentOp->lock != 0);
+    dshl16(data, xResult, tmpReg, data->currentOp->reg);
+    data->writeMemory(addressReg, xResult, 16, false, data->currentOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 
 void opDshlClR16R16(Armv8btAsm* data) {
-    dshl16Cl(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm, nullptr);
+    dshl16Cl(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm, nullptr);
 }
 void opDshlClE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 16, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
-    dshl16Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 16, false, data->currentOp->lock != 0);
+    dshl16Cl(data, xResult, tmpReg, data->currentOp->reg, [data, addressReg, tmpReg, restartPos]() {
+        data->writeMemory(addressReg, xResult, 16, false, data->currentOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 void opDshrR16R16(Armv8btAsm* data) {
-    dshr16(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm);
+    dshr16(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm);
 }
 void opDshrE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 16, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
-    dshr16(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 16, false, data->currentOp->lock != 0);
+    dshr16(data, xResult, tmpReg, data->currentOp->reg);
+    data->writeMemory(addressReg, xResult, 16, false, data->currentOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 void opDshrClR16R16(Armv8btAsm* data) {
-    dshr16Cl(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm, nullptr);
+    dshr16Cl(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm, nullptr);
 }
 void opDshrClE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 16, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
-    dshr16Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 16, false, data->currentOp->lock != 0);
+    dshr16Cl(data, xResult, tmpReg, data->currentOp->reg, [data, addressReg, tmpReg, restartPos]() {
+        data->writeMemory(addressReg, xResult, 16, false, data->currentOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 
 void opDshlR32R32(Armv8btAsm* data) {
-    dshl32(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm);
+    dshl32(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm);
 }
 void opDshlE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 32, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
-    dshl32(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 32, false, data->currentOp->lock != 0);
+    dshl32(data, xResult, tmpReg, data->currentOp->reg);
+    data->writeMemory(addressReg, xResult, 32, false, data->currentOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 
 void opDshlClR32R32(Armv8btAsm* data) {
-    dshl32Cl(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm, nullptr);
+    dshl32Cl(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm, nullptr);
 }
 void opDshlClE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 32, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
-    dshl32Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 32, false, data->currentOp->lock != 0);
+    dshl32Cl(data, xResult, tmpReg, data->currentOp->reg, [data, addressReg, tmpReg, restartPos]() {
+        data->writeMemory(addressReg, xResult, 32, false, data->currentOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 
 void opDshrR32R32(Armv8btAsm* data) {
-    dshr32(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm);
+    dshr32(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm);
 }
 
 void opDshrE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 32, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
-    dshr32(data, xResult, tmpReg, data->decodedOp->reg);
-    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 32, false, data->currentOp->lock != 0);
+    dshr32(data, xResult, tmpReg, data->currentOp->reg);
+    data->writeMemory(addressReg, xResult, 32, false, data->currentOp->lock != 0, tmpReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 
 void opDshrClR32R32(Armv8btAsm* data) {
-    dshr32Cl(data, data->decodedOp->reg, data->decodedOp->reg, data->decodedOp->rm, nullptr);
+    dshr32Cl(data, data->currentOp->reg, data->currentOp->reg, data->currentOp->rm, nullptr);
 }
 void opDshrClE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 32, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
-    dshr32Cl(data, xResult, tmpReg, data->decodedOp->reg, [data, addressReg, tmpReg, restartPos]() {
-        data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
+    data->readMemory(addressReg, tmpReg, 32, false, data->currentOp->lock != 0);
+    dshr32Cl(data, xResult, tmpReg, data->currentOp->reg, [data, addressReg, tmpReg, restartPos]() {
+        data->writeMemory(addressReg, xResult, 32, false, data->currentOp->lock != 0, tmpReg, restartPos);
         });
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
@@ -519,8 +519,8 @@ bool doRol(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
     U32 flags = data->flagsNeeded();
 
-    if (!(data->decodedOp->imm & (width - 1))) {
-        if (data->decodedOp->imm) {
+    if (!(data->currentOp->imm & (width - 1))) {
+        if (data->currentOp->imm) {
             // cpu->setCF(reg8 & 1);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, 0, 1);
@@ -535,7 +535,7 @@ bool doRol(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
         data->releaseTmpReg(tmpReg);
         return false;
     }
-    U32 imm = data->decodedOp->imm & (width - 1);
+    U32 imm = data->currentOp->imm & (width - 1);
 
     // cpu->fillFlagsNoCFOF()
 
@@ -609,8 +609,8 @@ bool doRor(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     U8 tmpReg = data->getTmpReg();
 
     U32 flags = data->flagsNeeded();
-    if (!(data->decodedOp->imm & (width - 1))) {
-        if (data->decodedOp->imm) {
+    if (!(data->currentOp->imm & (width - 1))) {
+        if (data->currentOp->imm) {
             // cpu->setCF(reg & 0x80);
             if (flags & CF) {
                 data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, width - 1, 1);
@@ -626,7 +626,7 @@ bool doRor(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
         data->releaseTmpReg(tmpReg);
         return false;
     }
-    U32 imm = data->decodedOp->imm & (width - 1);
+    U32 imm = data->currentOp->imm & (width - 1);
 
     // cpu->fillFlagsNoCFOF()
     if (width == 32) {
@@ -697,7 +697,7 @@ bool doRorCl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
 // result and reg are guaranteed to be different regs
 bool doRcl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
-    if (data->decodedOp->imm == 0) {
+    if (data->currentOp->imm == 0) {
         return false;
     }
     U8 tmpReg = data->getTmpReg();
@@ -706,16 +706,16 @@ bool doRcl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     U32 flags = data->flagsNeeded();
 
     // result = (var1 << var2) | ((cpu->flags & CF) << (var2 - 1)) | (var1 >> (9 - var2));
-    data->shiftRegLeftWithValue32(result, reg, data->decodedOp->imm);
-    if ((width + 1) - data->decodedOp->imm < 32) {
-        data->shiftRegRightWithValue32(tmpReg, reg, (width + 1) - data->decodedOp->imm);
+    data->shiftRegLeftWithValue32(result, reg, data->currentOp->imm);
+    if ((width + 1) - data->currentOp->imm < 32) {
+        data->shiftRegRightWithValue32(tmpReg, reg, (width + 1) - data->currentOp->imm);
         data->orRegs32(result, result, tmpReg);
     }
-    data->copyBitsFromSourceToDestAtPosition(result, xFLAGS, data->decodedOp->imm - 1, 1, true);
+    data->copyBitsFromSourceToDestAtPosition(result, xFLAGS, data->currentOp->imm - 1, 1, true);
 
     // cpu->setCF(((var1 >> (8 - var2)) & 1));
     if (flags & (CF | OF)) { // OF depends on this
-        data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, (width - data->decodedOp->imm), 1);
+        data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, (width - data->currentOp->imm), 1);
     }
     // cpu->setOF((cpu->flags & CF) ^ (result >> 7));
     if (flags & OF) {
@@ -789,7 +789,7 @@ bool doRclCl(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
 
 // result and reg are guaranteed to be different regs
 bool doRcr(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
-    if (data->decodedOp->imm == 0) {
+    if (data->currentOp->imm == 0) {
         return false;
     }
     U8 tmpReg = data->getTmpReg();
@@ -798,16 +798,16 @@ bool doRcr(Armv8btAsm* data, U8 result, U8 reg, U32 width) {
     U32 flags = data->flagsNeeded();
 
     // result = (var1 >> var2) | ((cpu->flags & CF) << (8 - var2)) | (var1 << (9 - var2));
-    data->shiftRegRightWithValue32(result, reg, data->decodedOp->imm);
-    if ((width + 1) - data->decodedOp->imm < 32) {
-        data->shiftRegLeftWithValue32(tmpReg, reg, (width + 1) - data->decodedOp->imm);
+    data->shiftRegRightWithValue32(result, reg, data->currentOp->imm);
+    if ((width + 1) - data->currentOp->imm < 32) {
+        data->shiftRegLeftWithValue32(tmpReg, reg, (width + 1) - data->currentOp->imm);
         data->orRegs32(result, result, tmpReg);
     }
-    data->copyBitsFromSourceToDestAtPosition(result, xFLAGS, (width - data->decodedOp->imm), 1, true);
+    data->copyBitsFromSourceToDestAtPosition(result, xFLAGS, (width - data->currentOp->imm), 1, true);
 
     // cpu->setCF((var1 >> (var2 - 1)) & 1);
     if (flags & CF) {
-        data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, (data->decodedOp->imm - 1), 1);
+        data->copyBitsFromSourceAtPositionToDest(xFLAGS, reg, (data->currentOp->imm - 1), 1);
     }
     // cpu->setOF((result ^ (result << 1)) & 0x80);
     if (flags & OF) {
@@ -887,9 +887,9 @@ void doShiftReg8(Armv8btAsm* data, shiftOp pfn) {
     U8 reg8 = data->getTmpReg();
     U8 result = data->getTmpReg();
 
-    data->movReg8ToReg(data->decodedOp->reg, reg8);
+    data->movReg8ToReg(data->currentOp->reg, reg8);
     if (pfn(data, result, reg8, 8)) {
-        data->movRegToReg8(result, data->decodedOp->reg);
+        data->movRegToReg8(result, data->currentOp->reg);
     }
 
     data->releaseTmpReg(reg8);
@@ -900,9 +900,9 @@ void doShiftReg16(Armv8btAsm* data, shiftOp pfn) {
     U8 reg = data->getTmpReg();
     U8 result = data->getTmpReg();
 
-    data->movRegToReg(reg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->movRegToReg(reg, data->getNativeReg(data->currentOp->reg), 16, true);
     if (pfn(data, result, reg, 16)) {
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), result, 16, false);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), result, 16, false);
     }
 
     data->releaseTmpReg(reg);
@@ -913,8 +913,8 @@ void doShiftReg32(Armv8btAsm* data, shiftOp pfn) {
     U8 result = data->getTmpReg();
 
     // pfn is allowed to assume result and src will be different regs
-    if (pfn(data, result, data->getNativeReg(data->decodedOp->reg), 32)) {
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), result, 32, false);
+    if (pfn(data, result, data->getNativeReg(data->currentOp->reg), 32)) {
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), result, 32, false);
     }
 
     data->releaseTmpReg(result);
@@ -925,15 +925,15 @@ void doShiftMemory(Armv8btAsm* data, shiftOp pfn, U32 width) {
     U32 restartPos = data->bufferPos;
     U8 reg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, width, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U8 result = data->getTmpReg();
 
-    data->readMemory(addressReg, reg, width, false, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, reg, width, false, data->currentOp->lock != 0);
     if (pfn(data, result, reg, width)) {
-        data->writeMemory(addressReg, result, width, false, data->decodedOp->lock != 0, reg, restartPos);
+        data->writeMemory(addressReg, result, width, false, data->currentOp->lock != 0, reg, restartPos);
     }
 
     data->releaseTmpReg(reg);
@@ -946,18 +946,18 @@ typedef void(*shiftRegCl32)(Armv8btAsm* data, U8 dst, U8 src1, U8 cl);
 void arithShiftRegCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtFlags* lazyFlags, U32 width, bool regNeedsZeroExtend = false) {
     U8 tmpReg = data->getTmpReg();
     data->andValue32(tmpReg, xECX, 0x1f);
-    data->doIf(tmpReg, 0, DO_IF_EQUAL, nullptr, [data, tmpReg, width, pfn, lazyFlags, regNeedsZeroExtend] {
+    data->doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [data, tmpReg, width, pfn, lazyFlags, regNeedsZeroExtend] {
             U32 flags;
             bool hardwareFlags, usesSrc, usesDst, usesResult;
             bool resultNeedsZeroExtends = true;
             setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
 
-            U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst || regNeedsZeroExtend, xDst, width);
+            U8 readRegDst = setupRegForArith(data, data->currentOp->reg, usesDst || regNeedsZeroExtend, xDst, width);
             if (usesSrc) {
                 data->movRegToReg(xSrc, tmpReg, 32, false);
             }
             if (width == 32 && !usesResult) {
-                pfn(data, readRegDst, readRegDst, tmpReg);
+                pfn(data, data->getNativeReg(data->currentOp->reg), readRegDst, tmpReg);
             } else {
                 pfn(data, xResult, readRegDst, tmpReg);
                 writeResultArithReg(data, usesResult, true, resultNeedsZeroExtends, width);
@@ -985,15 +985,15 @@ void arithShiftMemoryCl(Armv8btAsm* data, shiftRegCl32 pfn, Arm8BtFlags* lazyFla
             data->movRegToReg(xSrc, tmpReg, 32, false);
         }
 
-        U8 memReg = data->getHostMem(addressReg);
+        U8 memReg = data->getHostMem(addressReg, width, true);
         data->addRegs64(addressReg, addressReg, memReg);
         data->releaseHostMem(memReg);
 
         // keep the locked read/write loop as small as possible
         U32 restartPos = data->bufferPos;
-        data->readMemory(addressReg, xDst, width, false, data->decodedOp->lock != 0);
+        data->readMemory(addressReg, xDst, width, false, data->currentOp->lock != 0);
         pfn(data, xResult, xDst, tmpReg);
-        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xDst, restartPos);
+        data->writeMemory(addressReg, xResult, width, false, data->currentOp->lock != 0, xDst, restartPos);
         data->releaseTmpReg(addressReg);
 
         lazyFlags->setFlags(data, flags);

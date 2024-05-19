@@ -1,3 +1,7 @@
+#if 0
+MAKE_DEP_UNIX
+#endif
+
 #include "wineboxed.h"
 #include "wine/debug.h"
 

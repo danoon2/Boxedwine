@@ -26,15 +26,15 @@
 
 class OpenGLVetexPointer {
 public:
-    OpenGLVetexPointer() : size(0), type(0), stride(0), count(0), ptr(0), marshal(NULL), marshal_size(0), refreshEachCall(0) {}
-    U32 size;
-    U32 type;
-    U32 stride;
-    U32 count; // used by marshalEdgeFlagPointerEXT
-    U32 ptr;
-    U8* marshal;
-    U32 marshal_size;
-    U32 refreshEachCall;
+    OpenGLVetexPointer() = default;
+    U32 size = 0;
+    U32 type = 0;
+    U32 stride = 0;
+    U32 count = 0; // used by marshalEdgeFlagPointerEXT
+    U32 ptr = 0;
+    U8* marshal = nullptr;
+    U32 marshal_size = 0;
+    U32 refreshEachCall = 0;
 };
 
 class KProcess;
@@ -42,11 +42,11 @@ class Memory;
 
 class KThreadGlContext {
 public:
-    KThreadGlContext():context(NULL), hasBeenMadeCurrent(false), sharing(false) {}
-    KThreadGlContext(void* context):context(context), hasBeenMadeCurrent(false), sharing(false) {}
-    void* context;
-    bool hasBeenMadeCurrent;
-    bool sharing;
+    KThreadGlContext() = default;
+    KThreadGlContext(void* context):context(context) {}
+    void* context = nullptr;
+    bool hasBeenMadeCurrent = false;
+    bool sharing = false;
 };
 
 class KThread {
@@ -54,69 +54,78 @@ public:
     KThread(U32 id, const std::shared_ptr<KProcess>& process);
     ~KThread();
 
+    void addCallbackOnExit(std::function<void(U32 id)> callback) {callbacksOnExit.push_back(callback);}
+
     void reset();
 
     struct user_desc* getLDT(U32 index);
     bool isLdtEmpty(struct user_desc* desc);
     U32 signal(U32 signal, bool wait);
+    bool readyForSignal(U32 signal);
     void cleanup();
 
     void seg_mapper(U32 address, bool readFault, bool writeFault, bool throwException=true);
     void seg_access(U32 address, bool readFault, bool writeFault, bool throwException=true);
     bool runSignals();
     void runSignal(U32 signal, U32 trapNo, U32 errorNo);
-    void signalIllegalInstruction(int code);    
+    void signalIllegalInstruction(int code);   
+    void signalTrap(U32 code);
     void clone(KThread* from);
     void setupStack();
     void setTLS(struct user_desc* desc);
 
     // syscalls
-    U32 futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3) ;
+    U32 futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, bool time64) ;
     U32 modify_ldt(U32 func, U32 ptr, U32 count);
     U32 signalstack(U32 ss, U32 oss);
     U32 sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize);
     U32 sigreturn();
+    U32 rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig);
     U32 sigsuspend(U32 mask, U32 sigsetSize);
+    U32 sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool time64);
     U32 sleep(U32 ms);
     U32 nanoSleep(U64 nano);
     U32 clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain);
 
-    U32 id;
-    U64 sigMask; // :TODO: what happens when this is changed while in a signal
-    U64 inSigMask;
-    U32 alternateStack;
-    U32 alternateStackSize;
-    CPU* cpu;
-    U32 stackPageStart;
-    U32 stackPageCount;
-    U32 stackPageSize;
+    U32 id = 0;
+    U64 sigMask = 0; // :TODO: what happens when this is changed while in a signal
+    U64 inSigMask = 0;
+    U32 alternateStack = 0;
+    U32 alternateStackSize = 0;
+    CPU* cpu = nullptr;
     std::shared_ptr<KProcess> process;
-    Memory* memory;
-    bool interrupted;
-    U32 inSignal;    
+    KMemory* const memory;
+    bool interrupted = false;
+    U32 inSignal = 0;    
 #ifdef BOXEDWINE_MULTI_THREADED
-    bool exited;	
-    bool startSignal;
+    bool exited = false;	
+    bool startSignal = false;
 #endif
-    bool terminating;
-    U32 clear_child_tid;
-    U64 userTime;
-    U64 kernelTime;
-    U32 inSysCall;
+    bool terminating = false;
+    U32 clear_child_tid = 0;
+    U64 userTime = 0;
+    U64 kernelTime = 0;
+    U32 inSysCall = 0;
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
-    U64 waitingForSignalToEndMaskToRestore;    
-    U64 pendingSignals;
+    BOXEDWINE_CONDITION sigWaitCond;
+    U64 sigWaitMask = 0;
+    U64 foundWaitSignal = 0;
+
+    U64 waitingForSignalToEndMaskToRestore = 0;
+    U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
-    KThreadGlContext* getGlContextById(U32 id);
+    std::shared_ptr<KThreadGlContext> getGlContextById(U32 id);
     void removeGlContextById(U32 id);
     void addGlContext(U32 id, void* context);
     void removeAllGlContexts();
-    bool hasContextBeenMadeCurrentSinceCreation;
+    bool hasContextBeenMadeCurrentSinceCreation = false;
 
-    std::unordered_map<U32, KThreadGlContext> glContext;
+    BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
+    BString name;
 public:
-    void* currentContext;
-    bool log; // syscalls
+    void* currentContext = nullptr;
+    U32 glLastError = 0;
+    bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer;
     OpenGLVetexPointer glNormalPointer;
     OpenGLVetexPointer glFogPointer;
@@ -129,11 +138,12 @@ public:
     OpenGLVetexPointer glEdgeFlagPointer;
     OpenGLVetexPointer glEdgeFlagPointerEXT;
     OpenGLVetexPointer glInterleavedArray;
+    U32 marshalIndex = 0;
 
     inline static KThread* currentThread() {return runningThread;}
-	inline static void setCurrentThread(KThread* thread) { runningThread = thread; if (thread) { thread->memory->onThreadChanged(); } }
+	inline static void setCurrentThread(KThread* thread) { runningThread = thread; }
 
-    BOXEDWINE_CONDITION *waitingCond;    
+    BOXEDWINE_CONDITION waitingCond = nullptr;    
     BOXEDWINE_CONDITION pollCond;
 #ifdef BOXEDWINE_MULTI_THREADED
     BOXEDWINE_MUTEX waitingCondSync;
@@ -144,18 +154,20 @@ public:
     BoxedWineConditionTimer condTimer;
 #endif
 
-    U32 condStartWaitTime;
+    U32 condStartWaitTime = 0;
 private:
+    std::shared_ptr<FsNode> threadNode; // in /proc/<pid>/task/<tid>
+    std::shared_ptr<FsNode> commNode; // in /proc/<pid>/task/<tid>/comm
+
+    std::vector< std::function<void(U32) > > callbacksOnExit;
+
     void clearFutexes();
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    THREAD_LOCAL
-#endif
-    static KThread* runningThread;
+    thread_local static KThread* runningThread;
 
     BOXEDWINE_CONDITION sleepCond;      
 
-    struct user_desc tls[TLS_ENTRIES];
+    struct user_desc tls[TLS_ENTRIES] = {};
     BOXEDWINE_MUTEX tlsMutex;
 
     static BOXEDWINE_MUTEX futexesMutex;

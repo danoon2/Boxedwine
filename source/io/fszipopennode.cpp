@@ -7,7 +7,7 @@
 #include "fszip.h"
 
 
-FsZipOpenNode::FsZipOpenNode(BoxedPtr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset) : FsOpenNode(node, flags), zipNode(zipNode), pos(0), offset(offset) {
+FsZipOpenNode::FsZipOpenNode(std::shared_ptr<FsNode> node, std::shared_ptr<FsZipNode>& zipNode, U32 flags, U64 offset) : FsOpenNode(node, flags), zipNode(zipNode), pos(0), offset(offset) {
 }
 
 S64 FsZipOpenNode::length() {
@@ -39,7 +39,7 @@ bool FsZipOpenNode::isOpen() {
     return true;
 }
 
-U32 FsZipOpenNode::ioctl(U32 request) {
+U32 FsZipOpenNode::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 
@@ -64,7 +64,7 @@ bool FsZipOpenNode::isReadReady() {
     return (this->flags & K_O_ACCMODE)!=K_O_WRONLY;
 }
 
-U32 FsZipOpenNode::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 FsZipOpenNode::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 
@@ -73,13 +73,15 @@ bool FsZipOpenNode::canMap() {
 }
 
 U32 FsZipOpenNode::readNative(U8* buffer, U32 len) {
-    U32 result;
-    BOXEDWINE_CRITICAL_SECTION;
-
-    this->zipNode->fsZip->setupZipRead(this->offset, this->pos);    
-    result = unzReadCurrentFile(this->zipNode->fsZip->zipfile, buffer, len);
-    this->pos+=result;
-    this->zipNode->fsZip->lastZipFileOffset = this->pos;
+    U32 result = 0;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(*getReadMutex());
+    std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+    if (fsZip) {
+        fsZip->setupZipRead(this->offset, this->pos);
+        result = unzReadCurrentFile(fsZip->zipfile, buffer, len);
+        this->pos += result;
+        fsZip->lastZipFileOffset = this->pos;
+    }
     return result;
 }
 
@@ -90,6 +92,14 @@ U32 FsZipOpenNode::writeNative(U8* buffer, U32 len) {
 
 void FsZipOpenNode::reopen() {
     this->pos = 0;
+}
+
+BOXEDWINE_MUTEX* FsZipOpenNode::getReadMutex() {
+    std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+    if (fsZip) {
+        return &fsZip->readMutex;
+    }
+    return nullptr;
 }
 
 #endif

@@ -25,8 +25,8 @@ class FsOpenNode;
 
 class ElfLoader {
 public:
-    static bool loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode* openNode, U32* eip);
-    static FsOpenNode* inspectNode(BString currentDirectory, const BoxedPtr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs);
+    static bool loadProgram(KThread* thread, FsOpenNode* openNode, U32* eip);
+    static FsOpenNode* inspectNode(BString currentDirectory, const std::shared_ptr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs);
     static int getMemSizeOfElf(FsOpenNode* openNode);
     static U32 getPELoadAddress(FsOpenNode* FsopenNode, U32* section, U32* numberOfSections, U32* sizeOfSection);
 

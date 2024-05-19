@@ -29,13 +29,14 @@
 
 class SdlBoxedwineGL : public BoxedwineGL {
 public:
-    virtual void deleteContext(void* context);
-    virtual bool makeCurrent(void* context, void* window);
-    virtual BString getLastError();
-    virtual void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile);
-    virtual void swapBuffer(void* window);
-    virtual void setSwapInterval(U32 vsync);
-    virtual bool shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window);
+    // from BoxedwineGL
+    void deleteContext(void* context) override;
+    bool makeCurrent(void* context, void* window) override;
+    BString getLastError() override;
+    void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) override;
+    void swapBuffer(void* window) override;
+    void setSwapInterval(U32 vsync) override;
+    bool shareList(const std::shared_ptr<KThreadGlContext>& src, const std::shared_ptr<KThreadGlContext>& dst, void* window) override;
 };
 
 void SdlBoxedwineGL::deleteContext(void* context) {
@@ -72,7 +73,7 @@ void SdlBoxedwineGL::setSwapInterval(U32 vsync) {
     }
 }
 
-bool SdlBoxedwineGL::shareList(KThreadGlContext* src, KThreadGlContext* dst, void* window) {
+bool SdlBoxedwineGL::shareList(const std::shared_ptr<KThreadGlContext>& src, const std::shared_ptr<KThreadGlContext>& dst, void* window) {
     if (src && dst) {
         if (dst->hasBeenMadeCurrent) {
             klog("could not share display lists, the destination context has been current already");
@@ -139,9 +140,6 @@ void sdl_glFlush(CPU* cpu) {
     glFlush();	
 }
 
-void fbSetupScreenForOpenGL(int width, int height, int depth);
-void fbSetupScreen();
-
 // GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis, GLXContext share_list, Bool direct)
 void sdl_glXCreateContext(CPU* cpu) {
     U32 doubleBuffered = ARG6;
@@ -182,9 +180,6 @@ void sdl_glXMakeCurrent(CPU* cpu) {
 
     if (ARG2) {
         loadSdlExtensions();
-        fbSetupScreenForOpenGL(ARG2, ARG3, ARG4);
-    } else {
-        fbSetupScreen();
     }
 }
 

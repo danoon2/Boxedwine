@@ -18,13 +18,13 @@
 #include "boxedwine.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
-static KList<KTimer*> timers;
+static KList<KTimerCallback*> timers;
 static BOXEDWINE_MUTEX timerMutex;
 void runTimers() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
     U32 millies = KSystem::getMilliesSinceStart();
-    timers.for_each([millies](KListNode<KTimer*>* node) {
-        KTimer* timer = node->data;
+    timers.for_each([millies](KListNode<KTimerCallback*>* node) {
+        KTimerCallback* timer = node->data;
 
         if (timer->millies <= millies) {
             if (timer->run()) {
@@ -39,9 +39,10 @@ U32 getNextTimer() {
     U32 millies = KSystem::getMilliesSinceStart();
     U32 result = 0xFFFFFFFF;
 
-    timers.for_each([millies, &result](KListNode<KTimer*>* node) {
-        KTimer* timer = node->data;
-        U32 next;
+    timers.for_each([millies, &result](KListNode<KTimerCallback*>* node) {
+        KTimerCallback* timer = node->data;
+        U32 next = 0;
+
         if (timer->millies <= millies) {
             next = 0;
         }
@@ -55,19 +56,18 @@ U32 getNextTimer() {
     return result;
 }
 
-void addTimer(KTimer* timer) {
+void addTimer(KTimerCallback* timer) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
     timers.addToBack(&timer->node);
     timer->active = true;
 }
 
-void removeTimer(KTimer* timer) {
+void removeTimer(KTimerCallback* timer) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(timerMutex);
     timer->node.remove();
     timer->active = false;
 }
 #else
-#include "devfb.h"
 #include "kscheduler.h"
 #include "knativewindow.h"
 
@@ -77,14 +77,14 @@ void removeTimer(KTimer* timer) {
 
 KList<KThread*> scheduledThreads;
 KList<KThread*> waitThreads;
-KList<KTimer*> timers;
+KList<KTimerCallback*> timers;
 
-void addTimer(KTimer* timer) {
+void addTimer(KTimerCallback* timer) {
     timers.addToBack(&timer->node);
     timer->active = true;
 }
 
-void removeTimer(KTimer* timer) {
+void removeTimer(KTimerCallback* timer) {
     timer->node.remove();
     timer->active = false;
 }
@@ -132,26 +132,21 @@ void runThreadSlice(KThread* thread) {
     cpu->blockInstructionCount = 0;
     cpu->yield = false;
     cpu->nextBlock = cpu->getNextBlock(); // another thread that just ran could have modified this
-#ifdef BOXEDWINE_HAS_SETJMP
-    if (setjmp(cpu->runBlockJump)==0) {
-#endif
+    try {
         do {
             cpu->run();
-        } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);	
-
-#ifdef BOXEDWINE_HAS_SETJMP
-    } else {
-        cpu->nextBlock = NULL;
+        } while ((int)cpu->blockInstructionCount < contextTimeRemaining && !cpu->yield);
+    } catch (...) {
+        cpu->nextBlock = nullptr;
     }
-#endif
 
     cpu->instructionCount+=cpu->blockInstructionCount;
 }
 
 void runTimers() {
     U32 millies = KSystem::getMilliesSinceStart();
-    timers.for_each([millies] (KListNode<KTimer*>* node) {
-        KTimer* timer = node->data;
+    timers.for_each([millies] (KListNode<KTimerCallback*>* node) {
+        KTimerCallback* timer = node->data;
 
         if (timer->millies<=millies) {
             if (timer->run()) {                
@@ -171,7 +166,6 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
-    flipFB();
     std::shared_ptr<KNativeWindow> window = KNativeWindow::getNativeWindow();
     if (window) {
         window->flipFB();
@@ -189,7 +183,7 @@ bool runSlice() {
         ChangeThread c(currentThread);
         static U64 rdtsc;
         currentThread->cpu->instructionCount = rdtsc;
-        platformRunThreadSlice(currentThread);
+        runThreadSlice(currentThread);
         rdtsc = currentThread->cpu->instructionCount;
 
         U64 threadEndTime = KSystem::getMicroCounter();
@@ -240,7 +234,7 @@ U32 getMIPS() {
 
 void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread) {
     while (!process->terminated) {
-        platformRunThreadSlice(thread);
+        runThreadSlice(thread);
     }
 }
 #endif

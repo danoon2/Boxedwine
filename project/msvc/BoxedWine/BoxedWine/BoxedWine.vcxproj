@@ -45,53 +45,53 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>NotSet</CharacterSet>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -123,68 +123,91 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
-    <CodeAnalysisRuleSet>NativeRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl1\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl1\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86)</LibraryPath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>..\..\..\..\lib\fluidsynth\src\midi;..\..\..\..\lib\fluidsynth\src\bindings;..\..\..\..\lib\fluidsynth\src\drivers;..\..\..\..\lib\fluidsynth\src\rvoice;..\..\..\..\lib\fluidsynth\src\sfloader;..\..\..\..\lib\fluidsynth\src\synth;..\..\..\..\lib\fluidsynth\src\utils;..\..\..\..\lib\fluidsynth\include;..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
+    <IncludePath>$(VC_IncludePath);..\..\..\..\lib\sdl2\include;$(WindowsSDK_IncludePath)</IncludePath>
     <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <CodeAnalysisRuleSet>BoxedWine1.ruleset</CodeAnalysisRuleSet>
+    <EnableClangTidyCodeAnalysis>false</EnableClangTidyCodeAnalysis>
+    <ExternalIncludePath>..\..\..\..\lib\zlib\contrib\minizip;..\..\..\..\lib\zlib;..\..\..\..\lib\imgui;..\..\..\..\lib\pugixml\src;..\..\..\..\lib\simde;..\..\..\..\lib\glew\include;$(VC_IncludePath);$(WindowsSDK_IncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <PreprocessorDefinitions>BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <BufferSecurityCheck>true</BufferSecurityCheck>
-      <EnablePREfast>true</EnablePREfast>
-      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC</UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <EnablePREfast>false</EnablePREfast>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;</UndefinePreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -198,22 +221,24 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_ZLIB;__TEST;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_ZLIB;__TEST;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;_NO_DEBUG_HEAP=0;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <UndefinePreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;</UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <UndefinePreprocessorDefinitions>
+      </UndefinePreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Imm32.lib;Winmm.lib;Version.lib;Setupapi.lib;opengl32.lib;..\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Imm32.lib;Winmm.lib;Version.lib;Setupapi.lib;opengl32.lib;..\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Debug\sdl2.lib;..\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -227,25 +252,25 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_64BIT_MMU;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;opengl32.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;opengl32.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -259,23 +284,25 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;BOXEDWINE_64BIT_MMU;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64;BOXEDWINE_MSVC;BOXEDWINE_ZLIB;__TEST;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;Imm32.lib;Winmm.lib;opengl32.lib;..\x64\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;Imm32.lib;Winmm.lib;opengl32.lib;..\x64\Test\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -291,17 +318,17 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <EnablePREfast>false</EnablePREfast>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -309,7 +336,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Release\sdl2.lib;..\Release\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\Release\sdl2.lib;..\Release\SDL2main.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -326,15 +353,16 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -342,7 +370,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl.lib;SDLmain.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;winmm.lib;opengl32.lib;..\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl.lib;SDLmain.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -357,16 +385,16 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_64BIT_MMU;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -374,7 +402,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Release\sdl2.lib;..\x64\Release\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Release\sdl2.lib;..\x64\Release\SDL2main.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -390,15 +418,16 @@
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_64;BOXEDWINE_ZLIB;SDL2;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;BOXEDWINE_VM;BOXEDWINE_64BIT_MMU;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..\..\..\..\lib\soloud\include;..\..\..\..\include;..\..\..\..\lib\glew\include;..\..\..\..\lib\imgui;..\..\..\..\lib\poco\Net\include;..\..\..\..\lib\poco\Foundation\include;..\..\..\..\lib\poco\NetSSL_Win\include;;..\..\..\..\lib\poco\Util\include</AdditionalIncludeDirectories>
-      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
       </UndefinePreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableAnalyzeExternal>true</DisableAnalyzeExternal>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -406,7 +435,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;opengl32.lib;..\x64\Release\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);sdl2.lib;SDL2main.lib</AdditionalDependencies>
       <Profile>true</Profile>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -433,14 +462,17 @@
     <ClInclude Include="..\..\..\..\include\kdspaudio.h" />
     <ClInclude Include="..\..\..\..\include\kepoll.h" />
     <ClInclude Include="..\..\..\..\include\kerror.h" />
+    <ClInclude Include="..\..\..\..\include\kevent.h" />
     <ClInclude Include="..\..\..\..\include\kfile.h" />
     <ClInclude Include="..\..\..\..\include\kfiledescriptor.h" />
     <ClInclude Include="..\..\..\..\include\kfilelock.h" />
+    <ClInclude Include="..\..\..\..\include\kmemory.h" />
     <ClInclude Include="..\..\..\..\include\knativeaudio.h" />
     <ClInclude Include="..\..\..\..\include\knativesocket.h" />
     <ClInclude Include="..\..\..\..\include\knativesystem.h" />
     <ClInclude Include="..\..\..\..\include\knativethread.h" />
     <ClInclude Include="..\..\..\..\include\knativewindow.h" />
+    <ClInclude Include="..\..\..\..\include\knetlink.h" />
     <ClInclude Include="..\..\..\..\include\kobject.h" />
     <ClInclude Include="..\..\..\..\include\kpoll.h" />
     <ClInclude Include="..\..\..\..\include\kprocess.h" />
@@ -453,14 +485,15 @@
     <ClInclude Include="..\..\..\..\include\ksystem.h" />
     <ClInclude Include="..\..\..\..\include\kthread.h" />
     <ClInclude Include="..\..\..\..\include\ktimer.h" />
+    <ClInclude Include="..\..\..\..\include\ktimercallback.h" />
     <ClInclude Include="..\..\..\..\include\kunixsocket.h" />
     <ClInclude Include="..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\include\meminfo.h" />
-    <ClInclude Include="..\..\..\..\include\memory.h" />
     <ClInclude Include="..\..\..\..\include\mixer.h" />
     <ClInclude Include="..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\include\player.h" />
+    <ClInclude Include="..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\include\recorder.h" />
     <ClInclude Include="..\..\..\..\include\reg.h" />
     <ClInclude Include="..\..\..\..\include\syscpuscalingcurfreq.h" />
@@ -488,9 +521,9 @@
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_arith.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_bit.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_fpu.h" />
@@ -520,6 +553,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_func.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_incdec.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_jump.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_mmx.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_mov.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_other.h" />
@@ -556,15 +590,13 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\hardmmu\hard_memory.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_file_map.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_memory.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_native_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ram.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.h" />
@@ -632,13 +664,15 @@
     <ClInclude Include="..\..\..\..\source\ui\utils\readIcons.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h" />
-    <ClInclude Include="..\..\..\..\source\util\boxedptr.h" />
+    <ClInclude Include="..\..\..\..\source\util\bfile.h" />
+    <ClInclude Include="..\..\..\..\source\util\bhashtable.h" />
     <ClInclude Include="..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\source\util\fileutils.h" />
     <ClInclude Include="..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\source\util\networkutils.h" />
+    <ClInclude Include="..\..\..\..\source\util\ptrpool.h" />
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\source\util\threadutils.h" />
@@ -769,14 +803,13 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativewindow.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp" />
-    <ClCompile Include="..\..\..\..\platform\windows\memory64.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -801,15 +834,13 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\hardmmu\hard_memory.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_memory.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_native_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ram.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp" />
@@ -837,11 +868,13 @@
     <ClCompile Include="..\..\..\..\source\kernel\devs\devurandom.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\devs\devzero.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kepoll.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\kevent.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kfile.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kfiledescriptor.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kfilelock.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kmemory.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\knativesocket.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\knetlink.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kobject.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kpoll.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\kprocess.cpp" />
@@ -857,6 +890,7 @@
     <ClCompile Include="..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\meminfo.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\proc\procstat.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\proc\uptime.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\syscall.cpp" />
@@ -864,6 +898,13 @@
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpuonline.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpuscalingcurfreq.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\sys\cpuscalingmaxfreq.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysbus.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysbususb.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysdev.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysdevices.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysfb.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysfs.cpp" />
+    <ClCompile Include="..\..\..\..\source\kernel\sys\sysmouse.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\boxedwineGL.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glcommon.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glext.cpp" />
@@ -1057,6 +1098,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\bfile.cpp" />
     <ClCompile Include="..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\source\util\crc.cpp" />
     <ClCompile Include="..\..\..\..\source\util\fileutils.cpp" />
@@ -1081,6 +1123,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="BoxedWine.ruleset" />
+    <None Include="BoxedWine1.ruleset" />
     <None Include="ClassDiagram.cd" />
   </ItemGroup>
   <ItemGroup>

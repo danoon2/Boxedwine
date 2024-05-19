@@ -11,7 +11,7 @@ void BoxedTexture::resetAll() {
 	}
 }
 
-BoxedTexture::BoxedTexture(std::function<void* ()> loadTexture) : texture(NULL), loadTexture(loadTexture) {
+BoxedTexture::BoxedTexture(std::function<void* ()> loadTexture) : texture(nullptr), loadTexture(loadTexture) {
 	textures.insert(this);
 }
 
@@ -30,6 +30,6 @@ void* BoxedTexture::getTexture() {
 void BoxedTexture::unload() {
 	if (texture) {
 		UnloadTexture(texture);
-		texture = NULL;
+		texture = nullptr;
 	}
 }

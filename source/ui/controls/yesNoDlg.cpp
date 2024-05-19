@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
 
-YesNoDlg::YesNoDlg(int title, BString label, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 150, GlobalSettings::mediumFont), label(label), onCompleted(onCompleted) {
+YesNoDlg::YesNoDlg(Msg title, BString label, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 150, GlobalSettings::mediumFont), label(label), onCompleted(onCompleted) {
 }
 
 void YesNoDlg::run() {
@@ -16,12 +16,12 @@ void YesNoDlg::run() {
     ImGui::SetCursorPosY(this->height - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
     ImGui::Separator();    
     ImGui::SetCursorPosX(ImGui::GetStyle().ItemSpacing.y);
-    if (ImGui::Button(c_getTranslation(GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
+    if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_YES), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
         this->onCompleted(true);
         this->done();
     }
     ImGui::SameLine();
-    if (ImGui::Button(c_getTranslation(GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
+    if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_NO), ImVec2(GlobalSettings::scaleFloatUIAndFont(120.0f), 0))) {
         this->onCompleted(false);
         this->done();
     }

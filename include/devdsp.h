@@ -19,6 +19,6 @@
 #ifndef __DEVDSP_H__
 #define __DEVDSP_H__
 
-FsOpenNode* openDevDsp(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevDsp(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 void dspShutdown();
 #endif

@@ -55,7 +55,7 @@ static U8 getBitAddress16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
 
     // address += (((S16)cpu->reg[reg].u16) >> 4) * 2;
-    data->signExtend(tmpReg, data->decodedOp->reg, 16);
+    data->signExtend(tmpReg, data->currentOp->reg, 16);
     data->shiftSignedRegRightWithValue32(tmpReg, tmpReg, 4);
     data->addRegs32(addressReg, addressReg, tmpReg, 1);
     data->releaseTmpReg(tmpReg);
@@ -67,20 +67,20 @@ static U8 getBitAddress32(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
 
     // address += (((S32)cpu->reg[reg].u32) >> 5) * 4;
-    data->shiftSignedRegRightWithValue32(tmpReg, data->decodedOp->reg, 5);
+    data->shiftSignedRegRightWithValue32(tmpReg, data->currentOp->reg, 5);
     data->addRegs32(addressReg, addressReg, tmpReg, 2);
     data->releaseTmpReg(tmpReg);
     return addressReg;
 }
 
 void doBitTestReg16(Armv8btAsm* data, std::function<void(U8 dstReg, U8 srcReg, U8 maskReg)> done) {
-    doBitTest16(data, data->getNativeReg(data->decodedOp->rm), data->getNativeReg(data->decodedOp->reg), done!=nullptr, [data, done](U8 mask) {
+    doBitTest16(data, data->getNativeReg(data->currentOp->rm), data->getNativeReg(data->currentOp->reg), done!=nullptr, [data, done](U8 mask) {
         U8 tmpReg = data->getTmpReg();
         // :TODO: why isn't there an instruction that can set a single bit?
         data->loadConst(tmpReg, 1);
         data->shiftRegLeftWithReg32(tmpReg, tmpReg, mask);
-        done(tmpReg, data->getNativeReg(data->decodedOp->reg), tmpReg);
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
+        done(tmpReg, data->getNativeReg(data->currentOp->reg), tmpReg);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
         data->releaseTmpReg(tmpReg);
         });
 }
@@ -89,14 +89,14 @@ void doBitTestMemory16(Armv8btAsm* data, std::function<void(U8 dstReg, U8 srcReg
     U8 addressReg = getBitAddress16(data);
     U8 originalValueReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 16, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, originalValueReg, 16, false, data->decodedOp->lock != 0);
-    doBitTest16(data, data->getNativeReg(data->decodedOp->reg), originalValueReg, done!=nullptr, [done, originalValueReg, addressReg, restartPos, data](U8 mask) {
+    data->readMemory(addressReg, originalValueReg, 16, false, data->currentOp->lock != 0);
+    doBitTest16(data, data->getNativeReg(data->currentOp->reg), originalValueReg, done!=nullptr, [done, originalValueReg, addressReg, restartPos, data](U8 mask) {
         U8 tmpReg = data->getTmpReg();
 
         // :TODO: why isn't there an instruction that can set a single bit?
@@ -104,7 +104,7 @@ void doBitTestMemory16(Armv8btAsm* data, std::function<void(U8 dstReg, U8 srcReg
         data->shiftRegLeftWithReg32(tmpReg, tmpReg, mask);
         done(tmpReg, originalValueReg, tmpReg);
 
-        data->writeMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0, originalValueReg, restartPos);
+        data->writeMemory(addressReg, tmpReg, 16, false, data->currentOp->lock != 0, originalValueReg, restartPos);
         data->releaseTmpReg(tmpReg);
         });
     data->releaseTmpReg(originalValueReg);
@@ -112,13 +112,13 @@ void doBitTestMemory16(Armv8btAsm* data, std::function<void(U8 dstReg, U8 srcReg
 }
 
 void doBitTestReg32(Armv8btAsm* data, std::function<void(U8 dstReg, U8 srcReg, U8 maskReg)> done) {
-    doBitTest32(data, data->getNativeReg(data->decodedOp->rm), data->getNativeReg(data->decodedOp->reg), done != nullptr, [data, done](U8 mask) {
+    doBitTest32(data, data->getNativeReg(data->currentOp->rm), data->getNativeReg(data->currentOp->reg), done != nullptr, [data, done](U8 mask) {
         // cpu->reg[reg].u32 |= mask;
         U8 tmpReg = data->getTmpReg();
         // :TODO: why isn't there an instruction that can set a single bit?
         data->loadConst(tmpReg, 1);
         data->shiftRegLeftWithReg32(tmpReg, tmpReg, mask);
-        done(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), tmpReg);
+        done(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), tmpReg);
         data->releaseTmpReg(tmpReg);
         });
 }
@@ -127,14 +127,14 @@ void doBitTestMemory32(Armv8btAsm* data, std::function<void(U8 dstReg, U8 srcReg
     U8 addressReg = getBitAddress32(data);
     U8 originalValueReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 32, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
 
-    data->readMemory(addressReg, originalValueReg, 32, false, data->decodedOp->lock != 0);
-    doBitTest32(data, data->getNativeReg(data->decodedOp->reg), originalValueReg, done != nullptr, [done, originalValueReg, addressReg, restartPos, data](U8 mask) {
+    data->readMemory(addressReg, originalValueReg, 32, false, data->currentOp->lock != 0);
+    doBitTest32(data, data->getNativeReg(data->currentOp->reg), originalValueReg, done != nullptr, [done, originalValueReg, addressReg, restartPos, data](U8 mask) {
         // writed(address, value | mask);
         U8 tmpReg = data->getTmpReg();
 
@@ -143,7 +143,7 @@ void doBitTestMemory32(Armv8btAsm* data, std::function<void(U8 dstReg, U8 srcReg
         data->shiftRegLeftWithReg32(tmpReg, tmpReg, mask);
         done(tmpReg, originalValueReg, tmpReg);
 
-        data->writeMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0, originalValueReg, restartPos);
+        data->writeMemory(addressReg, tmpReg, 32, false, data->currentOp->lock != 0, originalValueReg, restartPos);
         data->releaseTmpReg(tmpReg);
         });
     data->releaseTmpReg(originalValueReg);
@@ -212,7 +212,7 @@ static void doBsf16(Armv8btAsm* data, U8 valueReg) {
             data->andValue32(xFLAGS, xFLAGS, ~ZF);
             data->reverseBits32(valueReg, valueReg);
             data->clz32(valueReg, valueReg);
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), valueReg, 16, false);
+            data->movRegToReg(data->getNativeReg(data->currentOp->reg), valueReg, 16, false);
         });
 }
 
@@ -223,7 +223,7 @@ static void doBsf32(Armv8btAsm* data, U8 valueReg) {
             data->andValue32(xFLAGS, xFLAGS, ~ZF);
             U8 tmpReg = data->getTmpReg();
             data->reverseBits32(tmpReg, valueReg);
-            data->clz32(data->getNativeReg(data->decodedOp->reg), tmpReg);
+            data->clz32(data->getNativeReg(data->currentOp->reg), tmpReg);
             data->releaseTmpReg(tmpReg);
         });
 }
@@ -240,7 +240,7 @@ void opBsfR16R16(Armv8btAsm* data) {
     //     cpu->reg[dstReg].u16 = result;
     // }
     U8 tmpReg = data->getTmpReg();
-    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->rm), 16, true);
+    data->movRegToReg(tmpReg, data->getNativeReg(data->currentOp->rm), 16, true);
     doBsf16(data, tmpReg);  
     data->releaseTmpReg(tmpReg);
 }
@@ -253,7 +253,7 @@ void opBsfR16E16(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg);
 }
 void opBsfR32R32(Armv8btAsm* data) {
-    doBsf32(data, data->getNativeReg(data->decodedOp->rm));
+    doBsf32(data, data->getNativeReg(data->currentOp->rm));
 }
 void opBsfR32E32(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
@@ -272,7 +272,7 @@ static void doBsr16(Armv8btAsm* data, U8 valueReg) {
             data->clz32(valueReg, valueReg); // value reg is already in upper 16-bits
             data->subValue32(valueReg, valueReg, 15);
             data->subRegs32(valueReg, 31, valueReg); // 0 - valueReg
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), valueReg, 16, false);
+            data->movRegToReg(data->getNativeReg(data->currentOp->reg), valueReg, 16, false);
         });
 }
 
@@ -281,15 +281,15 @@ static void doBsr32(Armv8btAsm* data, U8 valueReg) {
         data->orValue32(xFLAGS, xFLAGS, ZF);
         }, [data, valueReg] {
             data->andValue32(xFLAGS, xFLAGS, ~ZF);
-            data->clz32(data->getNativeReg(data->decodedOp->reg), valueReg);
-            data->subValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), 31);
-            data->subRegs32(data->getNativeReg(data->decodedOp->reg), 31, data->getNativeReg(data->decodedOp->reg)); // 0 - reg
+            data->clz32(data->getNativeReg(data->currentOp->reg), valueReg);
+            data->subValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), 31);
+            data->subRegs32(data->getNativeReg(data->currentOp->reg), 31, data->getNativeReg(data->currentOp->reg)); // 0 - reg
         });
 }
 
 void opBsrR16R16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->shiftRegLeftWithValue32(tmpReg, data->getNativeReg(data->decodedOp->rm), 16);
+    data->shiftRegLeftWithValue32(tmpReg, data->getNativeReg(data->currentOp->rm), 16);
     doBsr16(data, tmpReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -303,7 +303,7 @@ void opBsrR16E16(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg);
 }
 void opBsrR32R32(Armv8btAsm* data) {
-    doBsr32(data, data->getNativeReg(data->decodedOp->rm));
+    doBsr32(data, data->getNativeReg(data->currentOp->rm));
 }
 void opBsrR32E32(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
@@ -335,7 +335,7 @@ void opBtcE32R32(Armv8btAsm* data) {
 }
 
 void doBitTest(Armv8btAsm* data, U8 valueReg) {
-    data->copyBitsFromSourceAtPositionToDest(xFLAGS, valueReg, data->decodedOp->extra, 1);
+    data->copyBitsFromSourceAtPositionToDest(xFLAGS, valueReg, data->currentOp->extra, 1);
 }
 
 void doBitMemoryTest(Armv8btAsm* data, U32 width, std::function<void(U8 dst, U8 src)> action) {
@@ -343,14 +343,14 @@ void doBitMemoryTest(Armv8btAsm* data, U32 width, std::function<void(U8 dst, U8 
     U8 originalValueReg = data->getTmpReg();
     U8 valueReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, width, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, originalValueReg, width, false, data->decodedOp->lock);
+    data->readMemory(addressReg, originalValueReg, width, false, data->currentOp->lock);
     action(valueReg, originalValueReg);
-    data->writeMemory(addressReg, valueReg, width, false, data->decodedOp->lock != 0, originalValueReg, restartPos);
+    data->writeMemory(addressReg, valueReg, width, false, data->currentOp->lock != 0, originalValueReg, restartPos);
     data->releaseTmpReg(addressReg);
     doBitTest(data, originalValueReg);
     data->releaseTmpReg(valueReg);
@@ -360,7 +360,7 @@ void doBitMemoryTest(Armv8btAsm* data, U32 width, std::function<void(U8 dst, U8 
 void opBtR16(Armv8btAsm* data) {
     // cpu->fillFlagsNoCF();
     // cpu->setCF(cpu->reg[reg].u16 & mask);
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
 }
 void opBtE16(Armv8btAsm* data) {
     // cpu->fillFlagsNoCF();
@@ -377,8 +377,8 @@ void opBtsR16(Armv8btAsm* data) {
     // cpu->fillFlagsNoCF();
     // cpu->setCF(cpu->reg[reg].u16 & mask);
     // cpu->reg[reg].u16 |= mask;
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
-    data->orValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), data->decodedOp->imm);
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
+    data->orValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), data->currentOp->imm);
 }
 void opBtsE16(Armv8btAsm* data) {
     // cpu->fillFlagsNoCF();
@@ -386,30 +386,30 @@ void opBtsE16(Armv8btAsm* data) {
     // cpu->setCF(value & mask);
     // writew(address, value | mask);
     doBitMemoryTest(data, 16, [data](U8 dst, U8 src) {
-        data->orValue32(dst, src, data->decodedOp->imm);
+        data->orValue32(dst, src, data->currentOp->imm);
         });
 }
 void opBtrR16(Armv8btAsm* data) {
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
-    data->andValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), ~data->decodedOp->imm);
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
+    data->andValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), ~data->currentOp->imm);
 }
 void opBtrE16(Armv8btAsm* data) {
     doBitMemoryTest(data, 16, [data](U8 dst, U8 src) {
-        data->andValue32(dst, src, ~data->decodedOp->imm);
+        data->andValue32(dst, src, ~data->currentOp->imm);
         });
 }
 void opBtcR16(Armv8btAsm* data) {
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
-    data->xorValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), data->decodedOp->imm);
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
+    data->xorValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), data->currentOp->imm);
 }
 void opBtcE16(Armv8btAsm* data) {
     doBitMemoryTest(data, 16, [data](U8 dst, U8 src) {
-        data->xorValue32(dst, src, data->decodedOp->imm);
+        data->xorValue32(dst, src, data->currentOp->imm);
         });
 }
 
 void opBtR32(Armv8btAsm* data) {
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
 }
 void opBtE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
@@ -420,30 +420,30 @@ void opBtE32(Armv8btAsm* data) {
     data->releaseTmpReg(valueReg);
 }
 void opBtsR32(Armv8btAsm* data) {
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
-    data->orValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), data->decodedOp->imm);
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
+    data->orValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), data->currentOp->imm);
 }
 void opBtsE32(Armv8btAsm* data) {
     doBitMemoryTest(data, 32, [data](U8 dst, U8 src) {
-        data->orValue32(dst, src, data->decodedOp->imm);
+        data->orValue32(dst, src, data->currentOp->imm);
         });
 }
 void opBtrR32(Armv8btAsm* data) {
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
-    data->andValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), ~data->decodedOp->imm);
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
+    data->andValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), ~data->currentOp->imm);
 }
 void opBtrE32(Armv8btAsm* data) {
     doBitMemoryTest(data, 32, [data](U8 dst, U8 src) {
-        data->andValue32(dst, src, ~data->decodedOp->imm);
+        data->andValue32(dst, src, ~data->currentOp->imm);
         });
 }
 void opBtcR32(Armv8btAsm* data) {
-    doBitTest(data, data->getNativeReg(data->decodedOp->reg));
-    data->xorValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), data->decodedOp->imm);
+    doBitTest(data, data->getNativeReg(data->currentOp->reg));
+    data->xorValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), data->currentOp->imm);
 }
 void opBtcE32(Armv8btAsm* data) {
     doBitMemoryTest(data, 32, [data](U8 dst, U8 src) {
-        data->xorValue32(dst, src, data->decodedOp->imm);
+        data->xorValue32(dst, src, data->currentOp->imm);
         });
 }
 

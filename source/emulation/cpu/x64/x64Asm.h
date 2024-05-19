@@ -26,11 +26,7 @@
 #define CPU_OFFSET_FS (U32)(offsetof(CPU, seg[FS].value))
 #define CPU_OFFSET_GS (U32)(offsetof(CPU, seg[GS].value))
 
-#define CPU_OFFSET_MEM (U32)(offsetof(x64CPU, memOffset))
-#define CPU_OFFSET_NEG_MEM (U32)(offsetof(x64CPU, negMemOffset))
 #define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, eipToHostInstructionPages))
-#define CPU_OFFSET_EIP_HOST_MAPPING (U32)(offsetof(x64CPU, eipToHostInstructionAddressSpaceMapping))
-
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
@@ -43,15 +39,23 @@ typedef void (*PFN_FPU)(CPU* cpu);
 class X64Asm : public X64Data {
 public:  
     X64Asm(x64CPU* cpu);
-    virtual void translateInstruction();
+
+    // from BtData
+    void translateInstruction() override;
+    void reset() override;
+    void jumpTo(U32 eip) override;
 
     void translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress = true);
     void writeOp(bool isG8bit=false);
-    void addDynamicCheck(bool panic);
+    void createCodeForDoSingleOp();
+    void fpuRead(U8 rm, U32 len);
+    void fpuWrite(U8 rm, U32 len);
 	void saveNativeState();
 	void restoreNativeState();
     void createCodeForRetranslateChunk(bool includeSetupFromR9=false);
     void createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9 = false);
+    void createCodeForSyncToHost();
+    void createCodeForSyncFromHost();    
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
     void createCodeForRunSignal();
@@ -96,8 +100,7 @@ public:
     void jcxz(U32 eip, bool ea16);
     void loop(U32 eip, bool ea16);
     void loopz(U32 eip, bool ea16);
-    void loopnz(U32 eip, bool ea16);
-    virtual void jumpTo(U32 eip);
+    void loopnz(U32 eip, bool ea16);    
     void jmp(bool big, U32 sel, U32 offset, U32 oldEip);
     void call(bool big, U32 sel, U32 offset, U32 oldEip);
     void retn16(U32 bytes);
@@ -105,6 +108,7 @@ public:
     void retf(U32 big, U32 bytes);
     void iret(U32 big, U32 oldEip);
     void signalIllegalInstruction(int code);
+    void signalTrap(int code);
     void syscall(U32 opLen);
     void int98(U32 opLen);
     void int99(U32 opLen);
@@ -112,14 +116,13 @@ public:
     void writeToEFromCpuOffset(U8 rm, U32 offset, U8 fromBytes, U8 toBytes);    
     void writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes);
     void writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes);
-    void writeToMemFromValue(U64 value, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost);
+    void writeToMemFromValue(U64 value, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool canUseReg2AsTmp = false, bool skipAlignmentCheck = false);
     void setSeg(U8 seg, U8 rm);
     void loadSeg(U8 seg, U8 rm, bool b32);
     void writeXchgEspEax();
     void writeXchgSpAx();
     void bswapEsp();
     void bswapSp();
-    void string32(bool hasSi, bool hasDi);
     void writeToRegFromValue(U8 reg, bool isRexReg, U64 value, U8 bytes);
     void enter(bool big, U32 bytes, U32 level);
     void leave(bool big);
@@ -148,11 +151,6 @@ public:
     bool param2InUse;
     bool param3InUse;
     bool param4InUse;
-    void stos(void* pfn, U32 size, bool repeat);
-    void scas(void* pfn, U32 size, bool repeat, bool repeatZero);
-    void movs(void* pfn, U32 size, bool repeat, U32 base);
-    void lods(void* pfn, U32 size, bool repeat, U32 base);
-    void cmps(void* pfn, U32 size, bool repeat, bool repeatZero, U32 base);
     void doJmp(bool mightNeedCS);
     void bound32(U8 rm);
     void bound16(U8 rm);
@@ -169,6 +167,7 @@ public:
     void fpu7(U8 rm);
 
     void DsEdiMmxOrSSE(U8 rm);
+    void emulateSingleOp(DecodedOp* op, bool isDynamic = false);
 #ifdef __TEST
     void addReturnFromTest();
 #endif
@@ -181,8 +180,6 @@ private:
     void unlockParamReg(U8 paramReg, bool paramRex);
     U8 getParamSafeTmpReg();
 
-    void internal_addDynamicCheck(U32 address, U32 len, U32 needsFlags, bool useCall, U8 tmpReg3);
-
     void push(S32 reg, bool isRegRex, U32 value, S32 bytes);
     void pushNativeReg(U8 reg, bool isRegRex);
     void pushNativeValue32(U32 value);
@@ -190,52 +187,58 @@ private:
     void popNativeReg(U8 reg, bool isRegRex);
     void orRegReg(U8 dst, bool isDstRex, U8 src, bool isSrcRex);
     void andWriteToRegFromCPU(U8 reg, bool isRegRex, U32 offset);
-    void writeToMemFromReg(U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost);    
-    void writeToRegFromMem(U8 toReg, bool isToRegRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost);    
+    void writeToMemFromReg(U8 src, bool isSrcRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck = false, bool releaseReg3 = false);
+    void writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck = false, bool releaseReg3 = false);
     void writeToRegFromReg(U8 toReg, bool isToReg1Rex, U8 fromReg, bool isFromRegRex, U8 bytes);    
     void popReg(U8 reg, bool isRegRex, S8 bytes, bool commit);
     void syncRegsFromHost(bool eipInR9=false);
+    void syncRegsFromHostCall();
+    void syncRegsToHostCall();
     void syncRegsToHost(S8 excludeReg=-1);
     void minSyncRegsFromHost();
     void minSyncRegsToHost();
     void adjustStack(U8 tmpReg, S32 bytes);
-    void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock);    
+    void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags = false, bool generateCmp = true, bool releaseRegAfterCmp = false);
     void setPF_onAL(U8 flagReg);
     void setZF_onAL(U8 flagReg);
     void setSF_onAL(U8 flagReg);
 
-    void callHost(void* pfn);
+    void callHost(void* pfn, U8 tmp = 0xFF, bool internal = false);
     void callJmp(bool big, U8 rm, bool jmp);
 
-    void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit, bool calculateHostAddress);
+    void translateMemory(U32 rm, bool checkG, bool isG8bit, bool isE8bit, bool calculateHostAddress, U8 hostMem=0xff);
     void setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit);
     void setSib(U8 sib, bool checkBase);
 
     void addWithLea(U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S32 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U32 bytes);
     void zeroReg(U8 reg, bool isRexReg, bool keepFlags);
     void doMemoryInstruction(U8 op, U8 reg1, bool isReg1Rex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes);
-    void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress);
+    void writeHostPlusTmp(U8 rm, bool checkG, bool isG8bit, bool isE8bit, U8 tmpReg, bool calculateHostAddress, U8 hostMem);
+  
     U8 getHostMem(U8 regEmulatedAddress, bool isRex);
-    U8 getHostMemFromAddress(U32 address);
     void releaseHostMem(U8 reg);
+
     U8 getRegForSeg(U8 base, U8 tmpReg);
-    U8 getRegForNegSeg(U8 base, U8 tmpReg);
-    void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg, bool calculateHostAddress);
+    void translateMemory16(U32 rm, bool checkG, bool isG8bit, bool isE8bit, S8 r1, S8 r2, S16 disp, U8 seg, bool calculateHostAddress, U8 hostMem);
 
     void setDisplacement32(U32 disp32);
     void setDisplacement8(U8 disp8);  
 
-    void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);       
+    void addTodoLinkJump(U32 eip);       
     void doLoop(U32 eip);
     void doLoop16(U8 inst, U32 eip);
     void jmpReg(U8 reg, bool isRex, bool mightNeedCS);
     void jmpNativeReg(U8 reg, bool isRegRex);
-    void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount);
+    void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith = false);
+    void shiftLeftReg(U8 reg, bool isRegRex, U8 shiftAmount);
     void bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
     void andReg(U8 reg, bool isRegRex, U32 mask);
+    void orReg(U8 reg, bool isRegRex, U32 mask);
+    void subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
     void getAddressInRegFromE(U8 reg, bool isRegRex, U8 rm, bool calculateHostAddress = false); // will trash current op data    
+    void zeroExtend16to32(U8 reg, bool isRegRex, U8 fromReg, bool isFromRex);
 
     void pushFlagsToReg(U8 reg, bool isRexReg, bool includeOF);
     void popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF);
@@ -245,6 +248,32 @@ private:
     void callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm);
     void callFpuWithAddressWrite(PFN_FPU_ADDRESS pfn, U8 rm, U32 len);
     void callFpuWithArg(PFN_FPU_REG pfn, U32 arg);
+
+    void calculateMemory16(U8 reg, bool isRex, U32 rm, S8 r1, S8 r2, S16 disp, U8 seg);
+    void calculateMemory(U8 reg, bool isRex, U32 rm);
+
+    void shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg);    
+
+    void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false);
+public:
+    void lods(U32 width) {
+        string(width, true, false);
+    }
+    void movs(U32 width) {
+        string(width, true, true);
+    }
+    void stos(U32 width) {
+        string(width, false, true);
+    }
+    void cmps(U32 width) {
+        cmps(width, true);
+    }
+    void scas(U32 width) {
+        cmps(width, false);
+    }
+private:
+    void string(U32 width, bool hasSrc, bool hasDst);
+    void cmps(U32 width, bool hasSrc);
 };
 #endif
 #endif

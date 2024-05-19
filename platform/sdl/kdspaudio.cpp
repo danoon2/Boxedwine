@@ -19,12 +19,7 @@ void closeSdlAudio() {
 
 class KDspAudioSdl : public KDspAudio, public std::enable_shared_from_this<KDspAudioSdl> {
 public:
-	KDspAudioSdl() : bufferCond(B("KDspAudioSdl::bufferCond")) {
-		memset(&this->want, 0, sizeof(this->want));
-		memset(&this->got, 0, sizeof(this->got));
-		this->cvtBufLen = 0;
-		this->cvtBuf = NULL;
-		this->cvtBufPos = 0;
+	KDspAudioSdl() : bufferCond(std::make_shared<BoxedWineCondition>(B("KDspAudioSdl::bufferCond"))) {
 		this->want.format = AUDIO_U8;
 		this->want.channels = 1;
 		this->want.freq = 11025;
@@ -40,9 +35,6 @@ public:
 #else
 		this->got.samples = 5512;
 #endif
-		this->sameFormat = false;
-		this->open = false;
-		this->closeWhenDone = false;
 	}
 
 	virtual ~KDspAudioSdl() {
@@ -51,13 +43,13 @@ public:
 		}
 	}
 
-	virtual void openAudio(U32 format, U32 freq, U32 channels);
-	virtual bool isOpen() { return this->open; }
-	virtual void closeAudio();
-	virtual void writeAudio(U8* data, U32 len);
-	virtual U32 getFragmentSize() {return this->got.samples;}
-	virtual U32 getBufferSize() {return (U32)this->audioBuffer.size();}
-	virtual U32 getBufferCapacity() { return DSP_BUFFER_SIZE;}
+	void openAudio(U32 format, U32 freq, U32 channels) override;
+	bool isOpen() override { return this->open; }
+	void closeAudio() override;
+	void writeAudio(U8* data, U32 len) override;
+	U32 getFragmentSize() override {return this->got.samples;}
+	U32 getBufferSize() override {return (U32)this->audioBuffer.size();}
+	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
 
 	void onClose();
 	void closeAudioFromAudioThread();
@@ -95,18 +87,18 @@ public:
 			return 0;
 		}
 	}
-	SDL_AudioSpec want;
-	SDL_AudioSpec got;
-	SDL_AudioCVT cvt;
-	int cvtBufLen;
-	int cvtBufPos;
-	unsigned char* cvtBuf;
-	bool sameFormat;
-	U32 dspFragSize;
-	bool open;
+	SDL_AudioSpec want = { 0 };
+	SDL_AudioSpec got = { 0 };
+	SDL_AudioCVT cvt = { 0 };
+	int cvtBufLen = 0;
+	int cvtBufPos = 0;
+	unsigned char* cvtBuf = nullptr;
+	bool sameFormat = false;
+	U32 dspFragSize = 0;
+	bool open = false;
 	std::deque<U8> audioBuffer;
 	BOXEDWINE_CONDITION bufferCond;
-	bool closeWhenDone;
+	bool closeWhenDone = false;
 };
 
 // not really a voice, currently they are not mixed
@@ -141,7 +133,7 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 			if (data->cvtBufLen && data->cvtBufLen < data->cvt.len * data->cvt.len_mult) {
 				data->cvtBufLen = 0;
 				SDL_free(data->cvtBuf);
-				data->cvtBuf = NULL;
+				data->cvtBuf = nullptr;
 			}
 			if (!data->cvtBufLen) {
 				data->cvtBufLen = data->cvt.len * data->cvt.len_mult;

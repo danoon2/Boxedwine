@@ -22,6 +22,6 @@
 class FsOpenNode;
 class FsNode;
 
-FsOpenNode* openUptime(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openUptime(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

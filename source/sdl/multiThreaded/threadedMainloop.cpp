@@ -1,22 +1,35 @@
 #include "boxedwine.h"
 #ifdef BOXEDWINE_MULTI_THREADED
-#include "devfb.h"
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
 #include "../../ui/mainui.h"
 #endif
 #include "knativesystem.h"
 #include "knativewindow.h"
+#include "devfb.h"
 
-bool isFbReady();
 U32 getNextTimer();
 void runTimers();
 
-extern U32 platformThreadCount;
+extern std::atomic<int> platformThreadCount;
 extern U32 exceptionCount;
 extern U32 dynamicCodeExceptionCount;
 static U32 lastTitleUpdate = 0;
 
-static THREAD_LOCAL bool isMainThread;
+static thread_local bool isMainThread;
+
+static BString getSize(int pages)
+{
+    pages *= 4;
+    if (pages < 2048) {
+        return BString::valueOf(pages) + B("KB");
+    }
+    if (pages < 2048 * 1024) {
+        return BString::valueOf(pages / 1024) + B("MB");
+    }
+    return BString::valueOf(pages / 1024 / 1024) + B("GB");
+}
+extern int allocatedRamPages;
+
 bool isMainthread() {
     return isMainThread;
 }
@@ -36,15 +49,12 @@ bool doMainLoop() {
                 timeout = t - KSystem::killTime;
             }
         }
-#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
-        if (uiIsRunning()) {
-            timeout = 33;
-        }
-#endif
-#ifdef BOXEDWINE_64BIT_MMU
-        if (isFbReady()) {
+        if (flipFB()) {
             timeout = 17;
-            flipFB();
+        }
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
+        else if (uiIsRunning()) {
+            timeout = 33;
         }
 #endif
         U32 nextTimer = getNextTimer();
@@ -73,9 +83,15 @@ bool doMainLoop() {
             BString title;
             if (KSystem::title.length()) {
                 title = KSystem::title;
+#if defined(_DEBUG)
+                title.append(" ");
+                title.append(getSize(allocatedRamPages));
+#endif
             } else {
-                title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY);
+                title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY " ");
+                title.append(getSize(allocatedRamPages));
             }
+
             KNativeWindow::getNativeWindow()->setTitle(title);
         }
         if (!KNativeWindow::getNativeWindow()->processEvents()) {

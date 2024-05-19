@@ -3,6 +3,8 @@
 
 #ifdef BOXEDWINE_ARMV8BT
 
+class Armv8btAsm;
+
 class Arm8BtFlags {
 public:
     Arm8BtFlags(U32 width) : width(width) {}

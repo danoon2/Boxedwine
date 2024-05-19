@@ -21,13 +21,15 @@
 
 class DevSequencer : public FsVirtualOpenNode {
 public:
-    DevSequencer(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
-    virtual U32 ioctl(U32 request);
-    virtual U32 readNative(U8* buffer, U32 len);
-    virtual U32 writeNative(U8* buffer, U32 len);
+    DevSequencer(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
+
+	// From FsOpenNode
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
 };
 
-FsOpenNode* openDevSequencer(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevSequencer(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevSequencer(node, flags);
 }
 /*
@@ -68,10 +70,11 @@ struct midi_info		// OBSOLETE
   int dummies[18];		// Reserve space 
 };
 */
-U32 DevSequencer::ioctl(U32 request) {
+U32 DevSequencer::ioctl(KThread* thread, U32 request) {
     //U32 len = (request >> 16) & 0x3FFF;
-    KThread* thread = KThread::currentThread();
     CPU* cpu = thread->cpu;
+	KMemory* memory = thread->memory;
+
     //bool read = (request & 0x40000000) != 0;
     bool write = (request & 0x80000000) != 0;
 
@@ -82,16 +85,16 @@ U32 DevSequencer::ioctl(U32 request) {
         return 0;
     case 0x510a: // LINUX_SNDCTL_SEQ_NRSYNTHS
         if (write)
-            writed(IOCTL_ARG1, 0);
+            memory->writed(IOCTL_ARG1, 0);
         return 0;
     case 0x510b: // LINUX_SNDCTL_SEQ_NRMIDIS
         if (write)
-            writed(IOCTL_ARG1, 1);
+			memory->writed(IOCTL_ARG1, 1);
         return 0;
     case 0x510c: // LINUX_SNDCTL_MIDI_INFO	
-        writeNativeString(IOCTL_ARG1, "Boxedwine MIDI");
-        writed(IOCTL_ARG1+36, 0); // capabilities
-        writed(IOCTL_ARG1+40, 0); // dev_type
+        memory->strcpy(IOCTL_ARG1, "Boxedwine MIDI");
+		memory->writed(IOCTL_ARG1+36, 0); // capabilities
+		memory->writed(IOCTL_ARG1+40, 0); // dev_type
         return 0;
     }
     return -K_ENODEV;

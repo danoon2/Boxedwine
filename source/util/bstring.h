@@ -1,16 +1,22 @@
 #ifndef __BSTRING_H__
 #define __BSTRING_H__
 
-#define B(x) BString::literal(x)
+#define B(x) BString(x, true)
 
 class BStringData;
 
 // this class represents the local holder of the shared data, BStringData
 //
 // BStringData is reference counted, if someone tries to write to BStringData and it has a reference count greater than one, then it will make a copy
-class BString {
+class BString {	
 public:
 	BString();
+	BString(const char*, bool litteral);
+	BString(U32 size, char value);
+	BString(BString&& from) noexcept {
+		this->data = from.data;
+		from.data = nullptr;
+	}
 	//BString(const char* s);
 	//BString(const char* s, int len);
 	BString(const BString& s);
@@ -18,6 +24,7 @@ public:
 	~BString();
 
 	const char* c_str() const;
+	char* str();
 	void w_str(wchar_t* w, int len) const;
 
 	char charAt(int i) const;
@@ -44,13 +51,25 @@ public:
 	bool startsWith(char s, bool ignoreCase = false) const;
 	BString substr(int beginIndex) const;
 	BString substr(int beginIndex, int len) const;
-	int toInt() const;
+	int32_t toInt() const;
+	int64_t toInt64() const;
+
+	template<typename ... Args>
+	void sprintf(const char* format, Args ... args) {
+		int size = std::snprintf(nullptr, 0, format, args ...);
+		makeWritable(size);
+		std::snprintf(str(), size + 1, format, args ...);
+		setLength(size);
+	}
 
 	// modifying function
 	void append(const BString& s);
 	void append(const BString& s, int offset, int len);
 	void append(const char* s);
 	void append(const char* s, int len);
+	void appendAfterNull(const BString& s);
+	void appendAfterNull(const char* s);
+	void appendAfterNull(const char* s, int len);
 	void append(bool b);
 	void append(char c);
 	// missing on older gcc
@@ -75,6 +94,8 @@ public:
 	BString toLowerCase() const;
 	BString toUpperCase() const;
 	BString trim();
+	void resize(U32 len);
+	void clear();
 
 	BString operator+(const BString& s) const;
 	BString operator+(const char* s) const;
@@ -98,6 +119,7 @@ public:
 	BString& operator+=(S64 i);
 
 	BString& operator=(const BString& s);
+	BString& operator=(BString&& s) noexcept;
 	BString& operator=(const char* s);
 	BString& operator=(bool b);
 	BString& operator=(char c);
@@ -115,7 +137,6 @@ public:
 
 	static BString copy(const char* s);
 	static BString copy(const char* s, int len);
-	static BString literal(const char* s);
 
 	static BString join(BString delimiter, const std::vector<BString>& values);
 	static BString join(const char* delimiter, const std::vector<BString>& values);
@@ -151,12 +172,11 @@ protected:
 	BString(BStringData* data);
 
 	BStringData* data;
-	int getLevel() const;
-
-	void clear();
+	int getLevel() const;	
 
 	// len is what we need in addition to current length, pass 0 just to make sure we are writable
 	void makeWritable(int len);
+	void setLength(int len);
 };
 
 namespace std {

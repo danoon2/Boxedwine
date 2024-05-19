@@ -1,6 +1,8 @@
 #ifndef __DYNAMIC_GENERIC_BASE_H__
 #define __DYNAMIC_GENERIC_BASE_H__
 
+#include "dynamic_memory.h"
+
 // Functions that need to be implemented in the platform/chip specific file
 /*
 void clearTop16(U8 reg);
@@ -80,7 +82,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         // add ax, [DYN_CPU_REG+cpu->reg[op->rm].u16]
         if (op->rm != 8) {
             DynReg tmp = getUnsavedTmpReg();
-            loadFromCpuOffset16(tmp, offsetof(CPU, reg[op->rm].u16));
+            loadFromCpuOffset16(tmp, CPU::offsetofReg16(op->rm));
             addRegs32(reg, tmp);
             clearRegUsed(tmp);
         }
@@ -88,7 +90,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         // add ax, [cpu->reg[op->sibIndex].u16]
         if (op->sibIndex != 8) {
             DynReg tmp = getUnsavedTmpReg();
-            loadFromCpuOffset16(tmp, offsetof(CPU, reg[op->sibIndex].u16));
+            loadFromCpuOffset16(tmp, CPU::offsetofReg16(op->sibIndex));
             addRegs32(reg, tmp);
             clearRegUsed(tmp);
         }
@@ -100,7 +102,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
         if (op->base < 6) {
             // add eax, [cpu->seg[op->base].address]
             DynReg tmp = getUnsavedTmpReg();
-            loadFromCpuOffset32(tmp, offsetof(CPU, seg[op->base].address));
+            loadFromCpuOffset32(tmp, CPU::offsetofSegAddress(op->base));
             addRegs32(reg, tmp);
             clearRegUsed(tmp);
         }
@@ -110,7 +112,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
 
         if (op->sibIndex != 8) {
             initiallized = true;
-            loadFromCpuOffset32(reg, offsetof(CPU, reg[op->sibIndex].u32));
+            loadFromCpuOffset32(reg, CPU::offsetofReg32(op->sibIndex));
             if (op->sibScale) {
                 shiftLeft32(reg, op->sibScale);
             }
@@ -119,7 +121,7 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
                 // add eax, [cpu->seg[op->base].address]
                 DynReg tmp = getUnsavedTmpReg();
-                loadFromCpuOffset32(tmp, offsetof(CPU, seg[op->base].address));
+                loadFromCpuOffset32(tmp, CPU::offsetofSegAddress(op->base));
                 addRegs32(reg, tmp);
                 clearRegUsed(tmp);
             }
@@ -127,17 +129,17 @@ void calculateEaa(DecodedOp* op, DynReg reg) {
             // seg[6] is always 0
             if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
                 initiallized = true;
-                loadFromCpuOffset32(reg, offsetof(CPU, seg[op->base].address));
+                loadFromCpuOffset32(reg, CPU::offsetofSegAddress(op->base));
             }
         }
         // add eax, [cpu->reg[op->rm].u32]
         if (op->rm != 8) {
             if (!initiallized) {
                 initiallized = true;
-                loadFromCpuOffset32(reg, offsetof(CPU, reg[op->rm].u32));
+                loadFromCpuOffset32(reg, CPU::offsetofReg32(op->rm));
             } else {
                 DynReg tmp = getUnsavedTmpReg();
-                loadFromCpuOffset32(tmp, offsetof(CPU, reg[op->rm].u32));
+                loadFromCpuOffset32(tmp, CPU::offsetofReg32(op->rm));
                 addRegs32(reg, tmp);
                 clearRegUsed(tmp);
             }
@@ -266,17 +268,31 @@ void movToRegPtr(DynReg reg, U64 imm) {
     loadConstPtr(reg, imm);
 }
 
-void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {    
-#ifdef BOXEDWINE_64BIT_MMU
-    if (width == DYN_8bit) {
-        readMem8(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
-    } else if (width == DYN_16bit) {
-        readMem16(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
-    } else {
-        readMem32(DYN_CALL_RESULT, addressReg, KThread::currentThread()->memory->id);
-    }
-    setRegUsed(DYN_CALL_RESULT);
-#else
+static U32 readd(U32 address) {
+    return KThread::currentThread()->memory->readd(address);
+}
+
+static U32 readw(U32 address) {
+    return KThread::currentThread()->memory->readw(address);
+}
+
+static U32 readb(U32 address) {
+    return KThread::currentThread()->memory->readb(address);
+}
+
+static void writed(U32 address, U32 value) {
+    KThread::currentThread()->memory->writed(address, value);
+}
+
+static void writew(U32 address, U16 value) {
+    KThread::currentThread()->memory->writew(address, value);
+}
+
+static void writeb(U32 address, U8 value) {
+    KThread::currentThread()->memory->writeb(address, value);
+}
+
+void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     // :TODO: inline
     if (width == DYN_16bit) {
         callHostFunction((void*)readw, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
@@ -285,7 +301,6 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     } else {
         callHostFunction((void*)readb, true, 1, addressReg, DYN_PARAM_REG_32, doneWithAddressReg);
     }
-#endif
     if (doneWithAddressReg) {
         clearRegUsed(addressReg);
     }
@@ -441,31 +456,6 @@ bool isParamTypeReg(DynCallParamType paramType) {
 //      Memory::currentMMU[index]->writed(address, value);		
 //  }
 void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithValueReg) {
-#ifdef BOXEDWINE_64BIT_MMU    
-    U8 regToWrite;
-    bool releaseRegToWrite = false;
-
-    if (isParamTypeReg(paramType)) {
-        regToWrite = value;
-        if (doneWithValueReg) {
-            releaseRegToWrite = true;
-        }
-    } else {
-        regToWrite = getUnsavedTmpReg();
-        setValue(value, paramType, regToWrite);
-        releaseRegToWrite = true;
-    }
-    if (width == DYN_8bit) {
-        writeMem8(regToWrite, addressReg, KThread::currentThread()->memory->id);
-    } else if (width == DYN_16bit) {
-        writeMem16(regToWrite, addressReg, KThread::currentThread()->memory->id);
-    } else {
-        writeMem32(regToWrite, addressReg, KThread::currentThread()->memory->id);
-    }
-    if (releaseRegToWrite) {
-        clearRegUsed(regToWrite);
-    }
-#else
     // :TODO: inline?
     if (width == DYN_16bit) {
         callHostFunction((void*)writew, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
@@ -474,7 +464,6 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     } else {
         callHostFunction((void*)writeb, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, doneWithValueReg);
     }
-#endif
 }
 
 void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg) {
@@ -998,28 +987,32 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         }
         endBlock();
 
-        Memory* memory = cpu->thread->process->memory;
+        DynamicMemory* memory = (DynamicMemory*)cpu->memory->dynamicMemory;
+        if (!memory) {
+            memory = new DynamicMemory();
+            cpu->memory->dynamicMemory = memory;
+        }
         void* mem = NULL;
 
         if (memory->dynamicExecutableMemory.size() == 0) {
             int blocks = (outBufferPos + 0xffff) / 0x10000;
             memory->dynamicExecutableMemoryLen = blocks * 0x10000;
-            mem = Platform::allocExecutable64kBlock(blocks);
+            mem = Platform::alloc64kBlock(blocks, true);
             memory->dynamicExecutableMemoryPos = 0;
-            memory->dynamicExecutableMemory.push_back(mem);
+            memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
         } else {
-            mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size() - 1];
+            mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size() - 1].p;
             if (memory->dynamicExecutableMemoryPos + outBufferPos >= memory->dynamicExecutableMemoryLen) {
                 int blocks = (outBufferPos + 0xffff) / 0x10000;
                 memory->dynamicExecutableMemoryLen = blocks * 0x10000;
-                mem = Platform::allocExecutable64kBlock(blocks);
+                mem = Platform::alloc64kBlock(blocks, true);
                 memory->dynamicExecutableMemoryPos = 0;
-                memory->dynamicExecutableMemory.push_back(mem);
+                memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
             }
         }
         U8* begin = (U8*)mem + memory->dynamicExecutableMemoryPos;
 
-        Platform::writeCodeToMemory(begin, outBufferPos, [begin, outBuffer, outBufferPos] {
+        Platform::writeCodeToMemory(begin, outBufferPos, [begin] {
             memcpy(begin, outBuffer, outBufferPos);
             });
 

@@ -2,7 +2,7 @@
 
 #include "bufferaccess.h"
 
-FsOpenNode* openSysCpuOnline(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openSysCpuOnline(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     int count = Platform::getCpuCount();
     if (count<2) {
         return new BufferAccess(node, flags, B("0"));

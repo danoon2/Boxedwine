@@ -103,49 +103,49 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
     <MultiProcNumber>4</MultiProcNumber>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Test|x86'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
-    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/poco/Net/include;../../../../../lib/poco/Foundation/include;../../../../../lib/poco/Util/include;../../../../../lib/poco/NetSSL_OpenSSL/include;../../../../../lib/poco/Crypto/include</ProjectPublicIncludePath>
+    <ProjectPublicIncludePath>../../../../../include;../../../../../lib/sdl2/include;../../../../../lib/glew/include;../../../../../lib/imgui;../../../../../lib/simde;../../../../../lib/pugixml/src</ProjectPublicIncludePath>
   </PropertyGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\..\lib\glew\src\glew.cpp" />
@@ -159,7 +159,6 @@
     <ClCompile Include="..\..\..\..\..\lib\pugixml\src\pugixml.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process_unix.cpp" />
-    <ClCompile Include="..\..\..\..\..\platform\linux\memory64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-armv8.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-x64.cpp" />
@@ -188,9 +187,9 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -215,15 +214,13 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\hardmmu\hard_memory.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_memory.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_native_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ondemand_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ram.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp" />
@@ -251,11 +248,13 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devurandom.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\devs\devzero.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kepoll.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\kevent.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kfile.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kfiledescriptor.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kfilelock.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kmemory.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\knativesocket.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\knetlink.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kobject.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kpoll.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\kprocess.cpp" />
@@ -271,6 +270,7 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\bufferaccess.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\cpuinfo.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\meminfo.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\proc\procstat.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\self.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\proc\uptime.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\syscall.cpp" />
@@ -278,6 +278,13 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuonline.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuscalingcurfreq.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\cpuscalingmaxfreq.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysbus.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysbususb.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysdev.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysdevices.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfb.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfs.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysmouse.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\boxedwineGL.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glcommon.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glext.cpp" />
@@ -491,6 +498,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\bfile.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\crc.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\fileutils.cpp" />
@@ -524,14 +532,17 @@
     <ClInclude Include="..\..\..\..\..\include\kdspaudio.h" />
     <ClInclude Include="..\..\..\..\..\include\kepoll.h" />
     <ClInclude Include="..\..\..\..\..\include\kerror.h" />
+    <ClInclude Include="..\..\..\..\..\include\kevent.h" />
     <ClInclude Include="..\..\..\..\..\include\kfile.h" />
     <ClInclude Include="..\..\..\..\..\include\kfiledescriptor.h" />
     <ClInclude Include="..\..\..\..\..\include\kfilelock.h" />
+    <ClInclude Include="..\..\..\..\..\include\kmemory.h" />
     <ClInclude Include="..\..\..\..\..\include\knativeaudio.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesocket.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesystem.h" />
     <ClInclude Include="..\..\..\..\..\include\knativethread.h" />
     <ClInclude Include="..\..\..\..\..\include\knativewindow.h" />
+    <ClInclude Include="..\..\..\..\..\include\knetlink.h" />
     <ClInclude Include="..\..\..\..\..\include\kobject.h" />
     <ClInclude Include="..\..\..\..\..\include\kpoll.h" />
     <ClInclude Include="..\..\..\..\..\include\kprocess.h" />
@@ -545,16 +556,17 @@
     <ClInclude Include="..\..\..\..\..\include\ksystem.h" />
     <ClInclude Include="..\..\..\..\..\include\kthread.h" />
     <ClInclude Include="..\..\..\..\..\include\ktimer.h" />
+    <ClInclude Include="..\..\..\..\..\include\ktimercallback.h" />
     <ClInclude Include="..\..\..\..\..\include\kunixsocket.h" />
     <ClInclude Include="..\..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\..\include\meminfo.h" />
-    <ClInclude Include="..\..\..\..\..\include\memory.h" />
     <ClInclude Include="..\..\..\..\..\include\pixelformat.h" />
     <ClInclude Include="..\..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\..\include\player.h" />
     <ClInclude Include="..\..\..\..\..\include\procselfexe.h" />
+    <ClInclude Include="..\..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\..\include\recorder.h" />
     <ClInclude Include="..\..\..\..\..\include\reg.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpumaxfreq.h" />
@@ -705,9 +717,9 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\armv8CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeMemoryWrite.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_arith.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_bit.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_fpu.h" />
@@ -742,6 +754,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_generic_base.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_incdec.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_jump.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_mmx.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_mov.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_other.h" />
@@ -790,15 +803,13 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\hardmmu\hard_memory.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_file_map.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_invalid_page.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_memory.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_native_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_ondemand_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_ram.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_ro_page.h" />
@@ -1032,13 +1043,15 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\util\boxedptr.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\bfile.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\bhashtable.h" />
     <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\..\source\util\networkutils.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h" />
     <ClInclude Include="..\..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\..\source\util\threadutils.h" />
@@ -1054,7 +1067,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;_DEBUG;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1066,7 +1079,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1079,7 +1092,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1090,13 +1103,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;_DEBUG;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;_DEBUG;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -1104,8 +1116,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64BIT_MMU;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;SIMDE_NO_NEON;__TEST;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NEON;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1117,15 +1129,14 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_DYNAMIC_ARMV8;BOXEDWINE_DYNAMIC;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
       <Optimization>Full</Optimization>
       <OmitFramePointers>true</OmitFramePointers>
-      <UndefinePreprocessorDefinitions>
-      </UndefinePreprocessorDefinitions>
+      <UndefinePreprocessorDefinitions>BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <LibraryDependencies>curl;ssl;crypto;pthread;m;z;minizip;SDL2;GL;stdc++fs;dl;rt</LibraryDependencies>
@@ -1133,8 +1144,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_IMGUI_V2</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_IMGUI_V2</PreprocessorDefinitions>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1145,8 +1156,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;__TEST;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1157,8 +1168,8 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_64BIT_MMU;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <PreprocessorDefinitions>BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;BOXEDWINE_OPENGL_IMGUI_V2;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1170,7 +1181,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1182,7 +1193,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Test|x86'">
     <ClCompile>
       <PreprocessorDefinitions>__TEST;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>
@@ -1194,7 +1205,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x86'">
     <ClCompile>
       <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <CppLanguageStandard>c++17</CppLanguageStandard>
+      <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
       <WarningLevel>TurnOffAllWarnings</WarningLevel>

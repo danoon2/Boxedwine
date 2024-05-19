@@ -23,7 +23,6 @@
 // if R1-R15 is in use then they will be saved before a function call
 #define INCREMENT_EIP(data, op) incrementEip(data, op)
 
-#define OFFSET_REG8(x) (x>=4?offsetof(CPU, reg[x-4].h8):offsetof(CPU, reg[x].u8))
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
 // per instruction, not per block.  

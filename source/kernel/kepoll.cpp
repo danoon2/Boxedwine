@@ -27,7 +27,7 @@ KEPoll::KEPoll() : KObject(KTYPE_EPOLL) {
 
 KEPoll::~KEPoll() {
      for( const auto& n : this->data ) {
-         delete n.second;
+         delete n.value;
     }
 }
 
@@ -51,7 +51,7 @@ bool KEPoll::isAsync() {
 
 KFileLock* KEPoll::getLock(KFileLock* lock) {
     kdebug("KEPoll::getLock not implemented yet");
-    return 0;
+    return nullptr;
 }
 
 U32 KEPoll::setLock(KFileLock* lock, bool wait) {
@@ -88,17 +88,21 @@ U32 KEPoll::readNative(U8* buffer, U32 len) {
     return 0;
 }
 
-U32 KEPoll::stat(U32 address, bool is64) {
+U32 KEPoll::stat(KProcess* process, U32 address, bool is64) {
     kpanic("KEPoll::stat not implemented yet");
     return 0;
 }
 
-U32 KEPoll::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 KEPoll::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 
 bool KEPoll::canMap() {
     return false;
+}
+
+BString KEPoll::selfFd() {
+    return B("anon_inode:[eventpoll]");
 }
 
 S64 KEPoll::seek(S64 pos) {
@@ -109,7 +113,7 @@ S64 KEPoll::getPos() {
     return 0;
 }
 
-U32 KEPoll::ioctl(U32 request) {
+U32 KEPoll::ioctl(KThread* thread, U32 request) {
     return -K_ENOTTY;
 }
 
@@ -129,16 +133,14 @@ void KEPoll::close() {
 #define K_EPOLL_CTL_DEL 2
 #define K_EPOLL_CTL_MOD 3
 
-U32 KEPoll::ctl(U32 op, FD fd, U32 address) {
+U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
     KFileDescriptor* targetFD = KThread::currentThread()->process->getFileDescriptor(fd);
-    Data* existing = NULL;
 
     if (!targetFD) {
         return -K_EBADF;
     }
 
-    if (this->data.count(fd))
-        existing = this->data[fd];
+    Data* existing = this->data[fd];
 
     switch (op) {
         case K_EPOLL_CTL_ADD:
@@ -147,21 +149,21 @@ U32 KEPoll::ctl(U32 op, FD fd, U32 address) {
             }
             existing = new Data();
             existing->fd = fd;
-            existing->events = readd(address);
-            existing->data = readq(address + 4);
-            this->data[fd] = existing;
+            existing->events = memory->readd(address);
+            existing->data = memory->readq(address + 4);
+            this->data.set(fd, existing);
             break;
         case K_EPOLL_CTL_DEL:
             if (!existing)
                 return -K_ENOENT;
-            this->data.erase(fd);
+            this->data.remove(fd);
             delete existing;
             break;
         case K_EPOLL_CTL_MOD:
             if (!existing)
                 return -K_ENOENT;
-            existing->events = readd(address);
-            existing->data = readq(address + 4);
+            existing->events = memory->readd(address);
+            existing->data = memory->readq(address + 4);
             break;
         default:
             return -K_EINVAL;
@@ -169,30 +171,30 @@ U32 KEPoll::ctl(U32 op, FD fd, U32 address) {
     return 0;
 }
 
-U32 KEPoll::wait(U32 events, U32 maxevents, U32 timeout) {    
+U32 KEPoll::wait(KThread* thread, U32 events, U32 maxevents, U32 timeout) {
     S32 result = 0;
-    U32 i;
-    THREAD_LOCAL static KPollData pollData[256];	
+    thread_local static KPollData pollData[256];
     U32 pollCount=0;
+    KMemory* memory = thread->memory;
 
     for( const auto& n : this->data ) {
         if (pollCount>=256) {
             kpanic("Wasn't expect a poll count of more than 256");
             break;
         }
-        Data* next = n.second;
+        Data* next = n.value;
         pollData[pollCount].events = next->events;
         pollData[pollCount].fd = next->fd;
         pollData[pollCount].data = next->data;
         pollCount++;	
     }
-    result = internal_poll(pollData, pollCount, timeout);
+    result = internal_poll(thread, pollData, pollCount, timeout);
     if (result >= 0) {
         result = 0;
-        for (i=0;i<pollCount;i++) {
+        for (U32 i=0;i<pollCount;i++) {
             if (pollData[i].revents!=0) {
-                writed(events + result * 12, pollData[i].revents);        
-                writeq(events + result * 12 + 4, pollData[i].data);
+                memory->writed(events + result * 12, pollData[i].revents);        
+                memory->writeq(events + result * 12 + 4, pollData[i].data);
                 result++;
                 if (result>=(S32)maxevents) {
                     kwarn("possible starvation in epoll, more events are ready than can be received.");

@@ -106,7 +106,18 @@ int boxedmain(int argc, const char **argv) {
             StartUpArgs::uiType = UI_TYPE_OPENGL;
         }
 #endif
-        while (uiShow(GlobalSettings::getExePath()+Fs::nativePathSeperator)) {
+        while (true) {
+            if (GlobalSettings::keepUIRunning) {
+                GlobalSettings::keepUIRunning();
+                GlobalSettings::keepUIRunning = nullptr;
+                if (!uiContinue()) {
+                    break;
+                }
+            } else {
+                if (!uiShow(GlobalSettings::getExePath() + Fs::nativePathSeperator)) {
+                    break;
+                }
+            }
             if (GlobalSettings::restartUI) {
                 GlobalSettings::restartUI = false;
                 if (GlobalSettings::reinit) {
@@ -121,7 +132,9 @@ int boxedmain(int argc, const char **argv) {
             GlobalSettings::startUpArgs.readyToLaunch = false;
 
             KNativeSystem::preReturnToUI();
-            GlobalSettings::startUp(); // we we come back in after launching a game, we will need to create icons, like the demo icons
+            if (!GlobalSettings::keepUIRunning) {
+                GlobalSettings::startUp(); // we we come back in after launching a game, we will need to create icons, like the demo icons
+            }
         }
 #endif
     }              

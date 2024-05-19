@@ -28,6 +28,7 @@
 #include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #endif
 #include "pixelformat.h"
+#include UNISTD
 
 unsigned long long int Platform::getSystemTimeAsMicroSeconds() {
 	struct timeval  tv;
@@ -87,13 +88,13 @@ void Platform::listNodes(BString nativePath, std::vector<ListNodeResult>& result
 
 	dp = opendir(nativePath.c_str());
 	if (dp) {
-        	while(NULL != (dptr = readdir(dp))) {
+        while(NULL != (dptr = readdir(dp))) {
 			if (strcmp(dptr->d_name, ".") && strcmp(dptr->d_name, ".."))  {
 				results.push_back(ListNodeResult(BString::copy(dptr->d_name), (dptr->d_type & DT_DIR)!=0));
 			}
-        	}
-        	closedir(dp);
-    	}
+        }
+        closedir(dp);
+    }
 }
 
 #ifndef __MACH__
@@ -200,22 +201,19 @@ void Platform::setCurrentThreadPriorityHigh() {
 #endif
 
 U32 Platform::getPageAllocationGranularity() {
-    return K_NATIVE_PAGES_PER_PAGE;
+    static U32 pageSize = getpagesize() / K_PAGE_SIZE;
+    return pageSize;
 }
 
 U32 Platform::getPagePermissionGranularity() {
-    return K_NATIVE_PAGES_PER_PAGE;
+    static U32 pageSize = getpagesize() / K_PAGE_SIZE;
+    return pageSize;
 }
 
 U32 Platform::allocateNativeMemory(U64 address) {
     if (mprotect((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, PROT_READ | PROT_WRITE) < 0) {
         kpanic("allocNativeMemory mprotect failed: %s", strerror(errno));
     }
-    return 0;
-}
-
-U32 Platform::freeNativeMemory(U64 address) {
-    mprotect((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, PROT_NONE);
     return 0;
 }
 
@@ -302,6 +300,10 @@ static bool isAddressRangeInUse(void* p, U64 len) {
 
 static U64 nextMemoryId = 2;
 
+BString Platform::procStat() {
+    return BReadFile(B("/proc/stat")).readAll();
+}
+
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     U32 proto = 0;
     if ((permission & PAGE_READ) || (permission & PAGE_EXEC)) {
@@ -324,39 +326,16 @@ void Platform::releaseNativeMemory(void* address, U64 len) {
     munmap(address, len);
 }
 
-void Platform::commitNativeMemory(void* address, U64 len) {
-    if (((U64)address % getPageAllocationGranularity()) != 0) {
-        kpanic("TODO: handle commitHostAddressSpaceMapping address not aligned");
+U8* Platform::alloc64kBlock(U32 count, bool executable) {
+    int prot = PROT_WRITE | PROT_READ;
+    if (executable) {
+        prot |= PROT_EXEC;
     }
-    if (mprotect(address, len, PAGE_READ | PROT_WRITE) < 0) {
-        kpanic("commitHostAddressSpaceMapping mprotect failed: %s", strerror(errno));
-    }
-}
-
-void* Platform::allocExecutable64kBlock(U32 count) {
-    void* result = mmap(NULL, 64 * 1024 * count, PROT_EXEC | PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
+    U8* result = (U8*)mmap(NULL, 64 * 1024 * count, prot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
     if (result == MAP_FAILED) {
-        kpanic("allocExecutable64kBlock: failed to commit memory : %s", strerror(errno));
+        kpanic("alloc64kBlock: failed to commit memory : %s", strerror(errno));
     }
     return result;
-}
-
-void* Platform::reserveNativeMemory(bool large) {
-    void* p;
-
-    U64 len = large ? 0x800000000l : 0x100000000l;
-    while (true) {
-        nextMemoryId++;
-        p = (void*)(nextMemoryId << 32);
-
-        if (isAddressRangeInUse(p, len)) {
-            continue;
-        }
-        if (mmap(p, len, PROT_NONE, MAP_ANONYMOUS | MAP_FIXED | MAP_PRIVATE, -1, 0) == p) {
-            break;
-        }
-    }
-    return p;
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED

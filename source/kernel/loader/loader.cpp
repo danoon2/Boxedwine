@@ -51,10 +51,10 @@ bool isValidElf(struct k_Elf32_Ehdr* hdr) {
 }
 
 BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
-    U8 buffer[sizeof(struct k_Elf32_Ehdr)];
+    U8 buffer[sizeof(struct k_Elf32_Ehdr)] = { 0 };
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
     U32 len = openNode->readNative(buffer, sizeof(buffer));
-    char interp[MAX_FILEPATH_LEN];
+    char interp[MAX_FILEPATH_LEN] = { 0 };
 
     *isElf=true;
     if (len!=sizeof(buffer)) {
@@ -65,12 +65,11 @@ BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
     }
     if (!*isElf) {
         if (buffer[0]=='#') {
-            U32 i;
             U32 mode = 0;
             U32 pos = 0;
-            char shell_interp[MAX_FILEPATH_LEN];
+            char shell_interp[MAX_FILEPATH_LEN] = { 0 };
 
-            for (i=1;i<len;i++) {
+            for (U32 i=1;i<len;i++) {
                 if (mode==0) {
                     if (buffer[i]=='!')
                         mode = 1;
@@ -105,11 +104,11 @@ BString ElfLoader::getInterpreter(FsOpenNode* openNode, bool* isElf) {
     return B("");
 }
 
-FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs) {
+FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const std::shared_ptr<FsNode>& node, BString& loader, BString& interpreter, std::vector<BString>& interpreterArgs) {
     bool isElf = 0;
-    FsOpenNode* openNode = 0;
-    BoxedPtr<FsNode> interpreterNode;
-    BoxedPtr<FsNode> loaderNode;
+    FsOpenNode* openNode = nullptr;
+    std::shared_ptr<FsNode> interpreterNode;
+    std::shared_ptr<FsNode> loaderNode;
 
     if (node) {
         openNode = node->open(K_O_RDONLY);
@@ -128,13 +127,13 @@ FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNo
         delete openNode;
     }
     if (!interpreter.length() && !isElf) {
-        return NULL;
+        return nullptr;
     }
     if (interpreter.length()) {
         interpreterNode = Fs::getNodeFromLocalPath(currentDirectory, interpreter, true);	
         if (!interpreterNode) {
             kwarn("Interpreter not found: %s", interpreter.c_str());
-            return NULL;
+            return nullptr;
         }
         openNode = interpreterNode->open(K_O_RDONLY);		
         loader = ElfLoader::getInterpreter(openNode, &isElf);
@@ -144,7 +143,7 @@ FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNo
     if (loader.length()) {
         loaderNode = Fs::getNodeFromLocalPath(currentDirectory, loader, true);	
         if (!loaderNode) {
-            return NULL;
+            return nullptr;
         }
     }		
 
@@ -158,16 +157,14 @@ FsOpenNode* ElfLoader::inspectNode(BString currentDirectory, const BoxedPtr<FsNo
 }
 
 int ElfLoader::getMemSizeOfElf(FsOpenNode* openNode) {
-    U8 buffer[sizeof(struct k_Elf32_Ehdr)];
+    U8 buffer[sizeof(struct k_Elf32_Ehdr)] = { 0 };
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
-    U32 len;
     U64 pos = openNode->getFilePointer();
     U32 address = 0xFFFFFFFF;
-    int i;
     int sections = 0;
 
     openNode->seek(0);
-    len = openNode->readNative(buffer, sizeof(buffer));
+    U32 len = openNode->readNative(buffer, sizeof(buffer));
     if (len != sizeof(buffer)) {
         return 0;
     }
@@ -178,7 +175,7 @@ int ElfLoader::getMemSizeOfElf(FsOpenNode* openNode) {
 
     len = 0;
     openNode->seek(hdr->e_phoff);
-    for (i = 0; i<hdr->e_phnum; i++) {
+    for (int i = 0; i<hdr->e_phnum; i++) {
         struct k_Elf32_Phdr phdr;
         openNode->readNative((U8*)&phdr, sizeof(struct k_Elf32_Phdr));
         if (phdr.p_type == PT_LOAD) {
@@ -233,13 +230,12 @@ U32 getPELoadAddress(struct FsOpenNode* openNode, U32* section, U32* numberOfSec
     return buffer[offset + 0x34] | ((U32)buffer[offset + 0x35] << 8) | ((U32)buffer[offset + 0x36] << 16) | ((U32)buffer[offset + 0x37] << 24);
 }
 #endif
-bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode* openNode, U32* eip) {
-    U8 buffer[sizeof(struct k_Elf32_Ehdr)];
+bool ElfLoader::loadProgram(KThread* thread, FsOpenNode* openNode, U32* eip) {
+    U8 buffer[sizeof(struct k_Elf32_Ehdr)] = { 0 };
     struct k_Elf32_Ehdr* hdr = (struct k_Elf32_Ehdr*)buffer;
     U32 len = openNode->readNative(buffer, sizeof(buffer));
     U32 address=0xFFFFFFFF;
-    U32 i;
-    U32 reloc;
+    U32 reloc = 0;
 
     if (len!=sizeof(buffer)) {
         return false;
@@ -248,7 +244,7 @@ bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode
         return false;    
     len=0;
     openNode->seek(hdr->e_phoff);	
-    for (i=0;i<hdr->e_phnum;i++) {
+    for (U32 i=0;i<hdr->e_phnum;i++) {
         struct k_Elf32_Phdr phdr;		
         openNode->readNative((U8*)&phdr, sizeof(struct k_Elf32_Phdr));
         if (phdr.p_type==PT_LOAD) {
@@ -269,12 +265,12 @@ bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode
     }
 
     if (reloc)
-        address = process->mmap(address, len, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
-    process->loaderBaseAddress = address;
-    process->brkEnd = address+len;
-    process->phdr = 0;
+        address = thread->memory->mmap(thread, address, len, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
+    thread->process->loaderBaseAddress = address;
+    thread->process->brkEnd = address+len;
+    thread->process->phdr = 0;
 
-    for (i=0;i<hdr->e_phnum;i++) {
+    for (U32 i=0;i<hdr->e_phnum;i++) {
         struct k_Elf32_Phdr phdr;		
         openNode->seek(hdr->e_phoff+hdr->e_phentsize*i);
         openNode->readNative((U8*)&phdr, sizeof(struct k_Elf32_Phdr));
@@ -287,21 +283,21 @@ bool ElfLoader::loadProgram(const std::shared_ptr<KProcess>& process, FsOpenNode
                     addr &= 0xFFFFF000;
                     sectionLen+=(phdr.p_memsz+(phdr.p_paddr-addr));
                 }
-                process->mmap(addr, sectionLen, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
+                thread->memory->mmap(thread, addr, sectionLen, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED, -1, 0);
             }
             if (phdr.p_filesz>0) {
                 if (phdr.p_offset<=hdr->e_phoff && hdr->e_phoff<phdr.p_offset+phdr.p_filesz) {
-                    process->phdr = reloc+phdr.p_paddr+hdr->e_phoff-phdr.p_offset;
+                    thread->process->phdr = reloc+phdr.p_paddr+hdr->e_phoff-phdr.p_offset;
                 }
                 openNode->seek(phdr.p_offset);                
-                openNode->read(reloc+phdr.p_paddr, phdr.p_filesz);		
+                openNode->read(thread, reloc+phdr.p_paddr, phdr.p_filesz);		
             }
         }
     }
-    process->phentsize=hdr->e_phentsize;
-    process->phnum=hdr->e_phnum;
+    thread->process->phentsize=hdr->e_phentsize;
+    thread->process->phnum=hdr->e_phnum;
 
     *eip = hdr->e_entry+reloc;
-    process->entry = *eip; 
+    thread->process->entry = *eip;
     return true;
 }

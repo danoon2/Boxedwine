@@ -4,14 +4,14 @@
 
 #include "x64Data.h"
 #include "x64CodeChunk.h"
-#include "../../hardmmu/hard_memory.h"
+#include "x64CPU.h"
 
 X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
     this->resetForNewOp();
 }
 
 U8 X64Data::fetch8() {
-    U32 address;
+    U32 address = 0;
 
     if (this->cpu->isBig()) {
         address = this->ip + this->cpu->seg[CS].address;
@@ -21,7 +21,7 @@ U8 X64Data::fetch8() {
         this->ip++;
         this->ip &= 0xFFFF;
     }
-    return readb(address);
+    return cpu->memory->readb(address);
 }
 
 U16 X64Data::fetch16() {
@@ -73,6 +73,7 @@ void X64Data::resetForNewOp() {
     this->startOfOpIp = this->ip;
     this->skipWriteOp = false;
     this->isG8bitWritten = false;
+    this->flagsWrittenToStringFlags = false;
 }
 
 std::shared_ptr<BtCodeChunk> X64Data::createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {

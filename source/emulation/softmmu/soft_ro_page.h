@@ -19,27 +19,22 @@
 #ifndef __SOFT_RO_PAGE_H__
 #define __SOFT_RO_PAGE_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_rw_page.h"
 
 class ROPage : public RWPage {
 private:
-    ROPage(U8* page, U32 address, U32 flags) : RWPage(page, address, flags, RO_Page) {}
+    ROPage(U8* page, U32 address) : RWPage(page, address) {}
 
 public:
-    static ROPage* alloc(U8* page, U32 address, U32 flags);
+    static ROPage* alloc(U8* page, U32 address);
 
-    void writeb(U32 address, U8 value);
-    void writew(U32 address, U16 value);
-    void writed(U32 address, U32 value);
-    U8* getCurrentReadPtr();
-    U8* getCurrentWritePtr();
-    U8* getReadAddress(U32 address, U32 len);
-    U8* getWriteAddress(U32 address, U32 len);
-    U8* getReadWriteAddress(U32 address, U32 len);
+    // from Page
+    void writeb(U32 address, U8 value) override;
+    void writew(U32 address, U16 value) override;
+    void writed(U32 address, U32 value) override;
+    U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false) override;
+    U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false) override;
+    Type getType() override { return Type::RO_Page; }
 };
-
-#endif
 
 #endif

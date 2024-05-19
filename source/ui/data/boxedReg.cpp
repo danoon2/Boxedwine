@@ -6,7 +6,10 @@ BoxedReg::BoxedReg(BoxedContainer* container, bool system) {
 	BString root = GlobalSettings::getRootFolder(container);
 	this->filePath = root ^ "home" ^ "username" ^ ".wine" ^ (system?"system.reg":"user.reg");
 	if (!Fs::doesNativePathExist(this->filePath)) {
-		FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), B(system?"home/username/.wine/system.reg":"home/username/.wine/user.reg"), Fs::getNativeParentPath(this->filePath));
+        std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
+        if (fs) {
+            FsZip::extractFileFromZip(fs->filePath, B(system ? "home/username/.wine/system.reg" : "home/username/.wine/user.reg"), Fs::getNativeParentPath(this->filePath));
+        }
 	}
 	readLinesFromFile(this->filePath, lines);
 }
@@ -21,7 +24,7 @@ bool BoxedReg::readKey(const char* path, const char* key, BString& value) {
     searchKey += key;
     searchKey += "\"=";
 
-    for (int i = 0; i < (int)lines.size(); i++) {
+    for (size_t i = 0; i < lines.size(); i++) {
         BString line = lines[i];
         if (!found) {
             if (line.startsWith(section)) {
@@ -58,8 +61,8 @@ void BoxedReg::writeKey(const char* path, const char* key, const char* value, bo
     searchKey += key;
     searchKey += "\"=";
 
-    for (int i = 0; i < (int)lines.size(); i++) {
-        BString line = lines[i];
+    for (size_t i = 0; i < lines.size(); i++) {
+        BString& line = lines[i];
         if (!found) {
             if (line.startsWith(section)) {
                 found = true;

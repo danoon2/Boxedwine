@@ -6,11 +6,12 @@
 #include "x64Data.h"
 #include "x64Asm.h"
 #include "../normal/normal_strings.h"
+#include "x64CPU.h"
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
 
-static U32 segOffset[] = {CPU_OFFSET_ES, CPU_OFFSET_CS, CPU_OFFSET_SS, CPU_OFFSET_DS, CPU_OFFSET_FS, CPU_OFFSET_GS};
+static U32 segOffset[] = {CPU_OFFSET_ES, CPU_OFFSET_CS, CPU_OFFSET_SS, CPU_OFFSET_DS, CPU_OFFSET_FS, CPU_OFFSET_GS, 0, 0};
 
 // push es 0x06 removed
 // pop es 0x07 removed
@@ -136,7 +137,7 @@ static U32 inst16RM(X64Asm* data) {
 static U32 inst16RMBit(X64Asm* data) {
     U8 rm = data->fetch8();
 
-#ifndef _TEST
+#ifndef __TEST
     if (rm < 0xC0 && data->ea16) {
         static bool hasWarned = false;
         if (!hasWarned) {
@@ -165,7 +166,7 @@ static U32 instGrp4(X64Asm* data) {
     U8 rm = data->fetch8();
     if (G(rm)==7) {        
         void* pfn = (void*)data->fetch64();
-        data->callCallback(pfn);
+        data->emulateSingleOp(data->currentOp);
         data->done = true;
         return 0;
     }
@@ -331,7 +332,6 @@ static void popSeg16(X64Asm* data, U32 seg) {
 
 static void popSeg32(X64Asm* data, U32 seg) {
     data->popSeg(seg, 4);
-    data->cpu->thread->process->hasSetSeg[seg] = true;
 }
 
 // POP ES
@@ -1144,7 +1144,7 @@ static U32 iret32(X64Asm* data) {
 
 // INT 3
 static U32 int3(X64Asm* data) {
-    data->signalIllegalInstruction(5); // 5=ILL_PRVOPC
+    data->signalTrap(1); // 1=TRAP_BRKPT
     data->done = true;
     return 0;
 }
@@ -1350,7 +1350,7 @@ static U32 popFlags32(X64Asm* data) {
 
 // MOV AL,Ob
 static U32 movAlOb(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
@@ -1362,61 +1362,81 @@ static U32 movAlOb(X64Asm* data) {
 
 // MOV AX,Ow
 static U32 movAxOw(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
         disp = data->fetch32();
     }
-    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
+    if ((disp & 1) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
+    }
     return 0;
 }
 
 // MOV EAX,Od
 static U32 movEaxOd(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
         disp = data->fetch32();
     }
-    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
+    if ((disp & 3) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
+    }
     return 0;
 }
 
 // MOV Ob,Al
 static U32 movObAl(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
         disp = data->fetch32();
-    }
+    }    
     data->writeToMemAddressFromReg(data->ds, 0, false, disp, 1);
     return 0;
 }
 
 // MOV Ow,Ax
 static U32 movOwAx(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
         disp = data->fetch32();
     }
-    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
+    if ((disp & 1) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
+    }
     return 0;
 }
 
 // MOV Od,Eax
 static U32 movOdEax(X64Asm* data) {
-    U32 disp;
+    U32 disp = 0;
     if (data->ea16) {
         disp = data->fetch16();
     } else {
         disp = data->fetch32();
     }
-    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
+    if ((disp & 3) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
+    }
     return 0;
 }
 
@@ -1431,197 +1451,77 @@ static U32 bswapEsp(X64Asm* data) {
 }
 
 static U32 movsb(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->movs((void*)(data->ea16 ? movsb16r : movsb32r), 1, true, data->ds);
-        } else {
-            data->movs((void*)(data->ea16 ? movsb16 : movsb32), 1, false, data->ds);
-        }
-    }
+    data->movs(1);
     return 0;
 }
 
 static U32 movsw(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->movs((void*)(data->ea16 ? movsw16r : movsw32r), 2, true, data->ds);
-        } else {
-            data->movs((void*)(data->ea16 ? movsw16 : movsw32), 2, false, data->ds);
-        }
-    }
+    data->movs(2);
     return 0;
 }
 
 static U32 movsd(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->movs((void*)(data->ea16 ? movsd16r : movsd32r), 4, true, data->ds);
-        } else {
-            data->movs((void*)(data->ea16 ? movsd16 : movsd32), 4, false, data->ds);
-        }
-    }
+    data->movs(4);
     return 0;
 }
 
 static U32 cmpsb(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->cmps((void*)(data->ea16 ? cmpsb16r : cmpsb32r), 1, true, data->repZeroPrefix, data->ds);
-        } else {
-            data->cmps((void*)(data->ea16 ? cmpsb16 : cmpsb32), 1, false, data->repZeroPrefix, data->ds);
-        }
-    }
+    data->cmps(1);
     return 0;
 }
 
 static U32 cmpsw(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->cmps((void*)(data->ea16 ? cmpsw16r : cmpsw32r), 2, true, data->repZeroPrefix, data->ds);
-        } else {
-            data->cmps((void*)(data->ea16 ? cmpsw16 : cmpsw32), 2, false, data->repZeroPrefix, data->ds);
-        }
-    }
+    data->cmps(2);
     return 0;
 }
 
 static U32 cmpsd(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->cmps((void*)(data->ea16 ? cmpsd16r : cmpsd32r), 4, true, data->repZeroPrefix, data->ds);
-        } else {
-            data->cmps((void*)(data->ea16 ? cmpsd16 :cmpsd32), 4, false, data->repZeroPrefix, data->ds);
-        }
-    }
+    data->cmps(4);
     return 0;
 }
 
 static U32 stosb(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(false, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->stos((void*)(data->ea16 ? stosb16r : stosb32r), 1, true);
-        } else {
-            data->stos((void*)(data->ea16 ? stosb16 : stosb32), 1, false);
-        }
-    }
+    data->stos(1);
     return 0;
 }
 
 static U32 stosw(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(false, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->stos((void*)(data->ea16 ? stosw16r : stosw32r), 2, true);
-        } else {
-            data->stos((void*)(data->ea16 ? stosw16 : stosw32), 2, false);
-        }
-    }
+    data->stos(2);
     return 0;
 }
 
 static U32 stosd(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(false, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->stos((void*)(data->ea16 ? stosd16r : stosd32r), 4, true);
-        } else {
-            data->stos((void*)(data->ea16 ? stosd16 : stosd32), 4, false);
-        }
-    }
+    data->stos(4);
     return 0;
 }
 
 static U32 lodsb(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, false);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->lods((void*)(data->ea16 ? lodsb16r : lodsb32r), 1, true, data->ds);
-        } else {
-            data->lods((void*)(data->ea16 ? lodsb16 : lodsb32), 1, false, data->ds);
-        }
-    }
+    data->lods(1);
     return 0;
 }
 
 static U32 lodsw(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, false);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->lods((void*)(data->ea16 ? lodsw16r : lodsw32r), 2, true, data->ds);
-        } else {
-            data->lods((void*)(data->ea16 ? lodsw16 : lodsw32), 2, false, data->ds);
-        }
-    }
+    data->lods(2);
     return 0;
 }
 
 static U32 lodsd(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(true, false);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->lods((void*)(data->ea16 ? lodsd16r : lodsd32r), 4, true, data->ds);
-        } else {
-            data->lods((void*)(data->ea16 ? lodsd16 : lodsd32), 4, false, data->ds);
-        }
-    }
+    data->lods(4);
     return 0;
 }
 
 static U32 scasb(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(false, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->scas((void*)(data->ea16 ? scasb16r : scasb32r), 1, true, data->repZeroPrefix);
-        } else {
-            data->scas((void*)(data->ea16 ? scasb16 : scasb32), 1, false, data->repZeroPrefix);
-        }
-    }
+    data->scas(1);
     return 0;
 }
 
 static U32 scasw(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(false, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->scas((void*)(data->ea16 ? scasw16r : scasw32r), 2, true, data->repZeroPrefix);
-        } else {
-            data->scas((void*)(data->ea16 ? scasw16 : scasw32), 2, false, data->repZeroPrefix);
-        }
-    }
+    data->scas(2);
     return 0;
 }
 
 static U32 scasd(X64Asm* data) {
-    if (!data->ea16 && data->useSingleMemOffset) {
-        data->string32(false, true);
-    } else {
-        if (data->repNotZeroPrefix || data->repZeroPrefix) {
-            data->scas((void*)(data->ea16 ? scasd16r : scasd32r), 4, true, data->repZeroPrefix);
-        } else {
-            data->scas((void*)(data->ea16 ? scasd16 : scasd32), 4, false, data->repZeroPrefix);
-        }
-    }
+    data->scas(4);
     return 0;
 }
 
@@ -2038,10 +1938,10 @@ static U32 addressSize16(X64Asm* data) {
 // LOCK
 static U32 lock(X64Asm* data) {
     data->lockPrefix = true;
-    // :TODO: why was this here?
-    // if (data->ip-1 == data->startOfOpIp) {
-    //    data->mapAddress(data->ip, data->bufferPos);
-    //}
+    // add a mapping to the host instruction so that the lock can be skipped.  libc seems to do this.
+    if (data->ip-1 == data->startOfOpIp) {
+        data->mapAddress(data->ip, data->bufferPos);
+    }
     return 1;
 }
 
@@ -2081,19 +1981,48 @@ static U32 mmxRegE(X64Asm* data) {
 // FPU ESC 6
 // FPU ESC 7
 
-static U32 instFPU(X64Asm* data) {
+static U32 instFPU(X64Asm* data, U8 rm) {
+    bool isBig = data->currentOp->originalOp >= 0x200;    
+    if (!isBig) {
+        kpanic("instFPU softmmu doesn't support 16-bit, fpu emulation should have been enabled");
+    }
+    if (data->currentOp->inst == FNSAVE) {
+        data->fpuWrite(rm, isBig ? 108 : 94);
+        return 0;
+    } else if (data->currentOp->inst == FNSTENV) {
+        data->fpuWrite(rm, isBig ? 28 : 14);
+        return 0;
+    } else if (data->currentOp->inst == Fxsave) {
+        data->fpuWrite(rm, 512);
+        return 0;
+    } else if (data->currentOp->inst == FLDENV) {
+        data->fpuRead(rm, isBig ? 28 : 14);
+        return 0;
+    } else if (data->currentOp->inst == FRSTOR) {
+        data->fpuRead(rm, isBig ? 108 : 94);
+        return 0;
+    } else if (data->currentOp->inst == Fxrstor) {
+        data->fpuRead(rm, 512);
+        return 0;
+    }
     // don't check G, because G is a function not a reg
     // don't check E, we never load or store to ESP
-    data->translateRM(data->fetch8(), false, false, false, false, 0);
+    data->translateRM(rm, false, false, false, false, 0);
     return 0;
 }
 
+static U32 wait(X64Asm* data) {
+    if (!data->cpu->thread->process->emulateFPU) {
+        keepSame(data);
+    }
+    return 0;
+}
 
 static U32 instFPU0(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu0(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2102,7 +2031,7 @@ static U32 instFPU1(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu1(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2111,7 +2040,7 @@ static U32 instFPU2(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu2(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2120,7 +2049,7 @@ static U32 instFPU3(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu3(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2129,7 +2058,7 @@ static U32 instFPU4(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu4(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2138,7 +2067,7 @@ static U32 instFPU5(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu5(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2147,7 +2076,7 @@ static U32 instFPU6(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu6(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2156,7 +2085,7 @@ static U32 instFPU7(X64Asm* data) {
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu7(data->fetch8());
     } else {
-        return instFPU(data);
+        return instFPU(data, data->fetch8());
     }
     return 0;
 }
@@ -2203,14 +2132,30 @@ static U32 inst32RM(X64Asm* data) {
     return 0;
 }
 
+static void emulateRM(X64Asm* data, U8 rm) {
+    // advance eip correctly
+    U32 pos = data->bufferPos;
+    data->translateRM(rm, false, false, false, false, 0);
+    data->bufferPos;
+    data->emulateSingleOp(data->currentOp);
+}
+
 static U32 sseOp3AE(X64Asm* data) {
     U8 rm = data->fetch8();
     switch (G(rm)) {
     case 0: // FXSAVE
-        data->translateRM(rm, false, true, false, false, 0);
+        if (data->cpu->thread->process->emulateFPU) {
+            emulateRM(data, rm);
+        } else {
+            instFPU(data, rm);
+        }
         break;
     case 1: // FXRSTOR
-        data->translateRM(rm, false, true, false, false, 0);
+        if (data->cpu->thread->process->emulateFPU) {
+            emulateRM(data, rm);
+        } else {
+            instFPU(data, rm);
+        }
         break;
     case 2: // LDMXCSR
         data->translateRM(rm, false, true, false, false, 0);
@@ -2219,7 +2164,8 @@ static U32 sseOp3AE(X64Asm* data) {
         data->translateRM(rm, false, true, false, false, 0);
         break;
     case 4: // XSAVE
-        data->translateRM(rm, false, true, false, false, 0);
+        data->invalidOp(data->currentOp->originalOp);
+        data->done = true;
         break;
     case 5:         
         if (rm>=0xC0) { // LFENCE
@@ -2227,7 +2173,8 @@ static U32 sseOp3AE(X64Asm* data) {
             data->rm = rm;
             data->writeOp(); // keep same
         } else { // XRSTOR
-            data->translateRM(rm, false, true, false, false, 0);
+            data->invalidOp(data->currentOp->originalOp);
+            data->done = true;
         }
         break;
     case 6: // MFENCE
@@ -2426,7 +2373,7 @@ X64Decoder x64Decoder[1024] = {
     inst8RM, inst16RM, inst8RMGWritten, inst16RM, movEwSw, leaGw, movSwEw, popEw,
     // 90
     keepSame, keepSame, keepSame, keepSame, xchgSpAx, keepSame, keepSame, keepSame,
-    keepSame, keepSame, callAp, keepSame, pushFlags16, popFlags16, keepSame, keepSame,
+    keepSame, keepSame, callAp, wait, pushFlags16, popFlags16, keepSame, keepSame,
     // A0
     movAlOb, movAxOw, movObAl, movOwAx, movsb, movsw, cmpsb, cmpsw,
     keepSameImm8, keepSameImm16, stosb, stosw, lodsb, lodsw, scasb, scasw,

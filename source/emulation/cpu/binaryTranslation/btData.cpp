@@ -8,22 +8,10 @@
 BtData::BtData() {
     this->ipAddress = this->ipAddressBuffer;
     this->ipAddressBufferPos = this->ipAddressBufferPosBuffer;
-    this->ipAddressCount = 0;
     this->ipAddressBufferSize = sizeof(this->ipAddressBuffer) / sizeof(this->ipAddressBuffer[0]);
 
     this->buffer = this->bufferInternal;
-    this->bufferSize = sizeof(this->bufferInternal);
-    this->bufferPos = 0;
-    this->done = false;
-    this->ip = 0;
-    this->startOfDataIp = 0;
-    this->startOfOpIp = 0;
-    this->calculatedEipLen = 0;
-    this->stopAfterInstruction = -1;
-    this->dynamic = false;
-    this->useSingleMemOffset = true;
-    this->decodedOp = nullptr;
-    this->currentBlock = nullptr;
+    this->bufferSize = sizeof(this->bufferInternal);    
 }
 
 BtData::~BtData() {
@@ -36,6 +24,20 @@ BtData::~BtData() {
     if (this->ipAddressBufferPos != this->ipAddressBufferPosBuffer) {
         delete[] this->ipAddressBufferPos;
     }
+}
+
+void BtData::reset() {
+    this->ipAddressCount = 0;
+    this->bufferPos = 0;
+    this->done = false;
+    this->ip = 0;
+    this->startOfDataIp = 0;
+    this->startOfOpIp = 0;
+    this->calculatedEipLen = 0;
+    this->stopAfterInstruction = -1;
+    this->currentOp = nullptr;
+    this->needLargeIfJmpReg = false;
+    todoJump.clear();
 }
 
 void BtData::write8(U8 data) {
@@ -134,7 +136,8 @@ void BtData::mapAddress(U32 ip, U32 bufferPos) {
 }
 
 std::shared_ptr<BtCodeChunk> BtData::commit(bool makeLive) {
-    std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, this->dynamic);
+    std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, false);
+    chunk->block = this->currentBlock;
     if (makeLive) {
         chunk->makeLive();
     }

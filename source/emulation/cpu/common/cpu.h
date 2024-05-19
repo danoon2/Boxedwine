@@ -1,7 +1,6 @@
 #ifndef __CPU_H__
 #define __CPU_H__
 
-#include <setjmp.h>
 #include "lazyFlags.h"
 #include "fpu.h"
 #include "../decoder.h"
@@ -14,8 +13,9 @@
 #ifndef SIMDE_NO_CHECK_IMMEDIATE_CONSTANT
 #define SIMDE_NO_CHECK_IMMEDIATE_CONSTANT
 #endif
-#include "../../../../lib/simde/simde/x86/sse.h"
-#include "../../../../lib/simde/simde/x86/sse2.h"
+
+#include "simde/x86/sse.h"
+#include "simde/x86/sse2.h"
 
 typedef void (*Int99Callback)(CPU* cpu);
 extern Int99Callback* int99Callback;
@@ -226,28 +226,34 @@ union SSE {
 
 class CPU {
 public:
-    static CPU* allocCPU();
+    static CPU* allocCPU(KMemory* memory);
 
-    CPU();
+    CPU(KMemory* memory);
     virtual ~CPU() {}
     
     Reg reg[9];
-    Seg seg[7];
+    Seg seg[7];    
     U32 flags;
-    Reg eip;    
-    U8* reg8[9];
+    Reg eip;
+    U8* reg8[9];  
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    U64* memOffsets; // ARM will use one less instruction for shared memory access if the offset of this is in the first 256 bytes
+    DecodedOp* currentSingleOp;
 #endif
     MMX_reg reg_mmx[8];
-    SSE xmm[8]; // :TODO: alignment?
+    ALIGN(SSE xmm[8], 16);
+
+#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64)
+    U64 memcheckq[K_PAGE_SIZE];
+    U64 memcheckd[K_PAGE_SIZE];
+    U64 memcheckw[K_PAGE_SIZE];
+    U64 memcheckqq[K_PAGE_SIZE];
+#endif
 
     Reg  src;
     Reg  dst;
     Reg  dst2;
     Reg  result;
     LazyFlags const * lazyFlags;
-    U32	        df;
     U32         oldCF;
     FPU         fpu;
     U64		    instructionCount;
@@ -259,12 +265,11 @@ public:
     U32 stackMask;
 
     KThread* thread;
-    void* logFile;
+    KMemory* memory;
+    BWriteFile logFile;
 
     DecodedBlock* nextBlock;
     DecodedBlock* delayedFreeBlock;
-
-    jmp_buf runBlockJump;
 
     bool getCF();
     bool getSF();
@@ -295,7 +300,7 @@ public:
     void removeAF();
     void addOF();
     void removeOF();
-
+    int getDirection() {return (this->flags & DF) ? -1 : 1;}
     U32 pop32();
     U16 pop16();
     U32 peek32(U32 index);
@@ -336,6 +341,15 @@ public:
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);
+
+#ifdef BOXEDWINE_DYNAMIC
+    static U32 offsetofReg32(U32 index);
+    static U32 offsetofReg16(U32 index);
+    static U32 offsetofReg8(U32 index);
+    static U32 offsetofSegAddress(U32 index);
+    static U32 offsetofSegValue(U32 index);
+#endif
+
 #ifndef __TEST
 protected:    
 #endif

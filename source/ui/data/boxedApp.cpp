@@ -26,7 +26,10 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->pollRate = config.readInt(B("PollRate"), 0);
     this->skipFramesFPS = config.readInt(B("SkipFramesFPS"), 0);
     this->openGlType = config.readInt(B("OpenGL"), OPENGL_TYPE_NOT_SET);
-    
+    this->isWine = config.readBool(B("IsWine"), true);
+    this->uid = config.readInt(B("uid"), -1);
+    this->euid = config.readInt(B("euid"), -1);
+
     int i = 1;
     this->args.clear();
     while (true) {
@@ -78,6 +81,9 @@ bool BoxedApp::saveApp() {
     config.writeInt(B("PollRate"), this->pollRate);
     config.writeInt(B("SkipFramesFPS"), this->skipFramesFPS);
     config.writeInt(B("OpenGL"), this->openGlType);
+    config.writeBool(B("IsWine"), this->isWine);
+    config.writeInt(B("uid"), this->uid);
+    config.writeInt(B("euid"), this->euid);
 
     BString key;
     for (int i = 0; i < (int)this->args.size(); i++) {
@@ -166,15 +172,28 @@ void BoxedApp::launch() {
     if (this->skipFramesFPS) {
         GlobalSettings::startUpArgs.skipFrameFPS = this->skipFramesFPS;
     }
+    if (this->uid != -1) {
+        GlobalSettings::startUpArgs.userId = this->uid;
+    }
+    if (this->euid != -1) {
+        GlobalSettings::startUpArgs.effectiveUserId = this->euid;
+    }
     GlobalSettings::startUpArgs.title = this->name;
 
-    GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
-    if (this->link.length()>0) {        
-        GlobalSettings::startUpArgs.addArg(B("C:\\windows\\command\\start.exe"));
-        GlobalSettings::startUpArgs.addArg(this->link);
+    if (isWine) {
+        GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
+        if (this->link.length() > 0) {
+            GlobalSettings::startUpArgs.addArg(B("C:\\windows\\command\\start.exe"));
+            GlobalSettings::startUpArgs.addArg(this->link);
+        } else {
+            GlobalSettings::startUpArgs.addArg(this->cmd);
+            for (U32 i = 0; i < this->args.size(); i++) {
+                GlobalSettings::startUpArgs.addArg(this->args[i]);
+            }
+        }
     } else {
         GlobalSettings::startUpArgs.addArg(this->cmd);
-        for (U32 i=0;i<this->args.size();i++) {
+        for (U32 i = 0; i < this->args.size(); i++) {
             GlobalSettings::startUpArgs.addArg(this->args[i]);
         }
     }
@@ -186,47 +205,49 @@ void BoxedApp::launch() {
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 
-BoxedAppIcon::BoxedAppIcon(const unsigned char* data, int width, int height) : width(width), height(height), data(data) {
+BoxedAppIcon::BoxedAppIcon(std::shared_ptr<U8[]> data, int width, int height) : width(width), height(height), data(data) {
     this->texture = std::make_shared<BoxedTexture>([this]() {
-        return MakeRGBATexture(this->data, this->width, this->height);
+        return MakeRGBATexture(this->data.get(), this->width, this->height);
         });
 }
 
 BoxedAppIcon::~BoxedAppIcon() {
-    if (data) {
-        delete[] data;
-    }
 }
 
 const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
     if (iconSize==0) {
         iconSize = UiSettings::ICON_SIZE;
     }
-    if (!this->iconsBySize.count(iconSize)) {
+    if (!this->iconsBySize.contains(iconSize)) {
         int width = 0;
         int height = 0;
-        const unsigned char* data = NULL;
+        std::shared_ptr<U8[]> data;
         BString nativeExePath = this->container->getNativePathForApp(*this);
 
         if (Fs::doesNativePathExist(nativeExePath)) {
             data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         } else {
             BString nativeDir = this->container->getDir() ^ "tmp";
-            FsZip::extractFileFromZip(GlobalSettings::getFileFromWineName(container->getWineVersion()), this->path.substr(1) + "/" + this->cmd, nativeDir);
-            BString nativePath = nativeDir ^ this->cmd;
-            data = extractIconFromExe(nativePath, iconSize, &width, &height);
-            Fs::deleteNativeFile(nativePath);
+            std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
+            if (fs) {
+                FsZip::extractFileFromZip(fs->filePath, this->path.substr(1) + "/" + this->cmd, nativeDir);
+                BString nativePath = nativeDir ^ this->cmd;
+                data = extractIconFromExe(nativePath, iconSize, &width, &height);
+                Fs::deleteNativeFile(nativePath);
+            }
+        }
+        if (!data) {
+            if (Fs::doesNativePathExist(this->iconPath)) {
+                data.reset(LoadImageFromFile(this->iconPath.c_str(), &width, &height));
+            }
         }
         if (data) {
-            this->iconsBySize[iconSize] = new BoxedAppIcon(data, width, height);
+            this->iconsBySize.set(iconSize, new BoxedAppIcon(data, width, height));
         } else {
-            this->iconsBySize[iconSize] = NULL;
+            this->iconsBySize.set(iconSize, nullptr);
         }
     }
-    if (this->iconsBySize.count(iconSize)) {
-        return this->iconsBySize[iconSize];
-    }
-    return NULL;
+    return this->iconsBySize[iconSize];
 }
 
 void BoxedApp::remove() {

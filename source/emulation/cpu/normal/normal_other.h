@@ -175,12 +175,16 @@ void OPCALL normal_retn32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_invalid(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    kpanic("Invalid instruction %x\n", op->inst);
+    cpu->thread->signalIllegalInstruction(5);
+    NEXT_DONE();
 }
 void OPCALL normal_int80(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     ksyscall(cpu, op->len);
- NEXT_DONE();
+    if (cpu->thread->terminating) {
+        return;
+    }
+    NEXT_DONE();
 }
 void OPCALL normal_int98(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -208,6 +212,11 @@ void OPCALL normal_int9A(CPU* cpu, DecodedOp* op) {
 #endif
     NEXT();
 }
+void OPCALL normal_int3(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->thread->signalTrap(1);// 1=TRAP_BRKPT
+    NEXT_DONE();
+}
 void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
@@ -216,9 +225,9 @@ void OPCALL normal_intIb(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_xlat(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     if (op->ea16) {
-        AL = readb(cpu->seg[op->base].address + (U16)(BX + AL));
+        AL = cpu->memory->readb(cpu->seg[op->base].address + (U16)(BX + AL));
     } else {
-        AL = readb(cpu->seg[op->base].address + EBX + AL);
+        AL = cpu->memory->readb(cpu->seg[op->base].address + EBX + AL);
     }
     NEXT();
 }
@@ -257,13 +266,11 @@ void OPCALL normal_sti(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_cld(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->removeFlag(DF);
-    cpu->df=1;
     NEXT();
 }
 void OPCALL normal_std(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->addFlag(DF);
-    cpu->df=-1;
     NEXT();
 }
 void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
@@ -466,14 +473,14 @@ void OPCALL normal_callR32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_callE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 neweip = readw(eaa(cpu, op));
+    U32 neweip = cpu->memory->readw(eaa(cpu, op));
     cpu->push16(cpu->eip.u32+op->len);
     cpu->eip.u32 = neweip;
     NEXT_DONE();
 }
 void OPCALL normal_callE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 neweip = readd(eaa(cpu, op));
+    U32 neweip = cpu->memory->readd(eaa(cpu, op));
     cpu->push32(cpu->eip.u32+op->len);
     cpu->eip.u32 = neweip;
     NEXT_DONE();
@@ -490,45 +497,45 @@ void OPCALL normal_jmpR32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_jmpE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 neweip = readw(eaa(cpu, op));
+    U32 neweip = cpu->memory->readw(eaa(cpu, op));
     cpu->eip.u32 = neweip;
     NEXT_DONE();
 }
 void OPCALL normal_jmpE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    U32 neweip = readd(eaa(cpu, op));
+    U32 neweip = cpu->memory->readd(eaa(cpu, op));
     cpu->eip.u32 = neweip;
     NEXT_DONE();
 }
 void OPCALL normal_callFarE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    U16 newip = readw(eaa);
-    U16 newcs = readw(eaa+2);
+    U16 newip = cpu->memory->readw(eaa);
+    U16 newcs = cpu->memory->readw(eaa+2);
     cpu->call(0, newcs, newip, cpu->eip.u32 + op->len);
     NEXT_DONE();
 }
 void OPCALL normal_callFarE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    U32 newip = readd(eaa);
-    U16 newcs = readw(eaa+4);
+    U32 newip = cpu->memory->readd(eaa);
+    U16 newcs = cpu->memory->readw(eaa+4);
     cpu->call(1, newcs, newip, cpu->eip.u32 + op->len);
     NEXT_DONE();
 }
 void OPCALL normal_jmpFarE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    U16 newip = readw(eaa);
-    U16 newcs = readw(eaa+2);
+    U16 newip = cpu->memory->readw(eaa);
+    U16 newcs = cpu->memory->readw(eaa+2);
     cpu->jmp(0, newcs, newip, cpu->eip.u32 + op->len);
     NEXT_DONE();
 }
 void OPCALL normal_jmpFarE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    U32 newip = readd(eaa);
-    U16 newcs = readw(eaa+4);
+    U32 newip = cpu->memory->readd(eaa);
+    U16 newcs = cpu->memory->readw(eaa+4);
     cpu->jmp(1, newcs, newip, cpu->eip.u32 + op->len);
     NEXT_DONE();
 }
@@ -539,7 +546,7 @@ void OPCALL normal_larr16r16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_larr16e16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u16 = cpu->lar(readw(eaa(cpu, op)), cpu->reg[op->reg].u16);
+    cpu->reg[op->reg].u16 = cpu->lar(cpu->memory->readw(eaa(cpu, op)), cpu->reg[op->reg].u16);
     NEXT();
 }
 void OPCALL normal_lslr16r16(CPU* cpu, DecodedOp* op) {
@@ -549,7 +556,7 @@ void OPCALL normal_lslr16r16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_lslr16e16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u16 = cpu->lsl(readw(eaa(cpu, op)), cpu->reg[op->reg].u16);
+    cpu->reg[op->reg].u16 = cpu->lsl(cpu->memory->readw(eaa(cpu, op)), cpu->reg[op->reg].u16);
     NEXT();
 }
 void OPCALL normal_lslr32r32(CPU* cpu, DecodedOp* op) {
@@ -559,17 +566,17 @@ void OPCALL normal_lslr32r32(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_lslr32e32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->reg[op->reg].u32 = cpu->lsl(readw(eaa(cpu, op)), cpu->reg[op->reg].u32); // intentional 16-bit read
+    cpu->reg[op->reg].u32 = cpu->lsl(cpu->memory->readw(eaa(cpu, op)), cpu->reg[op->reg].u32); // intentional 16-bit read
     NEXT();
 }
 void OPCALL normal_verre16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->verr(readw(eaa(cpu, op)));
+    cpu->verr(cpu->memory->readw(eaa(cpu, op)));
     NEXT();
 }
 void OPCALL normal_verwe16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->verw(readw(eaa(cpu, op)));
+    cpu->verw(cpu->memory->readw(eaa(cpu, op)));
     NEXT();
 }
 void OPCALL normal_xaddr8r8(CPU* cpu, DecodedOp* op) {
@@ -586,11 +593,11 @@ void OPCALL normal_xaddr8e8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 address = eaa(cpu, op);
     cpu->src.u8 = *cpu->reg8[op->reg];
-    cpu->dst.u8 = readb(address);
+    cpu->dst.u8 = cpu->memory->readb(address);
     cpu->result.u8 = cpu->dst.u8 + cpu->src.u8;
     cpu->lazyFlags = FLAGS_ADD8;
     *cpu->reg8[op->reg] = cpu->dst.u8;
-    writeb(address, cpu->result.u8);
+    cpu->memory->writeb(address, cpu->result.u8);
     NEXT();
 }
 void OPCALL normal_xaddr16r16(CPU* cpu, DecodedOp* op) {
@@ -607,11 +614,11 @@ void OPCALL normal_xaddr16e16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 address = eaa(cpu, op);
     cpu->src.u16 = cpu->reg[op->reg].u16;
-    cpu->dst.u16 = readw(address);
+    cpu->dst.u16 = cpu->memory->readw(address);
     cpu->result.u16 = cpu->dst.u16 + cpu->src.u16;
     cpu->lazyFlags = FLAGS_ADD16;
     cpu->reg[op->reg].u16 = cpu->dst.u16;
-    writew(address, cpu->result.u16);
+    cpu->memory->writew(address, cpu->result.u16);
     NEXT();
 }
 void OPCALL normal_xaddr32r32(CPU* cpu, DecodedOp* op) {
@@ -628,11 +635,11 @@ void OPCALL normal_xaddr32e32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 address = eaa(cpu, op);
     cpu->src.u32 = cpu->reg[op->reg].u32;
-    cpu->dst.u32 = readd(address);
+    cpu->dst.u32 = cpu->memory->readd(address);
     cpu->result.u32 = cpu->dst.u32 + cpu->src.u32;
     cpu->lazyFlags = FLAGS_ADD32;
     cpu->reg[op->reg].u32 = cpu->dst.u32;
-    writed(address, cpu->result.u32);
+    cpu->memory->writed(address, cpu->result.u32);
     NEXT();
 }
 void OPCALL normal_bswap32(CPU* cpu, DecodedOp* op) {
@@ -649,8 +656,8 @@ void OPCALL normal_cmpxchgg8b(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_loadSegment16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    U16 val = readw(eaa);
-    U32 selector = readw(eaa+2);
+    U16 val = cpu->memory->readw(eaa);
+    U32 selector = cpu->memory->readw(eaa+2);
     if (cpu->setSegment(op->imm, selector)) {
         cpu->reg[op->reg].u16 = val;
         NEXT();
@@ -661,8 +668,8 @@ void OPCALL normal_loadSegment16(CPU* cpu, DecodedOp* op) {
 void OPCALL normal_loadSegment32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
-    U32 val = readd(eaa);
-    U32 selector = readw(eaa+4);
+    U32 val = cpu->memory->readd(eaa);
+    U32 selector = cpu->memory->readw(eaa+4);
     if (cpu->setSegment(op->imm, selector)) {
         cpu->reg[op->reg].u32 = val;
         NEXT();

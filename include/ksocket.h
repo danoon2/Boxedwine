@@ -67,6 +67,8 @@
 #define K_SO_PEERNAME  28
 #define K_SO_TIMESTAMP 29
 #define K_SO_ACCEPTCONN 30
+#define K_SO_SNDBUFFORCE 32
+#define K_SO_RCVBUFFORCE 33
 
 #define K_IPPROTO_IP 0
 #define K_SOL_SOCKET  1
@@ -99,27 +101,24 @@
 #define K_TCP_KEEPINTVL 5
 
 U32 ksocket(U32 domain, U32 type, U32 protocol);
-U32 kbind(U32 socket, U32 address, U32 len);
-U32 kconnect(U32 socket, U32 address, U32 len);
-U32 klisten(U32 socket, U32 backog);
-U32 kaccept(U32 socket, U32 address, U32 len, U32 flags);
-U32 kgetsockname(U32 socket, U32 address, U32 len);
-U32 kgetpeername(U32 socket, U32 address, U32 len);
-U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags);
-U32 ksend(U32 socket, U32 buffer, U32 len, U32 flags);
-U32 krecv(U32 socket, U32 buffer, U32 len, U32 flags);
-U32 kshutdown(U32 socket, U32 how);
-U32 ksetsockopt(U32 socket, U32 level, U32 name, U32 value, U32 len);
-U32 kgetsockopt(U32 socket, U32 level, U32 name, U32 value, U32 len);
-U32 ksendmsg(U32 socket, U32 msg, U32 flags);
-U32 ksendmmsg(U32 socket, U32 address, U32 vlen, U32 flags);
-U32 krecvmsg(U32 socket, U32 msg, U32 flags);
-U32 ksendto(U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len);
-U32 krecvfrom(U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len);
+U32 kbind(KThread* thread, U32 socket, U32 address, U32 len);
+U32 kconnect(KThread* thread, U32 socket, U32 address, U32 len);
+U32 klisten(KThread* thread, U32 socket, U32 backog);
+U32 kaccept(KThread* thread, U32 socket, U32 address, U32 len, U32 flags);
+U32 kgetsockname(KThread* thread, U32 socket, U32 address, U32 len);
+U32 kgetpeername(KThread* thread, U32 socket, U32 address, U32 len);
+U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 flags);
+U32 ksend(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags);
+U32 krecv(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags);
+U32 kshutdown(KThread* thread, U32 socket, U32 how);
+U32 ksetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32 len);
+U32 kgetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32 len);
+U32 ksendmsg(KThread* thread, U32 socket, U32 msg, U32 flags);
+U32 ksendmmsg(KThread* thread, U32 socket, U32 address, U32 vlen, U32 flags);
+U32 krecvmsg(KThread* thread, U32 socket, U32 msg, U32 flags);
+U32 ksendto(KThread* thread, U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len);
+U32 krecvfrom(KThread* thread, U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len);
 
-U32 syscall_pipe(U32 address);
-U32 syscall_pipe2(U32 address, U32 flags);
-
-const char* socketAddressName(U32 address, U32 len, char* result, U32 cbResult);
+BString socketAddressName(KMemory* memory, U32 address, U32 len);
 bool isNativeSocket(KThread* thread, int desc);
 #endif

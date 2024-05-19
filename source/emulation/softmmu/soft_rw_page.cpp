@@ -1,16 +1,13 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_rw_page.h"
-#include "soft_memory.h"
 #include "soft_ram.h"
 
-RWPage* RWPage::alloc(U8* page, U32 address, U32 flags) {
-    return new RWPage(page, address, flags);
+RWPage* RWPage::alloc(U8* page, U32 address) {
+    return new RWPage(page, address);
 }
 
-RWPage::RWPage(U8* page, U32 address, U32 flags, Type type) : Page(type, flags), address(address) {
+RWPage::RWPage(U8* page, U32 address) : address(address) {
     if (page) {
         this->page = page;
         ramPageIncRef(page);
@@ -67,24 +64,10 @@ void RWPage::writed(U32 address, U32 value) {
 #endif
 }
 
-U8* RWPage::getCurrentReadPtr() {
+U8* RWPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
     return this->page;
 }
 
-U8* RWPage::getCurrentWritePtr() {
+U8* RWPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
     return this->page;
 }
-
-U8* RWPage::getReadAddress(U32 address, U32 len) {    
-    return &this->page[address - this->address];
-}
-
-U8* RWPage::getWriteAddress(U32 address, U32 len) {
-    return &this->page[address - this->address];
-}
-
-U8* RWPage::getReadWriteAddress(U32 address, U32 len) {
-    return &this->page[address - this->address];
-}
-
-#endif

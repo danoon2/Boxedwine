@@ -2,7 +2,7 @@
 
 #include "kstat.h"
 
-FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, BoxedPtr<FsNode> parent) : 
+FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, std::shared_ptr<FsNode> parent) :
     path(path),
     nativePath(nativePath),
     name(Fs::getFileNameFromPath(path)),    
@@ -12,9 +12,9 @@ FsNode::FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString 
     hardLinkCount(1),
     type(type),  
     parent(parent),
-    isDir(isDirectory),  
-    locksCS(B("FsNode.lockCS")),
-    hasLoadedChildrenFromFileSystem(false)
+    isDir(isDirectory),      
+    hasLoadedChildrenFromFileSystem(false),
+    locksCS(std::make_shared<BoxedWineCondition>(B("FsNode.lockCS")))
  {   
 }
 
@@ -32,8 +32,11 @@ bool FsNode::canWrite() {
 }
 
 void FsNode::removeNodeFromParent() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->parent->childrenByNameMutex);
-    this->parent->childrenByName.erase(this->name);
+    std::shared_ptr<FsNode> parent = this->getParent().lock();
+    if (parent) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenByNameMutex);
+        parent->childrenByName.remove(this->name);
+    }
 }
 
 void FsNode::loadChildren() {
@@ -54,11 +57,14 @@ void FsNode::loadChildren() {
                 }
                 Fs::remoteNameToLocal(n.name);
                 localPath+=n.name;
-                if (localPath.endsWith(".mixed")) {
+                if (localPath.endsWith(EXT_MIXED)) {
                     localPath.remove(localPath.length() - 6);
                 }
-                if (!localPath.endsWith(".link")) {
-                    Fs::addFileNode(localPath, B(""), remotePath, n.isDirectory, this);
+                if (localPath.endsWith(EXT_DOSATTRIB)) {
+                    continue;
+                }
+                if (!localPath.endsWith(EXT_LINK)) {
+                    Fs::addFileNode(localPath, B(""), remotePath, n.isDirectory, shared_from_this());
                 } else {
                     U8 tmp[MAX_FILEPATH_LEN];
                     U32 result = Fs::readNativeFile(remotePath, tmp, MAX_FILEPATH_LEN-1);
@@ -67,7 +73,7 @@ void FsNode::loadChildren() {
                         kwarn("Could not read link file from filesystem: %s", localPath.c_str());
                     }
                     localPath = localPath.substr(0, localPath.length()-5);
-                    Fs::addFileNode(localPath, BString::copy((const char*)tmp), remotePath, n.isDirectory, this);
+                    Fs::addFileNode(localPath, BString::copy((const char*)tmp), remotePath, n.isDirectory, shared_from_this());
                 }           
             }
         }
@@ -75,23 +81,21 @@ void FsNode::loadChildren() {
 }
 
 
-BoxedPtr<FsNode> FsNode::getChildByName(BString name) {
+std::shared_ptr<FsNode> FsNode::getChildByName(BString name) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
-    if (this->childrenByName.count(name))
-        return this->childrenByName[name];
-    return NULL;
+    return this->childrenByName[name];
 }
 
-BoxedPtr<FsNode> FsNode::getChildByNameIgnoreCase(BString name) {
+std::shared_ptr<FsNode> FsNode::getChildByNameIgnoreCase(BString name) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     for (auto& n : this->childrenByName) {
-        if (n.first.compareTo(name, true) == 0) {
-            return n.second;
+        if (n.key.compareTo(name, true) == 0) {
+            return n.value;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 U32 FsNode::getChildCount() {    
@@ -100,23 +104,23 @@ U32 FsNode::getChildCount() {
     return (U32)this->childrenByName.size();
 }
 
-void FsNode::addChild(BoxedPtr<FsNode> node) {    
+void FsNode::addChild(std::shared_ptr<FsNode> node) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
-    this->childrenByName[node->name] = node;
+    this->childrenByName.set(node->name, node);
 }
 
 void FsNode::removeChildByName(BString name) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
-    this->childrenByName.erase(name);
+    this->childrenByName.remove(name);
 }
 
-void FsNode::getAllChildren(std::vector<BoxedPtr<FsNode> > & results) {    
+void FsNode::getAllChildren(std::vector<std::shared_ptr<FsNode> > & results) {
     this->loadChildren();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->childrenByNameMutex);
     for (auto& n : this->childrenByName) {
-        results.push_back(n.second);
+        results.push_back(n.value);
     }
 }
 
@@ -201,7 +205,7 @@ KFileLock* FsNode::internalGetLock(KFileLock* lock, bool otherProcess) {
             return next;
         }
     }
-    return NULL;
+    return nullptr;
  }
 
 void FsNode::addOpenNode(KListNode<FsOpenNode*>* node) {

@@ -104,39 +104,42 @@
 #define K_CLD_EXITED 1
 
 U32 syscall_signalstack(U32 ss, U32 oss);
-U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags);
+U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 flags);
 
 class KThread;
 class KFileLock;
 
 class KSignal : public KObject {
 public:
-    KSignal();
-    virtual U32  ioctl(U32 request);
-    virtual S64  seek(S64 pos);
-    virtual S64  length();
-    virtual S64  getPos();
-    virtual void setBlocking(bool blocking);
-    virtual bool isBlocking();
-    virtual void setAsync(bool isAsync);
-    virtual bool isAsync();
-    virtual KFileLock* getLock(KFileLock* lock);
-    virtual U32  setLock(KFileLock* lock, bool wait);
-    virtual bool supportsLocks();
-    virtual bool isOpen();
-    virtual bool isReadReady();
-    virtual bool isWriteReady();
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);
-    virtual U32  writeNative(U8* buffer, U32 len);
-    virtual U32  readNative(U8* buffer, U32 len);
-    virtual U32  stat(U32 address, bool is64);
-    virtual U32  map(U32 address, U32 len, S32 prot, S32 flags, U64 off);
-    virtual bool canMap();
+    KSignal() : KObject(KTYPE_SIGNAL), lockCond(std::make_shared<BoxedWineCondition>(B("KSignal::lockCond"))) {}
 
-    bool blocking;
-    U64 mask;
-    U32 signalingPid;
-    U32 signalingUid;
+    // from KObject
+    U32 ioctl(KThread* thread, U32 request) override;
+    S64 seek(S64 pos) override;
+    S64 length() override;
+    S64 getPos() override;
+    void setBlocking(bool blocking) override;
+    bool isBlocking() override;
+    void setAsync(bool isAsync) override;
+    bool isAsync() override;
+    KFileLock* getLock(KFileLock* lock) override;
+    U32 setLock(KFileLock* lock, bool wait) override;
+    bool supportsLocks() override;
+    bool isOpen() override;
+    bool isReadReady() override;
+    bool isWriteReady() override;
+    void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
+    U32 writeNative(U8* buffer, U32 len) override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 stat(KProcess* process, U32 address, bool is64) override;
+    U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
+    bool canMap() override;
+    BString selfFd() override;
+
+    bool blocking = false;
+    U64 mask = 0;
+    U32 signalingPid = 0;
+    U32 signalingUid = 0;
     BOXEDWINE_CONDITION lockCond;
     KSigAction sigAction;
 };

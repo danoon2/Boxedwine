@@ -19,31 +19,24 @@
 #ifndef __SOFT_INVALID_PAGE_H__
 #define __SOFT_INVALID_PAGE_H__
 
-#ifdef BOXEDWINE_DEFAULT_MMU
-
 #include "soft_page.h"
 
 class InvalidPage : public Page {
 public:
-    InvalidPage() : Page(Invalid_Page, 0) {}
+    // from Page
+    U8 readb(U32 address) override;
+    void writeb(U32 address, U8 value) override;
+    U16 readw(U32 address) override;
+    void writew(U32 address, U16 value) override;
+    U32 readd(U32 address) override;
+    void writed(U32 address, U32 value) override;
+    U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false) override;
+    U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false) override;
+    Type getType() override { return Type::Invalid_Page; }
+    bool inRam() override {return false;}
+    void close() override {}
 
-    U8 readb(U32 address);
-    void writeb(U32 address, U8 value);
-    U16 readw(U32 address);
-    void writew(U32 address, U16 value);
-    U32 readd(U32 address);
-    void writed(U32 address, U32 value);
-    U8* getCurrentReadPtr();
-    U8* getCurrentWritePtr();
-    U8* getReadAddress(U32 address, U32 len);
-    U8* getWriteAddress(U32 address, U32 len);
-    U8* getReadWriteAddress(U32 address, U32 len);
-    bool inRam() {return false;}
-    void close() {}
+    void ondemmand(KMemory* memory, U32 page);
 };
-
-extern InvalidPage* invalidPage;
-
-#endif
 
 #endif

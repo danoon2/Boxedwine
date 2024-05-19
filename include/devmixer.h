@@ -19,6 +19,6 @@
 #ifndef __DEVMIXER_H__
 #define __DEVMIXER_H__
 
-FsOpenNode* openDevMixer(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevMixer(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

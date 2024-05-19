@@ -20,14 +20,14 @@ InstallView::InstallView(BString initialFileOrDirPath, BString tab) : BaseView(B
 
 void InstallView::createDemoTab() {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
-    std::shared_ptr<LayoutSection> section = model->addSection(0);
+    std::shared_ptr<LayoutSection> section = model->addSection(Msg::NONE);
 
     BString name;
     if (GlobalSettings::hasIconsFont()) {
         name += INSTALL_DEMO_ICON;
         name += " ";
     }
-    name += getTranslation(INSTALLVIEW_DEMO_TITLE);
+    name += getTranslation(Msg::INSTALLVIEW_DEMO_TITLE);
 
     addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         runApps(GlobalSettings::getDemos());
@@ -37,7 +37,7 @@ void InstallView::createDemoTab() {
 void InstallView::runApps(std::vector<AppFile>& apps) {
     ImGui::PushFont(GlobalSettings::largeFont);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    SAFE_IMGUI_TEXT(c_getTranslation(INSTALLVIEW_DEMO_TITLE));
+    SAFE_IMGUI_TEXT(c_getTranslation(Msg::INSTALLVIEW_DEMO_TITLE));
     ImGui::PopFont();
 
     ImVec2 size = ImGui::GetWindowContentRegionMax();
@@ -72,7 +72,7 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
         BString name2;
         if (!Fs::doesNativePathExist(app.localFilePath)) {
             name2 += "(";
-            name2 += getTranslation(INSTALLVIEW_DEMO_DOWNLOAD_SIZE);
+            name2 += getTranslation(Msg::INSTALLVIEW_DEMO_DOWNLOAD_SIZE);
             name2 += app.size;
             name2 += " MB)";
         }
@@ -104,15 +104,15 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
 
 void InstallView::createInstallTab(BString initialFileOrDirPath) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();
-    std::shared_ptr<LayoutSection> section = model->addSection(INSTALLVIEW_INSTALL_TITLE);
+    std::shared_ptr<LayoutSection> section = model->addSection(Msg::INSTALLVIEW_INSTALL_TITLE);
 
     // Initialize Install Type Control
     std::vector<ComboboxItem> installTypes;
-    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_SETUP)));
-    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_DIRECTORY)));
-    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_MOUNT)));
-    installTypes.push_back(ComboboxItem(getTranslation(INSTALLVIEW_TYPE_BLANK)));
-    installTypeControl = section->addComboboxRow(INSTALLVIEW_INSTALL_TYPE_LABEL, INSTALLVIEW_INSTALL_TYPE_HELP, installTypes, 0);
+    installTypes.push_back(ComboboxItem(getTranslation(Msg::INSTALLVIEW_TYPE_SETUP)));
+    installTypes.push_back(ComboboxItem(getTranslation(Msg::INSTALLVIEW_TYPE_DIRECTORY)));
+    installTypes.push_back(ComboboxItem(getTranslation(Msg::INSTALLVIEW_TYPE_MOUNT)));
+    installTypes.push_back(ComboboxItem(getTranslation(Msg::INSTALLVIEW_TYPE_BLANK)));
+    installTypeControl = section->addComboboxRow(Msg::INSTALLVIEW_INSTALL_TYPE_LABEL, Msg::INSTALLVIEW_INSTALL_TYPE_HELP, installTypes, 0);
     installTypeControl->onChange = [this]() {
         int type = installTypeControl->getSelection();
         locationControl->setRowHidden(type == INSTALL_TYPE_BLANK);
@@ -124,20 +124,20 @@ void InstallView::createInstallTab(BString initialFileOrDirPath) {
             types.push_back(B("*.EXE"));
 #endif
             locationControl->setBrowseFileButton(types);
-            locationControl->setHelpId(INSTALLVIEW_TYPE_SETUP_HELP);
+            locationControl->setHelpId(Msg::INSTALLVIEW_TYPE_SETUP_HELP);
         } else if (type == INSTALL_TYPE_DIR) {
             locationControl->setBrowseDirButton();
-            locationControl->setHelpId(INSTALLVIEW_TYPE_DIR_HELP);
+            locationControl->setHelpId(Msg::INSTALLVIEW_TYPE_DIR_HELP);
         } else if (type == INSTALL_TYPE_MOUNT) {
             locationControl->setBrowseDirButton();
-            locationControl->setHelpId(INSTALLVIEW_TYPE_MOUNT_HELP);
+            locationControl->setHelpId(Msg::INSTALLVIEW_TYPE_MOUNT_HELP);
         } else {
             containerControl->setSelection(0);
         }
     };
 
     // Initialize File/Dir Location Control
-    locationControl = section->addTextInputRow(INSTALLVIEW_SETUP_FILE_LOCATION_LABEL, INSTALLVIEW_TYPE_SETUP_HELP);
+    locationControl = section->addTextInputRow(Msg::INSTALLVIEW_SETUP_FILE_LOCATION_LABEL, Msg::INSTALLVIEW_TYPE_SETUP_HELP);
     locationControl->onBrowseFinished = [this]() {
         if (containerNameControl->getText().length()==0) {
             setContainerName();
@@ -146,11 +146,11 @@ void InstallView::createInstallTab(BString initialFileOrDirPath) {
 
     // Initialize Container Control
     std::vector<ComboboxItem> containers;
-    containers.push_back(ComboboxItem(getTranslation(INSTALLVIEW_NEW_CONTAINER)));
+    containers.push_back(ComboboxItem(getTranslation(Msg::INSTALLVIEW_NEW_CONTAINER)));
     for (auto& container : BoxedwineData::getContainers()) {
         containers.push_back(ComboboxItem(container->getName()));
     }
-    containerControl = section->addComboboxRow(INSTALLVIEW_CONTAINER_LABEL, INSTALLVIEW_CONTAINER_HELP, containers, 0);    
+    containerControl = section->addComboboxRow(Msg::INSTALLVIEW_CONTAINER_LABEL, Msg::INSTALLVIEW_CONTAINER_HELP, containers, 0);
 
     // Sub Section For New Container
     containerSection = model->addSection();
@@ -160,11 +160,11 @@ void InstallView::createInstallTab(BString initialFileOrDirPath) {
     };
 
     // Initialize Container Name Control
-    containerNameControl = containerSection->addTextInputRow(INSTALLVIEW_CONTAINER_NAME_LABEL, INSTALLVIEW_CONTAINER_NAME_HELP);
+    containerNameControl = containerSection->addTextInputRow(Msg::INSTALLVIEW_CONTAINER_NAME_LABEL, Msg::INSTALLVIEW_CONTAINER_NAME_HELP);
 
-    // Initialize Wine Version Control
-    wineVersionControl = createWineVersionCombobox(containerSection);
-    wineVersionControl->onChange = [this]() {
+    // Initialize FileSystem Version Control
+    fileSystemVersionControl = createFileSystemVersionCombobox(containerSection);
+    fileSystemVersionControl->onChange = [this]() {
         setWindowsVersionDefault();        
     };
     // Initialize Windows Version Control
@@ -173,7 +173,7 @@ void InstallView::createInstallTab(BString initialFileOrDirPath) {
 
     section = model->addSection();
     section->addSeparator();
-    std::shared_ptr<LayoutButtonControl> buttonControl = section->addButton(0, 0, getTranslation(INSTALLVIEW_INSTALL_BUTTON_LABEL));
+    std::shared_ptr<LayoutButtonControl> buttonControl = section->addButton(Msg::NONE, Msg::NONE, getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
     buttonControl->setFont(GlobalSettings::largeFont);
     buttonControl->onChange = [this]() {
         onInstall();
@@ -196,14 +196,19 @@ void InstallView::createInstallTab(BString initialFileOrDirPath) {
         name += INSTALL_ICON;
         name += " ";
     }
-    name += getTranslation(INSTALLVIEW_INSTALL_TITLE);
+    name += getTranslation(Msg::INSTALLVIEW_INSTALL_TITLE);
     addTab(name, name, model, [this](bool buttonPressed, BaseViewTab& tab) {
         
         });
 }
 
 void InstallView::setWindowsVersionDefault() {
-    BString ver = wineVersionControl->getSelectionStringValue();
+    BString ver = fileSystemVersionControl->getSelectionStringValue();
+    std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getAvailableFileSystemFromName(ver);
+
+    if (fileSystem) {
+        windowsVersionControl->setRowHidden(!fileSystem->hasWine());
+    }
     if (ver.startsWith("Wine ")) {
         ver = ver.substr(5);
         std::vector<BString> parts;
@@ -255,34 +260,34 @@ void InstallView::onInstall() {
     BString location = locationControl->getText();
     int containerIndex = containerControl->getSelection();
     BString containerName = containerNameControl->getText();
-    int wineVersionIndex = wineVersionControl->getSelection();
+    int fileSystemVersionIndex = fileSystemVersionControl->getSelection();
     int windowsVersionIndex = windowsVersionControl->getSelection();
     int installType = installTypeControl->getSelection();
 
     if (installType == INSTALL_TYPE_SETUP) {
         if (!location.length()) {
-            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_SETUP_FILE_MISSING);
+            this->errorMsg = getTranslation(Msg::INSTALLVIEW_ERROR_SETUP_FILE_MISSING);
         } else if (!Fs::doesNativePathExist(location)) {
-            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND);
+            this->errorMsg = getTranslation(Msg::INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND);
         } else if (Fs::isNativePathDirectory(location)) {
-            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND);
+            this->errorMsg = getTranslation(Msg::INSTALLVIEW_ERROR_SETUP_FILE_NOT_FOUND);
         }
     } else if (installType == INSTALL_TYPE_DIR || installType == INSTALL_TYPE_MOUNT) {
-        Fs::trimTrailingSlash(location);
+        location = Fs::trimTrailingSlash(location);
         if (!location.length()) {
-            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_DIR_MISSING);
+            this->errorMsg = getTranslation(Msg::INSTALLVIEW_ERROR_DIR_MISSING);
         } else if (!Fs::doesNativePathExist(location) || !Fs::isNativePathDirectory(location)) {
-            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_DIR_NOT_FOUND);
+            this->errorMsg = getTranslation(Msg::INSTALLVIEW_ERROR_DIR_NOT_FOUND);
         }
     }
 
-    BoxedContainer* container = NULL;
+    BoxedContainer* container = nullptr;
 
     if (this->errorMsg.isEmpty()) {
         if (containerIndex != 0) {
             container = BoxedwineData::getContainers()[containerIndex - 1];
         } else if (containerName.length() == 0) {
-            this->errorMsg = getTranslation(INSTALLVIEW_ERROR_CONTAINER_NAME_MISSING);
+            this->errorMsg = getTranslation(Msg::INSTALLVIEW_ERROR_CONTAINER_NAME_MISSING);
         }
     }
     if (this->errorMsg.isEmpty()) {
@@ -294,11 +299,12 @@ void InstallView::onInstall() {
         if (!container) {
             BString containerFilePath = GlobalSettings::createUniqueContainerPath(containerName);
             if (!Fs::makeNativeDirs(containerFilePath)) {
-                this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, BString::copy(strerror(errno)));
+                this->errorMsgString = getTranslationWithFormat(Msg::INSTALLVIEW_ERROR_FAILED_TO_CREATE_CONTAINER_DIR, true, BString::copy(strerror(errno)));
                 this->errorMsg = this->errorMsgString;
                 return;
             }
-            container = BoxedContainer::createContainer(containerFilePath, containerName, GlobalSettings::getWineVersions()[wineVersionIndex].name);
+            std::shared_ptr<FileSystemZip> fs = GlobalSettings::getFileSystemVersions()[fileSystemVersionIndex];
+            container = BoxedContainer::createContainer(containerFilePath, containerName, fs);
             container->setWindowsVersion(BoxedwineData::getWinVersions()[windowsVersionIndex]);
             containerCreated = true;
         }
@@ -315,7 +321,7 @@ void InstallView::onInstall() {
             if (!std::filesystem::exists(dest)) {
                 std::error_code ec;
                 if (!std::filesystem::create_directories(dest, ec)) {
-                    this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS, true, BString::copy(ec.message().c_str()));
+                    this->errorMsgString = getTranslationWithFormat(Msg::INSTALLVIEW_ERROR_FILESYSTEM_FAIL_TO_CREATE_DIRS, true, BString::copy(ec.message().c_str()));
                     this->errorMsg = this->errorMsgString;
                 }
             }
@@ -323,7 +329,7 @@ void InstallView::onInstall() {
                 std::error_code ec;
                 std::filesystem::copy(location.c_str(), dest.c_str(), std::filesystem::copy_options::recursive, ec);
                 if (ec) {
-                    this->errorMsgString = getTranslationWithFormat(INSTALLVIEW_ERROR_FILESYSTEM_COPY_DIRECTORY, true, BString::copy(ec.message().c_str()));
+                    this->errorMsgString = getTranslationWithFormat(Msg::INSTALLVIEW_ERROR_FILESYSTEM_COPY_DIRECTORY, true, BString::copy(ec.message().c_str()));
                     this->errorMsg = this->errorMsgString;
                 }
             }
@@ -333,7 +339,7 @@ void InstallView::onInstall() {
                 } else {
                     runOnMainUI([container, dest]() {
                         std::vector<BoxedApp> items;
-                        container->getNewApps(items, NULL, BString::copy(dest.string().c_str()));
+                        container->getNewApps(items, nullptr, BString::copy(dest.string().c_str()));
                         new AppChooserDlg(items, [container](BoxedApp app) {
                             gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());
                             });
@@ -343,7 +349,7 @@ void InstallView::onInstall() {
             }
         } else if (installType == INSTALL_TYPE_MOUNT) {
             if (!container->addNewMount(MountInfo(B("t"), location, true))) {
-                this->errorMsg = getTranslation(INSTALLVIEW_ERROR_FAILED_TO_MOUNT);
+                this->errorMsg = getTranslation(Msg::INSTALLVIEW_ERROR_FAILED_TO_MOUNT);
             } else {
                 container->saveContainer();
                 if (GlobalSettings::startUpArgs.readyToLaunch) {
@@ -379,7 +385,7 @@ void InstallView::onInstall() {
             static BString name;
             name = Fs::getFileNameFromNativePath(location);
             runOnMainUI([]() {
-                new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, name));
+                new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, name));
                 return false;
                 });
         }

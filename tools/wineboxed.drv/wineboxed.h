@@ -6,12 +6,27 @@
 #include "winbase.h"
 #include "wingdi.h"
 #include "winuser.h"
+#if BOXED_WINE_VERSION < 8100 || defined(WINE_UNIX_LIB)
+#if BOXED_WINE_VERSION >= 7000
+#include "ntgdi.h"
+#endif
 #include "wine/gdi_driver.h"
+#else
+#include "winternl.h"
+#define WINE_GDI_DRIVER_VERSION 83
+#endif
+#include "unixlib.h"
 
-#if WINE_GDI_DRIVER_VERSION >= 50 && WINE_GDI_DRIVER_VERSION <= 76
-#define WINE_CDECL CDECL
+#if BOXED_WINE_VERSION >= 4120 && BOXED_WINE_VERSION <= 7050
+#define WINE_CDECL
 #else
 #define WINE_CDECL
+#endif
+
+#if BOXED_WINE_VERSION >= 8100
+#define GDI_CDECL
+#else
+#define GDI_CDECL
 #endif
 
 #define BOXED_BASE 0
@@ -113,23 +128,23 @@
 #define BOXED_GET_VERSION                           (BOXED_BASE+88)
 
 #define CALL_0(index) __asm__("push %1\n\tint $0x98\n\taddl $4, %%esp": "=a" (result):"i"(index):); 
-#define CALL_1(index, arg1) __asm__("push %2\n\tpush %1\n\tint $0x98\n\taddl $8, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1):); 
-#define CALL_2(index, arg1,arg2) __asm__("push %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $12, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2):);
-#define CALL_3(index, arg1,arg2,arg3) __asm__("push %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $16, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3):);
-#define CALL_4(index, arg1,arg2,arg3,arg4) __asm__("push %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $20, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4):);
-#define CALL_5(index, arg1,arg2,arg3,arg4,arg5) __asm__("push %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $24, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5):);
-#define CALL_6(index, arg1,arg2,arg3,arg4,arg5,arg6) __asm__("push %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $28, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6):);
-#define CALL_7(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7) __asm__("push %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $32, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7):);
+#define CALL_1(index, arg1) __asm__("push %2\n\tpush %1\n\tint $0x98\n\taddl $8, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1): "esp"); 
+#define CALL_2(index, arg1,arg2) __asm__("push %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $12, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2): "esp");
+#define CALL_3(index, arg1,arg2,arg3) __asm__("push %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $16, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3): "esp");
+#define CALL_4(index, arg1,arg2,arg3,arg4) __asm__("push %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $20, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4): "esp");
+#define CALL_5(index, arg1,arg2,arg3,arg4,arg5) __asm__("push %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $24, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5): "esp");
+#define CALL_6(index, arg1,arg2,arg3,arg4,arg5,arg6) __asm__("push %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $28, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6): "esp");
+#define CALL_7(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7) __asm__("push %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $32, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7): "esp");
 
 #define CALL_NORETURN_0(index) __asm__("push %0\n\tint $0x98\n\taddl $4, %%esp"::"i"(index)); 
-#define CALL_NORETURN_1(index, arg1) __asm__("push %1\n\tpush %0\n\tint $0x98\n\taddl $8, %%esp"::"i"(index), "g"((DWORD)arg1)); 
-#define CALL_NORETURN_2(index, arg1, arg2) __asm__("push %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $12, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2)); 
-#define CALL_NORETURN_3(index, arg1, arg2, arg3) __asm__("push %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $16, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3)); 
-#define CALL_NORETURN_4(index, arg1, arg2, arg3, arg4) __asm__("push %4\n\tpush %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $20, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4)); 
-#define CALL_NORETURN_5(index, arg1, arg2, arg3, arg4, arg5) __asm__("push %5\n\tpush %4\n\tpush %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $24, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5)); 
-#define CALL_NORETURN_7(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7) __asm__("push %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $32, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7));
-#define CALL_NORETURN_8(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8) __asm__("push %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $36, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8));
-#define CALL_NORETURN_9(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9) __asm__("push %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $40, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8), "g"((DWORD)arg9));
+#define CALL_NORETURN_1(index, arg1) __asm__("push %1\n\tpush %0\n\tint $0x98\n\taddl $8, %%esp"::"i"(index), "g"((DWORD)arg1): "esp"); 
+#define CALL_NORETURN_2(index, arg1, arg2) __asm__("push %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $12, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2): "esp"); 
+#define CALL_NORETURN_3(index, arg1, arg2, arg3) __asm__("push %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $16, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3): "esp"); 
+#define CALL_NORETURN_4(index, arg1, arg2, arg3, arg4) __asm__("push %4\n\tpush %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $20, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4): "esp"); 
+#define CALL_NORETURN_5(index, arg1, arg2, arg3, arg4, arg5) __asm__("push %5\n\tpush %4\n\tpush %3\n\rpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $24, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5): "esp"); 
+#define CALL_NORETURN_7(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7) __asm__("push %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $32, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7): "esp");
+#define CALL_NORETURN_8(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8) __asm__("push %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $36, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8): "esp");
+#define CALL_NORETURN_9(index, arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9) __asm__("push %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x98\n\taddl $40, %%esp"::"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2), "g"((DWORD)arg3), "g"((DWORD)arg4), "g"((DWORD)arg5), "g"((DWORD)arg6), "g"((DWORD)arg7), "g"((DWORD)arg8), "g"((DWORD)arg9): "esp");
 
 void BOXEDDRV_ProcessAttach(void);
 BOOL processEvents(DWORD mask);
@@ -155,7 +170,11 @@ void WINE_CDECL boxeddrv_SetParent(HWND hwnd, HWND parent, HWND old_parent);
 void WINE_CDECL boxeddrv_SetLayeredWindowAttributes(HWND hwnd, COLORREF key, BYTE alpha, DWORD flags);
 void WINE_CDECL boxeddrv_SetFocus(HWND hwnd);
 BOOL WINE_CDECL boxeddrv_SetCursorPos(INT x, INT y);
+#if BOXED_WINE_VERSION >= 8110
+void WINE_CDECL boxeddrv_SetCursor(HWND hwnd, HCURSOR cursor);
+#else
 void WINE_CDECL boxeddrv_SetCursor(HCURSOR cursor);
+#endif
 void WINE_CDECL boxeddrv_SetCapture(HWND hwnd, UINT flags);
 UINT WINE_CDECL boxeddrv_MapVirtualKeyEx(UINT wCode, UINT wMapType, HKL hkl);
 BOOL WINE_CDECL boxeddrv_GetMonitorInfo(HMONITOR monitor, LPMONITORINFO info);
@@ -166,7 +185,12 @@ void WINE_CDECL boxeddrv_DestroyWindow(HWND hwnd);
 void WINE_CDECL boxeddrv_DestroyCursorIcon(HCURSOR cursor);
 BOOL WINE_CDECL boxeddrv_CreateWindow(HWND hwnd);
 BOOL WINE_CDECL boxeddrv_CreateDesktopWindow(HWND hwnd);
+void WINE_CDECL boxeddrv_SetDesktopWindow(HWND hwnd);
+#if BOXED_WINE_VERSION >= 8100
+BOOL WINE_CDECL boxeddrv_ClipCursor(const LPCRECT clip, BOOL reset);
+#else
 BOOL WINE_CDECL boxeddrv_ClipCursor(LPCRECT clip);
+#endif
 LONG WINE_CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW devmode, HWND hwnd, DWORD flags, LPVOID lpvoid);
 void WINE_CDECL boxeddrv_Beep(void);
 
@@ -188,6 +212,8 @@ NTSTATUS WINE_CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HAND
 DWORD WINE_CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE * handles, DWORD timeout, DWORD mask, DWORD flags);
 #endif
 
+BOOL WINE_CDECL boxeddrv_ProcessEvents(DWORD mask);
+
 #if BOXED_WINE_VERSION >= 6080
 BOOL WINE_CDECL boxeddrv_ActivateKeyboardLayout(HKL hkl, UINT flags);
 #else
@@ -200,7 +226,7 @@ BOOL WINE_CDECL boxeddrv_GetCurrentDisplaySettings(LPCWSTR name, BOOL is_primary
 BOOL WINE_CDECL boxeddrv_GetCurrentDisplaySettings(LPCWSTR name, LPDEVMODEW devmode);
 #endif
 
-BOOL WINE_CDECL boxeddrv_UnrealizePalette(HPALETTE hpal);
+BOOL GDI_CDECL boxeddrv_UnrealizePalette(HPALETTE hpal);
 void WINE_CDECL boxeddrv_ThreadDetach(void);
 INT WINE_CDECL internal_GetDeviceCaps(INT cap);
 INT WINE_CDECL boxeddrv_GetDisplayDepth(LPCWSTR name, BOOL is_primary);

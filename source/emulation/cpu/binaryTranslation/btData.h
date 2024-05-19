@@ -1,16 +1,17 @@
+#ifndef __BTDATA_H__
+#define __BTDATA_H__
+
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
 #include "btCpu.h"
 
 class TodoJump {
 public:
-    TodoJump() : eip(0), bufferPos(0), offsetSize(0), sameChunk(true) {}
-    TodoJump(U32 eip, U32 bufferPos, U8 offsetSize, bool sameChunk, U32 opIndex) : eip(eip), bufferPos(bufferPos), offsetSize(offsetSize), sameChunk(sameChunk), opIndex(opIndex) {}
-    U32 eip;
-    U32 bufferPos;
-    U8 offsetSize;
-    bool sameChunk;
-    U32 opIndex;
+    TodoJump() = default;
+    TodoJump(U32 eip, U32 bufferPos, U32 opIndex) : eip(eip), bufferPos(bufferPos), opIndex(opIndex) {}
+    U32 eip = 0;
+    U32 bufferPos = 0;
+    U32 opIndex = 0;
 };
 
 class BtData {
@@ -19,30 +20,30 @@ public:
     virtual ~BtData();    
     std::shared_ptr<BtCodeChunk> commit(bool makeLive);
 
-    U32 ip;
-    U32 startOfDataIp;
-    U32 startOfOpIp;
-    U32 calculatedEipLen;
-    bool done;
-    bool dynamic;
-    bool useSingleMemOffset;
-
-    U32* ipAddress;
-    U32* ipAddressBufferPos;
-    U32 ipAddressCount;
-    U32 ipAddressBufferSize;
-    U32 ipAddressBuffer[64];
-    U32 ipAddressBufferPosBuffer[64];
-    U8* buffer;
-    U32 bufferSize;
-    U32 bufferPos;
-    U8 bufferInternal[256];
+    U32 ip = 0;
+    U32 startOfDataIp = 0;
+    U32 startOfOpIp = 0;
+    U32 calculatedEipLen = 0;
+    bool done = false;
+    U32* ipAddress = nullptr;
+    U32* ipAddressBufferPos = nullptr;
+    U32 ipAddressCount = 0;
+    U32 ipAddressBufferSize = 0;
+    U32 ipAddressBuffer[64] = { 0 };
+    U32 ipAddressBufferPosBuffer[64] = { 0 };
+    U8* buffer = nullptr;
+    U32 bufferSize = 0;
+    U32 bufferPos = 0;
+    U8 bufferInternal[512] = { 0 };
 
     std::vector<TodoJump> todoJump;
-    S32 stopAfterInstruction;
+    S32 stopAfterInstruction = -1;
 
-    DecodedOp* decodedOp;
-    DecodedBlock* currentBlock;
+    DecodedOp* currentOp = nullptr;
+    DecodedBlock* currentBlock = nullptr;
+
+    BtData* firstPass = nullptr;
+    bool needLargeIfJmpReg = false;
 
     void mapAddress(U32 ip, U32 bufferPos);
     U8 calculateEipLen(U32 eip);
@@ -58,8 +59,10 @@ public:
     virtual void jumpTo(U32 eip) = 0;
     virtual void resetForNewOp() = 0;
     virtual void translateInstruction() = 0;
+    virtual void reset();
 protected:
     virtual std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) = 0;
 };
 
+#endif
 #endif

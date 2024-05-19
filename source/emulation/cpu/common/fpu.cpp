@@ -22,36 +22,17 @@
 #define FMASK_TEST (CF | PF | AF | ZF | SF | OF)    
 
 #ifdef LOG_FPU
-#include <stdarg.h>
-FILE* fpuLogFile;
-static int fpuLogCount;
+BWriteFile fpuLogFile;
 
-void flog(const char* msg, ...) {
-    va_list argptr;
-    va_start(argptr, msg);
-    BOXEDWINE_CRITICAL_SECTION;
-
+void preFpuLog() {
     if (KThread::currentThread()) {
         KThread* thread = KThread::currentThread();
         CPU* cpu = thread->cpu;
-        BString name = thread->process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);   
+        BString name = thread->process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);
         U32 offset = thread->process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32);
-        if (offset == 0x7DFEA) {
-            int ii = 0;
-        }
-        fprintf(fpuLogFile, "%s %.08X ", name.c_str(), offset);
+        fpuLogFile.write("%s %.08X ", name.c_str(), offset);
     }
-    vfprintf(fpuLogFile, msg, argptr);
-    fprintf(fpuLogFile, "\n");
-    fpuLogCount++;
-    if (fpuLogCount == 1000) {
-        fclose(fpuLogFile);
-        fpuLogFile = fopen("fpu2.txt", "w");
-        fpuLogCount = 0;
-    }
-    va_end(argptr);    
 }
-
 #define LOG flog
 #else
 #define LOG
@@ -94,19 +75,19 @@ void FPU::LOG_STACK() {
 
     for (i=0;i<8;i++) {
         if (this->tags[STV(i)] == TAG_Empty) {
-            fprintf(fpuLogFile, "    Empty ");
+            fpuLogFile.write("    Empty ");
         } else {
-            fprintf(fpuLogFile, "    Valid ");
+            fpuLogFile.write("    Valid ");
         }
         if (isnan(this->regs[STV(i)].d)) {
-            fprintf(fpuLogFile, "NAN %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+            fpuLogFile.write("NAN %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
         } else if (isinf(this->regs[STV(i)].d)) {
-            fprintf(fpuLogFile, "INF %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+            fpuLogFile.write("INF %f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
         } else {            
-            fprintf(fpuLogFile, "%f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
+            fpuLogFile.write("%f %d %d\n", this->regs[STV(i)].d, this->tags[STV(i)], STV(i));
         }
     }
-    fprintf(fpuLogFile, "    Temp  %f %d %d\n", this->regs[8].d, this->tags[8], 8);
+    fpuLogFile.write("    Temp  %f %d %d\n", this->regs[8].d, this->tags[8], 8);
 #endif
 }
 
@@ -170,7 +151,7 @@ void FPU::SetCW(U16 word) {
             r = "Unknown";
             break;
     }
-    fprintf(fpuLogFile, "    SetCW %X (%s)\n", word, r);
+    fpuLogFile.write("    SetCW %X (%s)\n", word, r);
 #endif
 }   
 
@@ -182,8 +163,8 @@ void FPU::SetCW(U16 word) {
 
 void FPU::FINIT() {
 #ifdef LOG_FPU
-    if (!fpuLogFile) {
-        fpuLogFile = fopen("fpu2.txt", "w");
+    if (!fpuLogFile.isOpen()) {
+        fpuLogFile.createNew("fpu2.txt");
     }
 #endif
     SetCW(0x37F);
@@ -248,9 +229,7 @@ double FPU::FLD80(U64 eind, S16 begin) {
     S64 exp64 = (((begin & 0x7fff) - BIAS80));
     S64 blah = ((exp64 > 0) ? exp64 : -exp64) & 0x3ff;
     S64 exp64final = ((exp64 > 0) ? blah : -blah) + BIAS64;
-    S64 mant64;
-    S64 sign;
-    struct FPU_Reg result;
+    struct FPU_Reg result = {};
 
     // 0x3FFF is for rounding
     U32 round = 0;
@@ -260,8 +239,8 @@ double FPU::FLD80(U64 eind, S16 begin) {
         round = 0x7FF;
     }
 
-    mant64 = ((eind + round) >> 11) & 0xfffffffffffffl;
-    sign = (begin & 0x8000) != 0 ? 1 : 0;
+    S64 mant64 = ((eind + round) >> 11) & 0xfffffffffffffl;
+    S64 sign = (begin & 0x8000) != 0 ? 1 : 0;
     result.l = (sign << 63) | (exp64final << 52) | mant64;
 
     if (eind == 0x8000000000000000l && (begin & 0x7fff) == 0x7fff) {
@@ -286,9 +265,9 @@ void FPU::ST80(CPU* cpu, U32 addr, int reg) {
         //Ca-cyber doesn't like this when result is zero.
         exp80final += (BIAS80 - BIAS64);
     }
-    writed(addr, (U32) mant80final);
-    writed(addr + 4, (U32) (mant80final >> 32));
-    writew(addr + 8, ((sign80 << 15) | (exp80final)));
+    cpu->memory->writed(addr, (U32) mant80final);
+    cpu->memory->writed(addr + 4, (U32) (mant80final >> 32));
+    cpu->memory->writew(addr + 8, ((sign80 << 15) | (exp80final)));
 }
 
 void FPU::ST80(U32 reg, U64* pLow, U64* pHigh) {
@@ -344,10 +323,8 @@ void FPU::FBLD(U8 data[], int store_to) {
     S64 val = 0;
     int in = 0;
     U64 base = 1;
-    int i;
-    double temp;
 
-    for(i = 0;i < 9;i++){
+    for(int i = 0;i < 9;i++){
         in = data[i];
         val += ( (in&0xf) * base); //in&0xf shouldn't be higher then 9
         base *= 10;
@@ -356,7 +333,7 @@ void FPU::FBLD(U8 data[], int store_to) {
     }
     //last number, only now convert to float in order to get
     //the best signification
-    temp = (double)(val);
+    double temp = (double)(val);
     in = data[9];
     temp += ( (in&0xf) * base );
     if(in&0x80) temp *= -1.0;
@@ -365,30 +342,30 @@ void FPU::FBLD(U8 data[], int store_to) {
 }
 
 void FPU::FLD_F32_EA(CPU* cpu, U32 address) {
-    FLD_F32(readd(address), 8);
+    FLD_F32(cpu->memory->readd(address), 8);
 }
 
 void FPU::FLD_F64_EA(CPU* cpu, U32 address) {
-    FLD_F64(readq(address), 8);
+    FLD_F64(cpu->memory->readq(address), 8);
 }
 
 void FPU::FLD_I32_EA(CPU* cpu, U32 address) {
-    FLD_I32(readd(address), 8);
+    FLD_I32(cpu->memory->readd(address), 8);
 }
 
 void FPU::FLD_I16_EA(CPU* cpu, U32 address) {
-    FLD_I16(readw(address), 8);
+    FLD_I16(cpu->memory->readw(address), 8);
 }
 
 void FPU::FST_F32(CPU* cpu, U32 addr) {
     //should depend on rounding method
     struct FPU_Float f;
     f.f = (float)this->regs[this->top].d;
-    writed(addr, f.i);
+    cpu->memory->writed(addr, f.i);
 }
 
 void FPU::FST_F64(CPU* cpu, U32 addr) {
-    writeq(addr, this->regs[this->top].l);
+    cpu->memory->writeq(addr, this->regs[this->top].l);
 }
 
 void FPU::FST_F80(CPU* cpu, U32 addr) {
@@ -397,66 +374,63 @@ void FPU::FST_F80(CPU* cpu, U32 addr) {
 
 void FPU::FST_I16(CPU* cpu, U32 addr) {
     S16 value = (S16) (FROUND(this->regs[this->top].d));
-    writew(addr, value);
+    cpu->memory->writew(addr, value);
 }
 
 void FPU::FSTT_I16(CPU* cpu, U32 addr) {
     S16 value = (S16)this->regs[this->top].d;
-    writew(addr, value);
+    cpu->memory->writew(addr, value);
 }
 
 void FPU::FSTT_I32(CPU* cpu, U32 addr) {
     S32 value = (S32)this->regs[this->top].d;
-    writed(addr, value);
+    cpu->memory->writed(addr, value);
 }
 
 void FPU::FST_I32(CPU* cpu, U32 addr) {
     S32 value = (S32) (FROUND(this->regs[this->top].d));
-    writed(addr, value);
+    cpu->memory->writed(addr, value);
 }
 
 void FPU::FSTT_I64(CPU* cpu, U32 addr) {
     if (this->isIntegerLoaded[this->top])
-        writeq(addr, this->loadedInteger[this->top]);
+        cpu->memory->writeq(addr, this->loadedInteger[this->top]);
     else
-        writeq(addr, (S64)this->regs[this->top].d);
+        cpu->memory->writeq(addr, (S64)this->regs[this->top].d);
 }
 
 void FPU::FST_I64(CPU* cpu, U32 addr) {
     if (this->isIntegerLoaded[this->top])
-        writeq(addr, this->loadedInteger[this->top]);
+        cpu->memory->writeq(addr, this->loadedInteger[this->top]);
     else
-        writeq(addr, (S64) (FROUND(this->regs[this->top].d)));
+        cpu->memory->writeq(addr, (S64) (FROUND(this->regs[this->top].d)));
 }
 
 void FPU::FBST(CPU* cpu, U32 addr) {
     struct FPU_Reg val = this->regs[this->top];
     U8 sign = 0;
-    double temp;
-    int i;
-    int p;
 
     if (this->regs[this->top].l & 0x8000000000000000l) { //sign
         sign=1;
         val.d=-val.d;
     }
     //numbers from back to front
-    temp=val.d;
-    for(i=0;i<9;i++){
+    double temp=val.d;
+    for(int i=0;i<9;i++){
         val.d=temp;
         temp = (double)((S64)(floor(val.d/10.0)));
-        p = (int)(val.d - 10.0*temp);
+        int p = (int)(val.d - 10.0*temp);
         val.d=temp;
         temp = (double)((S64)(floor(val.d/10.0)));
         p |= ((int)(val.d - 10.0*temp)<<4);
-        writeb(addr+i,p);
+        cpu->memory->writeb(addr+i,p);
     }
     val.d=temp;
     temp = (double)((S64)(floor(val.d/10.0)));
-    p = (int)(val.d - 10.0*temp);
+    int p = (int)(val.d - 10.0*temp);
     if(sign)
         p|=0x80;
-    writeb(addr+9,p); 
+    cpu->memory->writeb(addr+9,p);
 }
 
 void FPU::FADD(int op1, int op2) {
@@ -591,7 +565,7 @@ void FPU::FPREM1() {
     double valdiv = this->regs[STV(1)].d;
     double quot = valtop/valdiv;
     double quotf = floor(quot);
-    S64 ressaved;
+    S64 ressaved = 0;
     if (quot-quotf>0.5) ressaved = (S64)(quotf+1);
     else if (quot-quotf<0.5) ressaved = (S64)(quotf);
     else ressaved = (S64)(((((S64)(quotf))&1)!=0)?(quotf+1):(quotf));
@@ -775,28 +749,42 @@ U32 FPU::SW() {
 void FPU::FSTENV(CPU* cpu, U32 addr) {
     FPU_SET_TOP(this, this->top);
     if (!cpu->isBig()) {
-        writew(addr + 0, this->cw);
-        writew(addr + 2, this->sw);
-        writew(addr + 4, GetTag());
+        cpu->memory->writew(addr + 0, this->cw);
+        cpu->memory->writew(addr + 2, this->sw);
+        cpu->memory->writew(addr + 4, GetTag());
+        cpu->memory->writew(addr + 6, envData[0]); // instruction pointer
+        cpu->memory->writew(addr + 8, envData[1]); // op code
+        cpu->memory->writew(addr + 10, envData[2]); // data pointer
+        cpu->memory->writew(addr + 12, envData[3]); // data pointer selector
     } else {
-        writed(addr + 0, this->cw);
-        writed(addr + 4, this->sw);
-        writed(addr + 8, GetTag());
+        cpu->memory->writed(addr + 0, this->cw);
+        cpu->memory->writed(addr + 4, this->sw);
+        cpu->memory->writed(addr + 8, GetTag());
+        cpu->memory->writed(addr + 12, envData[0]);
+        cpu->memory->writed(addr + 16, envData[1]);
+        cpu->memory->writed(addr + 20, envData[2]);
+        cpu->memory->writed(addr + 24, envData[3]);
     }
 }
 
 void FPU::FLDENV(CPU* cpu, U32 addr) {
-    U32 tag;
-    U32 cw;
+    U32 tag = 0;
+    U32 cw = 0;
         
     if (!cpu->isBig()) {
-        cw = readw(addr + 0);
-        this->sw = readw(addr + 2);
-        tag = readw(addr + 4);
+        cw = cpu->memory->readw(addr + 0);
+        this->sw = cpu->memory->readw(addr + 2);
+        tag = cpu->memory->readw(addr + 4);
+        for (int i = 0; i < 4; i++) {
+            envData[i] = cpu->memory->readw(addr + 6 + i * 2);
+        }
     } else {
-        cw = readd(addr + 0);
-        this->sw = readd(addr + 4);
-        tag = readd(addr + 8);
+        cw = cpu->memory->readd(addr + 0);
+        this->sw = cpu->memory->readd(addr + 4);
+        tag = cpu->memory->readd(addr + 8);
+        for (int i = 0; i < 4; i++) {
+            envData[i] = cpu->memory->readd(addr + 12 + i * 4);
+        }
     }
     SetTag(tag);
     SetCW(cw);
@@ -823,7 +811,7 @@ void FPU::FRSTOR(CPU* cpu, U32 addr) {
     FLDENV(cpu, addr);
             
     for (i = 0; i < 8; i++) {
-        this->regs[STV(i)].d = FLD80(readq(addr + start), readw(addr + start + 8));
+        this->regs[STV(i)].d = FLD80(cpu->memory->readq(addr + start), cpu->memory->readw(addr + start + 8));
         this->isIntegerLoaded[STV(i)] = 0;
         start += 10;
     }
@@ -932,7 +920,7 @@ void FPU::FCOM_EA() {
 }
 
 void FPU::FLDCW(CPU* cpu, U32 addr) {
-    U32 temp = readw(addr);
+    U32 temp = cpu->memory->readw(addr);
     SetCW(temp);
 }    
 
@@ -952,4 +940,5 @@ void FPU::reset() {
 	FPU_SET_TOP(this, 0);
 	this->top=0;
 	SetTag(TAG_Empty);
+    memset(envData, 0, sizeof(envData));
 }

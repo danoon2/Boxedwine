@@ -82,7 +82,7 @@ void glcommon_glShaderSource(CPU* cpu) {
     if (!ext_glShaderSource)
         kpanic("ext_glShaderSource is NULL");
     {
-    GL_FUNC(ext_glShaderSource)(ARG1, ARG2, (GLchar*const*)marshalszArray(cpu, ARG2, ARG3, ARG4), marshali(cpu, ARG4, ARG2));
+    GL_FUNC(ext_glShaderSource)(ARG1, ARG2, (GLchar*const*)marshalszArray<GLchar>(cpu, ARG2, ARG3, ARG4), marshalArray<GLint>(cpu, ARG4, ARG2));
     GL_LOG ("glShaderSource GLuint shader=%d, GLsizei count=%d, const GLchar*const* string=%.08x, const GLint* length=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -90,7 +90,7 @@ void glcommon_glShaderSourceARB(CPU* cpu) {
     if (!ext_glShaderSourceARB)
         kpanic("ext_glShaderSourceARB is NULL");
     {
-    GL_FUNC(ext_glShaderSourceARB)(INDEX_TO_HANDLE(hARG1), ARG2, (const GLcharARB**)marshalszArrayARB(cpu, ARG2, ARG3, ARG4), marshali(cpu, ARG4, ARG2));
+    GL_FUNC(ext_glShaderSourceARB)(INDEX_TO_HANDLE(hARG1), ARG2, (const GLcharARB**)marshalszArray<GLcharARB>(cpu, ARG2, ARG3, ARG4), marshalArray<GLint>(cpu, ARG4, ARG2));
     GL_LOG ("glShaderSourceARB GLhandleARB shaderObj=%d, GLsizei count=%d, const GLcharARB** string=%.08x, const GLint* length=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -108,7 +108,7 @@ void glcommon_glSharpenTexFuncSGIS(CPU* cpu) {
     {
     // only example I found, seems like points represents pairs of floats
     // GLfloat points[] = { 0., 0.,     ?1., 1.,     ?2., 1.7,     ?4., 2. }; glSharpenTexFuncSGIS(GL_TEXTURE_2D, 4, points);
-    GL_FUNC(ext_glSharpenTexFuncSGIS)(ARG1, ARG2, (GLfloat*)marshalf(cpu, ARG3, ARG2*2));
+    GL_FUNC(ext_glSharpenTexFuncSGIS)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2*2));
     GL_LOG ("glSharpenTexFuncSGIS GLenum target=%d, GLsizei n=%d, const GLfloat* points=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -126,7 +126,7 @@ void glcommon_glSpriteParameterfvSGIX(CPU* cpu) {
     {
     // I'm not sure if it is always 3 floats
     // spriteTrans[0] = .2; spriteTrans[1] = .2; spriteTrans[2] = .0;    glSpriteParameterfvSGIX(GL_SPRITE_TRANSLATION_SGIX, spriteTrans)
-    GL_FUNC(ext_glSpriteParameterfvSGIX)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 3));
+    GL_FUNC(ext_glSpriteParameterfvSGIX)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 3));
     GL_LOG ("glSpriteParameterfvSGIX GLenum pname=%d, const GLfloat* params=%.08x",ARG1,ARG2);
     }
 }
@@ -174,7 +174,7 @@ void glcommon_glStencilFillPathInstancedNV(CPU* cpu) {
     if (!ext_glStencilFillPathInstancedNV)
         kpanic("ext_glStencilFillPathInstancedNV is NULL");
     {
-    GL_FUNC(ext_glStencilFillPathInstancedNV)(ARG1, ARG2, (void*)marshalType(cpu, ARG2, ARG1, ARG3), ARG4, ARG5, ARG6, ARG7, marshal2f(cpu, ARG8, floatPerTransformList(ARG7)*ARG1));
+    GL_FUNC(ext_glStencilFillPathInstancedNV)(ARG1, ARG2, (void*)marshalType(cpu, ARG2, ARG1, ARG3), ARG4, ARG5, ARG6, ARG7, marshalArray<GLfloat>(cpu, ARG8, floatPerTransformList(ARG7)*ARG1));
     GL_LOG ("glStencilFillPathInstancedNV GLsizei numPaths=%d, GLenum pathNameType=%d, const void* paths=%.08x, GLuint pathBase=%d, GLenum fillMode=%d, GLuint mask=%d, GLenum transformType=%d, const GLfloat* transformValues=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8);
     }
 }
@@ -238,7 +238,7 @@ void glcommon_glStencilStrokePathInstancedNV(CPU* cpu) {
     if (!ext_glStencilStrokePathInstancedNV)
         kpanic("ext_glStencilStrokePathInstancedNV is NULL");
     {
-    GL_FUNC(ext_glStencilStrokePathInstancedNV)(ARG1, ARG2, (void*)marshalp(cpu, 0, ARG3, 0), ARG4, ARG5, ARG6, ARG7, marshalf(cpu, ARG8, floatPerTransformList(ARG7)*ARG1));
+    GL_FUNC(ext_glStencilStrokePathInstancedNV)(ARG1, ARG2, (void*)marshalp(cpu, 0, ARG3, 0), ARG4, ARG5, ARG6, ARG7, marshalArray<GLfloat>(cpu, ARG8, floatPerTransformList(ARG7)*ARG1));
     GL_LOG ("glStencilStrokePathInstancedNV GLsizei numPaths=%d, GLenum pathNameType=%d, const void* paths=%.08x, GLuint pathBase=%d, GLint reference=%d, GLuint mask=%d, GLenum transformType=%d, const GLfloat* transformValues=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7,ARG8);
     }
 }
@@ -2030,15 +2030,15 @@ void glcommon_glUniform3fv(CPU* cpu) {
     if (!ext_glUniform3fv)
         kpanic("ext_glUniform3fv is NULL");
     {
-    GL_FUNC(ext_glUniform3fv)(ARG1, ARG2, (GLfloat*)marshalp(cpu, 0, ARG3, 0));
-    GL_LOG ("glUniform3fv GLint location=%d, GLsizei count=%d, const GLfloat* value=%.08x",ARG1,ARG2,ARG3);
+        GL_FUNC(ext_glUniform3fv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2 * 3));
+        GL_LOG ("glUniform3fv GLint location=%d, GLsizei count=%d, const GLfloat* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
 void glcommon_glUniform3fvARB(CPU* cpu) {
     if (!ext_glUniform3fvARB)
         kpanic("ext_glUniform3fvARB is NULL");
     {
-    GL_FUNC(ext_glUniform3fvARB)(ARG1, ARG2, (GLfloat*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3fvARB)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3fvARB GLint location=%d, GLsizei count=%d, const GLfloat* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2070,7 +2070,7 @@ void glcommon_glUniform3i64vARB(CPU* cpu) {
     if (!ext_glUniform3i64vARB)
         kpanic("ext_glUniform3i64vARB is NULL");
     {
-    GL_FUNC(ext_glUniform3i64vARB)(ARG1, ARG2, (GLint64*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3i64vARB)(ARG1, ARG2, marshalArray<GLint64>(cpu, ARG3, ARG2*3));
     GL_LOG ("glUniform3i64vARB GLint location=%d, GLsizei count=%d, const GLint64* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2078,7 +2078,7 @@ void glcommon_glUniform3i64vNV(CPU* cpu) {
     if (!ext_glUniform3i64vNV)
         kpanic("ext_glUniform3i64vNV is NULL");
     {
-    GL_FUNC(ext_glUniform3i64vNV)(ARG1, ARG2, (GLint64EXT*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3i64vNV)(ARG1, ARG2, marshalArray<GLint64EXT>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3i64vNV GLint location=%d, GLsizei count=%d, const GLint64EXT* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2094,7 +2094,7 @@ void glcommon_glUniform3iv(CPU* cpu) {
     if (!ext_glUniform3iv)
         kpanic("ext_glUniform3iv is NULL");
     {
-    GL_FUNC(ext_glUniform3iv)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3iv)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3iv GLint location=%d, GLsizei count=%d, const GLint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2102,7 +2102,7 @@ void glcommon_glUniform3ivARB(CPU* cpu) {
     if (!ext_glUniform3ivARB)
         kpanic("ext_glUniform3ivARB is NULL");
     {
-    GL_FUNC(ext_glUniform3ivARB)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3ivARB)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3ivARB GLint location=%d, GLsizei count=%d, const GLint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2134,7 +2134,7 @@ void glcommon_glUniform3ui64vARB(CPU* cpu) {
     if (!ext_glUniform3ui64vARB)
         kpanic("ext_glUniform3ui64vARB is NULL");
     {
-    GL_FUNC(ext_glUniform3ui64vARB)(ARG1, ARG2, (GLuint64*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3ui64vARB)(ARG1, ARG2, marshalArray<GLuint64>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3ui64vARB GLint location=%d, GLsizei count=%d, const GLuint64* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2142,7 +2142,7 @@ void glcommon_glUniform3ui64vNV(CPU* cpu) {
     if (!ext_glUniform3ui64vNV)
         kpanic("ext_glUniform3ui64vNV is NULL");
     {
-    GL_FUNC(ext_glUniform3ui64vNV)(ARG1, ARG2, (GLuint64EXT*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3ui64vNV)(ARG1, ARG2, marshalArray<GLuint64EXT>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3ui64vNV GLint location=%d, GLsizei count=%d, const GLuint64EXT* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2158,7 +2158,7 @@ void glcommon_glUniform3uiv(CPU* cpu) {
     if (!ext_glUniform3uiv)
         kpanic("ext_glUniform3uiv is NULL");
     {
-    GL_FUNC(ext_glUniform3uiv)(ARG1, ARG2, (GLuint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3uiv)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3uiv GLint location=%d, GLsizei count=%d, const GLuint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2166,7 +2166,7 @@ void glcommon_glUniform3uivEXT(CPU* cpu) {
     if (!ext_glUniform3uivEXT)
         kpanic("ext_glUniform3uivEXT is NULL");
     {
-    GL_FUNC(ext_glUniform3uivEXT)(ARG1, ARG2, (GLuint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform3uivEXT)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG2 * 3));
     GL_LOG ("glUniform3uivEXT GLint location=%d, GLsizei count=%d, const GLuint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2182,7 +2182,7 @@ void glcommon_glUniform4dv(CPU* cpu) {
     if (!ext_glUniform4dv)
         kpanic("ext_glUniform4dv is NULL");
     {
-    GL_FUNC(ext_glUniform4dv)(ARG1, ARG2, (GLdouble*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4dv)(ARG1, ARG2, marshalArray<GLdouble>(cpu, ARG3, ARG2*4));
     GL_LOG ("glUniform4dv GLint location=%d, GLsizei count=%d, const GLdouble* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2206,7 +2206,7 @@ void glcommon_glUniform4fv(CPU* cpu) {
     if (!ext_glUniform4fv)
         kpanic("ext_glUniform4fv is NULL");
     {
-    GL_FUNC(ext_glUniform4fv)(ARG1, ARG2, (GLfloat*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4fv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4fv GLint location=%d, GLsizei count=%d, const GLfloat* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2214,7 +2214,7 @@ void glcommon_glUniform4fvARB(CPU* cpu) {
     if (!ext_glUniform4fvARB)
         kpanic("ext_glUniform4fvARB is NULL");
     {
-    GL_FUNC(ext_glUniform4fvARB)(ARG1, ARG2, (GLfloat*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4fvARB)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4fvARB GLint location=%d, GLsizei count=%d, const GLfloat* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2246,7 +2246,7 @@ void glcommon_glUniform4i64vARB(CPU* cpu) {
     if (!ext_glUniform4i64vARB)
         kpanic("ext_glUniform4i64vARB is NULL");
     {
-    GL_FUNC(ext_glUniform4i64vARB)(ARG1, ARG2, (GLint64*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4i64vARB)(ARG1, ARG2, marshalArray<GLint64>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4i64vARB GLint location=%d, GLsizei count=%d, const GLint64* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2254,7 +2254,7 @@ void glcommon_glUniform4i64vNV(CPU* cpu) {
     if (!ext_glUniform4i64vNV)
         kpanic("ext_glUniform4i64vNV is NULL");
     {
-    GL_FUNC(ext_glUniform4i64vNV)(ARG1, ARG2, (GLint64EXT*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4i64vNV)(ARG1, ARG2, marshalArray<GLint64EXT>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4i64vNV GLint location=%d, GLsizei count=%d, const GLint64EXT* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2270,7 +2270,7 @@ void glcommon_glUniform4iv(CPU* cpu) {
     if (!ext_glUniform4iv)
         kpanic("ext_glUniform4iv is NULL");
     {
-    GL_FUNC(ext_glUniform4iv)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4iv)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4iv GLint location=%d, GLsizei count=%d, const GLint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2278,7 +2278,7 @@ void glcommon_glUniform4ivARB(CPU* cpu) {
     if (!ext_glUniform4ivARB)
         kpanic("ext_glUniform4ivARB is NULL");
     {
-    GL_FUNC(ext_glUniform4ivARB)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4ivARB)(ARG1, ARG2, marshalArray<GLint>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4ivARB GLint location=%d, GLsizei count=%d, const GLint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2310,7 +2310,7 @@ void glcommon_glUniform4ui64vARB(CPU* cpu) {
     if (!ext_glUniform4ui64vARB)
         kpanic("ext_glUniform4ui64vARB is NULL");
     {
-    GL_FUNC(ext_glUniform4ui64vARB)(ARG1, ARG2, (GLuint64*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4ui64vARB)(ARG1, ARG2, marshalArray<GLuint64>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4ui64vARB GLint location=%d, GLsizei count=%d, const GLuint64* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2318,7 +2318,7 @@ void glcommon_glUniform4ui64vNV(CPU* cpu) {
     if (!ext_glUniform4ui64vNV)
         kpanic("ext_glUniform4ui64vNV is NULL");
     {
-    GL_FUNC(ext_glUniform4ui64vNV)(ARG1, ARG2, (GLuint64EXT*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4ui64vNV)(ARG1, ARG2, marshalArray<GLuint64EXT>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4ui64vNV GLint location=%d, GLsizei count=%d, const GLuint64EXT* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2334,7 +2334,7 @@ void glcommon_glUniform4uiv(CPU* cpu) {
     if (!ext_glUniform4uiv)
         kpanic("ext_glUniform4uiv is NULL");
     {
-    GL_FUNC(ext_glUniform4uiv)(ARG1, ARG2, (GLuint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4uiv)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4uiv GLint location=%d, GLsizei count=%d, const GLuint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2342,7 +2342,7 @@ void glcommon_glUniform4uivEXT(CPU* cpu) {
     if (!ext_glUniform4uivEXT)
         kpanic("ext_glUniform4uivEXT is NULL");
     {
-    GL_FUNC(ext_glUniform4uivEXT)(ARG1, ARG2, (GLuint*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniform4uivEXT)(ARG1, ARG2, marshalArray<GLuint>(cpu, ARG3, ARG2 * 4));
     GL_LOG ("glUniform4uivEXT GLint location=%d, GLsizei count=%d, const GLuint* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2382,7 +2382,7 @@ void glcommon_glUniformHandleui64vARB(CPU* cpu) {
     if (!ext_glUniformHandleui64vARB)
         kpanic("ext_glUniformHandleui64vARB is NULL");
     {
-    GL_FUNC(ext_glUniformHandleui64vARB)(ARG1, ARG2, (GLuint64*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniformHandleui64vARB)(ARG1, ARG2, marshalArray<GLuint64>(cpu, ARG3, ARG2));
     GL_LOG ("glUniformHandleui64vARB GLint location=%d, GLsizei count=%d, const GLuint64* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2390,7 +2390,7 @@ void glcommon_glUniformHandleui64vNV(CPU* cpu) {
     if (!ext_glUniformHandleui64vNV)
         kpanic("ext_glUniformHandleui64vNV is NULL");
     {
-    GL_FUNC(ext_glUniformHandleui64vNV)(ARG1, ARG2, (GLuint64*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniformHandleui64vNV)(ARG1, ARG2, marshalArray<GLuint64>(cpu, ARG3, ARG2));
     GL_LOG ("glUniformHandleui64vNV GLint location=%d, GLsizei count=%d, const GLuint64* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2398,7 +2398,7 @@ void glcommon_glUniformMatrix2dv(CPU* cpu) {
     if (!ext_glUniformMatrix2dv)
         kpanic("ext_glUniformMatrix2dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix2dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*4));
+    GL_FUNC(ext_glUniformMatrix2dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*4));
     GL_LOG ("glUniformMatrix2dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2406,7 +2406,7 @@ void glcommon_glUniformMatrix2fv(CPU* cpu) {
     if (!ext_glUniformMatrix2fv)
         kpanic("ext_glUniformMatrix2fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix2fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*4));
+    GL_FUNC(ext_glUniformMatrix2fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*4));
     GL_LOG ("glUniformMatrix2fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2414,7 +2414,7 @@ void glcommon_glUniformMatrix2fvARB(CPU* cpu) {
     if (!ext_glUniformMatrix2fvARB)
         kpanic("ext_glUniformMatrix2fvARB is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix2fvARB)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*4));
+    GL_FUNC(ext_glUniformMatrix2fvARB)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*4));
     GL_LOG ("glUniformMatrix2fvARB GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2422,7 +2422,7 @@ void glcommon_glUniformMatrix2x3dv(CPU* cpu) {
     if (!ext_glUniformMatrix2x3dv)
         kpanic("ext_glUniformMatrix2x3dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix2x3dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*6));
+    GL_FUNC(ext_glUniformMatrix2x3dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*6));
     GL_LOG ("glUniformMatrix2x3dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2430,7 +2430,7 @@ void glcommon_glUniformMatrix2x3fv(CPU* cpu) {
     if (!ext_glUniformMatrix2x3fv)
         kpanic("ext_glUniformMatrix2x3fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix2x3fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*6));
+    GL_FUNC(ext_glUniformMatrix2x3fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*6));
     GL_LOG ("glUniformMatrix2x3fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2438,7 +2438,7 @@ void glcommon_glUniformMatrix2x4dv(CPU* cpu) {
     if (!ext_glUniformMatrix2x4dv)
         kpanic("ext_glUniformMatrix2x4dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix2x4dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*8));
+    GL_FUNC(ext_glUniformMatrix2x4dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*8));
     GL_LOG ("glUniformMatrix2x4dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2446,7 +2446,7 @@ void glcommon_glUniformMatrix2x4fv(CPU* cpu) {
     if (!ext_glUniformMatrix2x4fv)
         kpanic("ext_glUniformMatrix2x4fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix2x4fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*8));
+    GL_FUNC(ext_glUniformMatrix2x4fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*8));
     GL_LOG ("glUniformMatrix2x4fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2454,7 +2454,7 @@ void glcommon_glUniformMatrix3dv(CPU* cpu) {
     if (!ext_glUniformMatrix3dv)
         kpanic("ext_glUniformMatrix3dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix3dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*9));
+    GL_FUNC(ext_glUniformMatrix3dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*9));
     GL_LOG ("glUniformMatrix3dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2462,7 +2462,7 @@ void glcommon_glUniformMatrix3fv(CPU* cpu) {
     if (!ext_glUniformMatrix3fv)
         kpanic("ext_glUniformMatrix3fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix3fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*9));
+    GL_FUNC(ext_glUniformMatrix3fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*9));
     GL_LOG ("glUniformMatrix3fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2470,7 +2470,7 @@ void glcommon_glUniformMatrix3fvARB(CPU* cpu) {
     if (!ext_glUniformMatrix3fvARB)
         kpanic("ext_glUniformMatrix3fvARB is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix3fvARB)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*9));
+    GL_FUNC(ext_glUniformMatrix3fvARB)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*9));
     GL_LOG ("glUniformMatrix3fvARB GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2478,7 +2478,7 @@ void glcommon_glUniformMatrix3x2dv(CPU* cpu) {
     if (!ext_glUniformMatrix3x2dv)
         kpanic("ext_glUniformMatrix3x2dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix3x2dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*6));
+    GL_FUNC(ext_glUniformMatrix3x2dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*6));
     GL_LOG ("glUniformMatrix3x2dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2486,7 +2486,7 @@ void glcommon_glUniformMatrix3x2fv(CPU* cpu) {
     if (!ext_glUniformMatrix3x2fv)
         kpanic("ext_glUniformMatrix3x2fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix3x2fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*6));
+    GL_FUNC(ext_glUniformMatrix3x2fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*6));
     GL_LOG ("glUniformMatrix3x2fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2494,7 +2494,7 @@ void glcommon_glUniformMatrix3x4dv(CPU* cpu) {
     if (!ext_glUniformMatrix3x4dv)
         kpanic("ext_glUniformMatrix3x4dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix3x4dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*12));
+    GL_FUNC(ext_glUniformMatrix3x4dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*12));
     GL_LOG ("glUniformMatrix3x4dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2502,7 +2502,7 @@ void glcommon_glUniformMatrix3x4fv(CPU* cpu) {
     if (!ext_glUniformMatrix3x4fv)
         kpanic("ext_glUniformMatrix3x4fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix3x4fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*12));
+    GL_FUNC(ext_glUniformMatrix3x4fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*12));
     GL_LOG ("glUniformMatrix3x4fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2510,7 +2510,7 @@ void glcommon_glUniformMatrix4dv(CPU* cpu) {
     if (!ext_glUniformMatrix4dv)
         kpanic("ext_glUniformMatrix4dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix4dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*16));
+    GL_FUNC(ext_glUniformMatrix4dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*16));
     GL_LOG ("glUniformMatrix4dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2518,7 +2518,7 @@ void glcommon_glUniformMatrix4fv(CPU* cpu) {
     if (!ext_glUniformMatrix4fv)
         kpanic("ext_glUniformMatrix4fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix4fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*16));
+    GL_FUNC(ext_glUniformMatrix4fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*16));
     GL_LOG ("glUniformMatrix4fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2526,7 +2526,7 @@ void glcommon_glUniformMatrix4fvARB(CPU* cpu) {
     if (!ext_glUniformMatrix4fvARB)
         kpanic("ext_glUniformMatrix4fvARB is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix4fvARB)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*16));
+    GL_FUNC(ext_glUniformMatrix4fvARB)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*16));
     GL_LOG ("glUniformMatrix4fvARB GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2534,7 +2534,7 @@ void glcommon_glUniformMatrix4x2dv(CPU* cpu) {
     if (!ext_glUniformMatrix4x2dv)
         kpanic("ext_glUniformMatrix4x2dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix4x2dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*8));
+    GL_FUNC(ext_glUniformMatrix4x2dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*8));
     GL_LOG ("glUniformMatrix4x2dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2542,7 +2542,7 @@ void glcommon_glUniformMatrix4x2fv(CPU* cpu) {
     if (!ext_glUniformMatrix4x2fv)
         kpanic("ext_glUniformMatrix4x2fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix4x2fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*8));
+    GL_FUNC(ext_glUniformMatrix4x2fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*8));
     GL_LOG ("glUniformMatrix4x2fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2550,7 +2550,7 @@ void glcommon_glUniformMatrix4x3dv(CPU* cpu) {
     if (!ext_glUniformMatrix4x3dv)
         kpanic("ext_glUniformMatrix4x3dv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix4x3dv)(ARG1, ARG2, bARG3, (GLdouble*)marshald(cpu, ARG4, ARG2*12));
+    GL_FUNC(ext_glUniformMatrix4x3dv)(ARG1, ARG2, bARG3, marshalArray<GLdouble>(cpu, ARG4, ARG2*12));
     GL_LOG ("glUniformMatrix4x3dv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLdouble* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2558,7 +2558,7 @@ void glcommon_glUniformMatrix4x3fv(CPU* cpu) {
     if (!ext_glUniformMatrix4x3fv)
         kpanic("ext_glUniformMatrix4x3fv is NULL");
     {
-    GL_FUNC(ext_glUniformMatrix4x3fv)(ARG1, ARG2, bARG3, (GLfloat*)marshalf(cpu, ARG4, ARG2*12));
+    GL_FUNC(ext_glUniformMatrix4x3fv)(ARG1, ARG2, bARG3, marshalArray<GLfloat>(cpu, ARG4, ARG2*12));
     GL_LOG ("glUniformMatrix4x3fv GLint location=%d, GLsizei count=%d, GLboolean transpose=%d, const GLfloat* value=%.08x",ARG1,ARG2,bARG3,ARG4);
     }
 }
@@ -2566,7 +2566,7 @@ void glcommon_glUniformSubroutinesuiv(CPU* cpu) {
     if (!ext_glUniformSubroutinesuiv)
         kpanic("ext_glUniformSubroutinesuiv is NULL");
     {
-    GL_FUNC(ext_glUniformSubroutinesuiv)(ARG1, ARG2, (GLuint*)marshalui(cpu, ARG3, ARG2));
+    GL_FUNC(ext_glUniformSubroutinesuiv)(ARG1, ARG2, (GLuint*)marshalArray<GLuint>(cpu, ARG3, ARG2));
     GL_LOG ("glUniformSubroutinesuiv GLenum shadertype=%d, GLsizei count=%d, const GLuint* indices=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2582,7 +2582,7 @@ void glcommon_glUniformui64vNV(CPU* cpu) {
     if (!ext_glUniformui64vNV)
         kpanic("ext_glUniformui64vNV is NULL");
     {
-    GL_FUNC(ext_glUniformui64vNV)(ARG1, ARG2, (GLuint64EXT*)marshalp(cpu, 0, ARG3, 0));
+    GL_FUNC(ext_glUniformui64vNV)(ARG1, ARG2, marshalArray<GLuint64EXT>(cpu, ARG3, ARG2));
     GL_LOG ("glUniformui64vNV GLint location=%d, GLsizei count=%d, const GLuint64EXT* value=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -2599,9 +2599,8 @@ void glcommon_glUnmapBuffer(CPU* cpu) {
         kpanic("ext_glUnmapBuffer is NULL");
     {
 
-#ifdef BOXEDWINE_64BIT_MMU
-        unmapBuffer(cpu, ARG1);
-#endif
+    unmapBuffer(cpu, ARG1);
+
     EAX=GL_FUNC(ext_glUnmapBuffer)(ARG1);
     GL_LOG ("glUnmapBuffer GLenum target=%d",ARG1);
     }
@@ -3248,7 +3247,7 @@ void glcommon_glVertexArrayVertexBuffers(CPU* cpu) {
     if (!ext_glVertexArrayVertexBuffers)
         kpanic("ext_glVertexArrayVertexBuffers is NULL");
     {
-    GL_FUNC(ext_glVertexArrayVertexBuffers)(ARG1, ARG2, ARG3, (GLuint*)marshalui(cpu, ARG4, ARG3), (GLintptr*)marshalip(cpu, ARG5, ARG2), (GLsizei*)marshali(cpu, ARG6, ARG2));
+    GL_FUNC(ext_glVertexArrayVertexBuffers)(ARG1, ARG2, ARG3, (GLuint*)marshalArray<GLuint>(cpu, ARG4, ARG3), (GLintptr*)marshalip(cpu, ARG5, ARG2), (GLsizei*)marshalArray<GLint>(cpu, ARG6, ARG2));
     GL_LOG ("glVertexArrayVertexBuffers GLuint vaobj=%d, GLuint first=%d, GLsizei count=%d, const GLuint* buffers=%.08x, const GLintptr* offsets=%.08x, const GLsizei* strides=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6);
     }
 }
@@ -3288,7 +3287,7 @@ void glcommon_glVertexAttrib1dv(CPU* cpu) {
     if (!ext_glVertexAttrib1dv)
         kpanic("ext_glVertexAttrib1dv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1dv)(ARG1, (GLdouble*)marshald(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1dv)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1dv GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3296,7 +3295,7 @@ void glcommon_glVertexAttrib1dvARB(CPU* cpu) {
     if (!ext_glVertexAttrib1dvARB)
         kpanic("ext_glVertexAttrib1dvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1dvARB)(ARG1, (GLdouble*)marshald(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1dvARB)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1dvARB GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3304,7 +3303,7 @@ void glcommon_glVertexAttrib1dvNV(CPU* cpu) {
     if (!ext_glVertexAttrib1dvNV)
         kpanic("ext_glVertexAttrib1dvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1dvNV)(ARG1, (GLdouble*)marshald(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1dvNV)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1dvNV GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3336,7 +3335,7 @@ void glcommon_glVertexAttrib1fv(CPU* cpu) {
     if (!ext_glVertexAttrib1fv)
         kpanic("ext_glVertexAttrib1fv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1fv)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1fv)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1fv GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3344,7 +3343,7 @@ void glcommon_glVertexAttrib1fvARB(CPU* cpu) {
     if (!ext_glVertexAttrib1fvARB)
         kpanic("ext_glVertexAttrib1fvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1fvARB)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1fvARB)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1fvARB GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3352,7 +3351,7 @@ void glcommon_glVertexAttrib1fvNV(CPU* cpu) {
     if (!ext_glVertexAttrib1fvNV)
         kpanic("ext_glVertexAttrib1fvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1fvNV)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1fvNV)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1fvNV GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3368,7 +3367,7 @@ void glcommon_glVertexAttrib1hvNV(CPU* cpu) {
     if (!ext_glVertexAttrib1hvNV)
         kpanic("ext_glVertexAttrib1hvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1hvNV)(ARG1, (GLhalfNV*)marshalhf(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1hvNV)(ARG1, (GLhalfNV*)marshalArray<GLhalfNV>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1hvNV GLuint index=%d, const GLhalfNV* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3400,7 +3399,7 @@ void glcommon_glVertexAttrib1sv(CPU* cpu) {
     if (!ext_glVertexAttrib1sv)
         kpanic("ext_glVertexAttrib1sv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1sv)(ARG1, (GLshort*)marshals(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1sv)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1sv GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3408,7 +3407,7 @@ void glcommon_glVertexAttrib1svARB(CPU* cpu) {
     if (!ext_glVertexAttrib1svARB)
         kpanic("ext_glVertexAttrib1svARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1svARB)(ARG1, (GLshort*)marshals(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1svARB)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1svARB GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3416,7 +3415,7 @@ void glcommon_glVertexAttrib1svNV(CPU* cpu) {
     if (!ext_glVertexAttrib1svNV)
         kpanic("ext_glVertexAttrib1svNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib1svNV)(ARG1, (GLshort*)marshals(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttrib1svNV)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttrib1svNV GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3448,7 +3447,7 @@ void glcommon_glVertexAttrib2dv(CPU* cpu) {
     if (!ext_glVertexAttrib2dv)
         kpanic("ext_glVertexAttrib2dv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2dv)(ARG1, (GLdouble*)marshald(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2dv)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2dv GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3456,7 +3455,7 @@ void glcommon_glVertexAttrib2dvARB(CPU* cpu) {
     if (!ext_glVertexAttrib2dvARB)
         kpanic("ext_glVertexAttrib2dvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2dvARB)(ARG1, (GLdouble*)marshald(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2dvARB)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2dvARB GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3464,7 +3463,7 @@ void glcommon_glVertexAttrib2dvNV(CPU* cpu) {
     if (!ext_glVertexAttrib2dvNV)
         kpanic("ext_glVertexAttrib2dvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2dvNV)(ARG1, (GLdouble*)marshald(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2dvNV)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2dvNV GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3496,7 +3495,7 @@ void glcommon_glVertexAttrib2fv(CPU* cpu) {
     if (!ext_glVertexAttrib2fv)
         kpanic("ext_glVertexAttrib2fv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2fv)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2fv)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2fv GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3504,7 +3503,7 @@ void glcommon_glVertexAttrib2fvARB(CPU* cpu) {
     if (!ext_glVertexAttrib2fvARB)
         kpanic("ext_glVertexAttrib2fvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2fvARB)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2fvARB)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2fvARB GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3512,7 +3511,7 @@ void glcommon_glVertexAttrib2fvNV(CPU* cpu) {
     if (!ext_glVertexAttrib2fvNV)
         kpanic("ext_glVertexAttrib2fvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2fvNV)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2fvNV)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2fvNV GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3528,7 +3527,7 @@ void glcommon_glVertexAttrib2hvNV(CPU* cpu) {
     if (!ext_glVertexAttrib2hvNV)
         kpanic("ext_glVertexAttrib2hvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2hvNV)(ARG1, (GLhalfNV*)marshalhf(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2hvNV)(ARG1, (GLhalfNV*)marshalArray<GLhalfNV>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2hvNV GLuint index=%d, const GLhalfNV* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3560,7 +3559,7 @@ void glcommon_glVertexAttrib2sv(CPU* cpu) {
     if (!ext_glVertexAttrib2sv)
         kpanic("ext_glVertexAttrib2sv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2sv)(ARG1, (GLshort*)marshals(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2sv)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2sv GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3568,7 +3567,7 @@ void glcommon_glVertexAttrib2svARB(CPU* cpu) {
     if (!ext_glVertexAttrib2svARB)
         kpanic("ext_glVertexAttrib2svARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2svARB)(ARG1, (GLshort*)marshals(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2svARB)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2svARB GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3576,7 +3575,7 @@ void glcommon_glVertexAttrib2svNV(CPU* cpu) {
     if (!ext_glVertexAttrib2svNV)
         kpanic("ext_glVertexAttrib2svNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib2svNV)(ARG1, (GLshort*)marshals(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttrib2svNV)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttrib2svNV GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3608,7 +3607,7 @@ void glcommon_glVertexAttrib3dv(CPU* cpu) {
     if (!ext_glVertexAttrib3dv)
         kpanic("ext_glVertexAttrib3dv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3dv)(ARG1, (GLdouble*)marshald(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3dv)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3dv GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3616,7 +3615,7 @@ void glcommon_glVertexAttrib3dvARB(CPU* cpu) {
     if (!ext_glVertexAttrib3dvARB)
         kpanic("ext_glVertexAttrib3dvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3dvARB)(ARG1, (GLdouble*)marshald(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3dvARB)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3dvARB GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3624,7 +3623,7 @@ void glcommon_glVertexAttrib3dvNV(CPU* cpu) {
     if (!ext_glVertexAttrib3dvNV)
         kpanic("ext_glVertexAttrib3dvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3dvNV)(ARG1, (GLdouble*)marshald(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3dvNV)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3dvNV GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3656,7 +3655,7 @@ void glcommon_glVertexAttrib3fv(CPU* cpu) {
     if (!ext_glVertexAttrib3fv)
         kpanic("ext_glVertexAttrib3fv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3fv)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3fv)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3fv GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3664,7 +3663,7 @@ void glcommon_glVertexAttrib3fvARB(CPU* cpu) {
     if (!ext_glVertexAttrib3fvARB)
         kpanic("ext_glVertexAttrib3fvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3fvARB)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3fvARB)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3fvARB GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3672,7 +3671,7 @@ void glcommon_glVertexAttrib3fvNV(CPU* cpu) {
     if (!ext_glVertexAttrib3fvNV)
         kpanic("ext_glVertexAttrib3fvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3fvNV)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3fvNV)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3fvNV GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3688,7 +3687,7 @@ void glcommon_glVertexAttrib3hvNV(CPU* cpu) {
     if (!ext_glVertexAttrib3hvNV)
         kpanic("ext_glVertexAttrib3hvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3hvNV)(ARG1, (GLhalfNV*)marshalhf(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3hvNV)(ARG1, (GLhalfNV*)marshalArray<GLhalfNV>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3hvNV GLuint index=%d, const GLhalfNV* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3720,7 +3719,7 @@ void glcommon_glVertexAttrib3sv(CPU* cpu) {
     if (!ext_glVertexAttrib3sv)
         kpanic("ext_glVertexAttrib3sv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3sv)(ARG1, (GLshort*)marshals(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3sv)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3sv GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3728,7 +3727,7 @@ void glcommon_glVertexAttrib3svARB(CPU* cpu) {
     if (!ext_glVertexAttrib3svARB)
         kpanic("ext_glVertexAttrib3svARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3svARB)(ARG1, (GLshort*)marshals(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3svARB)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3svARB GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3736,7 +3735,7 @@ void glcommon_glVertexAttrib3svNV(CPU* cpu) {
     if (!ext_glVertexAttrib3svNV)
         kpanic("ext_glVertexAttrib3svNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib3svNV)(ARG1, (GLshort*)marshals(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttrib3svNV)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttrib3svNV GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3744,7 +3743,7 @@ void glcommon_glVertexAttrib4Nbv(CPU* cpu) {
     if (!ext_glVertexAttrib4Nbv)
         kpanic("ext_glVertexAttrib4Nbv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4Nbv)(ARG1, (GLbyte*)marshalb(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4Nbv)(ARG1, (GLbyte*)marshalArray<GLbyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4Nbv GLuint index=%d, const GLbyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3752,7 +3751,7 @@ void glcommon_glVertexAttrib4NbvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4NbvARB)
         kpanic("ext_glVertexAttrib4NbvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4NbvARB)(ARG1, (GLbyte*)marshalb(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4NbvARB)(ARG1, (GLbyte*)marshalArray<GLbyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4NbvARB GLuint index=%d, const GLbyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3760,7 +3759,7 @@ void glcommon_glVertexAttrib4Niv(CPU* cpu) {
     if (!ext_glVertexAttrib4Niv)
         kpanic("ext_glVertexAttrib4Niv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4Niv)(ARG1, (GLint*)marshali(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4Niv)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4Niv GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3768,7 +3767,7 @@ void glcommon_glVertexAttrib4NivARB(CPU* cpu) {
     if (!ext_glVertexAttrib4NivARB)
         kpanic("ext_glVertexAttrib4NivARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4NivARB)(ARG1, (GLint*)marshali(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4NivARB)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4NivARB GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3776,7 +3775,7 @@ void glcommon_glVertexAttrib4Nsv(CPU* cpu) {
     if (!ext_glVertexAttrib4Nsv)
         kpanic("ext_glVertexAttrib4Nsv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4Nsv)(ARG1, (GLshort*)marshals(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4Nsv)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4Nsv GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3784,7 +3783,7 @@ void glcommon_glVertexAttrib4NsvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4NsvARB)
         kpanic("ext_glVertexAttrib4NsvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4NsvARB)(ARG1, (GLshort*)marshals(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4NsvARB)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4NsvARB GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3808,7 +3807,7 @@ void glcommon_glVertexAttrib4Nubv(CPU* cpu) {
     if (!ext_glVertexAttrib4Nubv)
         kpanic("ext_glVertexAttrib4Nubv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4Nubv)(ARG1, (GLubyte*)marshalub(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4Nubv)(ARG1, (GLubyte*)marshalArray<GLubyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4Nubv GLuint index=%d, const GLubyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3816,7 +3815,7 @@ void glcommon_glVertexAttrib4NubvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4NubvARB)
         kpanic("ext_glVertexAttrib4NubvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4NubvARB)(ARG1, (GLubyte*)marshalub(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4NubvARB)(ARG1, (GLubyte*)marshalArray<GLubyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4NubvARB GLuint index=%d, const GLubyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3824,7 +3823,7 @@ void glcommon_glVertexAttrib4Nuiv(CPU* cpu) {
     if (!ext_glVertexAttrib4Nuiv)
         kpanic("ext_glVertexAttrib4Nuiv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4Nuiv)(ARG1, (GLuint*)marshalui(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4Nuiv)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4Nuiv GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3832,7 +3831,7 @@ void glcommon_glVertexAttrib4NuivARB(CPU* cpu) {
     if (!ext_glVertexAttrib4NuivARB)
         kpanic("ext_glVertexAttrib4NuivARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4NuivARB)(ARG1, (GLuint*)marshalui(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4NuivARB)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4NuivARB GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3840,7 +3839,7 @@ void glcommon_glVertexAttrib4Nusv(CPU* cpu) {
     if (!ext_glVertexAttrib4Nusv)
         kpanic("ext_glVertexAttrib4Nusv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4Nusv)(ARG1, (GLushort*)marshalus(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4Nusv)(ARG1, (GLushort*)marshalArray<GLushort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4Nusv GLuint index=%d, const GLushort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3848,7 +3847,7 @@ void glcommon_glVertexAttrib4NusvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4NusvARB)
         kpanic("ext_glVertexAttrib4NusvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4NusvARB)(ARG1, (GLushort*)marshalus(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4NusvARB)(ARG1, (GLushort*)marshalArray<GLushort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4NusvARB GLuint index=%d, const GLushort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3856,7 +3855,7 @@ void glcommon_glVertexAttrib4bv(CPU* cpu) {
     if (!ext_glVertexAttrib4bv)
         kpanic("ext_glVertexAttrib4bv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4bv)(ARG1, (GLbyte*)marshalb(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4bv)(ARG1, (GLbyte*)marshalArray<GLbyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4bv GLuint index=%d, const GLbyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3864,7 +3863,7 @@ void glcommon_glVertexAttrib4bvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4bvARB)
         kpanic("ext_glVertexAttrib4bvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4bvARB)(ARG1, (GLbyte*)marshalb(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4bvARB)(ARG1, (GLbyte*)marshalArray<GLbyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4bvARB GLuint index=%d, const GLbyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3896,7 +3895,7 @@ void glcommon_glVertexAttrib4dv(CPU* cpu) {
     if (!ext_glVertexAttrib4dv)
         kpanic("ext_glVertexAttrib4dv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4dv)(ARG1, (GLdouble*)marshald(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4dv)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4dv GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3904,7 +3903,7 @@ void glcommon_glVertexAttrib4dvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4dvARB)
         kpanic("ext_glVertexAttrib4dvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4dvARB)(ARG1, (GLdouble*)marshald(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4dvARB)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4dvARB GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3912,7 +3911,7 @@ void glcommon_glVertexAttrib4dvNV(CPU* cpu) {
     if (!ext_glVertexAttrib4dvNV)
         kpanic("ext_glVertexAttrib4dvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4dvNV)(ARG1, (GLdouble*)marshald(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4dvNV)(ARG1, marshalArray<GLdouble>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4dvNV GLuint index=%d, const GLdouble* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3944,7 +3943,7 @@ void glcommon_glVertexAttrib4fv(CPU* cpu) {
     if (!ext_glVertexAttrib4fv)
         kpanic("ext_glVertexAttrib4fv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4fv)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4fv)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4fv GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3952,7 +3951,7 @@ void glcommon_glVertexAttrib4fvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4fvARB)
         kpanic("ext_glVertexAttrib4fvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4fvARB)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4fvARB)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4fvARB GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3960,7 +3959,7 @@ void glcommon_glVertexAttrib4fvNV(CPU* cpu) {
     if (!ext_glVertexAttrib4fvNV)
         kpanic("ext_glVertexAttrib4fvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4fvNV)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4fvNV)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4fvNV GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3976,7 +3975,7 @@ void glcommon_glVertexAttrib4hvNV(CPU* cpu) {
     if (!ext_glVertexAttrib4hvNV)
         kpanic("ext_glVertexAttrib4hvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4hvNV)(ARG1, (GLhalfNV*)marshalhf(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4hvNV)(ARG1, (GLhalfNV*)marshalArray<GLhalfNV>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4hvNV GLuint index=%d, const GLhalfNV* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3984,7 +3983,7 @@ void glcommon_glVertexAttrib4iv(CPU* cpu) {
     if (!ext_glVertexAttrib4iv)
         kpanic("ext_glVertexAttrib4iv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4iv)(ARG1, (GLint*)marshali(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4iv)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4iv GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -3992,7 +3991,7 @@ void glcommon_glVertexAttrib4ivARB(CPU* cpu) {
     if (!ext_glVertexAttrib4ivARB)
         kpanic("ext_glVertexAttrib4ivARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4ivARB)(ARG1, (GLint*)marshali(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4ivARB)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4ivARB GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4024,7 +4023,7 @@ void glcommon_glVertexAttrib4sv(CPU* cpu) {
     if (!ext_glVertexAttrib4sv)
         kpanic("ext_glVertexAttrib4sv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4sv)(ARG1, (GLshort*)marshals(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4sv)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4sv GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4032,7 +4031,7 @@ void glcommon_glVertexAttrib4svARB(CPU* cpu) {
     if (!ext_glVertexAttrib4svARB)
         kpanic("ext_glVertexAttrib4svARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4svARB)(ARG1, (GLshort*)marshals(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4svARB)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4svARB GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4040,7 +4039,7 @@ void glcommon_glVertexAttrib4svNV(CPU* cpu) {
     if (!ext_glVertexAttrib4svNV)
         kpanic("ext_glVertexAttrib4svNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4svNV)(ARG1, (GLshort*)marshals(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4svNV)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4svNV GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4056,7 +4055,7 @@ void glcommon_glVertexAttrib4ubv(CPU* cpu) {
     if (!ext_glVertexAttrib4ubv)
         kpanic("ext_glVertexAttrib4ubv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4ubv)(ARG1, (GLubyte*)marshalub(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4ubv)(ARG1, (GLubyte*)marshalArray<GLubyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4ubv GLuint index=%d, const GLubyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4064,7 +4063,7 @@ void glcommon_glVertexAttrib4ubvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4ubvARB)
         kpanic("ext_glVertexAttrib4ubvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4ubvARB)(ARG1, (GLubyte*)marshalub(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4ubvARB)(ARG1, (GLubyte*)marshalArray<GLubyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4ubvARB GLuint index=%d, const GLubyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4072,7 +4071,7 @@ void glcommon_glVertexAttrib4ubvNV(CPU* cpu) {
     if (!ext_glVertexAttrib4ubvNV)
         kpanic("ext_glVertexAttrib4ubvNV is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4ubvNV)(ARG1, (GLubyte*)marshalub(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4ubvNV)(ARG1, (GLubyte*)marshalArray<GLubyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4ubvNV GLuint index=%d, const GLubyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4080,7 +4079,7 @@ void glcommon_glVertexAttrib4uiv(CPU* cpu) {
     if (!ext_glVertexAttrib4uiv)
         kpanic("ext_glVertexAttrib4uiv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4uiv)(ARG1, (GLuint*)marshalui(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4uiv)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4uiv GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4088,7 +4087,7 @@ void glcommon_glVertexAttrib4uivARB(CPU* cpu) {
     if (!ext_glVertexAttrib4uivARB)
         kpanic("ext_glVertexAttrib4uivARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4uivARB)(ARG1, (GLuint*)marshalui(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4uivARB)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4uivARB GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4096,7 +4095,7 @@ void glcommon_glVertexAttrib4usv(CPU* cpu) {
     if (!ext_glVertexAttrib4usv)
         kpanic("ext_glVertexAttrib4usv is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4usv)(ARG1, (GLushort*)marshalus(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4usv)(ARG1, (GLushort*)marshalArray<GLushort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4usv GLuint index=%d, const GLushort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4104,7 +4103,7 @@ void glcommon_glVertexAttrib4usvARB(CPU* cpu) {
     if (!ext_glVertexAttrib4usvARB)
         kpanic("ext_glVertexAttrib4usvARB is NULL");
     {
-    GL_FUNC(ext_glVertexAttrib4usvARB)(ARG1, (GLushort*)marshalus(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttrib4usvARB)(ARG1, (GLushort*)marshalArray<GLushort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttrib4usvARB GLuint index=%d, const GLushort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4176,7 +4175,7 @@ void glcommon_glVertexAttribI1iv(CPU* cpu) {
     if (!ext_glVertexAttribI1iv)
         kpanic("ext_glVertexAttribI1iv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI1iv)(ARG1, (GLint*)marshali(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttribI1iv)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttribI1iv GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4184,7 +4183,7 @@ void glcommon_glVertexAttribI1ivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI1ivEXT)
         kpanic("ext_glVertexAttribI1ivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI1ivEXT)(ARG1, (GLint*)marshali(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttribI1ivEXT)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttribI1ivEXT GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4208,7 +4207,7 @@ void glcommon_glVertexAttribI1uiv(CPU* cpu) {
     if (!ext_glVertexAttribI1uiv)
         kpanic("ext_glVertexAttribI1uiv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI1uiv)(ARG1, (GLuint*)marshalui(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttribI1uiv)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttribI1uiv GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4216,7 +4215,7 @@ void glcommon_glVertexAttribI1uivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI1uivEXT)
         kpanic("ext_glVertexAttribI1uivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI1uivEXT)(ARG1, (GLuint*)marshalui(cpu, ARG2, 1));
+    GL_FUNC(ext_glVertexAttribI1uivEXT)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 1));
     GL_LOG ("glVertexAttribI1uivEXT GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4240,7 +4239,7 @@ void glcommon_glVertexAttribI2iv(CPU* cpu) {
     if (!ext_glVertexAttribI2iv)
         kpanic("ext_glVertexAttribI2iv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI2iv)(ARG1, (GLint*)marshali(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttribI2iv)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttribI2iv GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4248,7 +4247,7 @@ void glcommon_glVertexAttribI2ivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI2ivEXT)
         kpanic("ext_glVertexAttribI2ivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI2ivEXT)(ARG1, (GLint*)marshali(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttribI2ivEXT)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttribI2ivEXT GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4272,7 +4271,7 @@ void glcommon_glVertexAttribI2uiv(CPU* cpu) {
     if (!ext_glVertexAttribI2uiv)
         kpanic("ext_glVertexAttribI2uiv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI2uiv)(ARG1, (GLuint*)marshalui(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttribI2uiv)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttribI2uiv GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4280,7 +4279,7 @@ void glcommon_glVertexAttribI2uivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI2uivEXT)
         kpanic("ext_glVertexAttribI2uivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI2uivEXT)(ARG1, (GLuint*)marshalui(cpu, ARG2, 2));
+    GL_FUNC(ext_glVertexAttribI2uivEXT)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 2));
     GL_LOG ("glVertexAttribI2uivEXT GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4304,7 +4303,7 @@ void glcommon_glVertexAttribI3iv(CPU* cpu) {
     if (!ext_glVertexAttribI3iv)
         kpanic("ext_glVertexAttribI3iv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI3iv)(ARG1, (GLint*)marshali(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttribI3iv)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttribI3iv GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4312,7 +4311,7 @@ void glcommon_glVertexAttribI3ivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI3ivEXT)
         kpanic("ext_glVertexAttribI3ivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI3ivEXT)(ARG1, (GLint*)marshali(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttribI3ivEXT)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttribI3ivEXT GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4336,7 +4335,7 @@ void glcommon_glVertexAttribI3uiv(CPU* cpu) {
     if (!ext_glVertexAttribI3uiv)
         kpanic("ext_glVertexAttribI3uiv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI3uiv)(ARG1, (GLuint*)marshalui(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttribI3uiv)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttribI3uiv GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4344,7 +4343,7 @@ void glcommon_glVertexAttribI3uivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI3uivEXT)
         kpanic("ext_glVertexAttribI3uivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI3uivEXT)(ARG1, (GLuint*)marshalui(cpu, ARG2, 3));
+    GL_FUNC(ext_glVertexAttribI3uivEXT)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 3));
     GL_LOG ("glVertexAttribI3uivEXT GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4352,7 +4351,7 @@ void glcommon_glVertexAttribI4bv(CPU* cpu) {
     if (!ext_glVertexAttribI4bv)
         kpanic("ext_glVertexAttribI4bv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4bv)(ARG1, (GLbyte*)marshalb(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4bv)(ARG1, (GLbyte*)marshalArray<GLbyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4bv GLuint index=%d, const GLbyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4360,7 +4359,7 @@ void glcommon_glVertexAttribI4bvEXT(CPU* cpu) {
     if (!ext_glVertexAttribI4bvEXT)
         kpanic("ext_glVertexAttribI4bvEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4bvEXT)(ARG1, (GLbyte*)marshalb(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4bvEXT)(ARG1, (GLbyte*)marshalArray<GLbyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4bvEXT GLuint index=%d, const GLbyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4384,7 +4383,7 @@ void glcommon_glVertexAttribI4iv(CPU* cpu) {
     if (!ext_glVertexAttribI4iv)
         kpanic("ext_glVertexAttribI4iv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4iv)(ARG1, (GLint*)marshali(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4iv)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4iv GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4392,7 +4391,7 @@ void glcommon_glVertexAttribI4ivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI4ivEXT)
         kpanic("ext_glVertexAttribI4ivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4ivEXT)(ARG1, (GLint*)marshali(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4ivEXT)(ARG1, (GLint*)marshalArray<GLint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4ivEXT GLuint index=%d, const GLint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4400,7 +4399,7 @@ void glcommon_glVertexAttribI4sv(CPU* cpu) {
     if (!ext_glVertexAttribI4sv)
         kpanic("ext_glVertexAttribI4sv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4sv)(ARG1, (GLshort*)marshals(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4sv)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4sv GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4408,7 +4407,7 @@ void glcommon_glVertexAttribI4svEXT(CPU* cpu) {
     if (!ext_glVertexAttribI4svEXT)
         kpanic("ext_glVertexAttribI4svEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4svEXT)(ARG1, (GLshort*)marshals(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4svEXT)(ARG1, (GLshort*)marshalArray<GLshort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4svEXT GLuint index=%d, const GLshort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4416,7 +4415,7 @@ void glcommon_glVertexAttribI4ubv(CPU* cpu) {
     if (!ext_glVertexAttribI4ubv)
         kpanic("ext_glVertexAttribI4ubv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4ubv)(ARG1, (GLubyte*)marshalub(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4ubv)(ARG1, (GLubyte*)marshalArray<GLubyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4ubv GLuint index=%d, const GLubyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4424,7 +4423,7 @@ void glcommon_glVertexAttribI4ubvEXT(CPU* cpu) {
     if (!ext_glVertexAttribI4ubvEXT)
         kpanic("ext_glVertexAttribI4ubvEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4ubvEXT)(ARG1, (GLubyte*)marshalub(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4ubvEXT)(ARG1, (GLubyte*)marshalArray<GLubyte>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4ubvEXT GLuint index=%d, const GLubyte* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4448,7 +4447,7 @@ void glcommon_glVertexAttribI4uiv(CPU* cpu) {
     if (!ext_glVertexAttribI4uiv)
         kpanic("ext_glVertexAttribI4uiv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4uiv)(ARG1, (GLuint*)marshalui(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4uiv)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4uiv GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4456,7 +4455,7 @@ void glcommon_glVertexAttribI4uivEXT(CPU* cpu) {
     if (!ext_glVertexAttribI4uivEXT)
         kpanic("ext_glVertexAttribI4uivEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4uivEXT)(ARG1, (GLuint*)marshalui(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4uivEXT)(ARG1, (GLuint*)marshalArray<GLuint>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4uivEXT GLuint index=%d, const GLuint* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4464,7 +4463,7 @@ void glcommon_glVertexAttribI4usv(CPU* cpu) {
     if (!ext_glVertexAttribI4usv)
         kpanic("ext_glVertexAttribI4usv is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4usv)(ARG1, (GLushort*)marshalus(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4usv)(ARG1, (GLushort*)marshalArray<GLushort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4usv GLuint index=%d, const GLushort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -4472,7 +4471,7 @@ void glcommon_glVertexAttribI4usvEXT(CPU* cpu) {
     if (!ext_glVertexAttribI4usvEXT)
         kpanic("ext_glVertexAttribI4usvEXT is NULL");
     {
-    GL_FUNC(ext_glVertexAttribI4usvEXT)(ARG1, (GLushort*)marshalus(cpu, ARG2, 4));
+    GL_FUNC(ext_glVertexAttribI4usvEXT)(ARG1, (GLushort*)marshalArray<GLushort>(cpu, ARG2, 4));
     GL_LOG ("glVertexAttribI4usvEXT GLuint index=%d, const GLushort* v=%.08x",ARG1,ARG2);
     }
 }
@@ -5494,7 +5493,7 @@ void glcommon_glViewportArrayv(CPU* cpu) {
     if (!ext_glViewportArrayv)
         kpanic("ext_glViewportArrayv is NULL");
     {
-    GL_FUNC(ext_glViewportArrayv)(ARG1, ARG2, (GLfloat*)marshalf(cpu, ARG3, ARG2*4));
+    GL_FUNC(ext_glViewportArrayv)(ARG1, ARG2, marshalArray<GLfloat>(cpu, ARG3, ARG2*4));
     GL_LOG ("glViewportArrayv GLuint first=%d, GLsizei count=%d, const GLfloat* v=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -5510,7 +5509,7 @@ void glcommon_glViewportIndexedfv(CPU* cpu) {
     if (!ext_glViewportIndexedfv)
         kpanic("ext_glViewportIndexedfv is NULL");
     {
-    GL_FUNC(ext_glViewportIndexedfv)(ARG1, (GLfloat*)marshalf(cpu, ARG2, 4));
+    GL_FUNC(ext_glViewportIndexedfv)(ARG1, marshalArray<GLfloat>(cpu, ARG2, 4));
     GL_LOG ("glViewportIndexedfv GLuint index=%d, const GLfloat* v=%.08x",ARG1,ARG2);
     }
 }

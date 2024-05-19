@@ -5,16 +5,18 @@
 
 class NormalCPU : public CPU {
 public:
-    NormalCPU();
+    NormalCPU(KMemory* memory);
 
     static void clearCache();
 
-    virtual void run();
-    virtual DecodedBlock* getNextBlock();
+    // from CPU
+    void run() override;
+    DecodedBlock* getNextBlock() override;
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 
-    static DecodedBlock* getBlockForInspectionButNotUsed(U32 address, bool big);
+    static DecodedBlock* getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big);
+    static DecodedOp* decodeSingleOp(CPU* cpu, U32 address);
 
     OpCallback firstOp;
 };

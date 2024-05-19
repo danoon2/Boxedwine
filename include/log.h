@@ -19,15 +19,55 @@
 #ifndef __LOG_H__
 #define __LOG_H__
 
-#include <stdio.h>
+void internal_log(BString msg, FILE* f);
+void internal_kpanic(BString msg);
 
-// this will help static analysis
+template <class... Args>
 #ifdef BOXEDWINE_MSVC
 __declspec(noreturn)
 #endif
-void kpanic(const char* msg, ...);
-void kwarn(const char* msg, ...);
-void klog(const char* msg, ...);
-void klog_nonewline(const char* msg, ...);
-void kdebug(const char* msg, ...);
+void kpanic(const char* format, Args&&... args) {
+	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
+	BString msg(size + 1, '\0');
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
+	msg += "\n";
+	internal_kpanic(msg);
+}
+
+template <class... Args>
+void kwarn(const char* format, Args&&... args) {
+	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
+	BString msg(size + 1, '\0');
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
+	msg += "\n";
+	internal_log(msg, stdout);
+}
+
+template <class... Args>
+void klog(const char* format, Args&&... args) {
+	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
+	BString msg(size + 1, '\0');
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
+	msg += "\n";
+	internal_log(msg, stdout);
+}
+
+template <class... Args>
+void klog_nonewline(const char* format, Args&&... args) {
+	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
+	BString msg(size + 1, '\0');
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
+	internal_log(msg, stdout);
+}
+
+template <class... Args>
+void kdebug(const char* format, Args&&... args) {
+#ifdef _DEBUG
+	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
+	BString msg(size + 1, '\0');
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
+	msg += "\n";
+	internal_log(msg, stderr);
+#endif
+}
 #endif

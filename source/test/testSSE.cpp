@@ -10,10 +10,12 @@
 #include "testMMX.h"
 #include "testSSE.h"
 
+extern KMemory* memory;
+
 void initSseTest() {    
     newInstruction(0);
-    writeq(cpu->seg[DS].address, SSE_MEM_VALUE128_DEFAULT1);
-    writeq(cpu->seg[DS].address+8, SSE_MEM_VALUE128_DEFAULT2);
+    memory->writeq(cpu->seg[DS].address, SSE_MEM_VALUE128_DEFAULT1);
+    memory->writeq(cpu->seg[DS].address+8, SSE_MEM_VALUE128_DEFAULT2);
     for (int i=0;i<8;i++) {
         // movq  xmm0, QWORD PTR ds:0x0
         pushCode8(0x0f);
@@ -26,8 +28,8 @@ void initSseTest() {
 }
 
 void loadSSE(U8 reg, U32 index, U64 value1l, U64 value1h) {
-    writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+index*16, value1l);
-    writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+index*16+8, value1h);
+    memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+index*16, value1l);
+    memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+index*16+8, value1h);
 
     pushCode8(0x0f);
     pushCode8(0x10);
@@ -81,8 +83,8 @@ void testSse128(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 value
         if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
             initSseTest();         
             loadSSE(m, 0, value1l, value1h);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
             if (preOp1) {
                 pushCode8(preOp1);
             }
@@ -144,7 +146,7 @@ void testSse16Eimm8(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 v
         }
         initSseTest();
         loadSSE(m, 0, value1l, value1h);
-        writed(cpu->seg[DS].address + SSE_MEM_VALUE_TMP_OFFSET + 16, value2);
+        memory->writed(cpu->seg[DS].address + SSE_MEM_VALUE_TMP_OFFSET + 16, value2);
         if (preOp1) {
             pushCode8(preOp1);
         }
@@ -211,8 +213,8 @@ void testSse128imm(U8 preOp1, U8 preOp2, U8 op, U8 imm, U64 value1l, U64 value1h
         }
         initSseTest();         
         loadSSE(m, 0, value1l, value1h);
-        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
-        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+        memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+        memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
         if (preOp1) {
             pushCode8(preOp1);
         }
@@ -290,8 +292,8 @@ void testSse128f(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 valu
 
         initSseTest();         
         loadSSE(m, 0, value1l, value1h);
-        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
-        writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+        memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+        memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
         cpu->flags = 0;
         if (preOp1) {
             pushCode8(preOp1);
@@ -352,8 +354,8 @@ void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 valu
         if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
             initSseTest();         
             loadSSE(m, 0, value2l, value2h);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1l);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value1h);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1l);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value1h);
             if (preOp1) {
                 pushCode8(preOp1);
             }
@@ -367,8 +369,8 @@ void testSse128r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 valu
             pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
             runTestCPU();
 
-            U64 result1 = readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16);
-            U64 result2 = readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24);
+            U64 result1 = memory->readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16);
+            U64 result2 = memory->readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24);
             if (result1!=memResultl || result2!=memResulth) {
                 failed("sse failed");
             }
@@ -416,7 +418,7 @@ void testSse128E64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 va
         if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
             initSseTest();         
             loadSSE(m, 0, value2l, value2h);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
             if (preOp1) {
                 pushCode8(preOp1);
             }
@@ -469,8 +471,8 @@ void testSse128E64r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 v
         if (memResultl!=0xFFFFFFFFFFFFFFFFl && memResulth!=0xFFFFFFFFFFFFFFFFl) {
             initSseTest();         
             loadSSE(m, 0, value2l, value2h);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1l);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value1h);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1l);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value1h);
             if (preOp1) {
                 pushCode8(preOp1);
             }
@@ -484,7 +486,7 @@ void testSse128E64r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 v
             pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
             runTestCPU();
 
-            if (readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16)!=memResultl || readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24)!=memResulth) {
+            if (memory->readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16)!=memResultl || memory->readq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24)!=memResulth) {
                 failed("sse failed");
             }
         }
@@ -521,7 +523,7 @@ void testSseMmx64(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 val
         if (memResultl!=0xFFFFFFFFFFFFFFFF || memResulth!=0xFFFFFFFFFFFFFFFF) {
             initSseTest();         
             loadSSE(m, 0, value1l, value1h);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
             if (preOp1) {
                 pushCode8(preOp1);
             }
@@ -569,8 +571,8 @@ void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 val
         if (mmxMemResult!=0xFFFFFFFFFFFFFFFF) {
             initSseTest();         
             loadMMX(m, 0, value1);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+24, value2h);
             if (preOp1) {
                 pushCode8(preOp1);
             }
@@ -638,7 +640,7 @@ void testSseReg32(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U32 val
 
         initSseTest();         
         loadSSE(m, 0, value1l, value1h);
-        writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
+        memory->writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2);
         if (preOp1) {
             pushCode8(preOp1);
         }
@@ -686,7 +688,7 @@ void testSseReg32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 val
         if (memResult!=0xFFFFFFFF) {
             initSseTest();         
             cpu->reg[m].u32 = value1;
-            writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
+            memory->writeq(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value2l);
             if (preOp1) {
                 pushCode8(preOp1);
             }
@@ -734,7 +736,7 @@ void testSseE32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value
         }
         if (memResult!=0xFFFFFFFF) {
             initSseTest();         
-            writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1);
+            memory->writed(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16, value1);
             loadSSE(from, 0, value2l, value2h);
             if (preOp1) {
                 pushCode8(preOp1);
@@ -748,7 +750,7 @@ void testSseE32r(U8 preOp1, U8 preOp2, U8 op, U32 value1, U64 value2l, U64 value
             pushCode8(0x25);
             pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
             runTestCPU();
-            if (readd(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16)!=result) {
+            if (memory->readd(cpu->seg[DS].address+SSE_MEM_VALUE_TMP_OFFSET+16)!=result) {
                 failed("sse failed");
             }
         }
@@ -2451,14 +2453,14 @@ void testMovntq3e7() {
     for (U8 m=0;m<8;m++) {
         initMmxTest();      
         loadMMX(m, 1, MMX_MEM_VALUE64);
-        writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET, 0x1111111111111111l);
+        memory->writeq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET, 0x1111111111111111l);
         pushCode8(0x0f);
         pushCode8(0xE7);
         pushCode8(0x04 | (m<<3));
         pushCode8(0x25);
         pushCode32(MMX_MEM_VALUE_TMP_OFFSET);
         runTestCPU();
-        if (readq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET)!=MMX_MEM_VALUE64) {
+        if (memory->readq(cpu->seg[DS].address+MMX_MEM_VALUE_TMP_OFFSET)!=MMX_MEM_VALUE64) {
             failed("movntq failed");
         }
     }    
@@ -2555,12 +2557,12 @@ void testMaskmovq3f7() {
             loadMMX(m, 0, d1);
             loadMMX(from, 1, d2);
             EDI = MMX_MEM_VALUE_TMP_OFFSET+64;
-            writeq(cpu->seg[DS].address+EDI, 0x9999999999999999);
+            memory->writeq(cpu->seg[DS].address+EDI, 0x9999999999999999);
             pushCode8(0x0f);
             pushCode8(0xf7);
             pushCode8(0xC0 | (m << 3) | from);            
             runTestCPU();
-            result = readq(cpu->seg[DS].address+EDI);
+            result = memory->readq(cpu->seg[DS].address+EDI);
             if (result!=expected) {
                 failed("maskmovq failed");
             }

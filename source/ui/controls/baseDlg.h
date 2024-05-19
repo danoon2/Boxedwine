@@ -3,7 +3,7 @@
 
 class BaseDlg {
 public:
-    BaseDlg(int title, int width, int height, ImFont* font=NULL, BaseDlg* parent=NULL);
+    BaseDlg(Msg title, int width, int height, ImFont* font = nullptr, BaseDlg* parent = nullptr);
     virtual ~BaseDlg() {}
 
     static void runDialogs();
@@ -31,7 +31,6 @@ private:
 
     const char* title;
     bool isDone;
-    BaseDlg* parent;
     BaseDlg* child;
     ImFont* font;
 };

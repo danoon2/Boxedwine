@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
-FsOpenNode* openCpuInfo(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openCpuInfo(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
 	static BString result;
 	if (result.length() == 0) {
 		U32 count = Platform::getCpuCount();

@@ -13,7 +13,7 @@
 static void closesocket(int socket) { close(socket); }
 #endif
 
-DownloadDlg::DownloadDlg(int title, const std::vector<DownloadItem>& items, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 175), items(items), currentItem(0), percentDone(0), onCompleted(onCompleted), cancelled(false), downloadDone(false), hasSize(false) {    
+DownloadDlg::DownloadDlg(Msg title, const std::vector<DownloadItem>& items, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 175), items(items), onCompleted(onCompleted) {    
     runInBackgroundThread([this]() {
         BString errorMsg; 
         U64 totalSize = 0;
@@ -43,14 +43,14 @@ DownloadDlg::DownloadDlg(int title, const std::vector<DownloadItem>& items, std:
                 if (totalSize) {
                     this->percentDone = (U32)(100 * (completedSize + bytesCompleted) / totalSize);
                 }
-                }, NULL, errorMsg, &this->cancelled);
+                }, nullptr, errorMsg, &this->cancelled);
             if (!result && item.urlBackup.length() && !this->cancelled) {
                 errorMsg = "";
                 result = downloadFile(item.urlBackup, tmpFilePath, [this, totalSize, completedSize](U64 bytesCompleted) {
                     if (totalSize) {
                         this->percentDone = (U32)(100 * (completedSize + bytesCompleted) / totalSize);
                     }
-                    }, NULL, errorMsg, &this->cancelled);
+                    }, nullptr, errorMsg, &this->cancelled);
             }
             if (!result) {
                 break;
@@ -110,7 +110,7 @@ void DownloadDlg::showErrorMsg(bool open) {
     BString error = this->errorMsg;
 
     runOnMainUI([error]() {
-        new OkDlg(GENERIC_DLG_ERROR_TITLE, error, nullptr);
+        new OkDlg(Msg::GENERIC_DLG_ERROR_TITLE, error, nullptr);
         return false;
         });
     this->onCompleted(false);
@@ -132,13 +132,13 @@ void DownloadDlg::run() {
         ImGui::ProgressBar(this->percentDone / 100.0f, ImVec2(this->width - this->extraVerticalSpacing*4, 0));
         ImGui::PopStyleColor();
     }
-    float buttonWidth = ImGui::CalcTextSize(c_getTranslation(GENERIC_DLG_CANCEL)).x + ImGui::GetStyle().FramePadding.x * 2;
+    float buttonWidth = ImGui::CalcTextSize(c_getTranslation(Msg::GENERIC_DLG_CANCEL)).x + ImGui::GetStyle().FramePadding.x * 2;
     ImGui::SetCursorPosX(this->width/2-buttonWidth/2);
     ImGui::SetCursorPosY(this->height - ImGui::GetFrameHeightWithSpacing() - ImGui::GetStyle().ItemSpacing.y);
-    if (ImGui::Button(c_getTranslation(GENERIC_DLG_CANCEL))) {
+    if (ImGui::Button(c_getTranslation(Msg::GENERIC_DLG_CANCEL))) {
         // :TODO: what if the socket is stuck, this will only work if the socket is just too slow
         this->cancelled = true;
-        this->currentLabel = getTranslation(DOWNLOADDLG_CANCELLING_LABEL);
+        this->currentLabel = getTranslation(Msg::DOWNLOADDLG_CANCELLING_LABEL);
     }
     if (!this->errorMsg.isEmpty()) {
         showErrorMsg(false);

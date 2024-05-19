@@ -45,13 +45,13 @@ bool KFile::isAsync() {
 
 void KFile::unlockAll(U32 pid) {
     FsOpenNode* openNode = this->openFile;
-    BoxedPtr<FsNode> node = openNode->node;
+    std::shared_ptr<FsNode> node = openNode->node;
     node->unlockAll(pid);
 }
 
 KFileLock* KFile::getLock(KFileLock* lock) {
     FsOpenNode* openNode = this->openFile;
-    BoxedPtr<FsNode> node = openNode->node;
+    std::shared_ptr<FsNode> node = openNode->node;
     return node->getLock(lock, true);
 }
 
@@ -85,9 +85,9 @@ void KFile::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     this->openFile->waitForEvents(parentCondition, events);
 }
 
-U32 KFile::write(U32 buffer, U32 len) {
+U32 KFile::write(KThread* thread, U32 buffer, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
-    return this->openFile->write(buffer, len);
+    return this->openFile->write(thread, buffer, len);
 }
 
 U32 KFile::writeNative(U8* buffer, U32 len) {
@@ -95,9 +95,9 @@ U32 KFile::writeNative(U8* buffer, U32 len) {
     return this->openFile->writeNative(buffer, len);
 }
 
-U32 KFile::read(U32 buffer, U32 len) {
+U32 KFile::read(KThread* thread, U32 buffer, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
-    return this->openFile->read(buffer, len);
+    return this->openFile->read(thread, buffer, len);
 }
 
 U32 KFile::readNative(U8* buffer, U32 len) {
@@ -105,21 +105,25 @@ U32 KFile::readNative(U8* buffer, U32 len) {
     return this->openFile->readNative(buffer, len);
 }
 
-U32 KFile::stat(U32 address, bool is64) {
+U32 KFile::stat(KProcess* process, U32 address, bool is64) {
     FsOpenNode* openNode = this->openFile;
-    BoxedPtr<FsNode> node = openNode->node;
+    std::shared_ptr<FsNode> node = openNode->node;
     U64 len = (U64)openNode->length();
 
-    KSystem::writeStat(node->path, address, is64, 1, node->id, node->getMode(), node->rdev, len, FS_BLOCK_SIZE, (len+FS_BLOCK_SIZE-1)/FS_BLOCK_SIZE, node->lastModified(), node->getHardLinkCount());
+    KSystem::writeStat(process, node->path, address, is64, 1, node->id, node->getMode(), node->rdev, len, FS_BLOCK_SIZE, (len+FS_BLOCK_SIZE-1)/FS_BLOCK_SIZE, node->lastModified(), node->getHardLinkCount());
     return 0;
 }
 
-U32 KFile::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
-    return this->openFile->map(address, len, prot, flags, off);
+U32 KFile::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+    return this->openFile->map(thread, address, len, prot, flags, off);
 }
 
 bool KFile::canMap() {
     return this->openFile->canMap();
+}
+
+BString KFile::selfFd() {
+    return this->openFile->node->path;
 }
 
 S64 KFile::seek(S64 pos) {
@@ -132,8 +136,8 @@ S64 KFile::getPos() {
     return this->openFile->getFilePointer();
 }
 
-U32 KFile::ioctl(U32 request) {
-    return this->openFile->ioctl(request);
+U32 KFile::ioctl(KThread* thread, U32 request) {
+    return this->openFile->ioctl(thread, request);
 }
 
 bool KFile::supportsLocks() {
@@ -145,20 +149,20 @@ S64 KFile::length() {
     return this->openFile->length();
 }
 
-U32 KFile::pread(U32 buffer, S64 offset, U32 len) {
+U32 KFile::pread(KThread* thread, U32 buffer, S64 offset, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     S64 previousOffset = this->openFile->getFilePointer();
     this->openFile->seek(offset);
-    U32 result = this->openFile->read(buffer, len);
+    U32 result = this->openFile->read(thread, buffer, len);
     this->openFile->seek(previousOffset);
     return result;
 }
 
-U32 KFile::pwrite(U32 buffer, S64 offset, U32 len) {
+U32 KFile::pwrite(KThread* thread, U32 buffer, S64 offset, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
     S64 previousOffset = this->openFile->getFilePointer();
     this->openFile->seek(offset);
-    U32 result = this->openFile->write(buffer, len);
+    U32 result = this->openFile->write(thread, buffer, len);
     this->openFile->seek(previousOffset);
     return result;
 }

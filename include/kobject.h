@@ -24,16 +24,19 @@
 #define KTYPE_NATIVE_SOCKET 2
 #define KTYPE_EPOLL 3
 #define KTYPE_SIGNAL 4
+#define KTYPE_TIMER 5
+#define KTYPE_EVENT 6
 
+// can be shared between processes (see kunixsocket sendmsg/recvmsg) but in each process they will have their own file descriptor
 class KObject : public std::enable_shared_from_this<KObject> {
 protected:
     KObject(U32 type);
 public:
     virtual ~KObject() {};    
-    virtual U32  ioctl(U32 request)=0;
-    virtual S64  seek(S64 pos)=0;
-    virtual S64  length()=0;
-    virtual S64  getPos()=0;
+    virtual U32 ioctl(KThread* thread, U32 request)=0;
+    virtual S64 seek(S64 pos)=0;
+    virtual S64 length()=0;
+    virtual S64 getPos()=0;
     virtual void setBlocking(bool blocking)=0;
     virtual bool isBlocking()=0;
     virtual void setAsync(bool isAsync)=0;
@@ -47,17 +50,17 @@ public:
     virtual bool isPriorityReadReady() { return isReadReady(); }
     virtual bool isWriteReady()=0;
     virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events)=0;
-    virtual U32  write(U32 buffer, U32 len);
-    virtual U32  writeNative(U8* buffer, U32 len)=0;
-    virtual U32  writev(U32 iov, S32 iovcnt);
-    virtual U32  read(U32 buffer, U32 len);
-    virtual U32  readNative(U8* buffer, U32 len)=0;
-    virtual U32  stat(U32 address, bool is64)=0;
-    virtual U32  map(U32 address, U32 len, S32 prot, S32 flags, U64 off)=0;
+    virtual U32 write(KThread* thread, U32 buffer, U32 len);
+    virtual U32 writeNative(U8* buffer, U32 len)=0;
+    virtual U32 writev(KThread* thread, U32 iov, S32 iovcnt);
+    virtual U32 read(KThread* thread, U32 buffer, U32 len);
+    virtual U32 readNative(U8* buffer, U32 len)=0;
+    virtual U32 stat(KProcess* process, U32 address, bool is64)=0;
+    virtual U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off)=0;
     virtual bool canMap()=0;
+    virtual BString selfFd()=0;
 
     U32 type;
-    U32 pid;
 };
 
 #endif

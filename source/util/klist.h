@@ -9,9 +9,9 @@ template <typename T>
 class KList;
 
 template <typename T>  
-class KListNode : public BoxedPtrBase {
+class KListNode {
 public:
-    KListNode(T data) : data(data), prev(NULL), next(NULL), list(NULL) {}        
+    KListNode(T data) : data(data) {}
     T data;
 
     void remove() {        
@@ -29,36 +29,36 @@ public:
             this->list->last = this->prev;
         }
         this->list->count--;
-        this->list = NULL;
-        this->next = NULL;
-        this->prev = NULL;
+        this->list = nullptr;
+        this->next = nullptr;
+        this->prev = nullptr;
     }
     
-    bool isInList() {return list!=NULL;}
+    bool isInList() {return list!= nullptr;}
 
     KListNode<T>* getNext() {return this->next;}
 private:
     friend KList<T>;
-    KListNode<T>* prev;
-    KListNode<T>* next;
-    KList<T>* list;
+    KListNode<T>* prev = nullptr;
+    KListNode<T>* next = nullptr;
+    KList<T>* list = nullptr;
 }; 
 
 template <typename T>  
 class KList {
 public:
-    KList() : first(NULL), last(NULL), count(0) {}         
+    KList() = default;
     ~KList() {
         KListNode<T>* n = first;
         while (n) {
             KListNode<T>* next = n->next;
-            n->next = NULL;
-            n->prev = NULL;
-            n->list = NULL;
+            n->next = nullptr;
+            n->prev = nullptr;
+            n->list = nullptr;
             n = next;
         }
     }
-    bool isEmpty() {return first==NULL;}
+    bool isEmpty() {return first== nullptr;}
     void addToBack(KListNode<T>* node) {
         if (node->list) {
             if (node->list == this) {
@@ -108,9 +108,9 @@ public:
 
 private:
     friend KListNode<T>;
-    KListNode<T>* first;
-    KListNode<T>* last;
-    U32 count;    
+    KListNode<T>* first = nullptr;
+    KListNode<T>* last = nullptr;
+    U32 count = 0;
 };
 
 #endif

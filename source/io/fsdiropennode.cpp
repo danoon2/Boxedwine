@@ -3,7 +3,7 @@
 #include "fsfilenode.h"
 #include "fsdiropennode.h"
 
-FsDirOpenNode::FsDirOpenNode(BoxedPtr<FsNode> node, U32 flags) : FsOpenNode(node, flags), pos(0) {
+FsDirOpenNode::FsDirOpenNode(std::shared_ptr<FsNode> node, U32 flags) : FsOpenNode(node, flags), pos(0) {
 }
 
 S64 FsDirOpenNode::length() {	
@@ -19,6 +19,9 @@ S64 FsDirOpenNode::getFilePointer() {
 }
 
 S64 FsDirOpenNode::seek(S64 pos) {
+    if (pos == 0 && this->pos == 0) {
+        return 0;
+    }
     if (pos>=0 && pos<=this->getDirectoryEntryCount())
         this->pos = (S32)pos;
     else
@@ -33,7 +36,7 @@ bool FsDirOpenNode::isOpen() {
     return true;
 }
 
-U32 FsDirOpenNode::ioctl(U32 request) {
+U32 FsDirOpenNode::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 
@@ -58,7 +61,7 @@ bool FsDirOpenNode::isReadReady() {
     return false;
 }
 
-U32 FsDirOpenNode::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 FsDirOpenNode::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 

@@ -10,13 +10,13 @@ class FsFileNode;
 
 class FsZipNode : public std::enable_shared_from_this<FsZipNode> {
 public:
-    FsZipNode(const fsZipInfo& zipInfo, std::shared_ptr<FsZip>& fsZip);
+    FsZipNode(const fsZipInfo& zipInfo, const std::shared_ptr<FsZip>& fsZip);
     U64 lastModified();
     U64 length();
-    FsOpenNode* open(BoxedPtr<FsNode> node, U32 flags);
-    bool moveToFileSystem(BoxedPtr<FsNode> node);
+    FsOpenNode* open(std::shared_ptr<FsNode> node, U32 flags);
+    bool moveToFileSystem(std::shared_ptr<FsNode> node);
 
-    std::shared_ptr<FsZip> fsZip;
+    std::weak_ptr<FsZip> fsZip;
 private:
     fsZipInfo zipInfo;
 };

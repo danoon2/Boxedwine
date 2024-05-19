@@ -13,7 +13,7 @@ void drawListView(BString listViewId, const std::vector<ListViewItem>& items, co
         }
     }
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0.0f, 0.0f));
-    ImGui::Columns((int)(ImGui::GetWindowWidth()/maxImageWidth), NULL, false);
+    ImGui::Columns((int)(ImGui::GetWindowWidth()/maxImageWidth), nullptr, false);
     for (auto& item : items) {
         ImGui::Dummy(ImVec2(0.0f, GlobalSettings::scaleFloatUI(10.0f)));
         ImGui::PushID(&item);

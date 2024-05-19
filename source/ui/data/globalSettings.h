@@ -40,22 +40,37 @@ class BoxedContainer;
 // comment icon - F075
 #define ABOUT_ICON "\xEF\x81\xB5"
 
-class WineVersion {
+class FileSystemZip {
 public:
-    WineVersion(BString name, BString fsVersion, BString filePath, BString filePathBackup, BString depend, U32 size=0):name(name), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size)  {}
-    WineVersion* getMissingDependency() const;
+    FileSystemZip(BString name, BString wineName, BString fsVersion, BString filePath, BString filePathBackup, BString depend, U32 size=0):name(name), wineName(wineName), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size)  {}
+    std::shared_ptr<FileSystemZip> getMissingDependency() const;
     BString getLocalFilePath() const;
     BString getDependFilePath() const;
 
+    bool hasWine() {return wineName.length() > 0;}
+    bool hasWineTricks() {return wineTrickFonts.length() > 0 || wineTrickDlls.length() > 0;}
+
     BString name;
+    BString wineName;
     BString filePath;
     BString filePathBackup;
     BString fsVersion;
     BString depend;
-    BString data;
-    BString data2;
+    BString wineTrickFonts;
+    BString wineTrickDlls;
+    std::vector<BString> tinyCorePackages;
+    BString tinyCoreURL;
     U32 size;
-    bool operator<(const WineVersion& rhs) const { return name < rhs.name; }
+    bool operator<(const FileSystemZip& rhs) const { 
+        if (wineName.length() && rhs.wineName.length()) {
+            return wineName < rhs.wineName;
+        } else if (wineName.length()) {
+            return false;
+        } else if (rhs.wineName.length()) {
+            return true;
+        }
+        return name < rhs.name; 
+    }
 };
 
 struct ImFont;
@@ -65,9 +80,10 @@ public:
     static void init(int argc, const char **argv);
     
     static void reloadWineVersions();
-    static BString getFileFromWineName(BString name);
-    static WineVersion* getAvailableWineFromName(BString name);
-    static WineVersion* getInstalledWineFromName(BString name);
+    static BString getFileFromFileSystemName(BString name);
+    static BString getFileFromWineVersion(BString name);
+    static std::shared_ptr<FileSystemZip> getAvailableFileSystemFromName(BString name, bool mustHaveWine = false);
+    static std::shared_ptr<FileSystemZip> getInstalledFileSystemFromName(BString name, bool mustHaveWine = false);
     static BString getContainerFolder();
     static BString getFileSystemFolder();
     static BString getAppFolder(BoxedContainer* container);
@@ -76,10 +92,10 @@ public:
     static BString getDemoFolder();
     static BString getExePath() {return GlobalSettings::exePath;}
     static BString getExeFilePath() { return GlobalSettings::exeFilePath; }
-    static const std::vector<WineVersion>& getWineVersions() {return GlobalSettings::wineVersions;}
-    static const std::vector<WineVersion>& getAvailableWineVersions() { return GlobalSettings::availableWineVersions; }
-    static const std::vector<WineVersion>& getAvailableWinetricksVersions() { return GlobalSettings::availableWinetricksVersions; }
-    static const std::vector<WineVersion>& getInstalledWinetricksVersions() { return GlobalSettings::winetricksVersions; }
+    static std::vector<std::shared_ptr<FileSystemZip>> getWineVersions();
+    static std::vector<std::shared_ptr<FileSystemZip>> getAvailableWineVersions();
+    static const std::vector<std::shared_ptr<FileSystemZip>>& getFileSystemVersions() {return GlobalSettings::fileSystemVersions;}
+    static const std::vector<std::shared_ptr<FileSystemZip>>& getAvailableFileSystemVersions() { return GlobalSettings::availableFileSystemVersions; }
     static BString getDataFolder() {return GlobalSettings::dataFolderLocation;}
     static void setDataFolder(BString location) {GlobalSettings::dataFolderLocation = location;}
     static void setTheme(BString theme);
@@ -93,7 +109,7 @@ public:
     static U32 scaleIntUI(U32 value);
     static float scaleFloatUI(float value);
     static float scaleFloatUIAndFont(float value);
-    static void downloadWine(const WineVersion& version, std::function<void(bool)> onCompleted);
+    static void downloadFileSystem(const std::shared_ptr<FileSystemZip>& version, std::function<void(bool)> onCompleted);
     static bool isFilesListDownloading();
     static void startUp();
     static U32 getFrameDelayMillies();
@@ -130,6 +146,7 @@ public:
     static ImFont* sectionTitleFont;
     static bool restartUI;
     static bool reinit;
+    static std::function<void()> keepUIRunning;
     static float extraVerticalSpacing;
 private:    
     static void initWineVersions();
@@ -141,18 +158,16 @@ private:
     static int iconSize;
     static U32 scale;
     static BString dataFolderLocation;
-    static std::vector<WineVersion> wineVersions;
-    static std::vector<WineVersion> winetricksVersions;
+    static std::vector<std::shared_ptr<FileSystemZip>> fileSystemVersions;
     static BString exePath;
     static BString exeFilePath;
     static BString theme;
     static BString configFilePath;
 
     friend class OptionsView;
-    friend class WineVersion;
-    static std::vector<WineVersion> availableWineVersions;
-    static std::vector<WineVersion> availableWineDependencies;
-    static std::vector<WineVersion> availableWinetricksVersions;
+    friend class FileSystemZip;
+    static std::vector<std::shared_ptr<FileSystemZip>> availableFileSystemVersions;
+    static std::vector<std::shared_ptr<FileSystemZip>> availableFileSystemDependencies;
     static std::vector<AppFile> demos;
     static std::vector<AppFile> components;
     static bool filesListDownloading;

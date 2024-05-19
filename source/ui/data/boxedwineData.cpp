@@ -41,13 +41,13 @@ BoxedWinVersion* BoxedwineData::getWinVersionFromName(BString name) {
             return &win;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void BoxedwineData::startApp() {
 #ifdef BOXEDWINE_UI_LAUNCH_IN_PROCESS
     GlobalSettings::startUpArgs.apply();
-    if (uiIsRunning()) {
+    if (!GlobalSettings::keepUIRunning && uiIsRunning()) {
         uiShutdown();
     }
 #else
@@ -66,7 +66,7 @@ void BoxedwineData::startApp() {
     BString out;
     bool windowCreated = false;
     TinyProcessLib::Process process(cmd.c_str(), "", [&out, &windowCreated](const char* bytes, size_t n) {
-        for (int i=0;i<n;i++) {
+        for (U32 i=0;i<n;i++) {
             out += bytes[i];
             if (bytes[i] != '\n') {
                 continue;
@@ -97,7 +97,7 @@ void BoxedwineData::startApp() {
         }
         KNativeThread::sleep(16);
     }  
-    if (uiIsRunning()) {
+    if (!GlobalSettings::keepUIRunning && uiIsRunning()) {
         uiShutdown();
     }
 #endif
@@ -137,7 +137,7 @@ BoxedContainer* BoxedwineData::getContainerByDir(BString dir) {
             return container;
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 void BoxedwineData::addContainer(BoxedContainer* container) { 
@@ -147,6 +147,6 @@ void BoxedwineData::addContainer(BoxedContainer* container) {
 
 void BoxedwineData::sortContainers() {
     std::sort(BoxedwineData::containers.begin(), BoxedwineData::containers.end(), [](BoxedContainer* a, BoxedContainer* b) { 
-        return a->getName().compareTo(b->getName()) == -1;
+        return a->getName().compareTo(b->getName(), true) < 0;
         });
 }

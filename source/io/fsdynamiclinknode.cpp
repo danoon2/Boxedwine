@@ -3,7 +3,7 @@
 #include "fsfilenode.h"
 #include "kstat.h"
 
-FsDynamicLinkNode::FsDynamicLinkNode(U32 id, U32 rdev, BString path, BoxedPtr<FsNode> parent, bool isDirectory, std::function<BString(void)> fnGetLink) : FsNode(FsNode::Type::Virtual, id, rdev, path, B(""), B(""), isDirectory, parent), fnGetLink(fnGetLink) {
+FsDynamicLinkNode::FsDynamicLinkNode(U32 id, U32 rdev, BString path, std::shared_ptr<FsNode> parent, bool isDirectory, std::function<BString(void)> fnGetLink) : FsNode(FsNode::Type::Virtual, id, rdev, path, B(""), B(""), isDirectory, parent), fnGetLink(fnGetLink) {
 }
 
 U32 FsDynamicLinkNode::rename(BString path) {
@@ -27,7 +27,7 @@ U64 FsDynamicLinkNode::length() {
 }
 
 FsOpenNode* FsDynamicLinkNode::open(U32 flags) {
-    return NULL;
+    return nullptr;
 }
 
 U32 FsDynamicLinkNode::getType(bool checkForLink) {

@@ -13,6 +13,7 @@
 #include "armv8btOps_bits.h"
 #include "armv8btOps_mmx.h"
 #include "armv8btOps_fpu.h"
+#include "armv8btCPU.h"
 
 #include "../common/common_other.h"
 
@@ -67,9 +68,9 @@ void writeResultArithReg(Armv8btAsm* data, bool usesResult, bool needsResult, bo
     }
     if (needsResult) {
         if (width == 8) {
-            data->movRegToReg8(xResult, data->decodedOp->reg);
+            data->movRegToReg8(xResult, data->currentOp->reg);
         } else {
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, width, false);
+            data->movRegToReg(data->getNativeReg(data->currentOp->reg), xResult, width, false);
         }
     }
 }
@@ -83,7 +84,7 @@ void arithRE(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width
 
     data->readMemory(addressReg, xSrc, width, true);
 
-    U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst, xDst, width);
+    U8 readRegDst = setupRegForArith(data, data->currentOp->reg, usesDst, xDst, width);
 
     if (needsResult && !usesResult && !usesDst && width == 32) {
         pfn(data, readRegDst, readRegDst, xSrc, hardwareFlags);
@@ -104,19 +105,11 @@ void arithER(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
     
-    U8 readRegSrc = setupRegForArith(data, data->decodedOp->reg, usesSrc, xSrc, width);
-    
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    U8 readRegSrc = setupRegForArith(data, data->currentOp->reg, usesSrc, xSrc, width);
 
-    // keep the locked read/write loop as small as possible
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, width, false, data->decodedOp->lock != 0);
-    pfn(data, xResult, xDst, readRegSrc, hardwareFlags);
-    if (needsResult) {
-        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xDst, restartPos);
-    }
+    data->readWriteMemory(addressReg, xDst, xResult, width, [pfn, data, readRegSrc, hardwareFlags] {
+        pfn(data, xResult, xDst, readRegSrc, hardwareFlags);
+        }, data->currentOp->lock != 0, needsResult);
 
     // resultNeedsZeroExtends: for example, AND/OR will never need to be zero extended
     if (usesResult && width != 32 && resultNeedsZeroExtends) {
@@ -134,8 +127,8 @@ void arithRR(Armv8btAsm* data, arithReg32 pfn, Arm8BtFlags* lazyFlags, U32 width
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
 
-    U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst, xDst, width);
-    U8 readRegSrc = setupRegForArith(data, data->decodedOp->rm, usesSrc, xSrc, width);
+    U8 readRegDst = setupRegForArith(data, data->currentOp->reg, usesDst, xDst, width);
+    U8 readRegSrc = setupRegForArith(data, data->currentOp->rm, usesSrc, xSrc, width);
 
     if (needsResult && width == 32 && !usesResult && !usesDst) {
         pfn(data, readRegDst, readRegDst, readRegSrc, hardwareFlags);
@@ -155,20 +148,20 @@ void arithRI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
-    U8 readRegDst = setupRegForArith(data, data->decodedOp->reg, usesDst || needRegZeroExtended, xDst, width);
+    U8 readRegDst = setupRegForArith(data, data->currentOp->reg, usesDst || needRegZeroExtended, xDst, width);
 
     if (needsResult && !usesResult && width == 32 && !usesSrc && !usesDst) {
-        pfnValue(data, readRegDst, readRegDst, data->decodedOp->imm, hardwareFlags);
+        pfnValue(data, readRegDst, readRegDst, data->currentOp->imm, hardwareFlags);
     } else {
         if (usesSrc) {
-            data->loadConst(xSrc, data->decodedOp->imm);
+            data->loadConst(xSrc, data->currentOp->imm);
             if (pfnReg) {
                 pfnReg(data, xResult, readRegDst, xSrc, hardwareFlags);
             } else {
-                pfnValue(data, xResult, readRegDst, data->decodedOp->imm, hardwareFlags);
+                pfnValue(data, xResult, readRegDst, data->currentOp->imm, hardwareFlags);
             }
         } else {
-            pfnValue(data, xResult, readRegDst, data->decodedOp->imm, hardwareFlags);
+            pfnValue(data, xResult, readRegDst, data->currentOp->imm, hardwareFlags);
         }
         writeResultArithReg(data, usesResult, needsResult, resultNeedsZeroExtends, width);
     }
@@ -182,20 +175,20 @@ void arithIR(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
     U32 flags;
     bool hardwareFlags, usesSrc, usesDst, usesResult;
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
-    U8 readRegSrc = setupRegForArith(data, data->decodedOp->reg, usesSrc, xSrc, width);
+    U8 readRegSrc = setupRegForArith(data, data->currentOp->reg, usesSrc, xSrc, width);
 
     if (needsResult && !usesResult && width == 32 && !usesSrc) {
-        pfnValue(data, readRegSrc, readRegSrc, data->decodedOp->imm, hardwareFlags);
+        pfnValue(data, readRegSrc, readRegSrc, data->currentOp->imm, hardwareFlags);
     } else {
         if (usesSrc) {
-            data->loadConst(xDst, data->decodedOp->imm);
+            data->loadConst(xDst, data->currentOp->imm);
             if (pfnReg) {
                 pfnReg(data, xResult, readRegSrc, xDst, hardwareFlags);
             } else {
-                pfnValue(data, xResult, readRegSrc, data->decodedOp->imm, hardwareFlags);
+                pfnValue(data, xResult, readRegSrc, data->currentOp->imm, hardwareFlags);
             }
         } else {
-            pfnValue(data, xResult, readRegSrc, data->decodedOp->imm, hardwareFlags);
+            pfnValue(data, xResult, readRegSrc, data->currentOp->imm, hardwareFlags);
         }
         writeResultArithReg(data, usesResult, needsResult, resultNeedsZeroExtends, width);
     }
@@ -212,28 +205,22 @@ void arithEI(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
 
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
     if (usesSrc) {
-        data->loadConst(xSrc, data->decodedOp->imm);
+        data->loadConst(xSrc, data->currentOp->imm);
     }
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
-
-    // keep the locked read/write loop as small as possible
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, width, false, data->decodedOp->lock != 0);
-    if (usesSrc) {
-        if (pfnReg) {
-            pfnReg(data, xResult, xDst, xSrc, flags);
-        } else {
-            pfnValue(data, xResult, xDst, data->decodedOp->imm, flags);
+    data->readWriteMemory(addressReg, xDst, xResult, width, [usesSrc, pfnReg, data, flags, pfnValue] {
+        if (usesSrc) {
+            if (pfnReg) {
+                pfnReg(data, xResult, xDst, xSrc, flags);
+            }
+            else {
+                pfnValue(data, xResult, xDst, data->currentOp->imm, flags);
+            }
         }
-    } else {
-        pfnValue(data, xResult, xDst, data->decodedOp->imm, flags);
-    }
-    if (needsResult) {
-        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xDst, restartPos);
-    }
+        else {
+            pfnValue(data, xResult, xDst, data->currentOp->imm, flags);
+        }
+        }, data->currentOp->lock != 0, needsResult);
 
     // resultNeedsZeroExtends: for example, AND/OR will never need to be zero extended
     if (usesResult && width < 32 && resultNeedsZeroExtends) {
@@ -251,28 +238,22 @@ void arithIE(Armv8btAsm* data, arithReg32 pfnReg, arithValue32 pfnValue, Arm8BtF
 
     setupFlagsForArith(data, lazyFlags, flags, hardwareFlags, usesSrc, usesDst, usesResult, resultNeedsZeroExtends);
     if (usesDst) {
-        data->loadConst(xDst, data->decodedOp->imm);
+        data->loadConst(xDst, data->currentOp->imm);
     }
-
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
-
-    // keep the locked read/write loop as small as possible
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, width, false, data->decodedOp->lock != 0);
-    if (usesDst) {
-        if (pfnReg) {
-            pfnReg(data, xResult, xSrc, xDst, flags);
-        } else {
-            pfnValue(data, xResult, xSrc, data->decodedOp->imm, flags);
+    
+    data->readWriteMemory(addressReg, xSrc, xResult, width, [usesDst, pfnReg, pfnValue, data, flags] {
+        if (usesDst) {
+            if (pfnReg) {
+                pfnReg(data, xResult, xSrc, xDst, flags);
+            }
+            else {
+                pfnValue(data, xResult, xSrc, data->currentOp->imm, flags);
+            }
         }
-    } else {
-        pfnValue(data, xResult, xSrc, data->decodedOp->imm, flags);
-    }
-    if (needsResult) {
-        data->writeMemory(addressReg, xResult, width, false, data->decodedOp->lock != 0, xSrc, restartPos);
-    }
+        else {
+            pfnValue(data, xResult, xSrc, data->currentOp->imm, flags);
+        }
+        }, data->currentOp->imm, needsResult);
 
     // resultNeedsZeroExtends: for example, AND/OR will never need to be zero extended
     if (usesResult && width < 32 && resultNeedsZeroExtends) {
@@ -785,10 +766,10 @@ void opNotR8(Armv8btAsm* data) {
     // doesn't affect flags
     // *cpu->reg8[op->reg] = ~*cpu->reg8[op->reg];
     U8 tmpReg = data->getTmpReg();   
-    U8 srcReg = data->getReadNativeReg8(data->decodedOp->reg);
+    U8 srcReg = data->getReadNativeReg8(data->currentOp->reg);
 
     data->notReg32(tmpReg, srcReg);
-    data->movRegToReg8(tmpReg, data->decodedOp->reg);
+    data->movRegToReg8(tmpReg, data->currentOp->reg);
     data->releaseNativeReg8(srcReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -799,14 +780,10 @@ void opNotE8(Armv8btAsm* data) {
     U8 readReg = data->getTmpReg();
     U8 resultReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, readReg, resultReg, 8, [data, resultReg, readReg] {
+        data->notReg32(resultReg, readReg);
+        }, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, readReg, 8, false, data->decodedOp->lock != 0);
-    data->notReg32(resultReg, readReg);
-    data->writeMemory(addressReg, resultReg, 8, false, data->decodedOp->lock != 0, readReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(readReg);
     data->releaseTmpReg(resultReg);
@@ -816,8 +793,8 @@ void opNotR16(Armv8btAsm* data) {
     // cpu->reg[op->reg].u16 = ~cpu->reg[op->reg].u16;
     U8 tmpReg = data->getTmpReg();
 
-    data->notReg32(tmpReg, data->getNativeReg(data->decodedOp->reg));
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
+    data->notReg32(tmpReg, data->getNativeReg(data->currentOp->reg));
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
 void opNotE16(Armv8btAsm* data) {
@@ -827,14 +804,10 @@ void opNotE16(Armv8btAsm* data) {
     U8 readReg = data->getTmpReg();
     U8 resultReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, readReg, resultReg, 16, [data, resultReg, readReg] {
+        data->notReg32(resultReg, readReg);
+        }, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, readReg, 16, false, data->decodedOp->lock != 0);
-    data->notReg32(resultReg, readReg);
-    data->writeMemory(addressReg, resultReg, 16, false, data->decodedOp->lock != 0, readReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(readReg);
     data->releaseTmpReg(resultReg);
@@ -843,7 +816,7 @@ void opNotR32(Armv8btAsm* data) {
     // doesn't affect flags
     // cpu->reg[op->reg].u32 = ~cpu->reg[op->reg].u32;
 
-    data->notReg32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg));
+    data->notReg32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg));
 }
 void opNotE32(Armv8btAsm* data) {
     // doesn't affect flags
@@ -852,41 +825,37 @@ void opNotE32(Armv8btAsm* data) {
     U8 readReg = data->getTmpReg();
     U8 resultReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, readReg, resultReg, 32, [data, resultReg, readReg] {
+        data->notReg32(resultReg, readReg);
+        }, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, readReg, 32, false, data->decodedOp->lock != 0);
-    data->notReg32(resultReg, readReg);
-    data->writeMemory(addressReg, resultReg, 32, false, data->decodedOp->lock != 0, readReg, restartPos);
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(readReg);
     data->releaseTmpReg(resultReg);
 }
 
 void opNegR8(Armv8btAsm* data) {
-    data->decodedOp->imm = 0;
+    data->currentOp->imm = 0;
     arithIR(data, negReg32, negValue32, ARM8BT_FLAGS_NEG8, 8, true, true);
 }
 void opNegE8(Armv8btAsm* data) {
-    data->decodedOp->imm = 0;
+    data->currentOp->imm = 0;
     arithIE(data, negReg32, negValue32, ARM8BT_FLAGS_NEG8, 8, true, true);
 }
 void opNegR16(Armv8btAsm* data) {
-    data->decodedOp->imm = 0;
+    data->currentOp->imm = 0;
     arithIR(data, negReg32, negValue32, ARM8BT_FLAGS_NEG16, 16, true, true);
 }
 void opNegE16(Armv8btAsm* data) {
-    data->decodedOp->imm = 0;
+    data->currentOp->imm = 0;
     arithIE(data, negReg32, negValue32, ARM8BT_FLAGS_NEG16, 16, true, true);
 }
 void opNegR32(Armv8btAsm* data) {
-    data->decodedOp->imm = 0;
+    data->currentOp->imm = 0;
     arithIR(data, negReg32, negValue32, ARM8BT_FLAGS_NEG32, 32, true, true);
 }
 void opNegE32(Armv8btAsm* data) {
-    data->decodedOp->imm = 0;
+    data->currentOp->imm = 0;
     arithIE(data, negReg32, negValue32, ARM8BT_FLAGS_NEG32, 32, true, true);
 }
 
@@ -1089,7 +1058,7 @@ void mul32(Armv8btAsm* data, U8 src) {
 
 void opMulR8(Armv8btAsm* data) {
     U8 src = data->getTmpReg();
-    data->movReg8ToReg(data->decodedOp->reg, src);
+    data->movReg8ToReg(data->currentOp->reg, src);
     mul8(data, src);
     data->releaseTmpReg(src);
 }
@@ -1103,7 +1072,7 @@ void opMulE8(Armv8btAsm* data) {
 }
 void opMulR16(Armv8btAsm* data) {
     U8 src = data->getTmpReg();
-    data->movRegToReg(src, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->movRegToReg(src, data->getNativeReg(data->currentOp->reg), 16, true);
     mul16(data, src);
     data->releaseTmpReg(src);
 }
@@ -1116,7 +1085,7 @@ void opMulE16(Armv8btAsm* data) {
     data->releaseTmpReg(addressReg);
 }
 void opMulR32(Armv8btAsm* data) {
-    mul32(data, data->getNativeReg(data->decodedOp->reg));
+    mul32(data, data->getNativeReg(data->currentOp->reg));
 }
 void opMulE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
@@ -1128,7 +1097,7 @@ void opMulE32(Armv8btAsm* data) {
 }
 void opIMulR8(Armv8btAsm* data) {
     U8 src = data->getTmpReg();
-    data->movReg8ToReg(data->decodedOp->reg, src, true);
+    data->movReg8ToReg(data->currentOp->reg, src, true);
     imul8(data, src);
     data->releaseTmpReg(src);
 }
@@ -1142,7 +1111,7 @@ void opIMulE8(Armv8btAsm* data) {
 }
 void opIMulR16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->signExtend(tmpReg, data->getNativeReg(data->decodedOp->reg), 16);
+    data->signExtend(tmpReg, data->getNativeReg(data->currentOp->reg), 16);
     imul16(data, xEAX, tmpReg, xEAX, xEDX, true);
     data->releaseTmpReg(tmpReg);
 }
@@ -1155,7 +1124,7 @@ void opIMulE16(Armv8btAsm* data) {
     data->releaseTmpReg(addressReg);
 }
 void opIMulR32(Armv8btAsm* data) {
-    imul32(data, xEAX, data->getNativeReg(data->decodedOp->reg), xEAX, xEDX, true);
+    imul32(data, xEAX, data->getNativeReg(data->currentOp->reg), xEAX, xEDX, true);
 }
 void opIMulE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
@@ -1306,7 +1275,10 @@ void idiv16(Armv8btAsm* data, U8 src) {
     data->shiftRegLeftWithValue32(tmpReg, xEDX, 16);
     data->copyBitsFromSourceAtPositionToDest(tmpReg, xEAX, 0, 16, true);
     // quo = num / src;
-    data->signedDivideReg32(quo, tmpReg, src);
+    U8 signedSrc = data->getTmpReg();
+    data->signExtend(signedSrc, src, 16);
+    data->signedDivideReg32(quo, tmpReg, signedSrc);
+    data->releaseTmpReg(signedSrc);
     // rem = (S16)(num % src);
     data->multiplySubtract32(rem, quo, src, tmpReg);
 
@@ -1420,7 +1392,10 @@ void idiv32(Armv8btAsm* data, U8 src) {
     data->shiftRegLeftWithValue64(tmpReg, xEDX, 32);
     data->copyBitsFromSourceAtPositionToDest64(tmpReg, xEAX, 0, 32, true);
     // quo = num / src;
-    data->signedDivideReg64(quo, tmpReg, src);
+    U8 signedSrc = data->getTmpReg();
+    data->signExtend64(signedSrc, src, 32);
+    data->signedDivideReg64(quo, tmpReg, signedSrc);
+    data->releaseTmpReg(signedSrc);
     // rem = (S32)(num % src);
     data->multiplySubtract64(rem, quo, src, tmpReg);
 
@@ -1506,7 +1481,7 @@ void div32(Armv8btAsm* data, U8 src) {
 }
 void opDivR8(Armv8btAsm* data) {
     U8 src = data->getTmpReg();
-    data->movReg8ToReg(data->decodedOp->reg, src);
+    data->movReg8ToReg(data->currentOp->reg, src);
     div8(data, src);
     data->releaseTmpReg(src);
 }
@@ -1520,7 +1495,7 @@ void opDivE8(Armv8btAsm* data) {
 }
 void opDivR16(Armv8btAsm* data) {
     U8 src = data->getTmpReg();
-    data->movRegToReg(src, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->movRegToReg(src, data->getNativeReg(data->currentOp->reg), 16, true);
     div16(data, src);
     data->releaseTmpReg(src);
 }
@@ -1533,7 +1508,7 @@ void opDivE16(Armv8btAsm* data) {
     data->releaseTmpReg(src);
 }
 void opDivR32(Armv8btAsm* data) {
-    div32(data, data->getNativeReg(data->decodedOp->reg));
+    div32(data, data->getNativeReg(data->currentOp->reg));
 }
 void opDivE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
@@ -1545,7 +1520,7 @@ void opDivE32(Armv8btAsm* data) {
 }
 void opIDivR8(Armv8btAsm* data) {
     U8 src = data->getTmpReg();
-    data->movReg8ToReg(data->decodedOp->reg, src, true);
+    data->movReg8ToReg(data->currentOp->reg, src, true);
     idiv8(data, src);
     data->releaseTmpReg(src);
 }
@@ -1559,7 +1534,7 @@ void opIDivE8(Armv8btAsm* data) {
 }
 void opIDivR16(Armv8btAsm* data) {
     U8 src = data->getTmpReg();
-    data->movRegToReg(src, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->movRegToReg(src, data->getNativeReg(data->currentOp->reg), 16, true);
     idiv16(data, src);
     data->releaseTmpReg(src);
 }
@@ -1572,7 +1547,7 @@ void opIDivE16(Armv8btAsm* data) {
     data->releaseTmpReg(src);
 }
 void opIDivR32(Armv8btAsm* data) {
-    idiv32(data, data->getNativeReg(data->decodedOp->reg));
+    idiv32(data, data->getNativeReg(data->currentOp->reg));
 }
 void opIDivE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
@@ -1585,71 +1560,56 @@ void opIDivE32(Armv8btAsm* data) {
 
 void opXchgR8R8(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->movReg8ToReg(data->decodedOp->reg, tmpReg);
-    U8 srcReg = data->getReadNativeReg8(data->decodedOp->rm);
-    data->movRegToReg8(srcReg, data->decodedOp->reg);
-    data->movRegToReg8(tmpReg, data->decodedOp->rm);
+    data->movReg8ToReg(data->currentOp->reg, tmpReg);
+    U8 srcReg = data->getReadNativeReg8(data->currentOp->rm);
+    data->movRegToReg8(srcReg, data->currentOp->reg);
+    data->movRegToReg8(tmpReg, data->currentOp->rm);
     data->releaseTmpReg(tmpReg);
     data->releaseNativeReg8(srcReg);
 }
 void opXchgE8R8(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
-    U8 srcReg = data->getReadNativeReg8(data->decodedOp->reg);
+    U8 srcReg = data->getReadNativeReg8(data->currentOp->reg);
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, tmpReg, srcReg, 8, [] {}, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, tmpReg, 8, false, data->decodedOp->lock != 0);
-    data->writeMemory(addressReg, srcReg, 8, false, data->decodedOp->lock != 0, tmpReg, restartPos);
-    data->movRegToReg8(tmpReg, data->decodedOp->reg);
+    data->movRegToReg8(tmpReg, data->currentOp->reg);
     data->releaseTmpReg(tmpReg);
     data->releaseNativeReg8(srcReg);
     data->releaseTmpReg(addressReg);
 }
 void opXchgR16R16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->movRegToReg(tmpReg, data->decodedOp->reg, 32, false);
-    data->movRegToReg(data->decodedOp->reg, data->decodedOp->rm, 16, false);
-    data->movRegToReg(data->decodedOp->rm, tmpReg, 16, false);
+    data->movRegToReg(tmpReg, data->getNativeReg(data->currentOp->reg), 32, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->currentOp->rm, 16, false);
+    data->movRegToReg(data->currentOp->rm, tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
 void opXchgE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, tmpReg, data->getNativeReg(data->currentOp->reg), 16, [] {}, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, tmpReg, 16, false, data->decodedOp->lock != 0);
-    data->writeMemory(addressReg, data->decodedOp->reg, 16, false, data->decodedOp->lock != 0, tmpReg, restartPos);
-    data->movRegToReg(data->decodedOp->reg, tmpReg, 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 void opXchgR32R32(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->movRegToReg(tmpReg, data->decodedOp->reg, 32, false);
-    data->movRegToReg(data->decodedOp->reg, data->decodedOp->rm, 32, false);
-    data->movRegToReg(data->decodedOp->rm, tmpReg, 32, false);
+    data->movRegToReg(tmpReg, data->getNativeReg(data->currentOp->reg), 32, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->currentOp->rm, 32, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->rm), tmpReg, 32, false);
     data->releaseTmpReg(tmpReg);
 }
 void opXchgE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, tmpReg, data->getNativeReg(data->currentOp->reg), 32, [] {}, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, tmpReg, 32, false, data->decodedOp->lock != 0);
-    data->writeMemory(addressReg, data->decodedOp->reg, 32, false, data->decodedOp->lock != 0, tmpReg, restartPos);
-    data->movRegToReg(data->decodedOp->reg, tmpReg, 32, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 32, false);
     data->releaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
@@ -1664,8 +1624,8 @@ void opXchgE32R32(Armv8btAsm* data) {
 // cpu->reg[regResult].u16 = (U16)res;
 void opDimulR16R16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->signExtend(tmpReg, data->getNativeReg(data->decodedOp->reg), 16);
-    imul16(data, data->getNativeReg(data->decodedOp->rm), tmpReg, data->getNativeReg(data->decodedOp->reg), 0, false);
+    data->signExtend(tmpReg, data->getNativeReg(data->currentOp->reg), 16);
+    imul16(data, data->getNativeReg(data->currentOp->rm), tmpReg, data->getNativeReg(data->currentOp->reg), 0, false);
     data->releaseTmpReg(tmpReg);
 }
 void opDimulR16E16(Armv8btAsm* data) {
@@ -1673,18 +1633,18 @@ void opDimulR16E16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     data->readMemory(addressReg, tmpReg, 16, true, false, true);
     data->releaseTmpReg(addressReg);
-    imul16(data, data->getNativeReg(data->decodedOp->reg), tmpReg, data->getNativeReg(data->decodedOp->reg), 0, false);
+    imul16(data, data->getNativeReg(data->currentOp->reg), tmpReg, data->getNativeReg(data->currentOp->reg), 0, false);
     data->releaseTmpReg(tmpReg);
 }
 void opDimulR32R32(Armv8btAsm* data) {
-    imul32(data, data->getNativeReg(data->decodedOp->rm), data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), 0, false);
+    imul32(data, data->getNativeReg(data->currentOp->rm), data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), 0, false);
 }
 void opDimulR32E32(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
     U8 addressReg = data->getAddressReg();
     data->readMemory(addressReg, tmpReg, 32, true);
     data->releaseTmpReg(addressReg);
-    imul32(data, data->getNativeReg(data->decodedOp->reg), tmpReg, data->getNativeReg(data->decodedOp->reg), 0, false);
+    imul32(data, data->getNativeReg(data->currentOp->reg), tmpReg, data->getNativeReg(data->currentOp->reg), 0, false);
     data->releaseTmpReg(tmpReg);
 }
 
@@ -1701,14 +1661,14 @@ void opCmpXchgR8R8(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
 
     data->movReg8ToReg(0, xDst);
-    data->movReg8ToReg(data->decodedOp->reg, xSrc);
+    data->movReg8ToReg(data->currentOp->reg, xSrc);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
     if (ARM8BT_FLAGS_CMP8->usesResult(flags)) {
         data->zeroExtend(xResult, xResult, 8);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->movReg8ToReg8(data->decodedOp->reg, data->decodedOp->rm);
+        data->movReg8ToReg8(data->currentOp->reg, data->currentOp->rm);
         }, [data] {
             data->movRegToReg8(xSrc, 0);
         }, nullptr, false, false);
@@ -1725,14 +1685,14 @@ void opCmpXchgE8R8(Armv8btAsm* data) {
     //     AL = cpu->src.u8;
     // }
     U32 flags = data->flagsNeeded();
-    U8 addressReg = data->getAddressReg();
+    U8 addressReg = data->getAddressReg();    
+    U8 memReg = data->getHostMem(addressReg, 8, true);
 
-    U8 memReg = data->getHostMem(addressReg);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 8, false, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 8, false, data->currentOp->lock != 0);
     data->movReg8ToReg(0, xDst);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
@@ -1740,13 +1700,13 @@ void opCmpXchgE8R8(Armv8btAsm* data) {
         data->zeroExtend(xResult, xResult, 8);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
-        U8 tmpReg = data->getReadNativeReg8(data->decodedOp->reg);
-        data->writeMemory(addressReg, tmpReg, 8, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        U8 tmpReg = data->getReadNativeReg8(data->currentOp->reg);
+        data->writeMemory(addressReg, tmpReg, 8, false, data->currentOp->lock != 0, xSrc, restartPos, false);
         data->releaseNativeReg8(tmpReg);
         }, [data] {
             data->movRegToReg8(xSrc, 0);
         }, nullptr, false, false);
-    if (data->decodedOp->lock != 0) {
+    if (data->currentOp->lock != 0) {
         data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
     }
     data->releaseTmpReg(addressReg);
@@ -1765,16 +1725,16 @@ void opCmpXchgR16R16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
 
     data->movRegToReg(xDst, xEAX, 16, true);
-    data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->movRegToReg(xSrc, data->getNativeReg(data->currentOp->reg), 16, true);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
     if (ARM8BT_FLAGS_CMP16->usesResult(flags)) {
         data->zeroExtend(xResult, xResult, 16);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 16, false);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 16, false);
         }, [data] {
-            data->movRegToReg(xEAX, data->getNativeReg(data->decodedOp->reg), 16, false);
+            data->movRegToReg(xEAX, data->getNativeReg(data->currentOp->reg), 16, false);
         }, nullptr, false, false);
     ARM8BT_FLAGS_CMP16->setFlags(data, flags);
 }
@@ -1791,12 +1751,12 @@ void opCmpXchgE16R16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 16, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 16, false, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 16, false, data->currentOp->lock != 0);
     data->movRegToReg(xDst, xEAX, 16, true);
 
     data->subRegs32(xResult, xDst, xSrc, 0, true); // flags used by if below
@@ -1804,13 +1764,14 @@ void opCmpXchgE16R16(Armv8btAsm* data) {
         data->zeroExtend(xResult, xResult, 16);
     }
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
-        data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 16, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, data->getNativeReg(data->currentOp->reg), 16, false, data->currentOp->lock != 0, xSrc, restartPos, false);
         }, [data] {
             data->movRegToReg(xEAX, xSrc, 16, false);
         }, nullptr, false, false);
-    if (data->decodedOp->lock != 0) {
+    if (data->currentOp->lock != 0) {
         data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
     }
+
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_CMP16->setFlags(data, flags);
 }
@@ -1831,13 +1792,13 @@ void opCmpXchgR32R32(Armv8btAsm* data) {
         data->movRegToReg(xDst, xEAX, 32, false);
     }
     if (ARM8BT_FLAGS_CMP32->usesSrc(flags)) {
-        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
+        data->movRegToReg(xSrc, data->getNativeReg(data->currentOp->reg), 32, false);
     }  
-    data->subRegs32(xResult, xEAX, data->getNativeReg(data->decodedOp->reg), 0, true); // flags used by if below
+    data->subRegs32(xResult, xEAX, data->getNativeReg(data->currentOp->reg), 0, true); // flags used by if below
     data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 32, false);
+            data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 32, false);
         }, [data] {
-            data->movRegToReg(xEAX, data->getNativeReg(data->decodedOp->reg), 32, false);
+            data->movRegToReg(xEAX, data->getNativeReg(data->currentOp->reg), 32, false);
         }, nullptr, false, false);
     ARM8BT_FLAGS_CMP32->setFlags(data, flags);
 }
@@ -1855,12 +1816,12 @@ void opCmpXchgE32R32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 32, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 32, false, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 32, false, data->currentOp->lock != 0);
 
     if (ARM8BT_FLAGS_CMP32->usesDst(flags)) {
         data->movRegToReg(xDst, xEAX, 32, false);
@@ -1868,11 +1829,11 @@ void opCmpXchgE32R32(Armv8btAsm* data) {
     
     data->subRegs32(xResult, xEAX, xSrc, 0, true); // flags used by if below
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data]() {
-        data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 32, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, data->getNativeReg(data->currentOp->reg), 32, false, data->currentOp->lock != 0, xSrc, restartPos, false);
         }, [data] {
             data->movRegToReg(xEAX, xSrc, 32, false);
         }, nullptr, false, false);
-    if (data->decodedOp->lock != 0) {
+    if (data->currentOp->lock != 0) {
         data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
     }
     data->releaseTmpReg(addressReg);
@@ -1883,16 +1844,16 @@ void opIncR8(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     if (!flags) {
         U8 tmp = data->getTmpReg();
-        U8 readRegDst = data->getReadNativeReg8(data->decodedOp->reg);
+        U8 readRegDst = data->getReadNativeReg8(data->currentOp->reg);
         data->addValue32(tmp, readRegDst, 1);
-        data->movRegToReg8(tmp, data->decodedOp->reg);
+        data->movRegToReg8(tmp, data->currentOp->reg);
         data->releaseNativeReg8(readRegDst);
         data->releaseTmpReg(tmp);
     } else {
-        U8 readRegDst = data->getReadNativeReg8(data->decodedOp->reg);
+        U8 readRegDst = data->getReadNativeReg8(data->currentOp->reg);
         data->addValue32(xResult, readRegDst, 1);
         data->zeroExtend(xResult, xResult, 8);
-        data->movRegToReg8(xResult, data->decodedOp->reg);
+        data->movRegToReg8(xResult, data->currentOp->reg);
         data->releaseNativeReg8(readRegDst);
         ARM8BT_FLAGS_INC8->setFlags(data, flags);
     }
@@ -1901,23 +1862,23 @@ void opIncR16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     if (!flags) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getNativeReg(data->decodedOp->reg), 1);
-        data->movRegToReg(data->decodedOp->reg, tmp, 16, false);
+        data->addValue32(tmp, data->getNativeReg(data->currentOp->reg), 1);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmp, 16, false);
         data->releaseTmpReg(tmp);
     } else {
-        data->addValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
+        data->addValue32(xResult, data->getNativeReg(data->currentOp->reg), 1);
         data->zeroExtend(xResult, xResult, 16);
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 16, false);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), xResult, 16, false);
         ARM8BT_FLAGS_INC16->setFlags(data, flags);
     }
 }
 void opIncR32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     if (!flags) {
-        data->addValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), 1);
+        data->addValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), 1);
     } else {
-        data->addValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 32, false);
+        data->addValue32(xResult, data->getNativeReg(data->currentOp->reg), 1);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), xResult, 32, false);
         ARM8BT_FLAGS_INC32->setFlags(data, flags);
     }
 }
@@ -1925,53 +1886,36 @@ void opIncE8(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
-
-    U32 restartPos = data->bufferPos;    
-
-    data->readMemory(addressReg, xDst, 8, false, data->decodedOp->lock != 0);
-    data->addValue32(xResult, xDst, 1);
-    if (flags) {
-        data->zeroExtend(xResult, xResult, 8);
-        ARM8BT_FLAGS_INC8->setFlags(data, flags);
-    }
-    data->writeMemory(addressReg, xResult, 8, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->readWriteMemory(addressReg, xDst, xResult, 8, [data, flags] {
+        data->addValue32(xResult, xDst, 1);
+        if (flags) {
+            data->zeroExtend(xResult, xResult, 8);
+            ARM8BT_FLAGS_INC8->setFlags(data, flags);
+        }
+        }, data->currentOp->lock != 0);
     data->releaseTmpReg(addressReg);
 }
 void opIncE16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
-
-    U32 restartPos = data->bufferPos;    
-
-    data->readMemory(addressReg, xDst, 16, false, data->decodedOp->lock != 0);
-    data->addValue32(xResult, xDst, 1);
-    if (flags) {        
-        data->zeroExtend(xResult, xResult, 16);
-        ARM8BT_FLAGS_INC16->setFlags(data, flags);
-    }
-    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->readWriteMemory(addressReg, xDst, xResult, 16, [data, flags] {
+        data->addValue32(xResult, xDst, 1);
+        if (flags) {
+            data->zeroExtend(xResult, xResult, 16);
+            ARM8BT_FLAGS_INC16->setFlags(data, flags);
+        }
+        }, data->currentOp->lock != 0);
     data->releaseTmpReg(addressReg);
 }
 void opIncE32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, xDst, xResult, 32, [data] {
+        data->addValue32(xResult, xDst, 1);
+        }, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-
-    data->readMemory(addressReg, xDst, 32, false, data->decodedOp->lock != 0);
-    data->addValue32(xResult, xDst, 1);
-    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_INC32->setFlags(data, flags);
 }
@@ -1980,16 +1924,16 @@ void opDecR8(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     if (!flags) {
         U8 tmp = data->getTmpReg();
-        U8 readRegDst = data->getReadNativeReg8(data->decodedOp->reg);
+        U8 readRegDst = data->getReadNativeReg8(data->currentOp->reg);
         data->subValue32(tmp, readRegDst, 1);
-        data->movRegToReg8(tmp, data->decodedOp->reg);
+        data->movRegToReg8(tmp, data->currentOp->reg);
         data->releaseNativeReg8(readRegDst);
         data->releaseTmpReg(tmp);
     } else {
-        U8 readRegDst = data->getReadNativeReg8(data->decodedOp->reg);
+        U8 readRegDst = data->getReadNativeReg8(data->currentOp->reg);
         data->subValue32(xResult, readRegDst, 1);
         data->zeroExtend(xResult, xResult, 8);
-        data->movRegToReg8(xResult, data->decodedOp->reg);
+        data->movRegToReg8(xResult, data->currentOp->reg);
         data->releaseNativeReg8(readRegDst);
         ARM8BT_FLAGS_DEC8->setFlags(data, flags);
     }
@@ -1999,23 +1943,23 @@ void opDecR16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     if (!flags) {
         U8 tmp = data->getTmpReg();
-        data->subValue32(tmp, data->getNativeReg(data->decodedOp->reg), 1);
-        data->movRegToReg(data->decodedOp->reg, tmp, 16, false);
+        data->subValue32(tmp, data->getNativeReg(data->currentOp->reg), 1);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmp, 16, false);
         data->releaseTmpReg(tmp);
     } else {
-        data->subValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
+        data->subValue32(xResult, data->getNativeReg(data->currentOp->reg), 1);
         data->zeroExtend(xResult, xResult, 16);
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 16, false);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), xResult, 16, false);
         ARM8BT_FLAGS_DEC16->setFlags(data, flags);
     }
 }
 void opDecR32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     if (!flags) {
-        data->subValue32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), 1);
+        data->subValue32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), 1);
     } else {
-        data->subValue32(xResult, data->getNativeReg(data->decodedOp->reg), 1);
-        data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xResult, 32, false);
+        data->subValue32(xResult, data->getNativeReg(data->currentOp->reg), 1);
+        data->movRegToReg(data->getNativeReg(data->currentOp->reg), xResult, 32, false);
         ARM8BT_FLAGS_DEC32->setFlags(data, flags);
     }
 }
@@ -2024,117 +1968,70 @@ void opDecE8(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
-
-    U32 restartPos = data->bufferPos;
-
-    data->readMemory(addressReg, xDst, 8, false, data->decodedOp->lock != 0);
-    data->subValue32(xResult, xDst, 1);
-    if (flags) {
-        data->zeroExtend(xResult, xResult, 8);
-        ARM8BT_FLAGS_DEC8->setFlags(data, flags);
-    }
-    data->writeMemory(addressReg, xResult, 8, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->readWriteMemory(addressReg, xDst, xResult, 8, [data, flags] {
+        data->subValue32(xResult, xDst, 1);
+        if (flags) {
+            data->zeroExtend(xResult, xResult, 8);
+            ARM8BT_FLAGS_DEC8->setFlags(data, flags);
+        }
+        }, data->currentOp->lock != 0);
     data->releaseTmpReg(addressReg);
 }
 void opDecE16(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
-
-    U32 restartPos = data->bufferPos;
-
-    data->readMemory(addressReg, xDst, 16, false, data->decodedOp->lock != 0);
-    data->subValue32(xResult, xDst, 1);
-    if (flags) {
-        data->zeroExtend(xResult, xResult, 16);
-        ARM8BT_FLAGS_DEC16->setFlags(data, flags);
-    }
-    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, xDst, restartPos);
+    data->readWriteMemory(addressReg, xDst, xResult, 16, [data, flags] {
+        data->subValue32(xResult, xDst, 1);
+        if (flags) {
+            data->zeroExtend(xResult, xResult, 16);
+            ARM8BT_FLAGS_DEC16->setFlags(data, flags);
+        }
+        }, data->currentOp->lock != 0);
     data->releaseTmpReg(addressReg);
 }
 void opDecE32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
+    data->readWriteMemory(addressReg, xDst, xResult, 32, [data] {
+        data->subValue32(xResult, xDst, 1);
+        }, data->currentOp->lock != 0);
 
-    U32 restartPos = data->bufferPos;
-
-    data->readMemory(addressReg, xDst, 32, false, data->decodedOp->lock != 0);
-    data->subValue32(xResult, xDst, 1);
-    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, xDst, restartPos);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_DEC32->setFlags(data, flags);
 }
 
 void opPushSeg16(Armv8btAsm* data) {
     U8 tmp = data->getTmpReg();
-    data->readMem32ValueOffset(tmp, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
+    data->readMem32ValueOffset(tmp, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->currentOp->reg));
     data->pushNativeReg16(tmp);
     data->releaseTmpReg(tmp);
 }
 
 void opPopSeg16(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->decodedOp->reg); // param 2 (seg)
-    data->peekNativeReg16(2, true); // param 3 (value)
-
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, [data]() {                        
-            data->popStack16();
-        }, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->decodedOp->reg] = true;
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 void opPushSeg32(Armv8btAsm* data) {
     U8 tmp = data->getTmpReg();
-    data->readMem32ValueOffset(tmp, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
+    data->readMem32ValueOffset(tmp, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->currentOp->reg));
     data->pushNativeReg32(tmp);
     data->releaseTmpReg(tmp);
 }
 
 void opPopSeg32(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->decodedOp->reg); // param 2 (seg)
-    data->peekNativeReg32(2); // param 3 (value)
-
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, [data]() {            
-            data->popStack32();
-        }, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->decodedOp->reg] = true;
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 void opPushR16(Armv8btAsm* data) {
-    data->pushNativeReg16(data->getNativeReg(data->decodedOp->reg));
+    data->pushNativeReg16(data->getNativeReg(data->currentOp->reg));
 }
 
 void opPushR32(Armv8btAsm* data) {
-    data->pushNativeReg32(data->getNativeReg(data->decodedOp->reg));
+    data->pushNativeReg32(data->getNativeReg(data->currentOp->reg));
 }
 void opPushE16(Armv8btAsm* data) {
     U8 tmpReg = data->getAddressReg();
@@ -2151,24 +2048,28 @@ void opPushE32(Armv8btAsm* data) {
 }
 
 void opPopR16(Armv8btAsm* data) {
-    data->popNativeReg16(data->getNativeReg(data->decodedOp->reg), false);
+    data->popNativeReg16(data->getNativeReg(data->currentOp->reg), false);
 }
 void opPopR32(Armv8btAsm* data) {
-    data->popNativeReg32(data->getNativeReg(data->decodedOp->reg));
+    data->popNativeReg32(data->getNativeReg(data->currentOp->reg));
 }
 void opPopE16(Armv8btAsm* data) {    
-    U8 tmpReg = data->getTmpReg();
-    data->popNativeReg16(tmpReg, false);
-    U8 addressReg = data->getAddressReg(); // address calculation must be after pop
+    U8 tmpReg = data->getTmpReg();    
+    U8 addressReg = data->getAddressReg();
+    data->peekNativeReg16(tmpReg, false);  
     data->writeMemory(addressReg, tmpReg, 16, true);
+    // only adjust stack after the write succeeds (winfish depends on this)
+    data->popStack16();
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
 void opPopE32(Armv8btAsm* data) {    
     U8 tmpReg = data->getTmpReg();
-    data->popNativeReg32(tmpReg);
-    U8 addressReg = data->getAddressReg(); // address calculation must be after pop
+    U8 addressReg = data->getAddressReg();
+    data->peekNativeReg32(tmpReg);
     data->writeMemory(addressReg, tmpReg, 32, true);
+    // only adjust stack after the write succeeds 
+    data->popStack32();
     data->releaseTmpReg(addressReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -2179,9 +2080,7 @@ void pushA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     U8 addressReg = data->getTmpReg();
     data->andRegs32(addressReg, outESP, xStackMask);
     data->addRegs32(addressReg, addressReg, xSS);
-    U8 memReg = data->getHostMem(addressReg);
-    data->writeMem16RegOffset(reg, memReg, addressReg);
-    data->releaseHostMem(memReg);
+    data->writeMemory(addressReg, reg, 16, true);
     data->releaseTmpReg(addressReg);
 }
 
@@ -2204,16 +2103,12 @@ void opPushA16(Armv8btAsm* data) {
 void pushA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     data->pushStack32(inESP, outESP);
     if (!KThread::currentThread()->process->hasSetSeg[SS]) {
-        U8 memReg = data->getHostMem(outESP);
-        data->writeMem32RegOffset(reg, memReg, outESP);
-        data->releaseHostMem(memReg);
+        data->writeMemory(outESP, reg, 32, true);
     } else {
         U8 addressReg = data->getTmpReg();
         data->andRegs32(addressReg, outESP, xStackMask);
         data->addRegs32(addressReg, addressReg, xSS);
-        U8 memReg = data->getHostMem(addressReg);
-        data->writeMem32RegOffset(reg, memReg, addressReg);
-        data->releaseHostMem(memReg);
+        data->writeMemory(addressReg, reg, 32, true);
         data->releaseTmpReg(addressReg);
     }
 }
@@ -2239,9 +2134,7 @@ void popA16_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     U8 tmpReg = data->getTmpReg();
     data->andRegs32(tmpReg, inESP, xStackMask);
     data->addRegs32(tmpReg, tmpReg, xSS);
-    U8 memReg = data->getHostMem(tmpReg);
-    data->readMem16RegOffset(tmpReg, memReg, tmpReg);
-    data->releaseHostMem(memReg);
+    data->readMemory(tmpReg, tmpReg, 16, true);
     data->movRegToReg(reg, tmpReg, 16, false);
     data->popStack16(inESP, outESP);
     data->releaseTmpReg(tmpReg);
@@ -2265,9 +2158,7 @@ void opPopA16(Armv8btAsm* data) {
 
 void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
     if (!KThread::currentThread()->process->hasSetSeg[SS]) {
-        U8 memReg = data->getHostMem(inESP);
-        data->readMem32RegOffset(reg, memReg, inESP);
-        data->releaseHostMem(memReg);
+        data->readMemory(inESP, reg, 32, true);
     } else {
         U8 tmpReg = data->getTmpReg();
 
@@ -2275,9 +2166,8 @@ void popA32_reg(Armv8btAsm* data, U8 inESP, U8 outESP, U8 reg) {
         data->andRegs32(tmpReg, inESP, xStackMask);
         data->addRegs32(tmpReg, tmpReg, xSS);
 
-        U8 memReg = data->getHostMem(tmpReg);
-        data->readMem32RegOffset(reg, memReg, tmpReg);
-        data->releaseHostMem(memReg);
+        data->readMemory(tmpReg, reg, 32, true);
+
         data->releaseTmpReg(tmpReg);
     }
     data->popStack32(inESP, outESP);
@@ -2301,12 +2191,12 @@ void opPopA32(Armv8btAsm* data) {
 }
 
 void opPush16(Armv8btAsm* data) {
-    U8 tmpReg = data->getRegWithConst(data->decodedOp->imm);
+    U8 tmpReg = data->getRegWithConst(data->currentOp->imm);
     data->pushNativeReg16(tmpReg);
     data->releaseTmpReg(tmpReg);
 }
 void opPush32(Armv8btAsm* data) {
-    U8 tmpReg = data->getRegWithConst(data->decodedOp->imm);
+    U8 tmpReg = data->getRegWithConst(data->currentOp->imm);
     data->pushNativeReg32(tmpReg);
     data->releaseTmpReg(tmpReg);
 }
@@ -2336,7 +2226,7 @@ void opBound16(Armv8btAsm* data) {
     U8 tmpReg2 = data->getTmpReg();
 
     data->readMemory(addressReg, tmpReg, 16, true, false, true);
-    data->signExtend(tmpReg2, data->getNativeReg(data->decodedOp->reg), 16);
+    data->signExtend(tmpReg2, data->getNativeReg(data->currentOp->reg), 16);
 
     data->cmpRegs32(tmpReg, tmpReg2);
     // manually implemented do_if because this is a double if that shares code
@@ -2371,7 +2261,7 @@ void opBound32(Armv8btAsm* data) {
 
     data->readMemory(addressReg, tmpReg, 32, true);
 
-    data->cmpRegs32(tmpReg, data->getNativeReg(data->decodedOp->reg));
+    data->cmpRegs32(tmpReg, data->getNativeReg(data->currentOp->reg));
     // manually implemented do_if because this is a double if that shares code
     U32 pos = data->branchSignedGreaterThan();
 
@@ -2379,7 +2269,7 @@ void opBound32(Armv8btAsm* data) {
     data->readMemory(addressReg, tmpReg, 32, true);
     data->releaseTmpReg(addressReg);
 
-    data->cmpRegs32(data->getNativeReg(data->decodedOp->reg), tmpReg);
+    data->cmpRegs32(data->getNativeReg(data->currentOp->reg), tmpReg);
     data->releaseTmpReg(tmpReg);
     U32 pos2 = data->branchSignedLessThanOrEqual();
 
@@ -2397,118 +2287,89 @@ void opBound32(Armv8btAsm* data) {
 }
 
 void opArplReg(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opArplMem(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opArplReg32(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opArplMem32(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 
 void opDaa(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-    // void daa(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)daa);
-    data->syncRegsToHost();
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 void opDas(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-    // void das(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)das);
-    data->syncRegsToHost();
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opAaa(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-    // void aaa(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)aaa);
-    data->syncRegsToHost();
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opAas(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-    // void aas(CPU* cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->callHost((void*)aas);
-    data->syncRegsToHost();
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opAam(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-    // U32 aam(CPU * cpu, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->loadConst(1, data->decodedOp->imm);
-
-    data->callHost((void*)aam);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        // returned 0, which means a divide CPU exception was run
-        data->doJmp(true);
-        }, nullptr, [data]() {
-            data->syncRegsToHost();
-        });
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opAad(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-
-    // void aad(CPU* cpu, U32 value)
-    data->mov64(0, xCPU); // param 1 (CPU)    
-    data->loadConst(1, data->decodedOp->imm);
-
-    data->callHost((void*)aad);
-    data->syncRegsToHost();
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 void opImulR16E16(Armv8btAsm* data) {
     U8 srcReg = data->getAddressReg();    
-    U8 constReg = data->getRegWithConst((S16)((U16)data->decodedOp->imm));
+    U8 constReg = data->getRegWithConst((S16)((U16)data->currentOp->imm));
     data->readMemory(srcReg, srcReg, 16, true);
-    imul16(data, srcReg, constReg, data->getNativeReg(data->decodedOp->reg), 0, false);
+    imul16(data, srcReg, constReg, data->getNativeReg(data->currentOp->reg), 0, false);
     data->releaseTmpReg(constReg);
     data->releaseTmpReg(srcReg);
 }
 
 void opImulR16R16(Armv8btAsm* data) {
-    U8 constReg = data->getRegWithConst((S16)((U16)data->decodedOp->imm));
-    imul16(data, data->getNativeReg(data->decodedOp->rm), constReg, data->getNativeReg(data->decodedOp->reg), 0, false);
+    U8 constReg = data->getRegWithConst((S16)((U16)data->currentOp->imm));
+    imul16(data, data->getNativeReg(data->currentOp->rm), constReg, data->getNativeReg(data->currentOp->reg), 0, false);
     data->releaseTmpReg(constReg);
 }
 void opImulR32E32(Armv8btAsm* data) {
     U8 srcReg = data->getAddressReg();
-    U8 constReg = data->getRegWithConst(data->decodedOp->imm);
+    U8 constReg = data->getRegWithConst(data->currentOp->imm);
     data->readMemory(srcReg, srcReg, 32, true);
-    imul32(data, srcReg, constReg, data->getNativeReg(data->decodedOp->reg), 0, false);
+    imul32(data, srcReg, constReg, data->getNativeReg(data->currentOp->reg), 0, false);
     data->releaseTmpReg(constReg);
     data->releaseTmpReg(srcReg);
 }
 void opImulR32R32(Armv8btAsm* data) {
-    U8 constReg = data->getRegWithConst(data->decodedOp->imm);
-    imul32(data, data->getNativeReg(data->decodedOp->rm), constReg, data->getNativeReg(data->decodedOp->reg), 0, false);
+    U8 constReg = data->getRegWithConst(data->currentOp->imm);
+    imul32(data, data->getNativeReg(data->currentOp->rm), constReg, data->getNativeReg(data->currentOp->reg), 0, false);
     data->releaseTmpReg(constReg);
 }
 
 void opInsb(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opInsw(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opInsd(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opOutsb(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opOutsw(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 void opOutsd(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 
 void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<void()>& f) {
@@ -2580,15 +2441,15 @@ void doCondition(Armv8btAsm* data, Conditional conditional, const std::function<
 static void doCMov(Armv8btAsm* data, Conditional conditional, bool mem, U32 width) {
     std::function f = [mem, width, data]() {
         if (!mem) {
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), width, false);
+            data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), width, false);
         } else {
             U8 addressReg = data->getAddressReg();
             if (width == 32) {
-                data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), width, true);
+                data->readMemory(addressReg, data->getNativeReg(data->currentOp->reg), width, true);
             } else {
                 U8 tmpReg = data->getTmpReg();
                 data->readMemory(addressReg, tmpReg, width, true);
-                data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, width, false);
+                data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, width, false);
                 data->releaseTmpReg(tmpReg);
             }
             data->releaseTmpReg(addressReg);
@@ -2600,12 +2461,12 @@ static void doCMov(Armv8btAsm* data, Conditional conditional, bool mem, U32 widt
 static void doJump(Armv8btAsm* data, Conditional conditional) {
     std::function f = [data]() {
         // :TODO: use a local jump if possible
-        U32 eip = data->ip + data->decodedOp->imm;
+        U32 eip = data->ip + data->currentOp->imm;
         if (!data->cpu->isBig()) {
             eip &= 0xFFFF;
         }
-        data->loadConst(xBranch, eip);
-        data->jmpReg(xBranch, false);
+        data->loadConst(xBranchEip, eip);
+        data->jmpRegToxBranchEip(false);
     };
     doCondition(data, conditional, f);
 }
@@ -2660,11 +2521,11 @@ void opJumpNLE(Armv8btAsm* data) {
 }
 
 void opMovR8R8(Armv8btAsm* data) {
-    data->movReg8ToReg8(data->decodedOp->reg, data->decodedOp->rm);
+    data->movReg8ToReg8(data->currentOp->reg, data->currentOp->rm);
 }
 void opMovE8R8(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    U8 readReg = data->getReadNativeReg8(data->decodedOp->reg);
+    U8 readReg = data->getReadNativeReg8(data->currentOp->reg);
     data->writeMemory(addressReg, readReg, 8, true);
     data->releaseNativeReg8(readReg);
     data->releaseTmpReg(addressReg);
@@ -2673,69 +2534,69 @@ void opMovR8E8(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmp = data->getTmpReg();
     data->readMemory(addressReg, tmp, 8, true);
-    data->movRegToReg8(tmp, data->decodedOp->reg);
+    data->movRegToReg8(tmp, data->currentOp->reg);
     data->releaseTmpReg(tmp);
     data->releaseTmpReg(addressReg);
 }
 void opMovR8I8(Armv8btAsm* data) {
-    U8 tmp = data->getRegWithConst(data->decodedOp->imm);
-    data->movRegToReg8(tmp, data->decodedOp->reg);
+    U8 tmp = data->getRegWithConst(data->currentOp->imm);
+    data->movRegToReg8(tmp, data->currentOp->reg);
     data->releaseTmpReg(tmp);
 }
 void opMovE8I8(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    U8 tmp = data->getRegWithConst(data->decodedOp->imm);
+    U8 tmp = data->getRegWithConst(data->currentOp->imm);
     data->writeMemory(addressReg, tmp, 8, true);
     data->releaseTmpReg(tmp);
     data->releaseTmpReg(addressReg);
 }
 void opMovR16R16(Armv8btAsm* data) {
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 16, false);
 }
 void opMovE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->writeMemory(addressReg, data->getNativeReg(data->currentOp->reg), 16, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovR16E16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmp = data->getTmpReg();
     data->readMemory(addressReg, tmp, 16, true);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmp, 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmp, 16, false);
     data->releaseTmpReg(tmp);
     data->releaseTmpReg(addressReg);
 }
 void opMovR16I16(Armv8btAsm* data) {
-    U8 tmp = data->getRegWithConst(data->decodedOp->imm);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmp, 16, false);
+    U8 tmp = data->getRegWithConst(data->currentOp->imm);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmp, 16, false);
     data->releaseTmpReg(tmp);
 }
 void opMovE16I16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    U8 tmp = data->getRegWithConst(data->decodedOp->imm);
+    U8 tmp = data->getRegWithConst(data->currentOp->imm);
     data->writeMemory(addressReg, tmp, 16, true);
     data->releaseTmpReg(tmp);
     data->releaseTmpReg(addressReg);
 }
 void opMovR32R32(Armv8btAsm* data) {
-    data->mov32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm));
+    data->mov32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm));
 }
 void opMovE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 32, true);
+    data->writeMemory(addressReg, data->getNativeReg(data->currentOp->reg), 32, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovR32E32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 32, true);
+    data->readMemory(addressReg, data->getNativeReg(data->currentOp->reg), 32, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovR32I32(Armv8btAsm* data) {
-    data->loadConst(data->getNativeReg(data->decodedOp->reg), data->decodedOp->imm);
+    data->loadConst(data->getNativeReg(data->currentOp->reg), data->currentOp->imm);
 }
 void opMovE32I32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    U8 tmp = data->getRegWithConst(data->decodedOp->imm);
+    U8 tmp = data->getRegWithConst(data->currentOp->imm);
     data->writeMemory(addressReg, tmp, 32, true);
     data->releaseTmpReg(tmp);
     data->releaseTmpReg(addressReg);
@@ -2743,8 +2604,8 @@ void opMovE32I32(Armv8btAsm* data) {
 
 void opMovR16S16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->readMem32ValueOffset(tmpReg, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->rm));
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
+    data->readMem32ValueOffset(tmpReg, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->currentOp->rm));
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
 
@@ -2754,158 +2615,111 @@ void opMovR32S16(Armv8btAsm* data) {
     // bits of the general - purpose register are the destination or source operand.If the register is a destination operand, the resulting 
     // value in the two high - order bytes of the register is implementation dependent.For the Pentium 4, Intel Xeon, and P6 family processors, 
     // the two high - order bytes are filled with zeros; for earlier 32 - bit IA - 32 processors, the two high order bytes are undefined.
-    data->readMem32ValueOffset(data->getNativeReg(data->decodedOp->reg), xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->rm));
+    data->readMem32ValueOffset(data->getNativeReg(data->currentOp->reg), xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->currentOp->rm));
 }
 
 void opMovE16S16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
     U8 addressReg = data->getAddressReg();
-    data->readMem32ValueOffset(tmpReg, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->decodedOp->reg));
+    data->readMem32ValueOffset(tmpReg, xCPU, (S32)CPU_OFFSET_SEG_VALUE(data->currentOp->reg));
     data->writeMemory(addressReg, tmpReg, 16, true);
     data->releaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 
-void opMovS16R16(Armv8btAsm* data) { 
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)
-    // read value from reg before we overwrite regs 0 and 1 below
-    data->movRegToReg(2, data->getNativeReg(data->decodedOp->reg), 16, true);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->decodedOp->rm); // param 2 (seg)
-        
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, nullptr, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->decodedOp->rm] = true;
+void opMovS16R16(Armv8btAsm* data) {
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 void opMovS16E16(Armv8btAsm* data) {
-    U8 addressReg = data->getAddressReg();    
-    data->syncRegsFromHost();
-
-    // U32 common_setSegment(CPU* cpu, U32 seg, U32 value)    
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->decodedOp->reg); // param 2 (seg)
-    data->readMemory(addressReg, 2, 16, true);
-    data->releaseTmpReg(addressReg);
-
-    data->callHost((void*)common_setSegment);
-
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, nullptr, [data]() {
-            data->syncRegsToHost();
-        });
-    data->cpu->thread->process->hasSetSeg[data->decodedOp->reg] = true;
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 
 void opMovAlOb(Armv8btAsm* data) {
-    if (KThread::currentThread()->process->hasSetSeg[data->decodedOp->base]) {
+    if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->decodedOp->base), data->decodedOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
         data->readMemory(tmp, tmp, 8, true);
         data->movRegToReg8(tmp, 0);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getTmpReg();
-        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
-        data->addValue64(tmp, memReg, data->decodedOp->disp);
-        data->releaseHostMem(memReg);
-        data->readMemory(tmp, tmp, 8, false);
+        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        data->readMemory(tmp, tmp, 8, true);
         data->movRegToReg8(tmp, 0);
         data->releaseTmpReg(tmp);
     }
 }
 void opMovAxOw(Armv8btAsm* data) {
-    if (KThread::currentThread()->process->hasSetSeg[data->decodedOp->base]) {
+    if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->decodedOp->base), data->decodedOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
         data->readMemory(tmp, tmp, 16, true);
         data->movRegToReg(xEAX, tmp, 16, false);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getTmpReg();
-        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
-        data->addValue64(tmp, memReg, data->decodedOp->disp);
-        data->readMemory(tmp, tmp, 16, false);
-        data->releaseHostMem(memReg);
+        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        data->readMemory(tmp, tmp, 16, true);
         data->movRegToReg(xEAX, tmp, 16, false);
         data->releaseTmpReg(tmp);
     }
 }
 void opMovEaxOd(Armv8btAsm* data) {
-    if (KThread::currentThread()->process->hasSetSeg[data->decodedOp->base]) {
+    if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->decodedOp->base), data->decodedOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
         data->readMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getTmpReg();
-        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
-        data->addValue64(tmp, memReg, data->decodedOp->disp);
-        data->releaseHostMem(memReg);
-        data->readMemory(tmp, xEAX, 32, false);
+        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        data->readMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     }
 }
 void opMovObAl(Armv8btAsm* data) {
-    if (KThread::currentThread()->process->hasSetSeg[data->decodedOp->base]) {
+    if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->decodedOp->base), data->decodedOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
         data->writeMemory(tmp, xEAX, 8, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getTmpReg();
-        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
-        data->addValue64(tmp, memReg, data->decodedOp->disp);
-        data->releaseHostMem(memReg);
-        data->writeMemory(tmp, xEAX, 8, false);
+        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        data->writeMemory(tmp, xEAX, 8, true);
         data->releaseTmpReg(tmp);
     }
 }
 void opMovOwAx(Armv8btAsm* data) {
-    if (KThread::currentThread()->process->hasSetSeg[data->decodedOp->base]) {
+    if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->decodedOp->base), data->decodedOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
         data->writeMemory(tmp, xEAX, 16, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getTmpReg();
-        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
-        data->addValue64(tmp, memReg, data->decodedOp->disp);
-        data->releaseHostMem(memReg);
-        data->writeMemory(tmp, xEAX, 16, false);
+        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        data->writeMemory(tmp, xEAX, 16, true);
         data->releaseTmpReg(tmp);
     }
 }
 void opMovOdEax(Armv8btAsm* data) {
-    if (KThread::currentThread()->process->hasSetSeg[data->decodedOp->base]) {
+    if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->decodedOp->base), data->decodedOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
         data->writeMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getTmpReg();
-        U8 memReg = data->getHostMemFromAddress(data->decodedOp->disp);
-        data->addValue64(tmp, memReg, data->decodedOp->disp);
-        data->releaseHostMem(memReg);
-        data->writeMemory(tmp, xEAX, 32, false);
+        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        data->writeMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     }
 }
 
 void opMovGwXzR8(Armv8btAsm* data) {
-    U8 src = data->getReadNativeReg8(data->decodedOp->rm);
+    U8 src = data->getReadNativeReg8(data->currentOp->rm);
     U8 tmpReg = data->getTmpReg();
     data->zeroExtend(tmpReg, src, 8);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
     data->releaseNativeReg8(src);
 }
@@ -2913,14 +2727,14 @@ void opMovGwXzE8(Armv8btAsm* data) {
     U8 tmpReg = data->getAddressReg();
     data->readMemory(tmpReg, tmpReg, 8, true);
     data->zeroExtend(tmpReg, tmpReg, 8);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
 void opMovGwSxR8(Armv8btAsm* data) {
-    U8 src = data->getReadNativeReg8(data->decodedOp->rm);
+    U8 src = data->getReadNativeReg8(data->currentOp->rm);
     U8 tmpReg = data->getTmpReg();
     data->signExtend(tmpReg, src, 8);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
     data->releaseNativeReg8(src);
 }
@@ -2928,66 +2742,66 @@ void opMovGwSxE8(Armv8btAsm* data) {
     U8 tmpReg = data->getAddressReg();
     data->readMemory(tmpReg, tmpReg, 8, true);
     data->signExtend(tmpReg, tmpReg, 8);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), tmpReg, 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
 }
 
 void opMovGdXzR8(Armv8btAsm* data) {
-    U8 src = data->getReadNativeReg8(data->decodedOp->rm);
-    data->zeroExtend(data->getNativeReg(data->decodedOp->reg), src, 8);
+    U8 src = data->getReadNativeReg8(data->currentOp->rm);
+    data->zeroExtend(data->getNativeReg(data->currentOp->reg), src, 8);
     data->releaseNativeReg8(src);
 }
 
 void opMovGdXzE8(Armv8btAsm* data) {
     U8 tmpReg = data->getAddressReg();
     data->readMemory(tmpReg, tmpReg, 8, true);
-    data->zeroExtend(data->getNativeReg(data->decodedOp->reg), tmpReg, 8);
+    data->zeroExtend(data->getNativeReg(data->currentOp->reg), tmpReg, 8);
     data->releaseTmpReg(tmpReg);
 }
 void opMovGdSxR8(Armv8btAsm* data) {
-    U8 src = data->getReadNativeReg8(data->decodedOp->rm);
-    data->signExtend(data->getNativeReg(data->decodedOp->reg), src, 8);
+    U8 src = data->getReadNativeReg8(data->currentOp->rm);
+    data->signExtend(data->getNativeReg(data->currentOp->reg), src, 8);
     data->releaseNativeReg8(src);
 }
 void opMovGdSxE8(Armv8btAsm* data) {
     U8 tmpReg = data->getAddressReg();
     data->readMemory(tmpReg, tmpReg, 8, true);
-    data->signExtend(data->getNativeReg(data->decodedOp->reg), tmpReg, 8);
+    data->signExtend(data->getNativeReg(data->currentOp->reg), tmpReg, 8);
     data->releaseTmpReg(tmpReg);
 }
 
 void opMovGdXzR16(Armv8btAsm* data) {
-    data->zeroExtend(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 16);
+    data->zeroExtend(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 16);
 }
 void opMovGdXzE16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->readMemory(addressReg, data->getNativeReg(data->currentOp->reg), 16, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovGdSxR16(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    data->signExtend(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 16);
+    data->signExtend(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 16);
     data->releaseTmpReg(tmpReg);
 }
 void opMovGdSxE16(Armv8btAsm* data) {
     U8 tmpReg = data->getAddressReg();
     data->readMemory(tmpReg, tmpReg, 16, true);
-    data->signExtend(data->getNativeReg(data->decodedOp->reg), tmpReg, 16);
+    data->signExtend(data->getNativeReg(data->currentOp->reg), tmpReg, 16);
     data->releaseTmpReg(tmpReg);
 }
 
 void opMovRdCRx(Armv8btAsm* data) {
-    data->loadConst(data->getNativeReg(data->decodedOp->reg), 0);
+    data->loadConst(data->getNativeReg(data->currentOp->reg), 0);
 }
 void opMovCRxRd(Armv8btAsm* data) {
     // no op
 }
 
 void opLeaR16(Armv8btAsm* data) {
-    data->calculateAddress16(data->getNativeReg(data->decodedOp->reg));
+    data->calculateAddress16(data->getNativeReg(data->currentOp->reg));
 }
 void opLeaR32(Armv8btAsm* data) {
-    data->calculateAddress32(data->getNativeReg(data->decodedOp->reg));
+    data->calculateAddress32(data->getNativeReg(data->currentOp->reg));
 }
 
 void opNop(Armv8btAsm* data) {
@@ -3012,71 +2826,21 @@ void opCwq(Armv8btAsm* data) {
     data->shiftSignedRegRightWithValue32(xEDX, xEAX, 31);
 }
 void opCallAp(Armv8btAsm* data) {
-    //kpanic("Need to test");
-    // cpu->call(0, op->imm, op->disp, cpu->eip.u32+op->len);
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);    
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 
 void opCallFar(Armv8btAsm* data) {
-    //kpanic("Need to test");
-    // cpu->call(1, op->imm, op->disp, cpu->eip.u32 + op->len);
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 
 void opJmpAp(Armv8btAsm* data) {
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 void opJmpFar(Armv8btAsm* data) {
-    kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(2, data->decodedOp->imm); // param 3 (selector)
-    data->loadConst(3, data->decodedOp->disp); // param 4 (offset)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 void opWait(Armv8btAsm* data) {
@@ -3111,8 +2875,7 @@ static void doRetn16(Armv8btAsm* data, U32 bytes) {
     // SP = SP + op->imm;
     // cpu->eip.u32 = eip;
 
-    U8 tmpReg = data->getTmpReg();
-    data->popNativeReg16(tmpReg, true);
+    data->popNativeReg16(xBranchEip, true);
     if (bytes) {
         U8 tmpReg2 = data->getTmpReg();
         data->movRegToReg(tmpReg2, xESP, 16, true);
@@ -3120,8 +2883,7 @@ static void doRetn16(Armv8btAsm* data, U32 bytes) {
         data->movRegToReg(xESP, tmpReg2, 16, false);
         data->releaseTmpReg(tmpReg2);
     }
-    data->jmpReg(tmpReg, true);
-    data->releaseTmpReg(tmpReg);   
+    data->jmpRegToxBranchEip(true);
     data->done = true;
 }
 static void doRetn32(Armv8btAsm* data, U32 bytes) {
@@ -3130,33 +2892,22 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
     // ESP = ESP + op->imm;
     // cpu->eip.u32 = eip;
 
-    U8 tmpReg = data->getTmpReg();
-    data->popNativeReg32(tmpReg);
+    data->popNativeReg32(xBranchEip);
     if (bytes) {
         data->addValue32(xESP, xESP, bytes);
     }
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
-    // kpanic("Need to test");
-    // cpu->ret(0, op->imm);
-    data->syncRegsFromHost();
-    // void common_ret(CPU* cpu, U32 big, U32 bytes)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, big); // param 2
-    data->loadConst(2, data->decodedOp->imm); // param 3 (bytes)
-    data->callHost((void*)common_ret);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 void opRetn16Iw(Armv8btAsm* data) {
-    doRetn16(data, data->decodedOp->imm);
+    doRetn16(data, data->currentOp->imm);
 }
 void opRetn32Iw(Armv8btAsm* data) {
-    doRetn32(data, data->decodedOp->imm);
+    doRetn32(data, data->currentOp->imm);
 }
 void opRetn16(Armv8btAsm* data) {
     doRetn16(data, 0);
@@ -3171,7 +2922,7 @@ void opRetf32(Armv8btAsm* data) {
     doRetf(data, 1);
 }
 void opInvalid(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
     data->done = true;
 }
 void opInt3(Armv8btAsm* data) {
@@ -3180,11 +2931,13 @@ void opInt3(Armv8btAsm* data) {
 }
 void opInt80(Armv8btAsm* data) {
     // kpanic("Need to test");
+
+    // don't call common_runSingleOp\emulateSingleOp so that we don't  have to end the block
     data->syncRegsFromHost();
 
     // void ksyscall(cpu, op->len)
     data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->decodedOp->len); // param 2 (eipCount)
+    data->loadConst(1, data->currentOp->len); // param 2 (eipCount)
 
     data->callHost((void*)ksyscall);
     data->syncRegsToHost();
@@ -3201,29 +2954,18 @@ void opInt80(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg);
     data->doJmp(false);
 }
-void opInt98(Armv8btAsm* data) {    
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
 
-    // void common_int98(CPU * cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)common_int98);
-    data->syncRegsToHost();
+void opInt98(Armv8btAsm* data) {
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opInt99(Armv8btAsm* data) {
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_int99(CPU * cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)common_int99);
-    data->syncRegsToHost();
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opIntIb(Armv8btAsm* data) {
 #ifdef __TEST
-    if (data->decodedOp->imm == 0x97) {
+    if (data->currentOp->imm == 0x97) {
         data->addReturnFromTest();
         data->done = true;
     } else
@@ -3234,30 +2976,15 @@ void opIntIb(Armv8btAsm* data) {
     }
 }
 void opInt9A(Armv8btAsm* data) {
-    data->syncRegsFromHost();
-
-    // void common_int9A(CPU * cpu)
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)common_int9A);
-    data->syncRegsToHost();
-}
-void opIntO(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
-static void doIret(Armv8btAsm* data, U32 big, U32 eip) {    
-    //kpanic("Need to test");
-    data->syncRegsFromHost();
-
-    // void common_iret(CPU * cpu, U32 big, U32 oldEip)
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, big); // param 2
-    data->loadConst(2, eip); // param 3
-
-    data->callHost((void*)common_iret);
-    data->syncRegsToHost();
-    data->doJmp(false);
+void opIntO(Armv8btAsm* data) {
+    data->invalidOp(data->currentOp->originalOp);
+    data->done = true;
+}
+static void doIret(Armv8btAsm* data, U32 big, U32 eip) {
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 void opIret(Armv8btAsm* data) {
@@ -3268,15 +2995,15 @@ void opIret32(Armv8btAsm* data) {
 }
 void opXlat(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
-    if (data->decodedOp->ea16) {
+    if (data->currentOp->ea16) {
         // AL = readb(cpu->seg[op->base].address + (U16)(BX + AL));
         U8 tmpReg2 = data->getTmpReg();
         data->movRegToReg(tmpReg2, xEBX, 16, true);
         data->movReg8ToReg(0, tmpReg);
         data->addRegs32(tmpReg, tmpReg, tmpReg2);
         data->releaseTmpReg(tmpReg2);
-        if (data->cpu->thread->process->hasSetSeg[data->decodedOp->base]) {
-            data->addRegs32(tmpReg, tmpReg, data->getSegReg(data->decodedOp->base));
+        if (data->cpu->thread->process->hasSetSeg[data->currentOp->base]) {
+            data->addRegs32(tmpReg, tmpReg, data->getSegReg(data->currentOp->base));
         }
         data->readMemory(tmpReg, tmpReg, 8, true);
         data->movRegToReg8(tmpReg, 0);
@@ -3284,8 +3011,8 @@ void opXlat(Armv8btAsm* data) {
         // AL = readb(cpu->seg[op->base].address + EBX + AL);
         data->movReg8ToReg(0, tmpReg);
         data->addRegs32(tmpReg, tmpReg, xEBX);
-        if (data->cpu->thread->process->hasSetSeg[data->decodedOp->base]) {
-            data->addRegs32(tmpReg, tmpReg, data->getSegReg(data->decodedOp->base));
+        if (data->cpu->thread->process->hasSetSeg[data->currentOp->base]) {
+            data->addRegs32(tmpReg, tmpReg, data->getSegReg(data->currentOp->base));
         }
         data->readMemory(tmpReg, tmpReg, 8, true);
         data->movRegToReg8(tmpReg, 0);
@@ -3293,7 +3020,7 @@ void opXlat(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg);
 }
 void opICEBP(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 
 void opHlt(Armv8btAsm* data) {
@@ -3458,14 +3185,8 @@ void opCPUID(Armv8btAsm* data) {
 
 static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {    
     if (level != 0) {
-        data->syncRegsFromHost();
-        // call void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level)
-        data->mov64(0, xCPU); // param 1 (CPU)
-        data->loadConst(1, (big ? 1 : 0)); // param 2 (big)
-        data->loadConst(2, bytes); // param 3 (bytes)
-        data->loadConst(3, level); // param 4 (level)
-        data->callHost((void*)common_enter);
-        data->syncRegsToHost();
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
     } else {
         if (big) {
             data->pushNativeReg32(xEBP);
@@ -3485,11 +3206,11 @@ static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {
 
 void opEnter16(Armv8btAsm* data) {
     //kpanic("Need to test");
-    doEnter(data, false, data->decodedOp->imm, data->decodedOp->disp);
+    doEnter(data, false, data->currentOp->imm, data->currentOp->disp);
 }
 void opEnter32(Armv8btAsm* data) {
     //kpanic("Need to test");
-    doEnter(data, true, data->decodedOp->imm, data->decodedOp->disp);
+    doEnter(data, true, data->currentOp->imm, data->currentOp->disp);
 }
 void opLeave16(Armv8btAsm* data) {
     // kpanic("Need to test");
@@ -3507,40 +3228,8 @@ void opLeave32(Armv8btAsm* data) {
 }
 
 void doLoadSegment(Armv8btAsm* data, bool big) {
-    // U32 eaa = eaa(cpu, op);
-    // U16 val = readw(eaa);
-    // U32 selector = readw(eaa + 2);
-    // if (cpu->setSegment(op->imm, selector)) {
-    //     cpu->reg[op->reg].u16 = val;
-    //     NEXT();
-    // } else {
-    //     NEXT_DONE();
-    // }
-    U8 addressReg = data->getAddressReg();
-
-    data->syncRegsFromHost();
-    // we need this an not a tmpReg because it needs to survive callHost
-    data->readMemory(addressReg, calleeSavedReg, (big?32:16), true);
-    data->addValue32(addressReg, addressReg, (big?4:2));
-
-    // U32 common_setSegment(CPU * cpu, U32 seg, U32 value)
-    data->readMemory(addressReg, 2, 16, true); // param 3 (sel) : Intentionally 16 for big and small   
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, data->decodedOp->imm); // param 2 (seg)    
-
-    data->releaseTmpReg(addressReg);
-    data->callHost((void*)common_setSegment);
-    U8 valReg = data->getTmpReg();
-    // must move out of calleeSavedReg before syncRegsToHost
-    data->movRegToReg(valReg, calleeSavedReg, 32, 0);
-    data->doIf(0, 0, DO_IF_EQUAL, [data]() {
-        data->doJmp(true);
-        }, [data, valReg, big]() {
-            data->movRegToReg(data->getNativeReg(data->decodedOp->reg), valReg, (big ? 32 : 16), false);
-        }, [data]() {
-            data->syncRegsToHost();
-        });
-    data->releaseTmpReg(valReg);
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 void opLoadSegment16(Armv8btAsm* data) {
@@ -3571,7 +3260,7 @@ void opLoopNZ(Armv8btAsm* data) {
     //     }
     // }
     U8 tmpReg = data->getTmpReg();
-    if (data->decodedOp->ea16) {
+    if (data->currentOp->ea16) {
         data->movRegToReg(tmpReg, xECX, 16, true);
         data->subValue32(tmpReg, tmpReg, 1);
         data->movRegToReg(xECX, tmpReg, 16, false);
@@ -3591,7 +3280,7 @@ void opLoopNZ(Armv8btAsm* data) {
     data->copyBitsFromSourceAtPositionToDest(tmpReg, xFLAGS, 6, 1); // ZF is at position 6 (0x40)
 
     // if E(CX) is 0 || ZF
-    data->compareZeroAndBranch(tmpReg, true, data->ip + data->decodedOp->imm);
+    data->compareZeroAndBranch(tmpReg, true, data->ip + data->currentOp->imm);
     data->releaseTmpReg(tmpReg);
 }
 void opLoopZ(Armv8btAsm* data) {
@@ -3613,7 +3302,7 @@ void opLoopZ(Armv8btAsm* data) {
     //     }
     // }
     U8 tmpReg = data->getTmpReg();
-    if (data->decodedOp->ea16) {
+    if (data->currentOp->ea16) {
         data->movRegToReg(tmpReg, xECX, 16, true);
         data->subValue32(tmpReg, tmpReg, 1);
         data->movRegToReg(xECX, tmpReg, 16, false);
@@ -3636,7 +3325,7 @@ void opLoopZ(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg2);
 
     // if E(CX) is 0 || !ZF
-    data->compareZeroAndBranch(tmpReg, true, data->ip + data->decodedOp->imm);
+    data->compareZeroAndBranch(tmpReg, true, data->ip + data->currentOp->imm);
     data->releaseTmpReg(tmpReg);
 }
 void opLoop(Armv8btAsm* data) {
@@ -3657,16 +3346,16 @@ void opLoop(Armv8btAsm* data) {
     //         NEXT_BRANCH2();
     //     }
     // }
-    if (data->decodedOp->ea16) {
+    if (data->currentOp->ea16) {
         U8 tmpReg = data->getTmpReg();
         data->movRegToReg(tmpReg, xECX, 16, true);
         data->subValue32(tmpReg, tmpReg, 1);
         data->movRegToReg(xECX, tmpReg, 16, false);
-        data->compareZeroAndBranch(tmpReg, false, data->ip + data->decodedOp->imm);
+        data->compareZeroAndBranch(tmpReg, false, data->ip + data->currentOp->imm);
         data->releaseTmpReg(tmpReg);
     } else {
         data->subValue32(xECX, xECX, 1);
-        data->compareZeroAndBranch(xECX, false, data->ip + data->decodedOp->imm);
+        data->compareZeroAndBranch(xECX, false, data->ip + data->currentOp->imm);
     }
 }
 void opJcxz(Armv8btAsm* data) {
@@ -3676,13 +3365,13 @@ void opJcxz(Armv8btAsm* data) {
     // } else {
     //     NEXT_BRANCH2();
     // }
-    if (data->decodedOp->ea16) {
+    if (data->currentOp->ea16) {
         U8 tmpReg = data->getTmpReg();
         data->movRegToReg(tmpReg, xECX, 16, true);
-        data->compareZeroAndBranch(tmpReg, true, data->ip + data->decodedOp->imm);
+        data->compareZeroAndBranch(tmpReg, true, data->ip + data->currentOp->imm);
         data->releaseTmpReg(tmpReg);
     } else {
-        data->compareZeroAndBranch(xECX, true, data->ip + data->decodedOp->imm);
+        data->compareZeroAndBranch(xECX, true, data->ip + data->currentOp->imm);
     }
 }
 
@@ -3740,8 +3429,8 @@ void opCallJw(Armv8btAsm* data) {
     // cpu->eip.u32 += (S16)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg16(tmpReg);
-    data->loadConst(tmpReg, (data->ip + (S16)data->decodedOp->imm) & 0xFFFF);
-    data->jmpReg(tmpReg, false);
+    data->loadConst(xBranchEip, (data->ip + (S16)data->currentOp->imm) & 0xFFFF);
+    data->jmpRegToxBranchEip(false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
@@ -3751,27 +3440,27 @@ void opCallJd(Armv8btAsm* data) {
     // cpu->eip.u32 += (S32)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg32(tmpReg);
-    data->loadConst(tmpReg, data->ip + (S32)(data->decodedOp->imm));
-    data->jmpReg(tmpReg, false);
+    data->loadConst(xBranchEip, data->ip + (S32)(data->currentOp->imm));
+    data->jmpRegToxBranchEip(false);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
 void opJmpJw(Armv8btAsm* data) {
     //kpanic("Need to test");
     // cpu->eip.u32 += (S16)op->imm;
-    data->jumpTo(data->ip + (S16)(data->decodedOp->imm));
+    data->jumpTo(data->ip + (S16)(data->currentOp->imm));
     data->done = true;
 }
 void opJmpJd(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 += (S32)op->imm;
-    data->jumpTo(data->ip + (S32)(data->decodedOp->imm));
+    data->jumpTo(data->ip + (S32)(data->currentOp->imm));
     data->done = true;
 }
 void opJmpJb(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 += (S8)op->imm;
-    data->jumpTo(data->ip + (S8)(data->decodedOp->imm));
+    data->jumpTo(data->ip + (S8)(data->currentOp->imm));
     data->done = true;
 }
 void opCallR16(Armv8btAsm* data) {
@@ -3780,12 +3469,10 @@ void opCallR16(Armv8btAsm* data) {
     // cpu->push16(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = dest;
     U8 tmpReg2 = data->getRegWithConst(data->ip);    
-    U8 tmpReg = data->getTmpReg();
-    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
+    data->movRegToReg(xBranchEip, data->getNativeReg(data->currentOp->reg), 16, true);
     data->pushNativeReg16(tmpReg2);
     data->releaseTmpReg(tmpReg2);
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);    
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opCallR32(Armv8btAsm* data) {
@@ -3794,12 +3481,10 @@ void opCallR32(Armv8btAsm* data) {
     // cpu->push32(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = dest;
     U8 tmpReg2 = data->getRegWithConst(data->ip);
-    U8 tmpReg = data->getTmpReg();
-    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 32, false);
+    data->movRegToReg(xBranchEip, data->getNativeReg(data->currentOp->reg), 32, false);
     data->pushNativeReg32(tmpReg2);
     data->releaseTmpReg(tmpReg2);
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opCallE16(Armv8btAsm* data) {
@@ -3807,17 +3492,15 @@ void opCallE16(Armv8btAsm* data) {
     // U32 neweip = readw(eaa(cpu, op));
     // cpu->push16(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = neweip;
-    U8 addressReg = data->getAddressReg();
-    U8 eipReg = data->getTmpReg();    
-    data->readMemory(addressReg, eipReg, 16, true);
+    U8 addressReg = data->getAddressReg();   
+    data->readMemory(addressReg, xBranchEip, 16, true);
     data->releaseTmpReg(addressReg);
 
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg16(tmpReg);
     data->releaseTmpReg(tmpReg);
 
-    data->jmpReg(eipReg, false);
-    data->releaseTmpReg(eipReg);
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opCallE32(Armv8btAsm* data) {
@@ -3826,78 +3509,36 @@ void opCallE32(Armv8btAsm* data) {
     // cpu->push32(cpu->eip.u32 + op->len);
     // cpu->eip.u32 = neweip;
     U8 addressReg = data->getAddressReg();
-    U8 eipReg = data->getTmpReg();
-    data->readMemory(addressReg, eipReg, 32, true);
+    data->readMemory(addressReg, xBranchEip, 32, true);
     data->releaseTmpReg(addressReg);
 
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg32(tmpReg);
     data->releaseTmpReg(tmpReg);
 
-    data->jmpReg(eipReg, false);
-    data->releaseTmpReg(eipReg);
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opCallFarE16(Armv8btAsm* data) {
-    //kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U16 newip = readw(eaa);
-    // U16 newcs = readw(eaa + 2);
-    // cpu->call(0, newcs, newip, cpu->eip.u32 + op->len);    
-
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 16, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 2);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 void opCallFarE32(Armv8btAsm* data) {
-    // kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U32 newip = readd(eaa);
-    // U16 newcs = readw(eaa + 4);
-    // cpu->call(1, newcs, newip, cpu->eip.u32 + op->len);
-    data->syncRegsFromHost();
-
-    // void common_call(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 32, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 4);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_call);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 void opJmpR16(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 = cpu->reg[op->reg].u16;
-    U8 tmpReg = data->getTmpReg();
-    data->movRegToReg(tmpReg, data->getNativeReg(data->decodedOp->reg), 16, true);
-    data->jmpReg(tmpReg, false);
-    data->releaseTmpReg(tmpReg);
+    data->movRegToReg(xBranchEip, data->getNativeReg(data->currentOp->reg), 16, true);
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opJmpR32(Armv8btAsm* data) {
     // kpanic("Need to test");
     // cpu->eip.u32 = cpu->reg[op->reg].u32;
-    data->jmpReg(data->getNativeReg(data->decodedOp->reg), false);
+    data->mov32(xBranchEip, data->getNativeReg(data->currentOp->reg));
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opJmpE16(Armv8btAsm* data) {
@@ -3905,11 +3546,9 @@ void opJmpE16(Armv8btAsm* data) {
     // U32 neweip = readw(eaa(cpu, op));
     // cpu->eip.u32 = neweip;
     U8 addressReg = data->getAddressReg();
-    U8 eipReg = data->getTmpReg();
-    data->readMemory(addressReg, eipReg, 16, true);
+    data->readMemory(addressReg, xBranchEip, 16, true);
     data->releaseTmpReg(addressReg);
-    data->jmpReg(eipReg, false);
-    data->releaseTmpReg(eipReg);
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opJmpE32(Armv8btAsm* data) {
@@ -3917,120 +3556,43 @@ void opJmpE32(Armv8btAsm* data) {
     // U32 neweip = readd(eaa(cpu, op));
     // cpu->eip.u32 = neweip;
     U8 addressReg = data->getAddressReg();
-    U8 eipReg = data->getTmpReg();
-    data->readMemory(addressReg, eipReg, 32, true);
+    data->readMemory(addressReg, xBranchEip, 32, true);
     data->releaseTmpReg(addressReg);
-    data->jmpReg(eipReg, false);
-    data->releaseTmpReg(eipReg);
+    data->jmpRegToxBranchEip(false);
     data->done = true;
 }
 void opJmpFarE16(Armv8btAsm* data) {
-    //kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U16 newip = readw(eaa);
-    // U16 newcs = readw(eaa + 2);
-    // cpu->jmp(0, newcs, newip, cpu->eip.u32 + op->len);
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 16, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 2);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 0); // param 2 (big = false)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 void opJmpFarE32(Armv8btAsm* data) {
-    // kpanic("Need to test");
-    // U32 eaa = eaa(cpu, op);
-    // U32 newip = readd(eaa);
-    // U16 newcs = readw(eaa + 4);
-    // cpu->jmp(1, newcs, newip, cpu->eip.u32 + op->len);
-
-    data->syncRegsFromHost();
-
-    // void common_jmp(CPU* cpu, U32 big, U32 selector, U32 offset, U32 oldEip)
-    U8 addressReg = data->getAddressReg();
-    data->readMemory(addressReg, 3, 32, true); // param 4 (offset)
-    data->addValue32(addressReg, addressReg, 4);
-    data->readMemory(addressReg, 2, 16, true); // param 3 (selector)
-    data->releaseTmpReg(addressReg);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->loadConst(1, 1); // param 2 (big = true)
-    data->loadConst(4, data->ip); // param 5 (oldEip)
-
-    data->callHost((void*)common_jmp);
-    data->syncRegsToHost();
-    data->doJmp(true);
+    data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
 
-static void callDstSrc(Armv8btAsm* data, void* pfn) {
-    data->syncRegsFromHost();
-
-    // common_larr16r16(CPU* cpu, U32 dstReg, U32 srcReg)
-    data->loadConst(1, data->decodedOp->reg);
-    data->loadConst(2, data->decodedOp->rm);
-    data->mov64(0, xCPU); // param 1 (CPU)
-
-    data->callHost((void*)pfn);
-    data->syncRegsToHost();
-}
-static void callDstAddress(Armv8btAsm* data, void* pfn) {
-    data->syncRegsFromHost();
-
-    // void common_larr16e16(CPU * cpu, U32 reg, U32 address);
-    U8 addressReg = data->getAddressReg();
-    data->loadConst(1, data->decodedOp->reg);
-    data->movRegToReg(2, addressReg, 32, false);
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->releaseTmpReg(addressReg);
-
-    data->callHost((void*)pfn);
-    data->syncRegsToHost();
-}
 void opLarR16R16(Armv8btAsm* data) {
-    kpanic("Need to test");
-    // cpu->reg[op->reg].u16 = cpu->lar(cpu->reg[op->rm].u16, cpu->reg[op->reg].u16);
-
-    callDstSrc(data, (void*)common_larr16r16);
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opLarR16E16(Armv8btAsm* data) {
-    kpanic("Need to test");
-    // cpu->reg[reg].u16 = cpu->lar(readw(address), cpu->reg[reg].u16);
-
-    callDstAddress(data, (void*)common_larr16e16);
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opLslR16R16(Armv8btAsm* data) {
-    kpanic("Need to test");
-    // cpu->reg[op->reg].u16 = cpu->lsl(cpu->reg[op->rm].u16, cpu->reg[op->reg].u16);
-
-    callDstSrc(data, (void*)common_lslr16r16);
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opLslR16E16(Armv8btAsm* data) {
-    kpanic("Need to test");
-    // cpu->reg[reg].u16 = cpu->lsl(readw(address), cpu->reg[reg].u16);
-
-    callDstAddress(data, (void*)common_lslr16e16);
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opLslR32R32(Armv8btAsm* data) {
-    kpanic("Need to test");
-    // cpu->reg[op->reg].u32 = cpu->lsl(cpu->reg[op->rm].u32, cpu->reg[op->reg].u32);
-
-    callDstSrc(data, (void*)common_lslr32r32);
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 void opLslR32E32(Armv8btAsm* data) {
-    kpanic("Need to test");
-    // cpu->reg[reg].u32 = cpu->lsl(readw(address), cpu->reg[reg].u32);
-
-    callDstAddress(data, (void*)common_lslr32e32);
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
 }
 
 void opCmovO_R16R16(Armv8btAsm* data) {
@@ -4298,7 +3860,7 @@ static void doSetCondition(Armv8btAsm* data, Conditional conditional, bool mem) 
         data->writeMemory(addressReg, tmpReg, 8, true);
         data->releaseTmpReg(addressReg);
     } else {        
-        data->movRegToReg8(tmpReg, data->decodedOp->reg);        
+        data->movRegToReg8(tmpReg, data->currentOp->reg);        
     }
     data->releaseTmpReg(tmpReg);
 }
@@ -4481,14 +4043,14 @@ void opXaddR8R8(Armv8btAsm* data) {
     // *cpu->reg8[op->rm] = cpu->result.u8;
     U32 flags = data->flagsNeeded();
 
-    data->movReg8ToReg(data->decodedOp->rm, xDst);
-    data->movReg8ToReg(data->decodedOp->reg, xSrc);
+    data->movReg8ToReg(data->currentOp->rm, xDst);
+    data->movReg8ToReg(data->currentOp->reg, xSrc);
     data->addRegs32(xResult, xDst, xSrc);
     if (flags) {
         data->zeroExtend(xResult, xResult, 8);
     }
-    data->movRegToReg8(xDst, data->decodedOp->reg);
-    data->movRegToReg8(xResult, data->decodedOp->rm);
+    data->movRegToReg8(xDst, data->currentOp->reg);
+    data->movRegToReg8(xResult, data->currentOp->rm);
     ARM8BT_FLAGS_ADD8->setFlags(data, flags);
 }
 void opXaddR8E8(Armv8btAsm* data) {
@@ -4500,21 +4062,21 @@ void opXaddR8E8(Armv8btAsm* data) {
     // writeb(address, cpu->result.u8);
     U32 flags = data->flagsNeeded();
     
-    data->movReg8ToReg(data->decodedOp->reg, xSrc);
+    data->movReg8ToReg(data->currentOp->reg, xSrc);
 
     U8 addressReg = data->getAddressReg();
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 8, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, 8, false, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xDst, 8, false, data->currentOp->lock != 0);
     data->addRegs32(xResult, xSrc, xDst);
     if (flags) {
         data->zeroExtend(xResult, xResult, 8);
     }
-    data->writeMemory(addressReg, xResult, 8, false, data->decodedOp->lock != 0, xDst, restartPos);
-    data->movRegToReg8(xDst, data->decodedOp->reg);
+    data->writeMemory(addressReg, xResult, 8, false, data->currentOp->lock != 0, xDst, restartPos);
+    data->movRegToReg8(xDst, data->currentOp->reg);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_ADD8->setFlags(data, flags);
 }
@@ -4530,18 +4092,18 @@ void opXaddR16R16(Armv8btAsm* data) {
     bool needsHardwareFlags = false;
 
     if (ARM8BT_FLAGS_ADD16->usesDst(flags)) {
-        data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 16, true);
+        data->movRegToReg(xDst, data->getNativeReg(data->currentOp->rm), 16, true);
     }
     if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
-        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
+        data->movRegToReg(xSrc, data->getNativeReg(data->currentOp->reg), 16, true);
     }
     needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
-    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 0, needsHardwareFlags);
+    data->addRegs32(xResult, data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 0, needsHardwareFlags);
     if (flags) {
         data->zeroExtend(xResult, xResult, 16);
     }
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 16, false);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->rm), xResult, 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 16, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->rm), xResult, 16, false);
     ARM8BT_FLAGS_ADD16->setFlags(data, flags);
 }
 void opXaddR16E16(Armv8btAsm* data) {
@@ -4555,22 +4117,22 @@ void opXaddR16E16(Armv8btAsm* data) {
     bool needsHardwareFlags = false;
 
     if (ARM8BT_FLAGS_ADD16->usesSrc(flags)) {
-        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 16, true);
+        data->movRegToReg(xSrc, data->getNativeReg(data->currentOp->reg), 16, true);
     }
     needsHardwareFlags = ARM8BT_FLAGS_ADD16->usesHardwareFlags(flags);
     U8 addressReg = data->getAddressReg();
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 16, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, 16, false, data->decodedOp->lock != 0);
-    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), xDst, 0, needsHardwareFlags);
+    data->readMemory(addressReg, xDst, 16, false, data->currentOp->lock != 0);
+    data->addRegs32(xResult, data->getNativeReg(data->currentOp->reg), xDst, 0, needsHardwareFlags);
     if (flags) {
         data->zeroExtend(xResult, xResult, 16);
     }
-    data->writeMemory(addressReg, xResult, 16, false, data->decodedOp->lock != 0, xDst, restartPos);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xDst, 16, false);
+    data->writeMemory(addressReg, xResult, 16, false, data->currentOp->lock != 0, xDst, restartPos);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), xDst, 16, false);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_ADD16->setFlags(data, flags);
 }
@@ -4586,15 +4148,15 @@ void opXaddR32R32(Armv8btAsm* data) {
     bool needsHardwareFlags = false;
 
     if (ARM8BT_FLAGS_ADD32->usesDst(flags)) {
-        data->movRegToReg(xDst, data->getNativeReg(data->decodedOp->rm), 32, false);
+        data->movRegToReg(xDst, data->getNativeReg(data->currentOp->rm), 32, false);
     }
     if (ARM8BT_FLAGS_ADD32->usesSrc(flags)) {
-        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
+        data->movRegToReg(xSrc, data->getNativeReg(data->currentOp->reg), 32, false);
     }
     needsHardwareFlags = ARM8BT_FLAGS_ADD32->usesHardwareFlags(flags);
-    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 0, needsHardwareFlags);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), 32, false);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->rm), data->getNativeReg(xResult), 32, false);
+    data->addRegs32(xResult, data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 0, needsHardwareFlags);
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), 32, false);
+    data->movRegToReg(data->getNativeReg(data->currentOp->rm), data->getNativeReg(xResult), 32, false);
     ARM8BT_FLAGS_ADD32->setFlags(data, flags);
 }
 void opXaddR32E32(Armv8btAsm* data) {
@@ -4608,19 +4170,16 @@ void opXaddR32E32(Armv8btAsm* data) {
     bool needsHardwareFlags = false;
 
     if (ARM8BT_FLAGS_ADD32->usesSrc(flags)) {
-        data->movRegToReg(xSrc, data->getNativeReg(data->decodedOp->reg), 32, false);
+        data->movRegToReg(xSrc, data->getNativeReg(data->currentOp->reg), 32, false);
     }
     needsHardwareFlags = ARM8BT_FLAGS_ADD32->usesHardwareFlags(flags);
-    U8 addressReg = data->getAddressReg();
-    U8 memReg = data->getHostMem(addressReg);
-    data->addRegs64(addressReg, addressReg, memReg);
-    data->releaseHostMem(memReg);
 
-    U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xDst, 32, false, data->decodedOp->lock != 0);
-    data->addRegs32(xResult, data->getNativeReg(data->decodedOp->reg), xDst, 0, needsHardwareFlags);
-    data->writeMemory(addressReg, xResult, 32, false, data->decodedOp->lock != 0, xDst, restartPos);
-    data->movRegToReg(data->getNativeReg(data->decodedOp->reg), xDst, 32, false);
+    U8 addressReg = data->getAddressReg();
+    data->readWriteMemory(addressReg, xDst, xResult, 32, [data, needsHardwareFlags] {
+        data->addRegs32(xResult, data->getNativeReg(data->currentOp->reg), xDst, 0, needsHardwareFlags);
+        }, data->currentOp->lock != 0);
+
+    data->movRegToReg(data->getNativeReg(data->currentOp->reg), xDst, 32, false);
     data->releaseTmpReg(addressReg);
     ARM8BT_FLAGS_ADD32->setFlags(data, flags);
 }
@@ -4656,23 +4215,23 @@ void opCmpXchg8b(Armv8btAsm* data) {
     //     EDX = (U32)(value2 >> 32);
     //     EAX = (U32)value2;
     // }
-    U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->decodedOp, CF | SF | PF | AF | OF | ZF);
+    U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->currentOp, CF | SF | PF | AF | OF | ZF);
     
     U8 addressReg = data->getAddressReg();    
     U8 tmpReg = data->getTmpReg();
     data->addRegs64(tmpReg, xEAX, xEDX, 32);
 
-    U8 memReg = data->getHostMem(addressReg);
+    U8 memReg = data->getHostMem(addressReg, 64, true);
     data->addRegs64(addressReg, addressReg, memReg);
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
-    data->readMemory(addressReg, xSrc, 64, false, data->decodedOp->lock != 0);
+    data->readMemory(addressReg, xSrc, 64, false, data->currentOp->lock != 0);
     data->cmpRegs64(tmpReg, xSrc);
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data, flags]() {
         U8 tmpReg2 = data->getTmpReg();
         data->addRegs64(tmpReg2, xEBX, xECX, 32);        
-        data->writeMemory(addressReg, tmpReg2, 64, false, data->decodedOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, tmpReg2, 64, false, data->currentOp->lock != 0, xSrc, restartPos, false);
         if (flags & ZF) {
             data->orValue32(xFLAGS, xFLAGS, ZF);
         }
@@ -4685,7 +4244,7 @@ void opCmpXchg8b(Armv8btAsm* data) {
             data->copyBitsFromSourceAtPositionToDest64(xEDX, xSrc, 32, 32, false);
         }, nullptr, false, false);
 
-    if (data->decodedOp->lock != 0) {
+    if (data->currentOp->lock != 0) {
         data->fullMemoryBarrier(); // don't allow out of order read/write after this instruction until this completes
     }
     data->releaseTmpReg(addressReg);
@@ -4693,12 +4252,18 @@ void opCmpXchg8b(Armv8btAsm* data) {
 }
 
 void opBswap32(Armv8btAsm* data) {
-    data->reverseBytes32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg));
+    data->reverseBytes32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg));
 }
 
 void opEmms(Armv8btAsm* data) {}
-void opFxsave(Armv8btAsm* data) {} // P2+
-void opFxrstor(Armv8btAsm* data) {} // P2+
+void opFxsave(Armv8btAsm* data) {
+    data->emulateSingleOp(data->currentOp);
+}
+
+void opFxrstor(Armv8btAsm* data) {
+    data->emulateSingleOp(data->currentOp);
+}
+
 void opLdmxcsr(Armv8btAsm* data) {
     // :TODO: need to implement SSE control/status register
 }
@@ -4713,7 +4278,7 @@ void opStmxcsr(Armv8btAsm* data) {
 void opXsave(Armv8btAsm* data) {} // Core 2+
 void opXrstor(Armv8btAsm* data) {} // Core 2+
 void opLfence(Armv8btAsm* data) {
-    data->fullMemoryBarrier(); // :TODO: is a full barrier necessary
+    data->fullMemoryBarrier(); // :TODO: is a full barrier necessary (dmb ishld)
 }
 void opMfence(Armv8btAsm* data) {
     data->fullMemoryBarrier();
@@ -4727,106 +4292,106 @@ void opClflush(Armv8btAsm* data) {
 
 // SSE1
 void opAddpsXmm(Armv8btAsm* data) {
-    data->fAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->fAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opAddpsE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->fAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opAddssXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fAdd(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fAdd(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opAddssE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
-    data->fAdd(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fAdd(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSubpsXmm(Armv8btAsm* data) {
-    data->fSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->fSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opSubpsE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->fSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSubssXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fSub(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fSub(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSubssE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
-    data->fSub(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fSub(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opMulpsXmm(Armv8btAsm* data) {
-    data->fMul(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->fMul(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opMulpsE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fMul(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->fMul(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opMulssXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fMul(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fMul(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opMulssE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
-    data->fMul(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fMul(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opDivpsXmm(Armv8btAsm* data) {
-    data->fDiv(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->fDiv(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opDivpsE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fDiv(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->fDiv(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opDivssXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fDiv(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fDiv(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opDivssE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
-    data->fDiv(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fDiv(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -4835,21 +4400,21 @@ void opRcppsXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[1] = 1.0f / cpu->xmm[rm].ps.f32[1]
     // cpu->xmm[reg].ps.f32[2] = 1.0f / cpu->xmm[rm].ps.f32[2]
     // cpu->xmm[reg].ps.f32[3] = 1.0f / cpu->xmm[rm].ps.f32[3]
-    data->fReciprocal(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->fReciprocal(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opRcppsE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fReciprocal(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->fReciprocal(data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opRcpssXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[0] = 1.0f / cpu->xmm[rm].ps.f32[0]
     U8 vTmpReg = data->vGetTmpReg();
-    data->fReciprocal(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fReciprocal(vTmpReg, data->getNativeSseReg(data->currentOp->rm), S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opRcpssE32(Armv8btAsm* data) {
@@ -4857,7 +4422,7 @@ void opRcpssE32(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
     data->fReciprocal(vTmpReg, vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -4866,21 +4431,21 @@ void opSqrtpsXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f32[1] = sqrt(cpu->xmm[rm].pd.f32[1] )
     // cpu->xmm[reg].pd.f32[2] = sqrt(cpu->xmm[rm].pd.f32[2] )
     // cpu->xmm[reg].pd.f32[3] = sqrt(cpu->xmm[rm].pd.f32[3] )
-    data->fSqrt(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->fSqrt(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opSqrtpsE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fSqrt(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->fSqrt(data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSqrtssXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[0] = sqrt(cpu->xmm[rm].ps.f32[0] )
     U8 vTmpReg = data->vGetTmpReg();
-    data->fSqrt(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fSqrt(vTmpReg, data->getNativeSseReg(data->currentOp->rm), S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSqrtssE32(Armv8btAsm* data) {
@@ -4888,7 +4453,7 @@ void opSqrtssE32(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
     data->fSqrt(vTmpReg, vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -4898,21 +4463,21 @@ void opRsqrtpsXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[1] = 1.0f / sqrt(cpu->xmm[rm].ps.f32[1] )
     // cpu->xmm[reg].ps.f32[2] = 1.0f / sqrt(cpu->xmm[rm].ps.f32[2] )
     // cpu->xmm[reg].ps.f32[3] = 1.0f / sqrt(cpu->xmm[rm].ps.f32[3] )
-    data->fRsqrt(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->fRsqrt(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opRsqrtpsE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fRsqrt(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->fRsqrt(data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opRsqrtssXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[0] = 1.0f / sqrt(cpu->xmm[rm].ps.f32[0] )
     U8 vTmpReg = data->vGetTmpReg();
-    data->fRsqrt(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fRsqrt(vTmpReg, data->getNativeSseReg(data->currentOp->rm), S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opRsqrtssE32(Armv8btAsm* data) {
@@ -4920,113 +4485,113 @@ void opRsqrtssE32(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
     data->fRsqrt(vTmpReg, vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opPavgbXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPavgbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPavgwXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPavgwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vUnsignedRoundedAverage(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsadbwXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedAbsoluteDifference(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->rm), B16);
-    data->vUnsignedAddPairsLong(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), B16);
-    data->vUnsignedAddPairsLong(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), H8);
-    data->vUnsignedAddPairsLong(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), S4);
+    data->vUnsignedAbsoluteDifference(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->rm), B16);
+    data->vUnsignedAddPairsLong(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), B16);
+    data->vUnsignedAddPairsLong(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), H8);
+    data->vUnsignedAddPairsLong(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), S4);
 }
 
 void opPsadbwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedAbsoluteDifference(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), vTmpReg, B16);
-    data->vUnsignedAddPairsLong(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), B16);
-    data->vUnsignedAddPairsLong(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), H8);
-    data->vUnsignedAddPairsLong(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), S4);
+    data->vUnsignedAbsoluteDifference(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), vTmpReg, B16);
+    data->vUnsignedAddPairsLong(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), B16);
+    data->vUnsignedAddPairsLong(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), H8);
+    data->vUnsignedAddPairsLong(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opPextrwR32Xmm(Armv8btAsm* data) {
-    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->decodedOp->imm & 7, H8);
+    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->currentOp->imm & 7, H8);
 }
 void opPextrwE16Xmm(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory16(addressReg, data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm & 7, true);
+    data->vWriteMemory16(addressReg, data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm & 7, true);
     data->releaseTmpReg(addressReg);
 }
 
 void opPinsrwXmmR32(Armv8btAsm* data) {
-    data->vMovFromGeneralReg16(data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm & 7, data->getNativeReg(data->decodedOp->rm));
+    data->vMovFromGeneralReg16(data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm & 7, data->getNativeReg(data->currentOp->rm));
 }
 
 void opPinsrwXmmE16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory16(addressReg, data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm & 7, true);
+    data->vReadMemory16(addressReg, data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm & 7, true);
     data->releaseTmpReg(addressReg);
 }
 
 void opPmaxswXmmXmm(Armv8btAsm* data) {
-    data->vSignedMax(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vSignedMax(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPmaxswXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedMax(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedMax(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPmaxubXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedMax(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vUnsignedMax(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPmaxubXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedMax(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vUnsignedMax(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPminswXmmXmm(Armv8btAsm* data) {
-    data->vSignedMin(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
-    data->vSignedMin(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vSignedMin(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
+    data->vSignedMin(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPminswXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedMin(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedMin(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPminubXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedMin(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vUnsignedMin(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPminubXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedMin(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vUnsignedMin(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -5037,7 +4602,7 @@ void opPmovmskbR32Xmm(Armv8btAsm* data) {
 
     U8 bitMaskReg = data->getSSEConstant(SSE_BYTE8_BIT_MASK);
     // turn all the bits to 1 if signed
-    data->vSignedShiftRightValue(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 7, B16);
+    data->vSignedShiftRightValue(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 7, B16);
     // mask out the bit that should be set, so index 0 will set bit 0, index 1 will set bit 1, etc
     data->vAnd(vTmpReg, vTmpReg, bitMaskReg, B16);
 
@@ -5052,7 +4617,7 @@ void opPmovmskbR32Xmm(Armv8btAsm* data) {
 
     data->vMovToGeneralReg32ZeroExtend(tmpReg, vTmpReg, 0, B16);
     data->vMovToGeneralReg32ZeroExtend(tmpReg2, vTmpReg2, 0, B16);
-    data->addRegs32(data->getNativeReg(data->decodedOp->reg), tmpReg, tmpReg2, 8);
+    data->addRegs32(data->getNativeReg(data->currentOp->reg), tmpReg, tmpReg2, 8);
 
     data->releaseTmpReg(tmpReg);
     data->releaseTmpReg(tmpReg2);
@@ -5064,10 +4629,10 @@ void opPmulhuwXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
     // high result of H0*H0, H1*H1, H2*H2 and H3*H3 will be in H1, H3, H5, H7
-    data->vUnsignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H4);
+    data->vUnsignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H4);
     // high result of H4*H4, H5*H5, H6*H6 and H7*H7 will be in H1, H3, H5, H7
-    data->vUnsignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
-    data->vUnzipOdds(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, H8);
+    data->vUnsignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
+    data->vUnzipOdds(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, H8);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
 }
@@ -5076,105 +4641,105 @@ void opPmulhuwXmmE128(Armv8btAsm* data) {
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg2, true);
-    data->vUnsignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->decodedOp->reg), vTmpReg2, H4);
-    data->vUnsignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->decodedOp->reg), vTmpReg2, H8);
-    data->vUnzipOdds(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, H8);
+    data->vUnsignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->currentOp->reg), vTmpReg2, H4);
+    data->vUnsignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->currentOp->reg), vTmpReg2, H8);
+    data->vUnzipOdds(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
 }
 
 void opAndnpsXmmXmm(Armv8btAsm* data) {
-    data->vAndNot(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vAndNot(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->getNativeSseReg(data->currentOp->reg), B16);
 }
 void opAndnpsXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAndNot(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vAndNot(data->getNativeSseReg(data->currentOp->reg), vTmpReg, data->getNativeSseReg(data->currentOp->reg), B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opAndpsXmmXmm(Armv8btAsm* data) {
-    data->vAnd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vAnd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opAndpsXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAnd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vAnd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opOrpsXmmXmm(Armv8btAsm* data) {
-    data->vOr(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vOr(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opOrpsXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vOr(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vOr(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opXorpsXmmXmm(Armv8btAsm* data) {
-    data->vXor(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vXor(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opXorpsXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vXor(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vXor(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opMovapsXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].ps = cpu->xmm[r2].ps;
-    data->vMov128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm));
+    data->vMov128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm));
 }
 void opMovapsXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovapsE128Xmm(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovhlpsXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].ps.u64[0] = cpu->xmm[r2].ps.u64[1];
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, data->getNativeSseReg(data->decodedOp->rm), 1);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, data->getNativeSseReg(data->currentOp->rm), 1);
 }
 void opMovlhpsXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].ps.u64[1] = cpu->xmm[r2].ps.u64[0];
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 1, data->getNativeSseReg(data->decodedOp->rm), 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 1, data->getNativeSseReg(data->currentOp->rm), 0);
 }
 void opMovhpsXmmE64(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.u64[1] = readq(address);
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 1, true);
+    data->vReadMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 1, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovhpsE64Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].ps.u64[1]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 1, true);
+    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 1, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovlpsXmmE64(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.u64[0] = readq(address);
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory64(addressReg, data->decodedOp->reg, 0, true);
+    data->vReadMemory64(addressReg, data->currentOp->reg, 0, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovlpsE64Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].ps.u64[0]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 0, true);
+    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 0, true);
     data->releaseTmpReg(addressReg);
 }
 
@@ -5183,17 +4748,17 @@ void opMovmskpsR32Xmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
 
     U8 bitMaskReg = data->getSSEConstant(SSE_INT32_BIT_MASK);
-    data->vSignedShiftRightValue(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 31, S4);
+    data->vSignedShiftRightValue(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 31, S4);
     data->vAnd(vTmpReg, vTmpReg, bitMaskReg, B16);
     data->vAddAcrossVectorToScaler(vTmpReg, vTmpReg, S4);
-    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->decodedOp->reg), vTmpReg, 0, S4);
+    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->currentOp->reg), vTmpReg, 0, S4);
 
     data->vReleaseTmpReg(vTmpReg);
     data->vReleaseTmpReg(bitMaskReg);
 }
 void opMovssXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].ps.u32[0] = cpu->xmm[r2].ps.u32[0];
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, data->getNativeSseReg(data->decodedOp->rm), 0);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, data->getNativeSseReg(data->currentOp->rm), 0);
 }
 void opMovssXmmE32(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.u32[0] = readd(address);
@@ -5201,44 +4766,44 @@ void opMovssXmmE32(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.u32[2] = 0;
     // cpu->xmm[reg].ps.u32[3] = 0;
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory32(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory32(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovssE32Xmm(Armv8btAsm* data) {
     // writed(address, cpu->xmm[reg].ps.u32[0]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory32(addressReg, data->getNativeSseReg(data->decodedOp->reg), 0, true);
+    data->vWriteMemory32(addressReg, data->getNativeSseReg(data->currentOp->reg), 0, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovupsXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].ps = cpu->xmm[r2].ps;
-    data->vMov128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm));
+    data->vMov128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm));
 }
 void opMovupsXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovupsE128Xmm(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovntpsE128Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].ps.u64[0]);
     // writeq(address + 8, cpu->xmm[reg].ps.u64[1]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opUnpckhpsXmmXmm(Armv8btAsm* data) {
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opUnpckhpsXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, S4);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, S4);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
@@ -5247,13 +4812,13 @@ void opUnpcklpsXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[1] = cpu->xmm[rm].ps.f32[0];
     // cpu->xmm[reg].ps.f32[2] = cpu->xmm[reg].ps.f32[1];
     // cpu->xmm[reg].ps.f32[3] = cpu->xmm[rm].ps.f32[1];
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opUnpcklpsXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory64(addressReg, tmpReg, true);
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, S4);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, S4);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
@@ -5271,7 +4836,7 @@ void opPrefetchNTA(Armv8btAsm* data) {
 }
 
 void fcmp(Armv8btAsm* data, U8 dst, U8 src1, U8 src2, VectorWidth width) {
-    int which = data->decodedOp->imm & 7;
+    int which = data->currentOp->imm & 7;
     switch (which) {
     case 0: // eq
         data->fCmpEqual(dst, src1, src2, width);
@@ -5322,27 +4887,27 @@ void fcmp(Armv8btAsm* data, U8 dst, U8 src1, U8 src2, VectorWidth width) {
 }
 
 void opCmppsXmmXmm(Armv8btAsm* data) {
-    fcmp(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    fcmp(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opCmppsXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    fcmp(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    fcmp(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opCmpssXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    fcmp(data, vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    fcmp(data, vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
 }
 void opCmpssXmmE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
-    fcmp(data, vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S_scaler);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    fcmp(data, vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, S_scaler);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -5383,14 +4948,14 @@ void comisXmmXmm(Armv8btAsm* data, U8 reg1, U8 reg2, bool is64bit) {
 }
 
 void opComissXmmXmm(Armv8btAsm* data) {
-    comisXmmXmm(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), false);
+    comisXmmXmm(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), false);
 }
 
 void opComissXmmE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    comisXmmXmm(data, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, false);
+    comisXmmXmm(data, data->getNativeSseReg(data->currentOp->reg), vTmpReg, false);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -5403,283 +4968,283 @@ void opUcomissXmmE32(Armv8btAsm* data) {
 
 // SSE2
 void opAddpdXmmXmm(Armv8btAsm* data) {
-    data->fAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->fAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opAddpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->fAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opAddsdXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fAdd(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fAdd(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opAddsdXmmE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    data->fAdd(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fAdd(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSubpdXmmXmm(Armv8btAsm* data) {
-    data->fSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->fSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opSubpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->fSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSubsdXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fSub(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fSub(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSubsdXmmE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    data->fSub(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fSub(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opMulpdXmmXmm(Armv8btAsm* data) {
-    data->fMul(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->fMul(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opMulpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fMul(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->fMul(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opMulsdXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fMul(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fMul(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opMulsdXmmE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    data->fMul(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fMul(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opDivpdXmmXmm(Armv8btAsm* data) {
-    data->fDiv(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->fDiv(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 
 void opDivpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fDiv(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->fDiv(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opDivsdXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->fDiv(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fDiv(vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opDivsdXmmE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    data->fDiv(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fDiv(vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPaddbXmmXmm(Armv8btAsm* data) {
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPaddbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPaddwXmmXmm(Armv8btAsm* data) {
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPaddwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPadddXmmXmm(Armv8btAsm* data) {
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opPadddXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPaddqXmmXmm(Armv8btAsm* data) {
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opPaddqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->vAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPaddsbXmmXmm(Armv8btAsm* data) {
-    data->vSignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vSignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPaddsbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vSignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPaddswXmmXmm(Armv8btAsm* data) {
-    data->vSignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vSignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPaddswXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPaddusbXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPaddusbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPadduswXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPadduswXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vUnsignedSaturatingAdd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubbXmmXmm(Armv8btAsm* data) {
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPsubbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubwXmmXmm(Armv8btAsm* data) {
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPsubwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubdXmmXmm(Armv8btAsm* data) {
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opPsubdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubqXmmXmm(Armv8btAsm* data) {
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opPsubqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->vSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubsbXmmXmm(Armv8btAsm* data) {
-    data->vSignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vSignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPsubsbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vSignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubswXmmXmm(Armv8btAsm* data) {
-    data->vSignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vSignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPsubswXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubusbXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPsubusbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsubuswXmmXmm(Armv8btAsm* data) {
-    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPsubuswXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vUnsignedSaturatingSub(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -5687,10 +5252,10 @@ void opPmaddwdXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
     // multiply bottom 4x 16-bit numbers and put them into 4x 32-bit number in vTmpReg1
-    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H4);
+    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H4);
     // multiply top 4x 16-bit numbers and put them into 4x 32-bit number in vTmpReg2
-    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
-    data->vAddPairs(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, S4);
+    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
+    data->vAddPairs(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, S4);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
 }
@@ -5699,9 +5264,9 @@ void opPmaddwdXmmE128(Armv8btAsm* data) {
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg2, true);
-    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->decodedOp->reg), vTmpReg2, H4);
-    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->decodedOp->reg), vTmpReg2, H8);
-    data->vAddPairs(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, S4);
+    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->currentOp->reg), vTmpReg2, H4);
+    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->currentOp->reg), vTmpReg2, H8);
+    data->vAddPairs(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
@@ -5710,10 +5275,10 @@ void opPmulhwXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
     // high result of H0*H0, H1*H1, H2*H2 and H3*H3 will be in H1, H3, H5, H7
-    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H4);
+    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H4);
     // high result of H4*H4, H5*H5, H6*H6 and H7*H7 will be in H1, H3, H5, H7
-    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
-    data->vUnzipOdds(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, H8);
+    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
+    data->vUnzipOdds(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, H8);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
 }
@@ -5722,21 +5287,21 @@ void opPmulhwXmmE128(Armv8btAsm* data) {
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg2, true);
-    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->decodedOp->reg), vTmpReg2, H4);
-    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->decodedOp->reg), vTmpReg2, H8);
-    data->vUnzipOdds(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, H8);
+    data->vSignedMulLongLower(vTmpReg1, data->getNativeSseReg(data->currentOp->reg), vTmpReg2, H4);
+    data->vSignedMulLongUpper(vTmpReg2, data->getNativeSseReg(data->currentOp->reg), vTmpReg2, H8);
+    data->vUnzipOdds(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
 }
 void opPmullwXmmXmm(Armv8btAsm* data) {
-    data->vMul(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vMul(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPmullwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vMul(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vMul(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -5745,9 +5310,9 @@ void opPmuludqXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].pi.u64[1] = cpu->xmm[r1].pi.u32[2] * cpu->xmm[r2].pi.u32[2]
     U8 vTmpReg1 = data->vGetTmpReg();
     U8 vTmpReg2 = data->vGetTmpReg();
-    data->vConvertInt64ToLowerInt32(vTmpReg1, data->getNativeSseReg(data->decodedOp->reg));
-    data->vConvertInt64ToLowerInt32(vTmpReg2, data->getNativeSseReg(data->decodedOp->rm));
-    data->vUnsignedMulLongLower(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, S2);
+    data->vConvertInt64ToLowerInt32(vTmpReg1, data->getNativeSseReg(data->currentOp->reg));
+    data->vConvertInt64ToLowerInt32(vTmpReg2, data->getNativeSseReg(data->currentOp->rm));
+    data->vUnsignedMulLongLower(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, S2);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
 }
@@ -5757,8 +5322,8 @@ void opPmuludqXmmE128(Armv8btAsm* data) {
     U8 vTmpReg2 = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg1, true);
     data->vConvertInt64ToLowerInt32(vTmpReg1, vTmpReg1);
-    data->vConvertInt64ToLowerInt32(vTmpReg2, data->getNativeSseReg(data->decodedOp->reg));
-    data->vUnsignedMulLongLower(data->getNativeSseReg(data->decodedOp->reg), vTmpReg1, vTmpReg2, S2);
+    data->vConvertInt64ToLowerInt32(vTmpReg2, data->getNativeSseReg(data->currentOp->reg));
+    data->vUnsignedMulLongLower(data->getNativeSseReg(data->currentOp->reg), vTmpReg1, vTmpReg2, S2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg1);
     data->vReleaseTmpReg(vTmpReg2);
@@ -5766,21 +5331,21 @@ void opPmuludqXmmE128(Armv8btAsm* data) {
 void opSqrtpdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f64[0] = sqrt(cpu->xmm[rm].pd.f64[0] )
     // cpu->xmm[reg].pd.f64[1] = sqrt(cpu->xmm[rm].pd.f64[1] )
-    data->fSqrt(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->fSqrt(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opSqrtpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->fSqrt(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->fSqrt(data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSqrtsdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f64[0] = sqrt(cpu->xmm[rm].pd.f64[0] )
     U8 vTmpReg = data->vGetTmpReg();
-    data->fSqrt(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->fSqrt(vTmpReg, data->getNativeSseReg(data->currentOp->rm), D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opSqrtsdXmmE64(Armv8btAsm* data) {
@@ -5788,83 +5353,83 @@ void opSqrtsdXmmE64(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
     data->fSqrt(vTmpReg, vTmpReg, D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opAndnpdXmmXmm(Armv8btAsm* data) {
-    data->vAndNot(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vAndNot(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->getNativeSseReg(data->currentOp->reg), B16);
 }
 void opAndnpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAndNot(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vAndNot(data->getNativeSseReg(data->currentOp->reg), vTmpReg, data->getNativeSseReg(data->currentOp->reg), B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opAndpdXmmXmm(Armv8btAsm* data) {
-    data->vAnd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vAnd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opAndpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAnd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vAnd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPandXmmXmm(Armv8btAsm* data) {
-    data->vAnd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vAnd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPandXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAnd(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vAnd(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPandnXmmXmm(Armv8btAsm* data) {
-    data->vAndNot(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vAndNot(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->getNativeSseReg(data->currentOp->reg), B16);
 }
 void opPandnXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vAndNot(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vAndNot(data->getNativeSseReg(data->currentOp->reg), vTmpReg, data->getNativeSseReg(data->currentOp->reg), B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPorXmmXmm(Armv8btAsm* data) {
-    data->vOr(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vOr(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), data->getNativeSseReg(data->currentOp->reg), B16);
 }
 void opPorXmmXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vOr(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, data->getNativeSseReg(data->decodedOp->reg), B16);
+    data->vOr(data->getNativeSseReg(data->currentOp->reg), vTmpReg, data->getNativeSseReg(data->currentOp->reg), B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPslldqXmm(Armv8btAsm* data) {
     // _mm_srli_si128
-    if (data->decodedOp->imm > 15) {
-        data->vLoadConst(data->getNativeSseReg(data->decodedOp->reg), 0, B16);
+    if (data->currentOp->imm > 15) {
+        data->vLoadConst(data->getNativeSseReg(data->currentOp->reg), 0, B16);
     } else {
         U8 vTmpReg = data->vGetTmpReg();
         data->vLoadConst(vTmpReg, 0, B16);
-        data->vExtractVectorFromPair(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, data->getNativeSseReg(data->decodedOp->reg), 16-data->decodedOp->imm);
+        data->vExtractVectorFromPair(data->getNativeSseReg(data->currentOp->reg), vTmpReg, data->getNativeSseReg(data->currentOp->reg), 16-data->currentOp->imm);
         data->vReleaseTmpReg(vTmpReg);
     }
 }
 void opPsllqXmm(Armv8btAsm* data) {
-    data->vShiftLeftValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, D2);
+    data->vShiftLeftValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, D2);
 }
 void opPsllqXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, D2);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, D2);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsllqXmmE128(Armv8btAsm* data) {
@@ -5872,17 +5437,17 @@ void opPsllqXmmE128(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, D2);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPslldXmm(Armv8btAsm* data) {
-    data->vShiftLeftValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, S4);
+    data->vShiftLeftValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, S4);
 }
 void opPslldXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, S4);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, S4);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPslldXmmE128(Armv8btAsm* data) {
@@ -5890,17 +5455,17 @@ void opPslldXmmE128(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, S4);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsllwXmm(Armv8btAsm* data) {
-    data->vShiftLeftValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, H8);
+    data->vShiftLeftValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, H8);
 }
 void opPsllwXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, H8);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, H8);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsllwXmmE128(Armv8btAsm* data) {
@@ -5908,18 +5473,18 @@ void opPsllwXmmE128(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, H8);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsradXmm(Armv8btAsm* data) {
-    data->vSignedShiftRightValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, S4);
+    data->vSignedShiftRightValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, S4);
 }
 void opPsradXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, S4);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, S4);
     data->vNeg(vTmpReg, vTmpReg, S4);
-    data->vSignedShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vSignedShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsradXmmE128(Armv8btAsm* data) {
@@ -5928,18 +5493,18 @@ void opPsradXmmE128(Armv8btAsm* data) {
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, S4);
     data->vNeg(vTmpReg, vTmpReg, S4);
-    data->vSignedShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vSignedShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrawXmm(Armv8btAsm* data) {
-    data->vSignedShiftRightValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, H8);
+    data->vSignedShiftRightValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, H8);
 }
 void opPsrawXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, H8);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, H8);
     data->vNeg(vTmpReg, vTmpReg, H8);
-    data->vSignedShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrawXmmE128(Armv8btAsm* data) {
@@ -5948,29 +5513,29 @@ void opPsrawXmmE128(Armv8btAsm* data) {
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, H8);
     data->vNeg(vTmpReg, vTmpReg, H8);
-    data->vSignedShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrldqXmm(Armv8btAsm* data) {
     // _mm_srli_si128
-    if (data->decodedOp->imm > 15) {
-        data->vLoadConst(data->getNativeSseReg(data->decodedOp->reg), 0, B16);
+    if (data->currentOp->imm > 15) {
+        data->vLoadConst(data->getNativeSseReg(data->currentOp->reg), 0, B16);
     } else {
         U8 vTmpReg = data->vGetTmpReg();
         data->vLoadConst(vTmpReg, 0, B16);
-        data->vExtractVectorFromPair(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, data->decodedOp->imm);
+        data->vExtractVectorFromPair(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, data->currentOp->imm);
         data->vReleaseTmpReg(vTmpReg);
     }
 }
 void opPsrlqXmm(Armv8btAsm* data) {
-    data->vShiftRightValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, D2);
+    data->vShiftRightValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, D2);
 }
 void opPsrlqXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, D2);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, D2);
     data->vNeg(vTmpReg, vTmpReg, D2);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrlqXmmE128(Armv8btAsm* data) {
@@ -5979,18 +5544,18 @@ void opPsrlqXmmE128(Armv8btAsm* data) {
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, D2);
     data->vNeg(vTmpReg, vTmpReg, D2);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrldXmm(Armv8btAsm* data) {
-    data->vShiftRightValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, S4);
+    data->vShiftRightValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, S4);
 }
 void opPsrldXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, S4);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, S4);
     data->vNeg(vTmpReg, vTmpReg, S4);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrldXmmE128(Armv8btAsm* data) {
@@ -5999,18 +5564,18 @@ void opPsrldXmmE128(Armv8btAsm* data) {
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, S4);
     data->vNeg(vTmpReg, vTmpReg, S4);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrlwXmm(Armv8btAsm* data) {
-    data->vShiftRightValue(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->decodedOp->imm, H8);
+    data->vShiftRightValue(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->currentOp->imm, H8);
 }
 void opPsrlwXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    data->vDup(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 0, H8);
+    data->vDup(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 0, H8);
     data->vNeg(vTmpReg, vTmpReg, H8);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPsrlwXmmE128(Armv8btAsm* data) {
@@ -6019,80 +5584,80 @@ void opPsrlwXmmE128(Armv8btAsm* data) {
     data->vReadMemory128(addressReg, vTmpReg, true);
     data->vDup(vTmpReg, vTmpReg, 0, H8);
     data->vNeg(vTmpReg, vTmpReg, H8);
-    data->vShiftWithReg(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vShiftWithReg(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPxorXmmXmm(Armv8btAsm* data) {
-    data->vXor(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vXor(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPxorXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vXor(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vXor(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opOrpdXmmXmm(Armv8btAsm* data) {
-    data->vOr(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vOr(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opOrpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vOr(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vOr(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opXorpdXmmXmm(Armv8btAsm* data) {
-    data->vXor(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vXor(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opXorpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vXor(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vXor(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opCmppdXmmXmm(Armv8btAsm* data) {
-    fcmp(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    fcmp(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opCmppdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    fcmp(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    fcmp(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opCmpsdXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
-    fcmp(data, vTmpReg, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    fcmp(data, vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
 }
 void opCmpsdXmmE64(Armv8btAsm* data) {    
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    fcmp(data, vTmpReg, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D_scaler);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, vTmpReg, 0);
+    fcmp(data, vTmpReg, data->getNativeSseReg(data->currentOp->reg), vTmpReg, D_scaler);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opComisdXmmXmm(Armv8btAsm* data) {
-    comisXmmXmm(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    comisXmmXmm(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 
 void opComisdXmmE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    comisXmmXmm(data, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, true);
+    comisXmmXmm(data, data->getNativeSseReg(data->currentOp->reg), vTmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -6103,68 +5668,68 @@ void opUcomisdXmmE64(Armv8btAsm* data) {
     opComisdXmmE64(data);
 }
 void opPcmpgtbXmmXmm(Armv8btAsm* data) {
-    data->vCmpGreaterThan(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vCmpGreaterThan(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPcmpgtbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vCmpGreaterThan(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vCmpGreaterThan(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPcmpgtwXmmXmm(Armv8btAsm* data) {
-    data->vCmpGreaterThan(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vCmpGreaterThan(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPcmpgtwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vCmpGreaterThan(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vCmpGreaterThan(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPcmpgtdXmmXmm(Armv8btAsm* data) {
-    data->vCmpGreaterThan(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vCmpGreaterThan(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opPcmpgtdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vCmpGreaterThan(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vCmpGreaterThan(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPcmpeqbXmmXmm(Armv8btAsm* data) {
-    data->vCmpEqual(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vCmpEqual(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPcmpeqbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vCmpEqual(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vCmpEqual(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPcmpeqwXmmXmm(Armv8btAsm* data) {
-    data->vCmpEqual(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vCmpEqual(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPcmpeqwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vCmpEqual(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vCmpEqual(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPcmpeqdXmmXmm(Armv8btAsm* data) {
-    data->vCmpEqual(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vCmpEqual(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opPcmpeqdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vCmpEqual(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vCmpEqual(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -6172,96 +5737,96 @@ void opPcmpeqdXmmE128(Armv8btAsm* data) {
 void opMovqXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pi.u64[0] = cpu->xmm[rm].pi.u64[0];
     // cpu->xmm[reg].pi.u64[1] = 0;
-    data->vZeroExtend64To128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm));
+    data->vZeroExtend64To128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm));
 }
 void opMovqE64Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].pi.u64[0]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 0, true);
+    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 0, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovqXmmE64(Armv8btAsm* data) {
     // cpu->xmm[reg].pi.u64[0] = readq(address);
     // cpu->xmm[reg].pi.u64[1] = 0;
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovsdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.u64[0] = cpu->xmm[rm].pd.u64[0]
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, data->getNativeSseReg(data->decodedOp->rm), 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, data->getNativeSseReg(data->currentOp->rm), 0);
 }
 void opMovsdXmmE64(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.u64[0] = readq(address);
     // cpu->xmm[reg].pd.u64[1] = 0; // yes, memory to reg will 0 out the top, but xmm to xmm does not, unlike movq
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovsdE64Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].pd.u64[0]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 0, true);
+    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 0, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovapdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].pd = cpu->xmm[r2].pd;
-    data->vMov128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm));
+    data->vMov128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm));
 }
 void opMovapdXmmE128(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.u64[0] = readq(address);
     // cpu->xmm[reg].pd.u64[1] = readq(address + 8);
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovapdE128Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].pd.u64[0]);
     // writeq(address + 8, cpu->xmm[reg].pd.u64[1]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovupdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[r1].pd = cpu->xmm[r2].pd;
-    data->vMov128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm));
+    data->vMov128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm));
 }
 void opMovupdXmmE128(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.u64[0] = readq(address);
     // cpu->xmm[reg].pd.u64[1] = readq(address + 8);
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovupdE128Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].pd.u64[0]);
     // writeq(address + 8, cpu->xmm[reg].pd.u64[1]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovhpdXmmE64(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.u64[1] = readq(address);
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 1, true);
+    data->vReadMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 1, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovhpdE64Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].pd.u64[1]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 1, true);
+    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 1, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovlpdXmmE64(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.u64[0] = readq(address);
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory64(addressReg, data->decodedOp->reg, 0, true);
+    data->vReadMemory64(addressReg, data->currentOp->reg, 0, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovlpdE64Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].pd.u64[0]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 0, true);
+    data->vWriteMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 0, true);
     data->releaseTmpReg(addressReg);
 }
 
@@ -6270,74 +5835,74 @@ void opMovmskpdR32Xmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     U8 tmpReg = data->getTmpReg();         
 
-    data->vShiftRightValue(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), 63, D2);
-    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->decodedOp->reg), vTmpReg, 0, S4);
+    data->vShiftRightValue(vTmpReg, data->getNativeSseReg(data->currentOp->rm), 63, D2);
+    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->currentOp->reg), vTmpReg, 0, S4);
     data->vMovToGeneralReg32ZeroExtend(tmpReg, vTmpReg, 2, S4);
     data->shiftRegLeftWithValue32(tmpReg, tmpReg, 1);
-    data->orRegs32(data->getNativeReg(data->decodedOp->reg), data->getNativeReg(data->decodedOp->reg), tmpReg);
+    data->orRegs32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg), tmpReg);
     
     data->releaseTmpReg(tmpReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opMovdXmmR32(Armv8btAsm* data) {
     // couldn't see a way to do this in 1 instruction, "mov s0, w0" is not valid
-    data->vMovFromGeneralReg32(data->getNativeSseReg(data->decodedOp->reg), 0, data->getNativeReg(data->decodedOp->rm));
-    data->vMov32ToScaler(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), 0);
+    data->vMovFromGeneralReg32(data->getNativeSseReg(data->currentOp->reg), 0, data->getNativeReg(data->currentOp->rm));
+    data->vMov32ToScaler(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), 0);
 }
 void opMovdXmmE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory32(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory32(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovdR32Xmm(Armv8btAsm* data) {
-    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), 0, S4);
+    data->vMovToGeneralReg32ZeroExtend(data->getNativeReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), 0, S4);
 }
 void opMovdE32Xmm(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory32(addressReg, data->getNativeSseReg(data->decodedOp->reg), 0, true);
+    data->vWriteMemory32(addressReg, data->getNativeSseReg(data->currentOp->reg), 0, true);
     data->releaseTmpReg(addressReg);
 }
 void opMovdqaXmmXmm(Armv8btAsm* data) {
-    data->vMov128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm));
+    data->vMov128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm));
 }
 void opMovdqaXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovdqaE128Xmm(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovdquXmmXmm(Armv8btAsm* data) {
-    data->vMov128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm));
+    data->vMov128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm));
 }
 void opMovdquXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vReadMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovdquE128Xmm(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovntpdE128Xmm(Armv8btAsm* data) {
     // writeq(address, cpu->xmm[reg].pd.u64[0]);
     // writeq(address + 8, cpu->xmm[reg].pd.u64[1]);
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovntdqE128Xmm(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vWriteMemory128(addressReg, data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
 }
 void opMovntiE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->writeMemory(addressReg, data->getNativeReg(data->decodedOp->reg), 32, true);
+    data->writeMemory(addressReg, data->getNativeReg(data->currentOp->reg), 32, true);
     data->releaseTmpReg(addressReg);
 }
 void opMaskmovdquE128XmmXmm(Armv8btAsm* data) {
@@ -6346,7 +5911,7 @@ void opMaskmovdquE128XmmXmm(Armv8btAsm* data) {
     U8 addressReg = data->getTmpReg();
     bool needToReleaseAddressReg = true;
 
-    if (data->decodedOp->ea16) {
+    if (data->currentOp->ea16) {
         data->movRegToReg(addressReg, xEDI, 16, true);
         if (data->cpu->thread->process->hasSetSeg[DS]) {
             data->addRegs32(addressReg, addressReg, xDS);
@@ -6364,8 +5929,8 @@ void opMaskmovdquE128XmmXmm(Armv8btAsm* data) {
     U8 vTmpRegMask = data->vGetTmpReg();
 
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedShiftRightValue(vTmpRegMask, data->getNativeSseReg(data->decodedOp->rm), 7, B16);
-    data->vSelectBit(vTmpRegMask, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vSignedShiftRightValue(vTmpRegMask, data->getNativeSseReg(data->currentOp->rm), 7, B16);
+    data->vSelectBit(vTmpRegMask, data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->vWriteMemory128(addressReg, vTmpRegMask, true);
 
     if (needToReleaseAddressReg) {
@@ -6376,174 +5941,174 @@ void opMaskmovdquE128XmmXmm(Armv8btAsm* data) {
 }
 
 void opUnpckhpdXmmXmm(Armv8btAsm* data) {
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opUnpckhpdXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, D2);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, D2);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 void opUnpcklpdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.u64[0] = cpu->xmm[reg].pd.u64[0];
     // cpu->xmm[reg].pd.u64[1] = cpu->xmm[rm].pd.u64[0];
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 1, data->getNativeSseReg(data->decodedOp->rm), 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 1, data->getNativeSseReg(data->currentOp->rm), 0);
 }
 void opUnpcklpdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
-    data->vReadMemory64(addressReg, data->getNativeSseReg(data->decodedOp->reg), 1, true);
+    data->vReadMemory64(addressReg, data->getNativeSseReg(data->currentOp->reg), 1, true);
     data->releaseTmpReg(addressReg);
 }
 void opPunpckhbwXmmXmm(Armv8btAsm* data) {
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPunpckhbwXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, B16);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, B16);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 void opPunpckhwdXmmXmm(Armv8btAsm* data) {
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPunpckhwdXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, H8);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, H8);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 void opPunpckhdqXmmXmm(Armv8btAsm* data) {
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opPunpckhdqXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, S4);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, S4);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 void opPunpckhqdqXmmXmm(Armv8btAsm* data) {
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opPunpckhqdqXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     U8 addressReg = data->getAddressReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    data->vZipFromHigh128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), tmpReg, D2);
+    data->vZipFromHigh128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), tmpReg, D2);
     data->vReleaseTmpReg(tmpReg);
     data->releaseTmpReg(addressReg);
 }
 void opPunpcklbwXmmXmm(Armv8btAsm* data) {
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), B16);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), B16);
 }
 void opPunpcklbwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, B16);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, B16);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPunpcklwdXmmXmm(Armv8btAsm* data) {
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
 }
 void opPunpcklwdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPunpckldqXmmXmm(Armv8btAsm* data) {
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
 }
 void opPunpckldqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPunpcklqdqXmmXmm(Armv8btAsm* data) {
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), D2);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
 }
 void opPunpcklqdqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vZipFromLow128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), vTmpReg, D2);
+    data->vZipFromLow128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), vTmpReg, D2);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPackssdwXmmXmm(Armv8btAsm* data) {
-    if (data->decodedOp->reg == data->decodedOp->rm) {
+    if (data->currentOp->reg == data->currentOp->rm) {
         U8 vTmpReg = data->vGetTmpReg();
-        data->vSignedSaturateToSignedNarrowToLowerAndClear(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), S4);
-        data->vSignedSaturateToSignedNarrowToUpperAndKeep(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), S4);
-        data->vMov128(data->getNativeSseReg(data->decodedOp->reg), vTmpReg);
+        data->vSignedSaturateToSignedNarrowToLowerAndClear(vTmpReg, data->getNativeSseReg(data->currentOp->reg), S4);
+        data->vSignedSaturateToSignedNarrowToUpperAndKeep(vTmpReg, data->getNativeSseReg(data->currentOp->rm), S4);
+        data->vMov128(data->getNativeSseReg(data->currentOp->reg), vTmpReg);
         data->vReleaseTmpReg(vTmpReg);
     } else {
-        data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), S4);
-        data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
+        data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), S4);
+        data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
     }
 }
 void opPackssdwXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), S4);
-    data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, S4);
+    data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), S4);
+    data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->currentOp->reg), vTmpReg, S4);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPacksswbXmmXmm(Armv8btAsm* data) {
-    if (data->decodedOp->reg == data->decodedOp->rm) {
+    if (data->currentOp->reg == data->currentOp->rm) {
         U8 vTmpReg = data->vGetTmpReg();
-        data->vSignedSaturateToSignedNarrowToLowerAndClear(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), H8);
-        data->vSignedSaturateToSignedNarrowToUpperAndKeep(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), H8);
-        data->vMov128(data->getNativeSseReg(data->decodedOp->reg), vTmpReg);
+        data->vSignedSaturateToSignedNarrowToLowerAndClear(vTmpReg, data->getNativeSseReg(data->currentOp->reg), H8);
+        data->vSignedSaturateToSignedNarrowToUpperAndKeep(vTmpReg, data->getNativeSseReg(data->currentOp->rm), H8);
+        data->vMov128(data->getNativeSseReg(data->currentOp->reg), vTmpReg);
         data->vReleaseTmpReg(vTmpReg);
     } else {
-        data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), H8);
-        data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+        data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), H8);
+        data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
     }
 }
 void opPacksswbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), H8);
-    data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedSaturateToSignedNarrowToLowerAndClear(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), H8);
+    data->vSignedSaturateToSignedNarrowToUpperAndKeep(data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opPackuswbXmmXmm(Armv8btAsm* data) {
-    if (data->decodedOp->reg == data->decodedOp->rm) {
+    if (data->currentOp->reg == data->currentOp->rm) {
         U8 vTmpReg = data->vGetTmpReg();
-        data->vSignedSaturateToUnsignedNarrowToLowerAndClear(vTmpReg, data->getNativeSseReg(data->decodedOp->reg), H8);
-        data->vSignedSaturateToUnsignedNarrowToUpperAndKeep(vTmpReg, data->getNativeSseReg(data->decodedOp->rm), H8);
-        data->vMov128(data->getNativeSseReg(data->decodedOp->reg), vTmpReg);
+        data->vSignedSaturateToUnsignedNarrowToLowerAndClear(vTmpReg, data->getNativeSseReg(data->currentOp->reg), H8);
+        data->vSignedSaturateToUnsignedNarrowToUpperAndKeep(vTmpReg, data->getNativeSseReg(data->currentOp->rm), H8);
+        data->vMov128(data->getNativeSseReg(data->currentOp->reg), vTmpReg);
         data->vReleaseTmpReg(vTmpReg);
     } else {
-        data->vSignedSaturateToUnsignedNarrowToLowerAndClear(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), H8);
-        data->vSignedSaturateToUnsignedNarrowToUpperAndKeep(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), H8);
+        data->vSignedSaturateToUnsignedNarrowToLowerAndClear(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), H8);
+        data->vSignedSaturateToUnsignedNarrowToUpperAndKeep(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), H8);
     }
 }
 void opPackuswbXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    data->vSignedSaturateToUnsignedNarrowToLowerAndClear(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), H8);
-    data->vSignedSaturateToUnsignedNarrowToUpperAndKeep(data->getNativeSseReg(data->decodedOp->reg), vTmpReg, H8);
+    data->vSignedSaturateToUnsignedNarrowToLowerAndClear(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), H8);
+    data->vSignedSaturateToUnsignedNarrowToUpperAndKeep(data->getNativeSseReg(data->currentOp->reg), vTmpReg, H8);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -6553,18 +6118,18 @@ void opPause(Armv8btAsm* data) {
 }
 
 void opNone(Armv8btAsm* data) {
-    data->invalidOp(data->decodedOp->originalOp);
+    data->invalidOp(data->currentOp->originalOp);
 }
 
 void opCallback(Armv8btAsm* data) {
     //kpanic("Need to test");
-    // typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
+    // typedef void (OPCALL *OpCallback)(CPU* cpu, currentOp* op);
     data->syncRegsFromHost();
 
     data->mov64(0, xCPU); // param 1 (CPU)
     data->loadConst(1, 0); // param 2 (op)
 
-    data->callHost((void*)data->decodedOp->pfn);
+    data->callHost((void*)data->currentOp->pfn);
     data->syncRegsToHost();
     data->doJmp(true);
     data->done = true;

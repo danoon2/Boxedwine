@@ -22,15 +22,15 @@ U32 FsVirtualNode::getMode() {
 FsOpenNode* FsVirtualNode::open(U32 flags) {
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
         if (!this->canRead())
-            return NULL;
+            return nullptr;
     } else if ((flags & K_O_ACCMODE)==K_O_WRONLY) {
         if (!this->canWrite())
-            return NULL;
+            return nullptr;
     } else {
         if (!this->canWrite())
-            return NULL;
+            return nullptr;
         if (!this->canRead())
-            return NULL;
+            return nullptr;
     }
     if (flags & K_O_CREAT) {
         //return 0;
@@ -44,7 +44,7 @@ FsOpenNode* FsVirtualNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         kdebug("What about appending a virtual file");
     }
-    BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
+    std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(B(""), this->path, true);
     return this->openFunc(node, flags, this->openData);
 }
 

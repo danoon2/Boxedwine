@@ -21,31 +21,28 @@
 #include "ksignal.h"
 #include "kscheduler.h"
 
-void KSigAction::writeSigAction(U32 address, U32 sigsetSize) {
-    writed(address, this->handlerAndSigAction);
-    writed(address + 4, this->flags);
-    writed(address + 8, this->restorer);
+void KSigAction::writeSigAction(KMemory* memory, U32 address, U32 sigsetSize) {
+    memory->writed(address, this->handlerAndSigAction);
+    memory->writed(address + 4, this->flags);
+    memory->writed(address + 8, this->restorer);
     if (sigsetSize==4)
-        writed(address + 12, (U32)this->mask);
+        memory->writed(address + 12, (U32)this->mask);
     else if (sigsetSize==8)
-        writeq(address + 12, this->mask);
+        memory->writeq(address + 12, this->mask);
     else
         klog("writeSigAction: can't handle sigsetSize=%d", sigsetSize);
 }
 
-void KSigAction::readSigAction(U32 address, U32 sigsetSize) {
-    this->handlerAndSigAction = readd(address);
-    this->flags = readd(address + 4);
-    this->restorer = readd(address + 8);
+void KSigAction::readSigAction(KMemory* memory, U32 address, U32 sigsetSize) {
+    this->handlerAndSigAction = memory->readd(address);
+    this->flags = memory->readd(address + 4);
+    this->restorer = memory->readd(address + 8);
     if (sigsetSize==4)
-        this->mask = readd(address + 12);
+        this->mask = memory->readd(address + 12);
     else if (sigsetSize==8)
-        this->mask = readq(address + 12);
+        this->mask = memory->readq(address + 12);
     else
         klog("readSigAction: can't handle sigsetSize=%d", sigsetSize);
-}
-
-KSignal::KSignal() : KObject(KTYPE_SIGNAL), blocking(false), mask(0), signalingPid(0), signalingUid(0), lockCond(B("KSignal::lockCond")) {
 }
 
 void KSignal::setBlocking(bool blocking) {
@@ -67,7 +64,7 @@ bool KSignal::isAsync() {
 
 KFileLock* KSignal::getLock(KFileLock* lock) {
     kdebug("KSignal::getLock not implemented yet");
-    return 0;
+    return nullptr;
 }
 
 U32 KSignal::setLock(KFileLock* lock, bool wait) {
@@ -81,9 +78,9 @@ bool KSignal::isOpen() {
 
 void KSignal::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     if (events & K_POLLIN) {
-        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, &parentCondition);
+        BOXEDWINE_CONDITION_ADD_PARENT(this->lockCond, parentCondition);
     } else {
-        BOXEDWINE_CONDITION_SET_PARENT(this->lockCond, nullptr);
+        BOXEDWINE_CONDITION_REMOVE_PARENT(this->lockCond, parentCondition);
     }
     if (events & K_POLLOUT) {
         kpanic("waiting on a signal not implemented yet");
@@ -154,7 +151,7 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
                 for (U32 i=0;i<32;i++) {
                     if ((todo & ((U64)1 << i))!=0) {
                         thread->pendingSignals &= ~(1 << i);                
-                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction:NULL);
+                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction: nullptr);
                         result+=128;
                         len-=128;
                         buffer+=128;
@@ -172,7 +169,7 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
                 for (U32 i=0;i<32;i++) {
                     if ((todo & ((U64)1 << i))!=0) {
                         thread->process->pendingSignals &= ~(1 << i);                
-                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction:NULL);
+                        writeSignal(buffer, i, this->signalingPid, this->signalingUid, (this->sigAction.sigInfo[0]==i)?&this->sigAction: nullptr);
                         result+=128;
                         len-=128;
                         buffer+=128;
@@ -207,17 +204,21 @@ U32 KSignal::readNative(U8* buffer, U32 len) {
     return 0;
 }
 
-U32 KSignal::stat(U32 address, bool is64) {
+U32 KSignal::stat(KProcess* process, U32 address, bool is64) {
     kpanic("KSignal::stat not implemented yet");
     return 0;
 }
 
-U32 KSignal::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 KSignal::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 
 bool KSignal::canMap() {
     return false;
+}
+
+BString KSignal::selfFd() {
+    return B("anon_inode:[signal]");
 }
 
 S64 KSignal::seek(S64 pos) {
@@ -228,7 +229,7 @@ S64 KSignal::getPos() {
     return 0;
 }
 
-U32 KSignal::ioctl(U32 request) {
+U32 KSignal::ioctl(KThread* thread, U32 request) {
     return -K_ENOTTY;
 }
 
@@ -240,9 +241,9 @@ S64 KSignal::length() {
     return -1;
 }
 
-U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags) {
-    KFileDescriptor* fd;
-    KThread* thread = KThread::currentThread();
+U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 flags) {
+    KFileDescriptor* fd = nullptr;
+    KMemory* memory = thread->memory;
 
     if (fildes>=0) {
         fd = thread->process->getFileDescriptor(fildes);
@@ -262,12 +263,12 @@ U32 syscall_signalfd4(S32 fildes, U32 mask, U32 maskSize, U32 flags) {
     }
     std::shared_ptr<KSignal> s = std::dynamic_pointer_cast<KSignal>(fd->kobject);
     if (maskSize==4) {
-        s->mask = readd(mask);
+        s->mask = memory->readd(mask);
     } else if (maskSize==8) {
-        s->mask = readq(mask);
+        s->mask = memory->readq(mask);
     } else {
         kpanic("syscall_signalfd4 unknown mask size: %d", maskSize);
     }
-    s->blocking = (fd->accessFlags & K_O_NONBLOCK)!=0;
+    s->blocking = (fd->accessFlags & K_O_NONBLOCK) == 0;
     return fd->handle;
 }

@@ -30,28 +30,14 @@
 #include "platformtypes.h"
 #define FD S32
 
-#ifndef K_NATIVE_PAGE_SIZE
-#define K_NATIVE_PAGE_SIZE 4096
-#define K_NATIVE_NUMBER_OF_PAGES 0x100000
-#define K_NATIVE_PAGE_MASK 0xFFF
-#define K_NATIVE_PAGE_SHIFT 12
-#define K_NATIVE_PAGES_PER_PAGE 1
-#endif
-
-#ifndef BOXEDWINE_64BIT_MMU
-#define BOXEDWINE_DEFAULT_MMU 1
-#endif
-
-#ifdef BOXEDWINE_HAS_SETJMP
-#include <setjmp.h>
-#endif
-
 #ifdef __APPLE__
 #define lseek64 lseek
 #endif
 
 #ifdef BOXEDWINE_MSVC
-#define THREAD_LOCAL __declspec(thread)
+#include <codeanalysis\warnings.h>
+#pragma warning(disable:26451) 
+#pragma warning(disable:6297) 
 #define PLATFORM_STAT_STRUCT struct _stat32i64
 #define PLATFORM_STAT _stat32i64
 #define OPCALL __fastcall
@@ -74,9 +60,9 @@
 char* platform_strcasestr(const char* s1, const char* s2);
 #define strcasestr platform_strcasestr
 #else
+#define ALL_CODE_ANALYSIS_WARNINGS 0
 #pragma clang diagnostic ignored "-Winvalid-offsetof"
 #include <limits.h>
-#define THREAD_LOCAL thread_local
 #if ( __WORDSIZE == 64 )
 #define BOXEDWINE_64   1
 #endif
@@ -134,12 +120,10 @@ public:
     static U32 getPageAllocationGranularity();
     static U32 getPagePermissionGranularity(); // assumed to be smaller or equal to getPageAllocationGranularity and that getPageAllocationGranularity / getPagePermissionGranularity is a whole number
     static U32 allocateNativeMemory(U64 address); // page must be aligned to Platform::getAllocationGranularity
-    static U32 freeNativeMemory(U64 address); // page  must be aligned to Platform::getAllocationGranularity
     static U32 updateNativePermission(U64 address, U32 permission, U32 len = 0); // page must be aligned to Platform::getPagePermissionGranularity.  when len == 0, it will default to getPagePermissionGranularity() << K_PAGE_SHIFT
-    static void* reserveNativeMemory(bool large);
     static void releaseNativeMemory(void* address, U64 len);
-    static void commitNativeMemory(void* address, U64 len);
-    static void* allocExecutable64kBlock(U32 count);
+    static U8* alloc64kBlock(U32 count, bool executable = false);
+    static BString procStat();
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);
@@ -155,16 +139,16 @@ private:
 #include <string.h>
 #include "log.h"
 
-INLINE void safe_strcpy(char* dest, const char* src, int bufferSize) {
-    int len = (int)strlen(src);
+INLINE void safe_strcpy(char* dest, const char* src, size_t bufferSize) {
+    size_t len = strlen(src);
     if (len+1>bufferSize) {
         kpanic("safe_strcpy failed to copy %s, buffer is %d bytes", src, bufferSize);
     }
     strcpy(dest, src);
 }
 
-INLINE void safe_strcat(char* dest, const char* src, int bufferSize) {
-    int len = (int)(strlen(src)+strlen(dest));
+INLINE void safe_strcat(char* dest, const char* src, size_t bufferSize) {
+    size_t len = strlen(src)+strlen(dest);
     if (len+1>bufferSize) {
         kpanic("safe_strcat failed to copy %s, buffer is %d bytes", src, bufferSize);
     }

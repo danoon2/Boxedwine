@@ -46,14 +46,16 @@ typedef enum {
 #define xSrc 15
 #define xDst 16
 #define xResult 17
+#define xBranchEip 17
 
 // don't use x18
 
 // x19 to x29 callee saved
 // These should be one that won't need to be reloaded after a function call
 #define xCPU 19
-#define xMem 20
-#define xLargeAddress 21
+#define xMemRead 20
+#define xMemWrite 21
+
 // addresses, not values
 #define xES 22
 #define xCS 23
@@ -62,14 +64,11 @@ typedef enum {
 #define xFS 26
 #define xGS 27
 #define xStackMask 28
-// calleeSavedReg must only be used between syncRegFromHost and syncRegToHost
-#define calleeSavedReg 28
+#define xFpuTop 30
+#define xFpuOffset 29
 
 // x29 is the frame register
 // x30 is the link register (used to return from subroutines)
-
-#define xFpuOffset 29
-#define xFpuTop 30
 
 // 18 is used as TEB?
 // Apple doc: The register x18 is reserved for the platform. Conforming software should not make use of it.
@@ -151,6 +150,9 @@ typedef enum {
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(Armv8btCPU, exitToStartThreadLoop))
 #define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(Armv8btCPU, returnToLoopAddress))
 #define CPU_OFFSET_MEMOFFSET (U32)(offsetof(CPU, memOffsets))
+#define CPU_OFFSET_SYNC_TO_HOST_ADDRESS (U32)(offsetof(Armv8btCPU, syncToHostAddress))
+#define CPU_OFFSET_SYNC_FROM_HOST_ADDRESS (U32)(offsetof(Armv8btCPU, syncFromHostAddress))
+#define CPU_OFFSET_DO_SINGLE_OP_ADDRESS (U32)(offsetof(Armv8btCPU, doSingleOpAddress))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
@@ -171,7 +173,7 @@ enum DoIfOperator {
 class Armv8btAsm : public Armv8btData {
 public:  
     Armv8btAsm(Armv8btCPU* cpu);    
-    virtual void translateInstruction();
+    virtual void translateInstruction() override;
 
     U32 flagsNeeded();
     U8 getTmpReg();
@@ -192,17 +194,19 @@ public:
     void logOp(U32 eip);
     void signalIllegalInstruction(int code);
 
-    void addDynamicCheck(bool panic);
 	void saveNativeState();
 	void restoreNativeState();
     void addReturn();
-    void createCodeForRetranslateChunk();
+    void createCodeForDoSingleOp();
+    void emulateSingleOp(DecodedOp* op);
     void createCodeForJmpAndTranslateIfNecessary();
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
     void createCodeForRunSignal();
 #endif
-    
+    void createCodeForSyncToHost();
+    void createCodeForSyncFromHost();
+
     void writeToRegFromValue(U8 reg, U64 value);    
     void setNativeFlags(U32 flags, U32 mask);
     void write64Buffer(U8* buffer, U64 value);
@@ -244,9 +248,9 @@ public:
     void compareZeroAndBranch(U8 reg, bool isZero, U32 eip);
     void writeJumpAmount(U32 pos, U32 toLocation);
     void doJmp(bool mightNeedCS); // jump to current cpu->eip
-    void jmpReg(U8 reg, bool mightNeedCS);
-    virtual void jumpTo(U32 eip); // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
-    void addTodoLinkJump(U32 eip, U32 size, bool sameChunk);
+    void jmpRegToxBranchEip(bool mightNeedCS);
+    virtual void jumpTo(U32 eip) override; // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
+    void addTodoLinkJump(U32 eip);
     U8 getRegWithConst(U64 value);
     void branchNativeRegister(U8 reg);
     U32 branchEQ();
@@ -260,7 +264,10 @@ public:
     U32 branch();
     void syncRegsToHost();
     void syncRegsFromHost(bool eipInBranchReg = false);
+    void callSyncRegsFromHost(); // doesn't set eip
     void callHost(void* pfn);
+    void ret();
+    void blr(U8 reg);
 
     // stack
     void pushNativeReg16(U8 reg);    
@@ -289,12 +296,11 @@ public:
     void signExtend64(U8 dst, U8 src, U32 width);
     void notReg32(U8 dst, U8 src);
 
-    U8 getHostMem(U8 regEmulatedAddress, S8 tmpReg = -1);
-    U8 getHostMemWithOffset(U8 regEmulatedAddress, U32 offset);
-    U8 getHostMemFromAddress(U32 address);
+    U8 getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool skipAlignmentCheck = false, S8 tmpReg = -1);
     void releaseHostMem(U8 reg);
 
     // mov to/from memory
+    void readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 width, std::function<void(void)> pfn, bool lock = false, bool doWrite = true);
     void readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetToAddress, bool lock = false, bool signExtend = false);
     void writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffsetToAddress, bool lock = false, U8 regWithOriginalValue = 0, U32 restartPos = 0, bool generateMemoryBarrierForLock = true);
     void fullMemoryBarrier();
@@ -363,6 +369,7 @@ public:
     void cmpRegs32(U8 src1, U8 src2);
     void cmpRegs64(U8 src1, U8 src2);
     void cmpValue32(U8 src, U32 value);
+    void cmpValue64(U8 src, U32 value);
 
     void modValue32(U8 dst, U8 src, U32 value);
     void unsignedDivideReg32(U8 dst, U8 top, U8 bottom);
@@ -552,11 +559,11 @@ public:
     void addReturnFromTest();
 #endif
 
+    virtual void reset() override;
 private:
     void vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, bool is1128);
     void vIns(U8 rd, U8 rn, U8 imm4, U8 imm5);
 
-    void internal_addDynamicCheck(U32 address, U32 len);
     bool isEipInChunk(U32 eip);
 };
 

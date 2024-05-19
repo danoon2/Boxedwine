@@ -5,7 +5,8 @@ class ContainersView : public BaseView {
 public:
 	ContainersView(BString tab, BString app);
 
-	virtual bool saveChanges();
+    // from BaseView
+	bool saveChanges() override;
     
 private:
     void setCurrentApp(BoxedApp* app);
@@ -13,7 +14,7 @@ private:
     void rebuildShortcutsCombobox();
     void showAppSection(bool show);
     void deleteContainer(BoxedContainer* container);
-    void winetricks(const WineVersion& winetricks, BString verb);
+    void winetricks(const std::shared_ptr<FileSystemZip>& winetricks, BString verb);
 
     BoxedContainer* currentContainer;
     bool currentContainerChanged;
@@ -25,7 +26,7 @@ private:
 
     std::shared_ptr<LayoutSection> section;
     std::shared_ptr<LayoutTextInputControl> containerNameControl;
-    std::shared_ptr<LayoutComboboxControl> containerWineVersionControl;
+    std::shared_ptr<LayoutComboboxControl> containerFileSystemControl;
     std::shared_ptr<LayoutComboboxControl> containerWindowsVersionControl;
     std::shared_ptr<LayoutCheckboxControl> containerGdiControl;
     std::shared_ptr<LayoutComboboxControl> containerRendererControl;
@@ -36,6 +37,7 @@ private:
     std::shared_ptr<LayoutComboboxControl> componentsControl;
     std::shared_ptr<LayoutComboboxControl> fontsControl;
     std::shared_ptr<LayoutComboboxControl> dllsControl;
+    std::shared_ptr<LayoutComboboxControl> packagesControl;
 
     std::shared_ptr<LayoutButtonControl> containerNewShortcutButtonControl;
 

@@ -19,37 +19,37 @@
 #ifndef __KPROCESS_H__
 #define __KPROCESS_H__
 
-#define ADDRESS_PROCESS_MMAP_START		0xD0000
-#define ADDRESS_PROCESS_NATIVE          0xE0000
-#define ADDRESS_PROCESS_LOADER			0xF0000
-#define ADDRESS_PROCESS_STACK_START		0xF4000
-#define ADDRESS_PROCESS_FRAME_BUFFER	0xF8000
+#define ADDRESS_PROCESS_MMAP_START		     0xD0000
+#define ADDRESS_PROCESS_LOADER			     0xF0000
 #define ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS 0xF8000000
 
 class MappedFileCache;
-class Memory;
 
-class MappedFile : public BoxedPtrBase {
+class MappedFile {
 public:
-    BoxedPtr<MappedFileCache> systemCacheEntry;
+    MappedFile() = default;
+
+    std::shared_ptr<MappedFileCache> systemCacheEntry;
     std::shared_ptr<KFile> file;
-    U32 address;
-    U64 len;
-    U64 offset;
+    U32 address = 0;
+    U64 len = 0;
+    U64 offset = 0;
 };
 
 #define K_SIG_INFO_SIZE 10
 
 class KSigAction {
 public:
-    U32 handlerAndSigAction;
-    U64 mask;
-    U32 flags;
-    U32 restorer;
-    U32 sigInfo[K_SIG_INFO_SIZE];
+    KSigAction() = default;
 
-    void writeSigAction(U32 address, U32 sigsetSize);
-    void readSigAction(U32 address, U32 sigsetSize);
+    U32 handlerAndSigAction = 0;
+    U64 mask = 0;
+    U32 flags = 0;
+    U32 restorer = 0;
+    U32 sigInfo[K_SIG_INFO_SIZE] = { 0 };
+
+    void writeSigAction(KMemory* memory, U32 address, U32 sigsetSize);
+    void readSigAction(KMemory* memory, U32 address, U32 sigsetSize);
 };
 
 #define MAX_SIG_ACTIONS 64
@@ -67,17 +67,17 @@ public:
 
 #define K_MADV_DONTNEED 4
 
-class KProcessTimer : public KTimer { 
+class KProcessTimer : public KTimerCallback {
 public:
-    bool run();
+    bool run() override;
 private:
     friend class KProcess;
     std::weak_ptr<KProcess> process;
 };
 
-class AttachedSHM : public BoxedPtrBase {
+class AttachedSHM {
 public:
-    AttachedSHM(const BoxedPtr<SHM>& shm, U32 address, U32 pid) : shm(shm), address(address), pid(pid) {
+    AttachedSHM(const std::shared_ptr<SHM>& shm, U32 address, U32 pid) : shm(shm), address(address), pid(pid) {
         this->shm->atime = KSystem::getSystemTimeAsMicroSeconds();
         this->shm->lpid = pid;
         this->shm->incAttach();
@@ -87,7 +87,7 @@ public:
         this->shm->lpid = pid;
         this->shm->decAttach();
     }
-    BoxedPtr<SHM> shm;
+    std::shared_ptr<SHM> shm;
     const U32 address;
     const U32 pid;
 };
@@ -103,8 +103,7 @@ public:
     KThread* getThreadById(U32 tid);
     U32 getThreadCount();
 	void deleteThread(KThread* thread);
-    void killAllThreadsExceptCurrent();
-    void killAllThreads();
+    void killAllThreads(KThread* exceptThisOne = nullptr);
     BString getAbsoluteExePath();
     void clone(const std::shared_ptr<KProcess>& from);
     U32 getNextFileDescriptorHandle(int after);
@@ -130,66 +129,55 @@ public:
     void iterateThreads(std::function<bool(KThread*)> callback);
     void iterateThreadIds(std::function<bool(U32)> callback);
 
-    U32 readd(U32 address);
-    U16 readw(U32 address);
-    U8  readb(U32 address);
-    void writed(U32 address, U32 value);
-    void writew(U32 address, U16 value);
-    void writeb(U32 address, U8 value);
-    void memcopyFromNative(U32 address, const void* p, U32 len);
-    void memcopyToNative(U32 address, void* p, U32 len);
-
     // syscalls    
     U32 access(BString path, U32 mode);
     U32 alarm(U32 seconds);    
-    U32 brk(U32 address);
+    U32 brk(KThread* thread, U32 address);
     U32 chdir(BString path);
     U32 chmod(BString path, U32 mode);
-    U32 clone(U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid);
+    U32 clone3(KThread* thread, U32 args, U32 size);
+    U32 clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 tls, U32 ctid);
     U32 close(FD fildes);
     U32 dup(U32 fildes);    
     U32 dup2(FD fildes, FD fildes2);
     U32 epollcreate(U32 size, U32 flags);
     U32 epollctl(FD epfd, U32 op, FD fd, U32 address);
-    U32 epollwait(FD epfd, U32 events, U32 maxevents, U32 timeout);
-    U32 execve(BString path, std::vector<BString>& args, const std::vector<BString>& envs);
-    U32 exit(U32 code);
-    U32 exitgroup(U32 code);
+    U32 epollwait(KThread* thread, FD epfd, U32 events, U32 maxevents, U32 timeout);
+    U32 execve(KThread* thread, BString path, std::vector<BString>& args, const std::vector<BString>& envs);
+    U32 exit(KThread* thread, U32 code);
+    U32 exitgroup(KThread* thread, U32 code);
     U32 faccessat(U32 dirfd, BString path, U32 mode, U32 flags);
     U32 fchdir(FD fildes);
-    U32 fcntrl(FD fildes, U32 cmd, U32 arg);
+    U32 fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg);
     U32 fstat64(FD handle, U32 buf);
     U32 fstatat64(FD dirfd, BString path, U32 buf, U32 flag);
-    U32 fstatfs64(FD fildes, U32 address);    
+    U32 fstatfs64(FD fildes, U32 address);
+    U32 statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf);
     U32 ftruncate64(FD fildes, U64 length);
     U32 getcwd(U32 buffer, U32 size);
     U32 getdents(FD fildes, U32 dirp, U32 count, bool is64);
-    U32 getrusuage(U32 who, U32 usage);
-    U32 ioctl(FD fildes, U32 request);
+    U32 getrusuage(KThread* thread, U32 who, U32 usage);
+    U32 ioctl(KThread* thread, FD fildes, U32 request);
     U32 link(BString from, BString to);
     S64 llseek(FD fildes, S64 offset, U32 whence);
     U32 lseek(FD fd, S32 offset, U32 whence);
     U32 lstat64(BString path, U32 buffer);
     U32 mkdir(BString path);    
     U32 mkdirat(U32 dirfd, BString path, U32 mode);
-    U32 mincore(U32 address, U32 length, U32 vec);
-    U32 mlock(U32 addr, U32 len);
-    U32 mmap(U32 addr, U32 len, S32 prot, S32 flags, FD fildes, U64 off);
-    U32 mprotect(U32 address, U32 len, U32 prot);
-    U32 mremap(U32 oldaddress, U32 oldsize, U32 newsize, U32 flags);
-    U32 msync(U32 addr, U32 len, U32 flags);
+    U32 mincore(U32 address, U32 length, U32 vec);    
+    U32 msync(KThread* thread, U32 addr, U32 len, U32 flags);
     U32 open(BString path, U32 flags);
     U32 openat(FD dirfd, BString path, U32 flags);
     U32 prctl(U32 option, U32 arg2);
-    U32 pread64(FD fildes, U32 address, U32 len, U64 offset);
-    U32 pwrite64(FD fildes, U32 address, U32 len, U64 offset);
-    U32 read(FD fildes, U32 bufferAddress, U32 bufferLen);
+    U32 pread64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
+    U32 pwrite64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset);
+    U32 read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen);
     U32 readlink(BString path, U32 buffer, U32 bufSize);
     U32 readlinkat(FD dirfd, BString path, U32 buf, U32 bufsiz);
     U32 rename(BString from, BString to);
     U32 renameat(FD olddirfd, BString from, FD newdirfd, BString to);
     U32 rmdir(BString path);        
-    U32 set_thread_area(U32 info);
+    U32 set_thread_area(KThread* thread, U32 info);
     U32 setitimer(U32 which, U32 newValue, U32 oldValue);
     U32 shmdt(U32 shmaddr);
     U32 sigaction(U32 sig, U32 act, U32 oact, U32 sigsetSize);    
@@ -200,111 +188,117 @@ public:
     U32 symlinkat(BString, FD dirfd, BString linkpath);
     U32 umask(U32 umask);
     U32 unlinkFile(BString path);
-    U32 unlinkat(FD dirfd, BString path, U32 flags);
-    U32 unmap(U32 address, U32 len);
+    U32 unlinkat(FD dirfd, BString path, U32 flags);    
     U32 utimes(BString path, U32 times);
-    U32 utimesat(FD dirfd, BString path, U32 times, U32 flags);
+    U32 utimesat(FD dirfd, BString path, U32 times, U32 flags, bool time64);
     U32 utimesat64(FD dirfd, BString path, U32 times, U32 flags);
-    U32 write(FD fildes, U32 bufferAddress, U32 bufferLen);
-    U32 writev(FD handle, U32 iov, S32 iovcnt);
+    U32 write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen);
+    U32 writev(KThread* thread, FD handle, U32 iov, S32 iovcnt);
+    U32 sendFile(U32 outFd, U32 inFd, U32 offset, U32 count);
     U32 memfd_create(BString name, U32 flags);
+    U32 timerfd_create(U32 clockid, U32 flags);
+    U32 timerfd_settime(U32 fd, U32 flags, U32 newValue, U32 oldValue);
+    U32 timerfd_gettime(U32 fd, U32 value);
 
     user_desc* getLDT(U32 index);
-    BoxedPtr<SHM> allocSHM(U32 key, U32 afterIndex);
-    BoxedPtr<SHM> getSHM(U32 key);
-    void attachSHM(U32 address, const BoxedPtr<SHM>& shm);
+    std::shared_ptr<SHM> allocSHM(U32 key, U32 afterIndex);
+    std::shared_ptr<SHM> getSHM(U32 key);
+    void attachSHM(U32 address, const std::shared_ptr<SHM>& shm);
     void printMappedFiles();
 
-    U32 id;
-    U32 parentId;
-    U32 groupId;
-    U32 userId;
-    U32 effectiveUserId;
-    U32 effectiveGroupId;
-    U64 pendingSignals;
+    U32 id = 0;
+    U32 parentId = 0;
+    U32 groupId = 0;
+    U32 userId = 0;
+    U32 effectiveUserId = 0;
+    U32 effectiveGroupId = 0;
+    U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
-    U32 signaled;
-    U32 exitCode;
-    U32 umaskValue;
-    bool terminated;
-    Memory* memory;
+    U32 signaled = 0;
+    U32 exitCode = 0;
+    U32 umaskValue = 0;
+    bool terminated = false;
+    KMemory* memory = nullptr;
+
     BString currentDirectory;
-    U32 brkEnd;    
+    U32 brkEnd = 0;    
     KSigAction sigActions[MAX_SIG_ACTIONS];
     KProcessTimer timer;
     BString commandLine;
     BString exe;
-    BString name;
+    BString name; // mainly used for logging
     std::vector<BString> path;        
-    KThread* waitingThread;
-    U32 loaderBaseAddress;
-    U32 phdr;
-    U32 phnum;
-    U32 phentsize;
-    U32 entry;
-    U32 eventQueueFD;     
+    KThread* waitingThread = nullptr;
+    U32 loaderBaseAddress = 0;
+    U32 phdr = 0;
+    U32 phnum = 0;
+    U32 phentsize = 0;
+    U32 entry = 0;
+    U32 eventQueueFD = 0;
     BOXEDWINE_CONDITION exitOrExecCond;
 
-    bool hasSetStackMask;
-    bool hasSetSeg[6];
-#ifdef BOXEDWINE_64BIT_MMU
-	Memory* previousMemory;
-    U32 nextNativeAddress;
-    std::unordered_map<U32, U32> glStrings;    
-    U32 allocNative(U32 len);    
-#endif
-    U32 glStringsiExtensions;
+    bool hasSetStackMask = false;
+    bool hasSetSeg[8] = { false }; // 8 just to prevent bounds checking
+
+    BHashTable<U32, U32> glStrings;    
+    U32 glStringsiExtensions = 0;
     std::vector<U32> glStringsiExtensionsOffset;
-    U32 numberOfExtensions;
+    U32 numberOfExtensions = 0;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    bool emulateFPU;
-    void* reTranslateChunkAddress; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
-    void* reTranslateChunkAddressFromReg; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
-    void* returnToLoopAddress; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
-#ifdef BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-    void* jmpAndTranslateIfNecessary;
-#endif
+    bool emulateFPU = false;
+    void* reTranslateChunkAddress = nullptr; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated
+    void* syncToHostAddress = nullptr;
+    void* syncFromHostAddress = nullptr;
+    void* doSingleOpAddress = nullptr;
+    void* returnToLoopAddress = nullptr; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
+    void* jmpAndTranslateIfNecessary = nullptr;
 #ifdef BOXEDWINE_POSIX
     void* runSignalAddress;
 #endif
 #endif
-private:
-    std::unordered_map<U32, KFileDescriptor*> fds;
     BOXEDWINE_MUTEX fdsMutex;
+private:
+    BHashTable<U32, KFileDescriptor*> fds;    
 
-    std::unordered_map<U32, user_desc> ldt;
+    user_desc ldt[LDT_ENTRIES];
     BOXEDWINE_MUTEX ldtMutex;
 
-    std::unordered_map<U32, BoxedPtr<SHM> > privateShm; // key is shmid
+    BHashTable<U32, std::shared_ptr<SHM>> privateShm; // key is shmid
     BOXEDWINE_MUTEX privateShmMutex;
 
-    std::unordered_map<U32, BoxedPtr<AttachedSHM> > attachedShm; // key is attached address
+    BHashTable<U32, std::shared_ptr<AttachedSHM>> attachedShm; // key is attached address
     BOXEDWINE_MUTEX attachedShmMutex;
 
-    std::unordered_map<U32, BoxedPtr<MappedFile> > mappedFiles; // key is address
+    friend class KMemory;
+    BHashTable<U32, std::shared_ptr<MappedFile> > mappedFiles; // key is address
     BOXEDWINE_MUTEX mappedFilesMutex;
 
-    std::unordered_map<U32, KThread*> threads;
+    BHashTable<U32, KThread*> threads;
     BOXEDWINE_MUTEX threadsMutex;
 public:
+    KThread* getThread() {return threads.begin()->value;}
     BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed
 private:
 
-    U32 usedTLS[TLS_ENTRIES];
+    U32 usedTLS[TLS_ENTRIES] = { 0 };
     BOXEDWINE_MUTEX usedTlsMutex;
 
     U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);
     void cleanupProcess();
     void setupCommandlineNode();
     void initStdio();
-    BoxedPtr<FsNode> findInPath(BString path);
+    std::shared_ptr<FsNode> findInPath(BString path);
     U32 readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize);
-    void onExec();
+    void onExec(KThread* thread);
     U32 getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory);
 
-    BoxedPtr<FsNode> commandLineNode;
-    BoxedPtr<FsNode> procNode;
-    bool systemProcess;
+    bool systemProcess = false;
+    bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent
+
+public:
+    std::shared_ptr<FsNode> processNode; // in /proc/<pid>
+    std::shared_ptr<FsNode> taskNode; // in /proc/<pid>/task
+    std::shared_ptr<FsNode> fdNode; // in /proc/<pid>/fd
 };
 
 #endif

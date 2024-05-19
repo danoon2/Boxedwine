@@ -20,13 +20,19 @@
 
 #include "bufferaccess.h"
 
-BufferAccess::BufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer) : FsOpenNode(node, flags) {	
+BufferAccess::BufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, BString* buffer) : FsOpenNode(node, flags) {
     this->buffer = buffer;
     this->pos = 0;
 }
 
+BufferAccess::BufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, const BString& buffer) : FsOpenNode(node, flags) {
+    this->storage = buffer; // make a copy
+    this->buffer = &storage;
+    this->pos = 0;
+}
+
 S64 BufferAccess::length() {
-    return this->buffer.length();
+    return this->buffer->length();
 }
 
 bool BufferAccess::setLength(S64 len) {
@@ -38,27 +44,36 @@ S64 BufferAccess::getFilePointer() {
 }
 
 S64 BufferAccess::seek(S64 pos) {
-    if (pos>(S64)this->buffer.length())
-        pos = (S64)this->buffer.length();
+    if (pos>(S64)this->buffer->length())
+        pos = (S64)this->buffer->length();
     return this->pos = (S32)pos;
 }
 
 U32 BufferAccess::readNative(U8* buffer, U32 len) {
     U32 pos = (U32)this->pos;
-    if (pos+len>(U32)this->buffer.length())
-        len = (U32)this->buffer.length()-pos;
-    memcpy(buffer, this->buffer.c_str()+pos, len);
+    if (pos+len>(U32)this->buffer->length())
+        len = (U32)this->buffer->length()-pos;
+    memcpy(buffer, this->buffer->c_str()+pos, len);
     this->pos+=len;
     return len;
 }
 
 U32 BufferAccess::writeNative(U8* buffer, U32 len) {    
-    this->buffer.append((char*)buffer, len);
+    if (this->buffer->length() > pos) {
+        if (pos == 0) {
+            this->buffer->clear();
+        } else {
+            BString b = *this->buffer;
+            this->buffer->clear();
+            this->buffer->append(b.substr(0, pos));
+        }
+    }
+    this->buffer->append((char*)buffer, len);
     this->pos+=len;
     return len;
 }
 
-U32 BufferAccess::ioctl( U32 request) {
+U32 BufferAccess::ioctl(KThread* thread, U32 request) {
     return -K_ENODEV;
 }
 
@@ -75,7 +90,7 @@ void BufferAccess::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 event
     kpanic("BufferAccess::waitForEvents not implemented");
 }
 
-U32 BufferAccess::map(U32 address, U32 len, S32 prot, S32 flags, U64 off) {
+U32 BufferAccess::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     return 0;
 }
 

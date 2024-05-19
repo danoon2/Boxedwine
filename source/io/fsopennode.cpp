@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-FsOpenNode::FsOpenNode(BoxedPtr<FsNode> node, U32 flags) : node(node), flags(flags), listNode(this) {
+FsOpenNode::FsOpenNode(std::shared_ptr<FsNode> node, U32 flags) : node(node), flags(flags), listNode(this) {
     node->addOpenNode(&this->listNode);
 }
 
@@ -8,88 +8,56 @@ FsOpenNode::~FsOpenNode() {
     this->node->removeOpenNode(this);
 }
 
-U32 FsOpenNode::read(U32 address, U32 len) {
-    if (!len) {
-        return 0;
-    }
-    if (K_PAGE_SIZE-(address & (K_PAGE_SIZE-1)) >= len) {
-        U8* ram = getPhysicalWriteAddress(address, len);
-        U32 result;
-        S64 pos = this->getFilePointer();
+U32 FsOpenNode::internalRead(KThread* thread, U32 address, U32 len) {
+    U32 result = 0;
+    KMemory* memory = thread->memory;
 
-        if (ram) {
-            result = this->readNative(ram, len);	
-        } else {
-            char tmp[K_PAGE_SIZE];
-            result = this->readNative((U8*)tmp, len);
-            memcopyFromNative(address, tmp, result);
-        }        
-        // :TODO: why does this happen
-        //
-        // installing dpkg with dpkg
-        // 1) dpkg will be mapped into memory (kfmmap on demand)
-        // 2) dpkg will remove dpkg, this triggers the logic to close the handle move the file to /tmp then re-open it
-        // 3) dpkg continues to run then hits a new part of the code that causes an on demand load
-        // 4) on windows 7 x64 this resulted in a full read of one page, but the result returned by read was less that 4096, it was 0xac8 (2760)
-        if (result<len) {
-            if (this->getFilePointer()==pos+len) {
-                result = len;
-            }
+    memory->performOnMemory(address, len, false, [&result, this](U8* ram, U32 len) {
+        U32 read = this->readNative(ram, len);
+        if ((S32)read < 0) {
+            return false;
         }
-        return result;
-    } else {		
-        U32 result = 0;
-        while (len) {
-            U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
-            S32 didRead;
-            U8* ram = getPhysicalWriteAddress(address, todo);
+        result += read;
+        return read == len;
+        });
+    return result;
+}
 
-            if (todo>len)
-                todo = len;
-            if (ram) {
-                didRead=this->readNative(ram, todo);		
-            } else {
-                char tmp[K_PAGE_SIZE];
-                didRead = this->readNative((U8*)tmp, todo);
-                memcopyFromNative(address, tmp, didRead);
-            }
-            if (didRead<=0)
-                break;
-            len-=didRead;
-            address+=didRead;
-            result+=didRead;
-        }
-        return result;
+U32 FsOpenNode::read(KThread* thread, U32 address, U32 len) {
+    BOXEDWINE_MUTEX* mutex = getReadMutex();
+    if (mutex) {
+        // this will reduce thashing in the zip file
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(*mutex);
+        return internalRead(thread, address, len);
+    } else {
+        return internalRead(thread, address, len);
     }
 }
 
-U32 FsOpenNode::write(U32 address, U32 len) {
-    U32 wrote = 0;
-    while (len) {
-        U32 todo = K_PAGE_SIZE-(address & (K_PAGE_SIZE-1));
-        U8* ram = getPhysicalReadAddress(address, todo);
-        char tmp[K_PAGE_SIZE];
+U32 FsOpenNode::write(KThread* thread, U32 address, U32 len) {
+    U32 result = 0;
+    KMemory* memory = thread->memory;
 
-        if (todo>len)
-            todo = len;
-        if (ram)
-            wrote+=this->writeNative(ram, todo);
-        else {
-            memcopyToNative(address, tmp, todo);
-            wrote+=this->writeNative((U8*)tmp, todo);		
+    memory->performOnMemory(address, len, true, [&result, this](U8* ram, U32 len) {
+        U32 written = this->writeNative(ram, len);
+        if ((S32)written < 0) {
+            return false;
         }
-        len-=todo;
-        address+=todo;
-    }
-    return wrote;
+        result += written;
+        return written == len;
+        });
+    return result;
 }
 
 void FsOpenNode::loadDirEntries() {
     BOXEDWINE_CRITICAL_SECTION;
     if (this->dirEntries.size()==0 && this->node) {
+        this->dirEntries.reserve(2 + node->getChildCount());
         this->dirEntries.push_back(this->node);
-        if (this->node->getParent())
-            this->dirEntries.push_back(this->node->getParent());
+        std::shared_ptr<FsNode> parent = this->node->getParent().lock();
+        if (parent) {
+            this->dirEntries.push_back(parent);
+        }
         this->node->getAllChildren(this->dirEntries);        
     }
 }
@@ -99,14 +67,14 @@ U32 FsOpenNode::getDirectoryEntryCount() {
     return (U32)this->dirEntries.size();
 }
 
-BoxedPtr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, BString& name) {
+std::shared_ptr<FsNode> FsOpenNode::getDirectoryEntry(U32 index, BString& name) {
     if (!this->node) {
-        return NULL;
+        return nullptr;
     }
     this->loadDirEntries();
     if (index==0)
         name = B(".");
-    else if (index==1 && this->node->getParent())
+    else if (index==1 && this->node->getParent().lock())
         name = B("..");
     else
         name = this->dirEntries[index]->name;

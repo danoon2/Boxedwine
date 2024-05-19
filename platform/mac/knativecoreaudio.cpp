@@ -108,20 +108,20 @@ struct WineMidiHdr {
     U32       dwOffset;             /* Callback offset into buffer */
     U32       dwReserved[8];        /* Reserved for MMSYSTEM */
     
-    void writeFlags(U32 address) {
-        writed(address+16, dwFlags);
+    void writeFlags(KMemory* memory, U32 address) {
+        memory->writed(address+16, dwFlags);
     }
     
-    void readFlags(U32 address) {
-        dwFlags = readd(address+16);
+    void readFlags(KMemory* memory, U32 address) {
+        dwFlags = memory->readd(address+16);
     }
     
-    void read(U32 address, U32 dwSize) {
-        memcopyToNative(address, this, dwSize);
+    void read(KMemory* memory, U32 address, U32 dwSize) {
+        memory->memcpy(this, address, dwSize);
     }
     
-    void write(U32 address, U32 dwSize) {
-        memcopyFromNative(address, this, dwSize);
+    void write(KMemory* memory, U32 address, U32 dwSize) {
+        memory->memcpy(address, this, dwSize);
     }
 }
 );
@@ -143,7 +143,7 @@ public:
 	AudioConverterRef converter;
 	AudioStreamBasicDescription dev_desc; /* audio unit format, not necessarily the same as fmt */
 
-    std::shared_ptr<KProcess> process;
+    std::weak_ptr<KProcess> process;
 
     bool isRender;
     bool isPlaying;
@@ -169,48 +169,48 @@ public:
 class KNativeAudioCoreAudio : public KNativeAudio, public std::enable_shared_from_this<KNativeAudioCoreAudio> {
 public:
     virtual ~KNativeAudioCoreAudio() {}
-    virtual bool load();
-    virtual void free();
-    virtual bool open();
-    virtual bool close();
-    virtual void start(U32 boxedAudioId, U32 eventFd);
-    virtual void stop(U32 boxedAudioId);
-    virtual bool configure();
-    virtual U32 hasDevice(bool isRender);
-    virtual U32 getEndPoint(bool isRender, U32 adevid);
-    virtual void release(U32 boxedAudioId);
-    virtual void captureResample(U32 boxedAudioId);
-    virtual U32 init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames);
-    virtual U32 getLatency(U32 boxedAudioId, U32* latency);
-    virtual void lock(U32 boxedAudioId);
-    virtual void unlock(U32 boxedAudioId);
-    virtual U32 isFormatSupported(U32 boxedAudioId, U32 addressWaveFormat);
-    virtual U32 getMixFormat(U32 boxedAudioId, U32 addressWaveFormat);
-    virtual void setVolume(U32 boxedAudioId, float level, U32 channel);
-    virtual void cleanup();
+    virtual bool load() override;
+    virtual void free() override;
+    virtual bool open() override;
+    virtual bool close() override;
+    virtual void start(U32 boxedAudioId, U32 eventFd) override;
+    virtual void stop(U32 boxedAudioId) override;
+    virtual bool configure() override;
+    virtual U32 hasDevice(bool isRender) override;
+    virtual U32 getEndPoint(bool isRender, U32 adevid) override;
+    virtual void release(U32 boxedAudioId) override;
+    virtual void captureResample(U32 boxedAudioId) override;
+    virtual U32 init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
+    virtual U32 getLatency(U32 boxedAudioId, U32* latency) override;
+    virtual void lock(U32 boxedAudioId) override;
+    virtual void unlock(U32 boxedAudioId) override;
+    virtual U32 isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
+    virtual U32 getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
+    virtual void setVolume(U32 boxedAudioId, float level, U32 channel) override;
+    virtual void cleanup() override;
     
-    virtual U32 midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd);
-    virtual U32 midiOutClose(U32 wDevID);
-    virtual U32 midiOutData(U32 wDevID, U32 dwParam);
-    virtual U32 midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-    virtual U32 midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-    virtual U32 midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-    virtual U32 midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize);
-    virtual U32 midiOutGetNumDevs();
-    virtual U32 midiOutGetVolume(U32 wDevID, U32 lpdwVolume);
-    virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume);
-    virtual U32 midiOutReset(U32 wDevID);
+    virtual U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) override;
+    virtual U32 midiOutClose(U32 wDevID) override;
+    virtual U32 midiOutData(U32 wDevID, U32 dwParam) override;
+    virtual U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    virtual U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    virtual U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    virtual U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) override;
+    virtual U32 midiOutGetNumDevs() override;
+    virtual U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) override;
+    virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) override;
+    virtual U32 midiOutReset(U32 wDevID) override;
 
-    virtual U32 midiInOpen(U32 wDevID, U32 lpDesc, U32 dwFlags);
-    virtual U32 midiInClose(U32 wDevID);
-    virtual U32 midiInAddBuffer(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-    virtual U32 midiInPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-    virtual U32 midiInUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize);
-    virtual U32 midiInGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize);
-    virtual U32 midiInGetNumDevs();
-    virtual U32 midiInStart(U32 wDevID);
-    virtual U32 midiInStop(U32 wDevID);
-    virtual U32 midiInReset(U32 wDevID);
+    virtual U32 midiInOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) override;
+    virtual U32 midiInClose(U32 wDevID) override;
+    virtual U32 midiInAddBuffer(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    virtual U32 midiInPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    virtual U32 midiInUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    virtual U32 midiInGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) override;
+    virtual U32 midiInGetNumDevs() override;
+    virtual U32 midiInStart(U32 wDevID) override;
+    virtual U32 midiInStop(U32 wDevID) override;
+    virtual U32 midiInReset(U32 wDevID) override;
 
 	KNativeAudioCoreAudioData data[2];
 
@@ -597,27 +597,27 @@ static HRESULT ca_get_audiodesc(AudioStreamBasicDescription *desc, const BoxedWa
 {
     desc->mFormatFlags = 0;
 
-    if (fmt->wFormatTag == WAVE_FORMAT_PCM || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat ==  CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) {
+    if (fmt->ex.wFormatTag == WAVE_FORMAT_PCM || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat ==  CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) {
         desc->mFormatID = kAudioFormatLinearPCM;
-        if(fmt->wBitsPerSample > 8) {
+        if(fmt->ex.wBitsPerSample > 8) {
             desc->mFormatFlags = kAudioFormatFlagIsSignedInteger;
         }
-    } else if (fmt->wFormatTag == WAVE_FORMAT_IEEE_FLOAT || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)){
+    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_IEEE_FLOAT || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)){
         desc->mFormatID = kAudioFormatLinearPCM;
         desc->mFormatFlags = kAudioFormatFlagIsFloat;
-    } else if (fmt->wFormatTag == WAVE_FORMAT_MULAW || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW)) {
+    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_MULAW || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW)) {
         desc->mFormatID = kAudioFormatULaw;
-    } else if (fmt->wFormatTag == WAVE_FORMAT_ALAW || (fmt->wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW)) {
+    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_ALAW || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW)) {
         desc->mFormatID = kAudioFormatALaw;
     } else {
         return AUDCLNT_E_UNSUPPORTED_FORMAT;
     }
-    desc->mSampleRate = fmt->nSamplesPerSec;
-    desc->mBytesPerPacket = fmt->nBlockAlign;
+    desc->mSampleRate = fmt->ex.nSamplesPerSec;
+    desc->mBytesPerPacket = fmt->ex.nBlockAlign;
     desc->mFramesPerPacket = 1;
-    desc->mBytesPerFrame = fmt->nBlockAlign;
-    desc->mChannelsPerFrame = fmt->nChannels;
-    desc->mBitsPerChannel = fmt->wBitsPerSample;
+    desc->mBytesPerFrame = fmt->ex.nBlockAlign;
+    desc->mChannelsPerFrame = fmt->ex.nChannels;
+    desc->mBitsPerChannel = fmt->ex.wBitsPerSample;
     desc->mReserved = 0;
 
     return S_OK;
@@ -697,10 +697,10 @@ static HRESULT ca_setup_audiounit(bool isRender, AudioComponentInstance unit, co
 
 static void silence_buffer(KNativeAudioCoreAudioData *This, U8 *buffer, U32 frames)
 {
-    if((This->fmt.wFormatTag == WAVE_FORMAT_PCM || (This->fmt.wFormatTag == WAVE_FORMAT_EXTENSIBLE && This->fmt.SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) && This->fmt.wBitsPerSample == 8) {
-        memset(buffer, 128, frames * This->fmt.nBlockAlign);
+    if((This->fmt.ex.wFormatTag == WAVE_FORMAT_PCM || (This->fmt.ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && This->fmt.SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) && This->fmt.ex.wBitsPerSample == 8) {
+        memset(buffer, 128, frames * This->fmt.ex.nBlockAlign);
     } else {
-        memset(buffer, 0, frames * This->fmt.nBlockAlign);
+        memset(buffer, 0, frames * This->fmt.ex.nBlockAlign);
     }
 }
 
@@ -709,37 +709,39 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
 {
     KNativeAudioCoreAudioData* This = (KNativeAudioCoreAudioData*)user;
     U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
-
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
-    if (This->process->terminated) {
+    std::shared_ptr<KProcess> process = This->process.lock();
+    if (!process || process->terminated) {
         silence_buffer(This, ((U8 *)data->mBuffers[0].mData), nframes);
         return noErr;
     }
+    KThread* thread = process->getThread();
+    ChangeThread change(thread);
     os_unfair_lock_lock(&This->lock);
 
     if(This->isPlaying){
-        U32 held_frames = This->process->readd(This->address_held_frames);
-        U32 lcl_offs_frames = This->process->readd(This->address_lcl_offs_frames);
+        U32 held_frames = process->memory->readd(This->address_held_frames);
+        U32 lcl_offs_frames = process->memory->readd(This->address_lcl_offs_frames);
         
-        lcl_offs_bytes = lcl_offs_frames * This->fmt.nBlockAlign;
+        lcl_offs_bytes = lcl_offs_frames * This->fmt.ex.nBlockAlign;
         to_copy_frames = std::min(nframes, held_frames);
-        to_copy_bytes = to_copy_frames * This->fmt.nBlockAlign;
+        to_copy_bytes = to_copy_frames * This->fmt.ex.nBlockAlign;
 
-        chunk_bytes = (This->bufsize_frames - lcl_offs_frames) * This->fmt.nBlockAlign;
+        chunk_bytes = (This->bufsize_frames - lcl_offs_frames) * This->fmt.ex.nBlockAlign;
 
         if (to_copy_bytes > chunk_bytes) {
-            This->process->memcopyToNative(This->address_local_buffer + lcl_offs_bytes, data->mBuffers[0].mData, chunk_bytes);
-            This->process->memcopyToNative(This->address_local_buffer, (U8*)data->mBuffers[0].mData + chunk_bytes, to_copy_bytes - chunk_bytes);
+            process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, chunk_bytes);
+            process->memory->memcpy((U8*)data->mBuffers[0].mData + chunk_bytes, This->address_local_buffer, to_copy_bytes - chunk_bytes);
         }
         else {
-            This->process->memcopyToNative(This->address_local_buffer + lcl_offs_bytes, data->mBuffers[0].mData, to_copy_bytes);
+            process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, to_copy_bytes);
         }
         
         lcl_offs_frames += to_copy_frames;
         lcl_offs_frames %= This->bufsize_frames;
-        This->process->writed(This->address_lcl_offs_frames, lcl_offs_frames);
+        process->memory->writed(This->address_lcl_offs_frames, lcl_offs_frames);
         held_frames -= to_copy_frames;
-        This->process->writed(This->address_held_frames, held_frames);
+        process->memory->writed(This->address_held_frames, held_frames);
     } else {
         to_copy_bytes = to_copy_frames = 0;
     }
@@ -748,7 +750,7 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
         silence_buffer(This, ((U8 *)data->mBuffers[0].mData) + to_copy_bytes, nframes - to_copy_frames);
     }
     if (This->eventFd) {
-        KFileDescriptor* fd = This->process->getFileDescriptor(This->eventFd);
+        KFileDescriptor* fd = process->getFileDescriptor(This->eventFd);
         if (fd) {
             U8 c = EVENT_MSG_DATA_READ;
             fd->kobject->writeNative(&c, 1);
@@ -758,22 +760,22 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     return noErr;
 }
 
-U32 KNativeAudioCoreAudio::init(bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
+U32 KNativeAudioCoreAudio::init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
     KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
     OSStatus sc;
     
     if (!data) {
         return E_FAIL;
     }
-    data->process = KThread::currentThread()->process;
+    data->process = process;
 
     data->bufsize_frames = bufsizeFrames;
-    data->period_frames = readd(addressPeriodFrames);
+    data->period_frames = process->memory->readd(addressPeriodFrames);
     data->address_local_buffer = addressLocalBuffer;
     data->address_wri_offs_frames = addressWriOffsFrames;
     data->address_held_frames = addressHeldFrames;
     data->address_lcl_offs_frames = addressLclOffsFrames;
-    data->fmt.read(addressFmt);
+    data->fmt.read(process->memory, addressFmt);
     
 	HRESULT hr = ca_setup_audiounit(isRender, data->unit, &data->fmt, &data->dev_desc, &data->converter);
 	if (FAILED(hr)) {
@@ -933,7 +935,7 @@ void KNativeAudioCoreAudio::unlock(U32 boxedAudioId) {
 	os_unfair_lock_unlock(&data->lock);
 }
 
-U32 KNativeAudioCoreAudio::isFormatSupported(U32 boxedAudioId, U32 addressWaveFormat) {
+U32 KNativeAudioCoreAudio::isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) {
 	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return E_FAIL;
@@ -944,7 +946,7 @@ U32 KNativeAudioCoreAudio::isFormatSupported(U32 boxedAudioId, U32 addressWaveFo
     BoxedWaveFormatExtensible fmt;
     HRESULT hr;
     
-    fmt.read(addressWaveFormat);
+    fmt.read(thread->memory, addressWaveFormat);
     
 	unit = get_audiounit(data->isRender, data->adevid);
 
@@ -1004,7 +1006,7 @@ static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWav
 
     if (ca_layout->mNumberChannelDescriptions == 1)
     {
-        fmt->nChannels = 1;
+        fmt->ex.nChannels = 1;
         fmt->dwChannelMask = ca_mask;
         return;
     }
@@ -1014,55 +1016,55 @@ static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWav
 
     if (ca_layout->mNumberChannelDescriptions <= 2 && (ca_mask & ~KSAUDIO_SPEAKER_STEREO) == 0)
     {
-        fmt->nChannels = 2;
+        fmt->ex.nChannels = 2;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_STEREO;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 4 && (ca_mask & ~KSAUDIO_SPEAKER_QUAD) == 0)
     {
-        fmt->nChannels = 4;
+        fmt->ex.nChannels = 4;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_QUAD;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 4 && (ca_mask & ~KSAUDIO_SPEAKER_SURROUND) == 0)
     {
-        fmt->nChannels = 4;
+        fmt->ex.nChannels = 4;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_SURROUND;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 6 && (ca_mask & ~KSAUDIO_SPEAKER_5POINT1) == 0)
     {
-        fmt->nChannels = 6;
+        fmt->ex.nChannels = 6;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_5POINT1;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 6 && (ca_mask & ~KSAUDIO_SPEAKER_5POINT1_SURROUND) == 0)
     {
-        fmt->nChannels = 6;
+        fmt->ex.nChannels = 6;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_5POINT1_SURROUND;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 8 && (ca_mask & ~KSAUDIO_SPEAKER_7POINT1) == 0)
     {
-        fmt->nChannels = 8;
+        fmt->ex.nChannels = 8;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_7POINT1;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 8 && (ca_mask & ~KSAUDIO_SPEAKER_7POINT1_SURROUND) == 0)
     {
-        fmt->nChannels = 8;
+        fmt->ex.nChannels = 8;
         fmt->dwChannelMask = KSAUDIO_SPEAKER_7POINT1_SURROUND;
         return;
     }
 
     /* oddball format, report truthfully */
-    fmt->nChannels = ca_layout->mNumberChannelDescriptions;
+    fmt->ex.nChannels = ca_layout->mNumberChannelDescriptions;
     fmt->dwChannelMask = ca_mask;
 }
 
@@ -1092,7 +1094,7 @@ static U32 get_channel_mask(unsigned int channels)
     return 0;
 }
 
-U32 KNativeAudioCoreAudio::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat) {
+U32 KNativeAudioCoreAudio::getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) {
 	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return E_FAIL;
@@ -1105,7 +1107,7 @@ U32 KNativeAudioCoreAudio::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat)
 	AudioChannelLayout* layout;
 	AudioObjectPropertyAddress addr;
 
-	fmt.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
+	fmt.ex.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
 
 	addr.mScope = data->scope;
 	addr.mElement = 0;
@@ -1127,22 +1129,22 @@ U32 KNativeAudioCoreAudio::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat)
 			}
 			else {
 				kwarn("Haven't implemented support for this layout tag: 0x%x, guessing at layout\n", layout->mChannelLayoutTag);
-				fmt.nChannels = 0;
+				fmt.ex.nChannels = 0;
 			}
 		}
 		else {
 			klog("Unable to get _PreferredChannelLayout property: %x, guessing at layout\n", (int)sc);
-			fmt.nChannels = 0;
+			fmt.ex.nChannels = 0;
 		}
 
         ::free(layout);
 	}
 	else {
 		kwarn("Unable to get size for _PreferredChannelLayout property: %x, guessing at layout\n", (int)sc);
-		fmt.nChannels = 0;
+		fmt.ex.nChannels = 0;
 	}
 
-	if (fmt.nChannels == 0) {
+	if (fmt.ex.nChannels == 0) {
 		addr.mScope = data->scope;
 		addr.mElement = 0;
 		addr.mSelector = kAudioDevicePropertyStreamConfiguration;
@@ -1165,13 +1167,13 @@ U32 KNativeAudioCoreAudio::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat)
 			return osstatus_to_hresult(sc);
 		}
 
-		fmt.nChannels = 0;
+		fmt.ex.nChannels = 0;
 		for (int i = 0; i < buffers->mNumberBuffers; ++i)
-			fmt.nChannels += buffers->mBuffers[i].mNumberChannels;
+			fmt.ex.nChannels += buffers->mBuffers[i].mNumberChannels;
 
         ::free(buffers);
 
-		fmt.dwChannelMask = get_channel_mask(fmt.nChannels);
+		fmt.dwChannelMask = get_channel_mask(fmt.ex.nChannels);
 	}
 
 	addr.mSelector = kAudioDevicePropertyNominalSampleRate;
@@ -1181,18 +1183,18 @@ U32 KNativeAudioCoreAudio::getMixFormat(U32 boxedAudioId, U32 addressWaveFormat)
 		kwarn("Unable to get _NominalSampleRate property: %x\n", (int)sc);
 		return osstatus_to_hresult(sc);
 	}
-	fmt.nSamplesPerSec = rate;
+	fmt.ex.nSamplesPerSec = rate;
 
-	fmt.wBitsPerSample = 32;
+	fmt.ex.wBitsPerSample = 32;
 	fmt.SubFormat = CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
 
-	fmt.nBlockAlign = (fmt.wBitsPerSample * fmt.nChannels) / 8;
-	fmt.nAvgBytesPerSec = fmt.nSamplesPerSec * fmt.nBlockAlign;
+	fmt.ex.nBlockAlign = (fmt.ex.wBitsPerSample * fmt.ex.nChannels) / 8;
+	fmt.ex.nAvgBytesPerSec = fmt.ex.nSamplesPerSec * fmt.ex.nBlockAlign;
 
-	fmt.wValidBitsPerSample = fmt.wBitsPerSample;
-	fmt.cbSize = 22;
+	fmt.wValidBitsPerSample = fmt.ex.wBitsPerSample;
+	fmt.ex.cbSize = 22;
 
-    fmt.write(addressWaveFormat);
+    fmt.write(thread->memory, addressWaveFormat);
 	return S_OK;
 }
 
@@ -1374,7 +1376,7 @@ static void CoreAudio_MIDIRelease() {
     free(destinations);
 }
 
-U32 KNativeAudioCoreAudio::midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) {
+U32 KNativeAudioCoreAudio::midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) {
 	MIDIDestination *dest;
 
     if (lpDesc == 0) {
@@ -1413,9 +1415,9 @@ U32 KNativeAudioCoreAudio::midiOutOpen(U32 wDevID, U32 lpDesc, U32 dwFlags, U32 
         }
     }
     dest->wFlags = HIWORD(dwFlags & CALLBACK_TYPEMASK);
-    dest->midiDesc.hMidi = readd(lpDesc);
-    dest->midiDesc.dwCallback = readd(lpDesc+4);
-    dest->midiDesc.dwInstance = readd(lpDesc+8);
+    dest->midiDesc.hMidi = process->memory->readd(lpDesc);
+    dest->midiDesc.dwCallback = process->memory->readd(lpDesc+4);
+    dest->midiDesc.dwInstance = process->memory->readd(lpDesc+8);
     
     // MIDI_NotifyClient(wDevID, MOM_OPEN, 0L, 0L);
     return MMSYSERR_NOERROR;
@@ -1476,7 +1478,7 @@ U32 KNativeAudioCoreAudio::midiOutData(U32 wDevID, U32 dwParam) {
     return MMSYSERR_NOERROR;
 }
 
-U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioCoreAudio::midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
     OSStatus err = noErr;
     WineMidiHdr wineMidiHdr;
     
@@ -1494,7 +1496,7 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize
         klog("KNativeAudioCoreAudio::midiOutLongData Invalid Parameter\n");
         return MMSYSERR_INVALPARAM;
     }
-    wineMidiHdr.read(lpMidiHdr, dwSize);
+    wineMidiHdr.read(thread->memory, lpMidiHdr, dwSize);
 
     if (wineMidiHdr.lpData == 0) {
         return MIDIERR_UNPREPARED;
@@ -1507,15 +1509,9 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize
     }
     wineMidiHdr.dwFlags &= ~MHDR_DONE;
     wineMidiHdr.dwFlags |= MHDR_INQUEUE;
-    wineMidiHdr.writeFlags(lpMidiHdr);
+    wineMidiHdr.writeFlags(thread->memory, lpMidiHdr);
     
-    U8* buffer = (U8*)getPhysicalAddress(wineMidiHdr.lpData, wineMidiHdr.dwBufferLength);
-    bool needToDelete = false;
-    if (!buffer) {
-        buffer = (U8*)malloc(wineMidiHdr.dwBufferLength);
-        memcopyToNative(wineMidiHdr.lpData, buffer, wineMidiHdr.dwBufferLength);
-        needToDelete = true;
-    }
+    U8* buffer = (U8*)thread->memory->lockReadOnlyMemory(wineMidiHdr.lpData, wineMidiHdr.dwBufferLength);
     
     /* FIXME: MS doc is not 100% clear. Will lpData only contain system exclusive
      * data, or can it also contain raw MIDI data, to be split up and sent to
@@ -1539,9 +1535,7 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize
         if (err != noErr)
         {
             klog("KNativeAudioCoreAudio::midiOutLongData MusicDeviceSysEx(%p, %p, %d) return %d", destinations[wDevID].synth, wineMidiHdr.lpData, wineMidiHdr.dwBufferLength, err);
-            if (needToDelete) {
-                ::free(buffer);
-            }
+            thread->memory->unlockMemory(buffer);
             return MMSYSERR_ERROR;
         }
     }
@@ -1551,21 +1545,19 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U32 lpMidiHdr, U32 dwSize
 
     wineMidiHdr.dwFlags &= ~MHDR_INQUEUE;
     wineMidiHdr.dwFlags |= MHDR_DONE;
-    wineMidiHdr.writeFlags(lpMidiHdr);
+    wineMidiHdr.writeFlags(thread->memory, lpMidiHdr);
     // MIDI_NotifyClient(wDevID, MOM_DONE, (DWORD_PTR)lpMidiHdr, 0L);
-    if (needToDelete) {
-        ::free(buffer);
-    }
+    thread->memory->unlockMemory(buffer);
     return MMSYSERR_NOERROR;
 }
 
-U32 KNativeAudioCoreAudio::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioCoreAudio::midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
     WineMidiHdr wineMidiHdr;
     
     if (!lpMidiHdr) {
         return MMSYSERR_INVALPARAM;
     }
-    wineMidiHdr.read(lpMidiHdr, dwSize);
+    wineMidiHdr.read(thread->memory, lpMidiHdr, dwSize);
     if (wineMidiHdr.lpData == 0) {
         return MMSYSERR_INVALPARAM;
     }
@@ -1576,17 +1568,17 @@ U32 KNativeAudioCoreAudio::midiOutPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize)
     wineMidiHdr.lpNext = 0;
     wineMidiHdr.dwFlags |= MHDR_PREPARED;
     wineMidiHdr.dwFlags &= ~(MHDR_DONE|MHDR_INQUEUE); /* flags cleared since w2k */
-    wineMidiHdr.write(lpMidiHdr, dwSize);
+    wineMidiHdr.write(thread->memory, lpMidiHdr, dwSize);
     return MMSYSERR_NOERROR;
 }
 
-U32 KNativeAudioCoreAudio::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
+U32 KNativeAudioCoreAudio::midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) {
     WineMidiHdr wineMidiHdr;
     
     if (!lpMidiHdr) {
         return MMSYSERR_INVALPARAM;
     }
-    wineMidiHdr.read(lpMidiHdr, dwSize);
+    wineMidiHdr.read(thread->memory, lpMidiHdr, dwSize);
     if (wineMidiHdr.lpData == 0) {
         return MMSYSERR_INVALPARAM;
     }
@@ -1598,11 +1590,11 @@ U32 KNativeAudioCoreAudio::midiOutUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSiz
     }
 
     wineMidiHdr.dwFlags &= ~MHDR_PREPARED;
-    wineMidiHdr.writeFlags(lpMidiHdr);
+    wineMidiHdr.writeFlags(thread->memory, lpMidiHdr);
     return MMSYSERR_NOERROR;
 }
 
-U32 KNativeAudioCoreAudio::midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) {
+U32 KNativeAudioCoreAudio::midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) {
     if (lpCaps == 0) {
         klog("KNativeAudioCoreAudio::midiOutGetDevCaps Invalid Parameter\n");
         return MMSYSERR_INVALPARAM;
@@ -1612,7 +1604,7 @@ U32 KNativeAudioCoreAudio::midiOutGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize)
         klog("KNativeAudioCoreAudio::midiOutGetDevCapsbad device ID : %d\n", wDevID);
         return MMSYSERR_BADDEVICEID;
     }
-    memcopyFromNative(lpCaps, &destinations[wDevID].caps, std::min(dwSize, (U32)sizeof(destinations[wDevID].caps)));
+    thread->memory->memcpy(lpCaps, &destinations[wDevID].caps, std::min(dwSize, (U32)sizeof(destinations[wDevID].caps)));
     return MMSYSERR_NOERROR;
 }
 
@@ -1620,7 +1612,7 @@ U32 KNativeAudioCoreAudio::midiOutGetNumDevs() {
     return MIDIOut_NumDevs;
 }
 
-U32 KNativeAudioCoreAudio::midiOutGetVolume(U32 wDevID, U32 lpdwVolume) {
+U32 KNativeAudioCoreAudio::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) {
     if (wDevID >= MIDIOut_NumDevs) {
         klog("KNativeAudioCoreAudio::midiOutGetVolume bad device ID : %d", wDevID);
         return MMSYSERR_BADDEVICEID;
@@ -1636,7 +1628,7 @@ U32 KNativeAudioCoreAudio::midiOutGetVolume(U32 wDevID, U32 lpdwVolume) {
         float right;
         AudioUnit_GetVolume(destinations[wDevID].synth, &left, &right);
 
-        writed(lpdwVolume, (U32) (left * 0xFFFF) + ((U32) (right * 0xFFFF) << 16));
+        thread->memory->writed(lpdwVolume, (U32) (left * 0xFFFF) + ((U32) (right * 0xFFFF) << 16));
 
         return MMSYSERR_NOERROR;
     }

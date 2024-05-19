@@ -1487,35 +1487,35 @@ public:
     U8 repZero;
     U8 repNotZero;    
     U8 ea16;
-private:
-    void init();
+
+    void reset();
 };
 
-typedef U8 (*pfnFetchByte)(U32* pEip);
+typedef U8 (*pfnFetchByte)(void* data, U32* pEip);
 
 class DecodedBlockFromNode {
 public:
     static DecodedBlockFromNode* alloc();
     virtual void dealloc();
 
-    DecodedBlock* block;
-    DecodedBlockFromNode* next;
+    DecodedBlock* block = nullptr;
+    DecodedBlockFromNode* next = nullptr;
 };
 
 class DecodedBlock {
-public:   
-    static DecodedBlock* currentBlock;
+public:       
+    thread_local static DecodedBlock* currentBlock;
     virtual ~DecodedBlock() {}
 
-    DecodedBlock() : op(NULL), opCount(0), bytes(0), runCount(0), address(0), next1(NULL), next2(NULL), referencedFrom(NULL) {}
-    DecodedOp* op;
-    U32 opCount;
-    U32 bytes;
-    U32 runCount;
-    U32 address;
+    DecodedBlock() = default;
+    DecodedOp* op = nullptr;
+    U32 opCount = 0;
+    U32 bytes = 0;
+    U32 runCount = 0;
+    U32 address = 0;
     
-    DecodedBlock* next1;
-    DecodedBlock* next2;    
+    DecodedBlock* next1 = nullptr;
+    DecodedBlock* next2 = nullptr;    
 
     virtual void run(CPU* cpu) {};
     virtual void dealloc(bool delayed) {};
@@ -1525,8 +1525,8 @@ public:
     
     DecodedOp* getOp(U32 eip);
 protected:
-    DecodedBlockFromNode* referencedFrom;
+    DecodedBlockFromNode* referencedFrom = nullptr;    
 };
-void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
+void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
 
 #endif

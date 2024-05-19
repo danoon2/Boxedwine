@@ -27,7 +27,7 @@
 
 class DevDsp : public FsVirtualOpenNode {
 public:
-    DevDsp(const BoxedPtr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {                
+    DevDsp(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {                
         this->audio = KDspAudio::createDspAudio();
         this->freq = 11025;
         this->channels = 1;
@@ -35,11 +35,12 @@ public:
     } 
     virtual ~DevDsp() {this->audio->closeAudio();}
 
-    virtual bool setLength(S64 length);
-    virtual U32 ioctl(U32 request);
-    virtual U32 readNative(U8* buffer, U32 len);
-    virtual U32 writeNative(U8* buffer, U32 len);
-    virtual void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events);    
+    // From FsOpenNode
+    bool setLength(S64 length) override;
+    U32 ioctl(KThread* thread, U32 request) override;
+    U32 readNative(U8* buffer, U32 len) override;
+    U32 writeNative(U8* buffer, U32 len) override;
+    void waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) override;
 
     std::shared_ptr<KDspAudio> audio;
     U32 freq;
@@ -70,13 +71,13 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
-U32 DevDsp::ioctl(U32 request) {
+U32 DevDsp::ioctl(KThread* thread, U32 request) {
     U32 len = (request >> 16) & 0x3FFF;
-    KThread* thread = KThread::currentThread();
     CPU* cpu = thread->cpu;
+    KMemory* memory = thread->memory;
+
     //BOOL read = request & 0x40000000;
     bool write = (request & 0x80000000)!=0;
-    int i;
 
     switch (request & 0xFFFF) {
     case 0x5000: // SNDCTL_DSP_RESET
@@ -85,17 +86,15 @@ U32 DevDsp::ioctl(U32 request) {
         if (len!=4) {
             kpanic("SNDCTL_DSP_SPEED was expecting a len of 4");
         }
-		this->freq = readd(IOCTL_ARG1);
+		this->freq = memory->readd(IOCTL_ARG1);
 		if (write)
-            writed(IOCTL_ARG1, this->freq);
+            memory->writed(IOCTL_ARG1, this->freq);
         return 0;
     case 0x5003: { // SNDCTL_DSP_STEREO
-        U32 fmt;
-
         if (len!=4) {
             kpanic("SNDCTL_DSP_STEREO was expecting a len of 4");
         }
-        fmt = readd(IOCTL_ARG1);
+        U32 fmt = memory->readd(IOCTL_ARG1);
         if (fmt != (U32)(this->channels - 1)) {
             this->audio->closeAudio();
         }
@@ -107,16 +106,14 @@ U32 DevDsp::ioctl(U32 request) {
             kpanic("SNDCTL_DSP_STEREO wasn't expecting a value of %d", fmt);
         }
         if (write)
-            writed(IOCTL_ARG1, this->channels - 1);
+            memory->writed(IOCTL_ARG1, this->channels - 1);
         return 0;
     }
     case 0x5005: { // SNDCTL_DSP_SETFMT 
-        U32 fmt;
-
         if (len!=4) {
             kpanic("SNDCTL_DSP_SETFMT was expecting a len of 4");
         }
-        fmt = readd(IOCTL_ARG1);
+        U32 fmt = memory->readd(IOCTL_ARG1);
 		if (fmt != AFMT_QUERY && fmt != this->format) {
             this->audio->closeAudio();
         }
@@ -149,14 +146,14 @@ U32 DevDsp::ioctl(U32 request) {
             break;
         }
         if (write)
-			writed(IOCTL_ARG1, this->format);
+            memory->writed(IOCTL_ARG1, this->format);
 		else if (this->format != fmt) {
             kpanic("SNDCTL_DSP_SETFMT dspFmt!=fmt and can't write result");
         }
         return 0;
         }
     case 0x5006: {// SOUND_PCM_WRITE_CHANNELS
-        U32 channels = readd(IOCTL_ARG1);
+        U32 channels = memory->readd(IOCTL_ARG1);
 		if (channels != this->channels) {
             this->audio->closeAudio();
         }
@@ -168,7 +165,7 @@ U32 DevDsp::ioctl(U32 request) {
             this->channels = 2;
         }
         if (write)
-            writed(IOCTL_ARG1, this->channels);
+            memory->writed(IOCTL_ARG1, this->channels);
         return 0;
         }
     case 0x500A: // SNDCTL_DSP_SETFRAGMENT
@@ -176,7 +173,7 @@ U32 DevDsp::ioctl(U32 request) {
         klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETFRAGMENT");
         return 0;
     case 0x500B: // SNDCTL_DSP_GETFMTS
-        writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE);
+        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE);
         return 0;
 
 		//typedef struct audio_buf_info {
@@ -193,14 +190,14 @@ U32 DevDsp::ioctl(U32 request) {
         S32 osLen = ((S32)this->audio->getBufferSize()-(S32)this->audio->getFragmentSize());
         if (osLen<0)
             osLen = 0;
-		writed(IOCTL_ARG1, ((this->audio->getBufferCapacity() - this->audio->getBufferSize()) / this->audio->getFragmentSize())); // fragments
-		writed(IOCTL_ARG1 + 4, this->audio->getBufferCapacity() / this->audio->getFragmentSize());
-		writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
-		writed(IOCTL_ARG1 + 12, this->audio->getBufferCapacity() - osLen);
+        memory->writed(IOCTL_ARG1, ((this->audio->getBufferCapacity() - this->audio->getBufferSize()) / this->audio->getFragmentSize())); // fragments
+        memory->writed(IOCTL_ARG1 + 4, this->audio->getBufferCapacity() / this->audio->getFragmentSize());
+        memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
+        memory->writed(IOCTL_ARG1 + 12, this->audio->getBufferCapacity() - osLen);
         return 0;
     }
     case 0x500F: // SNDCTL_DSP_GETCAPS
-        writed(IOCTL_ARG1, DSP_CAP_TRIGGER);
+        memory->writed(IOCTL_ARG1, DSP_CAP_TRIGGER);
         return 0;
     case 0x5010: // SNDCTL_DSP_SETTRIGGER
         /*
@@ -252,37 +249,37 @@ U32 DevDsp::ioctl(U32 request) {
         if (write) {
             U32 p = IOCTL_ARG1;
             p+=4; // int dev; /* Audio device number */
-            writeNativeString(p, "BoxedWine audio"); p+=64; // oss_devname_t name;
-            writed(p, 0); p+=4; // int busy; /* 0, OPEN_READ, OPEN_WRITE or OPEN_READWRITE */
-            writed(p, -1); p+=4; // int pid;
-            writed(p, PCM_CAP_OUTPUT); p+=4; // int caps;			/* PCM_CAP_INPUT, PCM_CAP_OUTPUT */
-            writed(p, 0); p+=4; // int iformats
-            writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE); p+=4; // int oformats;
-            writed(p, 0); p+=4; // int magic;			/* Reserved for internal use */
-            writeNativeString(p, ""); p+=64; // oss_cmd_t cmd;		/* Command using the device (if known) */
-            writed(p, 0); p+=4; // int card_number;
-            writed(p, 0); p+=4; // int port_number;
-            writed(p, 0); p+=4; // int mixer_dev;
-            writed(p, 0); p+=4; // int legacy_device;		/* Obsolete field. Replaced by devnode */
-            writed(p, 1); p+=4; // int enabled;			/* 1=enabled, 0=device not ready at this moment */
-            writed(p, 0); p+=4; // int flags;			/* For internal use only - no practical meaning */
-			writed(p, 11025); p += 4; // int min_rate
-            writed(p, 44100); p+=4; // max_rate;	/* Sample rate limits */
-            writed(p, 1); p+=4; // int min_channels
-            writed(p, 2); p+=4; // max_channels;	/* Number of channels supported */
-            writed(p, 0); p+=4; // int binding;			/* DSP_BIND_FRONT, etc. 0 means undefined */
-            writed(p, 0); p+=4; // int rate_source;
-            writeNativeString(p, ""); p+=32; // oss_handle_t handle;
-            writed(p, 0); p+=4; // unsigned int nrates
-            for (i=0;i<20;i++) {
-                writed(p, 0); p+=4; // rates[20];	/* Please read the manual before using these */
+            memory->strcpy(p, "BoxedWine audio"); p+=64; // oss_devname_t name;
+            memory->writed(p, 0); p+=4; // int busy; /* 0, OPEN_READ, OPEN_WRITE or OPEN_READWRITE */
+            memory->writed(p, -1); p+=4; // int pid;
+            memory->writed(p, PCM_CAP_OUTPUT); p+=4; // int caps;			/* PCM_CAP_INPUT, PCM_CAP_OUTPUT */
+            memory->writed(p, 0); p+=4; // int iformats
+            memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE); p+=4; // int oformats;
+            memory->writed(p, 0); p+=4; // int magic;			/* Reserved for internal use */
+            memory->strcpy(p, ""); p+=64; // oss_cmd_t cmd;		/* Command using the device (if known) */
+            memory->writed(p, 0); p+=4; // int card_number;
+            memory->writed(p, 0); p+=4; // int port_number;
+            memory->writed(p, 0); p+=4; // int mixer_dev;
+            memory->writed(p, 0); p+=4; // int legacy_device;		/* Obsolete field. Replaced by devnode */
+            memory->writed(p, 1); p+=4; // int enabled;			/* 1=enabled, 0=device not ready at this moment */
+            memory->writed(p, 0); p+=4; // int flags;			/* For internal use only - no practical meaning */
+            memory->writed(p, 11025); p += 4; // int min_rate
+            memory->writed(p, 44100); p+=4; // max_rate;	/* Sample rate limits */
+            memory->writed(p, 1); p+=4; // int min_channels
+            memory->writed(p, 2); p+=4; // max_channels;	/* Number of channels supported */
+            memory->writed(p, 0); p+=4; // int binding;			/* DSP_BIND_FRONT, etc. 0 means undefined */
+            memory->writed(p, 0); p+=4; // int rate_source;
+            memory->strcpy(p, ""); p+=32; // oss_handle_t handle;
+            memory->writed(p, 0); p+=4; // unsigned int nrates
+            for (int i=0;i<20;i++) {
+                memory->writed(p, 0); p+=4; // rates[20];	/* Please read the manual before using these */
             }
-            writeNativeString(p, ""); p+=64; // oss_longname_t song_name;	/* Song name (if given) */
-            writeNativeString(p, ""); p+=16; // oss_label_t label;		/* Device label (if given) */
-            writed(p, -1); p+=4; // int latency;			/* In usecs, -1=unknown */
-            writeNativeString(p, "dsp"); p+=16; // oss_devnode_t devnode;	/* Device special file name (absolute path) */
-            writed(p, 0); p+=4; // int next_play_engine;		/* Read the documentation for more info */
-            writed(p, 0); p+=4; // int next_rec_engine;		/* Read the documentation for more info */
+            memory->strcpy(p, ""); p+=64; // oss_longname_t song_name;	/* Song name (if given) */
+            memory->strcpy(p, ""); p+=16; // oss_label_t label;		/* Device label (if given) */
+            memory->writed(p, -1); p+=4; // int latency;			/* In usecs, -1=unknown */
+            memory->strcpy(p, "dsp"); p+=16; // oss_devnode_t devnode;	/* Device special file name (absolute path) */
+            memory->writed(p, 0); p+=4; // int next_play_engine;		/* Read the documentation for more info */
+            memory->writed(p, 0); // int next_rec_engine;		/* Read the documentation for more info */
             return 0;
         }        
     }
@@ -296,6 +293,6 @@ void DevDsp::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
     }
 }
 
-FsOpenNode* openDevDsp(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openDevDsp(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new DevDsp(node, flags);
 }

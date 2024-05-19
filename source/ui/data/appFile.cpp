@@ -66,15 +66,15 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
                 app->cpuAffinity = atoi(s.c_str());
             }
         } else if (option.startsWith("wine=")) {
-            WineVersion* wineVer = GlobalSettings::getInstalledWineFromName(option.substr(5));
+            std::shared_ptr<FileSystemZip> wineVer = GlobalSettings::getInstalledFileSystemFromName(option.substr(5), true);
             if (wineVer) {
-                container->setWineVersion(wineVer->name);
+                container->setFileSystem(wineVer);
                 hasContainerOption = true;
             } else {
-                WineVersion* wineVer = GlobalSettings::getAvailableWineFromName(option.substr(5));
-                if (wineVer) {
-                    GlobalSettings::downloadWine(*wineVer, [container, wineVer](bool success) {
-                        container->setWineVersion(wineVer->name);
+                std::shared_ptr<FileSystemZip> availableWineVer = GlobalSettings::getAvailableFileSystemFromName(option.substr(5), true);
+                if (availableWineVer) {
+                    GlobalSettings::downloadFileSystem(availableWineVer, [container, availableWineVer](bool success) {
+                        container->setFileSystem(availableWineVer);
                         container->saveContainer();
                         }
                     );
@@ -154,11 +154,11 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container) {
 void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads) {
     if (!container) {
         BString containerFilePath = GlobalSettings::createUniqueContainerPath(this->name);
-        container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getWineVersions()[0].name);
+        container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getFileSystemVersions().front());
         BoxedwineData::addContainer(container);
         container->saveContainer();
     }
-    runOptions(container, NULL, installOptions, runner, downloads);
+    runOptions(container, nullptr, installOptions, runner, downloads);
 
     BString containerDir = container->getDir();
     BString cmd = this->exe;
@@ -179,9 +179,9 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             BString path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ fileName;
             if (!Fs::doesNativePathExist(path)) {
                 if (!Fs::makeNativeDirs(path)) {
-                    BString errorMsg = getTranslationWithFormat(INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR, true, path, BString::copy(strerror(errno)));
+                    BString errorMsg = getTranslationWithFormat(Msg::INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR, true, path, BString::copy(strerror(errno)));
                     runOnMainUI([errorMsg]() {
-                        new OkDlg(GENERIC_DLG_ERROR_TITLE, errorMsg, nullptr, 500, 300);
+                        new OkDlg(Msg::GENERIC_DLG_ERROR_TITLE, errorMsg, nullptr, 500, 300);
                         return false;
                         });
                     return;
@@ -190,7 +190,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             BString destDir = path;
             std::function<bool() > unzip = [containerDir, appPath, appName, destDir]() {
                 runOnMainUI([appPath, destDir, appName]() {
-                    new UnzipDlg(UNZIP_DLG_TITLE, appName, appPath, destDir, [](bool success) {
+                    new UnzipDlg(Msg::UNZIP_DLG_TITLE, appName, appPath, destDir, [](bool success) {
                         if (success) {
                             runApps(globalRunner);
                         }
@@ -225,7 +225,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 GlobalSettings::startUpArgs.readyToLaunch = true;
 
                 runOnMainUI([appName]() {
-                    new WaitDlg(WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(WAITDLG_LAUNCH_APP_LABEL, true, appName));
+                    new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, appName));
                     return false;
                     });
                 return true;
@@ -255,7 +255,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                             return false;;
                         }
                     }
-                    runOptions(container, NULL, exeOptions, r, d);
+                    runOptions(container, nullptr, exeOptions, r, d);
                     if (chooseShortCut) {
                         new AppChooserDlg(items, [container](BoxedApp app) {
                             gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());

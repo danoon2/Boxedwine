@@ -3,63 +3,49 @@
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 class BtData;
+class BtCodeChunk;
+
+#define CPU_OFFSET_CURRENT_OP (U32)(offsetof(BtCPU, currentSingleOp))
 
 class BtCPU : public CPU {
 public:
-    BtCPU() : nativeHandle(0), 
-        exceptionAddress(0), 
-        inException(false), 
-        exceptionReadAddress(false), 
-        returnHostAddress(0), 
-        exceptionSigNo(0), 
-        exceptionSigCode(0), 
-        exceptionIp(0), 
-        eipToHostInstructionAddressSpaceMapping(NULL),
-        returnToLoopAddress(NULL),
-        memOffset(0),
-        exitToStartThreadLoop(0) {}
+    BtCPU(KMemory* memory) : CPU(memory) {}
 
     // from CPU
-    virtual void run();
-    virtual DecodedBlock* getNextBlock();
+    void run() override;
+    DecodedBlock* getNextBlock() override;
 
     virtual void* init() = 0; // called from run
 
-    U64 nativeHandle;
-    U64 exceptionAddress;
-    bool inException;
-    bool exceptionReadAddress;
-    U64 returnHostAddress; // after returning from the signalHandler, this will contain the host address we should jump to
-    int exceptionSigNo;
-    int exceptionSigCode;
-    U64 exceptionIp;
-    void* eipToHostInstructionAddressSpaceMapping;    
-    void* returnToLoopAddress;
-    U64 memOffset;
-    int exitToStartThreadLoop; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called
+    U64 nativeHandle = 0;
+    U64 exceptionAddress = 0;
+    bool inException = false;
+    bool exceptionReadAddress = false;
+    U64 returnHostAddress = 0; // after returning from the signalHandler, this will contain the host address we should jump to
+    int exceptionSigNo = 0;
+    int exceptionSigCode = 0;
+    U64 exceptionIp = 0;
+    void* jmpAndTranslateIfNecessary = nullptr;
+    void* returnToLoopAddress = nullptr;
+    void* syncToHostAddress = nullptr;
+    void* syncFromHostAddress = nullptr;
+    void* doSingleOpAddress = nullptr;
+    int exitToStartThreadLoop = 0; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called    
 
     std::vector<U32> pendingCodePages;
-    
-    jmp_buf* jmpBuf;
 
     std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
-    virtual void translateData(const std::shared_ptr<BtData>& data, const std::shared_ptr<BtData>& firstPass = nullptr) = 0;
-    virtual void link(const std::shared_ptr<BtData>& data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) = 0;
+    virtual void translateData(BtData* data, BtData* firstPass = nullptr) = 0;
+    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) = 0;
     void* translateEipInternal(U32 ip);
 #ifdef __TEST
     virtual void postTestRun() = 0;
 #endif
 
     U64 reTranslateChunk();
-    U64 handleChangedUnpatchedCode(U64 rip);
-    U64 handleIllegalInstruction(U64 ip);
-    U64 handleMissingCode(U32 page, U32 offset);
-    U64 handleCodePatch(U64 rip, U32 address);
-    U64 handleAccessException(U64 ip, U64 address, bool readAddress); // returns new ip, if 0 then don't set ip, but continue execution
-    virtual bool handleStringOp(DecodedOp* op);
+    U64 handleMissingCode(U32 page, U32 offset);        
     DecodedOp* getOp(U32 eip, bool existing);
-    void* translateEip(U32 ip);
-    void markCodePageReadOnly(BtData* data);
+    void* translateEip(U32 ip);    
     void makePendingCodePagesReadOnly();
     U64 startException(U64 address, bool readAddress);
     U64 handleFpuException(int code);
@@ -67,17 +53,13 @@ public:
     void wakeThreadIfWaiting();    
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed
 
-    // used by handleAccessException
-    U32 destEip;
-    U64 regPage;
-    U64 regOffset;
-
-    U32 largeAddressJumpInstruction;
-    U32 pageJumpInstruction;
-    U32 pageOffsetJumpInstruction;
+    U32 largeAddressJumpInstruction = 0;
+    U32 pageJumpInstruction = 0;
+    U32 pageOffsetJumpInstruction = 0;
 protected:
     U64 getIpFromEip();
-    virtual std::shared_ptr<BtData> createData() = 0;
+    virtual BtData* getData1() = 0;
+    virtual BtData* getData2() = 0;
 };
 #endif
 

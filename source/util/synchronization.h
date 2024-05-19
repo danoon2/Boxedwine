@@ -11,10 +11,11 @@ public:
 };
 
 #ifdef BOXEDWINE_MULTI_THREADED
-class BoxedWineCondition {
+class BoxedWineCondition : public std::enable_shared_from_this<BoxedWineCondition> {
 public:
     BoxedWineCondition(BString name);
-    BoxedWineCondition();
+    BoxedWineCondition() = default;
+    ~BoxedWineCondition();
 
     bool tryLock();
     void lock();
@@ -23,40 +24,46 @@ public:
     void wait(std::unique_lock<std::mutex>& lock);
     void waitWithTimeout(std::unique_lock<std::mutex>& lock, U32 ms);
     void unlock();
-    void setParentCondition(BoxedWineCondition* parent);
-
+    void addParentCondition(const std::shared_ptr<BoxedWineCondition>& parent);
+    void removeParentCondition(const std::shared_ptr<BoxedWineCondition>& parent);
+    U32 parentsCount();
+    U32 waitCount() {return parentsCount();}
     const BString name;
 
     std::mutex m;
     std::condition_variable c;
-    U32 lockOwner;
-    BoxedWineCondition* parent;
+    U32 lockOwner = 0;
+
+private:
+    std::set<std::shared_ptr<BoxedWineCondition>> parents;
+    std::mutex parentsMutex;
 };
 
 class BoxedWineCriticalSectionCond {
 public:
-    BoxedWineCriticalSectionCond(BoxedWineCondition* cond);
+    BoxedWineCriticalSectionCond(const std::shared_ptr<BoxedWineCondition>& cond);
     ~BoxedWineCriticalSectionCond();
 
 private:
-    BoxedWineCondition* cond;
+    std::shared_ptr<BoxedWineCondition> cond;
 };
 
 #define BOXEDWINE_CRITICAL_SECTION static std::mutex csMutex; const std::lock_guard<std::mutex> lock(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex) const std::lock_guard<std::recursive_mutex> lock(csMutex);
-#define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond) std::unique_lock<std::mutex> boxedWineCriticalSection(csCond.m);
+#define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond) std::unique_lock<std::mutex> boxedWineCriticalSection((csCond)->m);
 
 #define BOXEDWINE_MUTEX std::recursive_mutex
 #define BOXEDWINE_MUTEX_LOCK(mutex) mutex.lock()
 #define BOXEDWINE_MUTEX_TRY_LOCK(mutex) mutex.try_lock()
 #define BOXEDWINE_MUTEX_UNLOCK(mutex) mutex.unlock()
 
-#define BOXEDWINE_CONDITION BoxedWineCondition
-#define BOXEDWINE_CONDITION_SIGNAL(cond) cond.signal()
-#define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) cond.signalAll()
-#define BOXEDWINE_CONDITION_WAIT(cond) cond.wait(boxedWineCriticalSection)
-#define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, t) cond.waitWithTimeout(boxedWineCriticalSection, t)
-#define BOXEDWINE_CONDITION_SET_PARENT(cond, parent) cond.setParentCondition(parent)
+#define BOXEDWINE_CONDITION std::shared_ptr<BoxedWineCondition>
+#define BOXEDWINE_CONDITION_SIGNAL(cond) (cond)->signal()
+#define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) (cond)->signalAll()
+#define BOXEDWINE_CONDITION_WAIT(cond) (cond)->wait(boxedWineCriticalSection)
+#define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, t) (cond)->waitWithTimeout(boxedWineCriticalSection, t)
+#define BOXEDWINE_CONDITION_ADD_PARENT(cond, parent) (cond)->addParentCondition(parent)
+#define BOXEDWINE_CONDITION_REMOVE_PARENT(cond, parent) (cond)->removeParentCondition(parent)
 
 #define BoxedWineConditionTimer BoxedWineCondition
 #else
@@ -72,15 +79,14 @@ typedef void* BOXEDWINE_MUTEX;
 class KThread;
 class BoxedWineCondition;
 
-class BoxedWineConditionTimer : public KTimer { 
+class BoxedWineConditionTimer : public KTimerCallback {
 public:
-    BoxedWineConditionTimer() : cond(0){};
-    bool run();
+    bool run() override;
 
-    BoxedWineCondition* cond;
+    BoxedWineCondition* cond = nullptr;
 };
 
-class BoxedWineCondition {
+class BoxedWineCondition : public std::enable_shared_from_this<BoxedWineCondition> {
 public:
     BoxedWineCondition(BString name);
     ~BoxedWineCondition();
@@ -91,25 +97,28 @@ public:
     U32 waitWithTimeout(U32 ms);
     U32 waitCount();
 
-    void setParentCondition(BoxedWineCondition* parent);
-
+    void addParentCondition(const std::shared_ptr<BoxedWineCondition>& parent);
+    void removeParentCondition(const std::shared_ptr<BoxedWineCondition>& parent);
+    U32 parentsCount();    
     const BString name;
-    BoxedWineCondition* parent;
 private:
     KList<KThread*> waitingThreads;    
+
+    std::set<std::shared_ptr<BoxedWineCondition>> parents;
 
     friend BoxedWineConditionTimer;
     void signalThread(bool all);
 };
 
-typedef BoxedWineCondition BOXEDWINE_CONDITION;
+#define BOXEDWINE_CONDITION std::shared_ptr<BoxedWineCondition>
 #define BOXEDWINE_CONDITION_LOCK(cond)
 #define BOXEDWINE_CONDITION_UNLOCK(cond)
-#define BOXEDWINE_CONDITION_SIGNAL(cond) (cond).signal()
-#define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) (cond).signalAll()
-#define BOXEDWINE_CONDITION_WAIT(cond) return (cond).wait()
-#define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, ms) return (cond).waitWithTimeout(ms)
-#define BOXEDWINE_CONDITION_SET_PARENT(cond, parent) cond.setParentCondition(parent)
+#define BOXEDWINE_CONDITION_SIGNAL(cond) (cond)->signal()
+#define BOXEDWINE_CONDITION_SIGNAL_ALL(cond) (cond)->signalAll()
+#define BOXEDWINE_CONDITION_WAIT(cond) return (cond)->wait()
+#define BOXEDWINE_CONDITION_WAIT_TIMEOUT(cond, ms) return (cond)->waitWithTimeout(ms)
+#define BOXEDWINE_CONDITION_ADD_PARENT(cond, parent) (cond)->addParentCondition(parent)
+#define BOXEDWINE_CONDITION_REMOVE_PARENT(cond, parent) (cond)->removeParentCondition(parent)
 
 #endif
 

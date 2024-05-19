@@ -19,6 +19,6 @@
 #ifndef __DEVTTY_H__
 #define __DEVTTY_H__
 
-FsOpenNode* openDevTTY(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevTTY(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

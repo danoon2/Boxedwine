@@ -50,7 +50,6 @@ KFileDescriptor::KFileDescriptor(const std::shared_ptr<KProcess>& process, const
     this->accessFlags = accessFlags;
     this->descriptorFlags = descriptorFlags;
     this->kobject = kobject;  
-    this->kobject->pid = process->id;
 }
 
 void KFileDescriptor::close() {

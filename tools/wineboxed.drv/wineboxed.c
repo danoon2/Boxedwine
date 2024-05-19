@@ -18,7 +18,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc.1 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#pragma GCC diagnostic ignored "-Wreturn-type"
 
 #if 0
 MAKE_DEP_UNIX
@@ -29,14 +28,12 @@ MAKE_DEP_UNIX
 
 #include "config.h"
 #include "wineboxed.h"
-#include "wine/gdi_driver.h"
 #include "wine/debug.h"
 #include "winreg.h"
 #include "winternl.h"
-//#include "winnt.h"
+#include "winnt.h"
 #include "shellapi.h"
 #include "wine/server.h"
-#include "unixlib.h"
 
 #if BOXED_WINE_VERSION <= 7110
 #define WINE_UNIX_LIB
@@ -98,7 +95,9 @@ static HWND get_focus(void)
 #define GetDesktopWindow NtUserGetDesktopWindow
 #define SetWindowPos NtUserSetWindowPos
 #define GetForegroundWindow NtUserGetForegroundWindow
-#if BOXED_WINE_VERSION >= 7180
+#if BOXED_WINE_VERSION >= 8140
+#define SendMessageW(hwnd, msg, wparam, lparam) NtUserMessageCall(hwnd, msg, wparam, lparam, NULL, NtUserSendMessage, FALSE)
+#elif BOXED_WINE_VERSION >= 7180
 #define SendMessageW(hwnd, msg, wparam, lparam) NtUserMessageCall(hwnd, msg, wparam, lparam, NULL, NtUserSendDriverMessage, FALSE)
 #else
 #define SendMessageW(hwnd, msg, wparam, lparam) NtUserMessageCall(hwnd, msg, wparam, lparam, NULL, NtUserSendMessage, FALSE);
@@ -366,12 +365,14 @@ LONG WINE_CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW dev
         if (flags & (CDS_TEST | CDS_NORESET)) {
             return result;
         }
+#if BOXED_WINE_VERSION <= 7210
         BOXEDDRV_DisplayDevices_Init(TRUE);
         TRACE("SetWindowPos\n");
         SetWindowPos(GetDesktopWindow(), 0, 0, 0, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE | SWP_DEFERERASE );
         TRACE("SendMessageTimeoutW\n");
         SendMessageTimeoutW( HWND_BROADCAST, WM_DISPLAYCHANGE, bpp, MAKELPARAM( cx, cy ), SMTO_ABORTIFHUNG, 2000, NULL );       
         TRACE("SendMessageTimeoutW returned\n");
+#endif
     }    
     return result;
 }
@@ -384,7 +385,11 @@ LONG WINE_CDECL boxeddrv_ChangeDisplaySettings(LPDEVMODEW devmode, HWND hwnd, DW
     return boxeddrv_ChangeDisplaySettingsEx(NULL, devmode, hwnd, flags, lpvoid);
 }
 
+#if BOXED_WINE_VERSION >= 8100
+BOOL WINE_CDECL boxeddrv_ClipCursor(const LPCRECT clip, BOOL reset) {
+#else
 BOOL WINE_CDECL boxeddrv_ClipCursor(LPCRECT clip) {
+#endif
     int result;
     CALL_1(BOXED_CLIP_CURSOR, clip);
     TRACE("clip=%s result=%d\n", wine_dbgstr_rect(clip), result);
@@ -432,6 +437,12 @@ BOOL WINE_CDECL boxeddrv_CreateDesktopWindow(HWND hwnd) {
     CALL_1(BOXED_CREATE_DESKTOP_WINDOW, hwnd);
     initDesktop(hwnd);
     return (BOOL)result;
+}
+
+void WINE_CDECL boxeddrv_SetDesktopWindow(HWND hwnd) {
+    int result;
+    CALL_1(BOXED_CREATE_DESKTOP_WINDOW, hwnd);
+    initDesktop(hwnd);
 }
 
 BOOL WINE_CDECL boxeddrv_CreateWindow(HWND hwnd) {
@@ -520,12 +531,20 @@ DWORD WINE_CDECL boxeddrv_MsgWaitForMultipleObjectsEx(DWORD count, const HANDLE 
     return result;
 }
 
+BOOL WINE_CDECL boxeddrv_ProcessEvents(DWORD mask) {
+    return processEvents(mask);
+}
+
 void WINE_CDECL boxeddrv_SetCapture(HWND hwnd, UINT flags) {
     TRACE("hwnd=%p flags=0x%08x\n", hwnd, flags);
     CALL_NORETURN_2(BOXED_SET_CAPTURE, hwnd, flags);
 }
 
+#if BOXED_WINE_VERSION >= 8110
+void WINE_CDECL boxeddrv_SetCursor(HWND hwnd, HCURSOR cursor) {
+#else
 void WINE_CDECL boxeddrv_SetCursor(HCURSOR cursor) {
+#endif
     ICONINFOEXW info;
     ICONINFOEXW infoOriginal;    
     DWORD found = 0;
@@ -759,12 +778,14 @@ INT WINE_CDECL boxeddrv_GetDisplayDepth(LPCWSTR name, BOOL is_primary) {
 
 static NTSTATUS boxedwine_init(void* arg)
 {
+    TRACE("starting");
     BOXEDDRV_ProcessAttach();
     BOXEDDRV_DisplayDevices_Init(FALSE);
+    TRACE("done");
     return STATUS_SUCCESS;
 }
 
-#if BOXED_WINE_VERSION >= 7120
+#if BOXED_WINE_VERSION >= 7120 && defined(WINE_UNIX_LIB)
 const unixlib_entry_t __wine_unix_call_funcs[] =
 {
     boxedwine_init

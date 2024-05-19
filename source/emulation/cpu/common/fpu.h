@@ -24,9 +24,20 @@ class CPU;
 
 #ifdef LOG_FPU
 #include <inttypes.h>
-extern FILE* fpuLogFile;
+extern BWriteFile fpuLogFile;
+void preFpuLog();
 
-void flog(const char* msg, ...);
+template <class... Args>
+void flog(const char* format, Args&&... args) {
+    BOXEDWINE_CRITICAL_SECTION;
+
+    preFpuLog();
+    auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
+    BString msg(size + 1, '\0');
+    std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
+    fpuLogFile.write(msg);
+    fpuLogFile.write("\n");
+}
 #endif
 
 struct FPU_Reg {
@@ -154,6 +165,8 @@ public:
     U32 sw;
     U32 top;
     U32 round;
+
+    U32 envData[4];
 };
 
 #endif

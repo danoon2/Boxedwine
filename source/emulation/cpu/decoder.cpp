@@ -1,5 +1,6 @@
 #include "boxedwine.h"
 #include "decoder.h"
+#include "../../util/ptrpool.h"
 
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
@@ -118,33 +119,33 @@ const InstructionInfo instructionInfo[] = {
     {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE32I32
 
     {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR8E8
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8R8
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR8I8
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8I8
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE8I8
     {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR16E16
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16R16
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16R16
 /*070*/    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR16R16
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR16I16
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16I16
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE16I16
     {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR32E32
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32R32
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpR32I32
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32I32
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // CmpE32I32
     // CF, AF, OF are always 0
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8R8
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR8R8
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR8I8
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8I8
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16R16
+    {0, 8, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE8I8
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16R16
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR16R16
 /*080*/    {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR16I16
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16I16
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32R32
+    {0, 16, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE16I16
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR32R32
     {0, 0, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestR32I32
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32I32
+    {0, 32, 0, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // TestE32I32
 
     {0, 0, 0, 0, 0, 0, 0}, // NotR8
     {0, 8, 8, 0, 0, 0, 0}, // NotE8
@@ -195,20 +196,20 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0, 0}, // XchgR32R32 
 /*0b0*/    {0, 32, 32, 0, 0, 0, 0}, // XchgE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR16R16
-    {0, 16, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR32R32
-    {0, 32, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR16R16
+    {0, 16, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR32R32
+    {0, 32, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR16R16
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR32R32
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR16R16
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtsE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR32R32
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtsE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR16R16 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR32R32 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR16R16 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtrE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR32R32 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtrE32R32
 
     {0, 0, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsfR16R16, 
     {0, 16, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsfR16E16,
@@ -220,28 +221,28 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsrR32R32, 
     {0, 32, 0, ZF, 0, OF|SF|CF|AF|PF, 0}, // BsrR32E32,
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR16R16
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE16R16
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR32R32
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE32R32
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR16R16
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtcE16R16
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR32R32
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtcE32R32
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR16, 
-    {0, 16, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE16,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR16, 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE16,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR16, 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE16,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR16, 
-    {0, 16, 16, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR16, 
+    {0, 16, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR16, 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtsE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR16, 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtrE16,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR16, 
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtcE16,
 
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtR32, 
-    {0, 32, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtE32,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsR32, 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtsE32,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrR32, 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtrE32,
-    {0, 0, 0, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcR32, 
-    {0, 32, 32, CF, 0, OF|SF|ZF|AF|PF, 0}, // BtcE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtR32, 
+    {0, 32, 0, CF, 0, OF|SF|AF|PF, 0}, // BtE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtsR32, 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtsE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtrR32, 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtrE32,
+    {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR32, 
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtcE32,
 
     {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlR16R16
     {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlE16R16
@@ -617,10 +618,10 @@ const InstructionInfo instructionInfo[] = {
     {0, 32, 0, 0, 0, 0, 0}, // FLD_SINGLE_REAL
     {0, 32, 0, 0, 0, 0, 0}, // FST_SINGLE_REAL
     {0, 32, 0, 0, 0, 0, 0}, // FST_SINGLE_REAL_Pop
-    {0, 12, 0, 0, 0, 0, 0}, // FLDENV
-    {0, 2, 0, 0, 0, 0, 0}, // FLDCW
-    {0, 0, 12, 0, 0, 0, 0}, // FNSTENV
-    {0, 0, 2, 0, 0, 0, 0}, // FNSTCW
+    {0, 224, 0, 0, 0, 0, 0}, // FLDENV
+    {0, 16, 0, 0, 0, 0, 0}, // FLDCW
+    {0, 0, 224, 0, 0, 0, 0}, // FNSTENV
+    {0, 0, 16, 0, 0, 0, 0}, // FNSTCW
 
     {0, 0, 0, 0, CF, 0, 0}, // FCMOV_ST0_STj_CF
     {0, 0, 0, 0, ZF, 0, 0}, // FCMOV_ST0_STj_ZF
@@ -1393,53 +1394,66 @@ struct LogInstruction {
     const char* postfix;
 };
 
+static void outXMM(U32 r, CPU* cpu) {
+    switch (r) {
+    case 0: cpu->logFile.write("xmm0"); break;
+    case 1: cpu->logFile.write("xmm1"); break;
+    case 2: cpu->logFile.write("xmm2"); break;
+    case 3: cpu->logFile.write("xmm3"); break;
+    case 4: cpu->logFile.write("xmm4"); break;
+    case 5: cpu->logFile.write("xmm5"); break;
+    case 6: cpu->logFile.write("xmm6"); break;
+    case 7: cpu->logFile.write("xmm7"); break;
+    }
+}
+
 static void outR32(U32 r, CPU* cpu) {
     switch (r) {
-        case 0: fwrite("EAX", 3, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("ECX", 3, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("EDX", 3, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("EBX", 3, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("ESP", 3, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("EBP", 3, 1, (FILE*)cpu->logFile); break;
-        case 6: fwrite("ESI", 3, 1, (FILE*)cpu->logFile); break;
-        case 7: fwrite("EDI", 3, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("EAX"); break;
+        case 1: cpu->logFile.write("ECX"); break;
+        case 2: cpu->logFile.write("EDX"); break;
+        case 3: cpu->logFile.write("EBX"); break;
+        case 4: cpu->logFile.write("ESP"); break;
+        case 5: cpu->logFile.write("EBP"); break;
+        case 6: cpu->logFile.write("ESI"); break;
+        case 7: cpu->logFile.write("EDI"); break;
     }
 }
 
 static void outR16(U32 r, CPU* cpu) {
     switch (r) {
-        case 0: fwrite("AX", 2, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("CX", 2, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("DX", 2, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("BX", 2, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("SP", 2, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("BP", 2, 1, (FILE*)cpu->logFile); break;
-        case 6: fwrite("SI", 2, 1, (FILE*)cpu->logFile); break;
-        case 7: fwrite("DI", 2, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("AX"); break;
+        case 1: cpu->logFile.write("CX"); break;
+        case 2: cpu->logFile.write("DX"); break;
+        case 3: cpu->logFile.write("BX"); break;
+        case 4: cpu->logFile.write("SP"); break;
+        case 5: cpu->logFile.write("BP"); break;
+        case 6: cpu->logFile.write("SI"); break;
+        case 7: cpu->logFile.write("DI"); break;
     }
 }
 
 static void outR8(U32 r, CPU* cpu) {
     switch (r) {
-        case 0: fwrite("AL", 2, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("CL", 2, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("DL", 2, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("BL", 2, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("AH", 2, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("CH", 2, 1, (FILE*)cpu->logFile); break;
-        case 6: fwrite("DH", 2, 1, (FILE*)cpu->logFile); break;
-        case 7: fwrite("BH", 2, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("AL"); break;
+        case 1: cpu->logFile.write("CL"); break;
+        case 2: cpu->logFile.write("DL"); break;
+        case 3: cpu->logFile.write("BL"); break;
+        case 4: cpu->logFile.write("AH"); break;
+        case 5: cpu->logFile.write("CH"); break;
+        case 6: cpu->logFile.write("DH"); break;
+        case 7: cpu->logFile.write("BH"); break;
     }
 }
 
 static void outS(U32 s, CPU* cpu) {
     switch (s) {
-        case 0: fwrite("ES", 2, 1, (FILE*)cpu->logFile); break;
-        case 1: fwrite("CS", 2, 1, (FILE*)cpu->logFile); break;
-        case 2: fwrite("SS", 2, 1, (FILE*)cpu->logFile); break;
-        case 3: fwrite("DS", 2, 1, (FILE*)cpu->logFile); break;
-        case 4: fwrite("FS", 2, 1, (FILE*)cpu->logFile); break;
-        case 5: fwrite("GS", 2, 1, (FILE*)cpu->logFile); break;
+        case 0: cpu->logFile.write("ES"); break;
+        case 1: cpu->logFile.write("CS"); break;
+        case 2: cpu->logFile.write("SS"); break;
+        case 3: cpu->logFile.write("DS"); break;
+        case 4: cpu->logFile.write("FS"); break;
+        case 5: cpu->logFile.write("GS"); break;
     }
 }
 
@@ -1448,7 +1462,7 @@ static void outEA32(DecodedOp* op, CPU* cpu) {
 
     if (op->base!=SEG_ZERO) {
         outS(op->base, cpu);
-        fwrite(":", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(":");
     }
     if (op->rm!=8) {
         outR32(op->rm, cpu);
@@ -1456,20 +1470,20 @@ static void outEA32(DecodedOp* op, CPU* cpu) {
     }
     if (op->sibIndex!=8) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
         outR32(op->sibIndex, cpu);
         added = true;
         if (op->sibScale!=0) {
-            fwrite("<<", 2, 1, (FILE*)cpu->logFile);
-            fwrite((op->sibScale==1)?"1":"2", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("<<");
+            cpu->logFile.write((op->sibScale==1)?"1":"2");
         }
     }
     if (op->disp) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
-        fprintf((FILE*)cpu->logFile, "%X", op->disp);
+        cpu->logFile.writeFormat("%X",op->disp);
     }
 }
 
@@ -1478,7 +1492,7 @@ static void outEA16(DecodedOp* op, CPU* cpu) {
 
     if (op->base!=SEG_ZERO) {
         outS(op->base, cpu);
-        fwrite(":", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(":");
     }
     if (op->rm!=8) {
         outR16(op->rm, cpu);
@@ -1486,69 +1500,68 @@ static void outEA16(DecodedOp* op, CPU* cpu) {
     }
     if (op->sibIndex!=8) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
         outR16(op->sibIndex, cpu);
         added = true;
     }
     if (op->disp) {
         if (added) {
-            fwrite("+", 1, 1, (FILE*)cpu->logFile);
+            cpu->logFile.write("+");
         }
-        fprintf((FILE*)cpu->logFile, "%X", op->disp);
+        cpu->logFile.write("%X", op->disp);
     }
 }
 
 static void outE64(DecodedOp* op, CPU* cpu) {
-    fwrite("QWORD PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("QWORD PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void outE32(DecodedOp* op, CPU* cpu) {
-    fwrite("DWORD PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("DWORD PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void outE16(DecodedOp* op, CPU* cpu) {
-    fwrite("WORD PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("WORD PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void outE8(DecodedOp* op, CPU* cpu) {
-    fwrite("BYTE PTR [", 11, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("BYTE PTR [");
     if (op->ea16)
         outEA16(op, cpu);
     else
         outEA32(op, cpu);
-    fwrite("]", 1, 1, (FILE*)cpu->logFile);  
+    cpu->logFile.write("]");
 }
 
 static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.writeFormat("%s ", inst->name);
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR32(op->rm, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);
     } else {
         kpanic("unknown width: %d in logRR", inst->width);
@@ -1556,19 +1569,19 @@ static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE32(op, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else {
         kpanic("unknown width: %d in logRE", inst->width);
@@ -1576,19 +1589,19 @@ static void logRE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logER(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outE32(op, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR32(op->reg, cpu);        
     } else if (inst->width==16) {        
         outE16(op, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->reg, cpu);        
     } else if (inst->width==8) {        
         outE8(op, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);        
+        cpu->logFile.write(",");
         outR8(op->reg, cpu);
     } else {
         kpanic("unknown width: %d in logER", inst->width);
@@ -1596,19 +1609,19 @@ static void logER(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE8(op, cpu);
     } else {
         kpanic("unknown width: %d in logRE8", inst->width);
@@ -1616,19 +1629,19 @@ static void logRE8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);        
     } else if (inst->width==16) {        
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);        
     } else if (inst->width==8) {        
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);        
+        cpu->logFile.write(",");
         outR8(op->rm, cpu);
     } else {
         kpanic("unknown width: %d in logRR8", inst->width);
@@ -1636,19 +1649,19 @@ static void logRR8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRE16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else if (inst->width==16) {
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outE16(op, cpu);
     } else {
         kpanic("unknown width: %d in logRE16", inst->width);
@@ -1656,19 +1669,19 @@ static void logRE16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logRR16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);        
     } else if (inst->width==16) {        
         outR16(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);        
     } else if (inst->width==8) {        
         outR8(op->reg, cpu);
-        fwrite(",", 1, 1, (FILE*)cpu->logFile);        
+        cpu->logFile.write(",");
         outR16(op->rm, cpu);
     } else {
         kpanic("unknown width: %d in logRR16", inst->width);
@@ -1676,8 +1689,8 @@ static void logRR16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outR32(op->reg, cpu);
     } else if (inst->width==16) {
@@ -1690,8 +1703,8 @@ static void logR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
     if (inst->width==32) {
         outE32(op, cpu);
     } else if (inst->width==16) {
@@ -1706,88 +1719,109 @@ static void logE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
 }
 
 static void logS(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logSR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logRS(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logSE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logES(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logName(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
-    fwrite(" ", 1, 1, (FILE*)cpu->logFile);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
 }
 
 static void logCsEip(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logMM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logME(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logMR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logRM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logEM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logXmmXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
+    outXMM(op->reg, cpu);
+    cpu->logFile.write(",");
+    outXMM(op->rm, cpu);
 }
 
 static void logXmmI(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logXmmE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
+
+    outXMM(op->reg, cpu);        
+    cpu->logFile.write(",");
+    if (op->ea16) {
+        outE16(op, cpu);
+    } else {
+        outE32(op, cpu);
+    }
 }
 
 static void logRXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logEXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
+    cpu->logFile.write(" ");
+    if (op->ea16) {
+        outE16(op, cpu);
+    } else {
+        outE32(op, cpu);
+    }
+    cpu->logFile.write(",");
+    outXMM(op->reg, cpu);
 }
 
 static void logXmmR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logXmmM(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 static void logMXmm(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
-    fprintf((FILE*)cpu->logFile, "%s", inst->name);
+    cpu->logFile.write(inst->name);
 }
 
 const LogInstruction instructionLog[] = {
@@ -2212,8 +2246,7 @@ const LogInstruction instructionLog[] = {
     {"Ret", 16, logName},
     {"Ret", 32, logName},
     {"Retf", 16, logName},
-    {"Retf", 32, logName},
-    
+    {"Retf", 32, logName},    
     {"Invalid", 0, logName},
     {"Int3", 0, logName},
     {"Int80 Syscall", 0, logName},
@@ -2222,7 +2255,6 @@ const LogInstruction instructionLog[] = {
     {"Int9A Vulkan", 0, logName },
     {"Int", 0, logName, true},
     {"Int0", 0, logName},
-
     {"IRet", 16, logName},
     {"IRet", 32, logName},
     {"Xlat", 0, logName},
@@ -2713,7 +2745,8 @@ const LogInstruction instructionLog[] = {
     {"Emms", 0, logName},
     {"Mov", 32, logRM},
     {"Mov", 32, logEM},
-    {"Mov", 64, logEM},
+    {"Mov", 64, logMM},
+    {"Mov", 64, logEM },
     {"Psrlw", 0, logMM},
     {"Psrlw", 0, logME},
     {"Psrld", 0, logMM},
@@ -2772,6 +2805,7 @@ const LogInstruction instructionLog[] = {
     {"Paddw", 0, logME},
     {"Paddd", 0, logMM},
     {"Paddd", 0, logME},
+
     {"FXSAVE", 0, logName},
     {"FXRSTOR", 0, logName},
     {"LDMXCSR", 0, logName},
@@ -2921,6 +2955,7 @@ const LogInstruction instructionLog[] = {
     {"Comiss", 32, logXmmE},
     {"Ucomiss", 0, logXmmXmm},
     {"Ucomiss", 32, logXmmE},
+
 
     {"Addpd", 0, logXmmXmm},
     {"Addpd", 128, logXmmE},
@@ -3161,22 +3196,25 @@ const LogInstruction instructionLog[] = {
 };
 #endif
 class DecodeData {
-public:    
-    U8 ds;
-    U8 ss;
-    bool ea16;
+public:  
+    DecodeData() = default;
 
-    U32 opCode;
-    U32 inst;
+    U8 ds = 0;
+    U8 ss = 0;
+    bool ea16 = false;
+
+    U32 opCode = 0;
+    U32 inst = 0;
 
     U8 fetch8();
     U16 fetch16();
     U32 fetch32();
 
-    pfnFetchByte fetchByte;
-    U32 eip;
-    U32 opCountSoFarInThisBlock;
-    U8 opLen;
+    pfnFetchByte fetchByte = nullptr;
+    void* fetchByteData = nullptr;
+    U32 eip = 0;
+    U32 opCountSoFarInThisBlock = 0;
+    U8 opLen = 0;
 };
 
 typedef void (*DECODER)(DecodeData* obj);
@@ -3358,7 +3396,7 @@ public:
         this->reg = reg;
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -3385,7 +3423,7 @@ public:
         this->mem = mem;
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         op->reg = G(rm);
@@ -3410,7 +3448,7 @@ public:
     DecodeMaskRM(Instruction reg, Instruction mem, U32 immWdith, U32 mask) : DecodeRM(reg, mem, immWdith) {
         this->mask = mask;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         DecodeRM::decode(data, op);
         op->imm &= this->mask;
         if (op->imm==0)
@@ -3434,7 +3472,7 @@ public:
         this->reg = reg;
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -3466,7 +3504,7 @@ public:
         this->reg = reg;
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -3494,7 +3532,7 @@ public:
     DecodeMem(Instruction mem, U32 immWidth) : Decode(immWidth) {
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         op->reg = G(rm);
@@ -3512,7 +3550,7 @@ public:
     DecodeLea(Instruction mem) {
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         op->reg = G(rm);
@@ -3531,7 +3569,7 @@ public:
     DecodeInstrMem(Instruction mem) {
         this->mem = mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->base = data->ds;
         op->inst = this->mem;
     }
@@ -3554,7 +3592,7 @@ public:
         this->reg = reg;
         this->inst = inst;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = this->inst;
         op->reg = this->reg;
         fetchImm(data, op);
@@ -3582,7 +3620,7 @@ public:
         this->reg2 = reg2;
         this->inst = inst;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = this->inst;
         op->reg = this->reg;
         op->rm = this->reg2;
@@ -3606,7 +3644,7 @@ public:
     DecodeInst(Instruction reg, U32 immWidth, U32 signExtendWidth) : Decode(immWidth, signExtendWidth) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         fetchImm(data, op);
     }
@@ -3632,7 +3670,7 @@ public:
         this->f2Reg = f2Reg;
         this->f3Reg = f3Reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         if (op->repNotZero) {
             op->inst = f2Reg;
         } else if (op->repZero) {
@@ -3653,7 +3691,7 @@ class DecodeIntIb : public Decode {
 public:
     DecodeIntIb() : Decode(8) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         fetchImm(data, op);
         if (op->imm==0x80)
             op->inst = Int80;
@@ -3673,7 +3711,7 @@ public:
     DecodeDirect(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->base = data->ds;
         op->rm=regZero; 
@@ -3691,7 +3729,7 @@ private:
 
 class Decode2Byte : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->opCode+=0x100;
         data->inst = data->fetch8()+data->opCode;
         if (!decoder[data->inst]) {
@@ -3704,7 +3742,7 @@ public:
 
 class Decode66 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->opCode=0x200;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3713,7 +3751,7 @@ public:
 
 class Decode67 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->ea16 = 0;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3722,7 +3760,7 @@ public:
 
 class Decode266 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->opCode=0;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3731,7 +3769,7 @@ public:
 
 class Decode267 : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->ea16 = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3740,7 +3778,7 @@ public:
 
 class DecodeLock : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->lock = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3749,7 +3787,7 @@ public:
 
 class DecodeRepNZ : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->repNotZero = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3758,7 +3796,7 @@ public:
 
 class DecodeRepZ : public Decode {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->repZero = 1;
         data->inst = data->fetch8()+data->opCode;
         decoder[data->inst]->decode(data, op);
@@ -3771,7 +3809,7 @@ public:
         this->seg = seg;
     }
 
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         data->ds = seg;
         data->ss = seg;
         data->inst = data->fetch8()+data->opCode;
@@ -3787,7 +3825,7 @@ public:
     DecodeIwIw(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->disp = data->fetch16();
         op->imm = data->fetch16();
@@ -3802,7 +3840,7 @@ public:
     DecodeIdIw(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->disp = data->fetch32();
         op->imm = data->fetch16();
@@ -3835,7 +3873,7 @@ class DecodeGrp1_8 : public DecodeFunc {
 public:
     DecodeGrp1_8(U32 immWidth) : DecodeFunc(immWidth) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3858,7 +3896,7 @@ public:
     }
     DecodeGrp1_16(U32 immWidth, U32 signExtendWidth) : DecodeFunc(immWidth, signExtendWidth) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3881,7 +3919,7 @@ public:
     }
     DecodeGrp1_32(U32 immWidth, U32 signExtendWidth) : DecodeFunc(immWidth, signExtendWidth) {
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3903,7 +3941,7 @@ public:
     DecodeGrp2_8(U32 immWidth, U32 imm) : DecodeFunc(immWidth) {
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3939,7 +3977,7 @@ public:
     DecodeGrp2_16(U32 immWidth, U32 imm) : DecodeFunc(immWidth) {
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -3975,7 +4013,7 @@ public:
     DecodeGrp2_32(U32 immWidth, U32 imm) : DecodeFunc(immWidth) {
         this->imm = imm;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4003,7 +4041,7 @@ private:
 
 class DecodeGrp2_Cl_8 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4021,7 +4059,7 @@ public:
 
 class DecodeGrp2_Cl_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4039,7 +4077,7 @@ public:
 
 class DecodeGrp2_Cl_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4057,7 +4095,7 @@ public:
 
 class DecodeGrp3_8 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4075,7 +4113,7 @@ public:
 
 class DecodeGrp3_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4093,7 +4131,7 @@ public:
 
 class DecodeGrp3_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U32 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4111,7 +4149,7 @@ public:
 
 class DecodeGrp4_8 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4135,7 +4173,7 @@ public:
 
 class DecodeGrp5_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4153,7 +4191,7 @@ public:
 
 class DecodeGrp5_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4171,7 +4209,7 @@ public:
 
 class DecodeGrp6_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4188,7 +4226,7 @@ public:
 
 class DecodeGrp6_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4205,7 +4243,7 @@ public:
 
 class DecodeGrp7_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4223,7 +4261,7 @@ public:
 
 class DecodeGrp8_16 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4244,7 +4282,7 @@ public:
 
 class DecodeGrp8_32 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4270,7 +4308,7 @@ public:
         this->reg = reg;
     }
 
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = this->reg;
         op->imm = data->fetch16();
         op->disp = data->fetch8() & 0x1f;
@@ -4282,7 +4320,7 @@ private:
 
 class DecodeFPU0 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4315,7 +4353,7 @@ public:
 
 class DecodeFPU1 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {				
@@ -4396,7 +4434,7 @@ public:
 
 class DecodeFPU2 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4412,6 +4450,7 @@ public:
                         break;
                     }
                 // intentional fall through
+                    [[fallthrough]];
                 default:
                     op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
             }
@@ -4433,7 +4472,7 @@ public:
 
 class DecodeFPU3 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4473,7 +4512,7 @@ public:
 
 class DecodeFPU4 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4506,7 +4545,7 @@ public:
 
 class DecodeFPU5 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4538,7 +4577,7 @@ public:
 
 class DecodeFPU6 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4578,7 +4617,7 @@ public:
 
 class DecodeFPU7 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm >= 0xc0) {
@@ -4637,7 +4676,7 @@ public:
         this->inst[6] = i7;
         this->inst[7] = i8;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
         if (rm >= 0xc0) {
             op->reg = E(rm);
@@ -4654,7 +4693,7 @@ private:
 
 class Decode3AE : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4672,7 +4711,7 @@ public:
 
 class Decode318 : public DecodeFunc {
 public:
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         switch (G(rm)) {
@@ -4702,7 +4741,7 @@ public:
         this->reg2 = reg2;
         this->mem2 = mem2;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -4743,7 +4782,7 @@ public:
         this->f3Reg = f3Reg;
         this->f3Mem = f3Mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -4799,7 +4838,7 @@ public:
         this->f3Reg = f3Reg;
         this->f3Mem = f3Mem;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
@@ -4861,11 +4900,11 @@ public:
         this->f3Mem = f3Mem;
         this->reversed3 = reversed3;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         U8 rm = data->fetch8();
 
         if (rm>=0xC0) {    
-            bool reversed;
+            bool reversed = false;
 
             if (op->repZero) {
                 op->inst = this->f3Reg;
@@ -4917,7 +4956,7 @@ public:
     DecodeRdtsc(Instruction reg) {
         this->reg = reg;
     }
-    void decode(DecodeData* data, DecodedOp* op) const {
+    void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
         op->imm = data->opCountSoFarInThisBlock;
     }
@@ -5799,29 +5838,29 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_16,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_16,
     // 0x100
-    &decodeGroup6_16, 0, &decodeLar16, &decodeLsl16, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeGroup6_16, nullptr, &decodeLar16, &decodeLsl16, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x110
     &sse2Movupd, &sse2Movupd_r, &sseMov0x112, &sseMov0x113, &sseMov0x114, &sseMov0x115, &sseMov0x116, &sseMov0x117,
-    0, 0, 0, 0, 0, 0, 0, &decodeHintNop,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &decodeHintNop,
     // 0x120
-    &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
+    &decodeMovRdCrx, nullptr, &decodeMovCrxRd, nullptr, nullptr, nullptr, nullptr, nullptr,
     &sse2Movapd, &sse2Movapd_r, &sseMov0x12a, &sseMov0x12b, &sseMov0x12c, &sseMov0x12d, &sseMov0x12e, &sseMov0x12f,
     // 0x130
-    0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    nullptr, &decodeRdtsc, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x140
     &decodeCmovO_16, &decodeCmovNO_16, &decodeCmovB_16, &decodeCmovNB_16, &decodeCmovZ_16, &decodeCmovNZ_16, &decodeCmovBE_16, &decodeCmovNBE_16,
     &decodeCmovS_16, &decodeCmovNS_16, &decodeCmovP_16, &decodeCmovNP_16, &decodeCmovL_16, &decodeCmovNL_16, &decodeCmovLE_16, &decodeCmovNLE_16,
     // 0x150
-    &sseMov0x150, &sseMov0x151, 0, 0, &sseAnd0x154, &sseAndNot0x155, &sseOr0x156, &sseXor0x157,
+    &sseMov0x150, &sseMov0x151, nullptr, nullptr, &sseAnd0x154, &sseAndNot0x155, &sseOr0x156, &sseXor0x157,
     &sseAdd0x158, &sseMul0x159, &sse0x15a, &sse0x15b, &sse0x15c, &sse0x15d, &sse0x15e, &sse0x15f,
     // 0x160
     &sse0x160, &sse0x161, &sse0x162, &sse0x163, &sse0x164, &sse0x165, &sse0x166, &sse0x167,
     &sse0x168, &sse0x169, &sse0x16a, &sse0x16b, &sse0x16c, &sse0x16d, &sse0x16e, &sse0x16f,
     // 0x170
-    &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, &sse0x176, 0,
-    0, 0, 0, 0, 0, 0, &sse0x17e, &sse0x17f,
+    &sse0x170, &sse0x171, &sse0x172, &sse0x173, &sse0x174, &sse0x175, &sse0x176, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &sse0x17e, &sse0x17f,
     // 0x180
     &decodeJo16, &decodeJno16, &decodeJb16, &decodeJnb16, &decodeJz16, &decodeJnz16, &decodeJbe16, &decodeJnbe16,
     &decodeJs16, &decodeJns16, &decodeJp16, &decodeJnp16, &decodeJl16, &decodeJnl16, &decodeJle16, &decodeJnle16,
@@ -5829,23 +5868,23 @@ const Decode* const decoder[] = {
     &decodeSetO, &decodeSetNO, &decodeSetB, &decodeSetNB, &decodeSetZ, &decodeSetNZ, &decodeSetBE, &decodeSetNBE,
     &decodeSetS, &decodeSetNS, &decodeSetP, &decodeSetNP, &decodeSetL, &decodeSetNL, &decodeSetLE, &decodeSetNLE,
     // 0x1a0
-    &decodePushFs16, &decodePopFs16, &decodeCPUID, &decodeBtEwGw, &decodeDshlEwGw, &decodeDshlClEwGw, 0, 0,
-    &decodePushGs16, &decodePopGs16, 0, &decodeBtsEwGw, &decodeDshrEwGw, &decodeDshrClEwGw, 0, &decodeDimulGwEw,
+    &decodePushFs16, &decodePopFs16, &decodeCPUID, &decodeBtEwGw, &decodeDshlEwGw, &decodeDshlClEwGw, nullptr, nullptr,
+    &decodePushGs16, &decodePopGs16, nullptr, &decodeBtsEwGw, &decodeDshrEwGw, &decodeDshrClEwGw, nullptr, &decodeDimulGwEw,
     // 0x1b0
     &decodeCmpXchgEbGb, &decodeCmpXchgEwGw, &decodeLss, &decodeBtrEwGw, &decodeLfs, &decodeLgs, &decodeMovGwXz8, &decodeMovEwGw,
-    0, 0, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, 0,
+    nullptr, nullptr, &decodeGroup8_16, &decodeBtcEwGw, &decodeBsfGwEw, &decodeBsrGwEw, &decodeMovGwSx8, nullptr,
     // 0x1c0
-    &decodeXadd8, &decodeXadd16, &sse0x1c2, 0, &ssePinsrwXmm, &ssePextrwXmm, &sse0x1c6, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeXadd8, &decodeXadd16, &sse0x1c2, nullptr, &ssePinsrwXmm, &ssePextrwXmm, &sse0x1c6, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x1d0
-    0, &sse0x1d1, &sse0x1d2, &sse0x1d3, &sse0x1d4, &sse0x1d5, &sse0x1d6, &ssePmovmskbXmm,
+    nullptr, &sse0x1d1, &sse0x1d2, &sse0x1d3, &sse0x1d4, &sse0x1d5, &sse0x1d6, &ssePmovmskbXmm,
     &sse0x1d8, &sse0x1d9, &ssePminubXmm, &sse0x1db, &sse0x1dc, &sse0x1dd, &ssePmaxubXmm, &sse0x1df,
     // 0x1e0
     &ssePavgbXmm, &sse0x1e1, &sse0x1e2, &ssePavgwXmm, &ssePmulhuwXmm, &sse0x1e5, &sse0x1e6, &sse0x1e7,
     &sse0x1e8, &sse0x1e9, &ssePminswXmm, &sse0x1eb, &sse0x1ec, &sse0x1ed, &ssePmaxswXmm, &sse0x1ef,
     // 0x1f0
-    0, &sse0x1f1, &sse0x1f2, &sse0x1f3, &sse0x1f4, &sse0x1f5, &ssePsadbwXmm, &sse0x1f7,
-    &sse0x1f8, &sse0x1f9, &sse0x1fa, &sse0x1fb, &sse0x1fc, &sse0x1fd, &sse0x1fe, 0,
+    nullptr, &sse0x1f1, &sse0x1f2, &sse0x1f3, &sse0x1f4, &sse0x1f5, &ssePsadbwXmm, &sse0x1f7,
+    &sse0x1f8, &sse0x1f9, &sse0x1fa, &sse0x1fb, &sse0x1fc, &sse0x1fd, &sse0x1fe, nullptr,
     // 0x200
     &decodeAddEbGb, &decodeAddEdGd, &decodeAddGbEb, &decodeAddGdEd, &decodeAddAlIb, &decodeAddEaxId, &decodePushEs32, &decodePopEs32,
     &decodeOrEbGb, &decodeOrEdGd, &decodeOrGbEb, &decodeOrGdEd, &decodeOrAlIb, &decodeOrEaxId, &decodePushCs32, &decode2Byte,
@@ -5895,17 +5934,17 @@ const Decode* const decoder[] = {
     &decodeLock, &decodeICEBP, &decodeRepNZ, &decodeRepZ, &decodeHlt, &decodeCmc, &decodeGroup3_8, &decodeGroup3_32,
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_32,
     // 0x300
-    &decodeGroup6_32, &decodeGroup7_32, 0, &decodeLsl32, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    &decodeGroup6_32, &decodeGroup7_32, nullptr, &decodeLsl32, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x310
     &sseMov0x310, &sseMov0x311, &sseMov0x312, &sseMov0x313, &sseUnpcklp, &sseUnpckhp, &sseMov0x316, &sseMov0x317,
-    &seePrefetch, 0, 0, 0, 0, 0, 0, &decodeHintNop,
+    &seePrefetch, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &decodeHintNop,
     // 0x320
-    &decodeMovRdCrx, 0, &decodeMovCrxRd, 0, 0, 0, 0, 0,
+    &decodeMovRdCrx, nullptr, &decodeMovCrxRd, nullptr, nullptr, nullptr, nullptr, nullptr,
     &sseMovapsXE, &sseMovapsEX, &sseCvt2a, &sseMovnt, &sseCvt2c, &sseCvt2d, &sseUcomis, &sseComis,
     // 0x330
-    0, &decodeRdtsc, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0,
+    nullptr, &decodeRdtsc, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x340
     &decodeCmovO_32, &decodeCmovNO_32, &decodeCmovB_32, &decodeCmovNB_32, &decodeCmovZ_32, &decodeCmovNZ_32, &decodeCmovBE_32, &decodeCmovNBE_32,
     &decodeCmovS_32, &decodeCmovNS_32, &decodeCmovP_32, &decodeCmovNP_32, &decodeCmovL_32, &decodeCmovNL_32, &decodeCmovLE_32, &decodeCmovNLE_32,
@@ -5914,10 +5953,10 @@ const Decode* const decoder[] = {
     &sseAdd, &sseMul, &sse0x35a, &sse0x35b, &sseSub, &sseMin, &sseDiv, &sseMax,
     // 0x360
     &decodePunpcklbw, &decodePunpcklwd, &decodePunpckldq, &decodePacksswb, &decodePcmpgtb, &decodePcmpgtw, &decodePcmpgtd, &decodePackuswb,
-    &decodePunpckhbw, &decodePunpckhwd, &decodePunpckhdq, &decodePackssdw, 0, 0, &decodeMovPqEd, &decodeMovPqQq,
+    &decodePunpckhbw, &decodePunpckhwd, &decodePunpckhdq, &decodePackssdw, nullptr, nullptr, &decodeMovPqEd, &decodeMovPqQq,
     // 0x370
     &ssePshufwMmx, &decode371MMX, &decode372MMX, &decode373MMX, &decodePcmpeqb, &decodePcmpeqw, &decodePcmpeqd, &decodeEmms,
-    0, 0, 0, 0, 0, 0, &sse0x37e, &decodeMovQqPq,
+    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &sse0x37e, &decodeMovQqPq,
     // 0x380
     &decodeJo32, &decodeJno32, &decodeJb32, &decodeJnb32, &decodeJz32, &decodeJnz32, &decodeJbe32, &decodeJnbe32,
     &decodeJs32, &decodeJns32, &decodeJp32, &decodeJnp32, &decodeJl32, &decodeJnl32, &decodeJle32, &decodeJnle32,
@@ -5925,28 +5964,28 @@ const Decode* const decoder[] = {
     &decodeSetO, &decodeSetNO, &decodeSetB, &decodeSetNB, &decodeSetZ, &decodeSetNZ, &decodeSetBE, &decodeSetNBE,
     &decodeSetS, &decodeSetNS, &decodeSetP, &decodeSetNP, &decodeSetL, &decodeSetNL, &decodeSetLE, &decodeSetNLE,
     // 0x3a0
-    &decodePushFs32, &decodePopFs32, &decodeCPUID, &decodeBtEdGd, &decodeDshlEdGd, &decodeDshlClEdGd, 0, 0,
-    &decodePushGs32, &decodePopGs32, 0, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, &decode3EA, &decodeDimulGdEd,
+    &decodePushFs32, &decodePopFs32, &decodeCPUID, &decodeBtEdGd, &decodeDshlEdGd, &decodeDshlClEdGd, nullptr, nullptr,
+    &decodePushGs32, &decodePopGs32, nullptr, &decodeBtsEdGd, &decodeDshrEdGd, &decodeDshrClEdGd, &decode3EA, &decodeDimulGdEd,
     // 0x3b0
     &decodeCmpXchgEbGb, &decodeCmpXchgEdGd, &decodeLss32, &decodeBtrEdGd, &decodeLfs32, &decodeLgs32, &decodeMovGdXz8, &decodeMovGdXz16,
-    0, 0, &decodeGroup8_32, &decodeBtcEdGd, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
+    nullptr, nullptr, &decodeGroup8_32, &decodeBtcEdGd, &decodeBsfGdEd, &decodeBsrGdEd, &decodeMovGdSx8, &decodeMovGdSx16,
     // 0x3c0
     &decodeXadd8, &decodeXadd32, &sseCmp, &sse0x3c3, &ssePinsrwMmx, &ssePextrwMmx, &sseShufp, &decodeCmpXchg8b,
     &decodeBswapEAX, &decodeBswapECX, &decodeBswapEDX, &decodeBswapEBX, &decodeBswapESP, &decodeBswapEBP, &decodeBswapESI, &decodeBswapEDI,
     // 0x3d0
-    0, &decodePsrlw, &decodePsrld, &decodePsrlq, &sse0x3d4, &decodePmullw, &sse0x3d6, &ssePmovmskbMmx,
+    nullptr, &decodePsrlw, &decodePsrld, &decodePsrlq, &sse0x3d4, &decodePmullw, &sse0x3d6, &ssePmovmskbMmx,
     &decodePsubusb, &decodePsubusw, &ssePminubMmx, &decodePand, &decodePaddusb, &decodePaddusw, &ssePmaxubMmx, &decodePandn,
     // 0x3e0
     &ssePavgbMmx, &decodePsraw, &decodePsrad, &ssePavgwMmx, &ssePmulhuwMmx, &decodePmulhw, &sse0x3e6, &sseMovntq,
     &decodePsubsb, &decodePsubsw, &ssePminswMmx, &decodePor, &decodePaddsb, &decodePaddsw, &ssePmaxswMmx, &decodePxor,
     // 0x3f0
-    0, &decodePsllw, &decodePslld, &decodePsllq, &sse0x3f4, &decodePmaddwd, &ssePsadbwMmx, &sseMaskmov,
-    &decodePsubb, &decodePsubw, &decodePsubd, &sse0x3fb, &decodePaddb, &decodePaddw, &decodePaddd, 0,
+    nullptr, &decodePsllw, &decodePslld, &decodePsllq, &sse0x3f4, &decodePmaddwd, &ssePsadbwMmx, &sseMaskmov,
+    &decodePsubb, &decodePsubw, &decodePsubd, &sse0x3fb, &decodePaddb, &decodePaddw, &decodePaddd, nullptr,
 };
 
 U8 DecodeData::fetch8() {
     this->opLen++;
-    return this->fetchByte(&this->eip);
+    return this->fetchByte(this->fetchByteData, &this->eip);
 }
 
 U16 DecodeData::fetch16() {
@@ -5957,23 +5996,18 @@ U32 DecodeData::fetch32() {
     return ((U32)this->fetch16()) | (((U32)this->fetch16()) << 16);
 }
 
-static DecodedOp* freeOps;
-BOXEDWINE_MUTEX freeOpsMutex;
+static PtrPool<DecodedOp> freeOps;
 
 DecodedOp::DecodedOp() {
-    this->init();
+    this->reset();
 }
 
 void DecodedOp::clearCache() {
-    while (freeOps) {
-        DecodedOp* next = freeOps->next;
-        delete freeOps;
-        freeOps = next;
-    }
+    freeOps.deleteAll();
 }
 
-void DecodedOp::init() {
-    this->next = 0;
+void DecodedOp::reset() {
+    this->next = nullptr;
     this->disp = 0;
     this->imm = 0;
     this->reg = 0;
@@ -5985,25 +6019,13 @@ void DecodedOp::init() {
     this->lock = 0;
     this->repZero = 0;
     this->repNotZero = 0;
-    this->pfn = NULL;
+    this->pfn = nullptr;
 }
 DecodedOp* DecodedOp::alloc() {
-    DecodedOp* result;
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeOpsMutex);
-
-    if (freeOps) {
-        result = freeOps;
-        freeOps = freeOps->next;
-        result->init();
-        return result;
-    } else {
-        return new DecodedOp();
-    }    
+    return freeOps.get();   
 }
 
 void DecodedOp::dealloc(bool deallocNext) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeOpsMutex);
-
 #ifdef _DEBUG
     if (this->inst == InstructionCount) {
         kpanic("tried to dealloc a DecodedOp that was already deallocated");
@@ -6012,9 +6034,9 @@ void DecodedOp::dealloc(bool deallocNext) {
     if (deallocNext && this->next) {
         this->next->dealloc(deallocNext);
     }
-    this->next = freeOps;
+    this->next = nullptr;
     this->inst = InstructionCount;
-    freeOps = this;
+    freeOps.put(this);
 }
 
 bool DecodedOp::isStringOp() {
@@ -6057,6 +6079,11 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
             flags &= ~ instructionInfo[n->inst].flagsSets;
             flags &= ~ instructionInfo[n->inst].flagsUndefined;
         }
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        if (instructionInfo[n->inst].branch) {
+            break;
+        }
+#endif
         lastOp = n;
         n = n->next;
     }
@@ -6081,7 +6108,7 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
 
 static DecodedBlockFromNode* freeFromNodes;
 DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
-    DecodedBlockFromNode* result;
+    DecodedBlockFromNode* result = nullptr;
 
     if (freeFromNodes) {
         result = freeFromNodes;
@@ -6090,20 +6117,20 @@ DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
         DecodedBlockFromNode* nodes = new DecodedBlockFromNode[1024];
 
         freeFromNodes = &nodes[1];
-        freeFromNodes->next = 0;
+        freeFromNodes->next = nullptr;
         for (int i=2;i<1024;i++) {
             nodes[i].next = freeFromNodes;
             freeFromNodes = &nodes[i];            
         }
         result = &nodes[0];
     }
-    result->next = NULL;
-    result->block = NULL;
+    result->next = nullptr;
+    result->block = nullptr;
     return result;
 }
 void DecodedBlockFromNode::dealloc() {
     this->next = freeFromNodes;
-    this->block = NULL;
+    this->block = nullptr;
     freeFromNodes = this;
 }
 
@@ -6127,12 +6154,12 @@ DecodedOp* DecodedBlock::getOp(U32 eip) {
         opEip += op->len;
         op = op->next;
     }
-    return NULL;
+    return nullptr;
 }
 
 void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
     DecodedBlockFromNode* from = this->referencedFrom;
-	DecodedBlockFromNode* prev = NULL;
+	DecodedBlockFromNode* prev = nullptr;
 
 	while (from) {
 		if (from->block == block) {
@@ -6152,13 +6179,14 @@ void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
 	}
 }
 
-DecodedBlock* DecodedBlock::currentBlock;
+thread_local DecodedBlock* DecodedBlock::currentBlock;
 
-void decodeBlock(pfnFetchByte fetchByte, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
+void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
     DecodeData d;    
     DecodedOp* op = DecodedOp::alloc();
 
     d.fetchByte = fetchByte;
+    d.fetchByteData = fetchByteData;
     d.eip = eip;
     d.opCountSoFarInThisBlock = 0;
 
@@ -6218,36 +6246,35 @@ const char* DecodedOp::name() {
 
 void DecodedOp::log(CPU* cpu) {
 #ifdef _DEBUG
-    if (cpu->logFile && this->inst<Callback) {
+    if (cpu->logFile.isOpen() && this->inst >= 0 && this->inst < None) {
         BOXEDWINE_CRITICAL_SECTION;
-        U32 pos = ftell((FILE*)cpu->logFile); // :TODO: should be 64-bit
-        fprintf((FILE*)cpu->logFile, "%04X %08X ", cpu->thread->id, cpu->eip.u32);
+        U64 pos = cpu->logFile.getPos();
+        cpu->logFile.writeFormat("%04X %08X ", cpu->thread->id, cpu->eip.u32);
         instructionLog[this->inst].pfnFormat(&instructionLog[this->inst], this, cpu);
         if (instructionLog[this->inst].imm) {
             if (instructionLog[this->inst].pfnFormat!=logName)
-                fwrite(",", 1, 1, (FILE*)cpu->logFile);
+                cpu->logFile.write(",");
             switch (instructionLog[this->inst].width) {
             case -16:
-                fprintf((FILE*)cpu->logFile, "%X", (S32)((S16)((U16)this->imm)));
+                cpu->logFile.writeFormat("%X", (S32)((S16)((U16)this->imm)));
                 break;
             case -32:
-                fprintf((FILE*)cpu->logFile, "%X", this->imm);
+                cpu->logFile.writeFormat("%X", this->imm);
                 break;
             case -8:
-                fprintf((FILE*)cpu->logFile, "%X", (S32)((S8)((U8)this->imm)));
+                cpu->logFile.writeFormat("%X", (S32)((S8)((U8)this->imm)));
                 break;
             default:
-                fprintf((FILE*)cpu->logFile, "%X", this->imm);
+                cpu->logFile.writeFormat("%X", this->imm);
                 break;
             }        
         }
-        U32 endPos = ftell((FILE*)cpu->logFile);
+        U64 endPos = cpu->logFile.getPos();
         if (endPos-pos<55) {
-            fwrite("                                                       ", 55-(endPos-pos), 1, (FILE*)cpu->logFile);
+            cpu->logFile.write(B("                                                       ").substr(0, (U32)(55-(endPos-pos))));
         }
-        fprintf((FILE*)cpu->logFile, " EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address);
-        fwrite("\n", 1, 1, (FILE*)cpu->logFile);
-        fflush((FILE*)cpu->logFile);
+        cpu->logFile.writeFormat(" EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X\n", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
+        cpu->logFile.flush();
     }
 #endif
 }

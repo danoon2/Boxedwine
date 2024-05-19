@@ -9,15 +9,16 @@ uname_n := $(shell uname -n)
 $(info uname -m is $(uname_m))
 ifeq ($(uname_m), armv7l)
 JIT_FLAGS := -DBOXEDWINE_DYNAMIC_ARMV7 -DBOXEDWINE_DYNAMIC
+export GCC_EXTRA_FLAGS := -fno-tree-vectorize
 else ifeq ($(uname_m), aarch64)
-BT_FLAGS := -O0 -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_ARMV8BT -DBOXEDWINE_64BIT_MMU -DBOXEDWINE_MULTI_THREADED -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON
+BT_FLAGS := -O0 -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_ARMV8BT -DBOXEDWINE_MULTI_THREADED -DSIMDE_NO_NEON -DSIMDE_SSE2_NO_NEON
 RELEASE_FLAGS := -DBOXEDWINE_64
 else ifeq ($(uname_m), i386)
 JIT_FLAGS := -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
 else ifeq ($(uname_m), i686)
 JIT_FLAGS := -DBOXEDWINE_DYNAMIC32 -DBOXEDWINE_DYNAMIC
 else ifeq ($(uname_m), x86_64)
-BT_FLAGS := -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_X64 -DBOXEDWINE_64BIT_MMU -DBOXEDWINE_MULTI_THREADED
+BT_FLAGS := -DBOXEDWINE_64 -DBOXEDWINE_BINARY_TRANSLATOR -DBOXEDWINE_X64 -DBOXEDWINE_MULTI_THREADED
 RELEASE_FLAGS := -DBOXEDWINE_64
 endif
 
@@ -101,10 +102,12 @@ DEPS := $(OBJS:.o=.d)
 INCLUDES = -I../../include
 INCLUDES += -I../../lib/glew/include
 INCLUDES += -I../../lib/imgui
+INCLUDES += -I../../lib/simde
+INCLUDES += -I../../lib/pugixml/src
 
 SDL_CFLAGS = $(shell sdl2-config --cflags)
 SDL_LIBS = $(shell sdl2-config --libs)
-CPPFLAGS ?= -std=c++17 -O2 -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
+CPPFLAGS ?= -std=c++20 -O2 $(GCC_EXTRA_FLAGS) -Wall -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) -DBOXEDWINE_RECORDER -DBOXEDWINE_ZLIB -DBOXEDWINE_HAS_SETJMP -DSDL2=1 "-DGLH=<SDL_opengl.h>" -DBOXEDWINE_OPENGL_SDL -DSIMDE_SSE2_NO_NATIVE -DBOXEDWINE_POSIX -DBOXEDWINE_OPENGL_IMGUI_V2 $(SDL_CFLAGS) $(EXTRA_CPP_FLAGS)
 
 LDFLAGS = -L./linux_build/lib -lcurl -lssl -lcrypto -lpthread -lm -lz -lminizip -lGL -lstdc++ -lstdc++fs $(SDL_LIBS)
 

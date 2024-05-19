@@ -2,7 +2,7 @@
 #include "unixlib.h"
 #include "wine/debug.h"
 
-WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
+// WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
 #if BOXED_WINE_VERSION >= 7120 && BOXED_WINE_VERSION < 7220
 static unixlib_handle_t x11drv_handle;
@@ -17,7 +17,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved)
     case DLL_PROCESS_ATTACH:
         //TRACE("\n");
         DisableThreadLibraryCalls(hinst);
-#if BOXED_WINE_VERSION >= 7120       
+#if BOXED_WINE_VERSION >= 7120
         //TRACE("calling unix_init\n");
 #if BOXED_WINE_VERSION >= 7220
         __wine_init_unix_call();

@@ -1,11 +1,10 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
-#define BOXEDWINE_VERSION_STR "231"
-#define BOXEDWINE_VERSION_DISPLAY "23.0.2 (beta)"
+#define BOXEDWINE_VERSION_STR "241"
+#define BOXEDWINE_VERSION_DISPLAY "24.0.0 (pre-beta)"
 
 #include <vector>
-#include <unordered_map>
 #include <memory>
 #include <queue>
 #include <functional>
@@ -15,6 +14,8 @@
 #include <mutex>
 #include <condition_variable>
 #include <atomic>
+#include <fstream>
+#include <iostream>
 
 #include <errno.h>
 
@@ -29,51 +30,41 @@
 #define BOXEDWINE_ARMV8BT
 #define BOXEDWINE_MULTI_THREADED
 #define MAP_BOXEDWINE MAP_JIT
-#define BOXEDWINE_64BIT_MMU
-#define K_NATIVE_PAGE_SIZE 16384
-#define K_NATIVE_NUMBER_OF_PAGES 0x40000
-#define K_NATIVE_PAGE_SHIFT 14
-#define K_NATIVE_PAGES_PER_PAGE 4
-#ifdef _DEBUG
-#define BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-#endif
 #else
 #undef BOXEDWINE_MAC_JIT
-#ifdef _DEBUG
-#define BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS
-#endif
 #define BOXEDWINE_BINARY_TRANSLATOR
 #define BOXEDWINE_X64
 #define BOXEDWINE_MULTI_THREADED
-#define BOXEDWINE_64BIT_MMU
 #define MAP_BOXEDWINE 0
 #endif
 #else
 #define MAP_BOXEDWINE 0
 #endif
 
-#include "../source/util/boxedptr.h"
 #include "platformtypes.h"
 #include "../source/util/bstring.h"
+#include "../source/util/bhashtable.h"
 
 #include "platform.h"
 
 #include "log.h"
 
+#include "../source/util/bfile.h"
 #include "../source/util/klist.h"
-#include "ktimer.h"
+#include "ktimercallback.h"
 #include "../source/util/synchronization.h"
 #include "../source/util/karray.h"
 #include "../source/util/stringutil.h"
 #include "../source/util/vectorutils.h"
 #include "../source/util/fileutils.h"
 
+#include "kmemory.h"
 #include "../source/emulation/cpu/common/cpu.h"
 #include "kpoll.h"
-#include "memory.h"
 #include "kthread.h"
 #include "kfilelock.h"
 #include "kobject.h"
+#include "ktimer.h"
 #include "kfiledescriptor.h"
 #include "../source/io/fs.h"
 #include "../source/io/fsnode.h"

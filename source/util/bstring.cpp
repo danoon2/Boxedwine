@@ -1,11 +1,12 @@
 #include "boxedwine.h"
 #include "concurrentqueue.h"
+#include "ptrpool.h"
 
 #include <charconv>
 
 class BStringData {
 public:
-    BStringData() : str(nullptr), len(0), level(0), refCount(0) {}
+    BStringData() = default;
 
     void reset() {
         refCount = 0;
@@ -20,9 +21,9 @@ public:
 
     void decRefCount();
 
-    char* str;
-    int len;
-    int level;
+    char* str = nullptr;
+    int len = 0;
+    int level = 0;
     std::atomic_int refCount;
 };
 
@@ -30,23 +31,29 @@ public:
 #define LARGEST_LEVEL 16
 #define TOTAL_LEVEL 13
 
-static moodycamel::ConcurrentQueue<BStringData*>* freeStringData;
-static moodycamel::ConcurrentQueue<char*>* freeMemoryBySize;
+static PtrPool<BStringData>* freeStringData;
+static PtrPool<char>* freeMemoryBySize[TOTAL_LEVEL];
 
 char* getNewString(int level) {
-    char* result;
-
-    if (freeMemoryBySize && freeMemoryBySize[level - SMALLEST_LEVEL].try_dequeue(result)) {
-        return result;
+    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
+        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
     }
-    return new char[(int)(1 << level)];
+    char* result = freeMemoryBySize[level - SMALLEST_LEVEL]->get();
+    if (!result) {
+        U32 size = 1 << level;
+        result = new char[size * 100];
+        for (int i = 1; i < 100; i++, result += size) {
+            freeMemoryBySize[level - SMALLEST_LEVEL]->put(result);
+        }
+    }
+    return result;
 }
 
 void releaseString(int level, char* str) {
-    if (!freeMemoryBySize) {
-        freeMemoryBySize = new moodycamel::ConcurrentQueue<char*>[TOTAL_LEVEL];
+    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
+        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
     }
-    freeMemoryBySize[level - SMALLEST_LEVEL].enqueue(str);
+    freeMemoryBySize[level - SMALLEST_LEVEL]->put(str);
 }
 
 int powerOf2(int requestedSize) {
@@ -65,20 +72,17 @@ void BStringData::decRefCount() {
             releaseString(level, str);
         }
         if (!freeStringData) {
-            freeStringData = new moodycamel::ConcurrentQueue<BStringData*>;
+            freeStringData = new PtrPool<BStringData>();
         }
-        freeStringData->enqueue(this);
+        freeStringData->put(this);
     }
 }
 
 static BStringData* allocNewData() {
-    BStringData* newData;
-
-    if (freeStringData && freeStringData->try_dequeue(newData)) {
-        newData->reset();
-        return newData;
+    if (!freeStringData) {
+        freeStringData = new PtrPool<BStringData>();
     }
-    return new BStringData();
+    return freeStringData->get();
 }
 
 template <typename T>
@@ -103,7 +107,19 @@ void appendData(BString& s, T i, int base) {
     s.data->str[s.data->len] = 0;
 }
 
-BString BString::empty(B(""));
+BString BString::empty("", true);
+
+BString::BString(const char* str, bool literal) {
+    data = allocNewData();
+    data->incRefCount();
+    if (literal) {
+        data->len = -1;
+        data->level = 0;
+        data->str = (char*)str;
+    } else {
+        kpanic("BString::BString oops");
+    }
+}
 
 BString::BString() {
     if (!empty.data) {
@@ -111,6 +127,16 @@ BString::BString() {
     } else {
         data = empty.data;
     }
+    data->incRefCount();
+}
+
+BString::BString(U32 size, char value) {
+    data = allocNewData();
+    data->str = getNewString(SMALLEST_LEVEL);
+    data->len = size-1;
+    data->level = getLevel();
+    data->str = getNewString(data->level);
+    memset(data->str, value, size);
     data->incRefCount();
 }
 
@@ -135,10 +161,16 @@ BString::BString(char c) {
 }
 
 BString::~BString() {
-    data->decRefCount();
+    if (data) {
+        data->decRefCount();
+    }
 }
 
 const char* BString::c_str() const {
+    return data->str;
+}
+
+char* BString::str() {
     return data->str;
 }
 
@@ -149,7 +181,7 @@ void BString::w_str(wchar_t* w, int len) const {
 }
 
 void BString::append(const BString& s) {
-    append(s.data->str);
+    append(s.data->str, s.length());
 }
 
 void BString::append(const BString& s, int offset, int len) {
@@ -170,6 +202,25 @@ void BString::append(const char* s, int len) {
     makeWritable(len);
     strncpy(data->str + data->len, s, len);
     data->len += len;
+    data->str[data->len] = 0;
+}
+
+void BString::appendAfterNull(const BString& s) {
+    appendAfterNull(s.data->str, s.length());
+}
+
+void BString::appendAfterNull(const char* s) {
+    int len = (int)strlen(s);
+    makeWritable(len + 1);
+    strcpy(data->str + 1 + data->len, s);
+    data->len += len + 1;
+    data->str[data->len] = 0;
+}
+
+void BString::appendAfterNull(const char* s, int len) {
+    makeWritable(len + 1);
+    strncpy(data->str + 1 + data->len, s, len);
+    data->len += len + 1;
     data->str[data->len] = 0;
 }
 
@@ -234,10 +285,16 @@ int BString::compareTo(const BString& s, bool ignoreCase, int offset, int len) c
 }
 
 int BString::compareTo(const char* s, bool ignoreCase, int offset, int len) const {
+    if (!s) {
+        return 1;
+    }
     if (isEmpty()) {
         if (strlen(s) == 0) {
             return 0;
         }
+        return -1;
+    }
+    if (offset < 0) {
         return -1;
     }
     if (offset > data->len) {
@@ -266,20 +323,23 @@ bool BString::contains(const char* s, bool ignoreCase) const {
         return false;
     }
     if (!ignoreCase) {
-        return strstr(data->str, s) != 0;
+        return strstr(data->str, s) != nullptr;
     }
-    return strcasestr(data->str, s) != 0;
+    return strcasestr(data->str, s) != nullptr;
 }
 
 bool BString::endsWith(const BString& s, bool ignoreCase) const {
     if (s.isEmpty()) {
         return false;
     }
-    return compareTo(s.data->str + length() - s.length(), ignoreCase) == 0;
+    return compareTo(s.data->str, ignoreCase, length() - s.length()) == 0;
 }
 
 bool BString::endsWith(const char* s, bool ignoreCase) const {
     int len = (int)strlen(s);
+    if (length() < len) {
+        return false;
+    }
     return compareTo(s, ignoreCase, length() - len) == 0;
 }
 
@@ -343,7 +403,7 @@ int BString::lastIndexOf(const char* s, int fromIndex) const {
     if (isEmpty()) {
         return -1;
     }
-    size_t pos;
+    size_t pos = 0;
     if (fromIndex > length() || fromIndex < 0) {
         pos = std::string_view::npos;
     } else {
@@ -361,7 +421,7 @@ int BString::lastIndexOf(char c, int fromIndex) const {
     if (isEmpty()) {
         return -1;
     }
-    size_t pos;
+    size_t pos = 0;
     if (fromIndex > length() || fromIndex < 0) {
         pos = std::string_view::npos;
     } else {
@@ -528,8 +588,12 @@ BString BString::substr(int beginIndex, int len) const {
     return BString(d);
 }
 
-int BString::toInt() const {
+int32_t BString::toInt() const {
     return std::atoi(data->str);
+}
+
+int64_t BString::toInt64() const {
+    return std::atoll(data->str);
 }
 
 int BString::getLevel() const {
@@ -575,6 +639,10 @@ BString BString::toUpperCase() const {
     }
     d->str[d->len] = 0;
     return BString(d);
+}
+
+void BString::resize(U32 len) {
+    makeWritable(len);
 }
 
 BString BString::trim() {
@@ -701,9 +769,22 @@ BString& BString::operator+=(S64 i) {
 
 BString& BString::operator = (const BString& other) {
     if (this->data != other.data) {
-        this->data->decRefCount();
+        if (this->data) {
+            this->data->decRefCount();
+        }
         this->data = other.data;
         this->data->incRefCount();
+    }
+    return *this;
+}
+
+BString& BString::operator = (BString&& other) noexcept {
+    if (this->data != other.data) {
+        if (this->data) {
+            this->data->decRefCount();
+        }
+        this->data = other.data;
+        other.data = nullptr;
     }
     return *this;
 }
@@ -782,6 +863,11 @@ void BString::clear() {
     data->str[0] = 0;
 }
 
+void BString::setLength(int len) {
+    data->len = len;
+    data->str[len] = 0;
+}
+
 // additional size to add
 void BString::makeWritable(int len) {
     if (data->level == 0 || data->refCount > 1) {
@@ -819,8 +905,8 @@ BString BString::operator^(const char* s) const {
     BStringData* d = allocNewData();
     int sLen = (int)strlen(s);
     char sep = (char)std::filesystem::path::preferred_separator;
-    bool needAddSep;
-    bool needRemoveSep;
+    bool needAddSep = false;
+    bool needRemoveSep = false;
 
     if (length() == 0) {
         needAddSep = s[0] != sep;
@@ -851,11 +937,10 @@ BString BString::operator^(const char* s) const {
 }
 
 BString BString::copy(const char* s) {
-    if (!s) {
+    if (!s || s[0]==0) {
         return empty;
     }
     BString result(allocNewData());
-
     result.data->len = (int)strlen(s);
     result.data->level = powerOf2(result.data->len + 1);
     result.data->str = getNewString(result.data->level);
@@ -877,23 +962,14 @@ BString BString::copy(const char* s, int len) {
     return result;
 }
 
-BString BString::literal(const char* s) {
-    BString result(allocNewData());
-
-    result.data->str = (char*)s;
-    result.data->len = -1;
-    result.data->level = 0;
-    return result;
-}
-
 BString BString::join(BString delimiter, const std::vector<BString>& values) {
     return join(delimiter.data->str, values);
 }
 
 BString BString::join(const char* delimiter, const std::vector<BString>& values) {
     BString result;
-    for (int i = 0; i < values.size(); i++) {
-        if (1 != 0) {
+    for (int i = 0; i < (int)values.size(); i++) {
+        if (i != 0) {
             result += delimiter;
         }
         result += values[i];

@@ -5,20 +5,18 @@
 #include "devurandom.h"
 #include "devnull.h"
 #include "devzero.h"
-#include "devfb.h"
 #include "devinput.h"
 #include "devdsp.h"
 #include "procselfexe.h"
 #include "cpuinfo.h"
-#include "syscpuonline.h"
-#include "syscpumaxfreq.h"
-#include "syscpuscalingcurfreq.h"
-#include "syscpuscalingmaxfreq.h"
 #include "bufferaccess.h"
 #include "meminfo.h"
+#include "procstat.h"
+
 #include "uptime.h"
 #include "devmixer.h"
 #include "devsequencer.h"
+#include "devfb.h"
 #include "mainloop.h"
 #include "../io/fsfilenode.h"
 #include "../io/fszip.h"
@@ -36,16 +34,15 @@
 #include MKDIR_INCLUDE
 #include CURDIR_INCLUDE
 
-#define mdev(x,y) ((x << 8) | y)
-
 void gl_init(BString allowExtensions);
 void vulkan_init();
 void initWine();
 void initWineAudio();
+void createSysfs(const std::shared_ptr<FsNode> rootNode);
 
 U32 StartUpArgs::uiType;
 
-FsOpenNode* openKernelCommandLine(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openKernelCommandLine(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new BufferAccess(node, flags, B(""));
 }
 
@@ -87,59 +84,52 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::makeLocalDirs(B("/dev"));
     Fs::makeLocalDirs(B("/proc"));
     Fs::makeLocalDirs(B("/mnt"));
+    Fs::makeLocalDirs(B("/etc"));
 
-    BoxedPtr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
-    BoxedPtr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
-    BoxedPtr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
-    BoxedPtr<FsNode> procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
-    BoxedPtr<FsNode> procSelfNode = Fs::addFileNode(B("/proc/self"), B(""), B(""), true, procNode);
-    BoxedPtr<FsNode> sysNode = Fs::getNodeFromLocalPath(B(""), B("/sys"), true); 
-    BoxedPtr<FsNode> etcNode = Fs::getNodeFromLocalPath(B(""), B("/etc"), true);
+    std::shared_ptr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
+    std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
+    std::shared_ptr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
+    KSystem::procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
+    std::shared_ptr<FsNode> procSysNode = Fs::addFileNode(B("/proc/sys"), B(""), B(""), true, KSystem::procNode);
+    std::shared_ptr<FsNode> procSysKernelNode = Fs::addFileNode(B("/proc/sys/kernel"), B(""), B(""), true, procSysNode);
+    Fs::addVirtualFile(B("/proc/sys/kernel/ngroups_max"), [](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+        return new BufferAccess(node, flags, B("65536"));
+        }, K__S_IREAD, k_mdev(0, 0), procSysKernelNode);
+    Fs::addVirtualFile(B("/proc/filesystems"), [](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+        return new BufferAccess(node, flags, B("nodev\tsysfs\nnodev\trootfs\nnodev\tbdev\nnodev\tproc\nnodev\tcpuset\nnodev\tcgroup\nnodev\tcgroup2\nnodev\ttmpfs\nnodev\tdevtmpfs\nnodev\tdebugfs\nnodev\ttracefs\nnodev\tsecurityfs\nnodev\tsockfs\nnodev\tdax\nnodev\tbpf\nnodev\tpipefs\nnodev\thugetlbfs\nnodev\tdevpts\nodev\tmqueue\nnodev\tpstore\next3\next2\next4\nnodev\tautofs\nfuseblk\nnodev\tfuse\nnodev\tfusectl\n"));
+        }, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
 
-    if (!sysNode) {
-        sysNode = Fs::addFileNode(B("/sys"), B(""), B(""), true, rootNode);
-    }
-    BoxedPtr<FsNode> devicesNode = Fs::getNodeFromLocalPath(B(""), B("/sys/devices"), true); 
-    if (!devicesNode) {
-        devicesNode = Fs::addFileNode(B("/sys/devices"), B(""), B(""), true, sysNode);
-    }
-    BoxedPtr<FsNode> devicesSystemNode = Fs::addFileNode(B("/sys/devices/system"), B(""), B(""), true, devicesNode);
-    BoxedPtr<FsNode> cpuNode = Fs::addFileNode(B("/sys/devices/system/cpu"), B(""), B(""), true, devicesSystemNode);    
+    std::shared_ptr<FsNode> etcNode = Fs::getNodeFromLocalPath(B(""), B("/etc"), true);
+    createSysfs(rootNode);    
 
-    Fs::addVirtualFile(B("/dev/tty0"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
-    Fs::addVirtualFile(B("/dev/tty"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 0), devNode);
-    Fs::addVirtualFile(B("/dev/tty2"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(4, 2), devNode); // used by XOrg
-    Fs::addVirtualFile(B("/dev/urandom"), openDevURandom, K__S_IREAD|K__S_IFCHR, mdev(1, 9), devNode);
-    Fs::addVirtualFile(B("/dev/random"), openDevURandom, K__S_IREAD|K__S_IFCHR, mdev(1, 8), devNode);
-    Fs::addVirtualFile(B("/dev/null"), openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 3), devNode);
-    Fs::addVirtualFile(B("/dev/zero"), openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(1, 5), devNode);
-    Fs::addVirtualFile(B("/proc/meminfo"), openMemInfo, K__S_IREAD, mdev(0, 0), procNode);
-    Fs::addVirtualFile(B("/proc/uptime"), openUptime, K__S_IREAD, mdev(0, 0), procNode);
-    Fs::addVirtualFile(B("/proc/cpuinfo"), openCpuInfo, K__S_IREAD, mdev(0, 0), procNode);
-    Fs::addDynamicLinkFile(B("/proc/self"), mdev(0, 0), procNode, true, [] {
+    Fs::addVirtualFile(B("/dev/tty0"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(4, 0), devNode);
+    Fs::addVirtualFile(B("/dev/tty"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(4, 0), devNode);
+    Fs::addVirtualFile(B("/dev/tty2"), openDevTTY, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(4, 2), devNode); // used by XOrg
+    Fs::addVirtualFile(B("/dev/urandom"), openDevURandom, K__S_IREAD|K__S_IFCHR, k_mdev(1, 9), devNode);
+    Fs::addVirtualFile(B("/dev/random"), openDevURandom, K__S_IREAD|K__S_IFCHR, k_mdev(1, 8), devNode);
+    Fs::addVirtualFile(B("/dev/null"), openDevNull, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(1, 3), devNode);
+    Fs::addVirtualFile(B("/dev/zero"), openDevZero, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, k_mdev(1, 5), devNode);
+    Fs::addVirtualFile(B("/proc/meminfo"), openMemInfo, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
+    Fs::addVirtualFile(B("/proc/stat"), openProcStat, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
+    Fs::addVirtualFile(B("/proc/uptime"), openUptime, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
+    Fs::addVirtualFile(B("/proc/cpuinfo"), openCpuInfo, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
+    Fs::addDynamicLinkFile(B("/proc/self"), k_mdev(0, 0), KSystem::procNode, true, [] {
         return BString::valueOf(KThread::currentThread()->process->id);
         });
-    Fs::addVirtualFile(B("/proc/self/exe"), openProcSelfExe, K__S_IREAD, mdev(0, 0), procSelfNode);
-    Fs::addVirtualFile(B("/proc/cmdline"), openKernelCommandLine, K__S_IREAD, mdev(0, 0), procNode); // kernel command line
-    Fs::addVirtualFile(B("/dev/fb0"), openDevFB, K__S_IREAD|K__S_IWRITE|K__S_IFCHR, mdev(0x1d, 0), devNode);
-    Fs::addVirtualFile(B("/dev/input/event3"), openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x43), inputNode);
-    Fs::addVirtualFile(B("/dev/input/event4"), openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, mdev(0xd, 0x44), inputNode);
-	Fs::addVirtualFile(B("/dev/dsp"), openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 3), devNode);
-	Fs::addVirtualFile(B("/dev/mixer"), openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 0), devNode);
-    Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, mdev(14, 1), devNode);    
-    Fs::addVirtualFile(B("/sys/devices/system/cpu/online"), openSysCpuOnline, K__S_IREAD, mdev(0, 0), cpuNode);
+    Fs::addVirtualFile(B("/proc/mounts"), [](const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
+        return new BufferAccess(node, flags, B("proc /proc proc rw,nosuid,nodev,noexec,relatime 0 0\n/dev/nvme0n1p5 / ext4 rw,relatime,errors=remount-ro 0 0\nudev /dev devtmpfs rw,nosuid,relatime,size=16371216k,nr_inodes=4092804,mode=755,inode64 0 0"));
+        }, K__S_IREAD, k_mdev(0, 0), KSystem::procNode);
+    Fs::addVirtualFile(B("/proc/cmdline"), openKernelCommandLine, K__S_IREAD, k_mdev(0, 0), KSystem::procNode); // kernel command line
+    Fs::addVirtualFile(B("/dev/fb0"), openDevFB, K__S_IREAD | K__S_IWRITE | K__S_IFCHR, k_mdev(0x1d, 0), devNode);
+    Fs::addVirtualFile(B("/dev/input/mice"), openDevInputTouch, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(0xd, 0x43), inputNode);
+    Fs::addVirtualFile(B("/dev/input/event3"), openDevInputTouch, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, k_mdev(0xd, 0x43), inputNode);
+    Fs::addVirtualFile(B("/dev/input/event4"), openDevInputKeyboard, K__S_IWRITE|K__S_IREAD|K__S_IFCHR, k_mdev(0xd, 0x44), inputNode);
+	Fs::addVirtualFile(B("/dev/dsp"), openDevDsp, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 3), devNode);
+	Fs::addVirtualFile(B("/dev/mixer"), openDevMixer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 0), devNode);
+    Fs::addVirtualFile(B("/dev/sequencer"), openDevSequencer, K__S_IWRITE | K__S_IREAD | K__S_IFCHR, k_mdev(14, 1), devNode);    
 
-    Fs::addVirtualFile(B("/etc/hostname"), openHosts, K__S_IREAD, mdev(0, 0), etcNode);
-    Fs::addVirtualFile(B("/etc/hosts"), openHostname, K__S_IREAD, mdev(0, 0), etcNode);
-
-    if (Platform::getCpuFreqMHz()) {        
-        for (U32 i=0;i<Platform::getCpuCount();i++) {
-            BoxedPtr<FsNode> cpuCoreNode = Fs::addFileNode("/sys/devices/system/cpu/cpu"+BString::valueOf(i), B(""), B(""), true, cpuNode);    
-            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_cur_freq", openSysCpuScalingCurrentFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/cpuinfo_max_freq", openSysCpuMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
-            Fs::addVirtualFile("/sys/devices/system/cpu"+BString::valueOf(i)+"/scaling_max_freq", openSysCpuScalingMaxFrequency, K__S_IREAD, mdev(0, 0), cpuCoreNode, i);
-        }
-    }
+    Fs::addVirtualFile(B("/etc/hostname"), openHostname, K__S_IREAD, k_mdev(0, 0), etcNode);
+    Fs::addVirtualFile(B("/etc/hosts"), openHosts, K__S_IREAD, k_mdev(0, 0), etcNode);
 }
 
 std::vector<BString> StartUpArgs::buildArgs() {
@@ -156,6 +146,14 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (title.length()) {
         args.push_back(B("-title"));
         args.push_back(title);
+    }
+    if (userId != UID) {
+        args.push_back(B("-uid"));
+        args.push_back(BString::valueOf(userId));
+    }
+    if (effectiveUserId != UID) {
+        args.push_back(B("-euid"));
+        args.push_back(BString::valueOf(effectiveUserId));
     }
     if (nozip) {
         args.push_back(B("-nozip"));
@@ -264,8 +262,8 @@ bool StartUpArgs::apply() {
     KSystem::ttyPrepend = this->ttyPrepend;
     KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
-    if (!KSystem::logFile && this->logPath.length()) {
-        KSystem::logFile = fopen(this->logPath.c_str(), "w");
+    if (!KSystem::logFile.isOpen() && this->logPath.length()) {
+        KSystem::logFile.createNew(this->logPath);
     }
 
     for (U32 f=0;f<nonExecFileFullPaths.size();f++) {
@@ -332,14 +330,15 @@ bool StartUpArgs::apply() {
         klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 
-    BoxedPtr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath(B(""), B("/wineVersion.txt"), false);
+    std::shared_ptr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath(B(""), B("/wineVersion.txt"), false);
     if (wineVersionNode) {
         FsOpenNode* openNode = wineVersionNode->open(K_O_RDONLY);
         if (openNode) {
             U8 tmp[64];
             if (openNode->readNative(tmp, 64) > 5) {
+                KSystem::wineMajorVersion = tmp[5] - '0';
                 if (tmp[5] == '2' || tmp[5] == '1') {
-                    BoxedPtr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath(B(""), B("/usr/lib/i386-linux-gnu/libfreetype.so.6"), false);
+                    std::shared_ptr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath(B(""), B("/usr/lib/i386-linux-gnu/libfreetype.so.6"), false);
                     if (freeTypeNode) {
                         freeTypeNode->link = B("libfreetype.so.6.12.3");
                     }
@@ -360,7 +359,7 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
-    envValues.push_back(B("WINEDLLOVERRIDES=mscoree,mshtml="));
+    //envValues.push_back(B("WINEDLLOVERRIDES=mscoree,mshtml="));
     //envValues.push_back("WINEDEBUG=+ddraw");
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
@@ -372,16 +371,16 @@ bool StartUpArgs::apply() {
     //works
     //envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu");        
     if (userId==0) {
-        envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin"));
+        envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin"));
     } else {
         envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin"));
     }
 
     for(auto&& info: this->mountInfo) {
         if (info.wine) {
-            BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
-            BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_"+info.localPath, info.nativePath, mntDir);
-            BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+            std::shared_ptr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
+            std::shared_ptr<FsNode> drive_d = Fs::addRootDirectoryNode("/mnt/drive_"+info.localPath, info.nativePath, mntDir);
+            std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
             Fs::addFileNode("/home/username/.wine/dosdevices/"+info.localPath+":", "/mnt/drive_"+info.localPath, B(""), false, parent); 
         } else {
             BString ext = info.nativePath.substr(info.nativePath.length()-4).toLowerCase();
@@ -400,7 +399,7 @@ bool StartUpArgs::apply() {
                 klog("% not mounted because zlib was not compiled in", info.nativePath.c_str());
     #endif
             } else {
-                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(info.localPath), true);
+                std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(info.localPath), true);
                 Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
             }
         }
@@ -412,7 +411,7 @@ bool StartUpArgs::apply() {
         args.push_back(B("/desktop=shell"));
     }
     if (this->args.size()) {
-        BoxedPtr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
+        std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(workingDir, this->args[0], true);        
 
         bool validLinuxCommand = false;
         if (node) {
@@ -432,14 +431,14 @@ bool StartUpArgs::apply() {
                 BString dir = args[0];
                 dir = Fs::trimTrailingSlash(dir);
                 bool isDir = Fs::isNativePathDirectory(dir);
-                BoxedPtr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
+                std::shared_ptr<FsNode> mntDir = Fs::getNodeFromLocalPath(B(""), B("/mnt"), true);
 
                 if (!isDir) {
                     dir = Fs::getNativeParentPath(dir);
                 }
                 
-                BoxedPtr<FsNode> drive_d = Fs::addRootDirectoryNode(B("/mnt/drive_t"), dir, mntDir);
-                BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
+                std::shared_ptr<FsNode> drive_d = Fs::addRootDirectoryNode(B("/mnt/drive_t"), dir, mntDir);
+                std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/home/username/.wine/dosdevices"), true);
                 if (parent) {
                     Fs::addFileNode(B("/home/username/.wine/dosdevices/t:"), B("/mnt/drive_t"), B(""), false, parent);
                 }
@@ -504,15 +503,14 @@ bool StartUpArgs::apply() {
         }
         if (result) {
             if (!doMainLoop()) {
-                return 0; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
+                return false; // doMainLoop should have handled any cleanup, like SDL_Quit if necessary
             }
         }
     }
 #ifdef GENERATE_SOURCE
     if (gensrc)
         writeSource();
-#endif
-    klog("Boxedwine has shutdown"); // must call before KSystem::destroy()
+#endif    
 	KSystem::destroy();
     KNativeWindow::shutdown();
     KNativeAudio::shutdown();
@@ -530,10 +528,11 @@ bool StartUpArgs::loadDefaultResource(const char* app) {
     lines.clear();
     lines.push_back(BString::copy(app));
     if (!cmd.isEmpty() && readLinesFromFile(cmd, lines)) {
-        const char** ppArgs = new const char*[lines.size()];
-        for (int i=0;i<(int)lines.size();i++) {
+        int count = (int)lines.size();
+        const char** ppArgs = new const char*[count];
+        for (int i=0;i<count;i++) {
             ppArgs[i] = lines[i].c_str();
-            if (lines[i] == "-zip" && i+1<(int)lines.size()) {
+            if (lines[i] == "-zip" && i+1<count) {
                 if (!Fs::doesNativePathExist(lines[i+1])) {
                     BString zip = Platform::getResourceFilePath(lines[i+1]);
                     if (!zip.isEmpty() && Fs::doesNativePathExist(zip)) {
@@ -554,7 +553,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-log") && i + 1 < argc) {
             this->logPath = BString::copy(argv[i + 1]);
-            KSystem::logFile = fopen(this->logPath.c_str(), "w");
+            KSystem::logFile.createNew(logPath);
             i++;
         }
     }
@@ -709,7 +708,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
 #ifdef BOXEDWINE_RECORDER
         else if (!strcmp(argv[i], "-record")) {
             if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
-                MKDIR(argv[i+1]);
+                static_cast<void>(MKDIR(argv[i+1])); // return result ignored
                 if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
                     klog("-record path does not exist and could not be created: %s", argv[i+1]);
                     return false;
@@ -732,12 +731,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     } 
     char curdir[1024];
     char* base = getcwd(curdir, sizeof(curdir));
-    char pathSeperator;
+    char pathSeperator = '/';
 
-    if (base!=NULL && strchr(base, '\\')!=0) {
+    if (base!=nullptr && strchr(base, '\\') != nullptr) {
         pathSeperator = '\\';
-    } else {
-        pathSeperator = '/';
     }
     if (KNativeSystem::getAppDirectory().length()) {
         BString base2 = KNativeSystem::getAppDirectory();

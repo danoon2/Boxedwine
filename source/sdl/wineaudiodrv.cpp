@@ -143,7 +143,7 @@ static void boxedaudio_midi_out_open(CPU* cpu) {
 	U32 pDesc = ARG2; // LPMIDIOPENDESC
 	U32 dwFlags = ARG3;
 	U32 fd = ARG4;
-	EAX = audio->midiOutOpen(wDevID, pDesc, dwFlags, fd);
+	EAX = audio->midiOutOpen(KThread::currentThread()->process.get(), wDevID, pDesc, dwFlags, fd);
 }
 
 static void boxedaudio_midi_out_close(CPU* cpu) {
@@ -161,28 +161,28 @@ static void boxedaudio_midi_out_long_data(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpMidiHdr = ARG2; // LPMIDIHDR
 	U32 dwSize = ARG3;
-	EAX = audio->midiOutLongData(wDevID, lpMidiHdr, dwSize);
+	EAX = audio->midiOutLongData(cpu->thread, wDevID, lpMidiHdr, dwSize);
 }
 
 static void boxedaudio_midi_out_prepare(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpMidiHdr = ARG2; // LPMIDIHDR
 	U32 dwSize = ARG3;
-	EAX = audio->midiOutPrepare(wDevID, lpMidiHdr, dwSize);
+	EAX = audio->midiOutPrepare(cpu->thread, wDevID, lpMidiHdr, dwSize);
 }
 
 static void boxedaudio_midi_out_unprepare(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpMidiHdr = ARG2; // LPMIDIHDR
 	U32 dwSize = ARG3;
-	EAX = audio->midiOutUnprepare(wDevID, lpMidiHdr, dwSize);
+	EAX = audio->midiOutUnprepare(cpu->thread, wDevID, lpMidiHdr, dwSize);
 }
 
 static void boxedaudio_midi_out_get_device_caps(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpCaps = ARG2; // LPMIDIOUTCAPSW
 	U32 dwSize = ARG3;
-	EAX = audio->midiOutGetDevCaps(wDevID, lpCaps, dwSize);
+	EAX = audio->midiOutGetDevCaps(cpu->thread, wDevID, lpCaps, dwSize);
 }
 
 static void boxedaudio_midi_out_get_number_of_devices(CPU* cpu) {
@@ -192,7 +192,7 @@ static void boxedaudio_midi_out_get_number_of_devices(CPU* cpu) {
 static void boxedaudio_midi_out_get_volume(CPU* cpu) {
 	U32 wDevID = ARG1;
 	U32 lpdwVolume = ARG2; // DWORD*
-	EAX = audio->midiOutGetVolume(wDevID, lpdwVolume);
+	EAX = audio->midiOutGetVolume(cpu->thread, wDevID, lpdwVolume);
 }
 
 static void boxedaudio_midi_out_set_volume(CPU* cpu) {
@@ -294,13 +294,13 @@ static void boxedaudio_drv_set_volume(CPU* cpu) {
 static void boxedaudio_drv_is_format_supported(CPU* cpu) {
 	U32 boxedAudioId = ARG1;
 	U32 addressWaveFormat = ARG2;
-	EAX = audio->isFormatSupported(boxedAudioId, addressWaveFormat);
+	EAX = audio->isFormatSupported(cpu->thread, boxedAudioId, addressWaveFormat);
 }
 
 static void boxedaudio_drv_get_mix_format(CPU* cpu) {
 	U32 boxedAudioId = ARG1;
 	U32 addressWaveFormat = ARG2;
-	EAX = audio->getMixFormat(boxedAudioId, addressWaveFormat);
+	EAX = audio->getMixFormat(cpu->thread, boxedAudioId, addressWaveFormat);
 }
 
 static void boxedaudio_drv_lock(CPU* cpu) {
@@ -323,7 +323,7 @@ static void boxedaudio_drv_get_latency(CPU* cpu) {
 	U32 addressLatency = ARG2;
 	U32 latency = 0;
 	EAX = audio->getLatency(boxedAudioId, &latency);
-	writed(addressLatency, latency);
+	cpu->memory->writed(addressLatency, latency);
 }
 
 static void boxedaudio_drv_init(CPU* cpu) {
@@ -336,7 +336,7 @@ static void boxedaudio_drv_init(CPU* cpu) {
 	U32 addressHeldFrames = ARG7;
 	U32 addressLclOffsFrames = ARG8;
 	U32 bufsizeFrames = ARG9;
-	EAX = audio->init(isRender, boxedAudioId, addressFmt, addressPeriodFrames, addressLocalBuffer, addressWriOffsFrames, addressHeldFrames, addressLclOffsFrames, bufsizeFrames);
+	EAX = audio->init(KThread::currentThread()->process, isRender, boxedAudioId, addressFmt, addressPeriodFrames, addressLocalBuffer, addressWriOffsFrames, addressHeldFrames, addressLclOffsFrames, bufsizeFrames);
 }
 
 static void boxedaudio_drv_start(CPU* cpu) {

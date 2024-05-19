@@ -199,58 +199,58 @@ static void cvtss2siR32Xmm(Armv8btAsm* data, U8 to, U8 from, bool truncate) {
 }
 
 void opCvtss2siR32Xmm(Armv8btAsm* data) {
-    cvtss2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), false);
+    cvtss2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), false);
 }
 void opCvtss2siR32E32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
-    cvtss2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), vTmpReg, false);
+    cvtss2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), vTmpReg, false);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opCvttps2piMmxXmm(Armv8btAsm* data) {
-    cvtps2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    cvtps2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 void opCvttps2piMmxE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtps2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), vTmpReg, true);
+    cvtps2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), vTmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opCvttss2siR32Xmm(Armv8btAsm* data) {
-    cvtss2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    cvtss2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 void opCvttss2siR32E32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, vTmpReg, true);
-    cvtss2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), vTmpReg, true);
+    cvtss2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), vTmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opCvtps2piMmxXmm(Armv8btAsm* data) {
-    cvtps2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), false);
+    cvtps2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), false);
 }
 void opCvtps2piMmxE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtps2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), vTmpReg, false);
+    cvtps2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), vTmpReg, false);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opCvtsi2ssXmmR32(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f32[0] = cpu->reg_mmx[reg].sd.d0;
     U8 tmpReg = data->vGetTmpReg();
-    data->vMovFromGeneralReg32(tmpReg, 0, data->getNativeReg(data->decodedOp->rm));
+    data->vMovFromGeneralReg32(tmpReg, 0, data->getNativeReg(data->currentOp->rm));
     data->vConvertInt32ToFloat(tmpReg, tmpReg, false);
-    data->vMov32(data->getNativeReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov32(data->getNativeReg(data->currentOp->reg), 0, tmpReg, 0);
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtsi2ssXmmE32(Armv8btAsm* data) {
@@ -258,19 +258,19 @@ void opCvtsi2ssXmmE32(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, tmpReg, true);
     data->vConvertInt32ToFloat(tmpReg, tmpReg, false);
-    data->vMov32(data->getNativeReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov32(data->getNativeReg(data->currentOp->reg), 0, tmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
 
 void opCvtpd2piMmxXmm(Armv8btAsm* data) {
-    cvtpd2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), false);
+    cvtpd2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), false);
 }
 void opCvtpd2piMmxE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtpd2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), vTmpReg, false);
+    cvtpd2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), vTmpReg, false);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -278,26 +278,26 @@ void opCvtpd2piMmxE128(Armv8btAsm* data) {
 void opCvtpi2pdXmmMmx(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f64[0] = cpu->reg_mmx[reg].sd.d0;
     // cpu->xmm[reg].pd.f64[1] = cpu->reg_mmx[reg].sd.d1;    
-    data->vSignExtend64To128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeMmxReg(data->decodedOp->rm), S4);
-    data->vConvertInt64ToDouble(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vSignExtend64To128(data->getNativeSseReg(data->currentOp->reg), data->getNativeMmxReg(data->currentOp->rm), S4);
+    data->vConvertInt64ToDouble(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), true);
 }
 void opCvtpi2pdXmmE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, tmpReg, true);
-    data->vSignExtend64To128(data->getNativeSseReg(data->decodedOp->reg), tmpReg, S4);
-    data->vConvertInt64ToDouble(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vSignExtend64To128(data->getNativeSseReg(data->currentOp->reg), tmpReg, S4);
+    data->vConvertInt64ToDouble(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtsd2siR32Xmm(Armv8btAsm* data) {
-    cvtsd2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), false);
+    cvtsd2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), false);
 }
 void opCvtsd2siR32E64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    cvtsd2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), vTmpReg, false);
+    cvtsd2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), vTmpReg, false);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -305,10 +305,10 @@ void opCvtsd2siR32E64(Armv8btAsm* data) {
 void opCvtsi2sdXmmR32(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f64[0] = cpu->reg[rm].u32;
     U8 tmpReg = data->vGetTmpReg();
-    data->vMovFromGeneralReg32(tmpReg, 0, data->getNativeReg(data->decodedOp->rm));
+    data->vMovFromGeneralReg32(tmpReg, 0, data->getNativeReg(data->currentOp->rm));
     data->vSignExtend64To128(tmpReg, tmpReg, S4);
     data->vConvertInt64ToDouble(tmpReg, tmpReg, false);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtsi2sdXmmE32(Armv8btAsm* data) {
@@ -317,29 +317,29 @@ void opCvtsi2sdXmmE32(Armv8btAsm* data) {
     data->vReadMemory32(addressReg, tmpReg, true);
     data->vSignExtend64To128(tmpReg, tmpReg, S4);
     data->vConvertInt64ToDouble(tmpReg, tmpReg, false);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvttpd2piMmxXmm(Armv8btAsm* data) {
-    cvtpd2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    cvtpd2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 void opCvttpd2piMmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtpd2piXmm(data, data->getNativeMmxReg(data->decodedOp->reg), vTmpReg, true);
+    cvtpd2piXmm(data, data->getNativeMmxReg(data->currentOp->reg), vTmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opCvttsd2siR32Xmm(Armv8btAsm* data) {
-    cvtsd2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    cvtsd2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 void opCvttsd2siR32E64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, vTmpReg, true);
-    cvtsd2siR32Xmm(data, data->getNativeReg(data->decodedOp->reg), vTmpReg, true);
+    cvtsd2siR32Xmm(data, data->getNativeReg(data->currentOp->reg), vTmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -348,8 +348,8 @@ void opCvtpi2psXmmMmx(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f32[0] = cpu->reg_mmx[reg].sd.d0;
     // cpu->xmm[reg].pd.f32[1] = cpu->reg_mmx[reg].sd.d1; 
     U8 tmpReg = data->vGetTmpReg();
-    data->vConvertInt32ToFloat(tmpReg, data->getNativeSseReg(data->decodedOp->reg), true);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0); // need to maintain the high 64-bits
+    data->vConvertInt32ToFloat(tmpReg, data->getNativeSseReg(data->currentOp->reg), true);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0); // need to maintain the high 64-bits
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtpi2psXmmE64(Armv8btAsm* data) {
@@ -357,7 +357,7 @@ void opCvtpi2psXmmE64(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, tmpReg, true);
     data->vConvertInt32ToFloat(tmpReg, tmpReg, true);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
@@ -369,8 +369,8 @@ void opCvtpd2psXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pi.u32[3] = 0
     U8 tmpReg = data->vGetTmpReg();
     data->vLoadConst(tmpReg, 0, B16);
-    data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(tmpReg, data->getNativeSseReg(data->decodedOp->rm));
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0); // need to maintain the high 64-bits
+    data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(tmpReg, data->getNativeSseReg(data->currentOp->rm));
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0); // need to maintain the high 64-bits
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtpd2psXmmE128(Armv8btAsm* data) {
@@ -378,7 +378,7 @@ void opCvtpd2psXmmE128(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, tmpReg, true);
     data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(tmpReg, tmpReg);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
@@ -386,14 +386,14 @@ void opCvtpd2psXmmE128(Armv8btAsm* data) {
 void opCvtps2pdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f64[0] = (double)cpu->xmm[rm].ps.f32[0];
     // cpu->xmm[reg].pd.f64[1] = (double)cpu->xmm[rm].ps.f32[1];
-    data->vConvertFloatToDouble(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    data->vConvertFloatToDouble(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 
 void opCvtps2pdXmmE64(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, tmpReg, true); // will 0 out the top
-    data->vConvertFloatToDouble(data->getNativeSseReg(data->decodedOp->reg), tmpReg, true);
+    data->vConvertFloatToDouble(data->getNativeSseReg(data->currentOp->reg), tmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
@@ -401,8 +401,8 @@ void opCvtps2pdXmmE64(Armv8btAsm* data) {
 void opCvtsd2ssXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[0] = (double)cpu->xmm[rm].pd.f64[0];
     U8 tmpReg = data->vGetTmpReg();
-    data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(tmpReg, data->getNativeSseReg(data->decodedOp->rm));
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(tmpReg, data->getNativeSseReg(data->currentOp->rm));
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtsd2ssXmmE64(Armv8btAsm* data) {
@@ -410,7 +410,7 @@ void opCvtsd2ssXmmE64(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory64(addressReg, tmpReg, true); // will 0 out the top
     data->vConvertDoubleToFloatRoundToCurrentModeAndKeep(tmpReg, tmpReg);
-    data->vMov32(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
@@ -418,15 +418,15 @@ void opCvtsd2ssXmmE64(Armv8btAsm* data) {
 void opCvtdq2pdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f64[0] = (double)cpu->xmm[rm].pi.i32[0];
     // cpu->xmm[reg].pd.f64[1] = (double)cpu->xmm[rm].pi.i32[1];
-    data->vSignExtend64To128(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), S4);
-    data->vConvertInt64ToDouble(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->reg), true);
+    data->vSignExtend64To128(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S4);
+    data->vConvertInt64ToDouble(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->reg), true);
 }
 void opCvtdq2pdXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, tmpReg, true);
     data->vSignExtend64To128(tmpReg, tmpReg, S4);
-    data->vConvertInt64ToDouble(data->getNativeSseReg(data->decodedOp->reg), tmpReg, true);
+    data->vConvertInt64ToDouble(data->getNativeSseReg(data->currentOp->reg), tmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
@@ -436,36 +436,36 @@ void opCvtdq2psXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].ps.f32[1] = (float)cpu->xmm[rm].pi.i32[1];
     // cpu->xmm[reg].ps.f32[2] = (float)cpu->xmm[rm].pi.i32[2];
     // cpu->xmm[reg].ps.f32[3] = (float)cpu->xmm[rm].pi.i32[3];
-    data->vConvertInt32ToFloat(data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    data->vConvertInt32ToFloat(data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 void opCvtdq2psXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, tmpReg, true);
-    data->vConvertInt32ToFloat(data->getNativeSseReg(data->decodedOp->reg), tmpReg, true);
+    data->vConvertInt32ToFloat(data->getNativeSseReg(data->currentOp->reg), tmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtpd2dqXmmXmm(Armv8btAsm* data) {
-    cvtpd2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), false);
+    cvtpd2piXmm(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), false);
 }
 void opCvtpd2dqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtpd2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, false);
+    cvtpd2piXmm(data, data->getNativeSseReg(data->currentOp->reg), vTmpReg, false);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 
 void opCvtps2dqXmmXmm(Armv8btAsm* data) {
-    cvtps2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), false);
+    cvtps2piXmm(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), false);
 }
 void opCvtps2dqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtps2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, false);
+    cvtps2piXmm(data, data->getNativeSseReg(data->currentOp->reg), vTmpReg, false);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
@@ -473,8 +473,8 @@ void opCvtps2dqXmmE128(Armv8btAsm* data) {
 void opCvtss2sdXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pd.f64[0] = (float)cpu->xmm[rm].ps.f32[0];
     U8 tmpReg = data->vGetTmpReg();
-    data->vConvertFloatToDouble(tmpReg, data->getNativeSseReg(data->decodedOp->rm), false);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vConvertFloatToDouble(tmpReg, data->getNativeSseReg(data->currentOp->rm), false);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->vReleaseTmpReg(tmpReg);
 }
 void opCvtss2sdXmmE32(Armv8btAsm* data) {
@@ -482,7 +482,7 @@ void opCvtss2sdXmmE32(Armv8btAsm* data) {
     U8 tmpReg = data->vGetTmpReg();
     data->vReadMemory32(addressReg, tmpReg, true);
     data->vConvertFloatToDouble(tmpReg, tmpReg, false);
-    data->vMov64(data->getNativeSseReg(data->decodedOp->reg), 0, tmpReg, 0);
+    data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, tmpReg, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(tmpReg);
 }
@@ -491,24 +491,24 @@ void opCvttpd2dqXmmXmm(Armv8btAsm* data) {
     // cpu->xmm[reg].pi.s32[1] = (S32)cpu->xmm[rm].pd.f64[1];
     // cpu->xmm[reg].pi.u32[2] = 0
     // cpu->xmm[reg].pi.u32[3] = 0
-    cvtpd2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    cvtpd2piXmm(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 void opCvttpd2dqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtpd2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, true);
+    cvtpd2piXmm(data, data->getNativeSseReg(data->currentOp->reg), vTmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }
 void opCvttps2dqXmmXmm(Armv8btAsm* data) {
-    cvtps2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), data->getNativeSseReg(data->decodedOp->rm), true);
+    cvtps2piXmm(data, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), true);
 }
 void opCvttps2dqXmmE128(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 vTmpReg = data->vGetTmpReg();
     data->vReadMemory128(addressReg, vTmpReg, true);
-    cvtps2piXmm(data, data->getNativeSseReg(data->decodedOp->reg), vTmpReg, true);
+    cvtps2piXmm(data, data->getNativeSseReg(data->currentOp->reg), vTmpReg, true);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
 }

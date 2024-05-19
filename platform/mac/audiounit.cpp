@@ -21,7 +21,8 @@
 #include <CoreServices/CoreServices.h>
 #include <AudioUnit/AudioUnit.h>
 #include <AudioToolbox/AudioToolbox.h>
-#include "log.h"
+
+#define klog printf
 
 int AudioUnit_SetVolume(AudioUnit au, float left, float right)
 {

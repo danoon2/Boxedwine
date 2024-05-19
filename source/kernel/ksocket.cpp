@@ -23,34 +23,44 @@
 #include "kscheduler.h"
 #include "kunixsocket.h"
 #include "knativesocket.h"
+#include "knetlink.h"
 
 #include <string.h>
 #include <stdio.h>
 
 
-const char* socketAddressName(U32 address, U32 len, char* result, U32 cbResult) {
+BString socketAddressName(KMemory* memory, U32 address, U32 len) {
     if (!address) {
-        return "";
+        return B("");
     }
-    U16 family = readw(address);
+    U16 family = memory->readw(address);
     if (family == K_AF_UNIX) {
-        return getNativeString(address + 2, result, cbResult);
+        U32 sLen = (U32)memory->strlen(address + 2);
+        BString result(sLen + 1, 0);
+        memory->memcpy(result.str(), address + 2, sLen+1);
+        return result;
     } else if (family == K_AF_NETLINK) {
-        snprintf(result, cbResult, "port %u", readd(address + 4));
+        BString result;
+        result.sprintf("port %u", memory->readd(address + 4));
         return result;
     } else if (family == K_AF_INET) {
-        snprintf(result, cbResult, "AF_INET %u.%u.%u.%u:%u", readb(address + 4), readb(address + 5), readb(address + 6), readb(address + 7), readb(address + 3) | (((U32)readb(address + 2)) << 8));
+        BString result;
+        result.sprintf("AF_INET %u.%u.%u.%u:%u", memory->readb(address + 4), memory->readb(address + 5), memory->readb(address + 6), memory->readb(address + 7), memory->readb(address + 3) | (((U32)memory->readb(address + 2)) << 8));
         return result;
     }
-    return "Unknown address family";
+    return B("Unknown address family");
 }
 
 U32 ksocket(U32 domain, U32 type, U32 protocol) {
-    if (domain==K_AF_UNIX || domain==K_AF_NETLINK) {
-        std::shared_ptr<KUnixSocketObject> kSocket = std::make_shared<KUnixSocketObject>(KThread::currentThread()->process->id, domain, type, protocol);
+    if (domain==K_AF_UNIX) {
+        std::shared_ptr<KUnixSocketObject> kSocket = std::make_shared<KUnixSocketObject>(domain, type, protocol);
         KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
-    } else if (domain == K_AF_INET) {   
+    } else if (domain == K_AF_NETLINK) {       
+        std::shared_ptr<KNetLinkObject> kSocket = std::make_shared<KNetLinkObject>(domain, type, protocol);
+        KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
+        return result->handle;
+    } else if (domain == K_AF_INET) {
         std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(domain, type, protocol);
         if (s->error) {
             return s->error;
@@ -64,8 +74,7 @@ U32 ksocket(U32 domain, U32 type, U32 protocol) {
 
 #define IS_NOT_SOCKET(fd) (fd->kobject->type!=KTYPE_NATIVE_SOCKET && fd->kobject->type!=KTYPE_UNIX_SOCKET)
 
-U32 kbind(U32 socket, U32 address, U32 len) {
-    KThread* thread = KThread::currentThread();
+U32 kbind(KThread* thread, U32 socket, U32 address, U32 len) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -75,11 +84,10 @@ U32 kbind(U32 socket, U32 address, U32 len) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->bind(fd, address, len);
+    return s->bind(thread, fd, address, len);
 }
 
-U32 kconnect(U32 socket, U32 address, U32 len) {
-    KThread* thread = KThread::currentThread();
+U32 kconnect(KThread* thread, U32 socket, U32 address, U32 len) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -92,11 +100,10 @@ U32 kconnect(U32 socket, U32 address, U32 len) {
     if (s->connected) {
         return -K_EISCONN;
     }		
-    return s->connect(fd, address, len);        
+    return s->connect(thread, fd, address, len);        
 }
 
-U32 klisten(U32 socket, U32 backlog) {
-    KThread* thread = KThread::currentThread();
+U32 klisten(KThread* thread, U32 socket, U32 backlog) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -106,11 +113,10 @@ U32 klisten(U32 socket, U32 backlog) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->listen(fd, backlog);
+    return s->listen(thread, fd, backlog);
 }
 
-U32 kaccept(U32 socket, U32 address, U32 len, U32 flags) {
-    KThread* thread = KThread::currentThread();
+U32 kaccept(KThread* thread, U32 socket, U32 address, U32 len, U32 flags) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -123,11 +129,10 @@ U32 kaccept(U32 socket, U32 address, U32 len, U32 flags) {
     if (!s->listening) {
         return -K_EINVAL;
     }
-    return s->accept(fd, address, len, flags);
+    return s->accept(thread, fd, address, len, flags);
 }
 
-U32 kgetsockname( U32 socket, U32 address, U32 plen) {
-    KThread* thread = KThread::currentThread();
+U32 kgetsockname(KThread* thread, U32 socket, U32 address, U32 plen) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
     
     if (!fd) {
@@ -137,11 +142,10 @@ U32 kgetsockname( U32 socket, U32 address, U32 plen) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->getsockname(fd, address, plen);
+    return s->getsockname(thread, fd, address, plen);
 }
 
-U32 kgetpeername(U32 socket, U32 address, U32 plen) {
-    KThread* thread = KThread::currentThread();
+U32 kgetpeername(KThread* thread, U32 socket, U32 address, U32 plen) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
     
     if (!fd) {
@@ -151,17 +155,19 @@ U32 kgetpeername(U32 socket, U32 address, U32 plen) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->getpeername(fd, address, plen);
+    return s->getpeername(thread, fd, address, plen);
 }
 
-U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
-    FD fd1;
-    FD fd2;
-    KFileDescriptor* f1;
-    KFileDescriptor* f2;
+U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
+    FD fd1 = 0;
+    FD fd2 = 0;
+    KFileDescriptor* f1 = nullptr;
+    KFileDescriptor* f2 = nullptr;
     std::shared_ptr<KUnixSocketObject> s1;
     std::shared_ptr<KUnixSocketObject> s2;
-    KThread* thread = KThread::currentThread();
+    KMemory* memory = thread->memory;
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
 
     if (af!=K_AF_UNIX) {
         kwarn("socketpair with adress family %d not implemented", af);
@@ -184,16 +190,16 @@ U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
     s2->connected = true;
     f1->accessFlags = K_O_RDWR;
     f2->accessFlags = K_O_RDWR;
-    writed(socks, fd1);
-    writed(socks + 4, fd2);
+    memory->writed(socks, fd1);
+    memory->writed(socks + 4, fd2);
 
     if ((flags & K_O_CLOEXEC)!=0) {
-        thread->process->fcntrl(fd1, K_F_SETFD, FD_CLOEXEC);
-        thread->process->fcntrl(fd2, K_F_SETFD, FD_CLOEXEC);
+        thread->process->fcntrl(thread, fd1, K_F_SETFD, FD_CLOEXEC);
+        thread->process->fcntrl(thread, fd2, K_F_SETFD, FD_CLOEXEC);
     }
     if ((flags & K_O_NONBLOCK)!=0) {
-        thread->process->fcntrl(fd1, K_F_SETFL, K_O_NONBLOCK);
-        thread->process->fcntrl(fd2, K_F_SETFL, K_O_NONBLOCK);
+        thread->process->fcntrl(thread, fd1, K_F_SETFL, K_O_NONBLOCK);
+        thread->process->fcntrl(thread, fd2, K_F_SETFL, K_O_NONBLOCK);
     }
     if (flags & ~(K_O_CLOEXEC|K_O_NONBLOCK)) {
         kwarn("Unknow flags sent to pipe2: %X", flags);
@@ -201,8 +207,7 @@ U32 ksocketpair(U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
     return 0;
 }
 
-U32 ksend(U32 socket, U32 buffer, U32 len, U32 flags) {
-    KThread* thread = KThread::currentThread();
+U32 ksend(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -212,20 +217,10 @@ U32 ksend(U32 socket, U32 buffer, U32 len, U32 flags) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    s->flags = 0;
-    if (flags == 0x4000) {
-        //  MSG_NOSIGNAL
-    }
-    if (flags & 1) {
-        s->flags|=K_MSG_OOB;
-    } 
-    U32 result = thread->process->write(socket, buffer, len);
-    s->flags = 0;
-    return result;
+    return s->sendto(thread, fd, buffer, len, flags, 0, 0);
 }
 
-U32 krecv(U32 socket, U32 buffer, U32 len, U32 flags) {
-    KThread* thread = KThread::currentThread();
+U32 krecv(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -235,23 +230,10 @@ U32 krecv(U32 socket, U32 buffer, U32 len, U32 flags) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    s->flags = 0;
-    if (flags == 0x4000) {
-        //  MSG_NOSIGNAL
-    } 
-    if (flags & 1) {
-        s->flags|=K_MSG_OOB;
-    } 
-    if (flags & 2) {
-        s->flags|=K_MSG_PEEK;
-    } 
-    U32 result = thread->process->read(socket, buffer, len);
-    s->flags = 0;
-    return result;
+    return s->recvfrom(thread, fd, buffer, len, flags, 0, 0);
 }
 
-U32 kshutdown(U32 socket, U32 how) {
-    KThread* thread = KThread::currentThread();
+U32 kshutdown(KThread* thread, U32 socket, U32 how) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -261,11 +243,10 @@ U32 kshutdown(U32 socket, U32 how) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->shutdown(fd, how);
+    return s->shutdown(thread, fd, how);
 }
 
-U32 ksetsockopt(U32 socket, U32 level, U32 name, U32 value, U32 len) {
-    KThread* thread = KThread::currentThread();
+U32 ksetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32 len) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -275,11 +256,10 @@ U32 ksetsockopt(U32 socket, U32 level, U32 name, U32 value, U32 len) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->setsockopt(fd, level, name, value, len);
+    return s->setsockopt(thread, fd, level, name, value, len);
 }
 
-U32 kgetsockopt( U32 socket, U32 level, U32 name, U32 value, U32 len_address) {
-    KThread* thread = KThread::currentThread();
+U32 kgetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32 len_address) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -289,19 +269,19 @@ U32 kgetsockopt( U32 socket, U32 level, U32 name, U32 value, U32 len_address) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->getsockopt(fd, level, name, value, len_address);    
+    return s->getsockopt(thread, fd, level, name, value, len_address);    
 }
 
 #define K_SOL_SOCKET 1
 #define K_SCM_RIGHTS 1
 
-U32 ksendmmsg(U32 socket, U32 address, U32 vlen, U32 flags) {
+U32 ksendmmsg(KThread* thread, U32 socket, U32 address, U32 vlen, U32 flags) {
     U32 i;
 
     for (i=0;i<vlen;i++) {
-        S32 result = (S32)ksendmsg(socket, address+i*32, flags);
+        S32 result = (S32)ksendmsg(thread, socket, address+i*32, flags);
         if (result>=0) {
-            writed(address+i*32+28, result);
+            thread->memory->writed(address+i*32+28, result);
         } else {
             return i;
         }
@@ -309,8 +289,7 @@ U32 ksendmmsg(U32 socket, U32 address, U32 vlen, U32 flags) {
     return vlen;
 }
 
-U32 ksendmsg(U32 socket, U32 address, U32 flags) {
-    KThread* thread = KThread::currentThread();
+U32 ksendmsg(KThread* thread, U32 socket, U32 address, U32 flags) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -320,11 +299,10 @@ U32 ksendmsg(U32 socket, U32 address, U32 flags) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->sendmsg(fd, address, flags);    
+    return s->sendmsg(thread, fd, address, flags);    
 }
 
-U32 krecvmsg(U32 socket, U32 address, U32 flags) {
-    KThread* thread = KThread::currentThread();
+U32 krecvmsg(KThread* thread, U32 socket, U32 address, U32 flags) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -334,12 +312,11 @@ U32 krecvmsg(U32 socket, U32 address, U32 flags) {
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->recvmsg(fd, address, flags);
+    return s->recvmsg(thread, fd, address, flags);
 }
 
 // ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
-U32 ksendto(U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {
-    KThread* thread = KThread::currentThread();
+U32 ksendto(KThread* thread, U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -349,12 +326,11 @@ U32 ksendto(U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 d
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->sendto(fd, message, length, flags, dest_addr, dest_len);        
+    return s->sendto(thread, fd, message, length, flags, dest_addr, dest_len);        
 }
 
 // ssize_t recvfrom(int socket, void *restrict buffer, size_t length, int flags, struct sockaddr *restrict address, socklen_t *restrict address_len);
-U32 krecvfrom(U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
-    KThread* thread = KThread::currentThread();
+U32 krecvfrom(KThread* thread, U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
     KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
@@ -364,7 +340,7 @@ U32 krecvfrom(U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 ad
         return -K_ENOTSOCK;
     }
     std::shared_ptr<KSocketObject> s = std::dynamic_pointer_cast<KSocketObject>(fd->kobject);
-    return s->recvfrom(fd, buffer, length, flags, address, address_len);    
+    return s->recvfrom(thread, fd, buffer, length, flags, address, address_len);    
 }
 
 bool isNativeSocket(KThread* thread, FD desc) {

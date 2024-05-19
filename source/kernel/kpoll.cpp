@@ -21,20 +21,21 @@
 #include "kpoll.h"
 #include "kscheduler.h"
 
-static void clearPollData(KPollData* data, U32 count) {
-    KThread* thread = KThread::currentThread();
+static void clearPollData(KThread* thread, KPollData* data, U32 count) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
     for (U32 i = 0; i < count; i++, data++) {
-        data->pFD->kobject->waitForEvents(thread->pollCond, 0);
+        KFileDescriptor* pFD = thread->process->getFileDescriptor(data->fd);
+        if (pFD) {
+            pFD->kobject->waitForEvents(thread->pollCond, 0);
+        }
     }
 }
 
-S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
+S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
     KPollData* firstData=data;
 
     while (true) {        
         S32 result = 0;
-        U32 i;
-        KThread* thread = KThread::currentThread();
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->pollCond);
         bool interrupted = !thread->inSignal && thread->interrupted;
         
@@ -42,52 +43,61 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             thread->interrupted = false;
         
         data = firstData;
-        // gather locks before we check the data so that we don't miss one
-        for (i=0;i<count;i++) {
-            KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
-            if (fd) {
-                fd->kobject->waitForEvents(thread->pollCond, data->events);
-                data->pFD = fd;
-                data++;
-            } else {
-                int ii = 0;
-            }
-        } 
-
-        data = firstData;
-        for (i=0;i<count;i++) {
-            KFileDescriptor* fd = data->pFD;
-            data->revents = 0;
-            if (fd) {
-                if (!fd->kobject->isOpen()) {
-                    data->revents = K_POLLHUP;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
+            // gather locks before we check the data so that we don't miss one
+            for (U32 i = 0; i < count; i++) {
+                KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
+                if (fd) {
+                    // even if 0, we still don't want to remove it and should still respond to POLLERR and POLLHUP
+                    fd->kobject->waitForEvents(thread->pollCond, data->events | K_POLLERR);
                 } else {
+                    int ii = 0;
+                }
+                data++;
+            }
+
+            data = firstData;
+            for (U32 i = 0; i < count; i++) {
+                KFileDescriptor* fd = thread->process->getFileDescriptor(data->fd);
+                data->revents = 0;                
+                if (!fd) {
+                    data->revents |= K_POLLNVAL;
+                } else {
+                    if (fd->kobject->type != 1) {
+                        int ii = 0;
+                    }
+                    if (!fd->kobject->isOpen()) {
+                        data->revents |= K_POLLHUP;
+                    }
                     if ((data->events & K_POLLPRI) && fd->kobject->isPriorityReadReady()) {
                         data->revents |= K_POLLPRI;
-                    } else if ((data->events & K_POLLIN) != 0 && fd->kobject->isReadReady()) {
+                    } 
+                    if ((data->events & K_POLLIN) != 0 && fd->kobject->isReadReady()) {
                         data->revents |= K_POLLIN;
-                    } else if ((data->events & K_POLLOUT) != 0 && fd->kobject->isWriteReady()) {
+                    }
+                    if ((data->events & K_POLLOUT) != 0 && fd->kobject->isWriteReady()) {
                         data->revents |= K_POLLOUT;
                     }
+                    if (data->revents != 0) {
+                        result++;
+                    }
                 }
-                if (data->revents!=0) {
-                    result++;
-                }
+                data++;
             }
-            data++;
         }
         if (result>0) {	
             thread->condStartWaitTime = 0;
-            clearPollData(firstData, count);
+            clearPollData(thread, firstData, count);
             return result;
         }
         if (timeout==0) {
-            clearPollData(firstData, count);
+            clearPollData(thread, firstData, count);
             return 0;
         }	
         if (interrupted) {
             thread->condStartWaitTime = 0;
-            clearPollData(firstData, count);
+            clearPollData(thread, firstData, count);
             return -K_EINTR;
         }
         if (!thread->condStartWaitTime) {
@@ -96,7 +106,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
             U32 diff = KSystem::getMilliesSinceStart()-thread->condStartWaitTime;
             if (diff>timeout) {
                 thread->condStartWaitTime = 0;
-                clearPollData(firstData, count);
+                clearPollData(thread, firstData, count);
                 return 0;
             }
             timeout-=diff;
@@ -106,7 +116,7 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
         } else {
             BOXEDWINE_CONDITION_WAIT_TIMEOUT(thread->pollCond, timeout);
         }
-        clearPollData(firstData, count);
+        clearPollData(thread, firstData, count);
 #ifdef BOXEDWINE_MULTI_THREADED
 		if (KThread::currentThread()->terminating) {
 			return -K_EINTR;
@@ -119,24 +129,23 @@ S32 internal_poll(KPollData* data, U32 count, U32 timeout) {
     }
 }
 
-U32 kpoll(U32 pfds, U32 nfds, U32 timeout) {
-    U32 i;
-    S32 result;
+U32 kpoll(KThread* thread, U32 pfds, U32 nfds, U32 timeout) {
     U32 address = pfds;
+    KMemory* memory = thread->memory;
 
     KPollData* pollData = new KPollData[nfds];
 
-    for (i=0;i<nfds;i++) {
-        pollData[i].fd = readd(address); address += 4;
-        pollData[i].events = readw(address); address += 2;
-        pollData[i].revents = readw(address); address += 2;
+    for (U32 i=0;i<nfds;i++) {
+        pollData[i].fd = memory->readd(address); address += 4;
+        pollData[i].events = memory->readw(address); address += 2;
+        pollData[i].revents = memory->readw(address); address += 2;
     }
 
-    result = internal_poll(pollData, nfds, timeout);
+    S32 result = internal_poll(thread, pollData, nfds, timeout);
     if (result >= 0) { 
         pfds+=6;
-        for (i=0;i<nfds;i++) {
-            writew(pfds, pollData[i].revents);
+        for (U32 i=0;i<nfds;i++) {
+            memory->writew(pfds, pollData[i].revents);
             pfds+=8;
         }
     }
@@ -145,16 +154,22 @@ U32 kpoll(U32 pfds, U32 nfds, U32 timeout) {
 }
 
 
-U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
+U32 kselect(KThread* thread, U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout, bool timeoutIsTimeVal, U32 sigmask, bool time64) {
     S32 result = 0;
-    U32 i;
     int count = 0;
     U32 pollCount = 0;
+    KMemory* memory = thread->memory;
 
     if (timeout == 0)
         timeout = 0x7FFFFFFF;
     else {
-        timeout = readd(timeout) * 1000 + readd(timeout + 4) / 1000;
+        // timeval, 2nd part is microseconds
+        // timespec, 2nd part is nanoseconds
+        if (time64) {
+            timeout = (U32)(memory->readq(timeout) * 1000 + memory->readd(timeout + 8) / (timeoutIsTimeVal?1000:1000000));
+        } else {
+            timeout = memory->readd(timeout) * 1000 + memory->readd(timeout + 4) / (timeoutIsTimeVal ? 1000 : 1000000);
+        }
         if (timeout < NUMBER_OF_MILLIES_TO_SPIN_FOR_WAIT && nfds == 0) {
             return KThread::currentThread()->sleep(timeout);
         }
@@ -162,22 +177,21 @@ U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
 
     KPollData* pollData = new KPollData[nfds];
 
-    for (i=0;i<nfds;) {
+    for (U32 i=0;i<nfds;) {
         U32 readbits = 0;
         U32 writebits = 0;
         U32 errorbits = 0;
-        U32 b;
 
         if (readfds!=0) {
-            readbits = readb(readfds + i / 8);
+            readbits = memory->readb(readfds + i / 8);
         }
         if (writefds!=0) {
-            writebits = readb(writefds + i / 8);
+            writebits = memory->readb(writefds + i / 8);
         }
         if (errorfds!=0) {
-            errorbits = readb(errorfds + i / 8);
+            errorbits = memory->readb(errorfds + i / 8);
         }
-        for (b = 0; b < 8 && i < nfds; b++, i++) {
+        for (U32 b = 0; b < 8 && i < nfds; b++, i++) {
             U32 mask = 1 << b;
             U32 r = readbits & mask;
             U32 w = writebits & mask;
@@ -196,45 +210,54 @@ U32 kselect(U32 nfds, U32 readfds, U32 writefds, U32 errorfds, U32 timeout) {
             }
         }
     }    
-    result = internal_poll(pollData, pollCount, timeout);
+    if (sigmask) {
+        U32 mask = thread->memory->readd(sigmask);
+        U32 oldMask = thread->sigMask;
+        thread->sigMask = mask;
+
+        result = internal_poll(thread, pollData, pollCount, timeout);
+        thread->sigMask = oldMask;
+    } else {
+        result = internal_poll(thread, pollData, pollCount, timeout);
+    }
     if (result == -K_WAIT || result == -K_CONTINUE) {
         delete[] pollData;
         return result;
     }
 
     if (readfds)
-        zeroMemory(readfds, (nfds + 7) / 8);
+        memory->memset(readfds, 0, (nfds + 7) / 8);
     if (writefds)
-        zeroMemory(writefds, (nfds + 7) / 8);
+        memory->memset(writefds, 0, (nfds + 7) / 8);
     if (errorfds)
-        zeroMemory(errorfds, (nfds + 7) / 8);
+        memory->memset(errorfds, 0, (nfds + 7) / 8);
 
     if (result <= 0) {
         delete[] pollData;
         return result;
     }
 
-    for (i=0;i<pollCount;i++) {
+    for (U32 i=0;i<pollCount;i++) {
         U32 found = 0;
         FD fd = pollData[i].fd;
         U32 revent = pollData[i].revents;
 
         if (readfds!=0 && ((revent & K_POLLIN) || (revent & K_POLLHUP))) {
-            U8 v = readb(readfds + fd / 8);
+            U8 v = memory->readb(readfds + fd / 8);
             v |= 1 << (fd % 8);
-            writeb(readfds + fd / 8, v);
+            memory->writeb(readfds + fd / 8, v);
             found = 1;
         }
         if (writefds!=0 && (revent & K_POLLOUT)) {
-            U8 v = readb(writefds + fd / 8);
+            U8 v = memory->readb(writefds + fd / 8);
             v |= 1 << (fd % 8);
-            writeb(writefds + fd / 8, v);
+            memory->writeb(writefds + fd / 8, v);
             found = 1;
         }
         if (errorfds!=0 && (revent & K_POLLERR)) {
-            U8 v = readb(errorfds + fd / 8);
+            U8 v = memory->readb(errorfds + fd / 8);
             v |= 1 << (fd % 8);
-            writeb(errorfds + fd / 8, v);
+            memory->writeb(errorfds + fd / 8, v);
             found = 1;
         }
         if (found) {

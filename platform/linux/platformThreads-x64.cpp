@@ -4,6 +4,7 @@
 
 #include "ksignal.h"
 #include "../../source/emulation/cpu/x64/x64CPU.h"
+#include "../../source/emulation/softmmu/kmemory_soft.h"
 
 #ifdef __MACH__
 #define __USE_GNU
@@ -284,6 +285,8 @@ U32 exceptionCount;
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
     KThread* currentThread = KThread::currentThread();
+    KMemoryData* mem = getMemData(currentThread->memory);
+
     if (!currentThread) {
         return;
     }
@@ -301,22 +304,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
     x64Cpu->exceptionIp = context->CONTEXT_RIP;
-    x64Cpu->exceptionRSP = context->CONTEXT_RSP;
-    x64Cpu->exceptionRSI = context->CONTEXT_RSI;
-    x64Cpu->exceptionRDI = context->CONTEXT_RDI;
-    x64Cpu->exceptionR8 = context->CONTEXT_R8;
-    x64Cpu->exceptionR9 = context->CONTEXT_R9;
-    x64Cpu->exceptionR10 = context->CONTEXT_R10;
-    x64Cpu->destEip = (U32)context->CONTEXT_R9;
-    x64Cpu->regPage = context->CONTEXT_R8;
-    x64Cpu->regOffset = context->CONTEXT_R9;
-    if (cpu->thread->memory->isAddressExecutable((void*)context->CONTEXT_RIP)) {
-        unsigned char* hostAddress = (unsigned char*)context->CONTEXT_RIP;
-        std::shared_ptr<BtCodeChunk> chunk = cpu->thread->memory->getCodeChunkContainingHostAddress(hostAddress);
-        if (chunk && chunk->getEipLen()) { // during start up eip is already set
-            cpu->eip.u32 = chunk->getEipThatContainsHostAddress(hostAddress, NULL, NULL) - cpu->seg[CS].address;
-        }
-    }
+
     context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
 }
 
@@ -337,6 +325,7 @@ void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
+    KMemoryData* mem = getMemData(currentThread->memory);
 
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
@@ -344,32 +333,7 @@ void signalHandler() {
         return;
     }
     InException e(cpu);
-    if (cpu->exceptionSigNo == SIGILL || cpu->exceptionSigNo == SIGTRAP) {
-        //if (cpu->exceptionRSP & 0xf) {
-        //    kpanic("seh_filter: bad stack alignment");
-        //}
-        U64 rip = cpu->handleIllegalInstruction(cpu->exceptionIp);
-        if (rip) {
-            cpu->returnHostAddress = rip;
-            return;
-        }
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-    } else if (cpu->exceptionSigNo == SIGBUS && cpu->exceptionSigCode == BUS_ADRALN) {
-        // :TODO: figure out how AC got set, I've only seen this while op logging
-        cpu->flags &= ~AC;
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-    } else if ((cpu->exceptionSigNo == SIGBUS || cpu->exceptionSigNo == SIGSEGV) && cpu->thread->memory->isAddressExecutable((void*)cpu->exceptionIp)) {
-        U64 rip = cpu->handleAccessException(cpu->exceptionIp, cpu->exceptionAddress, cpu->exceptionReadAddress);
-        if (rip) {
-            cpu->returnHostAddress = rip;
-            return;
-        }
-        // :TODO: can jumping cause us to miss something?
-        cpu->returnHostAddress = cpu->exceptionIp;
-        return;
-    } else if (cpu->exceptionSigNo == SIGFPE) {
+    if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
         cpu->returnHostAddress = cpu->handleFpuException(code);
         return;

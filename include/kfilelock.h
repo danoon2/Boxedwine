@@ -21,11 +21,13 @@
 
 class KFileLock {
 public:
-    U32 l_type;
-    U32 l_whence;
-    U64 l_start;
-    U64 l_len;
-    U32 l_pid;
+    KFileLock() = default;
+
+    U32 l_type = 0;
+    U32 l_whence = 0;
+    U64 l_start = 0;
+    U64 l_len = 0;
+    U32 l_pid = 0;
 
     bool operator==(const KFileLock& r) const
     {

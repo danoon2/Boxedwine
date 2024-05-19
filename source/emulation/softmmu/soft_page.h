@@ -21,25 +21,13 @@
 
 #include "platform.h"
 
-class Memory;
 class KThread;
-
-#define PAGE_READ 0x01
-#define PAGE_WRITE 0x02
-#define PAGE_EXEC 0x04
-#define PAGE_SHARED 0x08
-#define PAGE_MAPPED 0x20
-#define PAGE_ALLOCATED 0x40
-#define PAGE_MAPPED_HOST 0x80
-#define PAGE_PERMISSION_MASK 0x07
-
-#define GET_PAGE_PERMISSIONS(flags) (flags & PAGE_PERMISSION_MASK)
+class KMemory;
 
 class Page {
 public:
-    enum Type {
+    enum class Type {
         Invalid_Page,
-        On_Demand_Page,
         RW_Page,
         RO_Page,
         WO_Page,
@@ -47,10 +35,9 @@ public:
         File_Page,
         Code_Page,
         Copy_On_Write_Page,
-        Frame_Buffer,
-        Native_Page
+        Native_Page,
+        Frame_Buffer_Page
     };
-    Page(Type type, U32 flags) : flags(flags), type(type) {}
     virtual ~Page() {};
 
     virtual U8 readb(U32 address)=0;
@@ -59,21 +46,14 @@ public:
     virtual void writew(U32 address, U16 value)=0;
     virtual U32 readd(U32 address)=0;
     virtual void writed(U32 address, U32 value)=0;
-    virtual U8* getCurrentReadPtr()=0; // might have permission, but may not ready
-    virtual U8* getCurrentWritePtr()=0; // might have permission, but may not be ready
-    virtual U8* getReadAddress(U32 address, U32 len)=0; // if has permission, will make ready 
-    virtual U8* getWriteAddress(U32 address, U32 len)=0; // if has permission, will make ready
-    virtual U8* getReadWriteAddress(U32 address, U32 len)=0; // if has permission, will make ready
+
+    // these two take memory argument so that they won't call KThread::current thread, this makes them safe to call from the audio thread
+    virtual U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false)=0; // might have permission, but may not ready
+    virtual U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false)=0; // might have permission, but may not be ready
+
     virtual bool inRam()=0;
-    virtual void close() = 0;
-
-    bool canRead() {return (this->flags & PAGE_READ)!=0;}
-    bool canWrite() {return (this->flags & PAGE_WRITE)!=0;}
-    bool canExec() {return (this->flags & PAGE_EXEC)!=0;}
-    bool mapShared() {return (this->flags & PAGE_SHARED)!=0;}
-
-    U8 flags;
-    const Type type;
+    virtual void close() = 0;    
+    virtual Type getType() = 0;    
 };
 
 #endif

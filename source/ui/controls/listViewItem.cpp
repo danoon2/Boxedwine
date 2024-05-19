@@ -23,7 +23,7 @@ void drawListViewItem(const ListViewItem& item) {
 
     ImVec2 textSize = ImGui::CalcTextSize(item.text.c_str());
     if (textSize.x>width) {
-        ImVec2 fullTextSize = ImGui::CalcTextSize(item.text.c_str(), NULL, false, width);
+        ImVec2 fullTextSize = ImGui::CalcTextSize(item.text.c_str(), nullptr, false, width);
         ImFont* font = ImGui::GetFont();
         const char* start = item.text.c_str();
         const char* end = start + item.text.length();

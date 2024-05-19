@@ -19,6 +19,6 @@
 #ifndef __DEVNULL_H__
 #define __DEVNULL_H__
 
-FsOpenNode* openDevNull(const BoxedPtr<FsNode>& node, U32 flags, U32 data);
+FsOpenNode* openDevNull(const std::shared_ptr<FsNode>& node, U32 flags, U32 data);
 
 #endif

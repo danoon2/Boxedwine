@@ -5,12 +5,10 @@
 #include "kstat.h"
 
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../../hardmmu/hard_memory.h"
-#else
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
 #include "../normal/normalCPU.h"
-CPU* CPU::allocCPU() {
-    return new NormalCPU();
+CPU* CPU::allocCPU(KMemory* memory) {
+    return new NormalCPU(memory);
 }
 #endif
 
@@ -23,7 +21,7 @@ U32 CPU_CHECK_COND(CPU* cpu, U32 cond, const char* msg, int exc, int sel) {
     return 0;
 }
 
-CPU::CPU() {    
+CPU::CPU(KMemory* memory) : memory(memory) {    
     this->reg8[0] = &this->reg[0].u8;
     this->reg8[1] = &this->reg[1].u8;
     this->reg8[2] = &this->reg[2].u8;
@@ -35,8 +33,27 @@ CPU::CPU() {
     this->reg8[8] = &this->reg[8].u8;  
 
     this->reset();
+    this->fpu.reset();
 
-    this->logFile = NULL;//fopen("good.txt", "w");
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    currentSingleOp = nullptr;
+#ifdef BOXEDWINE_X64
+    memset(memcheckqq, 0xff, sizeof(memcheckqq));
+    for (int i = 0; i < 15; i++) {
+        memcheckqq[K_PAGE_SIZE - 1 - i] = 0;
+    }
+    memset(memcheckq, 0xff, sizeof(memcheckq));
+    for (int i = 0; i < 7; i++) {
+        memcheckq[K_PAGE_SIZE - 1 - i] = 0;
+    }
+    memset(memcheckd, 0xff, sizeof(memcheckd));
+    for (int i = 0; i < 3; i++) {
+        memcheckd[K_PAGE_SIZE - 1 - i] = 0;
+    }
+    memset(memcheckw, 0xff, sizeof(memcheckw));
+    memcheckw[K_PAGE_SIZE - 1] = 0;
+#endif
+#endif
 }
 
 void CPU::setSeg(U32 index, U32 address, U32 value) {
@@ -83,9 +100,8 @@ void CPU::reset() {
         this->xmm[i].pi.u64[0] = 0;
         this->xmm[i].pi.u64[1] = 0;
     }
-    this->lazyFlags = 0;
+    this->lazyFlags = nullptr;
     this->setIsBig(1);
-    this->df = 1;
     this->seg[CS].value = 0xF; // index 1, LDT, rpl=3
     this->seg[SS].value = 0x17; // index 2, LDT, rpl=3
     this->seg[DS].value = 0x17; // index 2, LDT, rpl=3
@@ -97,8 +113,8 @@ void CPU::reset() {
     this->lazyFlags = FLAGS_NONE;
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
-    this->nextBlock = NULL;
-    this->delayedFreeBlock = NULL;
+    this->nextBlock = nullptr;
+    this->delayedFreeBlock = nullptr;
 }
 
 void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
@@ -119,8 +135,6 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
     } else {
         //U32 rpl=selector & 3;
         U32 index = selector >> 3;
-        struct user_desc* ldt;
-        U32 esp;
 
         if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "CALL:CS selector zero", EXCEPTION_GP,0))
             return;
@@ -129,14 +143,14 @@ void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
             CPU_CHECK_COND(this, 0, "CALL:CS beyond limits", EXCEPTION_GP,selector & 0xfffc);
             return;
         }
-        ldt = this->thread->getLDT(index);
+        struct user_desc* ldt = this->thread->getLDT(index);
 
         if (this->thread->isLdtEmpty(ldt)) {
             prepareException(EXCEPTION_NP,selector & 0xfffc);
             return;
         }
        
-        esp = THIS_ESP;
+        U32 esp = THIS_ESP;
         // commit point
         if (big) {
             esp = push32_r(esp, this->seg[CS].value);
@@ -165,7 +179,6 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
     } else {
         //U32 rpl=selector & 3;
         U32 index = selector >> 3;
-        struct user_desc* ldt;
 
         if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "JMP:CS selector zero", EXCEPTION_GP,0))
             return;
@@ -174,7 +187,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
             if (CPU_CHECK_COND(this, 0, "JMP:CS beyond limits", EXCEPTION_GP,selector & 0xfffc))
                 return;
         }
-        ldt = this->thread->getLDT(index);
+        struct user_desc* ldt = this->thread->getLDT(index);
 
         if (this->thread->isLdtEmpty(ldt)) {
             prepareException(EXCEPTION_NP,selector & 0xfffc);
@@ -257,27 +270,29 @@ void CPU::prepareException(int code, int error) {
 
 class TTYBufferAccess : public BufferAccess {
 public:
-    TTYBufferAccess(const BoxedPtr<FsNode>& node, U32 flags, BString buffer) : BufferAccess(node, flags, buffer) {}
-    virtual U32 writeNative(U8* buffer, U32 len);
+    TTYBufferAccess(const std::shared_ptr<FsNode>& node, U32 flags, BString buffer) : BufferAccess(node, flags, buffer) {}
+
+    // from FsOpenNode
+    U32 writeNative(U8* buffer, U32 len) override;
 };
 
 static BString tty9Buffer;
 
 U32 TTYBufferAccess::writeNative(U8* buffer, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION;
     tty9Buffer.append((char*)buffer, len);
     return len;
 }
 
-FsOpenNode* openTTY9(const BoxedPtr<FsNode>& node, U32 flags, U32 data) {
+FsOpenNode* openTTY9(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
     return new TTYBufferAccess(node, flags, B(""));
 }
 
 BString getFunctionName(BString name, U32 moduleEip) {    
-    KThread* thread;
     std::shared_ptr<KProcess> process = KProcess::create();
     std::vector<BString> args;
     std::vector<BString> env;
-    KFileDescriptor* fd = NULL;
+    KFileDescriptor* fd = nullptr;
 
     if (!name.length())
         return B("Unknown");
@@ -286,13 +301,13 @@ BString getFunctionName(BString name, U32 moduleEip) {
     args.push_back(name);
     args.push_back(B("-f"));
     args.push_back(BString::valueOf(moduleEip, 16));
-    thread = process->startProcess(B("/usr/bin"), args, env, 0, 0, 0, 0);
+    KThread* thread = process->startProcess(B("/usr/bin"), args, env, 0, 0, 0, 0);
     if (!thread)
         return B("");
 
     tty9Buffer="";
-    BoxedPtr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
-    BoxedPtr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
+    std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
+    std::shared_ptr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
     process = thread->process;
     process->openFile(B(""), B("/dev/tty9"), K_O_WRONLY, &fd); 
     if (fd) {
@@ -310,8 +325,6 @@ BString getFunctionName(BString name, U32 moduleEip) {
 }
 
 void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
-    U32 prevEbp;
-    U32 returnEip;
     U32 moduleEip = this->thread->process->getModuleEip(this->seg[CS].address+eip);
     BString name = this->thread->process->getModuleName(this->seg[CS].address+eip);
     BString functionName = getFunctionName(name, moduleEip);    
@@ -320,9 +333,9 @@ void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
 
     klog("%*s %-20s %-40s %08x / %08x", indent, "", name.length()?name.c_str():"Unknown", functionName.c_str(), eip, moduleEip);        
 
-    if (this->thread->memory->isValidReadAddress(ebp, 8)) {
-        prevEbp = readd(ebp); 
-        returnEip = readd(ebp+4); 
+    if (this->memory->canRead(ebp, 8)) {
+        U32 prevEbp = memory->readd(ebp); 
+        U32 returnEip = memory->readd(ebp+4);
         if (prevEbp==0)
             return;
         walkStack(returnEip, prevEbp, indent);
@@ -386,7 +399,7 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
         U32 bp_index=EBP & cpu->stackMask;
 
         sp_index-=4;
-        writed(cpu->seg[SS].address + sp_index, EBP);
+        memory->writed(cpu->seg[SS].address + sp_index, EBP);
         EBP = ESP - 4;
         if (level!=0) {
             U32 i;
@@ -394,10 +407,10 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
             for (i=1;i<level;i++) {
                 sp_index-=4;
                 bp_index-=4;
-                writed(cpu->seg[SS].address + sp_index, readd(cpu->seg[SS].address + bp_index));
+                memory->writed(cpu->seg[SS].address + sp_index, memory->readd(cpu->seg[SS].address + bp_index));
             }
             sp_index-=4;
-            writed(cpu->seg[SS].address + sp_index, EBP);
+            memory->writed(cpu->seg[SS].address + sp_index, EBP);
         }
         sp_index-=bytes;
         ESP = (ESP & cpu->stackNotMask) | (sp_index & cpu->stackMask);
@@ -406,17 +419,17 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
         U32 bp_index=EBP & cpu->stackMask;
 
         sp_index-=2;
-        writew(cpu->seg[SS].address + sp_index, BP);
+        memory->writew(cpu->seg[SS].address + sp_index, BP);
         BP = SP - 2;
         if (level!=0) {
             U32 i;
 
             for (i=1;i<level;i++) {
                 sp_index-=2;bp_index-=2;
-                writew(cpu->seg[SS].address + sp_index, readw(cpu->seg[SS].address + bp_index));
+                memory->writew(cpu->seg[SS].address + sp_index, memory->readw(cpu->seg[SS].address + bp_index));
             }
             sp_index-=2;
-            writew(cpu->seg[SS].address + sp_index, BP);
+            memory->writew(cpu->seg[SS].address + sp_index, BP);
         }
 
         sp_index-=bytes;
@@ -425,14 +438,12 @@ void CPU::enter(U32 big, U32 bytes, U32 level) {
 }
 
 U32 CPU::lar(U32 selector, U32 ar) {
-    struct user_desc* ldt;
-
     this->fillFlags();
     if (selector == 0 || selector>=LDT_ENTRIES) {
         this->flags &=~ZF;
         return ar;
     }    
-    ldt = this->thread->getLDT(selector >> 3);
+    struct user_desc* ldt = this->thread->getLDT(selector >> 3);
     this->flags |= ZF;
     ar = 0;
     if (!ldt->seg_not_present)
@@ -445,14 +456,12 @@ U32 CPU::lar(U32 selector, U32 ar) {
 }
 
 U32 CPU::lsl(U32 selector, U32 limit) {
-    struct user_desc* ldt;
-
     this->fillFlags();
     if (selector == 0 || selector>=LDT_ENTRIES) {
         this->removeZF();
         return limit;
     }    
-    ldt = this->thread->getLDT(selector >> 3);
+    struct user_desc* ldt = this->thread->getLDT(selector >> 3);
     if (!ldt) {
         this->removeZF();
         return limit;
@@ -502,8 +511,8 @@ U32 CPU::setSegment(U32 seg, U32 value) {
 
 void CPU::ret(U32 big, U32 bytes) {
     if (this->flags & VM) {
-        U32 new_ip;
-        U32 new_cs;
+        U32 new_ip = 0;
+        U32 new_cs = 0;
         if (big) {
             new_ip = pop32();
             new_cs = pop32() & 0xffff;            
@@ -516,22 +525,19 @@ void CPU::ret(U32 big, U32 bytes) {
         this->eip.u32 = new_ip;
         this->setIsBig(0);
     } else {
-        U32 offset,selector;
-        U32 rpl; // requested privilege level
-        struct user_desc* ldt;
-        U32 index;
+        U32 selector = 0;
 
         if (big) 
             selector = peek32(1);
         else 
             selector = peek16(1);
 
-        rpl=selector & 3;
+        U32 rpl=selector & 3; // requested privilege level
         if(rpl < this->cpl) {
             this->prepareException(EXCEPTION_GP, selector & 0xfffc);
             return;
         }        
-        index = selector >> 3;
+        U32 index = selector >> 3;
 
         if (CPU_CHECK_COND(this, (selector & 0xfffc)==0, "RET:CS selector zero", EXCEPTION_GP,0))
             return;
@@ -540,13 +546,14 @@ void CPU::ret(U32 big, U32 bytes) {
             CPU_CHECK_COND(this, 0, "RET:CS beyond limits", EXCEPTION_GP,selector & 0xfffc);
             return;
         }
-        ldt = this->thread->getLDT(index);
+        struct user_desc* ldt = this->thread->getLDT(index);
         if (this->thread->isLdtEmpty(ldt)) {
             this->prepareException(EXCEPTION_NP, selector & 0xfffc);
             return;
         }
         if (this->cpl==rpl) {
             // Return to same level             
+            U32 offset = 0;
             if (big) {
                 offset = pop32();
                 selector = pop32() & 0xffff;
@@ -560,10 +567,9 @@ void CPU::ret(U32 big, U32 bytes) {
             THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + bytes ) & this->stackMask);
         } else {
             // Return to outer level
-            U32 n_esp;
-            U32 n_ss;
-            U32 ssIndex;
-            struct user_desc* ssLdt;
+            U32 n_esp = 0;
+            U32 n_ss = 0;
+            U32 offset = 0;;
 
             if (big) {
                 offset = pop32();
@@ -578,7 +584,7 @@ void CPU::ret(U32 big, U32 bytes) {
                 n_esp = pop16();
                 n_ss = pop16();
             }
-            ssIndex = n_ss >> 3;
+            U32 ssIndex = n_ss >> 3;
             if (CPU_CHECK_COND(this, (n_ss & 0xfffc)==0, "RET to outer level with SS selector zero", EXCEPTION_GP,0))
                 return;
             
@@ -586,7 +592,7 @@ void CPU::ret(U32 big, U32 bytes) {
                 CPU_CHECK_COND(this, 0, "RET:SS beyond limits", EXCEPTION_GP,selector & 0xfffc);
                 return;
             }
-            ssLdt = this->thread->getLDT(ssIndex);
+            struct user_desc* ssLdt = this->thread->getLDT(ssIndex);
 
             if (CPU_CHECK_COND(this, (n_ss & 3)!=rpl, "RET to outer segment with invalid SS privileges", EXCEPTION_GP,n_ss & 0xfffc))
                 return;
@@ -658,11 +664,9 @@ void CPU::iret(U32 big, U32 oldeip) {
         kpanic("cpu tasks not implemented");
         return;
     } else {
-        U32 n_cs_sel, n_flags;
-        U32 n_eip;
-        U32 n_cs_rpl;
-        U32 csIndex;
-        struct user_desc* ldt;
+        U32 n_cs_sel = 0;
+        U32 n_flags = 0;
+        U32 n_eip = 0;
 
         if (big) {
             n_eip = this->peek32(0);
@@ -670,17 +674,15 @@ void CPU::iret(U32 big, U32 oldeip) {
             n_flags = this->peek32(2);
 
             if ((n_flags & VM) && (this->cpl==0)) {
-                U32 n_ss,n_esp,n_es,n_ds,n_fs,n_gs;
-
                 // commit point
                 ESP = (ESP & this->stackNotMask) | ((ESP + 12) & this->stackMask);
                 this->eip.u32 = n_eip & 0xffff;
-                n_esp=this->pop32();
-                n_ss=this->pop32() & 0xffff;
-                n_es=this->pop32() & 0xffff;
-                n_ds=this->pop32() & 0xffff;
-                n_fs=this->pop32() & 0xffff;
-                n_gs=this->pop32() & 0xffff;
+                U32 n_esp=this->pop32();
+                U32 n_ss=this->pop32() & 0xffff;
+                U32 n_es=this->pop32() & 0xffff;
+                U32 n_ds=this->pop32() & 0xffff;
+                U32 n_fs=this->pop32() & 0xffff;
+                U32 n_gs=this->pop32() & 0xffff;
 
                 this->setFlags(n_flags, FMASK_NORMAL | VM);
                 this->lazyFlags = FLAGS_NONE;
@@ -707,8 +709,8 @@ void CPU::iret(U32 big, U32 oldeip) {
         }
         if (CPU_CHECK_COND(this, (n_cs_sel & 0xfffc)==0, "IRET:CS selector zero", EXCEPTION_GP, 0))
             return;
-        n_cs_rpl=n_cs_sel & 3;
-        csIndex = n_cs_sel >> 3;
+        U32 n_cs_rpl=n_cs_sel & 3;
+        U32 csIndex = n_cs_sel >> 3;
 
         if (CPU_CHECK_COND(this, csIndex>=LDT_ENTRIES, "IRET:CS selector beyond limits", EXCEPTION_GP,(n_cs_sel & 0xfffc))) {
             return;
@@ -716,31 +718,26 @@ void CPU::iret(U32 big, U32 oldeip) {
         if (CPU_CHECK_COND(this, n_cs_rpl<this->cpl, "IRET to lower privilege", EXCEPTION_GP,(n_cs_sel & 0xfffc))) {
             return;
         }
-        ldt = this->thread->getLDT(csIndex);
+        struct user_desc* ldt = this->thread->getLDT(csIndex);
 
         if (CPU_CHECK_COND(this, this->thread->isLdtEmpty(ldt), "IRET with nonpresent code segment",EXCEPTION_NP,(n_cs_sel & 0xfffc)))
             return;
 
         /* Return to same level */
         if (n_cs_rpl==this->cpl) {
-            U32 mask;
-
             // commit point
             ESP = (ESP & this->stackNotMask) | ((ESP + (big?12:6)) & this->stackMask);
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->setIsBig(ldt->seg_32bit);
             this->eip.u32 = n_eip;     
-            mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
+            U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->lazyFlags = FLAGS_NONE;
             this->setFlags(n_flags,mask);            
         } else {
             /* Return to outer level */
-            U32 n_ss;
-            U32 n_esp;
-            U32 ssIndex;
-            struct user_desc* ssLdt;
-            U32 mask;
+            U32 n_ss = 0;
+            U32 n_esp = 0;
 
             if (big) {
                 n_esp = this->peek32(3);
@@ -754,13 +751,13 @@ void CPU::iret(U32 big, U32 oldeip) {
             if (CPU_CHECK_COND(this, (n_ss & 3)!=n_cs_rpl, "IRET:Outer level:SS rpl!=CS rpl", EXCEPTION_GP,n_ss & 0xfffc))
                 return;
 
-            ssIndex = n_ss >> 3;
+            U32 ssIndex = n_ss >> 3;
             if (CPU_CHECK_COND(this, ssIndex>=LDT_ENTRIES, "IRET:Outer level:SS beyond limit", EXCEPTION_GP,n_ss & 0xfffc))
                 return;
             //if (CPU_CHECK_COND(n_ss_desc_2.DPL()!=n_cs_rpl, "IRET:Outer level:SS dpl!=CS rpl", EXCEPTION_GP,n_ss & 0xfffc))
             //    return;
 
-            ssLdt = this->thread->getLDT(ssIndex);
+            struct user_desc* ssLdt = this->thread->getLDT(ssIndex);
 
             if (CPU_CHECK_COND(this, this->thread->isLdtEmpty(ssLdt), "IRET:Outer level:Stack segment not present", EXCEPTION_NP,n_ss & 0xfffc))
                 return;
@@ -768,7 +765,7 @@ void CPU::iret(U32 big, U32 oldeip) {
             // commit point
             this->setSeg(CS, ldt->base_addr, n_cs_sel);
             this->setIsBig(ldt->seg_32bit);
-            mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
+            U32 mask = this->cpl !=0 ? (FMASK_NORMAL | NT) : FMASK_ALL;
             if (((this->flags & IOPL) >> 12) < this->cpl) mask &= ~IF;
             this->setFlags(n_flags, mask);
             this->lazyFlags = FLAGS_NONE;
@@ -949,7 +946,6 @@ void CPU::setFlags(U32 flags, U32 mask) {
     }
 #endif
     this->flags=(this->flags & ~mask)|(flags & mask)|2;
-    this->df=1-((this->flags & DF) >> 9);
 }
 
 void CPU::addFlag(U32 flags) {
@@ -1043,51 +1039,41 @@ void CPU::removeOF() {
 }
 
 U32 CPU::pop32() {
-    U32 val = readd(this->seg[SS].address + (THIS_ESP & this->stackMask));
+    U32 val = memory->readd(this->seg[SS].address + (THIS_ESP & this->stackMask));
     THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + 4 ) & this->stackMask);
     return val;
 }
 
 U16 CPU::pop16() {
-    U16 val = readw(this->seg[SS].address + (THIS_ESP & this->stackMask));
+    U16 val = memory->readw(this->seg[SS].address + (THIS_ESP & this->stackMask));
     THIS_ESP = (THIS_ESP & this->stackNotMask) | ((THIS_ESP + 2 ) & this->stackMask);
     return val;
 }
 
 U32 CPU::peek32(U32 index) {
-    return readd(this->seg[SS].address + ((THIS_ESP+index*4) & this->stackMask));
+    return memory->readd(this->seg[SS].address + ((THIS_ESP+index*4) & this->stackMask));
 }
 
 U16 CPU::peek16(U32 index) {
-    return readw(this->seg[SS].address+ ((THIS_ESP+index*2) & this->stackMask));
+    return memory->readw(this->seg[SS].address+ ((THIS_ESP+index*2) & this->stackMask));
 }
 
 void CPU::push16(U16 value) {
     U32 new_esp=(THIS_ESP & this->stackNotMask) | ((THIS_ESP - 2) & this->stackMask);
-    writew(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    memory->writew(this->seg[SS].address + (new_esp & this->stackMask) ,value);
     THIS_ESP = new_esp;
 }
 
 U32 CPU::push16_r(U32 esp, U16 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 2) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    U32 nativePage = this->thread->memory->getNativePage(address>>K_PAGE_SHIFT);
-    if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        this->thread->memory->clearCodePageReadOnly(nativePage);
-        writew(address ,value);
-        this->thread->memory->makeCodePageReadOnly(nativePage);
-    } else 
-#endif
-    {
-        writew(address ,value);
-    }
+    memory->writew(address ,value);
     return new_esp;
 }
 
 void CPU::push32(U32 value) {
     U32 new_esp=(THIS_ESP & this->stackNotMask) | ((THIS_ESP - 4) & this->stackMask);
-    writed(this->seg[SS].address + (new_esp & this->stackMask) ,value);
+    memory->writed(this->seg[SS].address + (new_esp & this->stackMask) ,value);
     THIS_ESP = new_esp;
 }
 
@@ -1095,17 +1081,7 @@ U32 CPU::push32_r(U32 esp, U32 value) {
     U32 new_esp=(esp & this->stackNotMask) | ((esp - 4) & this->stackMask);
     U32 address = this->seg[SS].address + (new_esp & this->stackMask);
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    U32 nativePage = this->thread->memory->getNativePage(address>>K_PAGE_SHIFT);
-    if (this->thread->memory->nativeFlags[nativePage] & NATIVE_FLAG_CODEPAGE_READONLY) {
-        this->thread->memory->clearCodePageReadOnly(nativePage);
-        writed(address ,value);
-        this->thread->memory->makeCodePageReadOnly(nativePage);
-    } else 
-#endif
-    {
-        writed(address ,value);
-    }
+    memory->writed(address ,value);
     return new_esp;
 }
 
@@ -1126,7 +1102,6 @@ void CPU::clone(CPU* from) {
     this->dst2 = from->dst2;
     this->result = from->result;
     this->lazyFlags = from->lazyFlags;
-    this->df = from->df;
     this->oldCF = from->oldCF;
     this->fpu = from->fpu;
     //U64		    instructionCount;
@@ -1190,6 +1165,84 @@ U32 CPU::writeCrx(U32 which, U32 value) {
     //this->prepareException(EXCEPTION_GP, 0);
     return 1;
 }
+
+#ifdef BOXEDWINE_DYNAMIC
+U32 CPU::offsetofReg32(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, reg[0].u32);
+    case 1: return offsetof(CPU, reg[1].u32);
+    case 2: return offsetof(CPU, reg[2].u32);
+    case 3: return offsetof(CPU, reg[3].u32);
+    case 4: return offsetof(CPU, reg[4].u32);
+    case 5: return offsetof(CPU, reg[5].u32);
+    case 6: return offsetof(CPU, reg[6].u32);
+    case 7: return offsetof(CPU, reg[7].u32);
+    case 8: return offsetof(CPU, reg[8].u32);
+    }
+    kpanic("CPU::offsetofReg32 oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofReg16(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, reg[0].u16);
+    case 1: return offsetof(CPU, reg[1].u16);
+    case 2: return offsetof(CPU, reg[2].u16);
+    case 3: return offsetof(CPU, reg[3].u16);
+    case 4: return offsetof(CPU, reg[4].u16);
+    case 5: return offsetof(CPU, reg[5].u16);
+    case 6: return offsetof(CPU, reg[6].u16);
+    case 7: return offsetof(CPU, reg[7].u16);
+    case 8: return offsetof(CPU, reg[8].u16);
+    }
+    kpanic("CPU::offsetofReg16 oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofReg8(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, reg[0].u8);
+    case 1: return offsetof(CPU, reg[1].u8);
+    case 2: return offsetof(CPU, reg[2].u8);
+    case 3: return offsetof(CPU, reg[3].u8);
+    case 4: return offsetof(CPU, reg[0].h8);
+    case 5: return offsetof(CPU, reg[1].h8);
+    case 6: return offsetof(CPU, reg[2].h8);
+    case 7: return offsetof(CPU, reg[3].h8);
+    }
+    kpanic("CPU::offsetofReg8 oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofSegAddress(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, seg[0].address);
+    case 1: return offsetof(CPU, seg[1].address);
+    case 2: return offsetof(CPU, seg[2].address);
+    case 3: return offsetof(CPU, seg[3].address);
+    case 4: return offsetof(CPU, seg[4].address);
+    case 5: return offsetof(CPU, seg[5].address);
+    case 6: return offsetof(CPU, seg[6].address);
+    }
+    kpanic("CPU::offsetofSegAddress oops %d", index);
+    return 0;
+}
+
+U32 CPU::offsetofSegValue(U32 index) {
+    switch (index) {
+    case 0: return offsetof(CPU, seg[0].value);
+    case 1: return offsetof(CPU, seg[1].value);
+    case 2: return offsetof(CPU, seg[2].value);
+    case 3: return offsetof(CPU, seg[3].value);
+    case 4: return offsetof(CPU, seg[4].value);
+    case 5: return offsetof(CPU, seg[5].value);
+    case 6: return offsetof(CPU, seg[6].value);
+    }
+    kpanic("CPU::offsetofSegvalue oops %d", index);
+    return 0;
+}
+
+#endif
 
 void common_prepareException(CPU* cpu, int code, int error) {
     cpu->prepareException(code, error);
@@ -1330,6 +1383,9 @@ void common_log(CPU* cpu, DecodedOp* op) {
 }
 
 DecodedBlock* common_getNextBlock(CPU* cpu) {
+    if (cpu->thread->terminating) {
+        return nullptr;
+    }
     return cpu->getNextBlock();
 }
 

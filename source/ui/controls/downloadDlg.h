@@ -13,11 +13,12 @@ public:
 
 class DownloadDlg : public BaseDlg {
 public:
-    DownloadDlg(int title, const std::vector<DownloadItem>& items, std::function<void(bool)> onCompleted);
+    DownloadDlg(Msg title, const std::vector<DownloadItem>& items, std::function<void(bool)> onCompleted);
     virtual ~DownloadDlg();
 
 protected:
-    virtual void run();
+    // from BaseDlg
+    void run() override;
 
 private:
     void downloadCompleted();
@@ -25,15 +26,13 @@ private:
     void showErrorMsg(bool open);
 
     std::vector<DownloadItem> items;
-    U32 currentItem;
-
     BString errorMsg;
-    U32 percentDone;
+    U32 percentDone = 0;
     std::function<void(bool)> onCompleted;
-    bool cancelled;
-    bool downloadDone;
+    bool cancelled = false;
+    bool downloadDone = false;
     BString currentLabel;
-    bool hasSize;
+    bool hasSize = false;
 };
 
 #endif

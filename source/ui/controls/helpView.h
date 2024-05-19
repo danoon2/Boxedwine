@@ -5,7 +5,8 @@ class HelpView : public BaseView {
 public:
 	HelpView(BString tab);
 
-	virtual bool saveChanges();
+	// from BaseView
+	bool saveChanges() override;
 
 private:
 	void createAboutTab();
