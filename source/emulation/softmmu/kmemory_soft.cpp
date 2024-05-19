@@ -434,6 +434,8 @@ void KMemory::clone(KMemory* from, bool vfork) {
                     data->setPage(i, WOPage::alloc(p->page, p->address));
                 } else if (page->getType() == Page::Type::NO_Page) {
                     data->setPage(i, NOPage::alloc(p->page, p->address));
+                } else {
+                    kpanic("KMemory::clone oops");
                 }
             }
         } else if (page->getType() == Page::Type::Code_Page) {

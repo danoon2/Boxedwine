@@ -841,12 +841,12 @@ void KSystem::setFileCache(BString name, const std::shared_ptr<MappedFileCache>&
 
 void KSystem::internalEraseProcess(U32 id) {
     KSystem::processes.remove(id);
+    KSystem::procNode->removeChildByName(BString::valueOf(id));
 }
 
 void KSystem::eraseProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
-    KSystem::internalEraseProcess(id);
-    KSystem::procNode->removeChildByName(BString::valueOf(id));
+    KSystem::internalEraseProcess(id);    
 }
 
 std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {

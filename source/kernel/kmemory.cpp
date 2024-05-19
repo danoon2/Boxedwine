@@ -29,6 +29,7 @@ KMemory::~KMemory() {
 }
 
 void KMemory::cleanup() {
+    BOXEDWINE_CRITICAL_SECTION;
     if (data) {
         delete data;
         data = nullptr;
