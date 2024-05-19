@@ -24,7 +24,7 @@ KMemoryData* getMemData(KMemory* memory) {
 }
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }, mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }
+KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }
 #else
 KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }
 #endif
@@ -48,24 +48,19 @@ KMemoryData::~KMemoryData() {
 
 void KMemoryData::onPageChanged(U32 index) {
     Page* page = this->mmu[index];
-    U32 address = index << K_PAGE_SHIFT;
+    U32 address = index << K_PAGE_SHIFT;    
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
     this->mmuReadPtr[index] = page->getReadPtr(memory, address);
     this->mmuWritePtr[index] = page->getWritePtr(memory, address, K_PAGE_SIZE);
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#else
     U8* readPtr = page->getReadPtr(memory, address);
     if (readPtr) {
-        if (readPtr - (index << K_PAGE_SHIFT) == nullptr) {
-            int ii = 0;
-        }
         this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
     } else {
         this->mmuReadPtrAdjusted[index] = nullptr;
     }
     U8* writePtr = page->getWritePtr(memory, address, K_PAGE_SHIFT);
     if (writePtr) {
-        if (writePtr - (index << K_PAGE_SHIFT) == nullptr) {
-            int ii = 0;
-        }
         this->mmuWritePtrAdjusted[index] = writePtr - (index << K_PAGE_SHIFT);
     } else {
         this->mmuWritePtrAdjusted[index] = nullptr;
@@ -268,7 +263,7 @@ void KMemoryData::execvReset() {
 }
 
 U64 KMemory::readq(U32 address) {
-#ifndef UNALIGNED_MEMORY
+#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
         if (data->mmuReadPtr[index]) {
@@ -282,7 +277,7 @@ U64 KMemory::readq(U32 address) {
 U32 KMemory::readd(U32 address) {
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
+#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
         if (data->mmuReadPtr[index])
             return *(U32*)(&data->mmuReadPtr[index][address & 0xFFF]);
 #endif
@@ -295,7 +290,7 @@ U32 KMemory::readd(U32 address) {
 U16 KMemory::readw(U32 address) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
+#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
         if (data->mmuReadPtr[index])
             return *(U16*)(&data->mmuReadPtr[index][address & 0xFFF]);
 #endif
@@ -306,13 +301,15 @@ U16 KMemory::readw(U32 address) {
 
 U8 KMemory::readb(U32 address) {
     int index = address >> 12;
+#if !defined(BOXEDWINE_BINARY_TRANSLATOR)
     if (data->mmuReadPtr[index])
         return data->mmuReadPtr[index][address & 0xFFF];
+#endif
     return data->mmu[index]->readb(address);
 }
 
 void KMemory::writeq(U32 address, U64 value) {
-#ifndef UNALIGNED_MEMORY
+#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
         if (data->mmuWritePtr[index]) {
@@ -327,7 +324,7 @@ void KMemory::writeq(U32 address, U64 value) {
 void KMemory::writed(U32 address, U32 value) {
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
+#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
         if (data->mmuWritePtr[index])
             *(U32*)(&data->mmuWritePtr[index][address & 0xFFF]) = value;
         else
@@ -344,7 +341,7 @@ void KMemory::writed(U32 address, U32 value) {
 void KMemory::writew(U32 address, U16 value) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
-#ifndef UNALIGNED_MEMORY
+#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
         if (data->mmuWritePtr[index])
             *(U16*)(&data->mmuWritePtr[index][address & 0xFFF]) = value;
         else
@@ -358,9 +355,11 @@ void KMemory::writew(U32 address, U16 value) {
 
 void KMemory::writeb(U32 address, U8 value) {
     int index = address >> 12;
+#if !defined(BOXEDWINE_BINARY_TRANSLATOR)
     if (data->mmuWritePtr[index])
         data->mmuWritePtr[index][address & 0xFFF] = value;
     else
+#endif
         data->mmu[index]->writeb(address, value);
 }
 
