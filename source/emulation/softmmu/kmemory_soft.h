@@ -11,6 +11,8 @@ class KMemoryData : public BtMemory {
 class KMemoryData {
 #endif
 public:
+    static void shutdown();
+    
     KMemoryData(KMemory* memory);
     ~KMemoryData();
 

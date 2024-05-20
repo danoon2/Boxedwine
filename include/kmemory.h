@@ -42,6 +42,8 @@ private:
     KMemory(KProcess* process);
 public:
     static KMemory* create(KProcess* process);
+    static void shutdown();
+    
     ~KMemory();
     void cleanup(); // called when the process is done but the last thread might still need to return
 

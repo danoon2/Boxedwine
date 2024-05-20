@@ -103,12 +103,15 @@ void KSystem::destroy() {
         }
         p->killAllThreads();
     }
+    KSystem::procNode = nullptr;
 	KSystem::processes.clear();
     KSystem::fileCache.clear();
 	KSystem::shutingDown = false;
 	Fs::shutDown();
     DecodedOp::clearCache();
     NormalCPU::clearCache();
+    KMemory::shutdown();
+    shutdownRam();
 }
 
 U32 KSystem::getProcessCount() {

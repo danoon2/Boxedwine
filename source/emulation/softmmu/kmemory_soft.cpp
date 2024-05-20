@@ -19,6 +19,10 @@ static InvalidPage* invalidPage = &_invalidPage;
 static KRamPtr callbackRam;
 static U32 callbackRamPos;
 
+void KMemoryData::shutdown() {
+    callbackRam = nullptr;
+}
+
 KMemoryData* getMemData(KMemory* memory) {
     return memory->data;
 }

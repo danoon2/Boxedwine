@@ -11,6 +11,10 @@ int allocatedRamPages;
 
 static PtrPool<U8, false> freeRamPages(0);
 
+void shutdownRam() {
+    freeRamPages.deleteAll();
+}
+
 KRamPtr ramPageAlloc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
     U8* result = freeRamPages.get();

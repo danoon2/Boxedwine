@@ -6,5 +6,6 @@
 typedef std::shared_ptr<U8[]> KRamPtr;
 
 KRamPtr ramPageAlloc();
+void shutdownRam();
 
 #endif

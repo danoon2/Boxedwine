@@ -385,6 +385,7 @@ std::shared_ptr<KNativeAudio> KNativeAudio::createNativeAudio() {
 
 void KNativeAudio::shutdown() {
     KNativeAudio::availableAudio.front()->cleanup();
+    KNativeAudio::availableAudio.clear();
 }
 
 #ifdef BOXEDWINE_CORE_AUDIO

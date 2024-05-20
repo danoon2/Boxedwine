@@ -10,6 +10,10 @@ MappedFileCache::~MappedFileCache() {
     delete[] this->data;
 }
 
+void KMemory::shutdown() {
+    KMemoryData::shutdown();
+}
+
 KMemory::KMemory(KProcess* process) : process(process) {
     data = new KMemoryData(this);    
 #ifdef BOXEDWINE_DYNAMIC
