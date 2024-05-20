@@ -68,4 +68,7 @@ KRamPtr ramPageAlloc() {
     return ram;
 }
 
+void shutdownRam() {
+}
+
 #endif
