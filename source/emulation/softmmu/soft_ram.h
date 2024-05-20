@@ -3,9 +3,9 @@
 
 #include "platform.h"
 
-U8* ramPageAlloc();
-void ramPageIncRef(U8* ram);
-void ramPageDecRef(U8* ram);
-U32 ramPageRefCount(U8* ram);
+typedef std::shared_ptr<U8[]> KRamPtr;
+
+KRamPtr ramPageAlloc();
+void shutdownRam();
 
 #endif

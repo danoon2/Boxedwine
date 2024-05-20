@@ -50,7 +50,7 @@ public:
     virtual ~MappedFileCache();
     const BString name;
     std::shared_ptr<KFile> file;
-    U8** data = nullptr;
+    KRamPtr* data = nullptr;
     U32 dataSize = 0;
 };
 
@@ -62,7 +62,7 @@ public:
     void incAttach() {this->nattch++;}
     void decAttach() {this->nattch--;}
 
-    std::vector<U8*> pages;
+    std::vector<KRamPtr> pages;
     const U32 id;
     U32 len = 0;
     const U32 key;

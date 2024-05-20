@@ -4,12 +4,12 @@
 #include "soft_ram.h"
 #include "kmemory_soft.h"
 
-CopyOnWritePage* CopyOnWritePage::alloc(U8* page, U32 address) {
+CopyOnWritePage* CopyOnWritePage::alloc(const KRamPtr& page, U32 address) {
     return new CopyOnWritePage(page, address);
 }
 
 void CopyOnWritePage::copyOnWrite(U32 address) {	
-    U8* ram = nullptr;
+    KRamPtr ram;
     KMemory* memory = KThread::currentThread()->memory;
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
@@ -19,16 +19,14 @@ void CopyOnWritePage::copyOnWrite(U32 address) {
         return;
     }
 
-    if (!memory->mapShared(page) && ramPageRefCount(this->page)>1) {
+    if (!memory->mapShared(page) && this->page.use_count()>1) {
         ram = ramPageAlloc();
-        memcpy(ram, this->page, K_PAGE_SIZE);
+        memcpy(ram.get(), this->page.get(), K_PAGE_SIZE);
     } else {
         ram = this->page;
-        ramPageIncRef(ram);
     }    
 
     mem->setPageRam(ram, address >> K_PAGE_SHIFT, false);
-    ramPageDecRef(ram); // setPageRam will increment this
 }
 
 void CopyOnWritePage::writeb(U32 address, U8 value) {

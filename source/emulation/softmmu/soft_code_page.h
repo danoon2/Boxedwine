@@ -34,11 +34,11 @@
 
 class CodePage : public RWPage {
 protected:
-    CodePage(U8* page, U32 address);
+    CodePage(const KRamPtr& page, U32 address);
     ~CodePage();
 
 public:
-    static CodePage* alloc(U8* page, U32 address);
+    static CodePage* alloc(const KRamPtr& page, U32 address);
 
     // from Page
     void writeb(U32 address, U8 value) override;

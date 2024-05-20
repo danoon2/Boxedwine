@@ -54,8 +54,13 @@ std::shared_ptr<KProcess> KProcess::create() {
     std::shared_ptr<KProcess> process = std::make_shared<KProcess>(KSystem::getNextThreadId());
     process->processNode = KSystem::addProcess(process->id, process);
     if (process->processNode) {
-        Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [process]() {
-            return process->exe;
+        std::weak_ptr<KProcess> weak_process = process;
+        Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [weak_process]() {
+            std::shared_ptr<KProcess> p = weak_process.lock();
+            if (p) {
+                return p->exe;
+            }
+            return BString::empty;
             });
         Fs::addVirtualFile(process->processNode->path + "/loginuid", K__S_IREAD, k_mdev(0, 0), process->processNode, B("1"));
         process->fdNode = Fs::addFileNode(process->processNode->path + "/fd", B(""), B(""), true, process->processNode);
@@ -213,11 +218,12 @@ U32 KProcess::getThreadCount() {
 }
 
 void KProcess::deleteThread(KThread* thread) {
-    thread->cleanup();    
-    delete thread;
-    if (this->threads.size() == 0) {
+    thread->cleanup();        
+    if (this->threads.size() == 1 && this->threads.get(thread->id)==thread) {
+        delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
         this->memory = nullptr;
     }
+    delete thread;
     // don't call into getProcess while holding threadsCondition
     if (!this->terminated && this->getThreadCount() == 0) {
         std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);

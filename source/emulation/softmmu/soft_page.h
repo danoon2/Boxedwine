@@ -20,6 +20,7 @@
 #define __PAGE_H__
 
 #include "platform.h"
+#include "soft_ram.h"
 
 class KThread;
 class KMemory;

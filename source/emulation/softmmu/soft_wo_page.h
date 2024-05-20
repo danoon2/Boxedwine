@@ -23,10 +23,10 @@
 
 class WOPage : public RWPage {
 protected:
-    WOPage(U8* page, U32 address) : RWPage(page, address) {}
+    WOPage(const KRamPtr& page, U32 address) : RWPage(page, address) {}
 
 public:
-    static WOPage* alloc(U8* page, U32 address);
+    static WOPage* alloc(const KRamPtr& page, U32 address);
 
     // from Page
     U8 readb(U32 address) override;

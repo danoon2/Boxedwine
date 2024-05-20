@@ -35,7 +35,9 @@ public:
     U32 lockOwner = 0;
 
 private:
-    std::set<std::shared_ptr<BoxedWineCondition>> parents;
+#define MAX_PARENTS 2
+    U32 parentCount = 0;
+    std::weak_ptr<BoxedWineCondition> parents[MAX_PARENTS];
     std::mutex parentsMutex;
 };
 

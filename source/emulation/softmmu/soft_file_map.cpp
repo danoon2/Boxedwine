@@ -33,7 +33,7 @@ void FilePage::ondemmandFile(U32 address) {
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
-    U8* ram= nullptr;
+    KRamPtr ram;
 
     if (mem->getPage(page) != this) {
         return;
@@ -48,7 +48,7 @@ void FilePage::ondemmandFile(U32 address) {
         ram = ramPageAlloc();
         U64 pos = this->mapped->file->getPos();
         this->mapped->file->seek(((U64)this->index) << K_PAGE_SHIFT);
-        this->mapped->file->readNative(ram, K_PAGE_SIZE);
+        this->mapped->file->readNative(ram.get(), K_PAGE_SIZE);
         this->mapped->file->seek(pos);
         if (index < mapped->systemCacheEntry->dataSize) {
             mapped->systemCacheEntry->data[this->index] = ram;

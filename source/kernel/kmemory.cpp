@@ -7,12 +7,11 @@
 #include "../emulation/softmmu/soft_copy_on_write_page.h"
 
 MappedFileCache::~MappedFileCache() {
-    for (U32 i = 0; i < this->dataSize; i++) {
-        if (this->data[i]) {
-            ramPageDecRef(this->data[i]);
-        }
-    }
     delete[] this->data;
+}
+
+void KMemory::shutdown() {
+    KMemoryData::shutdown();
 }
 
 KMemory::KMemory(KProcess* process) : process(process) {
@@ -34,6 +33,7 @@ KMemory::~KMemory() {
 }
 
 void KMemory::cleanup() {
+    BOXEDWINE_CRITICAL_SECTION;
     if (data) {
         delete data;
         data = nullptr;
@@ -154,9 +154,9 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                     KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
                     cache->file = mappedFile->file;
                     U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
-                    cache->data = new U8 * [size];
+                    cache->data = new KRamPtr[size];
                     cache->dataSize = size;
-                    ::memset(cache->data, 0, size * sizeof(U8*));
+                    ::memset(cache->data, 0, size * sizeof(KRamPtr));
                 }
                 mappedFile->systemCacheEntry = cache;
             }
@@ -280,12 +280,12 @@ U32 KMemory::unmap(U32 address, U32 len) {
     return 0;
 }
 
-U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<U8*>& pages, U32 permissions) {
+U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<KRamPtr>& pages, U32 permissions) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (startPage == 0 && !data->reserveAddress(ADDRESS_PROCESS_MMAP_START, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
         return 0;        
     }
-    this->data->allocPages(thread, startPage, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, (U8**)pages.data());
+    this->data->allocPages(thread, startPage, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, (KRamPtr*)pages.data());
     return startPage << K_PAGE_SHIFT;
 }
 

@@ -103,12 +103,15 @@ void KSystem::destroy() {
         }
         p->killAllThreads();
     }
+    KSystem::procNode = nullptr;
 	KSystem::processes.clear();
     KSystem::fileCache.clear();
 	KSystem::shutingDown = false;
 	Fs::shutDown();
     DecodedOp::clearCache();
     NormalCPU::clearCache();
+    KMemory::shutdown();
+    shutdownRam();
 }
 
 U32 KSystem::getProcessCount() {
@@ -531,9 +534,7 @@ static BHashTable<U32, std::shared_ptr<SHM> > shmKey;
 #define PRIVATE_SHMID 0x40000000
 
 SHM::~SHM() {
-    for (U32 i=0;i<(U32)this->pages.size();i++) {
-        ramPageDecRef(this->pages[i]);
-    }
+
 }
 
 U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
@@ -843,12 +844,12 @@ void KSystem::setFileCache(BString name, const std::shared_ptr<MappedFileCache>&
 
 void KSystem::internalEraseProcess(U32 id) {
     KSystem::processes.remove(id);
+    KSystem::procNode->removeChildByName(BString::valueOf(id));
 }
 
 void KSystem::eraseProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
-    KSystem::internalEraseProcess(id);
-    KSystem::procNode->removeChildByName(BString::valueOf(id));
+    KSystem::internalEraseProcess(id);    
 }
 
 std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {

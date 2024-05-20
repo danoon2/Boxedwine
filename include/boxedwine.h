@@ -49,6 +49,7 @@
 
 #include "log.h"
 
+#include "../source/emulation/softmmu/soft_ram.h"
 #include "../source/util/bfile.h"
 #include "../source/util/klist.h"
 #include "ktimercallback.h"

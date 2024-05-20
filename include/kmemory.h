@@ -42,6 +42,8 @@ private:
     KMemory(KProcess* process);
 public:
     static KMemory* create(KProcess* process);
+    static void shutdown();
+    
     ~KMemory();
     void cleanup(); // called when the process is done but the last thread might still need to return
 
@@ -51,7 +53,7 @@ public:
     U32 mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U32 flags);
     U32 unmap(U32 address, U32 len);
 
-    U32 mapPages(KThread* thread, U32 startPage, const std::vector<U8*>& pages, U32 permissions);
+    U32 mapPages(KThread* thread, U32 startPage, const std::vector<KRamPtr>& pages, U32 permissions);
     U32 mapNativeMemory(void* hostAddress, U32 size);
     void unmapNativeMemory(U32 address, U32 size);
 
