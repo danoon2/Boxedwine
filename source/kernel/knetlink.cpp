@@ -391,12 +391,57 @@ U32 KNetLinkObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U
     return result;
 }
 
+ struct boxed_nlmsghdr
+ {
+    U32                nlmsg_len;        /* Length of message including header */
+    U16                nlmsg_type;        /* Message content */
+    U16                nlmsg_flags;        /* Additional flags */
+    U32                nlmsg_seq;        /* Sequence number */
+    U32                nlmsg_pid;        /* Sending process port ID */
+};
+
+struct boxed_ifinfomsg {
+    U8 ifi_family;
+    U8 __ifi_pad;
+    U16 ifi_type;		/* ARPHRD_* */
+    S32 ifi_index;		/* Link index	*/
+    U32 ifi_flags;		/* IFF_* flags	*/
+    U32 ifi_change;		/* IFF_* change mask */
+};
 U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {
     if (length >= 12) {
         U32 len = thread->memory->readd(message);
         U16 type = thread->memory->readw(message + 4);
         U16 flags = thread->memory->readw(message + 6);
-        if (type == 0) {
+        U32 seq = thread->memory->readd(message + 8);
+
+        // start in Wine 7 (with Tiny Core Linux), this function will crash if I don't return something.  I'm not sure if what I'm returning is correct, but it stops the crash
+        //
+        // dlls\nsiproxy.sys\ndis.c
+        // static unsigned int update_if_table( void )
+        // {
+        //    struct if_nameindex* indices = if_nameindex(), * entry;
+        //    unsigned int append_count = 0;
+        //
+        //    for (entry = indices; entry->if_index; entry++)
+        if (type == 0x12) { // RTM_GETLINK
+            boxed_nlmsghdr hdr;
+            boxed_ifinfomsg msg;
+            hdr.nlmsg_len = sizeof(hdr) + sizeof(msg);
+            hdr.nlmsg_type = type;
+            hdr.nlmsg_flags = 301; // NLM_F_REQUEST | NLM_F_DUMP
+            hdr.nlmsg_seq = seq;
+            hdr.nlmsg_pid = 0;
+            msg.ifi_family = 0;
+            msg.ifi_type = 1;
+            msg.ifi_index = 1;
+            msg.ifi_flags = 0;
+            msg.ifi_change = 0xffffffff;
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
+            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr, ((U8*)&hdr) + sizeof(hdr));
+            recvBuffer.insert(recvBuffer.end(), (U8*)&msg, ((U8*)&msg) + sizeof(msg));
+            BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
+            return sizeof(hdr) + sizeof(msg);
         }
     }
     return -1; // if we return 0 here and pretend it succeeded, then some library might call recvfrom on a block thread to get the response and hang the app
