@@ -367,6 +367,14 @@ U32 KNetLinkObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U
             if (this->type == K_SOCK_STREAM)
                 memory->writed(address + 4, 0); // msg_namelen, set to 0 for connected sockets
             memory->writed(address + 20, 0); // msg_controllen
+            U32 addr = memory->readd(address);
+            if (addr && afBound) {
+                memory->writew(addr, this->afBound->nl_family);
+                memory->writew(addr + 2, 0);
+                memory->writed(addr + 4, 0); // pid from kernel
+                memory->writed(addr + 8, this->afBound->nl_groups);
+                memory->writed(address + 4, 12);
+            }
             return result;
         }
         if (this->inClosed) {
@@ -408,12 +416,13 @@ struct boxed_ifinfomsg {
     U32 ifi_flags;		/* IFF_* flags	*/
     U32 ifi_change;		/* IFF_* change mask */
 };
-U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {
-    if (length >= 12) {
+U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 sendtoFlags, U32 dest_addr, U32 dest_len) {
+    if (length >= 16) {
         U32 len = thread->memory->readd(message);
         U16 type = thread->memory->readw(message + 4);
         U16 flags = thread->memory->readw(message + 6);
         U32 seq = thread->memory->readd(message + 8);
+        U32 pid = thread->memory->readd(message + 12);
 
         // start in Wine 7 (with Tiny Core Linux), this function will crash if I don't return something.  I'm not sure if what I'm returning is correct, but it stops the crash
         //
@@ -429,9 +438,9 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             boxed_ifinfomsg msg;
             hdr.nlmsg_len = sizeof(hdr) + sizeof(msg);
             hdr.nlmsg_type = type;
-            hdr.nlmsg_flags = 301; // NLM_F_REQUEST | NLM_F_DUMP
+            hdr.nlmsg_flags = 0x301; // NLM_F_REQUEST | NLM_F_DUMP
             hdr.nlmsg_seq = seq;
-            hdr.nlmsg_pid = 0;
+            hdr.nlmsg_pid = afBound->nl_pid;
             msg.ifi_family = 0;
             msg.ifi_type = 1;
             msg.ifi_index = 1;
@@ -440,8 +449,13 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
             recvBuffer.insert(recvBuffer.end(), (U8*)&hdr, ((U8*)&hdr) + sizeof(hdr));
             recvBuffer.insert(recvBuffer.end(), (U8*)&msg, ((U8*)&msg) + sizeof(msg));
+            hdr.nlmsg_len = sizeof(hdr);
+            hdr.nlmsg_type = 3; // NLMSG_DONE
+            recvBuffer.insert(recvBuffer.end(), (U8*)&hdr, ((U8*)&hdr) + sizeof(hdr));
             BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
-            return sizeof(hdr) + sizeof(msg);
+            return length;
+        } else {
+            int ii = 0;
         }
     }
     return -1; // if we return 0 here and pretend it succeeded, then some library might call recvfrom on a block thread to get the response and hang the app
@@ -454,5 +468,14 @@ U32 KNetLinkObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buffer, U
         }
         return read(thread, buffer, length);
     }
-    return 0;
+    if (address) {
+        if (afBound) {
+            KMemory* memory = thread->memory;
+            memory->writew(address, this->afBound->nl_family);
+            memory->writew(address + 2, 0);
+            memory->writed(address + 4, 0); // pid from kernel
+            memory->writed(address + 8, this->afBound->nl_groups);
+        }
+    }
+    return read(thread, buffer, length);
 }
