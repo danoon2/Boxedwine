@@ -6107,8 +6107,11 @@ U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32
 }
 
 static DecodedBlockFromNode* freeFromNodes;
+static BOXEDWINE_MUTEX freeFromNodesMutex;
+
 DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
     DecodedBlockFromNode* result = nullptr;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeFromNodesMutex);
 
     if (freeFromNodes) {
         result = freeFromNodes;
@@ -6129,6 +6132,7 @@ DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
     return result;
 }
 void DecodedBlockFromNode::dealloc() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeFromNodesMutex);
     this->next = freeFromNodes;
     this->block = nullptr;
     freeFromNodes = this;

@@ -58,6 +58,7 @@ BString KSystem::title;
 bool KSystem::showWindowImmediately = false;
 #ifdef BOXEDWINE_MULTI_THREADED
 U32 KSystem::cpuAffinityCountForApp = 0;
+BOXEDWINE_MUTEX KSystem::normalCpuLockMutex;
 #endif
 U32 KSystem::pollRate = DEFAULT_POLL_RATE;
 BWriteFile KSystem::logFile;

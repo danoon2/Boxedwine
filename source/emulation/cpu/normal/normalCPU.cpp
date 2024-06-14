@@ -248,7 +248,7 @@ DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void OPCALL lockOp(CPU* cpu, DecodedOp* op) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->thread->process->normalCpuLockMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KSystem::normalCpuLockMutex);
     normalOps[op->inst](cpu, op);
 }
 #endif
