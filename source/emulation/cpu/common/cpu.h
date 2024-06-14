@@ -233,11 +233,11 @@ public:
     
     Reg reg[9];
     Seg seg[7];    
-    U32 flags;
+    U32 flags = 0;
     Reg eip;
-    U8* reg8[9];  
+    U8* reg8[9];
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    DecodedOp* currentSingleOp;
+    DecodedOp* currentSingleOp = nullptr;
 #endif
     MMX_reg reg_mmx[8];
     ALIGN(SSE xmm[8], 16);
@@ -253,23 +253,23 @@ public:
     Reg  dst;
     Reg  dst2;
     Reg  result;
-    LazyFlags const * lazyFlags;
-    U32         oldCF;
+    LazyFlags const * lazyFlags = nullptr;
+    U32         oldCF = 0;
     FPU         fpu;
-    U64		    instructionCount;
-    U32         blockInstructionCount;
-    bool        yield;
-    U32         cpl;    
-    U32 cr0;
-    U32 stackNotMask;
-    U32 stackMask;
+    U64		    instructionCount = 0;
+    U32         blockInstructionCount = 0;
+    bool        yield = false;
+    U32         cpl = 0;
+    U32 cr0 = 0;
+    U32 stackNotMask = 0;
+    U32 stackMask = 0;
 
-    KThread* thread;
-    KMemory* memory;
+    KThread* thread = nullptr;
+    KMemory* memory = nullptr;
     BWriteFile logFile;
 
-    DecodedBlock* nextBlock;
-    DecodedBlock* delayedFreeBlock;
+    DecodedBlock* nextBlock = nullptr;
+    DecodedBlock* delayedFreeBlock = nullptr;
 
     bool getCF();
     bool getSF();
@@ -341,6 +341,10 @@ public:
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);
+
+#ifdef BOXEDWINE_MULTI_THREADED
+    U64 nativeHandle = 0;    
+#endif
 
 #ifdef BOXEDWINE_DYNAMIC
     static U32 offsetofReg32(U32 index);

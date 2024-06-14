@@ -256,6 +256,10 @@ public:
     void* runSignalAddress;
 #endif
 #endif
+#ifdef BOXEDWINE_MULTI_THREADED
+    BOXEDWINE_MUTEX normalCpuLockMutex;
+    BOXEDWINE_MUTEX normalBlockMutex;
+#endif
     BOXEDWINE_MUTEX fdsMutex;
 private:
     BHashTable<U32, KFileDescriptor*> fds;    

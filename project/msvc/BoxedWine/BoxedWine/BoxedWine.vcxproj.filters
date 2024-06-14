@@ -574,6 +574,9 @@
     <ClCompile Include="..\..\..\..\source\kernel\kevent.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalPlatformMultiThreaded.cpp">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
