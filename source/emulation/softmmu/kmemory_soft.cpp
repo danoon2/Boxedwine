@@ -371,10 +371,17 @@ void KMemory::writeb(U32 address, U8 value) {
 U8* KMemory::getIntPtr(U32 address, bool write) {
     U32 index = address >> K_PAGE_SHIFT;
     U32 offset = address & K_PAGE_MASK;
+    U8* result;
+
     if (write) {
-        return data->mmu[index]->getWritePtr(this, address, true) + offset;
+        result = data->mmu[index]->getWritePtr(this, address, true);
+    } else {
+        result = data->mmu[index]->getReadPtr(this, address, true);
     }
-    return data->mmu[index]->getReadPtr(this, address, true) + offset;
+    if (result) {
+        result += offset;
+    }
+    return result;
 }
 
 U8* KMemory::getPtrForFutex(U32 address) {
@@ -383,7 +390,11 @@ U8* KMemory::getPtrForFutex(U32 address) {
     // if this page isn't shared, then when we clone, we might make it copy on write which can result it getting a new ram address
     // we want to prevent that if a futux is using that page
     data->flags[index] |= PAGE_FUTEX;
-    return data->mmu[index]->getWritePtr(this, address, true) + offset;
+    U8* result = data->mmu[index]->getWritePtr(this, address, true);
+    if (result) {
+        result += offset;
+    }
+    return result;
 }
 
 void KMemory::clone(KMemory* from, bool vfork) {

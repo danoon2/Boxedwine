@@ -901,7 +901,7 @@ static U32 syscall_rt_sigaction(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_rt_sigprocmask(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigprocmask: how=%d set=%X oset=%X", ARG1, ARG2, ARG3);
+    SYS_LOG1(SYSCALL_SIGNAL, cpu, "rt_sigprocmask: how=%d set=%X(%X) oset=%X", ARG1, ARG2, ARG2?(ARG4==4?cpu->memory->readd(ARG2):cpu->memory->readq(ARG2)):0, ARG3);
     U32 result = cpu->thread->sigprocmask(ARG1, ARG2, ARG3, ARG4);
     EAX = result;
     cpu->eip.u32+=eipCount;

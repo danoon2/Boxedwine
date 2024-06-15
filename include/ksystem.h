@@ -89,7 +89,6 @@ public:
     static U32 wineMajorVersion;
 #ifdef BOXEDWINE_MULTI_THREADED
     static U32 cpuAffinityCountForApp;
-    static BOXEDWINE_MUTEX normalCpuLockMutex;
 #endif
     static U32 pollRate;
     static bool showWindowImmediately;

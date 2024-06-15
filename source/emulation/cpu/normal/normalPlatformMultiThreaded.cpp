@@ -45,7 +45,7 @@ void scheduleThread(KThread* thread) {
     cpu->nativeHandle = (U64)cppThread.native_handle();
     cppThread.detach();
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
-        Platform::setCpuAffinityForThread(KThread::currentThread(), KSystem::cpuAffinityCountForApp);
+        Platform::setCpuAffinityForThread(thread, KSystem::cpuAffinityCountForApp);
     }
 }
 
