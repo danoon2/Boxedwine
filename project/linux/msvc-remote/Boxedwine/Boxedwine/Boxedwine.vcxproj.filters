@@ -614,6 +614,9 @@
     <ClCompile Include="..\..\..\..\..\source\util\stb_image.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalPlatformMultiThreaded.cpp">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
