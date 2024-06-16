@@ -509,6 +509,12 @@
 		1AAC18452C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
 		1AAC18462C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
 		1AAC18472C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
+		1AAC18492C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
+		1AAC184A2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
+		1AAC184B2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
+		1AAC184C2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
+		1AAC184D2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
+		1AAC184E2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
 		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
@@ -1514,6 +1520,7 @@
 		1AAC18392C1E96430089C40D /* pixelMatch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = pixelMatch.cpp; sourceTree = "<group>"; };
 		1AAC18402C1E9A220089C40D /* stb_image.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stb_image.cpp; sourceTree = "<group>"; };
 		1AAC18412C1E9A220089C40D /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
+		1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = normalPlatformMultiThreaded.cpp; sourceTree = "<group>"; };
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
 		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
 		1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsdynamiclinknode.cpp; sourceTree = "<group>"; };
@@ -2849,6 +2856,7 @@
 		71FBFDAB2433BBBE003F17F1 /* normal */ = {
 			isa = PBXGroup;
 			children = (
+				1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */,
 				71FBFDAC2433BBBE003F17F1 /* normal_move.h */,
 				71FBFDAD2433BBBE003F17F1 /* normal_jump.h */,
 				71FBFDAE2433BBBE003F17F1 /* normal_strings_op.h */,
@@ -3496,6 +3504,7 @@
 				1A80EF31276EBCC70032A70A /* x64Asm.cpp in Sources */,
 				1A80EF32276EBCC70032A70A /* boxedwineData.cpp in Sources */,
 				1A80EF33276EBCC70032A70A /* knativesystem.cpp in Sources */,
+				1AAC184B2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1A80EF34276EBCC70032A70A /* boxedTranslation.cpp in Sources */,
 				1A55D6592A08428F002B7021 /* zutil.c in Sources */,
 				1A80EF36276EBCC70032A70A /* ksystem.cpp in Sources */,
@@ -3732,6 +3741,7 @@
 				1A80F176276EBF170032A70A /* platform.cpp in Sources */,
 				1A80F179276EBF170032A70A /* glMarshal.cpp in Sources */,
 				1A80F17A276EBF170032A70A /* cpuonline.cpp in Sources */,
+				1AAC184C2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1A80F17B276EBF170032A70A /* x64Asm.cpp in Sources */,
 				1A80F17C276EBF170032A70A /* sdlcallback.cpp in Sources */,
 				1A80F17D276EBF170032A70A /* boxedwineData.cpp in Sources */,
@@ -3944,6 +3954,7 @@
 				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
 				71222B8A2435169100CDBABD /* fsfilenode.cpp in Sources */,
 				71222B622435169100CDBABD /* x64Ops.cpp in Sources */,
+				1AAC184D2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1ADBD8432B9196760074867C /* devfb.cpp in Sources */,
 				71222BB12435169100CDBABD /* cpuscalingcurfreq.cpp in Sources */,
 				71222BB42435169100CDBABD /* kthread.cpp in Sources */,
@@ -4259,6 +4270,7 @@
 				71222C5324351CBA00CDBABD /* soft_wo_page.cpp in Sources */,
 				71222C5424351CBA00CDBABD /* esopengl.c in Sources */,
 				71222C5524351CBA00CDBABD /* configFile.cpp in Sources */,
+				1AAC184A2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1AC5F2D62772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				71222C5624351CBA00CDBABD /* readIcons.cpp in Sources */,
 				71B2D2FE2668178700010AB6 /* osmesa.cpp in Sources */,
@@ -4353,6 +4365,7 @@
 				7135DC38264EBCD0005D6AA6 /* fsfilenode.cpp in Sources */,
 				1AFC48132665728700EE5FCC /* boxedwineGL.cpp in Sources */,
 				7135DC39264EBCD0005D6AA6 /* x64Ops.cpp in Sources */,
+				1AAC184E2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1ADBD8442B9196760074867C /* devfb.cpp in Sources */,
 				7135DC3A264EBCD0005D6AA6 /* cpuscalingcurfreq.cpp in Sources */,
 				7135DC3B264EBCD0005D6AA6 /* kthread.cpp in Sources */,
@@ -4668,6 +4681,7 @@
 				1A1550F5263261B1006E0C8A /* glew.cpp in Sources */,
 				71FBFE692433BBBE003F17F1 /* appChooserDlg.cpp in Sources */,
 				1AFC4798264827A600EE5FCC /* coremidi.cpp in Sources */,
+				1AAC18492C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				71FBFECD2433BBBE003F17F1 /* kfiledescriptor.cpp in Sources */,
 				1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */,
 				71FBFE992433BBBE003F17F1 /* soft_wo_page.cpp in Sources */,
@@ -4769,6 +4783,7 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MULTI_THREADED,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -4816,6 +4831,7 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MULTI_THREADED,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -5388,6 +5404,7 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MULTI_THREADED,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -5435,6 +5452,7 @@
 					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MULTI_THREADED,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;

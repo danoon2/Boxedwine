@@ -50,7 +50,7 @@ private:
     std::shared_ptr<BoxedWineCondition> cond;
 };
 
-#define BOXEDWINE_CRITICAL_SECTION static std::mutex csMutex; const std::lock_guard<std::mutex> lock(csMutex);
+#define BOXEDWINE_CRITICAL_SECTION static std::recursive_mutex csMutex; const std::lock_guard<std::recursive_mutex> lock(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex) const std::lock_guard<std::recursive_mutex> lock(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond) std::unique_lock<std::mutex> boxedWineCriticalSection((csCond)->m);
 
