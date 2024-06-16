@@ -208,6 +208,7 @@ public:
 
     bool partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) override;
     bool screenShot(const BString& filepath, U8* buffer, U32 bufferlen) override;
+    bool saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) override;
 
     bool waitForEvent(U32 ms) override;
     bool processEvents() override;
@@ -2366,12 +2367,11 @@ bool KNativeWindowSdl::internalScreenShot(const BString& filepath, SDL_Rect* r, 
         int outPitch = (r->w*((bpp+7)/8)+3) & ~3;
         U32 bytesPerPixel = (bpp+7)/8;
         U32 len = outPitch * r->h;
-        
+                
         if (!buffer) {
-            pixels = new unsigned char[outPitch * r->h];
+            pixels = new unsigned char[len];
             buffer = pixels;
-        }
-        if (bufferlen < len) {
+        } else if (bufferlen < len) {
             return false;
         }
 
@@ -2425,7 +2425,36 @@ bool KNativeWindowSdl::partialScreenShot(const BString& filepath, U32 x, U32 y, 
 
 bool KNativeWindowSdl::screenShot(const BString& filepath, U8* buffer, U32 bufferlen) {
     return internalScreenShot(filepath, nullptr, buffer, bufferlen);
+}
 
+bool KNativeWindowSdl::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) {
+    U32 rMask = 0;
+    U32 gMask = 0;
+    U32 bMask = 0;
+
+    if (bpp == 32) {
+        rMask = 0x00FF0000;
+        gMask = 0x0000FF00;
+        bMask = 0x000000FF;
+    } else if (bpp == 16) {
+        rMask = 0xF800;
+        gMask = 0x07E0;
+        bMask = 0x001F;
+    } else {
+        kpanic("Unhandled bpp for screen shot: %d", bpp);
+    }
+    int pitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
+    U32 len = pitch * screenHeight();
+
+    SDL_Surface* s = SDL_CreateRGBSurfaceFrom(buffer, w, h, bpp, w*4, rMask, gMask, bMask, 0);
+    if (!s) {
+        return false;
+    }
+    if (filepath.length()) {
+        SDL_SaveBMP(s, filepath.c_str());
+    }
+    SDL_FreeSurface(s);
+    return true;
 }
 
 #define SDLK_NUMLOCK SDL_SCANCODE_NUMLOCKCLEAR

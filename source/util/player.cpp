@@ -96,30 +96,36 @@ static unsigned char* image_data;
 #define COMPARING_PIXELS_SUCCESS 2
 #define COMPARING_PIXELS_DONE 3
 
-static BOXEDWINE_CONDITION comparingCond;
+static std::mutex comparingCondMutex;
+static std::condition_variable comparingCond;
 
 void bitmapCompareThread(Player* player) {    
+    U8* output = nullptr;// new U8[1024 * 768 * 4];
+
     while (comparingPixels != COMPARING_PIXELS_DONE) {
         {
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(comparingCond);
-            BOXEDWINE_CONDITION_WAIT(comparingCond);
+            std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
+            comparingCond.wait(boxedWineCriticalSection);
             if (comparingPixels == COMPARING_PIXELS_DONE) {
                 break;
             }
             comparingPixels = COMPARING_PIXELS_WORKING;
         }
-        if (pixelmatch(image_data, image_width * 4, buffer, image_width * 4, image_width, image_height) == 0) {
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(comparingCond);
+        if (pixelmatch(image_data, image_width * 4, buffer, image_width * 4, image_width, image_height, output) == 0) {
+            std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_DONE) {
                 break;
             }
             comparingPixels = COMPARING_PIXELS_SUCCESS;
         } else {
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(comparingCond);
+            std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_DONE) {
                 break;
             }
             comparingPixels = COMPARING_PIXELS_WAITING;
+            //KNativeWindow::getNativeWindow()->saveBmp(B("error_diff.bmp"), output, 32, image_width, image_height);
+            //KNativeWindow::getNativeWindow()->saveBmp(B("error_diff1.bmp"), image_data, 32, image_width, image_height);
+            //KNativeWindow::getNativeWindow()->saveBmp(B("error_diff2.bmp"), buffer, 32, image_width, image_height);
         }
     }
 }
@@ -140,7 +146,7 @@ void Player::runSlice() {
         return;
     } 
     // 1000 ms between all other commands
-    if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP")
+    if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand != "SCREENSHOT")
         return;
     // at least 100 ms between mouse or key down/up
     if (KSystem::getMicroCounter()<this->lastCommandTime+100000)
@@ -175,10 +181,7 @@ void Player::runSlice() {
             return;
         }
         {
-            if (!comparingCond) {
-                comparingCond = std::make_shared<BoxedWineCondition>(B("Player"));
-            }
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(comparingCond);
+            std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_WORKING) {
                 return;
             }
@@ -207,8 +210,10 @@ void Player::runSlice() {
                     buffer = new U8[len];
                     bufferlen = len;
                 }
+                // reverses RGB
+                flipRGBBitmap(image_data, image_width * 4, image_height);
             }            
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(comparingCond);
+            std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
                 klog("script: screen shot matched");
                 this->instance->readCommand();
@@ -218,7 +223,7 @@ void Player::runSlice() {
                 if (comparingThread.native_handle() == 0) {
                     comparingThread = std::thread(bitmapCompareThread, this);
                 }
-                BOXEDWINE_CONDITION_SIGNAL(comparingCond);
+                comparingCond.notify_one();
             }
         } else if (items.size()>0) {
             BString fileName = items[0];
@@ -240,7 +245,7 @@ void Player::runSlice() {
                 // reverses RGB
                 flipRGBBitmap(image_data, image_width * 4, image_height);
             }
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(comparingCond);
+            std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
                 klog("script: screen shot matched");
                 this->instance->readCommand();
@@ -250,7 +255,7 @@ void Player::runSlice() {
                 if (comparingThread.native_handle() == 0) {
                     comparingThread = std::thread(bitmapCompareThread, this);
                 }
-                BOXEDWINE_CONDITION_SIGNAL(comparingCond);
+                comparingCond.notify_one();
             }
         }
     }
@@ -263,9 +268,9 @@ void Player::runSlice() {
 
 void Player::quit() {
     {
-        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(comparingCond);
+        std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
         comparingPixels = COMPARING_PIXELS_DONE;
-        BOXEDWINE_CONDITION_SIGNAL(comparingCond);
+        comparingCond.notify_one();
     }
     if (comparingThread.joinable()) {
         comparingThread.join();
