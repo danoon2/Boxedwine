@@ -577,6 +577,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalPlatformMultiThreaded.cpp">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\pixelMatch.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1280,6 +1283,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\kevent.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\pixelMatch.h">
+      <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

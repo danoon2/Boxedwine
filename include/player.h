@@ -9,6 +9,7 @@ public:
 
     void initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args);
     void runSlice();
+    void quit();
 
     BReadFile file;
     BString directory;
@@ -18,7 +19,9 @@ public:
     BString nextCommand;
 private:    
     BString nextValue;
-    void readCommand();
+    std::thread comparingThread;
+
+    void readCommand();        
 };
 #endif
 

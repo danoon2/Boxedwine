@@ -206,8 +206,8 @@ public:
     void glUpdateContextForThread(KThread* thread) override;
     void preOpenGLCall(U32 index) override;
 
-    bool partialScreenShot(BString filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) override;
-    bool screenShot(BString filepath, U32* crc) override;
+    bool partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) override;
+    bool screenShot(const BString& filepath, U8* buffer, U32 bufferlen) override;
 
     bool waitForEvent(U32 ms) override;
     bool processEvents() override;
@@ -235,7 +235,7 @@ public:
     void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) override;
     void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) override;
 #endif
-    bool internalScreenShot(BString filepath, SDL_Rect* r, U32* crc);
+    bool internalScreenShot(const BString& filepath, SDL_Rect* r, U8* buffer, U32 bufferlen);
     bool isShutdownWindowIsOpen();
     void updateShutdownWindow();
     void updatePrimarySurface(KThread* thread, U32 bits, U32 width, U32 height, U32 pitch, U32 flags, SDL_Color* palette);
@@ -2335,7 +2335,7 @@ void KNativeWindowSdl::processCustomEvents(std::function<bool(bool isKeyDown, in
 
 #endif
 
-bool KNativeWindowSdl::internalScreenShot(BString filepath, SDL_Rect* r, U32* crc) {
+bool KNativeWindowSdl::internalScreenShot(const BString& filepath, SDL_Rect* r, U8* buffer, U32 bufferlen) {
 #ifdef BOXEDWINE_RECORDER
      if (!recorderBuffer) {
         if (filepath.length()) {
@@ -2363,31 +2363,40 @@ bool KNativeWindowSdl::internalScreenShot(BString filepath, SDL_Rect* r, U32* cr
     }
     if (r) {
         int inPitch = (screenWidth()*((bpp+7)/8)+3) & ~3;
-        int outPitch = (r->w*((bpp+7)/8)+3) & ~3;        
+        int outPitch = (r->w*((bpp+7)/8)+3) & ~3;
         U32 bytesPerPixel = (bpp+7)/8;
-
-        pixels = new unsigned char[outPitch*r->h];
+        U32 len = outPitch * r->h;
+        
+        if (!buffer) {
+            pixels = new unsigned char[outPitch * r->h];
+            buffer = pixels;
+        }
+        if (bufferlen < len) {
+            return false;
+        }
 
         for (int y=0;y<r->h;y++) {
-            memcpy(pixels+y*outPitch, recorderBuffer+(y+r->y)*inPitch+(r->x*bytesPerPixel), outPitch);
+            memcpy(buffer+y*outPitch, recorderBuffer+(y+r->y)*inPitch+(r->x*bytesPerPixel), outPitch);
         }
-        s = SDL_CreateRGBSurfaceFrom(pixels, r->w, r->h, bpp, outPitch, rMask, gMask, bMask, 0);
-        if (crc) {
-            U32 len = outPitch*r->h;
-            *crc = crc32b(pixels, len);
-        }
+        s = SDL_CreateRGBSurfaceFrom(buffer, r->w, r->h, bpp, outPitch, rMask, gMask, bMask, 0);
     } else {               
         int pitch = (screenWidth()*((bpp+7)/8)+3) & ~3;
-        s = SDL_CreateRGBSurfaceFrom(recorderBuffer, screenWidth(), screenHeight(), bpp, pitch, rMask, gMask, bMask, 0);
-        if (crc) {
-            U32 len = pitch*screenHeight();
-            *crc = crc32b(recorderBuffer, len);
+        U32 len = pitch * screenHeight();
+
+        s = SDL_CreateRGBSurfaceFrom(recorderBuffer, screenWidth(), screenHeight(), bpp, pitch, rMask, gMask, bMask, 0);        
+        if (buffer) {
+            if (bufferlen < len) {
+                return false;
+            }
+            memcpy(buffer, recorderBuffer, len);
         }
     }
 
     if (!s) {
         klog("sdlScreenshot: %s", SDL_GetError());
-        delete[] pixels;
+        if (pixels) {
+            delete[] pixels;
+        }
         return false;
     }
     if (filepath.length()) {
@@ -2405,17 +2414,17 @@ bool KNativeWindowSdl::internalScreenShot(BString filepath, SDL_Rect* r, U32* cr
 #endif
 }
 
-bool KNativeWindowSdl::partialScreenShot(BString filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) {
+bool KNativeWindowSdl::partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) {
     SDL_Rect r;
     r.x = x;
     r.y = y;
     r.w = w;
     r.h = h;
-    return internalScreenShot(filepath, &r, crc);
+    return internalScreenShot(filepath, &r, buffer, bufferlen);
 }
 
-bool KNativeWindowSdl::screenShot(BString filepath, U32* crc) {
-    return internalScreenShot(filepath, nullptr, crc);
+bool KNativeWindowSdl::screenShot(const BString& filepath, U8* buffer, U32 bufferlen) {
+    return internalScreenShot(filepath, nullptr, buffer, bufferlen);
 
 }
 

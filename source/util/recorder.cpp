@@ -9,11 +9,12 @@ void Recorder::start(BString directory) {
     instance->directory = directory;
     instance->file.createNew(BString(directory+"/"+RECORDER_SCRIPT));
     instance->screenShotCount = 0;
-    instance->out("VERSION=1\r\n");
+    instance->out("VERSION=2\r\n");
 }
 
 void Recorder::out(const char* s) {
     file.write(s);
+    file.flush();
 }
 
 void Recorder::initCommandLine(BString root, const std::vector<BString>& zips, BString working, const std::vector<BString>& args) {
@@ -46,31 +47,27 @@ void Recorder::initCommandLine(BString root, const std::vector<BString>& zips, B
 
 void Recorder::fullScrennShot() {
     BString fileName(this->directory);
-    U32 crc = 0;
 
     this->screenShotCount++;
     fileName.append(Fs::nativePathSeperator);
     fileName.append("screenshot");
     fileName.append(BString::valueOf(this->screenShotCount));
     fileName.append(".bmp");    
-    KNativeWindow::getNativeWindow()->screenShot(fileName, &crc);
+    KNativeWindow::getNativeWindow()->screenShot(fileName, nullptr, 0);
     out("SCREENSHOT=");
-    out(BString::valueOf(crc).c_str());
-    out(",");
-    out(fileName.c_str());
+    out(Fs::getFileNameFromNativePath(fileName).c_str());
     out("\r\n");
 }
 
 void Recorder::partialScreenShot(U32 x, U32 y, U32 w, U32 h) {
     BString fileName(this->directory);
-    U32 crc = 0;
 
     this->screenShotCount++;
     fileName.append(Fs::nativePathSeperator);
     fileName.append("screenshot");
     fileName.append(BString::valueOf(this->screenShotCount));
     fileName.append(".bmp");  
-    KNativeWindow::getNativeWindow()->partialScreenShot(fileName, x, y, w, h, &crc);
+    KNativeWindow::getNativeWindow()->partialScreenShot(fileName, x, y, w, h, nullptr, 0);
     out("SCREENSHOT=");
     out(BString::valueOf(x).c_str());
     out(",");
@@ -80,9 +77,7 @@ void Recorder::partialScreenShot(U32 x, U32 y, U32 w, U32 h) {
     out(",");
     out(BString::valueOf(h).c_str());
     out(",");
-    out(BString::valueOf(crc).c_str());
-    out(",");
-    out(fileName.c_str());
+    out(Fs::getFileNameFromNativePath(fileName).c_str());
     out("\r\n");
 }
 
@@ -211,14 +206,17 @@ U32 BOXEDWINE_RECORDER_QUIT() {
         Recorder::instance->close();
     }
     if (Player::instance) {
+        Player::instance->quit();
         if (Player::instance->nextCommand=="DONE") {
             klog("script: success.  Setting exit code to 111");
             return 111;
         } else {
             klog("script: failed");
             klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
-            KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr);
-        }
+            if (KNativeWindow::getNativeWindow()) {
+                KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr, 0);
+            }
+        }        
     }
     return 1;
 }

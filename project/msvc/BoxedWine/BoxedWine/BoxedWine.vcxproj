@@ -673,6 +673,7 @@
     <ClInclude Include="..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\source\util\networkutils.h" />
+    <ClInclude Include="..\..\..\..\source\util\pixelMatch.h" />
     <ClInclude Include="..\..\..\..\source\util\ptrpool.h" />
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
@@ -1111,6 +1112,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\pixelMatch.cpp" />
     <ClCompile Include="..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\source\util\recorder.cpp" />
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp" />
