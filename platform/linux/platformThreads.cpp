@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 
-#ifdef BOXEDWINE_MULTI_THREADED
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 
 #include "../../source/emulation/cpu/binaryTranslation/btCpu.h"
 #include <signal.h>

@@ -170,6 +170,7 @@ NormalBlock* NormalBlock::alloc() {
 
 void NormalBlock::dealloc(bool delayed) {
     KThread* thread = KThread::currentThread();
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->normalBlockMutex);
     bool doDelete = false;
     if (thread) {
         CPU* cpu = thread->cpu;
@@ -204,11 +205,13 @@ void NormalBlock::dealloc(bool delayed) {
     DecodedBlockFromNode* from = this->referencedFrom;
     while (from) {
         DecodedBlockFromNode* n = from->next;
-        if (from->block->next1 == this) {
-            from->block->next1 = nullptr;
-        }
-        if (from->block->next2 == this) {
-            from->block->next2 = nullptr;
+        if (from->block) {
+            if (from->block->next1 == this) {
+                from->block->next1 = nullptr;
+            }
+            if (from->block->next2 == this) {
+                from->block->next2 = nullptr;
+            }
         }
         from->dealloc();
         from = n;
@@ -243,34 +246,55 @@ DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
     return op;
 }
 
+#ifdef BOXEDWINE_MULTI_THREADED
+void OPCALL lockOp(CPU* cpu, DecodedOp* op) {
+    BOXEDWINE_CRITICAL_SECTION;
+    normalOps[op->inst](cpu, op);
+}
+#endif
+
 DecodedBlock* NormalCPU::getNextBlock() {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     return nullptr;
 #else
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return nullptr;
-
+    
     U32 startIp = (this->big?this->eip.u32:this->eip.u16) + this->seg[CS].address;
     DecodedBlock* block = this->thread->memory->getCodeBlock(startIp);
 
     if (!block) {
-        block = NormalBlock::alloc();
-        decodeBlock(fetchByte, this, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
-        block->address = startIp;
-        
-        DecodedOp* op = block->op;
-        while (op) {
-            if (!op->pfn) // callback will be set by decoder
-                op->pfn = normalOps[op->inst];
-            op = op->next;
-        }
-        this->thread->memory->addCodeBlock(startIp, block);
-        if (this->firstOp) {
-            op = DecodedOp::alloc();
-            op->inst = Custom1;
-            op->pfn = this->firstOp;
-            op->next = block->op;
-            block->op = op;
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->normalBlockMutex);
+        if (!block) {
+            block = NormalBlock::alloc();
+            decodeBlock(fetchByte, this, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
+            block->address = startIp;
+
+            DecodedOp* op = block->op;
+            bool hasLock = true;
+            while (op) {
+#ifdef BOXEDWINE_MULTI_THREADED
+                if (op->lock) {
+                    op->pfn = lockOp;
+                    hasLock = true;
+                } else 
+#endif
+                if (!op->pfn) { // callback will be set by decoder
+                    op->pfn = normalOps[op->inst];
+                }
+                op = op->next;
+            }
+            this->thread->memory->addCodeBlock(startIp, block);
+#ifdef BOXEDWINE_MULTI_THREADED
+            if (!hasLock)
+#endif
+            if (this->firstOp) {
+                op = DecodedOp::alloc();
+                op->inst = Custom1;
+                op->pfn = this->firstOp;
+                op->next = block->op;
+                block->op = op;
+            }
         }
     }
     return block;
@@ -281,7 +305,7 @@ void NormalCPU::run() {
     DecodedBlock::currentBlock = this->nextBlock;
     DecodedBlock::currentBlock->run(this);    
 #ifdef _DEBUG
-    if (!this->nextBlock && !this->yield) {
+    if (!this->nextBlock && !this->yield && !this->thread->terminating) {
         kpanic("NormalCPU::run no block set");
     }
     DecodedBlock::currentBlock = nullptr;

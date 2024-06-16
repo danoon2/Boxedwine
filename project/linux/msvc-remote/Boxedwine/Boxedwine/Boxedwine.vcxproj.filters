@@ -608,6 +608,15 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\kevent.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\pixelMatch.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\stb_image.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalPlatformMultiThreaded.cpp">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1386,9 +1395,6 @@
     <ClInclude Include="..\..\..\..\..\source\ui\utils\readIcons.h">
       <Filter>source\ui\utils</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\ui\utils\stb_image.h">
-      <Filter>source\ui\utils</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\utils\uihelper.h">
       <Filter>source\ui\utils</Filter>
     </ClInclude>
@@ -1911,6 +1917,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\kevent.h">
       <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\pixelMatch.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\stb_image.h">
+      <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -82,8 +82,9 @@ public:
     virtual void glUpdateContextForThread(KThread* thread) = 0;
     virtual void preOpenGLCall(U32 index) = 0;
 
-    virtual bool partialScreenShot(BString filepath, U32 x, U32 y, U32 w, U32 h, U32* crc) = 0;
-    virtual bool screenShot(BString filepath, U32* crc) = 0;
+    virtual bool partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) = 0;
+    virtual bool screenShot(const BString& filepath, U8* buffer, U32 bufferlen) = 0;
+    virtual bool saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) = 0;
 
     virtual bool waitForEvent(U32 ms) = 0; // if return is true, then event is available
     virtual bool processEvents() = 0; // if return is false, then shutdown    

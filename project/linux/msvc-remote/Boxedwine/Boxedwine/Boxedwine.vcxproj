@@ -205,6 +205,7 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\decoder.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\instructions.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalPlatformMultiThreaded.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normal_shift.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\srcgen.cpp" />
@@ -504,8 +505,10 @@
     <ClCompile Include="..\..\..\..\..\source\util\fileutils.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\log.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\networkutils.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\util\pixelMatch.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\recorder.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\util\stb_image.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\stringutil.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\threadutils.cpp" />
@@ -1031,12 +1034,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\ui\utils\stb_image.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x86'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\utils\uihelper.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM'">true</ExcludedFromBuild>
@@ -1051,7 +1048,9 @@
     <ClInclude Include="..\..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\..\source\util\networkutils.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\pixelMatch.h" />
     <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\stb_image.h" />
     <ClInclude Include="..\..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\..\source\util\threadutils.h" />

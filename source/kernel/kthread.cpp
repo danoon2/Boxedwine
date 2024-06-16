@@ -162,7 +162,7 @@ U32 KThread::signal(U32 signal, bool wait) {
     process->sigActions[signal].sigInfo[3] = process->id;
     process->sigActions[signal].sigInfo[4] = process->userId;
 
-    if (readyForSignal(signal)) {
+    if (signal == K_SIGKILL || signal == K_SIGSTOP || readyForSignal(signal)) {
         // don't return -K_WAIT, we don't want to re-enter tgkill, instead we will return 0 once the thread wakes up
 
         // must set CPU state before runSignal since it will be stored
@@ -466,9 +466,24 @@ void KThread::signalIllegalInstruction(int code) {
 }
 
 bool KThread::runSignals() {
-    U64 todoProcess = this->process->pendingSignals & ~(this->inSignal?this->inSigMask:this->sigMask);
-    U64 todoThread = this->pendingSignals & ~(this->inSignal?this->inSigMask:this->sigMask);
+    U64 mask = this->inSignal ? this->inSigMask : this->sigMask;
+    U64 todoProcess = this->process->pendingSignals & ~mask;
+    U64 todoThread = this->pendingSignals & ~mask;
 
+    // It seems like linux (tiny core 13, maybe libc) sets the sigprocmask to 0x10012A03 K_SIGIO|K_SIGCHLD|K_SIGALRM|K_SIGUSR2|K_SIGUSR1|K_SIGINT|K_SIGHUP
+    // then it grabs a pthread mutex via compare exchange
+    // then wine sends a K_SIGQUIT signal to that thread
+    // the thread dies/exits because of handling SIGKILL without releasing the pthread mutex
+    // the next thread in the process that asks for the mutex hangs
+    //
+    // I only noticed this on multi-thread normal core with win32, I wonder if this is a race condition that normally doesn't happen under faster circumstances
+    // 
+    // for now I will add this hack
+    //
+    // hopefully it won't have any bad side effects and cause other bugs
+    if ((todoThread & ((U64)1 << (K_SIGQUIT-1))) && (mask & ((U64)1 << (K_SIGIO-1)))) {
+        todoThread &= ~((U64)1 << (K_SIGQUIT-1)); // don't process SIGKILL now
+    }
     if (todoProcess!=0 || todoThread!=0) {
         U32 i;
 

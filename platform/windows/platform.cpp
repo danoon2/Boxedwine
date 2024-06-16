@@ -680,7 +680,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
             mask = (1l << count) - 1;
         }
         klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, mask);
-        SetThreadAffinityMask((HANDLE)((BtCPU*)thread->cpu)->nativeHandle, mask);
+        SetThreadAffinityMask((HANDLE)thread->cpu->nativeHandle, mask);
     }
 }
 #endif

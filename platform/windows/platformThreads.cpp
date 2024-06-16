@@ -5,7 +5,7 @@
 #include "ksignal.h"
 #include "../source/emulation/cpu/x64/x64CPU.h"
 
-#ifdef BOXEDWINE_MULTI_THREADED
+#if defined(BOXEDWINE_BINARY_TRANSLATOR)
 
 void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;

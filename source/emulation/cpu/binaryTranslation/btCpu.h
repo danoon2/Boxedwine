@@ -16,8 +16,7 @@ public:
     DecodedBlock* getNextBlock() override;
 
     virtual void* init() = 0; // called from run
-
-    U64 nativeHandle = 0;
+    
     U64 exceptionAddress = 0;
     bool inException = false;
     bool exceptionReadAddress = false;
