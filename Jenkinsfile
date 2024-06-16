@@ -369,7 +369,7 @@ pipeline {
                         }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation.zip http://boxedwine.org/v/automation2.zip --output automation.zip
+                                curl -z automation2.zip http://boxedwine.org/v/automation2.zip --output automation2.zip
                                 rm -rf automation
                                 unzip automation2.zip
 
@@ -402,7 +402,7 @@ pipeline {
                         }                      
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation.zip http://boxedwine.org/v/automation2.zip --output automation.zip
+                                curl -z automation2.zip http://boxedwine.org/v/automation2.zip --output automation2.zip
                                 rm -rf automation
                                 unzip automation2.zip
 
