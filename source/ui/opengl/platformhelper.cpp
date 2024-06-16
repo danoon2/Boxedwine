@@ -1,10 +1,9 @@
 #include "boxedwine.h"
 #include "../boxedwineui.h"
-#define STB_IMAGE_IMPLEMENTATION
 
 #pragma warning(push)
 #pragma warning (disable : ALL_CODE_ANALYSIS_WARNINGS)
-#include "../utils/stb_image.h"
+#include "../../util/stb_image.h"
 #pragma warning(pop)
 
 #ifdef BOXEDWINE_IMGUI_DX9

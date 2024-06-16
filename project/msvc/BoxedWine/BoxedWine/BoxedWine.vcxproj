@@ -663,7 +663,6 @@
     <ClInclude Include="..\..\..\..\source\ui\utils\boxedTranslation.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\imgui_markdown.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\readIcons.h" />
-    <ClInclude Include="..\..\..\..\source\ui\utils\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\ui\utils\uihelper.h" />
     <ClInclude Include="..\..\..\..\source\util\bfile.h" />
     <ClInclude Include="..\..\..\..\source\util\bhashtable.h" />
@@ -673,7 +672,9 @@
     <ClInclude Include="..\..\..\..\source\util\karray.h" />
     <ClInclude Include="..\..\..\..\source\util\klist.h" />
     <ClInclude Include="..\..\..\..\source\util\networkutils.h" />
+    <ClInclude Include="..\..\..\..\source\util\pixelMatch.h" />
     <ClInclude Include="..\..\..\..\source\util\ptrpool.h" />
+    <ClInclude Include="..\..\..\..\source\util\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\source\util\threadutils.h" />
@@ -1111,8 +1112,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\pixelMatch.cpp" />
     <ClCompile Include="..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\source\util\recorder.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\stb_image.cpp" />
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp" />
     <ClCompile Include="..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\..\..\..\source\util\threadutils.cpp" />
