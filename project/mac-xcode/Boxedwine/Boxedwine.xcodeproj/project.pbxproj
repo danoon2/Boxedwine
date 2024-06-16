@@ -503,6 +503,12 @@
 		1AAC183D2C1E96430089C40D /* pixelMatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18392C1E96430089C40D /* pixelMatch.cpp */; };
 		1AAC183E2C1E96430089C40D /* pixelMatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18392C1E96430089C40D /* pixelMatch.cpp */; };
 		1AAC183F2C1E96430089C40D /* pixelMatch.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18392C1E96430089C40D /* pixelMatch.cpp */; };
+		1AAC18422C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
+		1AAC18432C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
+		1AAC18442C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
+		1AAC18452C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
+		1AAC18462C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
+		1AAC18472C1E9A220089C40D /* stb_image.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18402C1E9A220089C40D /* stb_image.cpp */; };
 		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
@@ -1506,6 +1512,8 @@
 		1AA711B72B4FBCCB008704E2 /* kmemory_soft.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = kmemory_soft.cpp; sourceTree = "<group>"; };
 		1AAC18382C1E96430089C40D /* pixelMatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pixelMatch.h; sourceTree = "<group>"; };
 		1AAC18392C1E96430089C40D /* pixelMatch.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = pixelMatch.cpp; sourceTree = "<group>"; };
+		1AAC18402C1E9A220089C40D /* stb_image.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = stb_image.cpp; sourceTree = "<group>"; };
+		1AAC18412C1E9A220089C40D /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
 		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
 		1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsdynamiclinknode.cpp; sourceTree = "<group>"; };
@@ -1736,7 +1744,6 @@
 		71FBFD132433BBBE003F17F1 /* uihelper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = uihelper.cpp; sourceTree = "<group>"; };
 		71FBFD142433BBBE003F17F1 /* readIcons.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = readIcons.cpp; sourceTree = "<group>"; };
 		71FBFD152433BBBE003F17F1 /* uihelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = uihelper.h; sourceTree = "<group>"; };
-		71FBFD162433BBBE003F17F1 /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		71FBFD172433BBBE003F17F1 /* boxedTranslation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boxedTranslation.h; sourceTree = "<group>"; };
 		71FBFD192433BBBE003F17F1 /* spinnerControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = spinnerControl.h; sourceTree = "<group>"; };
 		71FBFD1A2433BBBE003F17F1 /* waitDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = waitDlg.cpp; sourceTree = "<group>"; };
@@ -2586,7 +2593,6 @@
 				71FBFD132433BBBE003F17F1 /* uihelper.cpp */,
 				71FBFD142433BBBE003F17F1 /* readIcons.cpp */,
 				71FBFD152433BBBE003F17F1 /* uihelper.h */,
-				71FBFD162433BBBE003F17F1 /* stb_image.h */,
 				71FBFD172433BBBE003F17F1 /* boxedTranslation.h */,
 			);
 			path = utils;
@@ -2686,6 +2692,8 @@
 		71FBFD4D2433BBBE003F17F1 /* util */ = {
 			isa = PBXGroup;
 			children = (
+				1AAC18402C1E9A220089C40D /* stb_image.cpp */,
+				1AAC18412C1E9A220089C40D /* stb_image.h */,
 				1AAC18392C1E96430089C40D /* pixelMatch.cpp */,
 				1AAC18382C1E96430089C40D /* pixelMatch.h */,
 				1A1ADF8E2B6C989F00D9D5DE /* bfile.cpp */,
@@ -3406,6 +3414,7 @@
 				1A80EE5A276EBCC70032A70A /* zip.c in Sources */,
 				1A80EE5C276EBCC70032A70A /* glshim.c in Sources */,
 				1A80EE5F276EBCC70032A70A /* kfilelock.cpp in Sources */,
+				1AAC18442C1E9A220089C40D /* stb_image.cpp in Sources */,
 				1A80EE62276EBCC70032A70A /* waitDlg.cpp in Sources */,
 				1A80EE65276EBCC70032A70A /* kpoll.cpp in Sources */,
 				1A55D65D2A08428F002B7021 /* compress.c in Sources */,
@@ -3641,6 +3650,7 @@
 				1A80F0A2276EBF170032A70A /* okDlg.cpp in Sources */,
 				1A80F0A5276EBF170032A70A /* glshim.c in Sources */,
 				1A80F0A8276EBF170032A70A /* kfilelock.cpp in Sources */,
+				1AAC18452C1E9A220089C40D /* stb_image.cpp in Sources */,
 				1A80F0AB276EBF170032A70A /* waitDlg.cpp in Sources */,
 				1AC5F2F62772D957001D0FCA /* armv8btCPU.cpp in Sources */,
 				1A80F0AE276EBF170032A70A /* kpoll.cpp in Sources */,
@@ -3893,6 +3903,7 @@
 				71222BB02435169100CDBABD /* cpuonline.cpp in Sources */,
 				71222B632435169100CDBABD /* x64Data.cpp in Sources */,
 				71222B3F2435163100CDBABD /* testMMX.cpp in Sources */,
+				1AAC18462C1E9A220089C40D /* stb_image.cpp in Sources */,
 				1AFC476E26409EB600EE5FCC /* armv8CPU.cpp in Sources */,
 				71222B602435169100CDBABD /* x64CPU.cpp in Sources */,
 				710091652644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
@@ -4083,6 +4094,7 @@
 				71222BDF24351CBA00CDBABD /* fszip.cpp in Sources */,
 				71222BE024351CBA00CDBABD /* devzero.cpp in Sources */,
 				71222BE124351CBA00CDBABD /* common_xchg.cpp in Sources */,
+				1AAC18432C1E9A220089C40D /* stb_image.cpp in Sources */,
 				71222BE224351CBA00CDBABD /* x64CPU.cpp in Sources */,
 				71222BE324351CBA00CDBABD /* devinput.cpp in Sources */,
 				71222BE424351CBA00CDBABD /* fsmemopennode.cpp in Sources */,
@@ -4300,6 +4312,7 @@
 				7135DC17264EBCD0005D6AA6 /* cpuonline.cpp in Sources */,
 				7135DC18264EBCD0005D6AA6 /* x64Data.cpp in Sources */,
 				7135DC19264EBCD0005D6AA6 /* testMMX.cpp in Sources */,
+				1AAC18472C1E9A220089C40D /* stb_image.cpp in Sources */,
 				1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				7135DC1B264EBCD0005D6AA6 /* armv8CPU.cpp in Sources */,
 				7135DC1C264EBCD0005D6AA6 /* x64CPU.cpp in Sources */,
@@ -4490,6 +4503,7 @@
 				71FBFED52433BBBE003F17F1 /* ksocket.cpp in Sources */,
 				71FBFEB82433BBBE003F17F1 /* cpuinfo.cpp in Sources */,
 				1AC5F2B12772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
+				1AAC18422C1E9A220089C40D /* stb_image.cpp in Sources */,
 				71FBFEA22433BBBE003F17F1 /* fszip.cpp in Sources */,
 				71FBFEC52433BBBE003F17F1 /* devzero.cpp in Sources */,
 				71FBFE8E2433BBBE003F17F1 /* common_xchg.cpp in Sources */,
