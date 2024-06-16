@@ -360,7 +360,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         thread_policy_set(port, THREAD_AFFINITY_POLICY, (thread_policy_t) &policy, THREAD_AFFINITY_POLICY_COUNT);
     }
 }
-#else
+#elif !defined (__EMSCRIPTEN__)
 void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
     if (KSystem::cpuAffinityCountForApp) {
         U32 cores = Platform::getCpuCount();
@@ -382,6 +382,9 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
 
         sched_setaffinity((pid_t)thread->cpu->nativeHandle, sizeof(cpu_set_t), &mask);
     }
+}
+#else
+void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
 }
 #endif
 #endif
