@@ -2,22 +2,23 @@
 #include "knativewindow.h"
 #include "pixelMatch.h"
 
+#ifdef BOXEDWINE_RECORDER
+
 #pragma warning(push)
 #pragma warning (disable : ALL_CODE_ANALYSIS_WARNINGS)
-#include "../ui/utils/stb_image.h"
+#include "stb_image.h"
 
 static void flipRGBBitmap(unsigned char* data, int stride, int height) {
     for (int y = 0; y < height; y++) {
-        for (int x = 0; x < stride; x+=4) {
+        for (int x = 0; x < stride; x += 4) {
             unsigned char b = data[x];
-            data[x] = data[x+2];
-            data[x+2] = b;
+            data[x] = data[x + 2];
+            data[x + 2] = b;
         }
         data += stride;
     }
 }
 
-#ifdef BOXEDWINE_RECORDER
 Player* Player::instance;
 
 void Player::readCommand() {
