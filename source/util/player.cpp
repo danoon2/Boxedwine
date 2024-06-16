@@ -91,6 +91,8 @@ static U32 comparingPixels;
 static int image_width;
 static int image_height;
 static unsigned char* image_data;
+static U8* output;
+static U32 outputLen;
 
 #define COMPARING_PIXELS_WAITING 0
 #define COMPARING_PIXELS_WORKING 1
@@ -101,8 +103,6 @@ static std::mutex comparingCondMutex;
 static std::condition_variable comparingCond;
 
 void bitmapCompareThread(Player* player) {    
-    U8* output = nullptr;// new U8[1024 * 768 * 4];
-
     while (comparingPixels != COMPARING_PIXELS_DONE) {
         {
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
@@ -111,6 +111,13 @@ void bitmapCompareThread(Player* player) {
                 break;
             }
             comparingPixels = COMPARING_PIXELS_WORKING;
+        }
+        if (outputLen < bufferlen) {
+            if (output) {
+                delete[] output;
+            }
+            output = new U8[bufferlen];
+            outputLen = bufferlen;
         }
         if (pixelmatch(image_data, image_width * 4, buffer, image_width * 4, image_width, image_height, output) == 0) {
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
@@ -123,10 +130,7 @@ void bitmapCompareThread(Player* player) {
             if (comparingPixels == COMPARING_PIXELS_DONE) {
                 break;
             }
-            comparingPixels = COMPARING_PIXELS_WAITING;
-            //KNativeWindow::getNativeWindow()->saveBmp(B("error_diff.bmp"), output, 32, image_width, image_height);
-            //KNativeWindow::getNativeWindow()->saveBmp(B("error_diff1.bmp"), image_data, 32, image_width, image_height);
-            //KNativeWindow::getNativeWindow()->saveBmp(B("error_diff2.bmp"), buffer, 32, image_width, image_height);
+            comparingPixels = COMPARING_PIXELS_WAITING;            
         }
     }
 }
@@ -263,6 +267,8 @@ void Player::runSlice() {
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
         klog("script timed out %s", this->directory.c_str());
         KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr, 0);
+        KNativeWindow::getNativeWindow()->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
+        quit();
         exit(2);
     }
 }
