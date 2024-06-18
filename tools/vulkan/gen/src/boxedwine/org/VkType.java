@@ -97,8 +97,16 @@ public class VkType {
         }
         int result = sizeof;
         if (members != null) {
-            for (VkParam param : members) {
-                result += param.getSize();
+            if (type.equals("union")) {
+                int max = 0;
+                for (VkParam param : members) {
+                    max = Math.max(max, param.getSize());
+                }
+                result += max;
+            } else {
+                for (VkParam param : members) {
+                    result += param.getSize();
+                }
             }
         }
         if (type.equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) {

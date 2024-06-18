@@ -17,11 +17,10 @@ public class VkHostMarshalNone extends VkHostMarshal {
             }
             out.append(param.paramArg);
         } else {
-            out.append("*(" + param.paramType.name + "*)");
-            out.append("getPhysicalAddress(");
+            out.append("(" + param.paramType.name + ")ARG64(");
             out.append(param.paramArg);
             out.append(", ");
-            out.append(param.getSize());
+            out.append(param.paramArg2);
             out.append(")");
         }
         out.append(";\n");

@@ -564,10 +564,15 @@ public class Main {
     static VkHostMarshalInEnumArray inEnumArray = new VkHostMarshalInEnumArray();
     static VkHostMarshalInHandle inHandle = new VkHostMarshalInHandle();
     static VkHostMarshalNone none = new VkHostMarshalNone();
+    static vkHostMarshalNotImplemented updateDescriptorSetWithTemplate = new vkHostMarshalNotImplemented();
 
     static void findMarshals(VkFunction fn) throws Exception {
         for (VkParam param : fn.params) {
-            if (!param.isPointer && param.arrayLen == 0) {
+            if ((fn.name.equals("vkUpdateDescriptorSetWithTemplate") || fn.name.equals("vkUpdateDescriptorSetWithTemplateHKR") || fn.name.equals("vkCmdPushDescriptorSetWithTemplateKHR")) && param.name.equals("pData")) {
+                param.marshal = updateDescriptorSetWithTemplate;
+            } else if (fn.name.equals("vkGetMemoryHostPointerPropertiesEXT") && param.name.equals("pHostPointer")) {
+                param.marshal = updateDescriptorSetWithTemplate;
+            } else if (!param.isPointer && param.arrayLen == 0) {
                 if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
                     param.marshal = inHandle;
                 } else {

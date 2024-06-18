@@ -1793,41 +1793,43 @@ void BoxedVkApplicationInfo::read(KMemory* memory, U32 address) {
         info.pApplicationName = NULL;
     }
     else {
-        const char* p = (const char*)getPhysicalAddress(address_applicationName, 0);
-        U32 len = (U32)strlen(p);
+        U32 len = memory->strlen(address_applicationName);
         if (len < BOXED_VK_BUFFER_SIZE) {
-            strcpy(this->applicationName, p);
+            memory->memcpy(this->applicationName, address_applicationName, len + 1);
             info.pApplicationName = this->applicationName;
         } else {
-            info.pApplicationName = strdup(p);
+            char* p = new char[len+1];
+            memory->memcpy(p, address_applicationName, len + 1);
+            info.pApplicationName = p;
             this->deleteApplicationName = true;
         }
     }
-    info.applicationVersion = readd(address); address += 4;
-    U32 address_engineName = readd(address); address += 4;
+    info.applicationVersion = memory->readd(address); address += 4;
+    U32 address_engineName = memory->readd(address); address += 4;
     if (!address_engineName) {
         info.pEngineName = NULL;
     } else {
-        const char* p = (const char*)getPhysicalAddress(address_engineName, 0);
-        U32 len = (U32)strlen(p);
+        U32 len = memory->strlen(address_engineName);
         if (len < BOXED_VK_BUFFER_SIZE) {
-            strcpy(this->engineName, p);
+            memory->memcpy(this->engineName, address_engineName, len + 1);
             info.pEngineName = this->engineName;
         }
         else {
-            info.pEngineName = strdup(p);
+            char* p = new char[len + 1];
+            memory->memcpy(p, address_engineName, len + 1);
+            info.pEngineName = p;
             this->deleteEngineName = true;
         }
     }
-    info.engineVersion = readd(address); address += 4;
-    info.apiVersion = readd(address);
+    info.engineVersion = memory->readd(address); address += 4;
+    info.apiVersion = memory->readd(address);
 }
 
 class BoxedVkInstanceCreateInfo {
 public:
     ~BoxedVkInstanceCreateInfo();
     VkInstanceCreateInfo info;
-    void read(U32 address);
+    void read(KMemory* memory, U32 address);
     void fixSurfaceExtension();
     BoxedVkApplicationInfo appInfo;
 };
@@ -1845,44 +1847,47 @@ void BoxedVkInstanceCreateInfo::fixSurfaceExtension() {
     }
 }
 
-void BoxedVkInstanceCreateInfo::read(U32 address) {
-    info.sType = (VkStructureType)readd(address); address += 4;
-    U32 address_next = readd(address); address += 4;
+void BoxedVkInstanceCreateInfo::read(KMemory* memory, U32 address) {
+    info.sType = (VkStructureType)memory->readd(address); address += 4;
+    U32 address_next = memory->readd(address); address += 4;
     if (!address_next) {
         info.pNext = NULL;
     } else {
         // :TODO:
         kpanic("oops");
     }
-    info.flags = (VkInstanceCreateFlags)readd(address); address += 4;
-    U32 address_applicationInfo = readd(address); address += 4;
+    info.flags = (VkInstanceCreateFlags)memory->readd(address); address += 4;
+    U32 address_applicationInfo = memory->readd(address); address += 4;
     if (!address_applicationInfo) {
         info.pApplicationInfo = NULL;
     } else {
         info.pApplicationInfo = &appInfo.info;
-        appInfo.read(address_applicationInfo);
+        appInfo.read(memory, address_applicationInfo);
     }
-    info.enabledLayerCount = readd(address); address += 4;
-    U32 address_ppEnabledLayerNames = readd(address); address += 4;
+    info.enabledLayerCount = memory->readd(address); address += 4;
+    U32 address_ppEnabledLayerNames = memory->readd(address); address += 4;
     if (!info.enabledLayerCount) {
         info.ppEnabledLayerNames = NULL;
     } else {
         // :TODO:
         kpanic("oops");
     }
-    info.enabledExtensionCount = readd(address); address += 4;
-    U32 address_ppEnabledExtensionNames = readd(address);
+    info.enabledExtensionCount = memory->readd(address); address += 4;
+    U32 address_ppEnabledExtensionNames = memory->readd(address);
     if (!info.enabledExtensionCount) {
         info.ppEnabledExtensionNames = NULL;
     } else {
         char** p = new char* [info.enabledExtensionCount];
         info.ppEnabledExtensionNames = p;
         for (U32 i = 0; i < info.enabledExtensionCount; i++) {
-            p[i] = strdup((const char*)getPhysicalAddress(readd(address_ppEnabledExtensionNames+i*4), 0));
+            U32 address = memory->readd(address_ppEnabledExtensionNames + i * 4);
+            U32 len = memory->strlen(address);
+            p[i] = new char[len + 1];
+            memory->memcpy(p[i], address, len + 1);
         }
     }
 }
-U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info);
+U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info);
 BoxedVkInstanceCreateInfo::~BoxedVkInstanceCreateInfo() {
     if (info.enabledExtensionCount) {
         for (U32 i = 0; i < info.enabledExtensionCount; i++) {
@@ -1908,13 +1913,13 @@ static void boxeddrv_vkCreateInstance(CPU* cpu) {
      * performed a first pass in which it handles everything except for WSI
      * functionality such as VK_KHR_win32_surface. Handle this now.
      */
-    create_info_host.read(address_create_info);
+    create_info_host.read(cpu->memory, address_create_info);
     create_info_host.fixSurfaceExtension();
 
     res = pvkCreateInstance(&create_info_host.info, NULL /* allocator */, &result);
     if (res == VK_SUCCESS) {
-        U32 address = createVulkanPtr((U64)result, NULL);
-        writed(address_instance, address);
+        U32 address = createVulkanPtr(cpu->memory, (U64)result, NULL);
+        cpu->memory->writed(address_instance, address);
     }
     EAX = (U32)res;
 }
@@ -1946,20 +1951,24 @@ static void boxeddrv_vkDestroySwapchain(CPU* cpu) {
 
 // VkResult boxedwine_vkEnumerateInstanceExtensionProperties(const char* layer_name, uint32_t* count, VkExtensionProperties* properties)
 static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
-    const char* layer_name = (const char*)getPhysicalAddress(ARG1, 0);
-    uint32_t* count = (uint32_t*)getPhysicalAddress(ARG2, 0);
-    VkExtensionProperties* properties = (VkExtensionProperties*)getPhysicalAddress(ARG3, sizeof(VkExtensionProperties)*(*count));
+    BString layer_name = cpu->memory->readString(ARG1);
+    uint32_t count = cpu->memory->readd(ARG2);
+    VkExtensionProperties* properties = nullptr;
     unsigned int i;
     VkResult res;
 
     /* This shouldn't get called with layer_name set, the ICD loader prevents it. */
-    if (layer_name)
+    if (!layer_name.isEmpty())
     {
         kwarn("Layer enumeration not supported from ICD.");
         EAX = VK_ERROR_LAYER_NOT_PRESENT;
         return;
     }
 
+    if (count) {
+        properties = new VkExtensionProperties[count];
+        cpu->memory->memcpy(properties, ARG3, count * sizeof(VkExtensionProperties));
+    }
     initVulkan(); // this is the first API call by wine
 
     /* We will return the same number of instance extensions reported by the host back to
@@ -1967,12 +1976,15 @@ static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
      * Winevulkan will perform more detailed filtering as it knows whether it has thunks
      * for a particular extension.
      */
-    res = pvkEnumerateInstanceExtensionProperties(layer_name, count, properties);
+    res = pvkEnumerateInstanceExtensionProperties(nullptr, &count, properties);
     if (!properties || res < 0) {
         EAX = (U32)res;
+        if (properties) {
+            delete[] properties;
+        }
         return;
     }
-    for (i = 0; i < *count; i++)
+    for (i = 0; i < count; i++)
     {
         /* For now the only x11/MoltenVK extension we need to fixup. Long-term we may need an array. */
         if (!strcmp(properties[i].extensionName, "VK_MVK_macos_surface") || !strcmp(properties[i].extensionName, "VK_EXT_metal_surface") || !strcmp(properties[i].extensionName, "VK_KHR_xlib_surface"))
@@ -1981,6 +1993,11 @@ static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
             properties[i].specVersion = 6;
         }
     }
+    if (properties) {
+        cpu->memory->memcpy(ARG3, properties, count * sizeof(VkExtensionProperties));
+        delete[] properties;
+    }
+    cpu->memory->writed(ARG2, count);
     EAX = (U32)res;
 }
 
@@ -2041,11 +2058,11 @@ static void boxeddrv_vkGetPhysicalDeviceSurfaceFormats2(CPU* cpu) {
 
 // VkSurfaceKHR boxedwine_wine_get_native_surface(VkSurfaceKHR surface)
 static void boxeddrv_vkGetNativeSurface(CPU* cpu) {
-    VkSurfaceKHR surface = (VkSurfaceKHR)readq(ARG1);
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG1);
     VkSurfaceKHR result;
 
     kpanic("boxeddrv_vkGetNativeSurface not implemented");
-    writeq(ARG2, (U64)result);
+    cpu->memory->writeq(ARG2, (U64)result);
 }
 
 #else 

@@ -18,6 +18,7 @@ public class VkParam {
 
     // used by VkHost
     public String paramArg;
+    public String paramArg2;
     public VkParam countParam;
     public boolean countInStructure;
     public String nameInFunction;
@@ -45,5 +46,9 @@ public class VkParam {
             return arrayLen * paramType.getSize();
         }
         return paramType.getSize();
+    }
+
+    public boolean isDoubleSizeOnStack() {
+        return getSize() == 8 && arrayLen == 0 && len == null;
     }
 }

@@ -20,7 +20,7 @@ public class VkHostMarshalInStructure extends VkHostMarshal {
             out.append(param.paramType.name);
             out.append(" local_");
             out.append(param.name);
-            out.append("(");
+            out.append("(cpu->memory, ");
             out.append(param.paramArg);
             out.append(");\n");
             out.append("    ");

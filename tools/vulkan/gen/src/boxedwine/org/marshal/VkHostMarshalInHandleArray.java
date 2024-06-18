@@ -28,7 +28,7 @@ public class VkHostMarshalInHandleArray extends VkHostMarshal {
         out.append(param.name);
         out.append("[i] = (");
         out.append(param.paramType.name);
-        out.append(")getVulkanPtr(readd(");
+        out.append(")getVulkanPtr(cpu->memory, cpu->memory->readd(");
         out.append(param.paramArg);
         out.append(" + i*4));\n    }\n");
     }

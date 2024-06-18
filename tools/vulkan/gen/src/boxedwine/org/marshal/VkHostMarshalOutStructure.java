@@ -12,7 +12,7 @@ public class VkHostMarshalOutStructure extends VkHostMarshal {
         out.append(param.paramType.name);
         out.append(" ");
         out.append(param.name);
-        out.append("(");
+        out.append("(cpu->memory, ");
         out.append(param.paramArg);
         out.append(");\n");
         param.nameInFunction = "&"+param.name+".s";
@@ -23,7 +23,7 @@ public class VkHostMarshalOutStructure extends VkHostMarshal {
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    Marshal");
         out.append(param.paramType.name);
-        out.append("::write(");
+        out.append("::write(cpu->memory, ");
         out.append(param.paramArg);
         out.append(", &");
         out.append(param.name);

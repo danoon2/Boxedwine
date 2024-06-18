@@ -32,7 +32,7 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
         out.append(param.countString);
         out.append(";i++) {\n            Marshal");
         out.append(param.paramType.name);
-        out.append("::read(");
+        out.append("::read(cpu->memory, ");
         out.append(param.paramArg);
         out.append(" + i * ");
         out.append(param.paramType.getSize());
