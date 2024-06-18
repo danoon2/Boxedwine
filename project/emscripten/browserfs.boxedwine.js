@@ -17546,8 +17546,10 @@ return /******/ (function(modules) { // webpackBootstrap
 	// ArrayBuffers from another context (i.e. an iframe) do not pass the `instanceof` check
 	// but they should be treated as valid. See: https://github.com/feross/buffer/issues/166
 	function isArrayBuffer (obj) {
-	  return obj instanceof ArrayBuffer ||
+	  return obj instanceof ArrayBuffer || obj instanceof SharedArrayBuffer ||
 	    (obj != null && obj.constructor != null && obj.constructor.name === 'ArrayBuffer' &&
+	      typeof obj.byteLength === 'number') ||
+	    (obj != null && obj.constructor != null && obj.constructor.name === 'SharedArrayBuffer' &&
 	      typeof obj.byteLength === 'number')
 	}
 	
