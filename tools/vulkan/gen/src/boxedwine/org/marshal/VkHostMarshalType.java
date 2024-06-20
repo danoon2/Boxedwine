@@ -3,9 +3,23 @@ package boxedwine.org.marshal;
 import boxedwine.org.VkParam;
 import boxedwine.org.VkType;
 
+import java.util.HashSet;
+import java.util.Vector;
+
 public class VkHostMarshalType {
     private static class PointerData {
         boolean createdParamAddress = false;
+    }
+
+    private static class MarshalParamData {
+        MarshalParamData() {}
+        MarshalParamData(String name, boolean isArray) {
+            this.name = name;
+            this.isArray = isArray;
+            this.isArray = isArray;
+        }
+        boolean isArray = false;
+        String name;
     }
 
     public static void writeHeader(VkType t, StringBuilder out) throws Exception {
@@ -37,9 +51,15 @@ public class VkHostMarshalType {
             out.append("* s");
             out.append(");\n");
         }
+
+        if (t.needDestructor) {
+            out.append("    ~Marshal");
+            out.append(t.name);
+            out.append("();\n");
+        }
         out.append("};\n\n");
     }
-    private static void marshalInArrayOfPointers(VkParam param, StringBuilder out) throws Exception {
+    private static void marshalInArrayOfPointers(VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) throws Exception {
         if (param.len != null) {
             String[] parts = param.len.split(",");
             if (parts.length == 2) {
@@ -51,6 +71,7 @@ public class VkHostMarshalType {
                 out.append("** ");
                 out.append(param.name);
                 out.append(" = new ");
+                paramData.add(new MarshalParamData("s."+param.name, true));
                 out.append(param.paramType.name);
                 out.append("*[s->");
                 out.append(parts[0]);
@@ -68,6 +89,7 @@ public class VkHostMarshalType {
                 out.append("            ");
                 out.append(param.name);
                 out.append("[i] = new ");
+                paramData.add(new MarshalParamData("s."+param.name, true));
                 out.append(param.paramType.name);
                 out.append("[size];\n");
                 out.append("            ");
@@ -96,12 +118,13 @@ public class VkHostMarshalType {
         }
         return String.valueOf(param.arrayLen);
     }
-    private static void marshalInArrayOfHandles(VkParam param, StringBuilder out) throws Exception {
+    private static void marshalInArrayOfHandles(VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) throws Exception {
         out.append("        ");
         out.append(param.paramType.name);
         out.append("* ");
         out.append(param.name);
         out.append(" = new ");
+        paramData.add(new MarshalParamData("s."+param.name, false));
         out.append(param.paramType.name);
         out.append("[");
         out.append(getParamLen(param));
@@ -122,7 +145,7 @@ public class VkHostMarshalType {
         out.append(";\n");
     }
 
-    private static void marshalInArrayOfData(VkParam param, StringBuilder out) throws Exception {
+    private static void marshalInArrayOfData(VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) throws Exception {
         if (param.len.equals("null-terminated")) {
             out.append("        U32 ");
             out.append(param.name);
@@ -131,6 +154,7 @@ public class VkHostMarshalType {
         out.append("        s->");
         out.append(param.name);
         out.append(" = new ");
+        paramData.add(new MarshalParamData("s."+param.name, true));
         if (param.paramType.name.equals("void")) {
             if (param.isPointer) {
                 out.append("char");
@@ -173,12 +197,13 @@ public class VkHostMarshalType {
         out.append(size);
         out.append(");\n");
     }
-    private static void marshalInArrayOfStructs(VkParam param, StringBuilder out) throws Exception {
+    private static void marshalInArrayOfStructs(VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) throws Exception {
         out.append("        ");
         out.append(param.paramType.name);
         out.append("* ");
         out.append(param.name);
         out.append(" = new ");
+        paramData.add(new MarshalParamData("s."+param.name, true));
         out.append(param.paramType.name);
         out.append("[");
         out.append(getParamLen(param));
@@ -205,13 +230,14 @@ public class VkHostMarshalType {
         param.paramType.needMarshalIn = true;
     }
 
-    private static void marshalInPointerToStruct(VkParam param, StringBuilder out) {
+    private static void marshalInPointerToStruct(VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) {
         param.paramType.needMarshalIn = true;
         out.append("        ");
         out.append(param.paramType.name);
         out.append("* ");
         out.append(param.name);
         out.append(" = new ");
+        paramData.add(new MarshalParamData("s."+param.name, false));
         out.append(param.paramType.name);
         out.append("();\n");
         out.append("        Marshal");
@@ -226,7 +252,7 @@ public class VkHostMarshalType {
         out.append(";\n");
     }
 
-    private static void marshalInPointer(VkParam param, StringBuilder out, PointerData data) throws Exception {
+    private static void marshalInPointer(VkParam param, StringBuilder out, PointerData data, Vector<MarshalParamData> paramData) throws Exception {
         if (data.createdParamAddress) {
             out.append("    paramAddress = memory->readd(address);address+=4;\n");
         } else {
@@ -239,20 +265,21 @@ public class VkHostMarshalType {
         out.append(" = NULL;\n    } else {\n");
         if (param.name.equals("pNext")) {
             out.append("        s->pNext = vulkanGetNextPtr(memory, paramAddress);\n");
+            paramData.add(new MarshalParamData("s.pNext", false));
         } else if (param.isArray()) {
             if (param.isDoublePointer) {
-                marshalInArrayOfPointers(param, out);
+                marshalInArrayOfPointers(param, out, paramData);
             } else if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
-                marshalInArrayOfHandles(param, out);
+                marshalInArrayOfHandles(param, out, paramData);
             } else if (!param.paramType.needsMarshaling() || (param.isPointer && !param.isDoublePointer && param.paramType.type.equals("void")) || param.paramType.category.equals("enum")) {
-                marshalInArrayOfData(param, out);
+                marshalInArrayOfData(param, out, paramData);
             } else if (param.paramType.category.equals("struct")) {
-                marshalInArrayOfStructs(param, out);
+                marshalInArrayOfStructs(param, out, paramData);
             } else {
                 throw new Exception("oops");
             }
         } else if (param.paramType.category.equals("struct")) {
-            marshalInPointerToStruct(param, out);
+            marshalInPointerToStruct(param, out, paramData);
         } else {
             throw new Exception("oops");
         }
@@ -346,7 +373,7 @@ public class VkHostMarshalType {
         }
     }
 
-    private static void marshalIn(VkType t, StringBuilder out) throws Exception {
+    private static void marshalIn(VkType t, StringBuilder out, Vector<MarshalParamData> paramsData) throws Exception {
         out.append("void Marshal");
         out.append(t.name);
         out.append("::read(KMemory* memory, U32 address, ");
@@ -357,7 +384,7 @@ public class VkHostMarshalType {
 
         for (VkParam param : t.members) {
             if (param.isPointer) {
-                marshalInPointer(param, out, pointerData);
+                marshalInPointer(param, out, pointerData, paramsData);
             } else {
                 marshalInParam(param, out);
             }
@@ -365,7 +392,7 @@ public class VkHostMarshalType {
         out.append("}\n");
     }
 
-    private static void marshalOutPointer(VkParam param, StringBuilder out, PointerData data) {
+    private static void marshalOutPointer(VkParam param, StringBuilder out, PointerData data, Vector<MarshalParamData> paramData) {
         if (data.createdParamAddress) {
             out.append("    paramAddress = memory->readd(address);address+=4;\n");
         } else {
@@ -375,7 +402,6 @@ public class VkHostMarshalType {
         out.append("    if (paramAddress != 0) {\n");
         if (param.name.equals("pNext")) {
             out.append("        vulkanWriteNextPtr(memory, paramAddress, s->pNext);\n");
-            out.append("        delete s->pNext;\n");
         } else if (param.paramType.category.equals("struct")) {
             param.paramType.needMarshalIn = true;
             out.append("        ");
@@ -383,6 +409,7 @@ public class VkHostMarshalType {
             out.append("* ");
             out.append(param.name);
             out.append(" = new ");
+            paramData.add(new MarshalParamData("s."+param.name, false));
             out.append(param.paramType.name);
             out.append("();\n");
             out.append("        Marshal");
@@ -485,7 +512,7 @@ public class VkHostMarshalType {
             }
         }
     }
-    private static void marshalOut(VkType t, StringBuilder out) throws Exception {
+    private static void marshalOut(VkType t, StringBuilder out, Vector<MarshalParamData> paramsData) throws Exception {
         out.append("void Marshal");
         out.append(t.name);
         out.append("::write(KMemory* memory, U32 address, ");
@@ -495,7 +522,7 @@ public class VkHostMarshalType {
         PointerData pointerData = new PointerData();
         for (VkParam param : t.members) {
             if (param.isPointer) {
-                marshalOutPointer(param, out, pointerData);
+                marshalOutPointer(param, out, pointerData, paramsData);
             } else {
                 marshalOutParam(t, param, out);
             }
@@ -503,12 +530,41 @@ public class VkHostMarshalType {
         out.append("}\n");
     }
 
+    private static void marshalDestructor(VkType t, StringBuilder out, Vector<MarshalParamData> paramsData) {
+        out.append("Marshal");
+        out.append(t.name);
+        out.append("::~Marshal");
+        out.append(t.name);
+        out.append("() {\n");
+        HashSet<String> alreadyAdded = new HashSet<>();
+
+        for (MarshalParamData data : paramsData) {
+            if (alreadyAdded.contains(data.name)) {
+                continue;
+            }
+            out.append("    delete");
+            if (data.isArray) {
+                out.append("[]");
+            }
+            out.append(" ");
+            out.append(data.name);
+            out.append(";\n");
+            alreadyAdded.add(data.name);
+        }
+        out.append("}\n");
+    }
     public static void write(VkType t, StringBuilder out) throws Exception {
+        Vector<MarshalParamData> paramsData = new Vector<>();
+
         if (t.needMarshalIn) {
-            marshalIn(t, out);
+            marshalIn(t, out, paramsData);
         }
         if (t.needMarshalOut) {
-            marshalOut(t, out);
+            marshalOut(t, out, paramsData);
+        }
+        if (paramsData.size() > 0) {
+            t.needDestructor = true;
+            marshalDestructor(t, out, paramsData);
         }
     }
 }

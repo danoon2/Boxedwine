@@ -140,6 +140,7 @@ public class VkType {
     public Vector<VkParam> members = new Vector<>();
     public boolean needMarshalIn;
     public boolean needMarshalOut;
+    public boolean needDestructor;
     public String values;
 
     private int sizeof;
