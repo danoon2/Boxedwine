@@ -136,6 +136,7 @@ static void notImplemented(const char* s) {
 #define BOXED_HAS_WND                               (BOXED_BASE+87)
 #define BOXED_GET_VERSION                           (BOXED_BASE+88)
 
+// keep in sync with wineboxed.drv vulkan.c
 #define BOXED_VK_CREATE_INSTANCE                    (BOXED_BASE+89)
 #define BOXED_VK_CREATE_SWAPCHAIN                   (BOXED_BASE+90)
 #define BOXED_VK_CREATE_SURFACE                     (BOXED_BASE+91)
@@ -1877,21 +1878,32 @@ void BoxedVkInstanceCreateInfo::read(KMemory* memory, U32 address) {
     if (!info.enabledExtensionCount) {
         info.ppEnabledExtensionNames = NULL;
     } else {
+#ifdef _DEBUG
+        info.enabledExtensionCount++;
+#endif
         char** p = new char* [info.enabledExtensionCount];
         info.ppEnabledExtensionNames = p;
+#ifdef _DEBUG
+        for (U32 i = 0; i < info.enabledExtensionCount - 1; i++) {
+#else
         for (U32 i = 0; i < info.enabledExtensionCount; i++) {
+#endif
             U32 address = memory->readd(address_ppEnabledExtensionNames + i * 4);
             U32 len = memory->strlen(address);
             p[i] = new char[len + 1];
             memory->memcpy(p[i], address, len + 1);
         }
+#ifdef _DEBUG
+        p[info.enabledExtensionCount - 1] = new char[strlen(VK_EXT_DEBUG_UTILS_EXTENSION_NAME) + 1];
+        strcpy(p[info.enabledExtensionCount - 1], VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#endif
     }
 }
 U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info);
 BoxedVkInstanceCreateInfo::~BoxedVkInstanceCreateInfo() {
     if (info.enabledExtensionCount) {
         for (U32 i = 0; i < info.enabledExtensionCount; i++) {
-            free((void*)info.ppEnabledExtensionNames[i]);
+            delete[] info.ppEnabledExtensionNames[i];
         }
         delete[] info.ppEnabledExtensionNames;
     }
@@ -1915,6 +1927,13 @@ static void boxeddrv_vkCreateInstance(CPU* cpu) {
      */
     create_info_host.read(cpu->memory, address_create_info);
     create_info_host.fixSurfaceExtension();
+
+#ifdef _DEBUG
+    create_info_host.info.enabledLayerCount = 1;
+    const char* names[1];
+    names[0] = "VK_LAYER_KHRONOS_validation";
+    create_info_host.info.ppEnabledLayerNames = names;
+#endif
 
     res = pvkCreateInstance(&create_info_host.info, NULL /* allocator */, &result);
     if (res == VK_SUCCESS) {
@@ -1953,6 +1972,7 @@ static void boxeddrv_vkDestroySwapchain(CPU* cpu) {
 static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
     BString layer_name = cpu->memory->readString(ARG1);
     uint32_t count = cpu->memory->readd(ARG2);
+    U32 propertiesAddress = ARG3;
     VkExtensionProperties* properties = nullptr;
     unsigned int i;
     VkResult res;
@@ -1965,7 +1985,7 @@ static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
         return;
     }
 
-    if (count) {
+    if (count && propertiesAddress) {
         properties = new VkExtensionProperties[count];
         cpu->memory->memcpy(properties, ARG3, count * sizeof(VkExtensionProperties));
     }
@@ -1977,24 +1997,22 @@ static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
      * for a particular extension.
      */
     res = pvkEnumerateInstanceExtensionProperties(nullptr, &count, properties);
-    if (!properties || res < 0) {
+    if (res < 0) {
         EAX = (U32)res;
         if (properties) {
             delete[] properties;
         }
         return;
-    }
-    for (i = 0; i < count; i++)
-    {
-        /* For now the only x11/MoltenVK extension we need to fixup. Long-term we may need an array. */
-        if (!strcmp(properties[i].extensionName, "VK_MVK_macos_surface") || !strcmp(properties[i].extensionName, "VK_EXT_metal_surface") || !strcmp(properties[i].extensionName, "VK_KHR_xlib_surface"))
-        {
-            snprintf(properties[i].extensionName, sizeof(properties[i].extensionName), "VK_KHR_win32_surface");
-            properties[i].specVersion = 6;
-        }
-    }
+    }    
     if (properties) {
-        cpu->memory->memcpy(ARG3, properties, count * sizeof(VkExtensionProperties));
+        for (i = 0; i < count; i++) {
+            /* For now the only x11/MoltenVK extension we need to fixup. Long-term we may need an array. */
+            if (!strcmp(properties[i].extensionName, "VK_MVK_macos_surface") || !strcmp(properties[i].extensionName, "VK_EXT_metal_surface") || !strcmp(properties[i].extensionName, "VK_KHR_xlib_surface")) {
+                snprintf(properties[i].extensionName, sizeof(properties[i].extensionName), "VK_KHR_win32_surface");
+                properties[i].specVersion = 6;
+            }
+        }
+        cpu->memory->memcpy(propertiesAddress, properties, count * sizeof(VkExtensionProperties));
         delete[] properties;
     }
     cpu->memory->writed(ARG2, count);

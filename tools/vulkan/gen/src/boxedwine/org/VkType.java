@@ -121,14 +121,26 @@ public class VkType {
         return result;
     }
 
+    public void copy(VkType from) {
+        name = from.name;
+        type = from.type;
+        category = from.category;
+        returnedonly = from.returnedonly;
+        parent = from.parent;
+        members = from.members;
+        needMarshalIn = from.needMarshalIn;
+        needMarshalOut = from.needMarshalOut;
+        sizeof = from.sizeof;
+    }
     public String name;
     public String type;
     public String category;
     public boolean returnedonly;
     public VkType parent;
-    public Vector<VkParam> members;
+    public Vector<VkParam> members = new Vector<>();
     public boolean needMarshalIn;
     public boolean needMarshalOut;
+    public String values;
 
     private int sizeof;
 }

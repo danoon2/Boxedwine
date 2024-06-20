@@ -8,9 +8,9 @@
 #include "vk/vulkan_core.h"
 #define BOXED_VK_EXTERN
 #include "vk_host.h"
+#include "vk_host_marshal.h"
 
 void initVulkan();
-void* getVulkanPtr(KMemory* memory, U32 address);
 U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info);
 BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);
 void freeVulkanPtr(KMemory* memory, U32 p);
@@ -45,4475 +45,6 @@ void unmapVkMemory(VkDeviceMemory memory);
 #define ARG24 cpu->peek32(24)
 #define ARG25 cpu->peek32(25)
 #define ARG26 cpu->peek32(26)
-#define ARG64(lo, hi) ((U64)lo | ((U64)hi << 32))
-void* vulkanGetNextPtr(KMemory* memory, U32 address);
-void vulkanWriteNextPtr(KMemory* memory, U32 address, const void* pNext);
-class MarshalVkPhysicalDeviceFeatures {
-public:
-    MarshalVkPhysicalDeviceFeatures() {}
-    VkPhysicalDeviceFeatures s;
-    MarshalVkPhysicalDeviceFeatures(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceFeatures* s) {
-        s->robustBufferAccess = (VkBool32)memory->readd(address);address+=4;
-        s->fullDrawIndexUint32 = (VkBool32)memory->readd(address);address+=4;
-        s->imageCubeArray = (VkBool32)memory->readd(address);address+=4;
-        s->independentBlend = (VkBool32)memory->readd(address);address+=4;
-        s->geometryShader = (VkBool32)memory->readd(address);address+=4;
-        s->tessellationShader = (VkBool32)memory->readd(address);address+=4;
-        s->sampleRateShading = (VkBool32)memory->readd(address);address+=4;
-        s->dualSrcBlend = (VkBool32)memory->readd(address);address+=4;
-        s->logicOp = (VkBool32)memory->readd(address);address+=4;
-        s->multiDrawIndirect = (VkBool32)memory->readd(address);address+=4;
-        s->drawIndirectFirstInstance = (VkBool32)memory->readd(address);address+=4;
-        s->depthClamp = (VkBool32)memory->readd(address);address+=4;
-        s->depthBiasClamp = (VkBool32)memory->readd(address);address+=4;
-        s->fillModeNonSolid = (VkBool32)memory->readd(address);address+=4;
-        s->depthBounds = (VkBool32)memory->readd(address);address+=4;
-        s->wideLines = (VkBool32)memory->readd(address);address+=4;
-        s->largePoints = (VkBool32)memory->readd(address);address+=4;
-        s->alphaToOne = (VkBool32)memory->readd(address);address+=4;
-        s->multiViewport = (VkBool32)memory->readd(address);address+=4;
-        s->samplerAnisotropy = (VkBool32)memory->readd(address);address+=4;
-        s->textureCompressionETC2 = (VkBool32)memory->readd(address);address+=4;
-        s->textureCompressionASTC_LDR = (VkBool32)memory->readd(address);address+=4;
-        s->textureCompressionBC = (VkBool32)memory->readd(address);address+=4;
-        s->occlusionQueryPrecise = (VkBool32)memory->readd(address);address+=4;
-        s->pipelineStatisticsQuery = (VkBool32)memory->readd(address);address+=4;
-        s->vertexPipelineStoresAndAtomics = (VkBool32)memory->readd(address);address+=4;
-        s->fragmentStoresAndAtomics = (VkBool32)memory->readd(address);address+=4;
-        s->shaderTessellationAndGeometryPointSize = (VkBool32)memory->readd(address);address+=4;
-        s->shaderImageGatherExtended = (VkBool32)memory->readd(address);address+=4;
-        s->shaderStorageImageExtendedFormats = (VkBool32)memory->readd(address);address+=4;
-        s->shaderStorageImageMultisample = (VkBool32)memory->readd(address);address+=4;
-        s->shaderStorageImageReadWithoutFormat = (VkBool32)memory->readd(address);address+=4;
-        s->shaderStorageImageWriteWithoutFormat = (VkBool32)memory->readd(address);address+=4;
-        s->shaderUniformBufferArrayDynamicIndexing = (VkBool32)memory->readd(address);address+=4;
-        s->shaderSampledImageArrayDynamicIndexing = (VkBool32)memory->readd(address);address+=4;
-        s->shaderStorageBufferArrayDynamicIndexing = (VkBool32)memory->readd(address);address+=4;
-        s->shaderStorageImageArrayDynamicIndexing = (VkBool32)memory->readd(address);address+=4;
-        s->shaderClipDistance = (VkBool32)memory->readd(address);address+=4;
-        s->shaderCullDistance = (VkBool32)memory->readd(address);address+=4;
-        s->shaderFloat64 = (VkBool32)memory->readd(address);address+=4;
-        s->shaderInt64 = (VkBool32)memory->readd(address);address+=4;
-        s->shaderInt16 = (VkBool32)memory->readd(address);address+=4;
-        s->shaderResourceResidency = (VkBool32)memory->readd(address);address+=4;
-        s->shaderResourceMinLod = (VkBool32)memory->readd(address);address+=4;
-        s->sparseBinding = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidencyBuffer = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidencyImage2D = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidencyImage3D = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidency2Samples = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidency4Samples = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidency8Samples = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidency16Samples = (VkBool32)memory->readd(address);address+=4;
-        s->sparseResidencyAliased = (VkBool32)memory->readd(address);address+=4;
-        s->variableMultisampleRate = (VkBool32)memory->readd(address);address+=4;
-        s->inheritedQueries = (VkBool32)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceLimits {
-public:
-    MarshalVkPhysicalDeviceLimits() {}
-    VkPhysicalDeviceLimits s;
-    MarshalVkPhysicalDeviceLimits(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceLimits* s) {
-        s->maxImageDimension1D = (uint32_t)memory->readd(address);address+=4;
-        s->maxImageDimension2D = (uint32_t)memory->readd(address);address+=4;
-        s->maxImageDimension3D = (uint32_t)memory->readd(address);address+=4;
-        s->maxImageDimensionCube = (uint32_t)memory->readd(address);address+=4;
-        s->maxImageArrayLayers = (uint32_t)memory->readd(address);address+=4;
-        s->maxTexelBufferElements = (uint32_t)memory->readd(address);address+=4;
-        s->maxUniformBufferRange = (uint32_t)memory->readd(address);address+=4;
-        s->maxStorageBufferRange = (uint32_t)memory->readd(address);address+=4;
-        s->maxPushConstantsSize = (uint32_t)memory->readd(address);address+=4;
-        s->maxMemoryAllocationCount = (uint32_t)memory->readd(address);address+=4;
-        s->maxSamplerAllocationCount = (uint32_t)memory->readd(address);address+=4;
-        s->bufferImageGranularity = (VkDeviceSize)memory->readq(address);address+=8;
-        s->sparseAddressSpaceSize = (VkDeviceSize)memory->readq(address);address+=8;
-        s->maxBoundDescriptorSets = (uint32_t)memory->readd(address);address+=4;
-        s->maxPerStageDescriptorSamplers = (uint32_t)memory->readd(address);address+=4;
-        s->maxPerStageDescriptorUniformBuffers = (uint32_t)memory->readd(address);address+=4;
-        s->maxPerStageDescriptorStorageBuffers = (uint32_t)memory->readd(address);address+=4;
-        s->maxPerStageDescriptorSampledImages = (uint32_t)memory->readd(address);address+=4;
-        s->maxPerStageDescriptorStorageImages = (uint32_t)memory->readd(address);address+=4;
-        s->maxPerStageDescriptorInputAttachments = (uint32_t)memory->readd(address);address+=4;
-        s->maxPerStageResources = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetSamplers = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetUniformBuffers = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetUniformBuffersDynamic = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetStorageBuffers = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetStorageBuffersDynamic = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetSampledImages = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetStorageImages = (uint32_t)memory->readd(address);address+=4;
-        s->maxDescriptorSetInputAttachments = (uint32_t)memory->readd(address);address+=4;
-        s->maxVertexInputAttributes = (uint32_t)memory->readd(address);address+=4;
-        s->maxVertexInputBindings = (uint32_t)memory->readd(address);address+=4;
-        s->maxVertexInputAttributeOffset = (uint32_t)memory->readd(address);address+=4;
-        s->maxVertexInputBindingStride = (uint32_t)memory->readd(address);address+=4;
-        s->maxVertexOutputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationGenerationLevel = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationPatchSize = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationControlPerVertexInputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationControlPerVertexOutputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationControlPerPatchOutputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationControlTotalOutputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationEvaluationInputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxTessellationEvaluationOutputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxGeometryShaderInvocations = (uint32_t)memory->readd(address);address+=4;
-        s->maxGeometryInputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxGeometryOutputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxGeometryOutputVertices = (uint32_t)memory->readd(address);address+=4;
-        s->maxGeometryTotalOutputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxFragmentInputComponents = (uint32_t)memory->readd(address);address+=4;
-        s->maxFragmentOutputAttachments = (uint32_t)memory->readd(address);address+=4;
-        s->maxFragmentDualSrcAttachments = (uint32_t)memory->readd(address);address+=4;
-        s->maxFragmentCombinedOutputResources = (uint32_t)memory->readd(address);address+=4;
-        s->maxComputeSharedMemorySize = (uint32_t)memory->readd(address);address+=4;
-        memory->memcpy(&s->maxComputeWorkGroupCount, address, 3);address+=3;
-        s->maxComputeWorkGroupInvocations = (uint32_t)memory->readd(address);address+=4;
-        memory->memcpy(&s->maxComputeWorkGroupSize, address, 3);address+=3;
-        s->subPixelPrecisionBits = (uint32_t)memory->readd(address);address+=4;
-        s->subTexelPrecisionBits = (uint32_t)memory->readd(address);address+=4;
-        s->mipmapPrecisionBits = (uint32_t)memory->readd(address);address+=4;
-        s->maxDrawIndexedIndexValue = (uint32_t)memory->readd(address);address+=4;
-        s->maxDrawIndirectCount = (uint32_t)memory->readd(address);address+=4;
-        s->maxSamplerLodBias = (float)memory->readd(address);address+=4;
-        s->maxSamplerAnisotropy = (float)memory->readd(address);address+=4;
-        s->maxViewports = (uint32_t)memory->readd(address);address+=4;
-        memory->memcpy(&s->maxViewportDimensions, address, 2);address+=2;
-        memory->memcpy(&s->viewportBoundsRange, address, 2);address+=2;
-        s->viewportSubPixelBits = (uint32_t)memory->readd(address);address+=4;
-        s->minMemoryMapAlignment = (size_t)memory->readd(address);address+=4;
-        s->minTexelBufferOffsetAlignment = (VkDeviceSize)memory->readq(address);address+=8;
-        s->minUniformBufferOffsetAlignment = (VkDeviceSize)memory->readq(address);address+=8;
-        s->minStorageBufferOffsetAlignment = (VkDeviceSize)memory->readq(address);address+=8;
-        s->minTexelOffset = (int32_t)memory->readd(address);address+=4;
-        s->maxTexelOffset = (uint32_t)memory->readd(address);address+=4;
-        s->minTexelGatherOffset = (int32_t)memory->readd(address);address+=4;
-        s->maxTexelGatherOffset = (uint32_t)memory->readd(address);address+=4;
-        s->minInterpolationOffset = (float)memory->readd(address);address+=4;
-        s->maxInterpolationOffset = (float)memory->readd(address);address+=4;
-        s->subPixelInterpolationOffsetBits = (uint32_t)memory->readd(address);address+=4;
-        s->maxFramebufferWidth = (uint32_t)memory->readd(address);address+=4;
-        s->maxFramebufferHeight = (uint32_t)memory->readd(address);address+=4;
-        s->maxFramebufferLayers = (uint32_t)memory->readd(address);address+=4;
-        s->framebufferColorSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->framebufferDepthSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->framebufferStencilSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->framebufferNoAttachmentsSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->maxColorAttachments = (uint32_t)memory->readd(address);address+=4;
-        s->sampledImageColorSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->sampledImageIntegerSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->sampledImageDepthSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->sampledImageStencilSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->storageImageSampleCounts = (VkSampleCountFlags)memory->readd(address);address+=4;
-        s->maxSampleMaskWords = (uint32_t)memory->readd(address);address+=4;
-        s->timestampComputeAndGraphics = (VkBool32)memory->readd(address);address+=4;
-        s->timestampPeriod = (float)memory->readd(address);address+=4;
-        s->maxClipDistances = (uint32_t)memory->readd(address);address+=4;
-        s->maxCullDistances = (uint32_t)memory->readd(address);address+=4;
-        s->maxCombinedClipAndCullDistances = (uint32_t)memory->readd(address);address+=4;
-        s->discreteQueuePriorities = (uint32_t)memory->readd(address);address+=4;
-        memory->memcpy(&s->pointSizeRange, address, 2);address+=2;
-        memory->memcpy(&s->lineWidthRange, address, 2);address+=2;
-        s->pointSizeGranularity = (float)memory->readd(address);address+=4;
-        s->lineWidthGranularity = (float)memory->readd(address);address+=4;
-        s->strictLines = (VkBool32)memory->readd(address);address+=4;
-        s->standardSampleLocations = (VkBool32)memory->readd(address);address+=4;
-        s->optimalBufferCopyOffsetAlignment = (VkDeviceSize)memory->readq(address);address+=8;
-        s->optimalBufferCopyRowPitchAlignment = (VkDeviceSize)memory->readq(address);address+=8;
-        s->nonCoherentAtomSize = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkComponentMapping {
-public:
-    MarshalVkComponentMapping() {}
-    VkComponentMapping s;
-    MarshalVkComponentMapping(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkComponentMapping* s) {
-        s->r = (VkComponentSwizzle)memory->readd(address);address+=4;
-        s->g = (VkComponentSwizzle)memory->readd(address);address+=4;
-        s->b = (VkComponentSwizzle)memory->readd(address);address+=4;
-        s->a = (VkComponentSwizzle)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceProperties {
-public:
-    MarshalVkPhysicalDeviceProperties() {}
-    VkPhysicalDeviceProperties s;
-    MarshalVkPhysicalDeviceProperties(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceProperties* s) {
-        s->apiVersion = (uint32_t)memory->readd(address);address+=4;
-        s->driverVersion = (uint32_t)memory->readd(address);address+=4;
-        s->vendorID = (uint32_t)memory->readd(address);address+=4;
-        s->deviceID = (uint32_t)memory->readd(address);address+=4;
-        s->deviceType = (VkPhysicalDeviceType)memory->readd(address);address+=4;
-        memory->memcpy(&s->deviceName, address, 256);address+=256;
-        memory->memcpy(&s->pipelineCacheUUID, address, 16);address+=16;
-        MarshalVkPhysicalDeviceLimits::read(memory, address, &s->limits); address+=488;
-        memory->memcpy(&s->sparseProperties, address, 20);address+=20;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceProperties* s) {
-        memory->writed(address, s->apiVersion);address+=4;
-        memory->writed(address, s->driverVersion);address+=4;
-        memory->writed(address, s->vendorID);address+=4;
-        memory->writed(address, s->deviceID);address+=4;
-        memory->writed(address, s->deviceType);address+=4;
-        memory->memcpy(address, s->deviceName, 256); address+=256;
-        memory->memcpy(address, s->pipelineCacheUUID, 16); address+=16;
-        memory->memcpy(address, &s->limits, 488); address+=488;
-        memory->memcpy(address, &s->sparseProperties, 20); address+=20;
-    }
-};
-
-class MarshalVkApplicationInfo {
-public:
-    MarshalVkApplicationInfo() {}
-    VkApplicationInfo s;
-    MarshalVkApplicationInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkApplicationInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pApplicationName = NULL;
-        } else {
-            s->pApplicationName = new char[0 * sizeof(char)];
-            memory->memcpy((char*)s->pApplicationName, paramAddress, 0 * sizeof(char));
-        }
-        s->applicationVersion = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pEngineName = NULL;
-        } else {
-            s->pEngineName = new char[0 * sizeof(char)];
-            memory->memcpy((char*)s->pEngineName, paramAddress, 0 * sizeof(char));
-        }
-        s->engineVersion = (uint32_t)memory->readd(address);address+=4;
-        s->apiVersion = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkDeviceQueueCreateInfo {
-public:
-    MarshalVkDeviceQueueCreateInfo() {}
-    VkDeviceQueueCreateInfo s;
-    MarshalVkDeviceQueueCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDeviceQueueCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkDeviceQueueCreateFlags)memory->readd(address);address+=4;
-        s->queueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->queueCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pQueuePriorities = NULL;
-        } else {
-            s->pQueuePriorities = new float[s->queueCount * sizeof(float)];
-            memory->memcpy((float*)s->pQueuePriorities, paramAddress, s->queueCount * sizeof(float));
-        }
-    }
-};
-
-class MarshalVkDeviceCreateInfo {
-public:
-    MarshalVkDeviceCreateInfo() {}
-    VkDeviceCreateInfo s;
-    MarshalVkDeviceCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDeviceCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkDeviceCreateFlags)memory->readd(address);address+=4;
-        s->queueCreateInfoCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pQueueCreateInfos = NULL;
-        } else {
-            VkDeviceQueueCreateInfo* pQueueCreateInfos = new VkDeviceQueueCreateInfo[s->queueCreateInfoCount];
-            for (U32 i = 0; i < s->queueCreateInfoCount; i++) {
-                MarshalVkDeviceQueueCreateInfo::read(memory, paramAddress, &pQueueCreateInfos[i]);
-            }
-            s->pQueueCreateInfos = pQueueCreateInfos;
-        }
-        s->enabledLayerCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->ppEnabledLayerNames = NULL;
-        } else {
-            char** ppEnabledLayerNames = new char*[s->enabledLayerCount];
-            for (int i=0;i<(int)s->enabledLayerCount;i++) {
-                U32 size = memory->strlen(paramAddress + i*4)+1;
-                ppEnabledLayerNames[i] = new char[size];
-                memory->memcpy(ppEnabledLayerNames[i], paramAddress + i*4, size);
-            }
-        }
-        s->enabledExtensionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->ppEnabledExtensionNames = NULL;
-        } else {
-            char** ppEnabledExtensionNames = new char*[s->enabledExtensionCount];
-            for (int i=0;i<(int)s->enabledExtensionCount;i++) {
-                U32 size = memory->strlen(paramAddress + i*4)+1;
-                ppEnabledExtensionNames[i] = new char[size];
-                memory->memcpy(ppEnabledExtensionNames[i], paramAddress + i*4, size);
-            }
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pEnabledFeatures = NULL;
-        } else {
-            VkPhysicalDeviceFeatures* pEnabledFeatures = new VkPhysicalDeviceFeatures();
-            MarshalVkPhysicalDeviceFeatures::read(memory, paramAddress, pEnabledFeatures);
-            s->pEnabledFeatures = pEnabledFeatures;
-        }
-    }
-};
-
-class MarshalVkInstanceCreateInfo {
-public:
-    MarshalVkInstanceCreateInfo() {}
-    VkInstanceCreateInfo s;
-    MarshalVkInstanceCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkInstanceCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkInstanceCreateFlags)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pApplicationInfo = NULL;
-        } else {
-            VkApplicationInfo* pApplicationInfo = new VkApplicationInfo();
-            MarshalVkApplicationInfo::read(memory, paramAddress, pApplicationInfo);
-            s->pApplicationInfo = pApplicationInfo;
-        }
-        s->enabledLayerCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->ppEnabledLayerNames = NULL;
-        } else {
-            char** ppEnabledLayerNames = new char*[s->enabledLayerCount];
-            for (int i=0;i<(int)s->enabledLayerCount;i++) {
-                U32 size = memory->strlen(paramAddress + i*4)+1;
-                ppEnabledLayerNames[i] = new char[size];
-                memory->memcpy(ppEnabledLayerNames[i], paramAddress + i*4, size);
-            }
-        }
-        s->enabledExtensionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->ppEnabledExtensionNames = NULL;
-        } else {
-            char** ppEnabledExtensionNames = new char*[s->enabledExtensionCount];
-            for (int i=0;i<(int)s->enabledExtensionCount;i++) {
-                U32 size = memory->strlen(paramAddress + i*4)+1;
-                ppEnabledExtensionNames[i] = new char[size];
-                memory->memcpy(ppEnabledExtensionNames[i], paramAddress + i*4, size);
-            }
-        }
-    }
-};
-
-class MarshalVkMemoryAllocateInfo {
-public:
-    MarshalVkMemoryAllocateInfo() {}
-    VkMemoryAllocateInfo s;
-    MarshalVkMemoryAllocateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkMemoryAllocateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->allocationSize = (VkDeviceSize)memory->readq(address);address+=8;
-        s->memoryTypeIndex = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkMappedMemoryRange {
-public:
-    MarshalVkMappedMemoryRange() {}
-    VkMappedMemoryRange s;
-    MarshalVkMappedMemoryRange(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkMappedMemoryRange* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->memory = (VkDeviceMemory)memory->readq(address);address+=8;
-        s->offset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->size = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkDescriptorImageInfo {
-public:
-    MarshalVkDescriptorImageInfo() {}
-    VkDescriptorImageInfo s;
-    MarshalVkDescriptorImageInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorImageInfo* s) {
-        s->sampler = (VkSampler)memory->readq(address);address+=8;
-        s->imageView = (VkImageView)memory->readq(address);address+=8;
-        s->imageLayout = (VkImageLayout)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkWriteDescriptorSet {
-public:
-    MarshalVkWriteDescriptorSet() {}
-    VkWriteDescriptorSet s;
-    MarshalVkWriteDescriptorSet(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkWriteDescriptorSet* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->dstSet = (VkDescriptorSet)memory->readq(address);address+=8;
-        s->dstBinding = (uint32_t)memory->readd(address);address+=4;
-        s->dstArrayElement = (uint32_t)memory->readd(address);address+=4;
-        s->descriptorCount = (uint32_t)memory->readd(address);address+=4;
-        s->descriptorType = (VkDescriptorType)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pImageInfo = NULL;
-        } else {
-            VkDescriptorImageInfo* pImageInfo = new VkDescriptorImageInfo[s->descriptorCount];
-            for (U32 i = 0; i < s->descriptorCount; i++) {
-                MarshalVkDescriptorImageInfo::read(memory, paramAddress, &pImageInfo[i]);
-            }
-            s->pImageInfo = pImageInfo;
-        }
-        memory->memcpy(&s->pBufferInfo, address, 24);address+=24;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pTexelBufferView = NULL;
-        } else {
-            s->pTexelBufferView = new VkBufferView[s->descriptorCount * sizeof(VkBufferView)];
-            memory->memcpy((VkBufferView*)s->pTexelBufferView, paramAddress, s->descriptorCount * sizeof(VkBufferView));
-        }
-    }
-};
-
-class MarshalVkCopyDescriptorSet {
-public:
-    MarshalVkCopyDescriptorSet() {}
-    VkCopyDescriptorSet s;
-    MarshalVkCopyDescriptorSet(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCopyDescriptorSet* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcSet = (VkDescriptorSet)memory->readq(address);address+=8;
-        s->srcBinding = (uint32_t)memory->readd(address);address+=4;
-        s->srcArrayElement = (uint32_t)memory->readd(address);address+=4;
-        s->dstSet = (VkDescriptorSet)memory->readq(address);address+=8;
-        s->dstBinding = (uint32_t)memory->readd(address);address+=4;
-        s->dstArrayElement = (uint32_t)memory->readd(address);address+=4;
-        s->descriptorCount = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkBufferCreateInfo {
-public:
-    MarshalVkBufferCreateInfo() {}
-    VkBufferCreateInfo s;
-    MarshalVkBufferCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkBufferCreateFlags)memory->readd(address);address+=4;
-        s->size = (VkDeviceSize)memory->readq(address);address+=8;
-        s->usage = (VkBufferUsageFlags)memory->readd(address);address+=4;
-        s->sharingMode = (VkSharingMode)memory->readd(address);address+=4;
-        s->queueFamilyIndexCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pQueueFamilyIndices = NULL;
-        } else {
-            s->pQueueFamilyIndices = new uint32_t[s->queueFamilyIndexCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, s->queueFamilyIndexCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkBufferViewCreateInfo {
-public:
-    MarshalVkBufferViewCreateInfo() {}
-    VkBufferViewCreateInfo s;
-    MarshalVkBufferViewCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferViewCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkBufferViewCreateFlags)memory->readd(address);address+=4;
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->offset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->range = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkMemoryBarrier {
-public:
-    MarshalVkMemoryBarrier() {}
-    VkMemoryBarrier s;
-    MarshalVkMemoryBarrier(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkMemoryBarrier* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-        s->dstAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkBufferMemoryBarrier {
-public:
-    MarshalVkBufferMemoryBarrier() {}
-    VkBufferMemoryBarrier s;
-    MarshalVkBufferMemoryBarrier(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferMemoryBarrier* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-        s->dstAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-        s->srcQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->dstQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-        s->offset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->size = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkImageMemoryBarrier {
-public:
-    MarshalVkImageMemoryBarrier() {}
-    VkImageMemoryBarrier s;
-    MarshalVkImageMemoryBarrier(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageMemoryBarrier* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-        s->dstAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-        s->oldLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->newLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->srcQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->dstQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->image = (VkImage)memory->readq(address);address+=8;
-        memory->memcpy(&s->subresourceRange, address, 20);address+=20;
-    }
-};
-
-class MarshalVkImageCreateInfo {
-public:
-    MarshalVkImageCreateInfo() {}
-    VkImageCreateInfo s;
-    MarshalVkImageCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkImageCreateFlags)memory->readd(address);address+=4;
-        s->imageType = (VkImageType)memory->readd(address);address+=4;
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        memory->memcpy(&s->extent, address, 12);address+=12;
-        s->mipLevels = (uint32_t)memory->readd(address);address+=4;
-        s->arrayLayers = (uint32_t)memory->readd(address);address+=4;
-        s->samples = (VkSampleCountFlagBits)memory->readd(address);address+=4;
-        s->tiling = (VkImageTiling)memory->readd(address);address+=4;
-        s->usage = (VkImageUsageFlags)memory->readd(address);address+=4;
-        s->sharingMode = (VkSharingMode)memory->readd(address);address+=4;
-        s->queueFamilyIndexCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pQueueFamilyIndices = NULL;
-        } else {
-            s->pQueueFamilyIndices = new uint32_t[s->queueFamilyIndexCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, s->queueFamilyIndexCount * sizeof(uint32_t));
-        }
-        s->initialLayout = (VkImageLayout)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkImageViewCreateInfo {
-public:
-    MarshalVkImageViewCreateInfo() {}
-    VkImageViewCreateInfo s;
-    MarshalVkImageViewCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageViewCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkImageViewCreateFlags)memory->readd(address);address+=4;
-        s->image = (VkImage)memory->readq(address);address+=8;
-        s->viewType = (VkImageViewType)memory->readd(address);address+=4;
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        MarshalVkComponentMapping::read(memory, address, &s->components); address+=16;
-        memory->memcpy(&s->subresourceRange, address, 20);address+=20;
-    }
-};
-
-class MarshalVkSparseBufferMemoryBindInfo {
-public:
-    MarshalVkSparseBufferMemoryBindInfo() {}
-    VkSparseBufferMemoryBindInfo s;
-    MarshalVkSparseBufferMemoryBindInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSparseBufferMemoryBindInfo* s) {
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-        s->bindCount = (uint32_t)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pBinds = NULL;
-        } else {
-            s->pBinds = new VkSparseMemoryBind[s->bindCount * sizeof(VkSparseMemoryBind)];
-            memory->memcpy((VkSparseMemoryBind*)s->pBinds, paramAddress, s->bindCount * sizeof(VkSparseMemoryBind));
-        }
-    }
-};
-
-class MarshalVkSparseImageOpaqueMemoryBindInfo {
-public:
-    MarshalVkSparseImageOpaqueMemoryBindInfo() {}
-    VkSparseImageOpaqueMemoryBindInfo s;
-    MarshalVkSparseImageOpaqueMemoryBindInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSparseImageOpaqueMemoryBindInfo* s) {
-        s->image = (VkImage)memory->readq(address);address+=8;
-        s->bindCount = (uint32_t)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pBinds = NULL;
-        } else {
-            s->pBinds = new VkSparseMemoryBind[s->bindCount * sizeof(VkSparseMemoryBind)];
-            memory->memcpy((VkSparseMemoryBind*)s->pBinds, paramAddress, s->bindCount * sizeof(VkSparseMemoryBind));
-        }
-    }
-};
-
-class MarshalVkSparseImageMemoryBindInfo {
-public:
-    MarshalVkSparseImageMemoryBindInfo() {}
-    VkSparseImageMemoryBindInfo s;
-    MarshalVkSparseImageMemoryBindInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSparseImageMemoryBindInfo* s) {
-        s->image = (VkImage)memory->readq(address);address+=8;
-        s->bindCount = (uint32_t)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pBinds = NULL;
-        } else {
-            s->pBinds = new VkSparseImageMemoryBind[s->bindCount * sizeof(VkSparseImageMemoryBind)];
-            memory->memcpy((VkSparseImageMemoryBind*)s->pBinds, paramAddress, s->bindCount * sizeof(VkSparseImageMemoryBind));
-        }
-    }
-};
-
-class MarshalVkBindSparseInfo {
-public:
-    MarshalVkBindSparseInfo() {}
-    VkBindSparseInfo s;
-    MarshalVkBindSparseInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBindSparseInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->waitSemaphoreCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pWaitSemaphores = NULL;
-        } else {
-            s->pWaitSemaphores = new VkSemaphore[s->waitSemaphoreCount * sizeof(VkSemaphore)];
-            memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, s->waitSemaphoreCount * sizeof(VkSemaphore));
-        }
-        s->bufferBindCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pBufferBinds = NULL;
-        } else {
-            VkSparseBufferMemoryBindInfo* pBufferBinds = new VkSparseBufferMemoryBindInfo[s->bufferBindCount];
-            for (U32 i = 0; i < s->bufferBindCount; i++) {
-                MarshalVkSparseBufferMemoryBindInfo::read(memory, paramAddress, &pBufferBinds[i]);
-            }
-            s->pBufferBinds = pBufferBinds;
-        }
-        s->imageOpaqueBindCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pImageOpaqueBinds = NULL;
-        } else {
-            VkSparseImageOpaqueMemoryBindInfo* pImageOpaqueBinds = new VkSparseImageOpaqueMemoryBindInfo[s->imageOpaqueBindCount];
-            for (U32 i = 0; i < s->imageOpaqueBindCount; i++) {
-                MarshalVkSparseImageOpaqueMemoryBindInfo::read(memory, paramAddress, &pImageOpaqueBinds[i]);
-            }
-            s->pImageOpaqueBinds = pImageOpaqueBinds;
-        }
-        s->imageBindCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pImageBinds = NULL;
-        } else {
-            VkSparseImageMemoryBindInfo* pImageBinds = new VkSparseImageMemoryBindInfo[s->imageBindCount];
-            for (U32 i = 0; i < s->imageBindCount; i++) {
-                MarshalVkSparseImageMemoryBindInfo::read(memory, paramAddress, &pImageBinds[i]);
-            }
-            s->pImageBinds = pImageBinds;
-        }
-        s->signalSemaphoreCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSignalSemaphores = NULL;
-        } else {
-            s->pSignalSemaphores = new VkSemaphore[s->signalSemaphoreCount * sizeof(VkSemaphore)];
-            memory->memcpy((VkSemaphore*)s->pSignalSemaphores, paramAddress, s->signalSemaphoreCount * sizeof(VkSemaphore));
-        }
-    }
-};
-
-class MarshalVkShaderModuleCreateInfo {
-public:
-    MarshalVkShaderModuleCreateInfo() {}
-    VkShaderModuleCreateInfo s;
-    MarshalVkShaderModuleCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkShaderModuleCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkShaderModuleCreateFlags)memory->readd(address);address+=4;
-        s->codeSize = (size_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pCode = NULL;
-        } else {
-            s->pCode = new uint32_t[s->codeSize / 4 * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pCode, paramAddress, s->codeSize / 4 * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkDescriptorSetLayoutBinding {
-public:
-    MarshalVkDescriptorSetLayoutBinding() {}
-    VkDescriptorSetLayoutBinding s;
-    MarshalVkDescriptorSetLayoutBinding(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorSetLayoutBinding* s) {
-        s->binding = (uint32_t)memory->readd(address);address+=4;
-        s->descriptorType = (VkDescriptorType)memory->readd(address);address+=4;
-        s->descriptorCount = (uint32_t)memory->readd(address);address+=4;
-        s->stageFlags = (VkShaderStageFlags)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pImmutableSamplers = NULL;
-        } else {
-            s->pImmutableSamplers = new VkSampler[s->descriptorCount * sizeof(VkSampler)];
-            memory->memcpy((VkSampler*)s->pImmutableSamplers, paramAddress, s->descriptorCount * sizeof(VkSampler));
-        }
-    }
-};
-
-class MarshalVkDescriptorSetLayoutCreateInfo {
-public:
-    MarshalVkDescriptorSetLayoutCreateInfo() {}
-    VkDescriptorSetLayoutCreateInfo s;
-    MarshalVkDescriptorSetLayoutCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorSetLayoutCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkDescriptorSetLayoutCreateFlags)memory->readd(address);address+=4;
-        s->bindingCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pBindings = NULL;
-        } else {
-            VkDescriptorSetLayoutBinding* pBindings = new VkDescriptorSetLayoutBinding[s->bindingCount];
-            for (U32 i = 0; i < s->bindingCount; i++) {
-                MarshalVkDescriptorSetLayoutBinding::read(memory, paramAddress, &pBindings[i]);
-            }
-            s->pBindings = pBindings;
-        }
-    }
-};
-
-class MarshalVkDescriptorPoolSize {
-public:
-    MarshalVkDescriptorPoolSize() {}
-    VkDescriptorPoolSize s;
-    MarshalVkDescriptorPoolSize(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorPoolSize* s) {
-        s->type = (VkDescriptorType)memory->readd(address);address+=4;
-        s->descriptorCount = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkDescriptorPoolCreateInfo {
-public:
-    MarshalVkDescriptorPoolCreateInfo() {}
-    VkDescriptorPoolCreateInfo s;
-    MarshalVkDescriptorPoolCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorPoolCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkDescriptorPoolCreateFlags)memory->readd(address);address+=4;
-        s->maxSets = (uint32_t)memory->readd(address);address+=4;
-        s->poolSizeCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pPoolSizes = NULL;
-        } else {
-            VkDescriptorPoolSize* pPoolSizes = new VkDescriptorPoolSize[s->poolSizeCount];
-            for (U32 i = 0; i < s->poolSizeCount; i++) {
-                MarshalVkDescriptorPoolSize::read(memory, paramAddress, &pPoolSizes[i]);
-            }
-            s->pPoolSizes = pPoolSizes;
-        }
-    }
-};
-
-class MarshalVkDescriptorSetAllocateInfo {
-public:
-    MarshalVkDescriptorSetAllocateInfo() {}
-    VkDescriptorSetAllocateInfo s;
-    MarshalVkDescriptorSetAllocateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorSetAllocateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->descriptorPool = (VkDescriptorPool)memory->readq(address);address+=8;
-        s->descriptorSetCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSetLayouts = NULL;
-        } else {
-            s->pSetLayouts = new VkDescriptorSetLayout[s->descriptorSetCount * sizeof(VkDescriptorSetLayout)];
-            memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, s->descriptorSetCount * sizeof(VkDescriptorSetLayout));
-        }
-    }
-};
-
-class MarshalVkSpecializationMapEntry {
-public:
-    MarshalVkSpecializationMapEntry() {}
-    VkSpecializationMapEntry s;
-    MarshalVkSpecializationMapEntry(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSpecializationMapEntry* s) {
-        s->constantID = (uint32_t)memory->readd(address);address+=4;
-        s->offset = (uint32_t)memory->readd(address);address+=4;
-        s->size = (size_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSpecializationInfo {
-public:
-    MarshalVkSpecializationInfo() {}
-    VkSpecializationInfo s;
-    MarshalVkSpecializationInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSpecializationInfo* s) {
-        s->mapEntryCount = (uint32_t)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pMapEntries = NULL;
-        } else {
-            VkSpecializationMapEntry* pMapEntries = new VkSpecializationMapEntry[s->mapEntryCount];
-            for (U32 i = 0; i < s->mapEntryCount; i++) {
-                MarshalVkSpecializationMapEntry::read(memory, paramAddress, &pMapEntries[i]);
-            }
-            s->pMapEntries = pMapEntries;
-        }
-        s->dataSize = (size_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pData = NULL;
-        } else {
-            s->pData = new char[s->dataSize];
-            memory->memcpy((void*)s->pData, paramAddress, s->dataSize);
-        }
-    }
-};
-
-class MarshalVkPipelineShaderStageCreateInfo {
-public:
-    MarshalVkPipelineShaderStageCreateInfo() {}
-    VkPipelineShaderStageCreateInfo s;
-    MarshalVkPipelineShaderStageCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineShaderStageCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineShaderStageCreateFlags)memory->readd(address);address+=4;
-        s->stage = (VkShaderStageFlagBits)memory->readd(address);address+=4;
-        s->module = (VkShaderModule)memory->readq(address);address+=8;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pName = NULL;
-        } else {
-            s->pName = new char[0 * sizeof(char)];
-            memory->memcpy((char*)s->pName, paramAddress, 0 * sizeof(char));
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSpecializationInfo = NULL;
-        } else {
-            VkSpecializationInfo* pSpecializationInfo = new VkSpecializationInfo();
-            MarshalVkSpecializationInfo::read(memory, paramAddress, pSpecializationInfo);
-            s->pSpecializationInfo = pSpecializationInfo;
-        }
-    }
-};
-
-class MarshalVkComputePipelineCreateInfo {
-public:
-    MarshalVkComputePipelineCreateInfo() {}
-    VkComputePipelineCreateInfo s;
-    MarshalVkComputePipelineCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkComputePipelineCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineCreateFlags)memory->readd(address);address+=4;
-        MarshalVkPipelineShaderStageCreateInfo::read(memory, address, &s->stage); address+=32;
-        s->layout = (VkPipelineLayout)memory->readq(address);address+=8;
-        s->basePipelineHandle = (VkPipeline)memory->readq(address);address+=8;
-        s->basePipelineIndex = (int32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkVertexInputBindingDescription {
-public:
-    MarshalVkVertexInputBindingDescription() {}
-    VkVertexInputBindingDescription s;
-    MarshalVkVertexInputBindingDescription(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkVertexInputBindingDescription* s) {
-        s->binding = (uint32_t)memory->readd(address);address+=4;
-        s->stride = (uint32_t)memory->readd(address);address+=4;
-        s->inputRate = (VkVertexInputRate)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkVertexInputAttributeDescription {
-public:
-    MarshalVkVertexInputAttributeDescription() {}
-    VkVertexInputAttributeDescription s;
-    MarshalVkVertexInputAttributeDescription(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkVertexInputAttributeDescription* s) {
-        s->location = (uint32_t)memory->readd(address);address+=4;
-        s->binding = (uint32_t)memory->readd(address);address+=4;
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->offset = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineVertexInputStateCreateInfo {
-public:
-    MarshalVkPipelineVertexInputStateCreateInfo() {}
-    VkPipelineVertexInputStateCreateInfo s;
-    MarshalVkPipelineVertexInputStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineVertexInputStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineVertexInputStateCreateFlags)memory->readd(address);address+=4;
-        s->vertexBindingDescriptionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pVertexBindingDescriptions = NULL;
-        } else {
-            VkVertexInputBindingDescription* pVertexBindingDescriptions = new VkVertexInputBindingDescription[s->vertexBindingDescriptionCount];
-            for (U32 i = 0; i < s->vertexBindingDescriptionCount; i++) {
-                MarshalVkVertexInputBindingDescription::read(memory, paramAddress, &pVertexBindingDescriptions[i]);
-            }
-            s->pVertexBindingDescriptions = pVertexBindingDescriptions;
-        }
-        s->vertexAttributeDescriptionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pVertexAttributeDescriptions = NULL;
-        } else {
-            VkVertexInputAttributeDescription* pVertexAttributeDescriptions = new VkVertexInputAttributeDescription[s->vertexAttributeDescriptionCount];
-            for (U32 i = 0; i < s->vertexAttributeDescriptionCount; i++) {
-                MarshalVkVertexInputAttributeDescription::read(memory, paramAddress, &pVertexAttributeDescriptions[i]);
-            }
-            s->pVertexAttributeDescriptions = pVertexAttributeDescriptions;
-        }
-    }
-};
-
-class MarshalVkPipelineInputAssemblyStateCreateInfo {
-public:
-    MarshalVkPipelineInputAssemblyStateCreateInfo() {}
-    VkPipelineInputAssemblyStateCreateInfo s;
-    MarshalVkPipelineInputAssemblyStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineInputAssemblyStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineInputAssemblyStateCreateFlags)memory->readd(address);address+=4;
-        s->topology = (VkPrimitiveTopology)memory->readd(address);address+=4;
-        s->primitiveRestartEnable = (VkBool32)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineTessellationStateCreateInfo {
-public:
-    MarshalVkPipelineTessellationStateCreateInfo() {}
-    VkPipelineTessellationStateCreateInfo s;
-    MarshalVkPipelineTessellationStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineTessellationStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineTessellationStateCreateFlags)memory->readd(address);address+=4;
-        s->patchControlPoints = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineViewportStateCreateInfo {
-public:
-    MarshalVkPipelineViewportStateCreateInfo() {}
-    VkPipelineViewportStateCreateInfo s;
-    MarshalVkPipelineViewportStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineViewportStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineViewportStateCreateFlags)memory->readd(address);address+=4;
-        s->viewportCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pViewports = NULL;
-        } else {
-            s->pViewports = new VkViewport[s->viewportCount * sizeof(VkViewport)];
-            memory->memcpy((VkViewport*)s->pViewports, paramAddress, s->viewportCount * sizeof(VkViewport));
-        }
-        s->scissorCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pScissors = NULL;
-        } else {
-            s->pScissors = new VkRect2D[s->scissorCount * sizeof(VkRect2D)];
-            memory->memcpy((VkRect2D*)s->pScissors, paramAddress, s->scissorCount * sizeof(VkRect2D));
-        }
-    }
-};
-
-class MarshalVkPipelineRasterizationStateCreateInfo {
-public:
-    MarshalVkPipelineRasterizationStateCreateInfo() {}
-    VkPipelineRasterizationStateCreateInfo s;
-    MarshalVkPipelineRasterizationStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineRasterizationStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineRasterizationStateCreateFlags)memory->readd(address);address+=4;
-        s->depthClampEnable = (VkBool32)memory->readd(address);address+=4;
-        s->rasterizerDiscardEnable = (VkBool32)memory->readd(address);address+=4;
-        s->polygonMode = (VkPolygonMode)memory->readd(address);address+=4;
-        s->cullMode = (VkCullModeFlags)memory->readd(address);address+=4;
-        s->frontFace = (VkFrontFace)memory->readd(address);address+=4;
-        s->depthBiasEnable = (VkBool32)memory->readd(address);address+=4;
-        s->depthBiasConstantFactor = (float)memory->readd(address);address+=4;
-        s->depthBiasClamp = (float)memory->readd(address);address+=4;
-        s->depthBiasSlopeFactor = (float)memory->readd(address);address+=4;
-        s->lineWidth = (float)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineMultisampleStateCreateInfo {
-public:
-    MarshalVkPipelineMultisampleStateCreateInfo() {}
-    VkPipelineMultisampleStateCreateInfo s;
-    MarshalVkPipelineMultisampleStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineMultisampleStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineMultisampleStateCreateFlags)memory->readd(address);address+=4;
-        s->rasterizationSamples = (VkSampleCountFlagBits)memory->readd(address);address+=4;
-        s->sampleShadingEnable = (VkBool32)memory->readd(address);address+=4;
-        s->minSampleShading = (float)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSampleMask = NULL;
-        } else {
-            s->pSampleMask = new VkSampleMask[(s->rasterizationSamples + 31) / 32 * sizeof(VkSampleMask)];
-            memory->memcpy((VkSampleMask*)s->pSampleMask, paramAddress, (s->rasterizationSamples + 31) / 32 * sizeof(VkSampleMask));
-        }
-        s->alphaToCoverageEnable = (VkBool32)memory->readd(address);address+=4;
-        s->alphaToOneEnable = (VkBool32)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineColorBlendAttachmentState {
-public:
-    MarshalVkPipelineColorBlendAttachmentState() {}
-    VkPipelineColorBlendAttachmentState s;
-    MarshalVkPipelineColorBlendAttachmentState(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineColorBlendAttachmentState* s) {
-        s->blendEnable = (VkBool32)memory->readd(address);address+=4;
-        s->srcColorBlendFactor = (VkBlendFactor)memory->readd(address);address+=4;
-        s->dstColorBlendFactor = (VkBlendFactor)memory->readd(address);address+=4;
-        s->colorBlendOp = (VkBlendOp)memory->readd(address);address+=4;
-        s->srcAlphaBlendFactor = (VkBlendFactor)memory->readd(address);address+=4;
-        s->dstAlphaBlendFactor = (VkBlendFactor)memory->readd(address);address+=4;
-        s->alphaBlendOp = (VkBlendOp)memory->readd(address);address+=4;
-        s->colorWriteMask = (VkColorComponentFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineColorBlendStateCreateInfo {
-public:
-    MarshalVkPipelineColorBlendStateCreateInfo() {}
-    VkPipelineColorBlendStateCreateInfo s;
-    MarshalVkPipelineColorBlendStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineColorBlendStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineColorBlendStateCreateFlags)memory->readd(address);address+=4;
-        s->logicOpEnable = (VkBool32)memory->readd(address);address+=4;
-        s->logicOp = (VkLogicOp)memory->readd(address);address+=4;
-        s->attachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pAttachments = NULL;
-        } else {
-            VkPipelineColorBlendAttachmentState* pAttachments = new VkPipelineColorBlendAttachmentState[s->attachmentCount];
-            for (U32 i = 0; i < s->attachmentCount; i++) {
-                MarshalVkPipelineColorBlendAttachmentState::read(memory, paramAddress, &pAttachments[i]);
-            }
-            s->pAttachments = pAttachments;
-        }
-        memory->memcpy(&s->blendConstants, address, 4);address+=4;
-    }
-};
-
-class MarshalVkPipelineDynamicStateCreateInfo {
-public:
-    MarshalVkPipelineDynamicStateCreateInfo() {}
-    VkPipelineDynamicStateCreateInfo s;
-    MarshalVkPipelineDynamicStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineDynamicStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineDynamicStateCreateFlags)memory->readd(address);address+=4;
-        s->dynamicStateCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDynamicStates = NULL;
-        } else {
-            s->pDynamicStates = new VkDynamicState[s->dynamicStateCount * sizeof(VkDynamicState)];
-            memory->memcpy((VkDynamicState*)s->pDynamicStates, paramAddress, s->dynamicStateCount * sizeof(VkDynamicState));
-        }
-    }
-};
-
-class MarshalVkStencilOpState {
-public:
-    MarshalVkStencilOpState() {}
-    VkStencilOpState s;
-    MarshalVkStencilOpState(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkStencilOpState* s) {
-        s->failOp = (VkStencilOp)memory->readd(address);address+=4;
-        s->passOp = (VkStencilOp)memory->readd(address);address+=4;
-        s->depthFailOp = (VkStencilOp)memory->readd(address);address+=4;
-        s->compareOp = (VkCompareOp)memory->readd(address);address+=4;
-        s->compareMask = (uint32_t)memory->readd(address);address+=4;
-        s->writeMask = (uint32_t)memory->readd(address);address+=4;
-        s->reference = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineDepthStencilStateCreateInfo {
-public:
-    MarshalVkPipelineDepthStencilStateCreateInfo() {}
-    VkPipelineDepthStencilStateCreateInfo s;
-    MarshalVkPipelineDepthStencilStateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineDepthStencilStateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineDepthStencilStateCreateFlags)memory->readd(address);address+=4;
-        s->depthTestEnable = (VkBool32)memory->readd(address);address+=4;
-        s->depthWriteEnable = (VkBool32)memory->readd(address);address+=4;
-        s->depthCompareOp = (VkCompareOp)memory->readd(address);address+=4;
-        s->depthBoundsTestEnable = (VkBool32)memory->readd(address);address+=4;
-        s->stencilTestEnable = (VkBool32)memory->readd(address);address+=4;
-        MarshalVkStencilOpState::read(memory, address, &s->front); address+=28;
-        MarshalVkStencilOpState::read(memory, address, &s->back); address+=28;
-        s->minDepthBounds = (float)memory->readd(address);address+=4;
-        s->maxDepthBounds = (float)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkGraphicsPipelineCreateInfo {
-public:
-    MarshalVkGraphicsPipelineCreateInfo() {}
-    VkGraphicsPipelineCreateInfo s;
-    MarshalVkGraphicsPipelineCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkGraphicsPipelineCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineCreateFlags)memory->readd(address);address+=4;
-        s->stageCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pStages = NULL;
-        } else {
-            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo[s->stageCount];
-            for (U32 i = 0; i < s->stageCount; i++) {
-                MarshalVkPipelineShaderStageCreateInfo::read(memory, paramAddress, &pStages[i]);
-            }
-            s->pStages = pStages;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pVertexInputState = NULL;
-        } else {
-            VkPipelineVertexInputStateCreateInfo* pVertexInputState = new VkPipelineVertexInputStateCreateInfo();
-            MarshalVkPipelineVertexInputStateCreateInfo::read(memory, paramAddress, pVertexInputState);
-            s->pVertexInputState = pVertexInputState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pInputAssemblyState = NULL;
-        } else {
-            VkPipelineInputAssemblyStateCreateInfo* pInputAssemblyState = new VkPipelineInputAssemblyStateCreateInfo();
-            MarshalVkPipelineInputAssemblyStateCreateInfo::read(memory, paramAddress, pInputAssemblyState);
-            s->pInputAssemblyState = pInputAssemblyState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pTessellationState = NULL;
-        } else {
-            VkPipelineTessellationStateCreateInfo* pTessellationState = new VkPipelineTessellationStateCreateInfo();
-            MarshalVkPipelineTessellationStateCreateInfo::read(memory, paramAddress, pTessellationState);
-            s->pTessellationState = pTessellationState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pViewportState = NULL;
-        } else {
-            VkPipelineViewportStateCreateInfo* pViewportState = new VkPipelineViewportStateCreateInfo();
-            MarshalVkPipelineViewportStateCreateInfo::read(memory, paramAddress, pViewportState);
-            s->pViewportState = pViewportState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pRasterizationState = NULL;
-        } else {
-            VkPipelineRasterizationStateCreateInfo* pRasterizationState = new VkPipelineRasterizationStateCreateInfo();
-            MarshalVkPipelineRasterizationStateCreateInfo::read(memory, paramAddress, pRasterizationState);
-            s->pRasterizationState = pRasterizationState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pMultisampleState = NULL;
-        } else {
-            VkPipelineMultisampleStateCreateInfo* pMultisampleState = new VkPipelineMultisampleStateCreateInfo();
-            MarshalVkPipelineMultisampleStateCreateInfo::read(memory, paramAddress, pMultisampleState);
-            s->pMultisampleState = pMultisampleState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDepthStencilState = NULL;
-        } else {
-            VkPipelineDepthStencilStateCreateInfo* pDepthStencilState = new VkPipelineDepthStencilStateCreateInfo();
-            MarshalVkPipelineDepthStencilStateCreateInfo::read(memory, paramAddress, pDepthStencilState);
-            s->pDepthStencilState = pDepthStencilState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pColorBlendState = NULL;
-        } else {
-            VkPipelineColorBlendStateCreateInfo* pColorBlendState = new VkPipelineColorBlendStateCreateInfo();
-            MarshalVkPipelineColorBlendStateCreateInfo::read(memory, paramAddress, pColorBlendState);
-            s->pColorBlendState = pColorBlendState;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDynamicState = NULL;
-        } else {
-            VkPipelineDynamicStateCreateInfo* pDynamicState = new VkPipelineDynamicStateCreateInfo();
-            MarshalVkPipelineDynamicStateCreateInfo::read(memory, paramAddress, pDynamicState);
-            s->pDynamicState = pDynamicState;
-        }
-        s->layout = (VkPipelineLayout)memory->readq(address);address+=8;
-        s->renderPass = (VkRenderPass)memory->readq(address);address+=8;
-        s->subpass = (uint32_t)memory->readd(address);address+=4;
-        s->basePipelineHandle = (VkPipeline)memory->readq(address);address+=8;
-        s->basePipelineIndex = (int32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPipelineCacheCreateInfo {
-public:
-    MarshalVkPipelineCacheCreateInfo() {}
-    VkPipelineCacheCreateInfo s;
-    MarshalVkPipelineCacheCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineCacheCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineCacheCreateFlags)memory->readd(address);address+=4;
-        s->initialDataSize = (size_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pInitialData = NULL;
-        } else {
-            s->pInitialData = new char[s->initialDataSize];
-            memory->memcpy((void*)s->pInitialData, paramAddress, s->initialDataSize);
-        }
-    }
-};
-
-class MarshalVkPipelineLayoutCreateInfo {
-public:
-    MarshalVkPipelineLayoutCreateInfo() {}
-    VkPipelineLayoutCreateInfo s;
-    MarshalVkPipelineLayoutCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPipelineLayoutCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineLayoutCreateFlags)memory->readd(address);address+=4;
-        s->setLayoutCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSetLayouts = NULL;
-        } else {
-            s->pSetLayouts = new VkDescriptorSetLayout[s->setLayoutCount * sizeof(VkDescriptorSetLayout)];
-            memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, s->setLayoutCount * sizeof(VkDescriptorSetLayout));
-        }
-        s->pushConstantRangeCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pPushConstantRanges = NULL;
-        } else {
-            s->pPushConstantRanges = new VkPushConstantRange[s->pushConstantRangeCount * sizeof(VkPushConstantRange)];
-            memory->memcpy((VkPushConstantRange*)s->pPushConstantRanges, paramAddress, s->pushConstantRangeCount * sizeof(VkPushConstantRange));
-        }
-    }
-};
-
-class MarshalVkSamplerCreateInfo {
-public:
-    MarshalVkSamplerCreateInfo() {}
-    VkSamplerCreateInfo s;
-    MarshalVkSamplerCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSamplerCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkSamplerCreateFlags)memory->readd(address);address+=4;
-        s->magFilter = (VkFilter)memory->readd(address);address+=4;
-        s->minFilter = (VkFilter)memory->readd(address);address+=4;
-        s->mipmapMode = (VkSamplerMipmapMode)memory->readd(address);address+=4;
-        s->addressModeU = (VkSamplerAddressMode)memory->readd(address);address+=4;
-        s->addressModeV = (VkSamplerAddressMode)memory->readd(address);address+=4;
-        s->addressModeW = (VkSamplerAddressMode)memory->readd(address);address+=4;
-        s->mipLodBias = (float)memory->readd(address);address+=4;
-        s->anisotropyEnable = (VkBool32)memory->readd(address);address+=4;
-        s->maxAnisotropy = (float)memory->readd(address);address+=4;
-        s->compareEnable = (VkBool32)memory->readd(address);address+=4;
-        s->compareOp = (VkCompareOp)memory->readd(address);address+=4;
-        s->minLod = (float)memory->readd(address);address+=4;
-        s->maxLod = (float)memory->readd(address);address+=4;
-        s->borderColor = (VkBorderColor)memory->readd(address);address+=4;
-        s->unnormalizedCoordinates = (VkBool32)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkCommandPoolCreateInfo {
-public:
-    MarshalVkCommandPoolCreateInfo() {}
-    VkCommandPoolCreateInfo s;
-    MarshalVkCommandPoolCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCommandPoolCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkCommandPoolCreateFlags)memory->readd(address);address+=4;
-        s->queueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkCommandBufferAllocateInfo {
-public:
-    MarshalVkCommandBufferAllocateInfo() {}
-    VkCommandBufferAllocateInfo s;
-    MarshalVkCommandBufferAllocateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCommandBufferAllocateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->commandPool = (VkCommandPool)memory->readq(address);address+=8;
-        s->level = (VkCommandBufferLevel)memory->readd(address);address+=4;
-        s->commandBufferCount = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkCommandBufferInheritanceInfo {
-public:
-    MarshalVkCommandBufferInheritanceInfo() {}
-    VkCommandBufferInheritanceInfo s;
-    MarshalVkCommandBufferInheritanceInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCommandBufferInheritanceInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->renderPass = (VkRenderPass)memory->readq(address);address+=8;
-        s->subpass = (uint32_t)memory->readd(address);address+=4;
-        s->framebuffer = (VkFramebuffer)memory->readq(address);address+=8;
-        s->occlusionQueryEnable = (VkBool32)memory->readd(address);address+=4;
-        s->queryFlags = (VkQueryControlFlags)memory->readd(address);address+=4;
-        s->pipelineStatistics = (VkQueryPipelineStatisticFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkCommandBufferBeginInfo {
-public:
-    MarshalVkCommandBufferBeginInfo() {}
-    VkCommandBufferBeginInfo s;
-    MarshalVkCommandBufferBeginInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCommandBufferBeginInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkCommandBufferUsageFlags)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pInheritanceInfo = NULL;
-        } else {
-            VkCommandBufferInheritanceInfo* pInheritanceInfo = new VkCommandBufferInheritanceInfo();
-            MarshalVkCommandBufferInheritanceInfo::read(memory, paramAddress, pInheritanceInfo);
-            s->pInheritanceInfo = pInheritanceInfo;
-        }
-    }
-};
-
-class MarshalVkRenderPassBeginInfo {
-public:
-    MarshalVkRenderPassBeginInfo() {}
-    VkRenderPassBeginInfo s;
-    MarshalVkRenderPassBeginInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkRenderPassBeginInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->renderPass = (VkRenderPass)memory->readq(address);address+=8;
-        s->framebuffer = (VkFramebuffer)memory->readq(address);address+=8;
-        memory->memcpy(&s->renderArea, address, 16);address+=16;
-        s->clearValueCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pClearValues = NULL;
-        } else {
-            s->pClearValues = new VkClearValue[s->clearValueCount * sizeof(VkClearValue)];
-            memory->memcpy((VkClearValue*)s->pClearValues, paramAddress, s->clearValueCount * sizeof(VkClearValue));
-        }
-    }
-};
-
-class MarshalVkAttachmentDescription {
-public:
-    MarshalVkAttachmentDescription() {}
-    VkAttachmentDescription s;
-    MarshalVkAttachmentDescription(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAttachmentDescription* s) {
-        s->flags = (VkAttachmentDescriptionFlags)memory->readd(address);address+=4;
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->samples = (VkSampleCountFlagBits)memory->readd(address);address+=4;
-        s->loadOp = (VkAttachmentLoadOp)memory->readd(address);address+=4;
-        s->storeOp = (VkAttachmentStoreOp)memory->readd(address);address+=4;
-        s->stencilLoadOp = (VkAttachmentLoadOp)memory->readd(address);address+=4;
-        s->stencilStoreOp = (VkAttachmentStoreOp)memory->readd(address);address+=4;
-        s->initialLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->finalLayout = (VkImageLayout)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkAttachmentReference {
-public:
-    MarshalVkAttachmentReference() {}
-    VkAttachmentReference s;
-    MarshalVkAttachmentReference(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAttachmentReference* s) {
-        s->attachment = (uint32_t)memory->readd(address);address+=4;
-        s->layout = (VkImageLayout)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSubpassDescription {
-public:
-    MarshalVkSubpassDescription() {}
-    VkSubpassDescription s;
-    MarshalVkSubpassDescription(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSubpassDescription* s) {
-        s->flags = (VkSubpassDescriptionFlags)memory->readd(address);address+=4;
-        s->pipelineBindPoint = (VkPipelineBindPoint)memory->readd(address);address+=4;
-        s->inputAttachmentCount = (uint32_t)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pInputAttachments = NULL;
-        } else {
-            VkAttachmentReference* pInputAttachments = new VkAttachmentReference[s->inputAttachmentCount];
-            for (U32 i = 0; i < s->inputAttachmentCount; i++) {
-                MarshalVkAttachmentReference::read(memory, paramAddress, &pInputAttachments[i]);
-            }
-            s->pInputAttachments = pInputAttachments;
-        }
-        s->colorAttachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pColorAttachments = NULL;
-        } else {
-            VkAttachmentReference* pColorAttachments = new VkAttachmentReference[s->colorAttachmentCount];
-            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
-                MarshalVkAttachmentReference::read(memory, paramAddress, &pColorAttachments[i]);
-            }
-            s->pColorAttachments = pColorAttachments;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pResolveAttachments = NULL;
-        } else {
-            VkAttachmentReference* pResolveAttachments = new VkAttachmentReference[s->colorAttachmentCount];
-            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
-                MarshalVkAttachmentReference::read(memory, paramAddress, &pResolveAttachments[i]);
-            }
-            s->pResolveAttachments = pResolveAttachments;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDepthStencilAttachment = NULL;
-        } else {
-            VkAttachmentReference* pDepthStencilAttachment = new VkAttachmentReference();
-            MarshalVkAttachmentReference::read(memory, paramAddress, pDepthStencilAttachment);
-            s->pDepthStencilAttachment = pDepthStencilAttachment;
-        }
-        s->preserveAttachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pPreserveAttachments = NULL;
-        } else {
-            s->pPreserveAttachments = new uint32_t[s->preserveAttachmentCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pPreserveAttachments, paramAddress, s->preserveAttachmentCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkRenderPassCreateInfo {
-public:
-    MarshalVkRenderPassCreateInfo() {}
-    VkRenderPassCreateInfo s;
-    MarshalVkRenderPassCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkRenderPassCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkRenderPassCreateFlags)memory->readd(address);address+=4;
-        s->attachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pAttachments = NULL;
-        } else {
-            VkAttachmentDescription* pAttachments = new VkAttachmentDescription[s->attachmentCount];
-            for (U32 i = 0; i < s->attachmentCount; i++) {
-                MarshalVkAttachmentDescription::read(memory, paramAddress, &pAttachments[i]);
-            }
-            s->pAttachments = pAttachments;
-        }
-        s->subpassCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSubpasses = NULL;
-        } else {
-            VkSubpassDescription* pSubpasses = new VkSubpassDescription[s->subpassCount];
-            for (U32 i = 0; i < s->subpassCount; i++) {
-                MarshalVkSubpassDescription::read(memory, paramAddress, &pSubpasses[i]);
-            }
-            s->pSubpasses = pSubpasses;
-        }
-        s->dependencyCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDependencies = NULL;
-        } else {
-            s->pDependencies = new VkSubpassDependency[s->dependencyCount * sizeof(VkSubpassDependency)];
-            memory->memcpy((VkSubpassDependency*)s->pDependencies, paramAddress, s->dependencyCount * sizeof(VkSubpassDependency));
-        }
-    }
-};
-
-class MarshalVkEventCreateInfo {
-public:
-    MarshalVkEventCreateInfo() {}
-    VkEventCreateInfo s;
-    MarshalVkEventCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkEventCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkEventCreateFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkFenceCreateInfo {
-public:
-    MarshalVkFenceCreateInfo() {}
-    VkFenceCreateInfo s;
-    MarshalVkFenceCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkFenceCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkFenceCreateFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSemaphoreCreateInfo {
-public:
-    MarshalVkSemaphoreCreateInfo() {}
-    VkSemaphoreCreateInfo s;
-    MarshalVkSemaphoreCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSemaphoreCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkSemaphoreCreateFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkQueryPoolCreateInfo {
-public:
-    MarshalVkQueryPoolCreateInfo() {}
-    VkQueryPoolCreateInfo s;
-    MarshalVkQueryPoolCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkQueryPoolCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkQueryPoolCreateFlags)memory->readd(address);address+=4;
-        s->queryType = (VkQueryType)memory->readd(address);address+=4;
-        s->queryCount = (uint32_t)memory->readd(address);address+=4;
-        s->pipelineStatistics = (VkQueryPipelineStatisticFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkFramebufferCreateInfo {
-public:
-    MarshalVkFramebufferCreateInfo() {}
-    VkFramebufferCreateInfo s;
-    MarshalVkFramebufferCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkFramebufferCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkFramebufferCreateFlags)memory->readd(address);address+=4;
-        s->renderPass = (VkRenderPass)memory->readq(address);address+=8;
-        s->attachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pAttachments = NULL;
-        } else {
-            s->pAttachments = new VkImageView[s->attachmentCount * sizeof(VkImageView)];
-            memory->memcpy((VkImageView*)s->pAttachments, paramAddress, s->attachmentCount * sizeof(VkImageView));
-        }
-        s->width = (uint32_t)memory->readd(address);address+=4;
-        s->height = (uint32_t)memory->readd(address);address+=4;
-        s->layers = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSubmitInfo {
-public:
-    MarshalVkSubmitInfo() {}
-    VkSubmitInfo s;
-    MarshalVkSubmitInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSubmitInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->waitSemaphoreCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pWaitSemaphores = NULL;
-        } else {
-            s->pWaitSemaphores = new VkSemaphore[s->waitSemaphoreCount * sizeof(VkSemaphore)];
-            memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, s->waitSemaphoreCount * sizeof(VkSemaphore));
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pWaitDstStageMask = NULL;
-        } else {
-            s->pWaitDstStageMask = new VkPipelineStageFlags[s->waitSemaphoreCount * sizeof(VkPipelineStageFlags)];
-            memory->memcpy((VkPipelineStageFlags*)s->pWaitDstStageMask, paramAddress, s->waitSemaphoreCount * sizeof(VkPipelineStageFlags));
-        }
-        s->commandBufferCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pCommandBuffers = NULL;
-        } else {
-            VkCommandBuffer* pCommandBuffers = new VkCommandBuffer[s->commandBufferCount];
-            for (int i=0;i<(int)s->commandBufferCount;i++) {
-                pCommandBuffers[i] = (VkCommandBuffer)getVulkanPtr(memory, paramAddress);
-            }
-            s->pCommandBuffers = pCommandBuffers;
-        }
-        s->signalSemaphoreCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSignalSemaphores = NULL;
-        } else {
-            s->pSignalSemaphores = new VkSemaphore[s->signalSemaphoreCount * sizeof(VkSemaphore)];
-            memory->memcpy((VkSemaphore*)s->pSignalSemaphores, paramAddress, s->signalSemaphoreCount * sizeof(VkSemaphore));
-        }
-    }
-};
-
-class MarshalVkSurfaceCapabilitiesKHR {
-public:
-    MarshalVkSurfaceCapabilitiesKHR() {}
-    VkSurfaceCapabilitiesKHR s;
-    MarshalVkSurfaceCapabilitiesKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSurfaceCapabilitiesKHR* s) {
-        s->minImageCount = (uint32_t)memory->readd(address);address+=4;
-        s->maxImageCount = (uint32_t)memory->readd(address);address+=4;
-        memory->memcpy(&s->currentExtent, address, 8);address+=8;
-        memory->memcpy(&s->minImageExtent, address, 8);address+=8;
-        memory->memcpy(&s->maxImageExtent, address, 8);address+=8;
-        s->maxImageArrayLayers = (uint32_t)memory->readd(address);address+=4;
-        s->supportedTransforms = (VkSurfaceTransformFlagsKHR)memory->readd(address);address+=4;
-        s->currentTransform = (VkSurfaceTransformFlagBitsKHR)memory->readd(address);address+=4;
-        s->supportedCompositeAlpha = (VkCompositeAlphaFlagsKHR)memory->readd(address);address+=4;
-        s->supportedUsageFlags = (VkImageUsageFlags)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkSurfaceCapabilitiesKHR* s) {
-        memory->writed(address, s->minImageCount);address+=4;
-        memory->writed(address, s->maxImageCount);address+=4;
-        memory->memcpy(address, &s->currentExtent, 8); address+=8;
-        memory->memcpy(address, &s->minImageExtent, 8); address+=8;
-        memory->memcpy(address, &s->maxImageExtent, 8); address+=8;
-        memory->writed(address, s->maxImageArrayLayers);address+=4;
-        memory->writed(address, s->supportedTransforms);address+=4;
-        memory->writed(address, s->currentTransform);address+=4;
-        memory->writed(address, s->supportedCompositeAlpha);address+=4;
-        memory->writed(address, s->supportedUsageFlags);address+=4;
-    }
-};
-
-class MarshalVkSurfaceFormatKHR {
-public:
-    MarshalVkSurfaceFormatKHR() {}
-    VkSurfaceFormatKHR s;
-    static void write(KMemory* memory, U32 address, VkSurfaceFormatKHR* s) {
-        memory->writed(address, s->format);address+=4;
-        memory->writed(address, s->colorSpace);address+=4;
-    }
-};
-
-class MarshalVkSwapchainCreateInfoKHR {
-public:
-    MarshalVkSwapchainCreateInfoKHR() {}
-    VkSwapchainCreateInfoKHR s;
-    MarshalVkSwapchainCreateInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSwapchainCreateInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkSwapchainCreateFlagsKHR)memory->readd(address);address+=4;
-        s->surface = (VkSurfaceKHR)memory->readq(address);address+=8;
-        s->minImageCount = (uint32_t)memory->readd(address);address+=4;
-        s->imageFormat = (VkFormat)memory->readd(address);address+=4;
-        s->imageColorSpace = (VkColorSpaceKHR)memory->readd(address);address+=4;
-        memory->memcpy(&s->imageExtent, address, 8);address+=8;
-        s->imageArrayLayers = (uint32_t)memory->readd(address);address+=4;
-        s->imageUsage = (VkImageUsageFlags)memory->readd(address);address+=4;
-        s->imageSharingMode = (VkSharingMode)memory->readd(address);address+=4;
-        s->queueFamilyIndexCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pQueueFamilyIndices = NULL;
-        } else {
-            s->pQueueFamilyIndices = new uint32_t[s->queueFamilyIndexCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, s->queueFamilyIndexCount * sizeof(uint32_t));
-        }
-        s->preTransform = (VkSurfaceTransformFlagBitsKHR)memory->readd(address);address+=4;
-        s->compositeAlpha = (VkCompositeAlphaFlagBitsKHR)memory->readd(address);address+=4;
-        s->presentMode = (VkPresentModeKHR)memory->readd(address);address+=4;
-        s->clipped = (VkBool32)memory->readd(address);address+=4;
-        s->oldSwapchain = (VkSwapchainKHR)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkPresentInfoKHR {
-public:
-    MarshalVkPresentInfoKHR() {}
-    VkPresentInfoKHR s;
-    MarshalVkPresentInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPresentInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->waitSemaphoreCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pWaitSemaphores = NULL;
-        } else {
-            s->pWaitSemaphores = new VkSemaphore[s->waitSemaphoreCount * sizeof(VkSemaphore)];
-            memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, s->waitSemaphoreCount * sizeof(VkSemaphore));
-        }
-        s->swapchainCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSwapchains = NULL;
-        } else {
-            s->pSwapchains = new VkSwapchainKHR[s->swapchainCount * sizeof(VkSwapchainKHR)];
-            memory->memcpy((VkSwapchainKHR*)s->pSwapchains, paramAddress, s->swapchainCount * sizeof(VkSwapchainKHR));
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pImageIndices = NULL;
-        } else {
-            s->pImageIndices = new uint32_t[s->swapchainCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pImageIndices, paramAddress, s->swapchainCount * sizeof(uint32_t));
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pResults = NULL;
-        } else {
-            s->pResults = new VkResult[s->swapchainCount * sizeof(VkResult)];
-            memory->memcpy((VkResult*)s->pResults, paramAddress, s->swapchainCount * sizeof(VkResult));
-        }
-    }
-};
-
-class MarshalVkPrivateDataSlotCreateInfoEXT {
-public:
-    MarshalVkPrivateDataSlotCreateInfoEXT() {}
-    VkPrivateDataSlotCreateInfoEXT s;
-    MarshalVkPrivateDataSlotCreateInfoEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPrivateDataSlotCreateInfoEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPrivateDataSlotCreateFlagsEXT)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkIndirectCommandsLayoutTokenNV {
-public:
-    MarshalVkIndirectCommandsLayoutTokenNV() {}
-    VkIndirectCommandsLayoutTokenNV s;
-    MarshalVkIndirectCommandsLayoutTokenNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkIndirectCommandsLayoutTokenNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->tokenType = (VkIndirectCommandsTokenTypeNV)memory->readd(address);address+=4;
-        s->stream = (uint32_t)memory->readd(address);address+=4;
-        s->offset = (uint32_t)memory->readd(address);address+=4;
-        s->vertexBindingUnit = (uint32_t)memory->readd(address);address+=4;
-        s->vertexDynamicStride = (VkBool32)memory->readd(address);address+=4;
-        s->pushconstantPipelineLayout = (VkPipelineLayout)memory->readq(address);address+=8;
-        s->pushconstantShaderStageFlags = (VkShaderStageFlags)memory->readd(address);address+=4;
-        s->pushconstantOffset = (uint32_t)memory->readd(address);address+=4;
-        s->pushconstantSize = (uint32_t)memory->readd(address);address+=4;
-        s->indirectStateFlags = (VkIndirectStateFlagsNV)memory->readd(address);address+=4;
-        s->indexTypeCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pIndexTypes = NULL;
-        } else {
-            s->pIndexTypes = new VkIndexType[s->indexTypeCount * sizeof(VkIndexType)];
-            memory->memcpy((VkIndexType*)s->pIndexTypes, paramAddress, s->indexTypeCount * sizeof(VkIndexType));
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pIndexTypeValues = NULL;
-        } else {
-            s->pIndexTypeValues = new uint32_t[s->indexTypeCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pIndexTypeValues, paramAddress, s->indexTypeCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkIndirectCommandsLayoutCreateInfoNV {
-public:
-    MarshalVkIndirectCommandsLayoutCreateInfoNV() {}
-    VkIndirectCommandsLayoutCreateInfoNV s;
-    MarshalVkIndirectCommandsLayoutCreateInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkIndirectCommandsLayoutCreateInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkIndirectCommandsLayoutUsageFlagsNV)memory->readd(address);address+=4;
-        s->pipelineBindPoint = (VkPipelineBindPoint)memory->readd(address);address+=4;
-        s->tokenCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pTokens = NULL;
-        } else {
-            VkIndirectCommandsLayoutTokenNV* pTokens = new VkIndirectCommandsLayoutTokenNV[s->tokenCount];
-            for (U32 i = 0; i < s->tokenCount; i++) {
-                MarshalVkIndirectCommandsLayoutTokenNV::read(memory, paramAddress, &pTokens[i]);
-            }
-            s->pTokens = pTokens;
-        }
-        s->streamCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pStreamStrides = NULL;
-        } else {
-            s->pStreamStrides = new uint32_t[s->streamCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pStreamStrides, paramAddress, s->streamCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkGeneratedCommandsInfoNV {
-public:
-    MarshalVkGeneratedCommandsInfoNV() {}
-    VkGeneratedCommandsInfoNV s;
-    MarshalVkGeneratedCommandsInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkGeneratedCommandsInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->pipelineBindPoint = (VkPipelineBindPoint)memory->readd(address);address+=4;
-        s->pipeline = (VkPipeline)memory->readq(address);address+=8;
-        s->indirectCommandsLayout = (VkIndirectCommandsLayoutNV)memory->readq(address);address+=8;
-        s->streamCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pStreams = NULL;
-        } else {
-            s->pStreams = new VkIndirectCommandsStreamNV[s->streamCount * sizeof(VkIndirectCommandsStreamNV)];
-            memory->memcpy((VkIndirectCommandsStreamNV*)s->pStreams, paramAddress, s->streamCount * sizeof(VkIndirectCommandsStreamNV));
-        }
-        s->sequencesCount = (uint32_t)memory->readd(address);address+=4;
-        s->preprocessBuffer = (VkBuffer)memory->readq(address);address+=8;
-        s->preprocessOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->preprocessSize = (VkDeviceSize)memory->readq(address);address+=8;
-        s->sequencesCountBuffer = (VkBuffer)memory->readq(address);address+=8;
-        s->sequencesCountOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->sequencesIndexBuffer = (VkBuffer)memory->readq(address);address+=8;
-        s->sequencesIndexOffset = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkGeneratedCommandsMemoryRequirementsInfoNV {
-public:
-    MarshalVkGeneratedCommandsMemoryRequirementsInfoNV() {}
-    VkGeneratedCommandsMemoryRequirementsInfoNV s;
-    MarshalVkGeneratedCommandsMemoryRequirementsInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkGeneratedCommandsMemoryRequirementsInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->pipelineBindPoint = (VkPipelineBindPoint)memory->readd(address);address+=4;
-        s->pipeline = (VkPipeline)memory->readq(address);address+=8;
-        s->indirectCommandsLayout = (VkIndirectCommandsLayoutNV)memory->readq(address);address+=8;
-        s->maxSequencesCount = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceFeatures2 {
-public:
-    MarshalVkPhysicalDeviceFeatures2() {}
-    VkPhysicalDeviceFeatures2 s;
-    MarshalVkPhysicalDeviceFeatures2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceFeatures2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->features, address, 220);address+=220;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceFeatures2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->features, 220); address+=220;
-    }
-};
-
-class MarshalVkPhysicalDeviceProperties2 {
-public:
-    MarshalVkPhysicalDeviceProperties2() {}
-    VkPhysicalDeviceProperties2 s;
-    MarshalVkPhysicalDeviceProperties2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceProperties2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        MarshalVkPhysicalDeviceProperties::read(memory, address, &s->properties); address+=800;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceProperties2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->properties, 800); address+=800;
-    }
-};
-
-class MarshalVkFormatProperties2 {
-public:
-    MarshalVkFormatProperties2() {}
-    VkFormatProperties2 s;
-    MarshalVkFormatProperties2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkFormatProperties2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->formatProperties, address, 12);address+=12;
-    }
-    static void write(KMemory* memory, U32 address, VkFormatProperties2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->formatProperties, 12); address+=12;
-    }
-};
-
-class MarshalVkImageFormatProperties2 {
-public:
-    MarshalVkImageFormatProperties2() {}
-    VkImageFormatProperties2 s;
-    MarshalVkImageFormatProperties2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageFormatProperties2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->imageFormatProperties, address, 32);address+=32;
-    }
-    static void write(KMemory* memory, U32 address, VkImageFormatProperties2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->imageFormatProperties, 32); address+=32;
-    }
-};
-
-class MarshalVkPhysicalDeviceImageFormatInfo2 {
-public:
-    MarshalVkPhysicalDeviceImageFormatInfo2() {}
-    VkPhysicalDeviceImageFormatInfo2 s;
-    MarshalVkPhysicalDeviceImageFormatInfo2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceImageFormatInfo2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->type = (VkImageType)memory->readd(address);address+=4;
-        s->tiling = (VkImageTiling)memory->readd(address);address+=4;
-        s->usage = (VkImageUsageFlags)memory->readd(address);address+=4;
-        s->flags = (VkImageCreateFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkQueueFamilyProperties2 {
-public:
-    MarshalVkQueueFamilyProperties2() {}
-    VkQueueFamilyProperties2 s;
-    static void write(KMemory* memory, U32 address, VkQueueFamilyProperties2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->queueFamilyProperties, 24); address+=24;
-    }
-};
-
-class MarshalVkPhysicalDeviceMemoryProperties2 {
-public:
-    MarshalVkPhysicalDeviceMemoryProperties2() {}
-    VkPhysicalDeviceMemoryProperties2 s;
-    MarshalVkPhysicalDeviceMemoryProperties2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceMemoryProperties2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->memoryProperties, address, 456);address+=456;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceMemoryProperties2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->memoryProperties, 456); address+=456;
-    }
-};
-
-class MarshalVkSparseImageFormatProperties2 {
-public:
-    MarshalVkSparseImageFormatProperties2() {}
-    VkSparseImageFormatProperties2 s;
-    static void write(KMemory* memory, U32 address, VkSparseImageFormatProperties2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->properties, 20); address+=20;
-    }
-};
-
-class MarshalVkPhysicalDeviceSparseImageFormatInfo2 {
-public:
-    MarshalVkPhysicalDeviceSparseImageFormatInfo2() {}
-    VkPhysicalDeviceSparseImageFormatInfo2 s;
-    MarshalVkPhysicalDeviceSparseImageFormatInfo2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceSparseImageFormatInfo2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->type = (VkImageType)memory->readd(address);address+=4;
-        s->samples = (VkSampleCountFlagBits)memory->readd(address);address+=4;
-        s->usage = (VkImageUsageFlags)memory->readd(address);address+=4;
-        s->tiling = (VkImageTiling)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceExternalBufferInfo {
-public:
-    MarshalVkPhysicalDeviceExternalBufferInfo() {}
-    VkPhysicalDeviceExternalBufferInfo s;
-    MarshalVkPhysicalDeviceExternalBufferInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceExternalBufferInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkBufferCreateFlags)memory->readd(address);address+=4;
-        s->usage = (VkBufferUsageFlags)memory->readd(address);address+=4;
-        s->handleType = (VkExternalMemoryHandleTypeFlagBits)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkExternalBufferProperties {
-public:
-    MarshalVkExternalBufferProperties() {}
-    VkExternalBufferProperties s;
-    MarshalVkExternalBufferProperties(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkExternalBufferProperties* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->externalMemoryProperties, address, 12);address+=12;
-    }
-    static void write(KMemory* memory, U32 address, VkExternalBufferProperties* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->externalMemoryProperties, 12); address+=12;
-    }
-};
-
-class MarshalVkPhysicalDeviceIDProperties {
-public:
-    MarshalVkPhysicalDeviceIDProperties() {}
-    VkPhysicalDeviceIDProperties s;
-    MarshalVkPhysicalDeviceIDProperties(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceIDProperties* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->deviceUUID, address, 16);address+=16;
-        memory->memcpy(&s->driverUUID, address, 16);address+=16;
-        memory->memcpy(&s->deviceLUID, address, 8);address+=8;
-        s->deviceNodeMask = (uint32_t)memory->readd(address);address+=4;
-        s->deviceLUIDValid = (VkBool32)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceIDProperties* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, s->deviceUUID, 16); address+=16;
-        memory->memcpy(address, s->driverUUID, 16); address+=16;
-        memory->memcpy(address, s->deviceLUID, 8); address+=8;
-        memory->writed(address, s->deviceNodeMask);address+=4;
-        memory->writed(address, s->deviceLUIDValid);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceExternalSemaphoreInfo {
-public:
-    MarshalVkPhysicalDeviceExternalSemaphoreInfo() {}
-    VkPhysicalDeviceExternalSemaphoreInfo s;
-    MarshalVkPhysicalDeviceExternalSemaphoreInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceExternalSemaphoreInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->handleType = (VkExternalSemaphoreHandleTypeFlagBits)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkExternalSemaphoreProperties {
-public:
-    MarshalVkExternalSemaphoreProperties() {}
-    VkExternalSemaphoreProperties s;
-    MarshalVkExternalSemaphoreProperties(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkExternalSemaphoreProperties* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->exportFromImportedHandleTypes = (VkExternalSemaphoreHandleTypeFlags)memory->readd(address);address+=4;
-        s->compatibleHandleTypes = (VkExternalSemaphoreHandleTypeFlags)memory->readd(address);address+=4;
-        s->externalSemaphoreFeatures = (VkExternalSemaphoreFeatureFlags)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkExternalSemaphoreProperties* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->exportFromImportedHandleTypes);address+=4;
-        memory->writed(address, s->compatibleHandleTypes);address+=4;
-        memory->writed(address, s->externalSemaphoreFeatures);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceExternalFenceInfo {
-public:
-    MarshalVkPhysicalDeviceExternalFenceInfo() {}
-    VkPhysicalDeviceExternalFenceInfo s;
-    MarshalVkPhysicalDeviceExternalFenceInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceExternalFenceInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->handleType = (VkExternalFenceHandleTypeFlagBits)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkExternalFenceProperties {
-public:
-    MarshalVkExternalFenceProperties() {}
-    VkExternalFenceProperties s;
-    MarshalVkExternalFenceProperties(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkExternalFenceProperties* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->exportFromImportedHandleTypes = (VkExternalFenceHandleTypeFlags)memory->readd(address);address+=4;
-        s->compatibleHandleTypes = (VkExternalFenceHandleTypeFlags)memory->readd(address);address+=4;
-        s->externalFenceFeatures = (VkExternalFenceFeatureFlags)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkExternalFenceProperties* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->exportFromImportedHandleTypes);address+=4;
-        memory->writed(address, s->compatibleHandleTypes);address+=4;
-        memory->writed(address, s->externalFenceFeatures);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceGroupProperties {
-public:
-    MarshalVkPhysicalDeviceGroupProperties() {}
-    VkPhysicalDeviceGroupProperties s;
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceGroupProperties* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->physicalDeviceCount);address+=4;
-        memory->memcpy(address, s->physicalDevices, 128); address+=128;
-        memory->writed(address, s->subsetAllocation);address+=4;
-    }
-};
-
-class MarshalVkBindBufferMemoryInfo {
-public:
-    MarshalVkBindBufferMemoryInfo() {}
-    VkBindBufferMemoryInfo s;
-    MarshalVkBindBufferMemoryInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBindBufferMemoryInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-        s->memory = (VkDeviceMemory)memory->readq(address);address+=8;
-        s->memoryOffset = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkBindImageMemoryInfo {
-public:
-    MarshalVkBindImageMemoryInfo() {}
-    VkBindImageMemoryInfo s;
-    MarshalVkBindImageMemoryInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBindImageMemoryInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->image = (VkImage)memory->readq(address);address+=8;
-        s->memory = (VkDeviceMemory)memory->readq(address);address+=8;
-        s->memoryOffset = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkDeviceGroupPresentCapabilitiesKHR {
-public:
-    MarshalVkDeviceGroupPresentCapabilitiesKHR() {}
-    VkDeviceGroupPresentCapabilitiesKHR s;
-    MarshalVkDeviceGroupPresentCapabilitiesKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDeviceGroupPresentCapabilitiesKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->presentMask, address, 32);address+=32;
-        s->modes = (VkDeviceGroupPresentModeFlagsKHR)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkDeviceGroupPresentCapabilitiesKHR* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, s->presentMask, 128); address+=128;
-        memory->writed(address, s->modes);address+=4;
-    }
-};
-
-class MarshalVkAcquireNextImageInfoKHR {
-public:
-    MarshalVkAcquireNextImageInfoKHR() {}
-    VkAcquireNextImageInfoKHR s;
-    MarshalVkAcquireNextImageInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAcquireNextImageInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->swapchain = (VkSwapchainKHR)memory->readq(address);address+=8;
-        s->timeout = (uint64_t)memory->readq(address);address+=8;
-        s->semaphore = (VkSemaphore)memory->readq(address);address+=8;
-        s->fence = (VkFence)memory->readq(address);address+=8;
-        s->deviceMask = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkDescriptorUpdateTemplateEntry {
-public:
-    MarshalVkDescriptorUpdateTemplateEntry() {}
-    VkDescriptorUpdateTemplateEntry s;
-    MarshalVkDescriptorUpdateTemplateEntry(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorUpdateTemplateEntry* s) {
-        s->dstBinding = (uint32_t)memory->readd(address);address+=4;
-        s->dstArrayElement = (uint32_t)memory->readd(address);address+=4;
-        s->descriptorCount = (uint32_t)memory->readd(address);address+=4;
-        s->descriptorType = (VkDescriptorType)memory->readd(address);address+=4;
-        s->offset = (size_t)memory->readd(address);address+=4;
-        s->stride = (size_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkDescriptorUpdateTemplateCreateInfo {
-public:
-    MarshalVkDescriptorUpdateTemplateCreateInfo() {}
-    VkDescriptorUpdateTemplateCreateInfo s;
-    MarshalVkDescriptorUpdateTemplateCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorUpdateTemplateCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkDescriptorUpdateTemplateCreateFlags)memory->readd(address);address+=4;
-        s->descriptorUpdateEntryCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDescriptorUpdateEntries = NULL;
-        } else {
-            VkDescriptorUpdateTemplateEntry* pDescriptorUpdateEntries = new VkDescriptorUpdateTemplateEntry[s->descriptorUpdateEntryCount];
-            for (U32 i = 0; i < s->descriptorUpdateEntryCount; i++) {
-                MarshalVkDescriptorUpdateTemplateEntry::read(memory, paramAddress, &pDescriptorUpdateEntries[i]);
-            }
-            s->pDescriptorUpdateEntries = pDescriptorUpdateEntries;
-        }
-        s->templateType = (VkDescriptorUpdateTemplateType)memory->readd(address);address+=4;
-        s->descriptorSetLayout = (VkDescriptorSetLayout)memory->readq(address);address+=8;
-        s->pipelineBindPoint = (VkPipelineBindPoint)memory->readd(address);address+=4;
-        s->pipelineLayout = (VkPipelineLayout)memory->readq(address);address+=8;
-        s->set = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceSurfaceInfo2KHR {
-public:
-    MarshalVkPhysicalDeviceSurfaceInfo2KHR() {}
-    VkPhysicalDeviceSurfaceInfo2KHR s;
-    MarshalVkPhysicalDeviceSurfaceInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceSurfaceInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->surface = (VkSurfaceKHR)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkSurfaceCapabilities2KHR {
-public:
-    MarshalVkSurfaceCapabilities2KHR() {}
-    VkSurfaceCapabilities2KHR s;
-    MarshalVkSurfaceCapabilities2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSurfaceCapabilities2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        MarshalVkSurfaceCapabilitiesKHR::read(memory, address, &s->surfaceCapabilities); address+=52;
-    }
-    static void write(KMemory* memory, U32 address, VkSurfaceCapabilities2KHR* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->surfaceCapabilities, 52); address+=52;
-    }
-};
-
-class MarshalVkSurfaceFormat2KHR {
-public:
-    MarshalVkSurfaceFormat2KHR() {}
-    VkSurfaceFormat2KHR s;
-    static void write(KMemory* memory, U32 address, VkSurfaceFormat2KHR* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->surfaceFormat, 8); address+=8;
-    }
-};
-
-class MarshalVkBufferMemoryRequirementsInfo2 {
-public:
-    MarshalVkBufferMemoryRequirementsInfo2() {}
-    VkBufferMemoryRequirementsInfo2 s;
-    MarshalVkBufferMemoryRequirementsInfo2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferMemoryRequirementsInfo2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkImageMemoryRequirementsInfo2 {
-public:
-    MarshalVkImageMemoryRequirementsInfo2() {}
-    VkImageMemoryRequirementsInfo2 s;
-    MarshalVkImageMemoryRequirementsInfo2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageMemoryRequirementsInfo2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->image = (VkImage)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkImageSparseMemoryRequirementsInfo2 {
-public:
-    MarshalVkImageSparseMemoryRequirementsInfo2() {}
-    VkImageSparseMemoryRequirementsInfo2 s;
-    MarshalVkImageSparseMemoryRequirementsInfo2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageSparseMemoryRequirementsInfo2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->image = (VkImage)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkMemoryRequirements2 {
-public:
-    MarshalVkMemoryRequirements2() {}
-    VkMemoryRequirements2 s;
-    MarshalVkMemoryRequirements2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkMemoryRequirements2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->memoryRequirements, address, 20);address+=20;
-    }
-    static void write(KMemory* memory, U32 address, VkMemoryRequirements2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->memoryRequirements, 20); address+=20;
-    }
-};
-
-class MarshalVkSparseImageMemoryRequirements2 {
-public:
-    MarshalVkSparseImageMemoryRequirements2() {}
-    VkSparseImageMemoryRequirements2 s;
-    static void write(KMemory* memory, U32 address, VkSparseImageMemoryRequirements2* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->memoryRequirements, 48); address+=48;
-    }
-};
-
-class MarshalVkSamplerYcbcrConversionCreateInfo {
-public:
-    MarshalVkSamplerYcbcrConversionCreateInfo() {}
-    VkSamplerYcbcrConversionCreateInfo s;
-    MarshalVkSamplerYcbcrConversionCreateInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSamplerYcbcrConversionCreateInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->ycbcrModel = (VkSamplerYcbcrModelConversion)memory->readd(address);address+=4;
-        s->ycbcrRange = (VkSamplerYcbcrRange)memory->readd(address);address+=4;
-        MarshalVkComponentMapping::read(memory, address, &s->components); address+=16;
-        s->xChromaOffset = (VkChromaLocation)memory->readd(address);address+=4;
-        s->yChromaOffset = (VkChromaLocation)memory->readd(address);address+=4;
-        s->chromaFilter = (VkFilter)memory->readd(address);address+=4;
-        s->forceExplicitReconstruction = (VkBool32)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkConditionalRenderingBeginInfoEXT {
-public:
-    MarshalVkConditionalRenderingBeginInfoEXT() {}
-    VkConditionalRenderingBeginInfoEXT s;
-    MarshalVkConditionalRenderingBeginInfoEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkConditionalRenderingBeginInfoEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-        s->offset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->flags = (VkConditionalRenderingFlagsEXT)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkDeviceQueueInfo2 {
-public:
-    MarshalVkDeviceQueueInfo2() {}
-    VkDeviceQueueInfo2 s;
-    MarshalVkDeviceQueueInfo2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDeviceQueueInfo2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkDeviceQueueCreateFlags)memory->readd(address);address+=4;
-        s->queueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->queueIndex = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSampleLocationsInfoEXT {
-public:
-    MarshalVkSampleLocationsInfoEXT() {}
-    VkSampleLocationsInfoEXT s;
-    MarshalVkSampleLocationsInfoEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSampleLocationsInfoEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->sampleLocationsPerPixel = (VkSampleCountFlagBits)memory->readd(address);address+=4;
-        memory->memcpy(&s->sampleLocationGridSize, address, 8);address+=8;
-        s->sampleLocationsCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSampleLocations = NULL;
-        } else {
-            s->pSampleLocations = new VkSampleLocationEXT[s->sampleLocationsCount * sizeof(VkSampleLocationEXT)];
-            memory->memcpy((VkSampleLocationEXT*)s->pSampleLocations, paramAddress, s->sampleLocationsCount * sizeof(VkSampleLocationEXT));
-        }
-    }
-};
-
-class MarshalVkMultisamplePropertiesEXT {
-public:
-    MarshalVkMultisamplePropertiesEXT() {}
-    VkMultisamplePropertiesEXT s;
-    MarshalVkMultisamplePropertiesEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkMultisamplePropertiesEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->maxSampleLocationGridSize, address, 8);address+=8;
-    }
-    static void write(KMemory* memory, U32 address, VkMultisamplePropertiesEXT* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, &s->maxSampleLocationGridSize, 8); address+=8;
-    }
-};
-
-class MarshalVkValidationCacheCreateInfoEXT {
-public:
-    MarshalVkValidationCacheCreateInfoEXT() {}
-    VkValidationCacheCreateInfoEXT s;
-    MarshalVkValidationCacheCreateInfoEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkValidationCacheCreateInfoEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkValidationCacheCreateFlagsEXT)memory->readd(address);address+=4;
-        s->initialDataSize = (size_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pInitialData = NULL;
-        } else {
-            s->pInitialData = new char[s->initialDataSize];
-            memory->memcpy((void*)s->pInitialData, paramAddress, s->initialDataSize);
-        }
-    }
-};
-
-class MarshalVkDescriptorSetLayoutSupport {
-public:
-    MarshalVkDescriptorSetLayoutSupport() {}
-    VkDescriptorSetLayoutSupport s;
-    MarshalVkDescriptorSetLayoutSupport(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDescriptorSetLayoutSupport* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->supported = (VkBool32)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkDescriptorSetLayoutSupport* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->supported);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceHostQueryResetFeatures {
-public:
-    MarshalVkPhysicalDeviceHostQueryResetFeatures() {}
-    VkPhysicalDeviceHostQueryResetFeatures s;
-    MarshalVkPhysicalDeviceHostQueryResetFeatures(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceHostQueryResetFeatures* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->hostQueryReset = (VkBool32)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceHostQueryResetFeatures* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->hostQueryReset);address+=4;
-    }
-};
-
-class MarshalVkMemoryHostPointerPropertiesEXT {
-public:
-    MarshalVkMemoryHostPointerPropertiesEXT() {}
-    VkMemoryHostPointerPropertiesEXT s;
-    MarshalVkMemoryHostPointerPropertiesEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkMemoryHostPointerPropertiesEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->memoryTypeBits = (uint32_t)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkMemoryHostPointerPropertiesEXT* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->memoryTypeBits);address+=4;
-    }
-};
-
-class MarshalVkCalibratedTimestampInfoEXT {
-public:
-    MarshalVkCalibratedTimestampInfoEXT() {}
-    VkCalibratedTimestampInfoEXT s;
-    MarshalVkCalibratedTimestampInfoEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCalibratedTimestampInfoEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->timeDomain = (VkTimeDomainEXT)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkAttachmentDescription2 {
-public:
-    MarshalVkAttachmentDescription2() {}
-    VkAttachmentDescription2 s;
-    MarshalVkAttachmentDescription2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAttachmentDescription2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkAttachmentDescriptionFlags)memory->readd(address);address+=4;
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->samples = (VkSampleCountFlagBits)memory->readd(address);address+=4;
-        s->loadOp = (VkAttachmentLoadOp)memory->readd(address);address+=4;
-        s->storeOp = (VkAttachmentStoreOp)memory->readd(address);address+=4;
-        s->stencilLoadOp = (VkAttachmentLoadOp)memory->readd(address);address+=4;
-        s->stencilStoreOp = (VkAttachmentStoreOp)memory->readd(address);address+=4;
-        s->initialLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->finalLayout = (VkImageLayout)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkAttachmentReference2 {
-public:
-    MarshalVkAttachmentReference2() {}
-    VkAttachmentReference2 s;
-    MarshalVkAttachmentReference2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAttachmentReference2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->attachment = (uint32_t)memory->readd(address);address+=4;
-        s->layout = (VkImageLayout)memory->readd(address);address+=4;
-        s->aspectMask = (VkImageAspectFlags)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSubpassDescription2 {
-public:
-    MarshalVkSubpassDescription2() {}
-    VkSubpassDescription2 s;
-    MarshalVkSubpassDescription2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSubpassDescription2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkSubpassDescriptionFlags)memory->readd(address);address+=4;
-        s->pipelineBindPoint = (VkPipelineBindPoint)memory->readd(address);address+=4;
-        s->viewMask = (uint32_t)memory->readd(address);address+=4;
-        s->inputAttachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pInputAttachments = NULL;
-        } else {
-            VkAttachmentReference2* pInputAttachments = new VkAttachmentReference2[s->inputAttachmentCount];
-            for (U32 i = 0; i < s->inputAttachmentCount; i++) {
-                MarshalVkAttachmentReference2::read(memory, paramAddress, &pInputAttachments[i]);
-            }
-            s->pInputAttachments = pInputAttachments;
-        }
-        s->colorAttachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pColorAttachments = NULL;
-        } else {
-            VkAttachmentReference2* pColorAttachments = new VkAttachmentReference2[s->colorAttachmentCount];
-            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
-                MarshalVkAttachmentReference2::read(memory, paramAddress, &pColorAttachments[i]);
-            }
-            s->pColorAttachments = pColorAttachments;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pResolveAttachments = NULL;
-        } else {
-            VkAttachmentReference2* pResolveAttachments = new VkAttachmentReference2[s->colorAttachmentCount];
-            for (U32 i = 0; i < s->colorAttachmentCount; i++) {
-                MarshalVkAttachmentReference2::read(memory, paramAddress, &pResolveAttachments[i]);
-            }
-            s->pResolveAttachments = pResolveAttachments;
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDepthStencilAttachment = NULL;
-        } else {
-            VkAttachmentReference2* pDepthStencilAttachment = new VkAttachmentReference2();
-            MarshalVkAttachmentReference2::read(memory, paramAddress, pDepthStencilAttachment);
-            s->pDepthStencilAttachment = pDepthStencilAttachment;
-        }
-        s->preserveAttachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pPreserveAttachments = NULL;
-        } else {
-            s->pPreserveAttachments = new uint32_t[s->preserveAttachmentCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pPreserveAttachments, paramAddress, s->preserveAttachmentCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkSubpassDependency2 {
-public:
-    MarshalVkSubpassDependency2() {}
-    VkSubpassDependency2 s;
-    MarshalVkSubpassDependency2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSubpassDependency2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcSubpass = (uint32_t)memory->readd(address);address+=4;
-        s->dstSubpass = (uint32_t)memory->readd(address);address+=4;
-        s->srcStageMask = (VkPipelineStageFlags)memory->readd(address);address+=4;
-        s->dstStageMask = (VkPipelineStageFlags)memory->readd(address);address+=4;
-        s->srcAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-        s->dstAccessMask = (VkAccessFlags)memory->readd(address);address+=4;
-        s->dependencyFlags = (VkDependencyFlags)memory->readd(address);address+=4;
-        s->viewOffset = (int32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkRenderPassCreateInfo2 {
-public:
-    MarshalVkRenderPassCreateInfo2() {}
-    VkRenderPassCreateInfo2 s;
-    MarshalVkRenderPassCreateInfo2(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkRenderPassCreateInfo2* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkRenderPassCreateFlags)memory->readd(address);address+=4;
-        s->attachmentCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pAttachments = NULL;
-        } else {
-            VkAttachmentDescription2* pAttachments = new VkAttachmentDescription2[s->attachmentCount];
-            for (U32 i = 0; i < s->attachmentCount; i++) {
-                MarshalVkAttachmentDescription2::read(memory, paramAddress, &pAttachments[i]);
-            }
-            s->pAttachments = pAttachments;
-        }
-        s->subpassCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSubpasses = NULL;
-        } else {
-            VkSubpassDescription2* pSubpasses = new VkSubpassDescription2[s->subpassCount];
-            for (U32 i = 0; i < s->subpassCount; i++) {
-                MarshalVkSubpassDescription2::read(memory, paramAddress, &pSubpasses[i]);
-            }
-            s->pSubpasses = pSubpasses;
-        }
-        s->dependencyCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDependencies = NULL;
-        } else {
-            VkSubpassDependency2* pDependencies = new VkSubpassDependency2[s->dependencyCount];
-            for (U32 i = 0; i < s->dependencyCount; i++) {
-                MarshalVkSubpassDependency2::read(memory, paramAddress, &pDependencies[i]);
-            }
-            s->pDependencies = pDependencies;
-        }
-        s->correlatedViewMaskCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pCorrelatedViewMasks = NULL;
-        } else {
-            s->pCorrelatedViewMasks = new uint32_t[s->correlatedViewMaskCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pCorrelatedViewMasks, paramAddress, s->correlatedViewMaskCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkSubpassBeginInfo {
-public:
-    MarshalVkSubpassBeginInfo() {}
-    VkSubpassBeginInfo s;
-    MarshalVkSubpassBeginInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSubpassBeginInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->contents = (VkSubpassContents)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSubpassEndInfo {
-public:
-    MarshalVkSubpassEndInfo() {}
-    VkSubpassEndInfo s;
-    MarshalVkSubpassEndInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSubpassEndInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-    }
-};
-
-class MarshalVkSemaphoreWaitInfo {
-public:
-    MarshalVkSemaphoreWaitInfo() {}
-    VkSemaphoreWaitInfo s;
-    MarshalVkSemaphoreWaitInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSemaphoreWaitInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkSemaphoreWaitFlags)memory->readd(address);address+=4;
-        s->semaphoreCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSemaphores = NULL;
-        } else {
-            s->pSemaphores = new VkSemaphore[s->semaphoreCount * sizeof(VkSemaphore)];
-            memory->memcpy((VkSemaphore*)s->pSemaphores, paramAddress, s->semaphoreCount * sizeof(VkSemaphore));
-        }
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pValues = NULL;
-        } else {
-            s->pValues = new uint64_t[s->semaphoreCount * sizeof(uint64_t)];
-            memory->memcpy((uint64_t*)s->pValues, paramAddress, s->semaphoreCount * sizeof(uint64_t));
-        }
-    }
-};
-
-class MarshalVkSemaphoreSignalInfo {
-public:
-    MarshalVkSemaphoreSignalInfo() {}
-    VkSemaphoreSignalInfo s;
-    MarshalVkSemaphoreSignalInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSemaphoreSignalInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->semaphore = (VkSemaphore)memory->readq(address);address+=8;
-        s->value = (uint64_t)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT {
-public:
-    MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT() {}
-    VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT s;
-    MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->vertexAttributeInstanceRateDivisor = (VkBool32)memory->readd(address);address+=4;
-        s->vertexAttributeInstanceRateZeroDivisor = (VkBool32)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->vertexAttributeInstanceRateDivisor);address+=4;
-        memory->writed(address, s->vertexAttributeInstanceRateZeroDivisor);address+=4;
-    }
-};
-
-class MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT {
-public:
-    MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT() {}
-    VkPhysicalDeviceTransformFeedbackFeaturesEXT s;
-    MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkPhysicalDeviceTransformFeedbackFeaturesEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->transformFeedback = (VkBool32)memory->readd(address);address+=4;
-        s->geometryStreams = (VkBool32)memory->readd(address);address+=4;
-    }
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceTransformFeedbackFeaturesEXT* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->transformFeedback);address+=4;
-        memory->writed(address, s->geometryStreams);address+=4;
-    }
-};
-
-class MarshalVkShadingRatePaletteNV {
-public:
-    MarshalVkShadingRatePaletteNV() {}
-    VkShadingRatePaletteNV s;
-    MarshalVkShadingRatePaletteNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkShadingRatePaletteNV* s) {
-        s->shadingRatePaletteEntryCount = (uint32_t)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pShadingRatePaletteEntries = NULL;
-        } else {
-            s->pShadingRatePaletteEntries = new VkShadingRatePaletteEntryNV[s->shadingRatePaletteEntryCount * sizeof(VkShadingRatePaletteEntryNV)];
-            memory->memcpy((VkShadingRatePaletteEntryNV*)s->pShadingRatePaletteEntries, paramAddress, s->shadingRatePaletteEntryCount * sizeof(VkShadingRatePaletteEntryNV));
-        }
-    }
-};
-
-class MarshalVkCoarseSampleOrderCustomNV {
-public:
-    MarshalVkCoarseSampleOrderCustomNV() {}
-    VkCoarseSampleOrderCustomNV s;
-    MarshalVkCoarseSampleOrderCustomNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCoarseSampleOrderCustomNV* s) {
-        s->shadingRate = (VkShadingRatePaletteEntryNV)memory->readd(address);address+=4;
-        s->sampleCount = (uint32_t)memory->readd(address);address+=4;
-        s->sampleLocationCount = (uint32_t)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSampleLocations = NULL;
-        } else {
-            s->pSampleLocations = new VkCoarseSampleLocationNV[s->sampleLocationCount * sizeof(VkCoarseSampleLocationNV)];
-            memory->memcpy((VkCoarseSampleLocationNV*)s->pSampleLocations, paramAddress, s->sampleLocationCount * sizeof(VkCoarseSampleLocationNV));
-        }
-    }
-};
-
-class MarshalVkRayTracingShaderGroupCreateInfoNV {
-public:
-    MarshalVkRayTracingShaderGroupCreateInfoNV() {}
-    VkRayTracingShaderGroupCreateInfoNV s;
-    MarshalVkRayTracingShaderGroupCreateInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkRayTracingShaderGroupCreateInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->type = (VkRayTracingShaderGroupTypeKHR)memory->readd(address);address+=4;
-        s->generalShader = (uint32_t)memory->readd(address);address+=4;
-        s->closestHitShader = (uint32_t)memory->readd(address);address+=4;
-        s->anyHitShader = (uint32_t)memory->readd(address);address+=4;
-        s->intersectionShader = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkRayTracingPipelineCreateInfoNV {
-public:
-    MarshalVkRayTracingPipelineCreateInfoNV() {}
-    VkRayTracingPipelineCreateInfoNV s;
-    MarshalVkRayTracingPipelineCreateInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkRayTracingPipelineCreateInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkPipelineCreateFlags)memory->readd(address);address+=4;
-        s->stageCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pStages = NULL;
-        } else {
-            VkPipelineShaderStageCreateInfo* pStages = new VkPipelineShaderStageCreateInfo[s->stageCount];
-            for (U32 i = 0; i < s->stageCount; i++) {
-                MarshalVkPipelineShaderStageCreateInfo::read(memory, paramAddress, &pStages[i]);
-            }
-            s->pStages = pStages;
-        }
-        s->groupCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pGroups = NULL;
-        } else {
-            VkRayTracingShaderGroupCreateInfoNV* pGroups = new VkRayTracingShaderGroupCreateInfoNV[s->groupCount];
-            for (U32 i = 0; i < s->groupCount; i++) {
-                MarshalVkRayTracingShaderGroupCreateInfoNV::read(memory, paramAddress, &pGroups[i]);
-            }
-            s->pGroups = pGroups;
-        }
-        s->maxRecursionDepth = (uint32_t)memory->readd(address);address+=4;
-        s->layout = (VkPipelineLayout)memory->readq(address);address+=8;
-        s->basePipelineHandle = (VkPipeline)memory->readq(address);address+=8;
-        s->basePipelineIndex = (int32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkGeometryTrianglesNV {
-public:
-    MarshalVkGeometryTrianglesNV() {}
-    VkGeometryTrianglesNV s;
-    MarshalVkGeometryTrianglesNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkGeometryTrianglesNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->vertexData = (VkBuffer)memory->readq(address);address+=8;
-        s->vertexOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->vertexCount = (uint32_t)memory->readd(address);address+=4;
-        s->vertexStride = (VkDeviceSize)memory->readq(address);address+=8;
-        s->vertexFormat = (VkFormat)memory->readd(address);address+=4;
-        s->indexData = (VkBuffer)memory->readq(address);address+=8;
-        s->indexOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->indexCount = (uint32_t)memory->readd(address);address+=4;
-        s->indexType = (VkIndexType)memory->readd(address);address+=4;
-        s->transformData = (VkBuffer)memory->readq(address);address+=8;
-        s->transformOffset = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkGeometryAABBNV {
-public:
-    MarshalVkGeometryAABBNV() {}
-    VkGeometryAABBNV s;
-    MarshalVkGeometryAABBNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkGeometryAABBNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->aabbData = (VkBuffer)memory->readq(address);address+=8;
-        s->numAABBs = (uint32_t)memory->readd(address);address+=4;
-        s->stride = (uint32_t)memory->readd(address);address+=4;
-        s->offset = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkGeometryDataNV {
-public:
-    MarshalVkGeometryDataNV() {}
-    VkGeometryDataNV s;
-    MarshalVkGeometryDataNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkGeometryDataNV* s) {
-        MarshalVkGeometryTrianglesNV::read(memory, address, &s->triangles); address+=80;
-        MarshalVkGeometryAABBNV::read(memory, address, &s->aabbs); address+=32;
-    }
-};
-
-class MarshalVkGeometryNV {
-public:
-    MarshalVkGeometryNV() {}
-    VkGeometryNV s;
-    MarshalVkGeometryNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkGeometryNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->geometryType = (VkGeometryTypeKHR)memory->readd(address);address+=4;
-        MarshalVkGeometryDataNV::read(memory, address, &s->geometry); address+=112;
-        s->flags = (VkGeometryFlagsKHR)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkAccelerationStructureInfoNV {
-public:
-    MarshalVkAccelerationStructureInfoNV() {}
-    VkAccelerationStructureInfoNV s;
-    MarshalVkAccelerationStructureInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAccelerationStructureInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->type = (VkAccelerationStructureTypeKHR)memory->readd(address);address+=4;
-        s->flags = (VkBuildAccelerationStructureFlagsKHR)memory->readd(address);address+=4;
-        s->instanceCount = (uint32_t)memory->readd(address);address+=4;
-        s->geometryCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pGeometries = NULL;
-        } else {
-            VkGeometryNV* pGeometries = new VkGeometryNV[s->geometryCount];
-            for (U32 i = 0; i < s->geometryCount; i++) {
-                MarshalVkGeometryNV::read(memory, paramAddress, &pGeometries[i]);
-            }
-            s->pGeometries = pGeometries;
-        }
-    }
-};
-
-class MarshalVkAccelerationStructureCreateInfoNV {
-public:
-    MarshalVkAccelerationStructureCreateInfoNV() {}
-    VkAccelerationStructureCreateInfoNV s;
-    MarshalVkAccelerationStructureCreateInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAccelerationStructureCreateInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->compactedSize = (VkDeviceSize)memory->readq(address);address+=8;
-        MarshalVkAccelerationStructureInfoNV::read(memory, address, &s->info); address+=28;
-    }
-};
-
-class MarshalVkBindAccelerationStructureMemoryInfoNV {
-public:
-    MarshalVkBindAccelerationStructureMemoryInfoNV() {}
-    VkBindAccelerationStructureMemoryInfoNV s;
-    MarshalVkBindAccelerationStructureMemoryInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBindAccelerationStructureMemoryInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->accelerationStructure = (VkAccelerationStructureNV)memory->readq(address);address+=8;
-        s->memory = (VkDeviceMemory)memory->readq(address);address+=8;
-        s->memoryOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->deviceIndexCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pDeviceIndices = NULL;
-        } else {
-            s->pDeviceIndices = new uint32_t[s->deviceIndexCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pDeviceIndices, paramAddress, s->deviceIndexCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkAccelerationStructureMemoryRequirementsInfoNV {
-public:
-    MarshalVkAccelerationStructureMemoryRequirementsInfoNV() {}
-    VkAccelerationStructureMemoryRequirementsInfoNV s;
-    MarshalVkAccelerationStructureMemoryRequirementsInfoNV(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAccelerationStructureMemoryRequirementsInfoNV* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->type = (VkAccelerationStructureMemoryRequirementsTypeNV)memory->readd(address);address+=4;
-        s->accelerationStructure = (VkAccelerationStructureNV)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkBufferDeviceAddressInfo {
-public:
-    MarshalVkBufferDeviceAddressInfo() {}
-    VkBufferDeviceAddressInfo s;
-    MarshalVkBufferDeviceAddressInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferDeviceAddressInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkCooperativeMatrixPropertiesNV {
-public:
-    MarshalVkCooperativeMatrixPropertiesNV() {}
-    VkCooperativeMatrixPropertiesNV s;
-    static void write(KMemory* memory, U32 address, VkCooperativeMatrixPropertiesNV* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->MSize);address+=4;
-        memory->writed(address, s->NSize);address+=4;
-        memory->writed(address, s->KSize);address+=4;
-        memory->writed(address, s->AType);address+=4;
-        memory->writed(address, s->BType);address+=4;
-        memory->writed(address, s->CType);address+=4;
-        memory->writed(address, s->DType);address+=4;
-        memory->writed(address, s->scope);address+=4;
-    }
-};
-
-class MarshalVkPerformanceCounterKHR {
-public:
-    MarshalVkPerformanceCounterKHR() {}
-    VkPerformanceCounterKHR s;
-    static void write(KMemory* memory, U32 address, VkPerformanceCounterKHR* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->unit);address+=4;
-        memory->writed(address, s->scope);address+=4;
-        memory->writed(address, s->storage);address+=4;
-        memory->memcpy(address, s->uuid, 16); address+=16;
-    }
-};
-
-class MarshalVkPerformanceCounterDescriptionKHR {
-public:
-    MarshalVkPerformanceCounterDescriptionKHR() {}
-    VkPerformanceCounterDescriptionKHR s;
-    static void write(KMemory* memory, U32 address, VkPerformanceCounterDescriptionKHR* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->flags);address+=4;
-        memory->memcpy(address, s->name, 256); address+=256;
-        memory->memcpy(address, s->category, 256); address+=256;
-        memory->memcpy(address, s->description, 256); address+=256;
-    }
-};
-
-class MarshalVkQueryPoolPerformanceCreateInfoKHR {
-public:
-    MarshalVkQueryPoolPerformanceCreateInfoKHR() {}
-    VkQueryPoolPerformanceCreateInfoKHR s;
-    MarshalVkQueryPoolPerformanceCreateInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkQueryPoolPerformanceCreateInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->queueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->counterIndexCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pCounterIndices = NULL;
-        } else {
-            s->pCounterIndices = new uint32_t[s->counterIndexCount * sizeof(uint32_t)];
-            memory->memcpy((uint32_t*)s->pCounterIndices, paramAddress, s->counterIndexCount * sizeof(uint32_t));
-        }
-    }
-};
-
-class MarshalVkAcquireProfilingLockInfoKHR {
-public:
-    MarshalVkAcquireProfilingLockInfoKHR() {}
-    VkAcquireProfilingLockInfoKHR s;
-    MarshalVkAcquireProfilingLockInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkAcquireProfilingLockInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkAcquireProfilingLockFlagsKHR)memory->readd(address);address+=4;
-        s->timeout = (uint64_t)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkHeadlessSurfaceCreateInfoEXT {
-public:
-    MarshalVkHeadlessSurfaceCreateInfoEXT() {}
-    VkHeadlessSurfaceCreateInfoEXT s;
-    MarshalVkHeadlessSurfaceCreateInfoEXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkHeadlessSurfaceCreateInfoEXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkHeadlessSurfaceCreateFlagsEXT)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkFramebufferMixedSamplesCombinationNV {
-public:
-    MarshalVkFramebufferMixedSamplesCombinationNV() {}
-    VkFramebufferMixedSamplesCombinationNV s;
-    static void write(KMemory* memory, U32 address, VkFramebufferMixedSamplesCombinationNV* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->coverageReductionMode);address+=4;
-        memory->writed(address, s->rasterizationSamples);address+=4;
-        memory->writed(address, s->depthStencilSamples);address+=4;
-        memory->writed(address, s->colorSamples);address+=4;
-    }
-};
-
-class MarshalVkDeviceMemoryOpaqueCaptureAddressInfo {
-public:
-    MarshalVkDeviceMemoryOpaqueCaptureAddressInfo() {}
-    VkDeviceMemoryOpaqueCaptureAddressInfo s;
-    MarshalVkDeviceMemoryOpaqueCaptureAddressInfo(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDeviceMemoryOpaqueCaptureAddressInfo* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->memory = (VkDeviceMemory)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkPhysicalDeviceToolPropertiesEXT {
-public:
-    MarshalVkPhysicalDeviceToolPropertiesEXT() {}
-    VkPhysicalDeviceToolPropertiesEXT s;
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceToolPropertiesEXT* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->memcpy(address, s->name, 256); address+=256;
-        memory->memcpy(address, s->version, 256); address+=256;
-        memory->writed(address, s->purposes);address+=4;
-        memory->memcpy(address, s->description, 256); address+=256;
-        memory->memcpy(address, s->layer, 256); address+=256;
-    }
-};
-
-class MarshalVkBufferCopy2KHR {
-public:
-    MarshalVkBufferCopy2KHR() {}
-    VkBufferCopy2KHR s;
-    MarshalVkBufferCopy2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferCopy2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->dstOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->size = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkImageCopy2KHR {
-public:
-    MarshalVkImageCopy2KHR() {}
-    VkImageCopy2KHR s;
-    MarshalVkImageCopy2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageCopy2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->srcSubresource, address, 16);address+=16;
-        memory->memcpy(&s->srcOffset, address, 12);address+=12;
-        memory->memcpy(&s->dstSubresource, address, 16);address+=16;
-        memory->memcpy(&s->dstOffset, address, 12);address+=12;
-        memory->memcpy(&s->extent, address, 12);address+=12;
-    }
-};
-
-class MarshalVkImageBlit2KHR {
-public:
-    MarshalVkImageBlit2KHR() {}
-    VkImageBlit2KHR s;
-    MarshalVkImageBlit2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageBlit2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->srcSubresource, address, 16);address+=16;
-        memory->memcpy(&s->srcOffsets, address, 2);address+=2;
-        memory->memcpy(&s->dstSubresource, address, 16);address+=16;
-        memory->memcpy(&s->dstOffsets, address, 2);address+=2;
-    }
-};
-
-class MarshalVkBufferImageCopy2KHR {
-public:
-    MarshalVkBufferImageCopy2KHR() {}
-    VkBufferImageCopy2KHR s;
-    MarshalVkBufferImageCopy2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferImageCopy2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->bufferOffset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->bufferRowLength = (uint32_t)memory->readd(address);address+=4;
-        s->bufferImageHeight = (uint32_t)memory->readd(address);address+=4;
-        memory->memcpy(&s->imageSubresource, address, 16);address+=16;
-        memory->memcpy(&s->imageOffset, address, 12);address+=12;
-        memory->memcpy(&s->imageExtent, address, 12);address+=12;
-    }
-};
-
-class MarshalVkImageResolve2KHR {
-public:
-    MarshalVkImageResolve2KHR() {}
-    VkImageResolve2KHR s;
-    MarshalVkImageResolve2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageResolve2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        memory->memcpy(&s->srcSubresource, address, 16);address+=16;
-        memory->memcpy(&s->srcOffset, address, 12);address+=12;
-        memory->memcpy(&s->dstSubresource, address, 16);address+=16;
-        memory->memcpy(&s->dstOffset, address, 12);address+=12;
-        memory->memcpy(&s->extent, address, 12);address+=12;
-    }
-};
-
-class MarshalVkCopyBufferInfo2KHR {
-public:
-    MarshalVkCopyBufferInfo2KHR() {}
-    VkCopyBufferInfo2KHR s;
-    MarshalVkCopyBufferInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCopyBufferInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcBuffer = (VkBuffer)memory->readq(address);address+=8;
-        s->dstBuffer = (VkBuffer)memory->readq(address);address+=8;
-        s->regionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pRegions = NULL;
-        } else {
-            VkBufferCopy2KHR* pRegions = new VkBufferCopy2KHR[s->regionCount];
-            for (U32 i = 0; i < s->regionCount; i++) {
-                MarshalVkBufferCopy2KHR::read(memory, paramAddress, &pRegions[i]);
-            }
-            s->pRegions = pRegions;
-        }
-    }
-};
-
-class MarshalVkCopyImageInfo2KHR {
-public:
-    MarshalVkCopyImageInfo2KHR() {}
-    VkCopyImageInfo2KHR s;
-    MarshalVkCopyImageInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCopyImageInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcImage = (VkImage)memory->readq(address);address+=8;
-        s->srcImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->dstImage = (VkImage)memory->readq(address);address+=8;
-        s->dstImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->regionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pRegions = NULL;
-        } else {
-            VkImageCopy2KHR* pRegions = new VkImageCopy2KHR[s->regionCount];
-            for (U32 i = 0; i < s->regionCount; i++) {
-                MarshalVkImageCopy2KHR::read(memory, paramAddress, &pRegions[i]);
-            }
-            s->pRegions = pRegions;
-        }
-    }
-};
-
-class MarshalVkBlitImageInfo2KHR {
-public:
-    MarshalVkBlitImageInfo2KHR() {}
-    VkBlitImageInfo2KHR s;
-    MarshalVkBlitImageInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBlitImageInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcImage = (VkImage)memory->readq(address);address+=8;
-        s->srcImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->dstImage = (VkImage)memory->readq(address);address+=8;
-        s->dstImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->regionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pRegions = NULL;
-        } else {
-            VkImageBlit2KHR* pRegions = new VkImageBlit2KHR[s->regionCount];
-            for (U32 i = 0; i < s->regionCount; i++) {
-                MarshalVkImageBlit2KHR::read(memory, paramAddress, &pRegions[i]);
-            }
-            s->pRegions = pRegions;
-        }
-        s->filter = (VkFilter)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkCopyBufferToImageInfo2KHR {
-public:
-    MarshalVkCopyBufferToImageInfo2KHR() {}
-    VkCopyBufferToImageInfo2KHR s;
-    MarshalVkCopyBufferToImageInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCopyBufferToImageInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcBuffer = (VkBuffer)memory->readq(address);address+=8;
-        s->dstImage = (VkImage)memory->readq(address);address+=8;
-        s->dstImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->regionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pRegions = NULL;
-        } else {
-            VkBufferImageCopy2KHR* pRegions = new VkBufferImageCopy2KHR[s->regionCount];
-            for (U32 i = 0; i < s->regionCount; i++) {
-                MarshalVkBufferImageCopy2KHR::read(memory, paramAddress, &pRegions[i]);
-            }
-            s->pRegions = pRegions;
-        }
-    }
-};
-
-class MarshalVkCopyImageToBufferInfo2KHR {
-public:
-    MarshalVkCopyImageToBufferInfo2KHR() {}
-    VkCopyImageToBufferInfo2KHR s;
-    MarshalVkCopyImageToBufferInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCopyImageToBufferInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcImage = (VkImage)memory->readq(address);address+=8;
-        s->srcImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->dstBuffer = (VkBuffer)memory->readq(address);address+=8;
-        s->regionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pRegions = NULL;
-        } else {
-            VkBufferImageCopy2KHR* pRegions = new VkBufferImageCopy2KHR[s->regionCount];
-            for (U32 i = 0; i < s->regionCount; i++) {
-                MarshalVkBufferImageCopy2KHR::read(memory, paramAddress, &pRegions[i]);
-            }
-            s->pRegions = pRegions;
-        }
-    }
-};
-
-class MarshalVkResolveImageInfo2KHR {
-public:
-    MarshalVkResolveImageInfo2KHR() {}
-    VkResolveImageInfo2KHR s;
-    MarshalVkResolveImageInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkResolveImageInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcImage = (VkImage)memory->readq(address);address+=8;
-        s->srcImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->dstImage = (VkImage)memory->readq(address);address+=8;
-        s->dstImageLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->regionCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pRegions = NULL;
-        } else {
-            VkImageResolve2KHR* pRegions = new VkImageResolve2KHR[s->regionCount];
-            for (U32 i = 0; i < s->regionCount; i++) {
-                MarshalVkImageResolve2KHR::read(memory, paramAddress, &pRegions[i]);
-            }
-            s->pRegions = pRegions;
-        }
-    }
-};
-
-class MarshalVkPhysicalDeviceFragmentShadingRateKHR {
-public:
-    MarshalVkPhysicalDeviceFragmentShadingRateKHR() {}
-    VkPhysicalDeviceFragmentShadingRateKHR s;
-    static void write(KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateKHR* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writed(address, s->sampleCounts);address+=4;
-        memory->memcpy(address, &s->fragmentSize, 8); address+=8;
-    }
-};
-
-class MarshalVkVertexInputBindingDescription2EXT {
-public:
-    MarshalVkVertexInputBindingDescription2EXT() {}
-    VkVertexInputBindingDescription2EXT s;
-    MarshalVkVertexInputBindingDescription2EXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkVertexInputBindingDescription2EXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->binding = (uint32_t)memory->readd(address);address+=4;
-        s->stride = (uint32_t)memory->readd(address);address+=4;
-        s->inputRate = (VkVertexInputRate)memory->readd(address);address+=4;
-        s->divisor = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkVertexInputAttributeDescription2EXT {
-public:
-    MarshalVkVertexInputAttributeDescription2EXT() {}
-    VkVertexInputAttributeDescription2EXT s;
-    MarshalVkVertexInputAttributeDescription2EXT(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkVertexInputAttributeDescription2EXT* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->location = (uint32_t)memory->readd(address);address+=4;
-        s->binding = (uint32_t)memory->readd(address);address+=4;
-        s->format = (VkFormat)memory->readd(address);address+=4;
-        s->offset = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkMemoryBarrier2KHR {
-public:
-    MarshalVkMemoryBarrier2KHR() {}
-    VkMemoryBarrier2KHR s;
-    MarshalVkMemoryBarrier2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkMemoryBarrier2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcStageMask = (VkPipelineStageFlags2KHR)memory->readq(address);address+=8;
-        s->srcAccessMask = (VkAccessFlags2KHR)memory->readq(address);address+=8;
-        s->dstStageMask = (VkPipelineStageFlags2KHR)memory->readq(address);address+=8;
-        s->dstAccessMask = (VkAccessFlags2KHR)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkImageMemoryBarrier2KHR {
-public:
-    MarshalVkImageMemoryBarrier2KHR() {}
-    VkImageMemoryBarrier2KHR s;
-    MarshalVkImageMemoryBarrier2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkImageMemoryBarrier2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcStageMask = (VkPipelineStageFlags2KHR)memory->readq(address);address+=8;
-        s->srcAccessMask = (VkAccessFlags2KHR)memory->readq(address);address+=8;
-        s->dstStageMask = (VkPipelineStageFlags2KHR)memory->readq(address);address+=8;
-        s->dstAccessMask = (VkAccessFlags2KHR)memory->readq(address);address+=8;
-        s->oldLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->newLayout = (VkImageLayout)memory->readd(address);address+=4;
-        s->srcQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->dstQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->image = (VkImage)memory->readq(address);address+=8;
-        memory->memcpy(&s->subresourceRange, address, 20);address+=20;
-    }
-};
-
-class MarshalVkBufferMemoryBarrier2KHR {
-public:
-    MarshalVkBufferMemoryBarrier2KHR() {}
-    VkBufferMemoryBarrier2KHR s;
-    MarshalVkBufferMemoryBarrier2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkBufferMemoryBarrier2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->srcStageMask = (VkPipelineStageFlags2KHR)memory->readq(address);address+=8;
-        s->srcAccessMask = (VkAccessFlags2KHR)memory->readq(address);address+=8;
-        s->dstStageMask = (VkPipelineStageFlags2KHR)memory->readq(address);address+=8;
-        s->dstAccessMask = (VkAccessFlags2KHR)memory->readq(address);address+=8;
-        s->srcQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->dstQueueFamilyIndex = (uint32_t)memory->readd(address);address+=4;
-        s->buffer = (VkBuffer)memory->readq(address);address+=8;
-        s->offset = (VkDeviceSize)memory->readq(address);address+=8;
-        s->size = (VkDeviceSize)memory->readq(address);address+=8;
-    }
-};
-
-class MarshalVkDependencyInfoKHR {
-public:
-    MarshalVkDependencyInfoKHR() {}
-    VkDependencyInfoKHR s;
-    MarshalVkDependencyInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkDependencyInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->dependencyFlags = (VkDependencyFlags)memory->readd(address);address+=4;
-        s->memoryBarrierCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pMemoryBarriers = NULL;
-        } else {
-            VkMemoryBarrier2KHR* pMemoryBarriers = new VkMemoryBarrier2KHR[s->memoryBarrierCount];
-            for (U32 i = 0; i < s->memoryBarrierCount; i++) {
-                MarshalVkMemoryBarrier2KHR::read(memory, paramAddress, &pMemoryBarriers[i]);
-            }
-            s->pMemoryBarriers = pMemoryBarriers;
-        }
-        s->bufferMemoryBarrierCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pBufferMemoryBarriers = NULL;
-        } else {
-            VkBufferMemoryBarrier2KHR* pBufferMemoryBarriers = new VkBufferMemoryBarrier2KHR[s->bufferMemoryBarrierCount];
-            for (U32 i = 0; i < s->bufferMemoryBarrierCount; i++) {
-                MarshalVkBufferMemoryBarrier2KHR::read(memory, paramAddress, &pBufferMemoryBarriers[i]);
-            }
-            s->pBufferMemoryBarriers = pBufferMemoryBarriers;
-        }
-        s->imageMemoryBarrierCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pImageMemoryBarriers = NULL;
-        } else {
-            VkImageMemoryBarrier2KHR* pImageMemoryBarriers = new VkImageMemoryBarrier2KHR[s->imageMemoryBarrierCount];
-            for (U32 i = 0; i < s->imageMemoryBarrierCount; i++) {
-                MarshalVkImageMemoryBarrier2KHR::read(memory, paramAddress, &pImageMemoryBarriers[i]);
-            }
-            s->pImageMemoryBarriers = pImageMemoryBarriers;
-        }
-    }
-};
-
-class MarshalVkSemaphoreSubmitInfoKHR {
-public:
-    MarshalVkSemaphoreSubmitInfoKHR() {}
-    VkSemaphoreSubmitInfoKHR s;
-    MarshalVkSemaphoreSubmitInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSemaphoreSubmitInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->semaphore = (VkSemaphore)memory->readq(address);address+=8;
-        s->value = (uint64_t)memory->readq(address);address+=8;
-        s->stageMask = (VkPipelineStageFlags2KHR)memory->readq(address);address+=8;
-        s->deviceIndex = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkCommandBufferSubmitInfoKHR {
-public:
-    MarshalVkCommandBufferSubmitInfoKHR() {}
-    VkCommandBufferSubmitInfoKHR s;
-    MarshalVkCommandBufferSubmitInfoKHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkCommandBufferSubmitInfoKHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->commandBuffer = (VkCommandBuffer)getVulkanPtr(memory, memory->readd(address));address+=4;
-        s->deviceMask = (uint32_t)memory->readd(address);address+=4;
-    }
-};
-
-class MarshalVkSubmitInfo2KHR {
-public:
-    MarshalVkSubmitInfo2KHR() {}
-    VkSubmitInfo2KHR s;
-    MarshalVkSubmitInfo2KHR(KMemory* memory, U32 address) {read(memory, address, &this->s);}
-    static void read(KMemory* memory, U32 address, VkSubmitInfo2KHR* s) {
-        s->sType = (VkStructureType)memory->readd(address);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pNext = NULL;
-        } else {
-            s->pNext = vulkanGetNextPtr(memory, paramAddress);
-        }
-        s->flags = (VkSubmitFlagsKHR)memory->readd(address);address+=4;
-        s->waitSemaphoreInfoCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pWaitSemaphoreInfos = NULL;
-        } else {
-            VkSemaphoreSubmitInfoKHR* pWaitSemaphoreInfos = new VkSemaphoreSubmitInfoKHR[s->waitSemaphoreInfoCount];
-            for (U32 i = 0; i < s->waitSemaphoreInfoCount; i++) {
-                MarshalVkSemaphoreSubmitInfoKHR::read(memory, paramAddress, &pWaitSemaphoreInfos[i]);
-            }
-            s->pWaitSemaphoreInfos = pWaitSemaphoreInfos;
-        }
-        s->commandBufferInfoCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pCommandBufferInfos = NULL;
-        } else {
-            VkCommandBufferSubmitInfoKHR* pCommandBufferInfos = new VkCommandBufferSubmitInfoKHR[s->commandBufferInfoCount];
-            for (U32 i = 0; i < s->commandBufferInfoCount; i++) {
-                MarshalVkCommandBufferSubmitInfoKHR::read(memory, paramAddress, &pCommandBufferInfos[i]);
-            }
-            s->pCommandBufferInfos = pCommandBufferInfos;
-        }
-        s->signalSemaphoreInfoCount = (uint32_t)memory->readd(address);address+=4;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress == 0) {
-            s->pSignalSemaphoreInfos = NULL;
-        } else {
-            VkSemaphoreSubmitInfoKHR* pSignalSemaphoreInfos = new VkSemaphoreSubmitInfoKHR[s->signalSemaphoreInfoCount];
-            for (U32 i = 0; i < s->signalSemaphoreInfoCount; i++) {
-                MarshalVkSemaphoreSubmitInfoKHR::read(memory, paramAddress, &pSignalSemaphoreInfos[i]);
-            }
-            s->pSignalSemaphoreInfos = pSignalSemaphoreInfos;
-        }
-    }
-};
-
-class MarshalVkCheckpointData2NV {
-public:
-    MarshalVkCheckpointData2NV() {}
-    VkCheckpointData2NV s;
-    static void write(KMemory* memory, U32 address, VkCheckpointData2NV* s) {
-        memory->writed(address, s->sType);address+=4;
-        U32 paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-            vulkanWriteNextPtr(memory, paramAddress, s->pNext);
-            delete s->pNext;
-        }
-        memory->writeq(address, s->stage);address+=8;
-        paramAddress = memory->readd(address);address+=4;
-        if (paramAddress != 0) {
-kpanic("        Can't marshal void*");
-        }
-    }
-};
-
 // return type: VkResult(4 bytes)
 void vk_CreateInstance(CPU* cpu) {
     initVulkan();
@@ -4564,11 +95,16 @@ void vk_GetPhysicalDeviceQueueFamilyProperties(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t tmp_pQueueFamilyPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pQueueFamilyPropertyCount = &tmp_pQueueFamilyPropertyCount;
-    VkQueueFamilyProperties* pQueueFamilyProperties = new VkQueueFamilyProperties[*pQueueFamilyPropertyCount];
-    cpu->memory->memcpy(pQueueFamilyProperties, ARG3, *pQueueFamilyPropertyCount * sizeof(VkQueueFamilyProperties));
+    VkQueueFamilyProperties* pQueueFamilyProperties = nullptr;
+    if (ARG3) {
+        pQueueFamilyProperties = new VkQueueFamilyProperties[*pQueueFamilyPropertyCount];
+        cpu->memory->memcpy(pQueueFamilyProperties, ARG3, (U32)*pQueueFamilyPropertyCount * sizeof(VkQueueFamilyProperties));
+    }
     pBoxedInfo->pvkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pQueueFamilyPropertyCount);
-    cpu->memory->memcpy(ARG3, pQueueFamilyProperties, *pQueueFamilyPropertyCount * sizeof(VkQueueFamilyProperties));
+    if (pQueueFamilyProperties) {
+        cpu->memory->memcpy(ARG3, pQueueFamilyProperties, (U32)*pQueueFamilyPropertyCount * sizeof(VkQueueFamilyProperties));
+    }
     delete[] pQueueFamilyProperties;
 }
 void vk_GetPhysicalDeviceMemoryProperties(CPU* cpu) {
@@ -4647,27 +183,41 @@ void vk_EnumerateInstanceLayerProperties(CPU* cpu) {
     initVulkan();
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG1);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
-    VkLayerProperties* pProperties = new VkLayerProperties[*pPropertyCount];
-    cpu->memory->memcpy(pProperties, ARG2, *pPropertyCount * sizeof(VkLayerProperties));
+    VkLayerProperties* pProperties = nullptr;
+    if (ARG2) {
+        pProperties = new VkLayerProperties[*pPropertyCount];
+        cpu->memory->memcpy(pProperties, ARG2, (U32)*pPropertyCount * sizeof(VkLayerProperties));
+    }
     EAX = pvkEnumerateInstanceLayerProperties(pPropertyCount, pProperties);
     cpu->memory->writed(ARG1, (U32)tmp_pPropertyCount);
-    cpu->memory->memcpy(ARG2, pProperties, *pPropertyCount * sizeof(VkLayerProperties));
+    if (pProperties) {
+        cpu->memory->memcpy(ARG2, pProperties, (U32)*pPropertyCount * sizeof(VkLayerProperties));
+    }
     delete[] pProperties;
 }
 // return type: VkResult(4 bytes)
 void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
     initVulkan();
-U32 len = cpu->memory->strlen(ARG1);
-    char* pLayerName = new char[len];
-    cpu->memory->memcpy(pLayerName, ARG1, len * sizeof(char));
+    U32 len = 0;
+    char* pLayerName = nullptr;
+    if (ARG1) {
+        len = cpu->memory->strlen(ARG1);
+        pLayerName = new char[len];
+        cpu->memory->memcpy(pLayerName, ARG1, (U32)len * sizeof(char));
+    }
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
-    VkExtensionProperties* pProperties = new VkExtensionProperties[*pPropertyCount];
-    cpu->memory->memcpy(pProperties, ARG3, *pPropertyCount * sizeof(VkExtensionProperties));
+    VkExtensionProperties* pProperties = nullptr;
+    if (ARG3) {
+        pProperties = new VkExtensionProperties[*pPropertyCount];
+        cpu->memory->memcpy(pProperties, ARG3, (U32)*pPropertyCount * sizeof(VkExtensionProperties));
+    }
     EAX = pvkEnumerateInstanceExtensionProperties(pLayerName, pPropertyCount, pProperties);
     delete[] pLayerName;
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
-    cpu->memory->memcpy(ARG3, pProperties, *pPropertyCount * sizeof(VkExtensionProperties));
+    if (pProperties) {
+        cpu->memory->memcpy(ARG3, pProperties, (U32)*pPropertyCount * sizeof(VkExtensionProperties));
+    }
     delete[] pProperties;
 }
 // return type: VkResult(4 bytes)
@@ -4676,28 +226,42 @@ void vk_EnumerateDeviceLayerProperties(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
-    VkLayerProperties* pProperties = new VkLayerProperties[*pPropertyCount];
-    cpu->memory->memcpy(pProperties, ARG3, *pPropertyCount * sizeof(VkLayerProperties));
+    VkLayerProperties* pProperties = nullptr;
+    if (ARG3) {
+        pProperties = new VkLayerProperties[*pPropertyCount];
+        cpu->memory->memcpy(pProperties, ARG3, (U32)*pPropertyCount * sizeof(VkLayerProperties));
+    }
     EAX = pBoxedInfo->pvkEnumerateDeviceLayerProperties(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
-    cpu->memory->memcpy(ARG3, pProperties, *pPropertyCount * sizeof(VkLayerProperties));
+    if (pProperties) {
+        cpu->memory->memcpy(ARG3, pProperties, (U32)*pPropertyCount * sizeof(VkLayerProperties));
+    }
     delete[] pProperties;
 }
 // return type: VkResult(4 bytes)
 void vk_EnumerateDeviceExtensionProperties(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-U32 len = cpu->memory->strlen(ARG2);
-    char* pLayerName = new char[len];
-    cpu->memory->memcpy(pLayerName, ARG2, len * sizeof(char));
+    U32 len = 0;
+    char* pLayerName = nullptr;
+    if (ARG2) {
+        len = cpu->memory->strlen(ARG2);
+        pLayerName = new char[len];
+        cpu->memory->memcpy(pLayerName, ARG2, (U32)len * sizeof(char));
+    }
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
-    VkExtensionProperties* pProperties = new VkExtensionProperties[*pPropertyCount];
-    cpu->memory->memcpy(pProperties, ARG4, *pPropertyCount * sizeof(VkExtensionProperties));
+    VkExtensionProperties* pProperties = nullptr;
+    if (ARG4) {
+        pProperties = new VkExtensionProperties[*pPropertyCount];
+        cpu->memory->memcpy(pProperties, ARG4, (U32)*pPropertyCount * sizeof(VkExtensionProperties));
+    }
     EAX = pBoxedInfo->pvkEnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties);
     delete[] pLayerName;
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
-    cpu->memory->memcpy(ARG4, pProperties, *pPropertyCount * sizeof(VkExtensionProperties));
+    if (pProperties) {
+        cpu->memory->memcpy(ARG4, pProperties, (U32)*pPropertyCount * sizeof(VkExtensionProperties));
+    }
     delete[] pProperties;
 }
 void vk_GetDeviceQueue(CPU* cpu) {
@@ -4721,7 +285,7 @@ void vk_QueueSubmit(CPU* cpu) {
             MarshalVkSubmitInfo::read(cpu->memory, ARG3 + i * 36, &pSubmits[i]);
         }
     }
-    VkFence fence = (VkFence)ARG64(ARG4, ARG5);
+    VkFence fence = (VkFence)cpu->memory->readq(ARG4);
     EAX = pBoxedInfo->pvkQueueSubmit(queue, submitCount, pSubmits, fence);
     if (pSubmits) {
         delete[] pSubmits;
@@ -4758,8 +322,8 @@ void vk_AllocateMemory(CPU* cpu) {
 void vk_FreeMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeviceMemory memory = (VkDeviceMemory)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkFreeMemory:VkAllocationCallbacks not implemented"); shown = true;}
+    VkDeviceMemory memory = (VkDeviceMemory)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkFreeMemory:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkFreeMemory(device, memory, pAllocator);
     unregisterVkMemoryAllocation(memory);
@@ -4768,10 +332,10 @@ void vk_FreeMemory(CPU* cpu) {
 void vk_MapMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeviceMemory memory = (VkDeviceMemory)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkDeviceSize size = (VkDeviceSize)ARG64(ARG6, ARG7);
-    VkMemoryMapFlags flags = (VkMemoryMapFlags)ARG8;
+    VkDeviceMemory memory = (VkDeviceMemory)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkDeviceSize size = (VkDeviceSize)cpu->memory->readq(ARG4);
+    VkMemoryMapFlags flags = (VkMemoryMapFlags)ARG5;
     void *pData = NULL;
     EAX = pBoxedInfo->pvkMapMemory(device, memory, offset, size, flags, &pData);
     if (EAX == 0) {
@@ -4781,7 +345,7 @@ void vk_MapMemory(CPU* cpu) {
 void vk_UnmapMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeviceMemory memory = (VkDeviceMemory)ARG64(ARG2, ARG3);
+    VkDeviceMemory memory = (VkDeviceMemory)cpu->memory->readq(ARG2);
     pBoxedInfo->pvkUnmapMemory(device, memory);
     unmapVkMemory(memory);
 }
@@ -4822,61 +386,66 @@ void vk_InvalidateMappedMemoryRanges(CPU* cpu) {
 void vk_GetDeviceMemoryCommitment(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeviceMemory memory = (VkDeviceMemory)ARG64(ARG2, ARG3);
-    VkDeviceSize tmp_pCommittedMemoryInBytes = (VkDeviceSize) cpu->memory->readq(ARG4);
+    VkDeviceMemory memory = (VkDeviceMemory)cpu->memory->readq(ARG2);
+    VkDeviceSize tmp_pCommittedMemoryInBytes = (VkDeviceSize) cpu->memory->readq(ARG3);
     VkDeviceSize* pCommittedMemoryInBytes = &tmp_pCommittedMemoryInBytes;
     pBoxedInfo->pvkGetDeviceMemoryCommitment(device, memory, pCommittedMemoryInBytes);
-    cpu->memory->writeq(ARG4, (U64)tmp_pCommittedMemoryInBytes);
+    cpu->memory->writeq(ARG3, (U64)tmp_pCommittedMemoryInBytes);
 }
 void vk_GetBufferMemoryRequirements(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
     VkMemoryRequirements tmp_pMemoryRequirements;
-    cpu->memory->memcpy(&tmp_pMemoryRequirements, ARG4, 20);
+    cpu->memory->memcpy(&tmp_pMemoryRequirements, ARG3, 20);
     VkMemoryRequirements* pMemoryRequirements = &tmp_pMemoryRequirements;
     pBoxedInfo->pvkGetBufferMemoryRequirements(device, buffer, pMemoryRequirements);
-    cpu->memory->memcpy(ARG4, &tmp_pMemoryRequirements, 20);
+    cpu->memory->memcpy(ARG3, &tmp_pMemoryRequirements, 20);
 }
 // return type: VkResult(4 bytes)
 void vk_BindBufferMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceMemory memory = (VkDeviceMemory)ARG64(ARG4, ARG5);
-    VkDeviceSize memoryOffset = (VkDeviceSize)ARG64(ARG6, ARG7);
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceMemory memory = (VkDeviceMemory)cpu->memory->readq(ARG3);
+    VkDeviceSize memoryOffset = (VkDeviceSize)cpu->memory->readq(ARG4);
     EAX = pBoxedInfo->pvkBindBufferMemory(device, buffer, memory, memoryOffset);
 }
 void vk_GetImageMemoryRequirements(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage image = (VkImage)ARG64(ARG2, ARG3);
+    VkImage image = (VkImage)cpu->memory->readq(ARG2);
     VkMemoryRequirements tmp_pMemoryRequirements;
-    cpu->memory->memcpy(&tmp_pMemoryRequirements, ARG4, 20);
+    cpu->memory->memcpy(&tmp_pMemoryRequirements, ARG3, 20);
     VkMemoryRequirements* pMemoryRequirements = &tmp_pMemoryRequirements;
     pBoxedInfo->pvkGetImageMemoryRequirements(device, image, pMemoryRequirements);
-    cpu->memory->memcpy(ARG4, &tmp_pMemoryRequirements, 20);
+    cpu->memory->memcpy(ARG3, &tmp_pMemoryRequirements, 20);
 }
 // return type: VkResult(4 bytes)
 void vk_BindImageMemory(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage image = (VkImage)ARG64(ARG2, ARG3);
-    VkDeviceMemory memory = (VkDeviceMemory)ARG64(ARG4, ARG5);
-    VkDeviceSize memoryOffset = (VkDeviceSize)ARG64(ARG6, ARG7);
+    VkImage image = (VkImage)cpu->memory->readq(ARG2);
+    VkDeviceMemory memory = (VkDeviceMemory)cpu->memory->readq(ARG3);
+    VkDeviceSize memoryOffset = (VkDeviceSize)cpu->memory->readq(ARG4);
     EAX = pBoxedInfo->pvkBindImageMemory(device, image, memory, memoryOffset);
 }
 void vk_GetImageSparseMemoryRequirements(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage image = (VkImage)ARG64(ARG2, ARG3);
-    uint32_t tmp_pSparseMemoryRequirementCount = (uint32_t) cpu->memory->readd(ARG4);
+    VkImage image = (VkImage)cpu->memory->readq(ARG2);
+    uint32_t tmp_pSparseMemoryRequirementCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSparseMemoryRequirementCount = &tmp_pSparseMemoryRequirementCount;
-    VkSparseImageMemoryRequirements* pSparseMemoryRequirements = new VkSparseImageMemoryRequirements[*pSparseMemoryRequirementCount];
-    cpu->memory->memcpy(pSparseMemoryRequirements, ARG5, *pSparseMemoryRequirementCount * sizeof(VkSparseImageMemoryRequirements));
+    VkSparseImageMemoryRequirements* pSparseMemoryRequirements = nullptr;
+    if (ARG4) {
+        pSparseMemoryRequirements = new VkSparseImageMemoryRequirements[*pSparseMemoryRequirementCount];
+        cpu->memory->memcpy(pSparseMemoryRequirements, ARG4, (U32)*pSparseMemoryRequirementCount * sizeof(VkSparseImageMemoryRequirements));
+    }
     pBoxedInfo->pvkGetImageSparseMemoryRequirements(device, image, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
-    cpu->memory->writed(ARG4, (U32)tmp_pSparseMemoryRequirementCount);
-    cpu->memory->memcpy(ARG5, pSparseMemoryRequirements, *pSparseMemoryRequirementCount * sizeof(VkSparseImageMemoryRequirements));
+    cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
+    if (pSparseMemoryRequirements) {
+        cpu->memory->memcpy(ARG4, pSparseMemoryRequirements, (U32)*pSparseMemoryRequirementCount * sizeof(VkSparseImageMemoryRequirements));
+    }
     delete[] pSparseMemoryRequirements;
 }
 void vk_GetPhysicalDeviceSparseImageFormatProperties(CPU* cpu) {
@@ -4889,11 +458,16 @@ void vk_GetPhysicalDeviceSparseImageFormatProperties(CPU* cpu) {
     VkImageTiling tiling = (VkImageTiling)ARG6;
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG7);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
-    VkSparseImageFormatProperties* pProperties = new VkSparseImageFormatProperties[*pPropertyCount];
-    cpu->memory->memcpy(pProperties, ARG8, *pPropertyCount * sizeof(VkSparseImageFormatProperties));
+    VkSparseImageFormatProperties* pProperties = nullptr;
+    if (ARG8) {
+        pProperties = new VkSparseImageFormatProperties[*pPropertyCount];
+        cpu->memory->memcpy(pProperties, ARG8, (U32)*pPropertyCount * sizeof(VkSparseImageFormatProperties));
+    }
     pBoxedInfo->pvkGetPhysicalDeviceSparseImageFormatProperties(physicalDevice, format, type, samples, usage, tiling, pPropertyCount, pProperties);
     cpu->memory->writed(ARG7, (U32)tmp_pPropertyCount);
-    cpu->memory->memcpy(ARG8, pProperties, *pPropertyCount * sizeof(VkSparseImageFormatProperties));
+    if (pProperties) {
+        cpu->memory->memcpy(ARG8, pProperties, (U32)*pPropertyCount * sizeof(VkSparseImageFormatProperties));
+    }
     delete[] pProperties;
 }
 // return type: VkResult(4 bytes)
@@ -4908,7 +482,7 @@ void vk_QueueBindSparse(CPU* cpu) {
             MarshalVkBindSparseInfo::read(cpu->memory, ARG3 + i * 48, &pBindInfo[i]);
         }
     }
-    VkFence fence = (VkFence)ARG64(ARG4, ARG5);
+    VkFence fence = (VkFence)cpu->memory->readq(ARG4);
     EAX = pBoxedInfo->pvkQueueBindSparse(queue, bindInfoCount, pBindInfo, fence);
     if (pBindInfo) {
         delete[] pBindInfo;
@@ -4930,8 +504,8 @@ void vk_CreateFence(CPU* cpu) {
 void vk_DestroyFence(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkFence fence = (VkFence)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyFence:VkAllocationCallbacks not implemented"); shown = true;}
+    VkFence fence = (VkFence)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyFence:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyFence(device, fence, pAllocator);
 }
@@ -4940,8 +514,11 @@ void vk_ResetFences(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t fenceCount = (uint32_t)ARG2;
-    VkFence* pFences = new VkFence[fenceCount];
-    cpu->memory->memcpy(pFences, ARG3, fenceCount * sizeof(VkFence));
+    VkFence* pFences = nullptr;
+    if (ARG3) {
+        pFences = new VkFence[fenceCount];
+        cpu->memory->memcpy(pFences, ARG3, (U32)fenceCount * sizeof(VkFence));
+    }
     EAX = pBoxedInfo->pvkResetFences(device, fenceCount, pFences);
     delete[] pFences;
 }
@@ -4949,7 +526,7 @@ void vk_ResetFences(CPU* cpu) {
 void vk_GetFenceStatus(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkFence fence = (VkFence)ARG64(ARG2, ARG3);
+    VkFence fence = (VkFence)cpu->memory->readq(ARG2);
     EAX = pBoxedInfo->pvkGetFenceStatus(device, fence);
 }
 // return type: VkResult(4 bytes)
@@ -4957,10 +534,13 @@ void vk_WaitForFences(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t fenceCount = (uint32_t)ARG2;
-    VkFence* pFences = new VkFence[fenceCount];
-    cpu->memory->memcpy(pFences, ARG3, fenceCount * sizeof(VkFence));
+    VkFence* pFences = nullptr;
+    if (ARG3) {
+        pFences = new VkFence[fenceCount];
+        cpu->memory->memcpy(pFences, ARG3, (U32)fenceCount * sizeof(VkFence));
+    }
     VkBool32 waitAll = (VkBool32)ARG4;
-    uint64_t timeout = (uint64_t)ARG64(ARG5, ARG6);
+    uint64_t timeout = (uint64_t)cpu->memory->readq(ARG5);
     EAX = pBoxedInfo->pvkWaitForFences(device, fenceCount, pFences, waitAll, timeout);
     delete[] pFences;
 }
@@ -4980,8 +560,8 @@ void vk_CreateSemaphore(CPU* cpu) {
 void vk_DestroySemaphore(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSemaphore semaphore = (VkSemaphore)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroySemaphore:VkAllocationCallbacks not implemented"); shown = true;}
+    VkSemaphore semaphore = (VkSemaphore)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroySemaphore:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySemaphore(device, semaphore, pAllocator);
 }
@@ -5001,8 +581,8 @@ void vk_CreateEvent(CPU* cpu) {
 void vk_DestroyEvent(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyEvent:VkAllocationCallbacks not implemented"); shown = true;}
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyEvent:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyEvent(device, event, pAllocator);
 }
@@ -5010,21 +590,21 @@ void vk_DestroyEvent(CPU* cpu) {
 void vk_GetEventStatus(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
     EAX = pBoxedInfo->pvkGetEventStatus(device, event);
 }
 // return type: VkResult(4 bytes)
 void vk_SetEvent(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
     EAX = pBoxedInfo->pvkSetEvent(device, event);
 }
 // return type: VkResult(4 bytes)
 void vk_ResetEvent(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
     EAX = pBoxedInfo->pvkResetEvent(device, event);
 }
 // return type: VkResult(4 bytes)
@@ -5043,8 +623,8 @@ void vk_CreateQueryPool(CPU* cpu) {
 void vk_DestroyQueryPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyQueryPool:VkAllocationCallbacks not implemented"); shown = true;}
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyQueryPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyQueryPool(device, queryPool, pAllocator);
 }
@@ -5052,32 +632,37 @@ void vk_DestroyQueryPool(CPU* cpu) {
 void vk_GetQueryPoolResults(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t firstQuery = (uint32_t)ARG4;
-    uint32_t queryCount = (uint32_t)ARG5;
-    size_t dataSize = (size_t)ARG6;
-    void* pData = new char[dataSize];
-    cpu->memory->memcpy(pData, ARG7, dataSize * sizeof(char));
-    VkDeviceSize stride = (VkDeviceSize)ARG64(ARG8, ARG9);
-    VkQueryResultFlags flags = (VkQueryResultFlags)ARG10;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t firstQuery = (uint32_t)ARG3;
+    uint32_t queryCount = (uint32_t)ARG4;
+    size_t dataSize = (size_t)ARG5;
+    void* pData = nullptr;
+    if (ARG6) {
+        pData = new char[dataSize];
+        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+    }
+    VkDeviceSize stride = (VkDeviceSize)cpu->memory->readq(ARG7);
+    VkQueryResultFlags flags = (VkQueryResultFlags)ARG8;
     EAX = pBoxedInfo->pvkGetQueryPoolResults(device, queryPool, firstQuery, queryCount, dataSize, pData, stride, flags);
-    cpu->memory->memcpy(ARG7, pData, dataSize * sizeof(char));
+    if (pData) {
+        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
+    }
     delete[] pData;
 }
 void vk_ResetQueryPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t firstQuery = (uint32_t)ARG4;
-    uint32_t queryCount = (uint32_t)ARG5;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t firstQuery = (uint32_t)ARG3;
+    uint32_t queryCount = (uint32_t)ARG4;
     pBoxedInfo->pvkResetQueryPool(device, queryPool, firstQuery, queryCount);
 }
 void vk_ResetQueryPoolEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t firstQuery = (uint32_t)ARG4;
-    uint32_t queryCount = (uint32_t)ARG5;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t firstQuery = (uint32_t)ARG3;
+    uint32_t queryCount = (uint32_t)ARG4;
     pBoxedInfo->pvkResetQueryPoolEXT(device, queryPool, firstQuery, queryCount);
 }
 // return type: VkResult(4 bytes)
@@ -5096,8 +681,8 @@ void vk_CreateBuffer(CPU* cpu) {
 void vk_DestroyBuffer(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyBuffer:VkAllocationCallbacks not implemented"); shown = true;}
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyBuffer:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyBuffer(device, buffer, pAllocator);
 }
@@ -5117,8 +702,8 @@ void vk_CreateBufferView(CPU* cpu) {
 void vk_DestroyBufferView(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBufferView bufferView = (VkBufferView)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyBufferView:VkAllocationCallbacks not implemented"); shown = true;}
+    VkBufferView bufferView = (VkBufferView)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyBufferView:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyBufferView(device, bufferView, pAllocator);
 }
@@ -5138,23 +723,23 @@ void vk_CreateImage(CPU* cpu) {
 void vk_DestroyImage(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage image = (VkImage)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyImage:VkAllocationCallbacks not implemented"); shown = true;}
+    VkImage image = (VkImage)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyImage:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImage(device, image, pAllocator);
 }
 void vk_GetImageSubresourceLayout(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage image = (VkImage)ARG64(ARG2, ARG3);
+    VkImage image = (VkImage)cpu->memory->readq(ARG2);
     VkImageSubresource tmp_pSubresource;
-    cpu->memory->memcpy(&tmp_pSubresource, ARG4, 12);
+    cpu->memory->memcpy(&tmp_pSubresource, ARG3, 12);
     VkImageSubresource* pSubresource = &tmp_pSubresource;
     VkSubresourceLayout tmp_pLayout;
-    cpu->memory->memcpy(&tmp_pLayout, ARG5, 40);
+    cpu->memory->memcpy(&tmp_pLayout, ARG4, 40);
     VkSubresourceLayout* pLayout = &tmp_pLayout;
     pBoxedInfo->pvkGetImageSubresourceLayout(device, image, pSubresource, pLayout);
-    cpu->memory->memcpy(ARG5, &tmp_pLayout, 40);
+    cpu->memory->memcpy(ARG4, &tmp_pLayout, 40);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateImageView(CPU* cpu) {
@@ -5172,8 +757,8 @@ void vk_CreateImageView(CPU* cpu) {
 void vk_DestroyImageView(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImageView imageView = (VkImageView)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyImageView:VkAllocationCallbacks not implemented"); shown = true;}
+    VkImageView imageView = (VkImageView)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyImageView:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImageView(device, imageView, pAllocator);
 }
@@ -5193,8 +778,8 @@ void vk_CreateShaderModule(CPU* cpu) {
 void vk_DestroyShaderModule(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkShaderModule shaderModule = (VkShaderModule)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyShaderModule:VkAllocationCallbacks not implemented"); shown = true;}
+    VkShaderModule shaderModule = (VkShaderModule)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyShaderModule:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyShaderModule(device, shaderModule, pAllocator);
 }
@@ -5214,8 +799,8 @@ void vk_CreatePipelineCache(CPU* cpu) {
 void vk_DestroyPipelineCache(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineCache pipelineCache = (VkPipelineCache)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyPipelineCache:VkAllocationCallbacks not implemented"); shown = true;}
+    VkPipelineCache pipelineCache = (VkPipelineCache)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyPipelineCache:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipelineCache(device, pipelineCache, pAllocator);
 }
@@ -5223,24 +808,32 @@ void vk_DestroyPipelineCache(CPU* cpu) {
 void vk_GetPipelineCacheData(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineCache pipelineCache = (VkPipelineCache)ARG64(ARG2, ARG3);
-    size_t tmp_pDataSize = (size_t) cpu->memory->readd(ARG4);
+    VkPipelineCache pipelineCache = (VkPipelineCache)cpu->memory->readq(ARG2);
+    size_t tmp_pDataSize = (size_t) cpu->memory->readd(ARG3);
     size_t* pDataSize = &tmp_pDataSize;
-    void* pData = new char[*pDataSize];
-    cpu->memory->memcpy(pData, ARG5, *pDataSize * sizeof(char));
+    void* pData = nullptr;
+    if (ARG4) {
+        pData = new char[*pDataSize];
+        cpu->memory->memcpy(pData, ARG4, (U32)*pDataSize * sizeof(char));
+    }
     EAX = pBoxedInfo->pvkGetPipelineCacheData(device, pipelineCache, pDataSize, pData);
-    cpu->memory->writed(ARG4, (U32)tmp_pDataSize);
-    cpu->memory->memcpy(ARG5, pData, *pDataSize * sizeof(char));
+    cpu->memory->writed(ARG3, (U32)tmp_pDataSize);
+    if (pData) {
+        cpu->memory->memcpy(ARG4, pData, (U32)*pDataSize * sizeof(char));
+    }
     delete[] pData;
 }
 // return type: VkResult(4 bytes)
 void vk_MergePipelineCaches(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineCache dstCache = (VkPipelineCache)ARG64(ARG2, ARG3);
-    uint32_t srcCacheCount = (uint32_t)ARG4;
-    VkPipelineCache* pSrcCaches = new VkPipelineCache[srcCacheCount];
-    cpu->memory->memcpy(pSrcCaches, ARG5, srcCacheCount * sizeof(VkPipelineCache));
+    VkPipelineCache dstCache = (VkPipelineCache)cpu->memory->readq(ARG2);
+    uint32_t srcCacheCount = (uint32_t)ARG3;
+    VkPipelineCache* pSrcCaches = nullptr;
+    if (ARG4) {
+        pSrcCaches = new VkPipelineCache[srcCacheCount];
+        cpu->memory->memcpy(pSrcCaches, ARG4, (U32)srcCacheCount * sizeof(VkPipelineCache));
+    }
     EAX = pBoxedInfo->pvkMergePipelineCaches(device, dstCache, srcCacheCount, pSrcCaches);
     delete[] pSrcCaches;
 }
@@ -5248,65 +841,75 @@ void vk_MergePipelineCaches(CPU* cpu) {
 void vk_CreateGraphicsPipelines(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineCache pipelineCache = (VkPipelineCache)ARG64(ARG2, ARG3);
-    uint32_t createInfoCount = (uint32_t)ARG4;
+    VkPipelineCache pipelineCache = (VkPipelineCache)cpu->memory->readq(ARG2);
+    uint32_t createInfoCount = (uint32_t)ARG3;
     VkGraphicsPipelineCreateInfo* pCreateInfos = NULL;
-    if (ARG5) {
+    if (ARG4) {
         pCreateInfos = new VkGraphicsPipelineCreateInfo[createInfoCount];
         for (U32 i=0;i<createInfoCount;i++) {
-            MarshalVkGraphicsPipelineCreateInfo::read(cpu->memory, ARG5 + i * 88, &pCreateInfos[i]);
+            MarshalVkGraphicsPipelineCreateInfo::read(cpu->memory, ARG4 + i * 88, &pCreateInfos[i]);
         }
     }
-    static bool shown; if (!shown && ARG6) { klog("vkCreateGraphicsPipelines:VkAllocationCallbacks not implemented"); shown = true;}
+    static bool shown; if (!shown && ARG5) { klog("vkCreateGraphicsPipelines:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
-    VkPipeline* pPipelines = new VkPipeline[createInfoCount];
-    cpu->memory->memcpy(pPipelines, ARG7, createInfoCount * sizeof(VkPipeline));
+    VkPipeline* pPipelines = nullptr;
+    if (ARG6) {
+        pPipelines = new VkPipeline[createInfoCount];
+        cpu->memory->memcpy(pPipelines, ARG6, (U32)createInfoCount * sizeof(VkPipeline));
+    }
     EAX = pBoxedInfo->pvkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    cpu->memory->memcpy(ARG7, pPipelines, createInfoCount * sizeof(VkPipeline));
+    if (pPipelines) {
+        cpu->memory->memcpy(ARG6, pPipelines, (U32)createInfoCount * sizeof(VkPipeline));
+    }
     delete[] pPipelines;
 }
 // return type: VkResult(4 bytes)
 void vk_CreateComputePipelines(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineCache pipelineCache = (VkPipelineCache)ARG64(ARG2, ARG3);
-    uint32_t createInfoCount = (uint32_t)ARG4;
+    VkPipelineCache pipelineCache = (VkPipelineCache)cpu->memory->readq(ARG2);
+    uint32_t createInfoCount = (uint32_t)ARG3;
     VkComputePipelineCreateInfo* pCreateInfos = NULL;
-    if (ARG5) {
+    if (ARG4) {
         pCreateInfos = new VkComputePipelineCreateInfo[createInfoCount];
         for (U32 i=0;i<createInfoCount;i++) {
-            MarshalVkComputePipelineCreateInfo::read(cpu->memory, ARG5 + i * 64, &pCreateInfos[i]);
+            MarshalVkComputePipelineCreateInfo::read(cpu->memory, ARG4 + i * 64, &pCreateInfos[i]);
         }
     }
-    static bool shown; if (!shown && ARG6) { klog("vkCreateComputePipelines:VkAllocationCallbacks not implemented"); shown = true;}
+    static bool shown; if (!shown && ARG5) { klog("vkCreateComputePipelines:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
-    VkPipeline* pPipelines = new VkPipeline[createInfoCount];
-    cpu->memory->memcpy(pPipelines, ARG7, createInfoCount * sizeof(VkPipeline));
+    VkPipeline* pPipelines = nullptr;
+    if (ARG6) {
+        pPipelines = new VkPipeline[createInfoCount];
+        cpu->memory->memcpy(pPipelines, ARG6, (U32)createInfoCount * sizeof(VkPipeline));
+    }
     EAX = pBoxedInfo->pvkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    cpu->memory->memcpy(ARG7, pPipelines, createInfoCount * sizeof(VkPipeline));
+    if (pPipelines) {
+        cpu->memory->memcpy(ARG6, pPipelines, (U32)createInfoCount * sizeof(VkPipeline));
+    }
     delete[] pPipelines;
 }
 // return type: VkResult(4 bytes)
 void vk_GetSubpassShadingMaxWorkgroupSizeHUAWEI(CPU* cpu) {
     initVulkan();
-    VkRenderPass renderpass = (VkRenderPass)ARG64(ARG1, ARG2);
+    VkRenderPass renderpass = (VkRenderPass)cpu->memory->readq(ARG1);
     VkExtent2D tmp_pMaxWorkgroupSize;
-    cpu->memory->memcpy(&tmp_pMaxWorkgroupSize, ARG3, 8);
+    cpu->memory->memcpy(&tmp_pMaxWorkgroupSize, ARG2, 8);
     VkExtent2D* pMaxWorkgroupSize = &tmp_pMaxWorkgroupSize;
     EAX = pvkGetSubpassShadingMaxWorkgroupSizeHUAWEI(renderpass, pMaxWorkgroupSize);
-    cpu->memory->memcpy(ARG3, &tmp_pMaxWorkgroupSize, 8);
+    cpu->memory->memcpy(ARG2, &tmp_pMaxWorkgroupSize, 8);
 }
 void vk_DestroyPipeline(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipeline pipeline = (VkPipeline)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyPipeline:VkAllocationCallbacks not implemented"); shown = true;}
+    VkPipeline pipeline = (VkPipeline)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyPipeline:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipeline(device, pipeline, pAllocator);
 }
@@ -5326,8 +929,8 @@ void vk_CreatePipelineLayout(CPU* cpu) {
 void vk_DestroyPipelineLayout(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineLayout pipelineLayout = (VkPipelineLayout)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyPipelineLayout:VkAllocationCallbacks not implemented"); shown = true;}
+    VkPipelineLayout pipelineLayout = (VkPipelineLayout)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyPipelineLayout:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPipelineLayout(device, pipelineLayout, pAllocator);
 }
@@ -5347,8 +950,8 @@ void vk_CreateSampler(CPU* cpu) {
 void vk_DestroySampler(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSampler sampler = (VkSampler)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroySampler:VkAllocationCallbacks not implemented"); shown = true;}
+    VkSampler sampler = (VkSampler)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroySampler:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySampler(device, sampler, pAllocator);
 }
@@ -5368,8 +971,8 @@ void vk_CreateDescriptorSetLayout(CPU* cpu) {
 void vk_DestroyDescriptorSetLayout(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorSetLayout:VkAllocationCallbacks not implemented"); shown = true;}
+    VkDescriptorSetLayout descriptorSetLayout = (VkDescriptorSetLayout)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyDescriptorSetLayout:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorSetLayout(device, descriptorSetLayout, pAllocator);
 }
@@ -5389,8 +992,8 @@ void vk_CreateDescriptorPool(CPU* cpu) {
 void vk_DestroyDescriptorPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorPool descriptorPool = (VkDescriptorPool)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorPool:VkAllocationCallbacks not implemented"); shown = true;}
+    VkDescriptorPool descriptorPool = (VkDescriptorPool)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyDescriptorPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorPool(device, descriptorPool, pAllocator);
 }
@@ -5398,8 +1001,8 @@ void vk_DestroyDescriptorPool(CPU* cpu) {
 void vk_ResetDescriptorPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorPool descriptorPool = (VkDescriptorPool)ARG64(ARG2, ARG3);
-    VkDescriptorPoolResetFlags flags = (VkDescriptorPoolResetFlags)ARG4;
+    VkDescriptorPool descriptorPool = (VkDescriptorPool)cpu->memory->readq(ARG2);
+    VkDescriptorPoolResetFlags flags = (VkDescriptorPoolResetFlags)ARG3;
     EAX = pBoxedInfo->pvkResetDescriptorPool(device, descriptorPool, flags);
 }
 // return type: VkResult(4 bytes)
@@ -5408,20 +1011,28 @@ void vk_AllocateDescriptorSets(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkDescriptorSetAllocateInfo local_pAllocateInfo(cpu->memory, ARG2);
     VkDescriptorSetAllocateInfo* pAllocateInfo = &local_pAllocateInfo.s;
-    VkDescriptorSet* pDescriptorSets = new VkDescriptorSet[pAllocateInfo->descriptorSetCount];
-    cpu->memory->memcpy(pDescriptorSets, ARG3, pAllocateInfo->descriptorSetCount * sizeof(VkDescriptorSet));
+    VkDescriptorSet* pDescriptorSets = nullptr;
+    if (ARG3) {
+        pDescriptorSets = new VkDescriptorSet[pAllocateInfo->descriptorSetCount];
+        cpu->memory->memcpy(pDescriptorSets, ARG3, (U32)pAllocateInfo->descriptorSetCount * sizeof(VkDescriptorSet));
+    }
     EAX = pBoxedInfo->pvkAllocateDescriptorSets(device, pAllocateInfo, pDescriptorSets);
-    cpu->memory->memcpy(ARG3, pDescriptorSets, pAllocateInfo->descriptorSetCount * sizeof(VkDescriptorSet));
+    if (pDescriptorSets) {
+        cpu->memory->memcpy(ARG3, pDescriptorSets, (U32)pAllocateInfo->descriptorSetCount * sizeof(VkDescriptorSet));
+    }
     delete[] pDescriptorSets;
 }
 // return type: VkResult(4 bytes)
 void vk_FreeDescriptorSets(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorPool descriptorPool = (VkDescriptorPool)ARG64(ARG2, ARG3);
-    uint32_t descriptorSetCount = (uint32_t)ARG4;
-    VkDescriptorSet* pDescriptorSets = new VkDescriptorSet[descriptorSetCount];
-    cpu->memory->memcpy(pDescriptorSets, ARG5, descriptorSetCount * sizeof(VkDescriptorSet));
+    VkDescriptorPool descriptorPool = (VkDescriptorPool)cpu->memory->readq(ARG2);
+    uint32_t descriptorSetCount = (uint32_t)ARG3;
+    VkDescriptorSet* pDescriptorSets = nullptr;
+    if (ARG4) {
+        pDescriptorSets = new VkDescriptorSet[descriptorSetCount];
+        cpu->memory->memcpy(pDescriptorSets, ARG4, (U32)descriptorSetCount * sizeof(VkDescriptorSet));
+    }
     EAX = pBoxedInfo->pvkFreeDescriptorSets(device, descriptorPool, descriptorSetCount, pDescriptorSets);
     delete[] pDescriptorSets;
 }
@@ -5433,7 +1044,7 @@ void vk_UpdateDescriptorSets(CPU* cpu) {
     if (ARG3) {
         pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount];
         for (U32 i=0;i<descriptorWriteCount;i++) {
-            MarshalVkWriteDescriptorSet::read(cpu->memory, ARG3 + i * 64, &pDescriptorWrites[i]);
+            MarshalVkWriteDescriptorSet::read(cpu->memory, ARG3 + i * 44, &pDescriptorWrites[i]);
         }
     }
     uint32_t descriptorCopyCount = (uint32_t)ARG4;
@@ -5468,8 +1079,8 @@ void vk_CreateFramebuffer(CPU* cpu) {
 void vk_DestroyFramebuffer(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkFramebuffer framebuffer = (VkFramebuffer)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyFramebuffer:VkAllocationCallbacks not implemented"); shown = true;}
+    VkFramebuffer framebuffer = (VkFramebuffer)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyFramebuffer:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyFramebuffer(device, framebuffer, pAllocator);
 }
@@ -5489,20 +1100,20 @@ void vk_CreateRenderPass(CPU* cpu) {
 void vk_DestroyRenderPass(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkRenderPass renderPass = (VkRenderPass)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyRenderPass:VkAllocationCallbacks not implemented"); shown = true;}
+    VkRenderPass renderPass = (VkRenderPass)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyRenderPass:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyRenderPass(device, renderPass, pAllocator);
 }
 void vk_GetRenderAreaGranularity(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkRenderPass renderPass = (VkRenderPass)ARG64(ARG2, ARG3);
+    VkRenderPass renderPass = (VkRenderPass)cpu->memory->readq(ARG2);
     VkExtent2D tmp_pGranularity;
-    cpu->memory->memcpy(&tmp_pGranularity, ARG4, 8);
+    cpu->memory->memcpy(&tmp_pGranularity, ARG3, 8);
     VkExtent2D* pGranularity = &tmp_pGranularity;
     pBoxedInfo->pvkGetRenderAreaGranularity(device, renderPass, pGranularity);
-    cpu->memory->memcpy(ARG4, &tmp_pGranularity, 8);
+    cpu->memory->memcpy(ARG3, &tmp_pGranularity, 8);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateCommandPool(CPU* cpu) {
@@ -5520,8 +1131,8 @@ void vk_CreateCommandPool(CPU* cpu) {
 void vk_DestroyCommandPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCommandPool commandPool = (VkCommandPool)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyCommandPool:VkAllocationCallbacks not implemented"); shown = true;}
+    VkCommandPool commandPool = (VkCommandPool)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyCommandPool:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyCommandPool(device, commandPool, pAllocator);
 }
@@ -5529,8 +1140,8 @@ void vk_DestroyCommandPool(CPU* cpu) {
 void vk_ResetCommandPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCommandPool commandPool = (VkCommandPool)ARG64(ARG2, ARG3);
-    VkCommandPoolResetFlags flags = (VkCommandPoolResetFlags)ARG4;
+    VkCommandPool commandPool = (VkCommandPool)cpu->memory->readq(ARG2);
+    VkCommandPoolResetFlags flags = (VkCommandPoolResetFlags)ARG3;
     EAX = pBoxedInfo->pvkResetCommandPool(device, commandPool, flags);
 }
 // return type: VkResult(4 bytes)
@@ -5554,11 +1165,11 @@ void vk_AllocateCommandBuffers(CPU* cpu) {
 void vk_FreeCommandBuffers(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCommandPool commandPool = (VkCommandPool)ARG64(ARG2, ARG3);
-    uint32_t commandBufferCount = (uint32_t)ARG4;
+    VkCommandPool commandPool = (VkCommandPool)cpu->memory->readq(ARG2);
+    uint32_t commandBufferCount = (uint32_t)ARG3;
     VkCommandBuffer* pCommandBuffers = new VkCommandBuffer[commandBufferCount];
     for (U32 i=0;i<commandBufferCount;i++) {
-        pCommandBuffers[i] = (VkCommandBuffer)getVulkanPtr(cpu->memory, cpu->memory->readd(ARG5 + i*4));
+        pCommandBuffers[i] = (VkCommandBuffer)getVulkanPtr(cpu->memory, cpu->memory->readd(ARG4 + i*4));
     }
     pBoxedInfo->pvkFreeCommandBuffers(device, commandPool, commandBufferCount, pCommandBuffers);
     delete[] pCommandBuffers;
@@ -5588,7 +1199,7 @@ void vk_CmdBindPipeline(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
-    VkPipeline pipeline = (VkPipeline)ARG64(ARG3, ARG4);
+    VkPipeline pipeline = (VkPipeline)cpu->memory->readq(ARG3);
     pBoxedInfo->pvkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
 }
 void vk_CmdSetViewport(CPU* cpu) {
@@ -5596,8 +1207,11 @@ void vk_CmdSetViewport(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstViewport = (uint32_t)ARG2;
     uint32_t viewportCount = (uint32_t)ARG3;
-    VkViewport* pViewports = new VkViewport[viewportCount];
-    cpu->memory->memcpy(pViewports, ARG4, viewportCount * sizeof(VkViewport));
+    VkViewport* pViewports = nullptr;
+    if (ARG4) {
+        pViewports = new VkViewport[viewportCount];
+        cpu->memory->memcpy(pViewports, ARG4, (U32)viewportCount * sizeof(VkViewport));
+    }
     pBoxedInfo->pvkCmdSetViewport(commandBuffer, firstViewport, viewportCount, pViewports);
     delete[] pViewports;
 }
@@ -5606,8 +1220,11 @@ void vk_CmdSetScissor(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstScissor = (uint32_t)ARG2;
     uint32_t scissorCount = (uint32_t)ARG3;
-    VkRect2D* pScissors = new VkRect2D[scissorCount];
-    cpu->memory->memcpy(pScissors, ARG4, scissorCount * sizeof(VkRect2D));
+    VkRect2D* pScissors = nullptr;
+    if (ARG4) {
+        pScissors = new VkRect2D[scissorCount];
+        cpu->memory->memcpy(pScissors, ARG4, (U32)scissorCount * sizeof(VkRect2D));
+    }
     pBoxedInfo->pvkCmdSetScissor(commandBuffer, firstScissor, scissorCount, pScissors);
     delete[] pScissors;
 }
@@ -5628,8 +1245,11 @@ void vk_CmdSetDepthBias(CPU* cpu) {
 void vk_CmdSetBlendConstants(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    float* blendConstants = new float[4];
-    cpu->memory->memcpy(blendConstants, ARG2, 4 * sizeof(float));
+    float* blendConstants = nullptr;
+    if (ARG2) {
+        blendConstants = new float[4];
+        cpu->memory->memcpy(blendConstants, ARG2, (U32)4 * sizeof(float));
+    }
     pBoxedInfo->pvkCmdSetBlendConstants(commandBuffer, blendConstants);
     delete[] blendConstants;
 }
@@ -5665,14 +1285,20 @@ void vk_CmdBindDescriptorSets(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
-    VkPipelineLayout layout = (VkPipelineLayout)ARG64(ARG3, ARG4);
-    uint32_t firstSet = (uint32_t)ARG5;
-    uint32_t descriptorSetCount = (uint32_t)ARG6;
-    VkDescriptorSet* pDescriptorSets = new VkDescriptorSet[descriptorSetCount];
-    cpu->memory->memcpy(pDescriptorSets, ARG7, descriptorSetCount * sizeof(VkDescriptorSet));
-    uint32_t dynamicOffsetCount = (uint32_t)ARG8;
-    uint32_t* pDynamicOffsets = new uint32_t[dynamicOffsetCount];
-    cpu->memory->memcpy(pDynamicOffsets, ARG9, dynamicOffsetCount * sizeof(uint32_t));
+    VkPipelineLayout layout = (VkPipelineLayout)cpu->memory->readq(ARG3);
+    uint32_t firstSet = (uint32_t)ARG4;
+    uint32_t descriptorSetCount = (uint32_t)ARG5;
+    VkDescriptorSet* pDescriptorSets = nullptr;
+    if (ARG6) {
+        pDescriptorSets = new VkDescriptorSet[descriptorSetCount];
+        cpu->memory->memcpy(pDescriptorSets, ARG6, (U32)descriptorSetCount * sizeof(VkDescriptorSet));
+    }
+    uint32_t dynamicOffsetCount = (uint32_t)ARG7;
+    uint32_t* pDynamicOffsets = nullptr;
+    if (ARG8) {
+        pDynamicOffsets = new uint32_t[dynamicOffsetCount];
+        cpu->memory->memcpy(pDynamicOffsets, ARG8, (U32)dynamicOffsetCount * sizeof(uint32_t));
+    }
     pBoxedInfo->pvkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
     delete[] pDescriptorSets;
     delete[] pDynamicOffsets;
@@ -5680,9 +1306,9 @@ void vk_CmdBindDescriptorSets(CPU* cpu) {
 void vk_CmdBindIndexBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkIndexType indexType = (VkIndexType)ARG6;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkIndexType indexType = (VkIndexType)ARG4;
     pBoxedInfo->pvkCmdBindIndexBuffer(commandBuffer, buffer, offset, indexType);
 }
 void vk_CmdBindVertexBuffers(CPU* cpu) {
@@ -5690,10 +1316,16 @@ void vk_CmdBindVertexBuffers(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstBinding = (uint32_t)ARG2;
     uint32_t bindingCount = (uint32_t)ARG3;
-    VkBuffer* pBuffers = new VkBuffer[bindingCount];
-    cpu->memory->memcpy(pBuffers, ARG4, bindingCount * sizeof(VkBuffer));
-    VkDeviceSize* pOffsets = new VkDeviceSize[bindingCount];
-    cpu->memory->memcpy(pOffsets, ARG5, bindingCount * sizeof(VkDeviceSize));
+    VkBuffer* pBuffers = nullptr;
+    if (ARG4) {
+        pBuffers = new VkBuffer[bindingCount];
+        cpu->memory->memcpy(pBuffers, ARG4, (U32)bindingCount * sizeof(VkBuffer));
+    }
+    VkDeviceSize* pOffsets = nullptr;
+    if (ARG5) {
+        pOffsets = new VkDeviceSize[bindingCount];
+        cpu->memory->memcpy(pOffsets, ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
+    }
     pBoxedInfo->pvkCmdBindVertexBuffers(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets);
     delete[] pBuffers;
     delete[] pOffsets;
@@ -5721,8 +1353,11 @@ void vk_CmdDrawMultiEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t drawCount = (uint32_t)ARG2;
-    VkMultiDrawInfoEXT* pVertexInfo = new VkMultiDrawInfoEXT[drawCount];
-    cpu->memory->memcpy(pVertexInfo, ARG3, drawCount * sizeof(VkMultiDrawInfoEXT));
+    VkMultiDrawInfoEXT* pVertexInfo = nullptr;
+    if (ARG3) {
+        pVertexInfo = new VkMultiDrawInfoEXT[drawCount];
+        cpu->memory->memcpy(pVertexInfo, ARG3, (U32)drawCount * sizeof(VkMultiDrawInfoEXT));
+    }
     uint32_t instanceCount = (uint32_t)ARG4;
     uint32_t firstInstance = (uint32_t)ARG5;
     uint32_t stride = (uint32_t)ARG6;
@@ -5733,8 +1368,11 @@ void vk_CmdDrawMultiIndexedEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t drawCount = (uint32_t)ARG2;
-    VkMultiDrawIndexedInfoEXT* pIndexInfo = new VkMultiDrawIndexedInfoEXT[drawCount];
-    cpu->memory->memcpy(pIndexInfo, ARG3, drawCount * sizeof(VkMultiDrawIndexedInfoEXT));
+    VkMultiDrawIndexedInfoEXT* pIndexInfo = nullptr;
+    if (ARG3) {
+        pIndexInfo = new VkMultiDrawIndexedInfoEXT[drawCount];
+        cpu->memory->memcpy(pIndexInfo, ARG3, (U32)drawCount * sizeof(VkMultiDrawIndexedInfoEXT));
+    }
     uint32_t instanceCount = (uint32_t)ARG4;
     uint32_t firstInstance = (uint32_t)ARG5;
     uint32_t stride = (uint32_t)ARG6;
@@ -5746,19 +1384,19 @@ void vk_CmdDrawMultiIndexedEXT(CPU* cpu) {
 void vk_CmdDrawIndirect(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    uint32_t drawCount = (uint32_t)ARG6;
-    uint32_t stride = (uint32_t)ARG7;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    uint32_t drawCount = (uint32_t)ARG4;
+    uint32_t stride = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdDrawIndirect(commandBuffer, buffer, offset, drawCount, stride);
 }
 void vk_CmdDrawIndexedIndirect(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    uint32_t drawCount = (uint32_t)ARG6;
-    uint32_t stride = (uint32_t)ARG7;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    uint32_t drawCount = (uint32_t)ARG4;
+    uint32_t stride = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdDrawIndexedIndirect(commandBuffer, buffer, offset, drawCount, stride);
 }
 void vk_CmdDispatch(CPU* cpu) {
@@ -5772,8 +1410,8 @@ void vk_CmdDispatch(CPU* cpu) {
 void vk_CmdDispatchIndirect(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
     pBoxedInfo->pvkCmdDispatchIndirect(commandBuffer, buffer, offset);
 }
 void vk_CmdSubpassShadingHUAWEI(CPU* cpu) {
@@ -5784,110 +1422,134 @@ void vk_CmdSubpassShadingHUAWEI(CPU* cpu) {
 void vk_CmdCopyBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer srcBuffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkBuffer dstBuffer = (VkBuffer)ARG64(ARG4, ARG5);
-    uint32_t regionCount = (uint32_t)ARG6;
-    VkBufferCopy* pRegions = new VkBufferCopy[regionCount];
-    cpu->memory->memcpy(pRegions, ARG7, regionCount * sizeof(VkBufferCopy));
+    VkBuffer srcBuffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkBuffer dstBuffer = (VkBuffer)cpu->memory->readq(ARG3);
+    uint32_t regionCount = (uint32_t)ARG4;
+    VkBufferCopy* pRegions = nullptr;
+    if (ARG5) {
+        pRegions = new VkBufferCopy[regionCount];
+        cpu->memory->memcpy(pRegions, ARG5, (U32)regionCount * sizeof(VkBufferCopy));
+    }
     pBoxedInfo->pvkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, regionCount, pRegions);
     delete[] pRegions;
 }
 void vk_CmdCopyImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage srcImage = (VkImage)ARG64(ARG2, ARG3);
-    VkImageLayout srcImageLayout = (VkImageLayout)ARG4;
-    VkImage dstImage = (VkImage)ARG64(ARG5, ARG6);
-    VkImageLayout dstImageLayout = (VkImageLayout)ARG7;
-    uint32_t regionCount = (uint32_t)ARG8;
-    VkImageCopy* pRegions = new VkImageCopy[regionCount];
-    cpu->memory->memcpy(pRegions, ARG9, regionCount * sizeof(VkImageCopy));
+    VkImage srcImage = (VkImage)cpu->memory->readq(ARG2);
+    VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
+    VkImage dstImage = (VkImage)cpu->memory->readq(ARG4);
+    VkImageLayout dstImageLayout = (VkImageLayout)ARG5;
+    uint32_t regionCount = (uint32_t)ARG6;
+    VkImageCopy* pRegions = nullptr;
+    if (ARG7) {
+        pRegions = new VkImageCopy[regionCount];
+        cpu->memory->memcpy(pRegions, ARG7, (U32)regionCount * sizeof(VkImageCopy));
+    }
     pBoxedInfo->pvkCmdCopyImage(commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
     delete[] pRegions;
 }
 void vk_CmdBlitImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage srcImage = (VkImage)ARG64(ARG2, ARG3);
-    VkImageLayout srcImageLayout = (VkImageLayout)ARG4;
-    VkImage dstImage = (VkImage)ARG64(ARG5, ARG6);
-    VkImageLayout dstImageLayout = (VkImageLayout)ARG7;
-    uint32_t regionCount = (uint32_t)ARG8;
-    VkImageBlit* pRegions = new VkImageBlit[regionCount];
-    cpu->memory->memcpy(pRegions, ARG9, regionCount * sizeof(VkImageBlit));
-    VkFilter filter = (VkFilter)ARG10;
+    VkImage srcImage = (VkImage)cpu->memory->readq(ARG2);
+    VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
+    VkImage dstImage = (VkImage)cpu->memory->readq(ARG4);
+    VkImageLayout dstImageLayout = (VkImageLayout)ARG5;
+    uint32_t regionCount = (uint32_t)ARG6;
+    VkImageBlit* pRegions = nullptr;
+    if (ARG7) {
+        pRegions = new VkImageBlit[regionCount];
+        cpu->memory->memcpy(pRegions, ARG7, (U32)regionCount * sizeof(VkImageBlit));
+    }
+    VkFilter filter = (VkFilter)ARG8;
     pBoxedInfo->pvkCmdBlitImage(commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
     delete[] pRegions;
 }
 void vk_CmdCopyBufferToImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer srcBuffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkImage dstImage = (VkImage)ARG64(ARG4, ARG5);
-    VkImageLayout dstImageLayout = (VkImageLayout)ARG6;
-    uint32_t regionCount = (uint32_t)ARG7;
-    VkBufferImageCopy* pRegions = new VkBufferImageCopy[regionCount];
-    cpu->memory->memcpy(pRegions, ARG8, regionCount * sizeof(VkBufferImageCopy));
+    VkBuffer srcBuffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkImage dstImage = (VkImage)cpu->memory->readq(ARG3);
+    VkImageLayout dstImageLayout = (VkImageLayout)ARG4;
+    uint32_t regionCount = (uint32_t)ARG5;
+    VkBufferImageCopy* pRegions = nullptr;
+    if (ARG6) {
+        pRegions = new VkBufferImageCopy[regionCount];
+        cpu->memory->memcpy(pRegions, ARG6, (U32)regionCount * sizeof(VkBufferImageCopy));
+    }
     pBoxedInfo->pvkCmdCopyBufferToImage(commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, pRegions);
     delete[] pRegions;
 }
 void vk_CmdCopyImageToBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage srcImage = (VkImage)ARG64(ARG2, ARG3);
-    VkImageLayout srcImageLayout = (VkImageLayout)ARG4;
-    VkBuffer dstBuffer = (VkBuffer)ARG64(ARG5, ARG6);
-    uint32_t regionCount = (uint32_t)ARG7;
-    VkBufferImageCopy* pRegions = new VkBufferImageCopy[regionCount];
-    cpu->memory->memcpy(pRegions, ARG8, regionCount * sizeof(VkBufferImageCopy));
+    VkImage srcImage = (VkImage)cpu->memory->readq(ARG2);
+    VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
+    VkBuffer dstBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    uint32_t regionCount = (uint32_t)ARG5;
+    VkBufferImageCopy* pRegions = nullptr;
+    if (ARG6) {
+        pRegions = new VkBufferImageCopy[regionCount];
+        cpu->memory->memcpy(pRegions, ARG6, (U32)regionCount * sizeof(VkBufferImageCopy));
+    }
     pBoxedInfo->pvkCmdCopyImageToBuffer(commandBuffer, srcImage, srcImageLayout, dstBuffer, regionCount, pRegions);
     delete[] pRegions;
 }
 void vk_CmdUpdateBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer dstBuffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize dstOffset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkDeviceSize dataSize = (VkDeviceSize)ARG64(ARG6, ARG7);
-    void* pData = new char[dataSize];
-    cpu->memory->memcpy(pData, ARG8, dataSize * sizeof(char));
+    VkBuffer dstBuffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize dstOffset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkDeviceSize dataSize = (VkDeviceSize)cpu->memory->readq(ARG4);
+    void* pData = nullptr;
+    if (ARG5) {
+        pData = new char[dataSize];
+        cpu->memory->memcpy(pData, ARG5, (U32)dataSize * sizeof(char));
+    }
     pBoxedInfo->pvkCmdUpdateBuffer(commandBuffer, dstBuffer, dstOffset, dataSize, pData);
     delete[] pData;
 }
 void vk_CmdFillBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer dstBuffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize dstOffset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkDeviceSize size = (VkDeviceSize)ARG64(ARG6, ARG7);
-    uint32_t data = (uint32_t)ARG8;
+    VkBuffer dstBuffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize dstOffset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkDeviceSize size = (VkDeviceSize)cpu->memory->readq(ARG4);
+    uint32_t data = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdFillBuffer(commandBuffer, dstBuffer, dstOffset, size, data);
 }
 void vk_CmdClearColorImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage image = (VkImage)ARG64(ARG2, ARG3);
-    VkImageLayout imageLayout = (VkImageLayout)ARG4;
+    VkImage image = (VkImage)cpu->memory->readq(ARG2);
+    VkImageLayout imageLayout = (VkImageLayout)ARG3;
     VkClearColorValue tmp_pColor;
-    cpu->memory->memcpy(&tmp_pColor, ARG5, 16);
+    cpu->memory->memcpy(&tmp_pColor, ARG4, 16);
     VkClearColorValue* pColor = &tmp_pColor;
-    uint32_t rangeCount = (uint32_t)ARG6;
-    VkImageSubresourceRange* pRanges = new VkImageSubresourceRange[rangeCount];
-    cpu->memory->memcpy(pRanges, ARG7, rangeCount * sizeof(VkImageSubresourceRange));
+    uint32_t rangeCount = (uint32_t)ARG5;
+    VkImageSubresourceRange* pRanges = nullptr;
+    if (ARG6) {
+        pRanges = new VkImageSubresourceRange[rangeCount];
+        cpu->memory->memcpy(pRanges, ARG6, (U32)rangeCount * sizeof(VkImageSubresourceRange));
+    }
     pBoxedInfo->pvkCmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
     delete[] pRanges;
 }
 void vk_CmdClearDepthStencilImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage image = (VkImage)ARG64(ARG2, ARG3);
-    VkImageLayout imageLayout = (VkImageLayout)ARG4;
+    VkImage image = (VkImage)cpu->memory->readq(ARG2);
+    VkImageLayout imageLayout = (VkImageLayout)ARG3;
     VkClearDepthStencilValue tmp_pDepthStencil;
-    cpu->memory->memcpy(&tmp_pDepthStencil, ARG5, 8);
+    cpu->memory->memcpy(&tmp_pDepthStencil, ARG4, 8);
     VkClearDepthStencilValue* pDepthStencil = &tmp_pDepthStencil;
-    uint32_t rangeCount = (uint32_t)ARG6;
-    VkImageSubresourceRange* pRanges = new VkImageSubresourceRange[rangeCount];
-    cpu->memory->memcpy(pRanges, ARG7, rangeCount * sizeof(VkImageSubresourceRange));
+    uint32_t rangeCount = (uint32_t)ARG5;
+    VkImageSubresourceRange* pRanges = nullptr;
+    if (ARG6) {
+        pRanges = new VkImageSubresourceRange[rangeCount];
+        cpu->memory->memcpy(pRanges, ARG6, (U32)rangeCount * sizeof(VkImageSubresourceRange));
+    }
     pBoxedInfo->pvkCmdClearDepthStencilImage(commandBuffer, image, imageLayout, pDepthStencil, rangeCount, pRanges);
     delete[] pRanges;
 }
@@ -5895,11 +1557,17 @@ void vk_CmdClearAttachments(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t attachmentCount = (uint32_t)ARG2;
-    VkClearAttachment* pAttachments = new VkClearAttachment[attachmentCount];
-    cpu->memory->memcpy(pAttachments, ARG3, attachmentCount * sizeof(VkClearAttachment));
+    VkClearAttachment* pAttachments = nullptr;
+    if (ARG3) {
+        pAttachments = new VkClearAttachment[attachmentCount];
+        cpu->memory->memcpy(pAttachments, ARG3, (U32)attachmentCount * sizeof(VkClearAttachment));
+    }
     uint32_t rectCount = (uint32_t)ARG4;
-    VkClearRect* pRects = new VkClearRect[rectCount];
-    cpu->memory->memcpy(pRects, ARG5, rectCount * sizeof(VkClearRect));
+    VkClearRect* pRects = nullptr;
+    if (ARG5) {
+        pRects = new VkClearRect[rectCount];
+        cpu->memory->memcpy(pRects, ARG5, (U32)rectCount * sizeof(VkClearRect));
+    }
     pBoxedInfo->pvkCmdClearAttachments(commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
     delete[] pAttachments;
     delete[] pRects;
@@ -5907,36 +1575,42 @@ void vk_CmdClearAttachments(CPU* cpu) {
 void vk_CmdResolveImage(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImage srcImage = (VkImage)ARG64(ARG2, ARG3);
-    VkImageLayout srcImageLayout = (VkImageLayout)ARG4;
-    VkImage dstImage = (VkImage)ARG64(ARG5, ARG6);
-    VkImageLayout dstImageLayout = (VkImageLayout)ARG7;
-    uint32_t regionCount = (uint32_t)ARG8;
-    VkImageResolve* pRegions = new VkImageResolve[regionCount];
-    cpu->memory->memcpy(pRegions, ARG9, regionCount * sizeof(VkImageResolve));
+    VkImage srcImage = (VkImage)cpu->memory->readq(ARG2);
+    VkImageLayout srcImageLayout = (VkImageLayout)ARG3;
+    VkImage dstImage = (VkImage)cpu->memory->readq(ARG4);
+    VkImageLayout dstImageLayout = (VkImageLayout)ARG5;
+    uint32_t regionCount = (uint32_t)ARG6;
+    VkImageResolve* pRegions = nullptr;
+    if (ARG7) {
+        pRegions = new VkImageResolve[regionCount];
+        cpu->memory->memcpy(pRegions, ARG7, (U32)regionCount * sizeof(VkImageResolve));
+    }
     pBoxedInfo->pvkCmdResolveImage(commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
     delete[] pRegions;
 }
 void vk_CmdSetEvent(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
-    VkPipelineStageFlags stageMask = (VkPipelineStageFlags)ARG4;
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
+    VkPipelineStageFlags stageMask = (VkPipelineStageFlags)ARG3;
     pBoxedInfo->pvkCmdSetEvent(commandBuffer, event, stageMask);
 }
 void vk_CmdResetEvent(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
-    VkPipelineStageFlags stageMask = (VkPipelineStageFlags)ARG4;
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
+    VkPipelineStageFlags stageMask = (VkPipelineStageFlags)ARG3;
     pBoxedInfo->pvkCmdResetEvent(commandBuffer, event, stageMask);
 }
 void vk_CmdWaitEvents(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t eventCount = (uint32_t)ARG2;
-    VkEvent* pEvents = new VkEvent[eventCount];
-    cpu->memory->memcpy(pEvents, ARG3, eventCount * sizeof(VkEvent));
+    VkEvent* pEvents = nullptr;
+    if (ARG3) {
+        pEvents = new VkEvent[eventCount];
+        cpu->memory->memcpy(pEvents, ARG3, (U32)eventCount * sizeof(VkEvent));
+    }
     VkPipelineStageFlags srcStageMask = (VkPipelineStageFlags)ARG4;
     VkPipelineStageFlags dstStageMask = (VkPipelineStageFlags)ARG5;
     uint32_t memoryBarrierCount = (uint32_t)ARG6;
@@ -6019,16 +1693,16 @@ void vk_CmdPipelineBarrier(CPU* cpu) {
 void vk_CmdBeginQuery(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t query = (uint32_t)ARG4;
-    VkQueryControlFlags flags = (VkQueryControlFlags)ARG5;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t query = (uint32_t)ARG3;
+    VkQueryControlFlags flags = (VkQueryControlFlags)ARG4;
     pBoxedInfo->pvkCmdBeginQuery(commandBuffer, queryPool, query, flags);
 }
 void vk_CmdEndQuery(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t query = (uint32_t)ARG4;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t query = (uint32_t)ARG3;
     pBoxedInfo->pvkCmdEndQuery(commandBuffer, queryPool, query);
 }
 void vk_CmdBeginConditionalRenderingEXT(CPU* cpu) {
@@ -6046,40 +1720,43 @@ void vk_CmdEndConditionalRenderingEXT(CPU* cpu) {
 void vk_CmdResetQueryPool(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t firstQuery = (uint32_t)ARG4;
-    uint32_t queryCount = (uint32_t)ARG5;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t firstQuery = (uint32_t)ARG3;
+    uint32_t queryCount = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdResetQueryPool(commandBuffer, queryPool, firstQuery, queryCount);
 }
 void vk_CmdWriteTimestamp(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkPipelineStageFlagBits pipelineStage = (VkPipelineStageFlagBits)ARG2;
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG3, ARG4);
-    uint32_t query = (uint32_t)ARG5;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG3);
+    uint32_t query = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdWriteTimestamp(commandBuffer, pipelineStage, queryPool, query);
 }
 void vk_CmdCopyQueryPoolResults(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t firstQuery = (uint32_t)ARG4;
-    uint32_t queryCount = (uint32_t)ARG5;
-    VkBuffer dstBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize dstOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    VkDeviceSize stride = (VkDeviceSize)ARG64(ARG10, ARG11);
-    VkQueryResultFlags flags = (VkQueryResultFlags)ARG12;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t firstQuery = (uint32_t)ARG3;
+    uint32_t queryCount = (uint32_t)ARG4;
+    VkBuffer dstBuffer = (VkBuffer)cpu->memory->readq(ARG5);
+    VkDeviceSize dstOffset = (VkDeviceSize)cpu->memory->readq(ARG6);
+    VkDeviceSize stride = (VkDeviceSize)cpu->memory->readq(ARG7);
+    VkQueryResultFlags flags = (VkQueryResultFlags)ARG8;
     pBoxedInfo->pvkCmdCopyQueryPoolResults(commandBuffer, queryPool, firstQuery, queryCount, dstBuffer, dstOffset, stride, flags);
 }
 void vk_CmdPushConstants(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineLayout layout = (VkPipelineLayout)ARG64(ARG2, ARG3);
-    VkShaderStageFlags stageFlags = (VkShaderStageFlags)ARG4;
-    uint32_t offset = (uint32_t)ARG5;
-    uint32_t size = (uint32_t)ARG6;
-    void* pValues = new char[size];
-    cpu->memory->memcpy(pValues, ARG7, size * sizeof(char));
+    VkPipelineLayout layout = (VkPipelineLayout)cpu->memory->readq(ARG2);
+    VkShaderStageFlags stageFlags = (VkShaderStageFlags)ARG3;
+    uint32_t offset = (uint32_t)ARG4;
+    uint32_t size = (uint32_t)ARG5;
+    void* pValues = nullptr;
+    if (ARG6) {
+        pValues = new char[size];
+        cpu->memory->memcpy(pValues, ARG6, (U32)size * sizeof(char));
+    }
     pBoxedInfo->pvkCmdPushConstants(commandBuffer, layout, stageFlags, offset, size, pValues);
     delete[] pValues;
 }
@@ -6116,8 +1793,8 @@ void vk_CmdExecuteCommands(CPU* cpu) {
 void vk_DestroySurfaceKHR(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSurfaceKHR surface = (VkSurfaceKHR)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroySurfaceKHR:VkAllocationCallbacks not implemented"); shown = true;}
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroySurfaceKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySurfaceKHR(instance, surface, pAllocator);
 }
@@ -6126,37 +1803,37 @@ void vk_GetPhysicalDeviceSurfaceSupportKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t queueFamilyIndex = (uint32_t)ARG2;
-    VkSurfaceKHR surface = (VkSurfaceKHR)ARG64(ARG3, ARG4);
-    VkBool32 tmp_pSupported = (VkBool32) cpu->memory->readd(ARG5);
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG3);
+    VkBool32 tmp_pSupported = (VkBool32) cpu->memory->readd(ARG4);
     VkBool32* pSupported = &tmp_pSupported;
     EAX = pBoxedInfo->pvkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, pSupported);
-    cpu->memory->writed(ARG5, (U32)tmp_pSupported);
+    cpu->memory->writed(ARG4, (U32)tmp_pSupported);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceSurfaceCapabilitiesKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSurfaceKHR surface = (VkSurfaceKHR)ARG64(ARG2, ARG3);
-    MarshalVkSurfaceCapabilitiesKHR pSurfaceCapabilities(cpu->memory, ARG4);
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG2);
+    MarshalVkSurfaceCapabilitiesKHR pSurfaceCapabilities(cpu->memory, ARG3);
     EAX = pBoxedInfo->pvkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &pSurfaceCapabilities.s);
-    MarshalVkSurfaceCapabilitiesKHR::write(cpu->memory, ARG4, &pSurfaceCapabilities.s);
+    MarshalVkSurfaceCapabilitiesKHR::write(cpu->memory, ARG3, &pSurfaceCapabilities.s);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceSurfaceFormatsKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSurfaceKHR surface = (VkSurfaceKHR)ARG64(ARG2, ARG3);
-    uint32_t tmp_pSurfaceFormatCount = (uint32_t) cpu->memory->readd(ARG4);
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG2);
+    uint32_t tmp_pSurfaceFormatCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSurfaceFormatCount = &tmp_pSurfaceFormatCount;
     VkSurfaceFormatKHR* pSurfaceFormats = NULL;
-    if (ARG5) {
+    if (ARG4) {
         pSurfaceFormats = new VkSurfaceFormatKHR[*pSurfaceFormatCount];
     }
     EAX = pBoxedInfo->pvkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, pSurfaceFormatCount, pSurfaceFormats);
-    cpu->memory->writed(ARG4, (U32)tmp_pSurfaceFormatCount);
-    if (ARG5) {
+    cpu->memory->writed(ARG3, (U32)tmp_pSurfaceFormatCount);
+    if (ARG4) {
         for (U32 i=0;i<*pSurfaceFormatCount;i++) {
-            MarshalVkSurfaceFormatKHR::write(cpu->memory, ARG5 + i * 8, &pSurfaceFormats[i]);
+            MarshalVkSurfaceFormatKHR::write(cpu->memory, ARG4 + i * 8, &pSurfaceFormats[i]);
         }
         delete[] pSurfaceFormats;
     }
@@ -6165,14 +1842,17 @@ void vk_GetPhysicalDeviceSurfaceFormatsKHR(CPU* cpu) {
 void vk_GetPhysicalDeviceSurfacePresentModesKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSurfaceKHR surface = (VkSurfaceKHR)ARG64(ARG2, ARG3);
-    uint32_t tmp_pPresentModeCount = (uint32_t) cpu->memory->readd(ARG4);
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG2);
+    uint32_t tmp_pPresentModeCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pPresentModeCount = &tmp_pPresentModeCount;
     static_assert (sizeof(VkPresentModeKHR) == 4, "unhandled enum size");
-    VkPresentModeKHR* pPresentModes = new VkPresentModeKHR[*pPresentModeCount];
-    cpu->memory->memcpy(pPresentModes, ARG5, *pPresentModeCount * sizeof(VkPresentModeKHR));
+    VkPresentModeKHR* pPresentModes = nullptr;
+    if (ARG4) {
+        pPresentModes = new VkPresentModeKHR[*pPresentModeCount];
+        cpu->memory->memcpy(pPresentModes, ARG4, (U32)*pPresentModeCount * sizeof(VkPresentModeKHR));
+    }
     EAX = pBoxedInfo->pvkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, pPresentModeCount, pPresentModes);
-    cpu->memory->writed(ARG4, (U32)tmp_pPresentModeCount);
+    cpu->memory->writed(ARG3, (U32)tmp_pPresentModeCount);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateSwapchainKHR(CPU* cpu) {
@@ -6190,8 +1870,8 @@ void vk_CreateSwapchainKHR(CPU* cpu) {
 void vk_DestroySwapchainKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSwapchainKHR swapchain = (VkSwapchainKHR)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroySwapchainKHR:VkAllocationCallbacks not implemented"); shown = true;}
+    VkSwapchainKHR swapchain = (VkSwapchainKHR)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroySwapchainKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySwapchainKHR(device, swapchain, pAllocator);
 }
@@ -6199,28 +1879,33 @@ void vk_DestroySwapchainKHR(CPU* cpu) {
 void vk_GetSwapchainImagesKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSwapchainKHR swapchain = (VkSwapchainKHR)ARG64(ARG2, ARG3);
-    uint32_t tmp_pSwapchainImageCount = (uint32_t) cpu->memory->readd(ARG4);
+    VkSwapchainKHR swapchain = (VkSwapchainKHR)cpu->memory->readq(ARG2);
+    uint32_t tmp_pSwapchainImageCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pSwapchainImageCount = &tmp_pSwapchainImageCount;
-    VkImage* pSwapchainImages = new VkImage[*pSwapchainImageCount];
-    cpu->memory->memcpy(pSwapchainImages, ARG5, *pSwapchainImageCount * sizeof(VkImage));
+    VkImage* pSwapchainImages = nullptr;
+    if (ARG4) {
+        pSwapchainImages = new VkImage[*pSwapchainImageCount];
+        cpu->memory->memcpy(pSwapchainImages, ARG4, (U32)*pSwapchainImageCount * sizeof(VkImage));
+    }
     EAX = pBoxedInfo->pvkGetSwapchainImagesKHR(device, swapchain, pSwapchainImageCount, pSwapchainImages);
-    cpu->memory->writed(ARG4, (U32)tmp_pSwapchainImageCount);
-    cpu->memory->memcpy(ARG5, pSwapchainImages, *pSwapchainImageCount * sizeof(VkImage));
+    cpu->memory->writed(ARG3, (U32)tmp_pSwapchainImageCount);
+    if (pSwapchainImages) {
+        cpu->memory->memcpy(ARG4, pSwapchainImages, (U32)*pSwapchainImageCount * sizeof(VkImage));
+    }
     delete[] pSwapchainImages;
 }
 // return type: VkResult(4 bytes)
 void vk_AcquireNextImageKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSwapchainKHR swapchain = (VkSwapchainKHR)ARG64(ARG2, ARG3);
-    uint64_t timeout = (uint64_t)ARG64(ARG4, ARG5);
-    VkSemaphore semaphore = (VkSemaphore)ARG64(ARG6, ARG7);
-    VkFence fence = (VkFence)ARG64(ARG8, ARG9);
-    uint32_t tmp_pImageIndex = (uint32_t) cpu->memory->readd(ARG10);
+    VkSwapchainKHR swapchain = (VkSwapchainKHR)cpu->memory->readq(ARG2);
+    uint64_t timeout = (uint64_t)cpu->memory->readq(ARG3);
+    VkSemaphore semaphore = (VkSemaphore)cpu->memory->readq(ARG4);
+    VkFence fence = (VkFence)cpu->memory->readq(ARG5);
+    uint32_t tmp_pImageIndex = (uint32_t) cpu->memory->readd(ARG6);
     uint32_t* pImageIndex = &tmp_pImageIndex;
     EAX = pBoxedInfo->pvkAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, pImageIndex);
-    cpu->memory->writed(ARG10, (U32)tmp_pImageIndex);
+    cpu->memory->writed(ARG6, (U32)tmp_pImageIndex);
 }
 // return type: VkResult(4 bytes)
 void vk_QueuePresentKHR(CPU* cpu) {
@@ -6249,8 +1934,8 @@ void vk_CmdBindPipelineShaderGroupNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
-    VkPipeline pipeline = (VkPipeline)ARG64(ARG3, ARG4);
-    uint32_t groupIndex = (uint32_t)ARG5;
+    VkPipeline pipeline = (VkPipeline)cpu->memory->readq(ARG3);
+    uint32_t groupIndex = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdBindPipelineShaderGroupNV(commandBuffer, pipelineBindPoint, pipeline, groupIndex);
 }
 void vk_GetGeneratedCommandsMemoryRequirementsNV(CPU* cpu) {
@@ -6278,8 +1963,8 @@ void vk_CreateIndirectCommandsLayoutNV(CPU* cpu) {
 void vk_DestroyIndirectCommandsLayoutNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkIndirectCommandsLayoutNV indirectCommandsLayout = (VkIndirectCommandsLayoutNV)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyIndirectCommandsLayoutNV:VkAllocationCallbacks not implemented"); shown = true;}
+    VkIndirectCommandsLayoutNV indirectCommandsLayout = (VkIndirectCommandsLayoutNV)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyIndirectCommandsLayoutNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyIndirectCommandsLayoutNV(device, indirectCommandsLayout, pAllocator);
 }
@@ -6441,14 +2126,14 @@ void vk_CmdPushDescriptorSetKHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkPipelineBindPoint pipelineBindPoint = (VkPipelineBindPoint)ARG2;
-    VkPipelineLayout layout = (VkPipelineLayout)ARG64(ARG3, ARG4);
-    uint32_t set = (uint32_t)ARG5;
-    uint32_t descriptorWriteCount = (uint32_t)ARG6;
+    VkPipelineLayout layout = (VkPipelineLayout)cpu->memory->readq(ARG3);
+    uint32_t set = (uint32_t)ARG4;
+    uint32_t descriptorWriteCount = (uint32_t)ARG5;
     VkWriteDescriptorSet* pDescriptorWrites = NULL;
-    if (ARG7) {
+    if (ARG6) {
         pDescriptorWrites = new VkWriteDescriptorSet[descriptorWriteCount];
         for (U32 i=0;i<descriptorWriteCount;i++) {
-            MarshalVkWriteDescriptorSet::read(cpu->memory, ARG7 + i * 64, &pDescriptorWrites[i]);
+            MarshalVkWriteDescriptorSet::read(cpu->memory, ARG6 + i * 44, &pDescriptorWrites[i]);
         }
     }
     pBoxedInfo->pvkCmdPushDescriptorSetKHR(commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
@@ -6459,15 +2144,15 @@ void vk_CmdPushDescriptorSetKHR(CPU* cpu) {
 void vk_TrimCommandPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCommandPool commandPool = (VkCommandPool)ARG64(ARG2, ARG3);
-    VkCommandPoolTrimFlags flags = (VkCommandPoolTrimFlags)ARG4;
+    VkCommandPool commandPool = (VkCommandPool)cpu->memory->readq(ARG2);
+    VkCommandPoolTrimFlags flags = (VkCommandPoolTrimFlags)ARG3;
     pBoxedInfo->pvkTrimCommandPool(device, commandPool, flags);
 }
 void vk_TrimCommandPoolKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkCommandPool commandPool = (VkCommandPool)ARG64(ARG2, ARG3);
-    VkCommandPoolTrimFlags flags = (VkCommandPoolTrimFlags)ARG4;
+    VkCommandPool commandPool = (VkCommandPool)cpu->memory->readq(ARG2);
+    VkCommandPoolTrimFlags flags = (VkCommandPoolTrimFlags)ARG3;
     pBoxedInfo->pvkTrimCommandPoolKHR(device, commandPool, flags);
 }
 void vk_GetPhysicalDeviceExternalBufferProperties(CPU* cpu) {
@@ -6676,11 +2361,11 @@ void vk_GetDeviceGroupPresentCapabilitiesKHR(CPU* cpu) {
 void vk_GetDeviceGroupSurfacePresentModesKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSurfaceKHR surface = (VkSurfaceKHR)ARG64(ARG2, ARG3);
-    VkDeviceGroupPresentModeFlagsKHR tmp_pModes = (VkDeviceGroupPresentModeFlagsKHR) cpu->memory->readd(ARG4);
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG2);
+    VkDeviceGroupPresentModeFlagsKHR tmp_pModes = (VkDeviceGroupPresentModeFlagsKHR) cpu->memory->readd(ARG3);
     VkDeviceGroupPresentModeFlagsKHR* pModes = &tmp_pModes;
     EAX = pBoxedInfo->pvkGetDeviceGroupSurfacePresentModesKHR(device, surface, pModes);
-    cpu->memory->writed(ARG4, (U32)tmp_pModes);
+    cpu->memory->writed(ARG3, (U32)tmp_pModes);
 }
 // return type: VkResult(4 bytes)
 void vk_AcquireNextImage2KHR(CPU* cpu) {
@@ -6719,14 +2404,19 @@ void vk_CmdDispatchBaseKHR(CPU* cpu) {
 void vk_GetPhysicalDevicePresentRectanglesKHR(CPU* cpu) {
     VkPhysicalDevice physicalDevice = (VkPhysicalDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSurfaceKHR surface = (VkSurfaceKHR)ARG64(ARG2, ARG3);
-    uint32_t tmp_pRectCount = (uint32_t) cpu->memory->readd(ARG4);
+    VkSurfaceKHR surface = (VkSurfaceKHR)cpu->memory->readq(ARG2);
+    uint32_t tmp_pRectCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pRectCount = &tmp_pRectCount;
-    VkRect2D* pRects = new VkRect2D[*pRectCount];
-    cpu->memory->memcpy(pRects, ARG5, *pRectCount * sizeof(VkRect2D));
+    VkRect2D* pRects = nullptr;
+    if (ARG4) {
+        pRects = new VkRect2D[*pRectCount];
+        cpu->memory->memcpy(pRects, ARG4, (U32)*pRectCount * sizeof(VkRect2D));
+    }
     EAX = pBoxedInfo->pvkGetPhysicalDevicePresentRectanglesKHR(physicalDevice, surface, pRectCount, pRects);
-    cpu->memory->writed(ARG4, (U32)tmp_pRectCount);
-    cpu->memory->memcpy(ARG5, pRects, *pRectCount * sizeof(VkRect2D));
+    cpu->memory->writed(ARG3, (U32)tmp_pRectCount);
+    if (pRects) {
+        cpu->memory->memcpy(ARG4, pRects, (U32)*pRectCount * sizeof(VkRect2D));
+    }
     delete[] pRects;
 }
 // return type: VkResult(4 bytes)
@@ -6758,24 +2448,24 @@ void vk_CreateDescriptorUpdateTemplateKHR(CPU* cpu) {
 void vk_DestroyDescriptorUpdateTemplate(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorUpdateTemplate:VkAllocationCallbacks not implemented"); shown = true;}
+    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyDescriptorUpdateTemplate:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorUpdateTemplate(device, descriptorUpdateTemplate, pAllocator);
 }
 void vk_DestroyDescriptorUpdateTemplateKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyDescriptorUpdateTemplateKHR:VkAllocationCallbacks not implemented"); shown = true;}
+    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyDescriptorUpdateTemplateKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDescriptorUpdateTemplateKHR(device, descriptorUpdateTemplate, pAllocator);
 }
 void vk_UpdateDescriptorSetWithTemplate(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorSet descriptorSet = (VkDescriptorSet)ARG64(ARG2, ARG3);
-    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)ARG64(ARG4, ARG5);
+    VkDescriptorSet descriptorSet = (VkDescriptorSet)cpu->memory->readq(ARG2);
+    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)cpu->memory->readq(ARG3);
     void* pData;
     kpanic("vkUpdateDescriptorSetWithTemplate not implemented");
     pBoxedInfo->pvkUpdateDescriptorSetWithTemplate(device, descriptorSet, descriptorUpdateTemplate, pData);
@@ -6783,8 +2473,8 @@ void vk_UpdateDescriptorSetWithTemplate(CPU* cpu) {
 void vk_UpdateDescriptorSetWithTemplateKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorSet descriptorSet = (VkDescriptorSet)ARG64(ARG2, ARG3);
-    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)ARG64(ARG4, ARG5);
+    VkDescriptorSet descriptorSet = (VkDescriptorSet)cpu->memory->readq(ARG2);
+    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)cpu->memory->readq(ARG3);
     void* pData;
     kpanic("vkUpdateDescriptorSetWithTemplate not implemented");
     pBoxedInfo->pvkUpdateDescriptorSetWithTemplateKHR(device, descriptorSet, descriptorUpdateTemplate, pData);
@@ -6792,9 +2482,9 @@ void vk_UpdateDescriptorSetWithTemplateKHR(CPU* cpu) {
 void vk_CmdPushDescriptorSetWithTemplateKHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)ARG64(ARG2, ARG3);
-    VkPipelineLayout layout = (VkPipelineLayout)ARG64(ARG4, ARG5);
-    uint32_t set = (uint32_t)ARG6;
+    VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)cpu->memory->readq(ARG2);
+    VkPipelineLayout layout = (VkPipelineLayout)cpu->memory->readq(ARG3);
+    uint32_t set = (uint32_t)ARG4;
     void* pData;
     kpanic("vkUpdateDescriptorSetWithTemplate not implemented");
     pBoxedInfo->pvkCmdPushDescriptorSetWithTemplateKHR(commandBuffer, descriptorUpdateTemplate, layout, set, pData);
@@ -6804,8 +2494,11 @@ void vk_CmdSetViewportWScalingNV(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstViewport = (uint32_t)ARG2;
     uint32_t viewportCount = (uint32_t)ARG3;
-    VkViewportWScalingNV* pViewportWScalings = new VkViewportWScalingNV[viewportCount];
-    cpu->memory->memcpy(pViewportWScalings, ARG4, viewportCount * sizeof(VkViewportWScalingNV));
+    VkViewportWScalingNV* pViewportWScalings = nullptr;
+    if (ARG4) {
+        pViewportWScalings = new VkViewportWScalingNV[viewportCount];
+        cpu->memory->memcpy(pViewportWScalings, ARG4, (U32)viewportCount * sizeof(VkViewportWScalingNV));
+    }
     pBoxedInfo->pvkCmdSetViewportWScalingNV(commandBuffer, firstViewport, viewportCount, pViewportWScalings);
     delete[] pViewportWScalings;
 }
@@ -6814,8 +2507,11 @@ void vk_CmdSetDiscardRectangleEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstDiscardRectangle = (uint32_t)ARG2;
     uint32_t discardRectangleCount = (uint32_t)ARG3;
-    VkRect2D* pDiscardRectangles = new VkRect2D[discardRectangleCount];
-    cpu->memory->memcpy(pDiscardRectangles, ARG4, discardRectangleCount * sizeof(VkRect2D));
+    VkRect2D* pDiscardRectangles = nullptr;
+    if (ARG4) {
+        pDiscardRectangles = new VkRect2D[discardRectangleCount];
+        cpu->memory->memcpy(pDiscardRectangles, ARG4, (U32)discardRectangleCount * sizeof(VkRect2D));
+    }
     pBoxedInfo->pvkCmdSetDiscardRectangleEXT(commandBuffer, firstDiscardRectangle, discardRectangleCount, pDiscardRectangles);
     delete[] pDiscardRectangles;
 }
@@ -6970,16 +2666,16 @@ void vk_CreateSamplerYcbcrConversionKHR(CPU* cpu) {
 void vk_DestroySamplerYcbcrConversion(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSamplerYcbcrConversion ycbcrConversion = (VkSamplerYcbcrConversion)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroySamplerYcbcrConversion:VkAllocationCallbacks not implemented"); shown = true;}
+    VkSamplerYcbcrConversion ycbcrConversion = (VkSamplerYcbcrConversion)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroySamplerYcbcrConversion:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySamplerYcbcrConversion(device, ycbcrConversion, pAllocator);
 }
 void vk_DestroySamplerYcbcrConversionKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSamplerYcbcrConversion ycbcrConversion = (VkSamplerYcbcrConversion)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroySamplerYcbcrConversionKHR:VkAllocationCallbacks not implemented"); shown = true;}
+    VkSamplerYcbcrConversion ycbcrConversion = (VkSamplerYcbcrConversion)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroySamplerYcbcrConversionKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroySamplerYcbcrConversionKHR(device, ycbcrConversion, pAllocator);
 }
@@ -7008,8 +2704,8 @@ void vk_CreateValidationCacheEXT(CPU* cpu) {
 void vk_DestroyValidationCacheEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkValidationCacheEXT validationCache = (VkValidationCacheEXT)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyValidationCacheEXT:VkAllocationCallbacks not implemented"); shown = true;}
+    VkValidationCacheEXT validationCache = (VkValidationCacheEXT)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyValidationCacheEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyValidationCacheEXT(device, validationCache, pAllocator);
 }
@@ -7017,24 +2713,32 @@ void vk_DestroyValidationCacheEXT(CPU* cpu) {
 void vk_GetValidationCacheDataEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkValidationCacheEXT validationCache = (VkValidationCacheEXT)ARG64(ARG2, ARG3);
-    size_t tmp_pDataSize = (size_t) cpu->memory->readd(ARG4);
+    VkValidationCacheEXT validationCache = (VkValidationCacheEXT)cpu->memory->readq(ARG2);
+    size_t tmp_pDataSize = (size_t) cpu->memory->readd(ARG3);
     size_t* pDataSize = &tmp_pDataSize;
-    void* pData = new char[*pDataSize];
-    cpu->memory->memcpy(pData, ARG5, *pDataSize * sizeof(char));
+    void* pData = nullptr;
+    if (ARG4) {
+        pData = new char[*pDataSize];
+        cpu->memory->memcpy(pData, ARG4, (U32)*pDataSize * sizeof(char));
+    }
     EAX = pBoxedInfo->pvkGetValidationCacheDataEXT(device, validationCache, pDataSize, pData);
-    cpu->memory->writed(ARG4, (U32)tmp_pDataSize);
-    cpu->memory->memcpy(ARG5, pData, *pDataSize * sizeof(char));
+    cpu->memory->writed(ARG3, (U32)tmp_pDataSize);
+    if (pData) {
+        cpu->memory->memcpy(ARG4, pData, (U32)*pDataSize * sizeof(char));
+    }
     delete[] pData;
 }
 // return type: VkResult(4 bytes)
 void vk_MergeValidationCachesEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkValidationCacheEXT dstCache = (VkValidationCacheEXT)ARG64(ARG2, ARG3);
-    uint32_t srcCacheCount = (uint32_t)ARG4;
-    VkValidationCacheEXT* pSrcCaches = new VkValidationCacheEXT[srcCacheCount];
-    cpu->memory->memcpy(pSrcCaches, ARG5, srcCacheCount * sizeof(VkValidationCacheEXT));
+    VkValidationCacheEXT dstCache = (VkValidationCacheEXT)cpu->memory->readq(ARG2);
+    uint32_t srcCacheCount = (uint32_t)ARG3;
+    VkValidationCacheEXT* pSrcCaches = nullptr;
+    if (ARG4) {
+        pSrcCaches = new VkValidationCacheEXT[srcCacheCount];
+        cpu->memory->memcpy(pSrcCaches, ARG4, (U32)srcCacheCount * sizeof(VkValidationCacheEXT));
+    }
     EAX = pBoxedInfo->pvkMergeValidationCachesEXT(device, dstCache, srcCacheCount, pSrcCaches);
     delete[] pSrcCaches;
 }
@@ -7060,16 +2764,21 @@ void vk_GetDescriptorSetLayoutSupportKHR(CPU* cpu) {
 void vk_GetShaderInfoAMD(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipeline pipeline = (VkPipeline)ARG64(ARG2, ARG3);
-    VkShaderStageFlagBits shaderStage = (VkShaderStageFlagBits)ARG4;
-    VkShaderInfoTypeAMD infoType = (VkShaderInfoTypeAMD)ARG5;
-    size_t tmp_pInfoSize = (size_t) cpu->memory->readd(ARG6);
+    VkPipeline pipeline = (VkPipeline)cpu->memory->readq(ARG2);
+    VkShaderStageFlagBits shaderStage = (VkShaderStageFlagBits)ARG3;
+    VkShaderInfoTypeAMD infoType = (VkShaderInfoTypeAMD)ARG4;
+    size_t tmp_pInfoSize = (size_t) cpu->memory->readd(ARG5);
     size_t* pInfoSize = &tmp_pInfoSize;
-    void* pInfo = new char[*pInfoSize];
-    cpu->memory->memcpy(pInfo, ARG7, *pInfoSize * sizeof(char));
+    void* pInfo = nullptr;
+    if (ARG6) {
+        pInfo = new char[*pInfoSize];
+        cpu->memory->memcpy(pInfo, ARG6, (U32)*pInfoSize * sizeof(char));
+    }
     EAX = pBoxedInfo->pvkGetShaderInfoAMD(device, pipeline, shaderStage, infoType, pInfoSize, pInfo);
-    cpu->memory->writed(ARG6, (U32)tmp_pInfoSize);
-    cpu->memory->memcpy(ARG7, pInfo, *pInfoSize * sizeof(char));
+    cpu->memory->writed(ARG5, (U32)tmp_pInfoSize);
+    if (pInfo) {
+        cpu->memory->memcpy(ARG6, pInfo, (U32)*pInfoSize * sizeof(char));
+    }
     delete[] pInfo;
 }
 // return type: VkResult(4 bytes)
@@ -7079,8 +2788,11 @@ void vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(CPU* cpu) {
     uint32_t tmp_pTimeDomainCount = (uint32_t) cpu->memory->readd(ARG2);
     uint32_t* pTimeDomainCount = &tmp_pTimeDomainCount;
     static_assert (sizeof(VkTimeDomainEXT) == 4, "unhandled enum size");
-    VkTimeDomainEXT* pTimeDomains = new VkTimeDomainEXT[*pTimeDomainCount];
-    cpu->memory->memcpy(pTimeDomains, ARG3, *pTimeDomainCount * sizeof(VkTimeDomainEXT));
+    VkTimeDomainEXT* pTimeDomains = nullptr;
+    if (ARG3) {
+        pTimeDomains = new VkTimeDomainEXT[*pTimeDomainCount];
+        cpu->memory->memcpy(pTimeDomains, ARG3, (U32)*pTimeDomainCount * sizeof(VkTimeDomainEXT));
+    }
     EAX = pBoxedInfo->pvkGetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice, pTimeDomainCount, pTimeDomains);
     cpu->memory->writed(ARG2, (U32)tmp_pTimeDomainCount);
 }
@@ -7096,15 +2808,20 @@ void vk_GetCalibratedTimestampsEXT(CPU* cpu) {
             MarshalVkCalibratedTimestampInfoEXT::read(cpu->memory, ARG3 + i * 12, &pTimestampInfos[i]);
         }
     }
-    uint64_t* pTimestamps = new uint64_t[timestampCount];
-    cpu->memory->memcpy(pTimestamps, ARG4, timestampCount * sizeof(uint64_t));
+    uint64_t* pTimestamps = nullptr;
+    if (ARG4) {
+        pTimestamps = new uint64_t[timestampCount];
+        cpu->memory->memcpy(pTimestamps, ARG4, (U32)timestampCount * sizeof(uint64_t));
+    }
     uint64_t tmp_pMaxDeviation = (uint64_t) cpu->memory->readq(ARG5);
     uint64_t* pMaxDeviation = &tmp_pMaxDeviation;
     EAX = pBoxedInfo->pvkGetCalibratedTimestampsEXT(device, timestampCount, pTimestampInfos, pTimestamps, pMaxDeviation);
     if (pTimestampInfos) {
         delete[] pTimestampInfos;
     }
-    cpu->memory->memcpy(ARG4, pTimestamps, timestampCount * sizeof(uint64_t));
+    if (pTimestamps) {
+        cpu->memory->memcpy(ARG4, pTimestamps, (U32)timestampCount * sizeof(uint64_t));
+    }
     delete[] pTimestamps;
     cpu->memory->writeq(ARG5, (U64)tmp_pMaxDeviation);
 }
@@ -7123,9 +2840,9 @@ void vk_CmdWriteBufferMarkerAMD(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkPipelineStageFlagBits pipelineStage = (VkPipelineStageFlagBits)ARG2;
-    VkBuffer dstBuffer = (VkBuffer)ARG64(ARG3, ARG4);
-    VkDeviceSize dstOffset = (VkDeviceSize)ARG64(ARG5, ARG6);
-    uint32_t marker = (uint32_t)ARG7;
+    VkBuffer dstBuffer = (VkBuffer)cpu->memory->readq(ARG3);
+    VkDeviceSize dstOffset = (VkDeviceSize)cpu->memory->readq(ARG4);
+    uint32_t marker = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdWriteBufferMarkerAMD(commandBuffer, pipelineStage, dstBuffer, dstOffset, marker);
 }
 // return type: VkResult(4 bytes)
@@ -7208,21 +2925,21 @@ void vk_CmdEndRenderPass2KHR(CPU* cpu) {
 void vk_GetSemaphoreCounterValue(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSemaphore semaphore = (VkSemaphore)ARG64(ARG2, ARG3);
-    uint64_t tmp_pValue = (uint64_t) cpu->memory->readq(ARG4);
+    VkSemaphore semaphore = (VkSemaphore)cpu->memory->readq(ARG2);
+    uint64_t tmp_pValue = (uint64_t) cpu->memory->readq(ARG3);
     uint64_t* pValue = &tmp_pValue;
     EAX = pBoxedInfo->pvkGetSemaphoreCounterValue(device, semaphore, pValue);
-    cpu->memory->writeq(ARG4, (U64)tmp_pValue);
+    cpu->memory->writeq(ARG3, (U64)tmp_pValue);
 }
 // return type: VkResult(4 bytes)
 void vk_GetSemaphoreCounterValueKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkSemaphore semaphore = (VkSemaphore)ARG64(ARG2, ARG3);
-    uint64_t tmp_pValue = (uint64_t) cpu->memory->readq(ARG4);
+    VkSemaphore semaphore = (VkSemaphore)cpu->memory->readq(ARG2);
+    uint64_t tmp_pValue = (uint64_t) cpu->memory->readq(ARG3);
     uint64_t* pValue = &tmp_pValue;
     EAX = pBoxedInfo->pvkGetSemaphoreCounterValueKHR(device, semaphore, pValue);
-    cpu->memory->writeq(ARG4, (U64)tmp_pValue);
+    cpu->memory->writeq(ARG3, (U64)tmp_pValue);
 }
 // return type: VkResult(4 bytes)
 void vk_WaitSemaphores(CPU* cpu) {
@@ -7230,7 +2947,7 @@ void vk_WaitSemaphores(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkSemaphoreWaitInfo local_pWaitInfo(cpu->memory, ARG2);
     VkSemaphoreWaitInfo* pWaitInfo = &local_pWaitInfo.s;
-    uint64_t timeout = (uint64_t)ARG64(ARG3, ARG4);
+    uint64_t timeout = (uint64_t)cpu->memory->readq(ARG3);
     EAX = pBoxedInfo->pvkWaitSemaphores(device, pWaitInfo, timeout);
 }
 // return type: VkResult(4 bytes)
@@ -7239,7 +2956,7 @@ void vk_WaitSemaphoresKHR(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkSemaphoreWaitInfo local_pWaitInfo(cpu->memory, ARG2);
     VkSemaphoreWaitInfo* pWaitInfo = &local_pWaitInfo.s;
-    uint64_t timeout = (uint64_t)ARG64(ARG3, ARG4);
+    uint64_t timeout = (uint64_t)cpu->memory->readq(ARG3);
     EAX = pBoxedInfo->pvkWaitSemaphoresKHR(device, pWaitInfo, timeout);
 }
 // return type: VkResult(4 bytes)
@@ -7261,67 +2978,67 @@ void vk_SignalSemaphoreKHR(CPU* cpu) {
 void vk_CmdDrawIndirectCount(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer countBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize countBufferOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    uint32_t maxDrawCount = (uint32_t)ARG10;
-    uint32_t stride = (uint32_t)ARG11;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer countBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize countBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t maxDrawCount = (uint32_t)ARG6;
+    uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndirectCount(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 void vk_CmdDrawIndirectCountKHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer countBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize countBufferOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    uint32_t maxDrawCount = (uint32_t)ARG10;
-    uint32_t stride = (uint32_t)ARG11;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer countBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize countBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t maxDrawCount = (uint32_t)ARG6;
+    uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndirectCountKHR(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 void vk_CmdDrawIndirectCountAMD(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer countBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize countBufferOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    uint32_t maxDrawCount = (uint32_t)ARG10;
-    uint32_t stride = (uint32_t)ARG11;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer countBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize countBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t maxDrawCount = (uint32_t)ARG6;
+    uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndirectCountAMD(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 void vk_CmdDrawIndexedIndirectCount(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer countBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize countBufferOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    uint32_t maxDrawCount = (uint32_t)ARG10;
-    uint32_t stride = (uint32_t)ARG11;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer countBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize countBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t maxDrawCount = (uint32_t)ARG6;
+    uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndexedIndirectCount(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 void vk_CmdDrawIndexedIndirectCountKHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer countBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize countBufferOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    uint32_t maxDrawCount = (uint32_t)ARG10;
-    uint32_t stride = (uint32_t)ARG11;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer countBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize countBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t maxDrawCount = (uint32_t)ARG6;
+    uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndexedIndirectCountKHR(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 void vk_CmdDrawIndexedIndirectCountAMD(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer countBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize countBufferOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    uint32_t maxDrawCount = (uint32_t)ARG10;
-    uint32_t stride = (uint32_t)ARG11;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer countBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize countBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t maxDrawCount = (uint32_t)ARG6;
+    uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndexedIndirectCountAMD(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 void vk_CmdBindTransformFeedbackBuffersEXT(CPU* cpu) {
@@ -7329,12 +3046,21 @@ void vk_CmdBindTransformFeedbackBuffersEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstBinding = (uint32_t)ARG2;
     uint32_t bindingCount = (uint32_t)ARG3;
-    VkBuffer* pBuffers = new VkBuffer[bindingCount];
-    cpu->memory->memcpy(pBuffers, ARG4, bindingCount * sizeof(VkBuffer));
-    VkDeviceSize* pOffsets = new VkDeviceSize[bindingCount];
-    cpu->memory->memcpy(pOffsets, ARG5, bindingCount * sizeof(VkDeviceSize));
-    VkDeviceSize* pSizes = new VkDeviceSize[bindingCount];
-    cpu->memory->memcpy(pSizes, ARG6, bindingCount * sizeof(VkDeviceSize));
+    VkBuffer* pBuffers = nullptr;
+    if (ARG4) {
+        pBuffers = new VkBuffer[bindingCount];
+        cpu->memory->memcpy(pBuffers, ARG4, (U32)bindingCount * sizeof(VkBuffer));
+    }
+    VkDeviceSize* pOffsets = nullptr;
+    if (ARG5) {
+        pOffsets = new VkDeviceSize[bindingCount];
+        cpu->memory->memcpy(pOffsets, ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
+    }
+    VkDeviceSize* pSizes = nullptr;
+    if (ARG6) {
+        pSizes = new VkDeviceSize[bindingCount];
+        cpu->memory->memcpy(pSizes, ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
+    }
     pBoxedInfo->pvkCmdBindTransformFeedbackBuffersEXT(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes);
     delete[] pBuffers;
     delete[] pOffsets;
@@ -7345,10 +3071,16 @@ void vk_CmdBeginTransformFeedbackEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstCounterBuffer = (uint32_t)ARG2;
     uint32_t counterBufferCount = (uint32_t)ARG3;
-    VkBuffer* pCounterBuffers = new VkBuffer[counterBufferCount];
-    cpu->memory->memcpy(pCounterBuffers, ARG4, counterBufferCount * sizeof(VkBuffer));
-    VkDeviceSize* pCounterBufferOffsets = new VkDeviceSize[counterBufferCount];
-    cpu->memory->memcpy(pCounterBufferOffsets, ARG5, counterBufferCount * sizeof(VkDeviceSize));
+    VkBuffer* pCounterBuffers = nullptr;
+    if (ARG4) {
+        pCounterBuffers = new VkBuffer[counterBufferCount];
+        cpu->memory->memcpy(pCounterBuffers, ARG4, (U32)counterBufferCount * sizeof(VkBuffer));
+    }
+    VkDeviceSize* pCounterBufferOffsets = nullptr;
+    if (ARG5) {
+        pCounterBufferOffsets = new VkDeviceSize[counterBufferCount];
+        cpu->memory->memcpy(pCounterBufferOffsets, ARG5, (U32)counterBufferCount * sizeof(VkDeviceSize));
+    }
     pBoxedInfo->pvkCmdBeginTransformFeedbackEXT(commandBuffer, firstCounterBuffer, counterBufferCount, pCounterBuffers, pCounterBufferOffsets);
     delete[] pCounterBuffers;
     delete[] pCounterBufferOffsets;
@@ -7358,10 +3090,16 @@ void vk_CmdEndTransformFeedbackEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstCounterBuffer = (uint32_t)ARG2;
     uint32_t counterBufferCount = (uint32_t)ARG3;
-    VkBuffer* pCounterBuffers = new VkBuffer[counterBufferCount];
-    cpu->memory->memcpy(pCounterBuffers, ARG4, counterBufferCount * sizeof(VkBuffer));
-    VkDeviceSize* pCounterBufferOffsets = new VkDeviceSize[counterBufferCount];
-    cpu->memory->memcpy(pCounterBufferOffsets, ARG5, counterBufferCount * sizeof(VkDeviceSize));
+    VkBuffer* pCounterBuffers = nullptr;
+    if (ARG4) {
+        pCounterBuffers = new VkBuffer[counterBufferCount];
+        cpu->memory->memcpy(pCounterBuffers, ARG4, (U32)counterBufferCount * sizeof(VkBuffer));
+    }
+    VkDeviceSize* pCounterBufferOffsets = nullptr;
+    if (ARG5) {
+        pCounterBufferOffsets = new VkDeviceSize[counterBufferCount];
+        cpu->memory->memcpy(pCounterBufferOffsets, ARG5, (U32)counterBufferCount * sizeof(VkDeviceSize));
+    }
     pBoxedInfo->pvkCmdEndTransformFeedbackEXT(commandBuffer, firstCounterBuffer, counterBufferCount, pCounterBuffers, pCounterBufferOffsets);
     delete[] pCounterBuffers;
     delete[] pCounterBufferOffsets;
@@ -7369,18 +3107,18 @@ void vk_CmdEndTransformFeedbackEXT(CPU* cpu) {
 void vk_CmdBeginQueryIndexedEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t query = (uint32_t)ARG4;
-    VkQueryControlFlags flags = (VkQueryControlFlags)ARG5;
-    uint32_t index = (uint32_t)ARG6;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t query = (uint32_t)ARG3;
+    VkQueryControlFlags flags = (VkQueryControlFlags)ARG4;
+    uint32_t index = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdBeginQueryIndexedEXT(commandBuffer, queryPool, query, flags, index);
 }
 void vk_CmdEndQueryIndexedEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG2, ARG3);
-    uint32_t query = (uint32_t)ARG4;
-    uint32_t index = (uint32_t)ARG5;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG2);
+    uint32_t query = (uint32_t)ARG3;
+    uint32_t index = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdEndQueryIndexedEXT(commandBuffer, queryPool, query, index);
 }
 void vk_CmdDrawIndirectByteCountEXT(CPU* cpu) {
@@ -7388,10 +3126,10 @@ void vk_CmdDrawIndirectByteCountEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t instanceCount = (uint32_t)ARG2;
     uint32_t firstInstance = (uint32_t)ARG3;
-    VkBuffer counterBuffer = (VkBuffer)ARG64(ARG4, ARG5);
-    VkDeviceSize counterBufferOffset = (VkDeviceSize)ARG64(ARG6, ARG7);
-    uint32_t counterOffset = (uint32_t)ARG8;
-    uint32_t vertexStride = (uint32_t)ARG9;
+    VkBuffer counterBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize counterBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t counterOffset = (uint32_t)ARG6;
+    uint32_t vertexStride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawIndirectByteCountEXT(commandBuffer, instanceCount, firstInstance, counterBuffer, counterBufferOffset, counterOffset, vertexStride);
 }
 void vk_CmdSetExclusiveScissorNV(CPU* cpu) {
@@ -7399,16 +3137,19 @@ void vk_CmdSetExclusiveScissorNV(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstExclusiveScissor = (uint32_t)ARG2;
     uint32_t exclusiveScissorCount = (uint32_t)ARG3;
-    VkRect2D* pExclusiveScissors = new VkRect2D[exclusiveScissorCount];
-    cpu->memory->memcpy(pExclusiveScissors, ARG4, exclusiveScissorCount * sizeof(VkRect2D));
+    VkRect2D* pExclusiveScissors = nullptr;
+    if (ARG4) {
+        pExclusiveScissors = new VkRect2D[exclusiveScissorCount];
+        cpu->memory->memcpy(pExclusiveScissors, ARG4, (U32)exclusiveScissorCount * sizeof(VkRect2D));
+    }
     pBoxedInfo->pvkCmdSetExclusiveScissorNV(commandBuffer, firstExclusiveScissor, exclusiveScissorCount, pExclusiveScissors);
     delete[] pExclusiveScissors;
 }
 void vk_CmdBindShadingRateImageNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkImageView imageView = (VkImageView)ARG64(ARG2, ARG3);
-    VkImageLayout imageLayout = (VkImageLayout)ARG4;
+    VkImageView imageView = (VkImageView)cpu->memory->readq(ARG2);
+    VkImageLayout imageLayout = (VkImageLayout)ARG3;
     pBoxedInfo->pvkCmdBindShadingRateImageNV(commandBuffer, imageView, imageLayout);
 }
 void vk_CmdSetViewportShadingRatePaletteNV(CPU* cpu) {
@@ -7455,29 +3196,29 @@ void vk_CmdDrawMeshTasksNV(CPU* cpu) {
 void vk_CmdDrawMeshTasksIndirectNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    uint32_t drawCount = (uint32_t)ARG6;
-    uint32_t stride = (uint32_t)ARG7;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    uint32_t drawCount = (uint32_t)ARG4;
+    uint32_t stride = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdDrawMeshTasksIndirectNV(commandBuffer, buffer, offset, drawCount, stride);
 }
 void vk_CmdDrawMeshTasksIndirectCountNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer buffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize offset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer countBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize countBufferOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    uint32_t maxDrawCount = (uint32_t)ARG10;
-    uint32_t stride = (uint32_t)ARG11;
+    VkBuffer buffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize offset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer countBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize countBufferOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    uint32_t maxDrawCount = (uint32_t)ARG6;
+    uint32_t stride = (uint32_t)ARG7;
     pBoxedInfo->pvkCmdDrawMeshTasksIndirectCountNV(commandBuffer, buffer, offset, countBuffer, countBufferOffset, maxDrawCount, stride);
 }
 // return type: VkResult(4 bytes)
 void vk_CompileDeferredNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipeline pipeline = (VkPipeline)ARG64(ARG2, ARG3);
-    uint32_t shader = (uint32_t)ARG4;
+    VkPipeline pipeline = (VkPipeline)cpu->memory->readq(ARG2);
+    uint32_t shader = (uint32_t)ARG3;
     EAX = pBoxedInfo->pvkCompileDeferredNV(device, pipeline, shader);
 }
 // return type: VkResult(4 bytes)
@@ -7496,8 +3237,8 @@ void vk_CreateAccelerationStructureNV(CPU* cpu) {
 void vk_DestroyAccelerationStructureNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkAccelerationStructureNV accelerationStructure = (VkAccelerationStructureNV)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyAccelerationStructureNV:VkAllocationCallbacks not implemented"); shown = true;}
+    VkAccelerationStructureNV accelerationStructure = (VkAccelerationStructureNV)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyAccelerationStructureNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyAccelerationStructureNV(device, accelerationStructure, pAllocator);
 }
@@ -7530,20 +3271,23 @@ void vk_BindAccelerationStructureMemoryNV(CPU* cpu) {
 void vk_CmdCopyAccelerationStructureNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkAccelerationStructureNV dst = (VkAccelerationStructureNV)ARG64(ARG2, ARG3);
-    VkAccelerationStructureNV src = (VkAccelerationStructureNV)ARG64(ARG4, ARG5);
-    VkCopyAccelerationStructureModeKHR mode = (VkCopyAccelerationStructureModeKHR)ARG6;
+    VkAccelerationStructureNV dst = (VkAccelerationStructureNV)cpu->memory->readq(ARG2);
+    VkAccelerationStructureNV src = (VkAccelerationStructureNV)cpu->memory->readq(ARG3);
+    VkCopyAccelerationStructureModeKHR mode = (VkCopyAccelerationStructureModeKHR)ARG4;
     pBoxedInfo->pvkCmdCopyAccelerationStructureNV(commandBuffer, dst, src, mode);
 }
 void vk_CmdWriteAccelerationStructuresPropertiesNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t accelerationStructureCount = (uint32_t)ARG2;
-    VkAccelerationStructureNV* pAccelerationStructures = new VkAccelerationStructureNV[accelerationStructureCount];
-    cpu->memory->memcpy(pAccelerationStructures, ARG3, accelerationStructureCount * sizeof(VkAccelerationStructureNV));
+    VkAccelerationStructureNV* pAccelerationStructures = nullptr;
+    if (ARG3) {
+        pAccelerationStructures = new VkAccelerationStructureNV[accelerationStructureCount];
+        cpu->memory->memcpy(pAccelerationStructures, ARG3, (U32)accelerationStructureCount * sizeof(VkAccelerationStructureNV));
+    }
     VkQueryType queryType = (VkQueryType)ARG4;
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG5, ARG6);
-    uint32_t firstQuery = (uint32_t)ARG7;
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG5);
+    uint32_t firstQuery = (uint32_t)ARG6;
     pBoxedInfo->pvkCmdWriteAccelerationStructuresPropertiesNV(commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
     delete[] pAccelerationStructures;
 }
@@ -7552,82 +3296,97 @@ void vk_CmdBuildAccelerationStructureNV(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkAccelerationStructureInfoNV local_pInfo(cpu->memory, ARG2);
     VkAccelerationStructureInfoNV* pInfo = &local_pInfo.s;
-    VkBuffer instanceData = (VkBuffer)ARG64(ARG3, ARG4);
-    VkDeviceSize instanceOffset = (VkDeviceSize)ARG64(ARG5, ARG6);
-    VkBool32 update = (VkBool32)ARG7;
-    VkAccelerationStructureNV dst = (VkAccelerationStructureNV)ARG64(ARG8, ARG9);
-    VkAccelerationStructureNV src = (VkAccelerationStructureNV)ARG64(ARG10, ARG11);
-    VkBuffer scratch = (VkBuffer)ARG64(ARG12, ARG13);
-    VkDeviceSize scratchOffset = (VkDeviceSize)ARG64(ARG14, ARG15);
+    VkBuffer instanceData = (VkBuffer)cpu->memory->readq(ARG3);
+    VkDeviceSize instanceOffset = (VkDeviceSize)cpu->memory->readq(ARG4);
+    VkBool32 update = (VkBool32)ARG5;
+    VkAccelerationStructureNV dst = (VkAccelerationStructureNV)cpu->memory->readq(ARG6);
+    VkAccelerationStructureNV src = (VkAccelerationStructureNV)cpu->memory->readq(ARG7);
+    VkBuffer scratch = (VkBuffer)cpu->memory->readq(ARG8);
+    VkDeviceSize scratchOffset = (VkDeviceSize)cpu->memory->readq(ARG9);
     pBoxedInfo->pvkCmdBuildAccelerationStructureNV(commandBuffer, pInfo, instanceData, instanceOffset, update, dst, src, scratch, scratchOffset);
 }
 void vk_CmdTraceRaysNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkBuffer raygenShaderBindingTableBuffer = (VkBuffer)ARG64(ARG2, ARG3);
-    VkDeviceSize raygenShaderBindingOffset = (VkDeviceSize)ARG64(ARG4, ARG5);
-    VkBuffer missShaderBindingTableBuffer = (VkBuffer)ARG64(ARG6, ARG7);
-    VkDeviceSize missShaderBindingOffset = (VkDeviceSize)ARG64(ARG8, ARG9);
-    VkDeviceSize missShaderBindingStride = (VkDeviceSize)ARG64(ARG10, ARG11);
-    VkBuffer hitShaderBindingTableBuffer = (VkBuffer)ARG64(ARG12, ARG13);
-    VkDeviceSize hitShaderBindingOffset = (VkDeviceSize)ARG64(ARG14, ARG15);
-    VkDeviceSize hitShaderBindingStride = (VkDeviceSize)ARG64(ARG16, ARG17);
-    VkBuffer callableShaderBindingTableBuffer = (VkBuffer)ARG64(ARG18, ARG19);
-    VkDeviceSize callableShaderBindingOffset = (VkDeviceSize)ARG64(ARG20, ARG21);
-    VkDeviceSize callableShaderBindingStride = (VkDeviceSize)ARG64(ARG22, ARG23);
-    uint32_t width = (uint32_t)ARG24;
-    uint32_t height = (uint32_t)ARG25;
-    uint32_t depth = (uint32_t)ARG26;
+    VkBuffer raygenShaderBindingTableBuffer = (VkBuffer)cpu->memory->readq(ARG2);
+    VkDeviceSize raygenShaderBindingOffset = (VkDeviceSize)cpu->memory->readq(ARG3);
+    VkBuffer missShaderBindingTableBuffer = (VkBuffer)cpu->memory->readq(ARG4);
+    VkDeviceSize missShaderBindingOffset = (VkDeviceSize)cpu->memory->readq(ARG5);
+    VkDeviceSize missShaderBindingStride = (VkDeviceSize)cpu->memory->readq(ARG6);
+    VkBuffer hitShaderBindingTableBuffer = (VkBuffer)cpu->memory->readq(ARG7);
+    VkDeviceSize hitShaderBindingOffset = (VkDeviceSize)cpu->memory->readq(ARG8);
+    VkDeviceSize hitShaderBindingStride = (VkDeviceSize)cpu->memory->readq(ARG9);
+    VkBuffer callableShaderBindingTableBuffer = (VkBuffer)cpu->memory->readq(ARG10);
+    VkDeviceSize callableShaderBindingOffset = (VkDeviceSize)cpu->memory->readq(ARG11);
+    VkDeviceSize callableShaderBindingStride = (VkDeviceSize)cpu->memory->readq(ARG12);
+    uint32_t width = (uint32_t)ARG13;
+    uint32_t height = (uint32_t)ARG14;
+    uint32_t depth = (uint32_t)ARG15;
     pBoxedInfo->pvkCmdTraceRaysNV(commandBuffer, raygenShaderBindingTableBuffer, raygenShaderBindingOffset, missShaderBindingTableBuffer, missShaderBindingOffset, missShaderBindingStride, hitShaderBindingTableBuffer, hitShaderBindingOffset, hitShaderBindingStride, callableShaderBindingTableBuffer, callableShaderBindingOffset, callableShaderBindingStride, width, height, depth);
 }
 // return type: VkResult(4 bytes)
 void vk_GetRayTracingShaderGroupHandlesNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipeline pipeline = (VkPipeline)ARG64(ARG2, ARG3);
-    uint32_t firstGroup = (uint32_t)ARG4;
-    uint32_t groupCount = (uint32_t)ARG5;
-    size_t dataSize = (size_t)ARG6;
-    void* pData = new char[dataSize];
-    cpu->memory->memcpy(pData, ARG7, dataSize * sizeof(char));
+    VkPipeline pipeline = (VkPipeline)cpu->memory->readq(ARG2);
+    uint32_t firstGroup = (uint32_t)ARG3;
+    uint32_t groupCount = (uint32_t)ARG4;
+    size_t dataSize = (size_t)ARG5;
+    void* pData = nullptr;
+    if (ARG6) {
+        pData = new char[dataSize];
+        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+    }
     EAX = pBoxedInfo->pvkGetRayTracingShaderGroupHandlesNV(device, pipeline, firstGroup, groupCount, dataSize, pData);
-    cpu->memory->memcpy(ARG7, pData, dataSize * sizeof(char));
+    if (pData) {
+        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
+    }
     delete[] pData;
 }
 // return type: VkResult(4 bytes)
 void vk_GetAccelerationStructureHandleNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkAccelerationStructureNV accelerationStructure = (VkAccelerationStructureNV)ARG64(ARG2, ARG3);
-    size_t dataSize = (size_t)ARG4;
-    void* pData = new char[dataSize];
-    cpu->memory->memcpy(pData, ARG5, dataSize * sizeof(char));
+    VkAccelerationStructureNV accelerationStructure = (VkAccelerationStructureNV)cpu->memory->readq(ARG2);
+    size_t dataSize = (size_t)ARG3;
+    void* pData = nullptr;
+    if (ARG4) {
+        pData = new char[dataSize];
+        cpu->memory->memcpy(pData, ARG4, (U32)dataSize * sizeof(char));
+    }
     EAX = pBoxedInfo->pvkGetAccelerationStructureHandleNV(device, accelerationStructure, dataSize, pData);
-    cpu->memory->memcpy(ARG5, pData, dataSize * sizeof(char));
+    if (pData) {
+        cpu->memory->memcpy(ARG4, pData, (U32)dataSize * sizeof(char));
+    }
     delete[] pData;
 }
 // return type: VkResult(4 bytes)
 void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineCache pipelineCache = (VkPipelineCache)ARG64(ARG2, ARG3);
-    uint32_t createInfoCount = (uint32_t)ARG4;
+    VkPipelineCache pipelineCache = (VkPipelineCache)cpu->memory->readq(ARG2);
+    uint32_t createInfoCount = (uint32_t)ARG3;
     VkRayTracingPipelineCreateInfoNV* pCreateInfos = NULL;
-    if (ARG5) {
+    if (ARG4) {
         pCreateInfos = new VkRayTracingPipelineCreateInfoNV[createInfoCount];
         for (U32 i=0;i<createInfoCount;i++) {
-            MarshalVkRayTracingPipelineCreateInfoNV::read(cpu->memory, ARG5 + i * 52, &pCreateInfos[i]);
+            MarshalVkRayTracingPipelineCreateInfoNV::read(cpu->memory, ARG4 + i * 52, &pCreateInfos[i]);
         }
     }
-    static bool shown; if (!shown && ARG6) { klog("vkCreateRayTracingPipelinesNV:VkAllocationCallbacks not implemented"); shown = true;}
+    static bool shown; if (!shown && ARG5) { klog("vkCreateRayTracingPipelinesNV:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
-    VkPipeline* pPipelines = new VkPipeline[createInfoCount];
-    cpu->memory->memcpy(pPipelines, ARG7, createInfoCount * sizeof(VkPipeline));
+    VkPipeline* pPipelines = nullptr;
+    if (ARG6) {
+        pPipelines = new VkPipeline[createInfoCount];
+        cpu->memory->memcpy(pPipelines, ARG6, (U32)createInfoCount * sizeof(VkPipeline));
+    }
     EAX = pBoxedInfo->pvkCreateRayTracingPipelinesNV(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    cpu->memory->memcpy(ARG7, pPipelines, createInfoCount * sizeof(VkPipeline));
+    if (pPipelines) {
+        cpu->memory->memcpy(ARG6, pPipelines, (U32)createInfoCount * sizeof(VkPipeline));
+    }
     delete[] pPipelines;
 }
 // return type: VkResult(4 bytes)
@@ -7844,8 +3603,8 @@ void vk_CreateDeferredOperationKHR(CPU* cpu) {
 void vk_DestroyDeferredOperationKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyDeferredOperationKHR:VkAllocationCallbacks not implemented"); shown = true;}
+    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyDeferredOperationKHR:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyDeferredOperationKHR(device, operation, pAllocator);
 }
@@ -7853,21 +3612,21 @@ void vk_DestroyDeferredOperationKHR(CPU* cpu) {
 void vk_GetDeferredOperationMaxConcurrencyKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)ARG64(ARG2, ARG3);
+    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)cpu->memory->readq(ARG2);
     EAX = pBoxedInfo->pvkGetDeferredOperationMaxConcurrencyKHR(device, operation);
 }
 // return type: VkResult(4 bytes)
 void vk_GetDeferredOperationResultKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)ARG64(ARG2, ARG3);
+    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)cpu->memory->readq(ARG2);
     EAX = pBoxedInfo->pvkGetDeferredOperationResultKHR(device, operation);
 }
 // return type: VkResult(4 bytes)
 void vk_DeferredOperationJoinKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)ARG64(ARG2, ARG3);
+    VkDeferredOperationKHR operation = (VkDeferredOperationKHR)cpu->memory->readq(ARG2);
     EAX = pBoxedInfo->pvkDeferredOperationJoinKHR(device, operation);
 }
 void vk_CmdSetCullModeEXT(CPU* cpu) {
@@ -7892,8 +3651,11 @@ void vk_CmdSetViewportWithCountEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t viewportCount = (uint32_t)ARG2;
-    VkViewport* pViewports = new VkViewport[viewportCount];
-    cpu->memory->memcpy(pViewports, ARG3, viewportCount * sizeof(VkViewport));
+    VkViewport* pViewports = nullptr;
+    if (ARG3) {
+        pViewports = new VkViewport[viewportCount];
+        cpu->memory->memcpy(pViewports, ARG3, (U32)viewportCount * sizeof(VkViewport));
+    }
     pBoxedInfo->pvkCmdSetViewportWithCountEXT(commandBuffer, viewportCount, pViewports);
     delete[] pViewports;
 }
@@ -7901,8 +3663,11 @@ void vk_CmdSetScissorWithCountEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t scissorCount = (uint32_t)ARG2;
-    VkRect2D* pScissors = new VkRect2D[scissorCount];
-    cpu->memory->memcpy(pScissors, ARG3, scissorCount * sizeof(VkRect2D));
+    VkRect2D* pScissors = nullptr;
+    if (ARG3) {
+        pScissors = new VkRect2D[scissorCount];
+        cpu->memory->memcpy(pScissors, ARG3, (U32)scissorCount * sizeof(VkRect2D));
+    }
     pBoxedInfo->pvkCmdSetScissorWithCountEXT(commandBuffer, scissorCount, pScissors);
     delete[] pScissors;
 }
@@ -7911,14 +3676,26 @@ void vk_CmdBindVertexBuffers2EXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t firstBinding = (uint32_t)ARG2;
     uint32_t bindingCount = (uint32_t)ARG3;
-    VkBuffer* pBuffers = new VkBuffer[bindingCount];
-    cpu->memory->memcpy(pBuffers, ARG4, bindingCount * sizeof(VkBuffer));
-    VkDeviceSize* pOffsets = new VkDeviceSize[bindingCount];
-    cpu->memory->memcpy(pOffsets, ARG5, bindingCount * sizeof(VkDeviceSize));
-    VkDeviceSize* pSizes = new VkDeviceSize[bindingCount];
-    cpu->memory->memcpy(pSizes, ARG6, bindingCount * sizeof(VkDeviceSize));
-    VkDeviceSize* pStrides = new VkDeviceSize[bindingCount];
-    cpu->memory->memcpy(pStrides, ARG7, bindingCount * sizeof(VkDeviceSize));
+    VkBuffer* pBuffers = nullptr;
+    if (ARG4) {
+        pBuffers = new VkBuffer[bindingCount];
+        cpu->memory->memcpy(pBuffers, ARG4, (U32)bindingCount * sizeof(VkBuffer));
+    }
+    VkDeviceSize* pOffsets = nullptr;
+    if (ARG5) {
+        pOffsets = new VkDeviceSize[bindingCount];
+        cpu->memory->memcpy(pOffsets, ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
+    }
+    VkDeviceSize* pSizes = nullptr;
+    if (ARG6) {
+        pSizes = new VkDeviceSize[bindingCount];
+        cpu->memory->memcpy(pSizes, ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
+    }
+    VkDeviceSize* pStrides = nullptr;
+    if (ARG7) {
+        pStrides = new VkDeviceSize[bindingCount];
+        cpu->memory->memcpy(pStrides, ARG7, (U32)bindingCount * sizeof(VkDeviceSize));
+    }
     pBoxedInfo->pvkCmdBindVertexBuffers2EXT(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes, pStrides);
     delete[] pBuffers;
     delete[] pOffsets;
@@ -8011,8 +3788,8 @@ void vk_CreatePrivateDataSlotEXT(CPU* cpu) {
 void vk_DestroyPrivateDataSlotEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPrivateDataSlotEXT privateDataSlot = (VkPrivateDataSlotEXT)ARG64(ARG2, ARG3);
-    static bool shown; if (!shown && ARG4) { klog("vkDestroyPrivateDataSlotEXT:VkAllocationCallbacks not implemented"); shown = true;}
+    VkPrivateDataSlotEXT privateDataSlot = (VkPrivateDataSlotEXT)cpu->memory->readq(ARG2);
+    static bool shown; if (!shown && ARG3) { klog("vkDestroyPrivateDataSlotEXT:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyPrivateDataSlotEXT(device, privateDataSlot, pAllocator);
 }
@@ -8021,21 +3798,21 @@ void vk_SetPrivateDataEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
-    uint64_t objectHandle = (uint64_t)ARG64(ARG3, ARG4);
-    VkPrivateDataSlotEXT privateDataSlot = (VkPrivateDataSlotEXT)ARG64(ARG5, ARG6);
-    uint64_t data = (uint64_t)ARG64(ARG7, ARG8);
+    uint64_t objectHandle = (uint64_t)cpu->memory->readq(ARG3);
+    VkPrivateDataSlotEXT privateDataSlot = (VkPrivateDataSlotEXT)cpu->memory->readq(ARG4);
+    uint64_t data = (uint64_t)cpu->memory->readq(ARG5);
     EAX = pBoxedInfo->pvkSetPrivateDataEXT(device, objectType, objectHandle, privateDataSlot, data);
 }
 void vk_GetPrivateDataEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkObjectType objectType = (VkObjectType)ARG2;
-    uint64_t objectHandle = (uint64_t)ARG64(ARG3, ARG4);
-    VkPrivateDataSlotEXT privateDataSlot = (VkPrivateDataSlotEXT)ARG64(ARG5, ARG6);
-    uint64_t tmp_pData = (uint64_t) cpu->memory->readq(ARG7);
+    uint64_t objectHandle = (uint64_t)cpu->memory->readq(ARG3);
+    VkPrivateDataSlotEXT privateDataSlot = (VkPrivateDataSlotEXT)cpu->memory->readq(ARG4);
+    uint64_t tmp_pData = (uint64_t) cpu->memory->readq(ARG5);
     uint64_t* pData = &tmp_pData;
     pBoxedInfo->pvkGetPrivateDataEXT(device, objectType, objectHandle, privateDataSlot, pData);
-    cpu->memory->writeq(ARG7, (U64)tmp_pData);
+    cpu->memory->writeq(ARG5, (U64)tmp_pData);
 }
 void vk_CmdCopyBuffer2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -8086,8 +3863,11 @@ void vk_CmdSetFragmentShadingRateKHR(CPU* cpu) {
     cpu->memory->memcpy(&tmp_pFragmentSize, ARG2, 8);
     VkExtent2D* pFragmentSize = &tmp_pFragmentSize;
     static_assert (sizeof(VkFragmentShadingRateCombinerOpKHR) == 4, "unhandled enum size");
-    VkFragmentShadingRateCombinerOpKHR* combinerOps = new VkFragmentShadingRateCombinerOpKHR[2];
-    cpu->memory->memcpy(combinerOps, ARG3, 2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
+    VkFragmentShadingRateCombinerOpKHR* combinerOps = nullptr;
+    if (ARG3) {
+        combinerOps = new VkFragmentShadingRateCombinerOpKHR[2];
+        cpu->memory->memcpy(combinerOps, ARG3, (U32)2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
+    }
     pBoxedInfo->pvkCmdSetFragmentShadingRateKHR(commandBuffer, pFragmentSize, combinerOps);
 }
 // return type: VkResult(4 bytes)
@@ -8114,8 +3894,11 @@ void vk_CmdSetFragmentShadingRateEnumNV(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkFragmentShadingRateNV shadingRate = (VkFragmentShadingRateNV)ARG2;
     static_assert (sizeof(VkFragmentShadingRateCombinerOpKHR) == 4, "unhandled enum size");
-    VkFragmentShadingRateCombinerOpKHR* combinerOps = new VkFragmentShadingRateCombinerOpKHR[2];
-    cpu->memory->memcpy(combinerOps, ARG3, 2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
+    VkFragmentShadingRateCombinerOpKHR* combinerOps = nullptr;
+    if (ARG3) {
+        combinerOps = new VkFragmentShadingRateCombinerOpKHR[2];
+        cpu->memory->memcpy(combinerOps, ARG3, (U32)2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
+    }
     pBoxedInfo->pvkCmdSetFragmentShadingRateEnumNV(commandBuffer, shadingRate, combinerOps);
 }
 void vk_CmdSetVertexInputEXT(CPU* cpu) {
@@ -8149,32 +3932,38 @@ void vk_CmdSetColorWriteEnableEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t attachmentCount = (uint32_t)ARG2;
-    VkBool32* pColorWriteEnables = new VkBool32[attachmentCount];
-    cpu->memory->memcpy(pColorWriteEnables, ARG3, attachmentCount * sizeof(VkBool32));
+    VkBool32* pColorWriteEnables = nullptr;
+    if (ARG3) {
+        pColorWriteEnables = new VkBool32[attachmentCount];
+        cpu->memory->memcpy(pColorWriteEnables, ARG3, (U32)attachmentCount * sizeof(VkBool32));
+    }
     pBoxedInfo->pvkCmdSetColorWriteEnableEXT(commandBuffer, attachmentCount, pColorWriteEnables);
     delete[] pColorWriteEnables;
 }
 void vk_CmdSetEvent2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
-    MarshalVkDependencyInfoKHR local_pDependencyInfo(cpu->memory, ARG4);
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
+    MarshalVkDependencyInfoKHR local_pDependencyInfo(cpu->memory, ARG3);
     VkDependencyInfoKHR* pDependencyInfo = &local_pDependencyInfo.s;
     pBoxedInfo->pvkCmdSetEvent2KHR(commandBuffer, event, pDependencyInfo);
 }
 void vk_CmdResetEvent2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkEvent event = (VkEvent)ARG64(ARG2, ARG3);
-    VkPipelineStageFlags2KHR stageMask = (VkPipelineStageFlags2KHR)ARG64(ARG4, ARG5);
+    VkEvent event = (VkEvent)cpu->memory->readq(ARG2);
+    VkPipelineStageFlags2KHR stageMask = (VkPipelineStageFlags2KHR)cpu->memory->readq(ARG3);
     pBoxedInfo->pvkCmdResetEvent2KHR(commandBuffer, event, stageMask);
 }
 void vk_CmdWaitEvents2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     uint32_t eventCount = (uint32_t)ARG2;
-    VkEvent* pEvents = new VkEvent[eventCount];
-    cpu->memory->memcpy(pEvents, ARG3, eventCount * sizeof(VkEvent));
+    VkEvent* pEvents = nullptr;
+    if (ARG3) {
+        pEvents = new VkEvent[eventCount];
+        cpu->memory->memcpy(pEvents, ARG3, (U32)eventCount * sizeof(VkEvent));
+    }
     VkDependencyInfoKHR* pDependencyInfos = NULL;
     if (ARG4) {
         pDependencyInfos = new VkDependencyInfoKHR[eventCount];
@@ -8207,7 +3996,7 @@ void vk_QueueSubmit2KHR(CPU* cpu) {
             MarshalVkSubmitInfo2KHR::read(cpu->memory, ARG3 + i * 36, &pSubmits[i]);
         }
     }
-    VkFence fence = (VkFence)ARG64(ARG4, ARG5);
+    VkFence fence = (VkFence)cpu->memory->readq(ARG4);
     EAX = pBoxedInfo->pvkQueueSubmit2KHR(queue, submitCount, pSubmits, fence);
     if (pSubmits) {
         delete[] pSubmits;
@@ -8216,18 +4005,18 @@ void vk_QueueSubmit2KHR(CPU* cpu) {
 void vk_CmdWriteTimestamp2KHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineStageFlags2KHR stage = (VkPipelineStageFlags2KHR)ARG64(ARG2, ARG3);
-    VkQueryPool queryPool = (VkQueryPool)ARG64(ARG4, ARG5);
-    uint32_t query = (uint32_t)ARG6;
+    VkPipelineStageFlags2KHR stage = (VkPipelineStageFlags2KHR)cpu->memory->readq(ARG2);
+    VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG3);
+    uint32_t query = (uint32_t)ARG4;
     pBoxedInfo->pvkCmdWriteTimestamp2KHR(commandBuffer, stage, queryPool, query);
 }
 void vk_CmdWriteBufferMarker2AMD(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    VkPipelineStageFlags2KHR stage = (VkPipelineStageFlags2KHR)ARG64(ARG2, ARG3);
-    VkBuffer dstBuffer = (VkBuffer)ARG64(ARG4, ARG5);
-    VkDeviceSize dstOffset = (VkDeviceSize)ARG64(ARG6, ARG7);
-    uint32_t marker = (uint32_t)ARG8;
+    VkPipelineStageFlags2KHR stage = (VkPipelineStageFlags2KHR)cpu->memory->readq(ARG2);
+    VkBuffer dstBuffer = (VkBuffer)cpu->memory->readq(ARG3);
+    VkDeviceSize dstOffset = (VkDeviceSize)cpu->memory->readq(ARG4);
+    uint32_t marker = (uint32_t)ARG5;
     pBoxedInfo->pvkCmdWriteBufferMarker2AMD(commandBuffer, stage, dstBuffer, dstOffset, marker);
 }
 void vk_GetQueueCheckpointData2NV(CPU* cpu) {
@@ -8254,9 +4043,174 @@ void* vulkanGetNextPtr(KMemory* memory, U32 address) {
     }
     VkStructureType type = (VkStructureType)memory->readd(address);
     switch (type) {
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
-            VkPhysicalDeviceTransformFeedbackFeaturesEXT* p = new VkPhysicalDeviceTransformFeedbackFeaturesEXT();
-            MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT::read(memory, address, p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV: {
+            VkPhysicalDeviceCooperativeMatrixFeaturesNV* p = new VkPhysicalDeviceCooperativeMatrixFeaturesNV();
+            MarshalVkPhysicalDeviceCooperativeMatrixFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PROPERTIES_2_KHR: {
+            VkDisplayProperties2KHR* p = new VkDisplayProperties2KHR();
+            MarshalVkDisplayProperties2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT: {
+            VkImageViewASTCDecodeModeEXT* p = new VkImageViewASTCDecodeModeEXT();
+            MarshalVkImageViewASTCDecodeModeEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
+            VkExternalMemoryImageCreateInfo* p = new VkExternalMemoryImageCreateInfo();
+            MarshalVkExternalMemoryImageCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: {
+            VkSemaphoreTypeCreateInfo* p = new VkSemaphoreTypeCreateInfo();
+            MarshalVkSemaphoreTypeCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASSS_SHADING_PIPELINE_CREATE_INFO_HUAWEI: {
+            VkSubpassShadingPipelineCreateInfoHUAWEI* p = new VkSubpassShadingPipelineCreateInfoHUAWEI();
+            MarshalVkSubpassShadingPipelineCreateInfoHUAWEI::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO: {
+            VkCommandBufferBeginInfo* p = new VkCommandBufferBeginInfo();
+            MarshalVkCommandBufferBeginInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
+            VkPhysicalDeviceSamplerFilterMinmaxProperties* p = new VkPhysicalDeviceSamplerFilterMinmaxProperties();
+            MarshalVkPhysicalDeviceSamplerFilterMinmaxProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR: {
+            VkFenceGetFdInfoKHR* p = new VkFenceGetFdInfoKHR();
+            MarshalVkFenceGetFdInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2_KHR: {
+            VkBlitImageInfo2KHR* p = new VkBlitImageInfo2KHR();
+            MarshalVkBlitImageInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV: {
+            VkPhysicalDeviceShadingRateImageFeaturesNV* p = new VkPhysicalDeviceShadingRateImageFeaturesNV();
+            MarshalVkPhysicalDeviceShadingRateImageFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: {
+            VkDescriptorPoolInlineUniformBlockCreateInfoEXT* p = new VkDescriptorPoolInlineUniformBlockCreateInfoEXT();
+            MarshalVkDescriptorPoolInlineUniformBlockCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO: {
+            VkImageStencilUsageCreateInfo* p = new VkImageStencilUsageCreateInfo();
+            MarshalVkImageStencilUsageCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_MEMORY_REPORT_FEATURES_EXT: {
+            VkPhysicalDeviceDeviceMemoryReportFeaturesEXT* p = new VkPhysicalDeviceDeviceMemoryReportFeaturesEXT();
+            MarshalVkPhysicalDeviceDeviceMemoryReportFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV: {
+            VkExternalMemoryImageCreateInfoNV* p = new VkExternalMemoryImageCreateInfoNV();
+            MarshalVkExternalMemoryImageCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
+            VkAttachmentDescriptionStencilLayout* p = new VkAttachmentDescriptionStencilLayout();
+            MarshalVkAttachmentDescriptionStencilLayout::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV: {
+            VkRayTracingPipelineCreateInfoNV* p = new VkRayTracingPipelineCreateInfoNV();
+            MarshalVkRayTracingPipelineCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO: {
+            VkImageCreateInfo* p = new VkImageCreateInfo();
+            MarshalVkImageCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
+            VkMemoryDedicatedAllocateInfo* p = new VkMemoryDedicatedAllocateInfo();
+            MarshalVkMemoryDedicatedAllocateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PROTECTED_SUBMIT_INFO: {
+            VkProtectedSubmitInfo* p = new VkProtectedSubmitInfo();
+            MarshalVkProtectedSubmitInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL: {
+            VkPerformanceMarkerInfoINTEL* p = new VkPerformanceMarkerInfoINTEL();
+            MarshalVkPerformanceMarkerInfoINTEL::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
+            VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE* p = new VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE();
+            MarshalVkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV: {
+            VkPhysicalDeviceShadingRateImagePropertiesNV* p = new VkPhysicalDeviceShadingRateImagePropertiesNV();
+            MarshalVkPhysicalDeviceShadingRateImagePropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT: {
+            VkDebugUtilsObjectTagInfoEXT* p = new VkDebugUtilsObjectTagInfoEXT();
+            MarshalVkDebugUtilsObjectTagInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+            VkPhysicalDevicePushDescriptorPropertiesKHR* p = new VkPhysicalDevicePushDescriptorPropertiesKHR();
+            MarshalVkPhysicalDevicePushDescriptorPropertiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR: {
+            VkSemaphoreSubmitInfoKHR* p = new VkSemaphoreSubmitInfoKHR();
+            MarshalVkSemaphoreSubmitInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR: {
+            VkWriteDescriptorSetAccelerationStructureKHR* p = new VkWriteDescriptorSetAccelerationStructureKHR();
+            MarshalVkWriteDescriptorSetAccelerationStructureKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
+            VkPhysicalDeviceShaderFloat16Int8Features* p = new VkPhysicalDeviceShaderFloat16Int8Features();
+            MarshalVkPhysicalDeviceShaderFloat16Int8Features::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2: {
+            VkSubpassDescription2* p = new VkSubpassDescription2();
+            MarshalVkSubpassDescription2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_NV: {
+            VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV* p = new VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV();
+            MarshalVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
+            VkPhysicalDeviceVulkan12Properties* p = new VkPhysicalDeviceVulkan12Properties();
+            MarshalVkPhysicalDeviceVulkan12Properties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+            VkPhysicalDeviceSampleLocationsPropertiesEXT* p = new VkPhysicalDeviceSampleLocationsPropertiesEXT();
+            MarshalVkPhysicalDeviceSampleLocationsPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
+            VkPhysicalDevicePCIBusInfoPropertiesEXT* p = new VkPhysicalDevicePCIBusInfoPropertiesEXT();
+            MarshalVkPhysicalDevicePCIBusInfoPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
+            VkPipelineCreationFeedbackCreateInfoEXT* p = new VkPipelineCreationFeedbackCreateInfoEXT();
+            MarshalVkPipelineCreationFeedbackCreateInfoEXT::read(memory, address, p);
             return p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
@@ -8264,14 +4218,2109 @@ void* vulkanGetNextPtr(KMemory* memory, U32 address) {
             MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT::read(memory, address, p);
             return p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-            VkPhysicalDeviceIDProperties* p = new VkPhysicalDeviceIDProperties();
-            MarshalVkPhysicalDeviceIDProperties::read(memory, address, p);
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER: {
+            VkBufferMemoryBarrier* p = new VkBufferMemoryBarrier();
+            MarshalVkBufferMemoryBarrier::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO: {
+            VkDeviceGroupSubmitInfo* p = new VkDeviceGroupSubmitInfo();
+            MarshalVkDeviceGroupSubmitInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO: {
+            VkPipelineMultisampleStateCreateInfo* p = new VkPipelineMultisampleStateCreateInfo();
+            MarshalVkPipelineMultisampleStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO: {
+            VkDescriptorUpdateTemplateCreateInfo* p = new VkDescriptorUpdateTemplateCreateInfo();
+            MarshalVkDescriptorUpdateTemplateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD: {
+            VkTextureLODGatherFormatPropertiesAMD* p = new VkTextureLODGatherFormatPropertiesAMD();
+            MarshalVkTextureLODGatherFormatPropertiesAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES: {
+            VkExternalBufferProperties* p = new VkExternalBufferProperties();
+            MarshalVkExternalBufferProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_END_INFO: {
+            VkSubpassEndInfo* p = new VkSubpassEndInfo();
+            MarshalVkSubpassEndInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO: {
+            VkPipelineShaderStageCreateInfo* p = new VkPipelineShaderStageCreateInfo();
+            MarshalVkPipelineShaderStageCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX: {
+            VkImageViewAddressPropertiesNVX* p = new VkImageViewAddressPropertiesNVX();
+            MarshalVkImageViewAddressPropertiesNVX::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO: {
+            VkDeviceGroupDeviceCreateInfo* p = new VkDeviceGroupDeviceCreateInfo();
+            MarshalVkDeviceGroupDeviceCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO: {
+            VkBufferCreateInfo* p = new VkBufferCreateInfo();
+            MarshalVkBufferCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT: {
+            VkBufferDeviceAddressCreateInfoEXT* p = new VkBufferDeviceAddressCreateInfoEXT();
+            MarshalVkBufferDeviceAddressCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_PROPERTIES_HUAWEI: {
+            VkPhysicalDeviceSubpassShadingPropertiesHUAWEI* p = new VkPhysicalDeviceSubpassShadingPropertiesHUAWEI();
+            MarshalVkPhysicalDeviceSubpassShadingPropertiesHUAWEI::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT: {
+            VkPipelineRasterizationLineStateCreateInfoEXT* p = new VkPipelineRasterizationLineStateCreateInfoEXT();
+            MarshalVkPipelineRasterizationLineStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
+            VkPhysicalDeviceFeatures2* p = new VkPhysicalDeviceFeatures2();
+            MarshalVkPhysicalDeviceFeatures2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR: {
+            VkImportSemaphoreFdInfoKHR* p = new VkImportSemaphoreFdInfoKHR();
+            MarshalVkImportSemaphoreFdInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV: {
+            VkAccelerationStructureInfoNV* p = new VkAccelerationStructureInfoNV();
+            MarshalVkAccelerationStructureInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD: {
+            VkPhysicalDeviceShaderCoreProperties2AMD* p = new VkPhysicalDeviceShaderCoreProperties2AMD();
+            MarshalVkPhysicalDeviceShaderCoreProperties2AMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT: {
+            VkSwapchainCounterCreateInfoEXT* p = new VkSwapchainCounterCreateInfoEXT();
+            MarshalVkSwapchainCounterCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM: {
+            VkRenderPassTransformBeginInfoQCOM* p = new VkRenderPassTransformBeginInfoQCOM();
+            MarshalVkRenderPassTransformBeginInfoQCOM::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT: {
+            VkValidationFlagsEXT* p = new VkValidationFlagsEXT();
+            MarshalVkValidationFlagsEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: {
+            VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR* p = new VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR();
+            MarshalVkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR: {
+            VkPipelineInfoKHR* p = new VkPipelineInfoKHR();
+            MarshalVkPipelineInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR: {
+            VkSwapchainCreateInfoKHR* p = new VkSwapchainCreateInfoKHR();
+            MarshalVkSwapchainCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: {
+            VkMemoryHostPointerPropertiesEXT* p = new VkMemoryHostPointerPropertiesEXT();
+            MarshalVkMemoryHostPointerPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: {
+            VkPhysicalDeviceMultiDrawFeaturesEXT* p = new VkPhysicalDeviceMultiDrawFeaturesEXT();
+            MarshalVkPhysicalDeviceMultiDrawFeaturesEXT::read(memory, address, p);
             return p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
             VkPhysicalDeviceHostQueryResetFeatures* p = new VkPhysicalDeviceHostQueryResetFeatures();
             MarshalVkPhysicalDeviceHostQueryResetFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT: {
+            VkImageDrmFormatModifierExplicitCreateInfoEXT* p = new VkImageDrmFormatModifierExplicitCreateInfoEXT();
+            MarshalVkImageDrmFormatModifierExplicitCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
+            VkPhysicalDeviceInlineUniformBlockPropertiesEXT* p = new VkPhysicalDeviceInlineUniformBlockPropertiesEXT();
+            MarshalVkPhysicalDeviceInlineUniformBlockPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2: {
+            VkImageMemoryRequirementsInfo2* p = new VkImageMemoryRequirementsInfo2();
+            MarshalVkImageMemoryRequirementsInfo2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
+            VkPhysicalDeviceProtectedMemoryFeatures* p = new VkPhysicalDeviceProtectedMemoryFeatures();
+            MarshalVkPhysicalDeviceProtectedMemoryFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
+            VkPhysicalDeviceVariablePointersFeatures* p = new VkPhysicalDeviceVariablePointersFeatures();
+            MarshalVkPhysicalDeviceVariablePointersFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO: {
+            VkDescriptorSetLayoutBindingFlagsCreateInfo* p = new VkDescriptorSetLayoutBindingFlagsCreateInfo();
+            MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER: {
+            VkImageMemoryBarrier* p = new VkImageMemoryBarrier();
+            MarshalVkImageMemoryBarrier::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
+            VkPhysicalDeviceVulkan11Features* p = new VkPhysicalDeviceVulkan11Features();
+            MarshalVkPhysicalDeviceVulkan11Features::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV: {
+            VkWriteDescriptorSetAccelerationStructureNV* p = new VkWriteDescriptorSetAccelerationStructureNV();
+            MarshalVkWriteDescriptorSetAccelerationStructureNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT: {
+            VkPhysicalDeviceFragmentDensityMapPropertiesEXT* p = new VkPhysicalDeviceFragmentDensityMapPropertiesEXT();
+            MarshalVkPhysicalDeviceFragmentDensityMapPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2_KHR: {
+            VkResolveImageInfo2KHR* p = new VkResolveImageInfo2KHR();
+            MarshalVkResolveImageInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO: {
+            VkMemoryAllocateInfo* p = new VkMemoryAllocateInfo();
+            MarshalVkMemoryAllocateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+            VkPhysicalDeviceTimelineSemaphoreProperties* p = new VkPhysicalDeviceTimelineSemaphoreProperties();
+            MarshalVkPhysicalDeviceTimelineSemaphoreProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2_KHR: {
+            VkCopyImageInfo2KHR* p = new VkCopyImageInfo2KHR();
+            MarshalVkCopyImageInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO: {
+            VkDeviceGroupCommandBufferBeginInfo* p = new VkDeviceGroupCommandBufferBeginInfo();
+            MarshalVkDeviceGroupCommandBufferBeginInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO: {
+            VkBufferOpaqueCaptureAddressCreateInfo* p = new VkBufferOpaqueCaptureAddressCreateInfo();
+            MarshalVkBufferOpaqueCaptureAddressCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO: {
+            VkBufferDeviceAddressInfo* p = new VkBufferDeviceAddressInfo();
+            MarshalVkBufferDeviceAddressInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+            VkPhysicalDeviceImagelessFramebufferFeatures* p = new VkPhysicalDeviceImagelessFramebufferFeatures();
+            MarshalVkPhysicalDeviceImagelessFramebufferFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT: {
+            VkPhysicalDeviceFragmentDensityMap2PropertiesEXT* p = new VkPhysicalDeviceFragmentDensityMap2PropertiesEXT();
+            MarshalVkPhysicalDeviceFragmentDensityMap2PropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
+            VkDedicatedAllocationBufferCreateInfoNV* p = new VkDedicatedAllocationBufferCreateInfoNV();
+            MarshalVkDedicatedAllocationBufferCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR: {
+            VkDependencyInfoKHR* p = new VkDependencyInfoKHR();
+            MarshalVkDependencyInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO: {
+            VkCommandBufferInheritanceInfo* p = new VkCommandBufferInheritanceInfo();
+            MarshalVkCommandBufferInheritanceInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+            VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT* p = new VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT();
+            MarshalVkPhysicalDeviceVertexAttributeDivisorPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+            VkPhysicalDeviceSamplerYcbcrConversionFeatures* p = new VkPhysicalDeviceSamplerYcbcrConversionFeatures();
+            MarshalVkPhysicalDeviceSamplerYcbcrConversionFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR: {
+            VkAccelerationStructureGeometryTrianglesDataKHR* p = new VkAccelerationStructureGeometryTrianglesDataKHR();
+            MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+            VkPhysicalDeviceMultiviewFeatures* p = new VkPhysicalDeviceMultiviewFeatures();
+            MarshalVkPhysicalDeviceMultiviewFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO: {
+            VkPipelineInputAssemblyStateCreateInfo* p = new VkPipelineInputAssemblyStateCreateInfo();
+            MarshalVkPipelineInputAssemblyStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD: {
+            VkPhysicalDeviceShaderCorePropertiesAMD* p = new VkPhysicalDeviceShaderCorePropertiesAMD();
+            MarshalVkPhysicalDeviceShaderCorePropertiesAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2: {
+            VkAttachmentReference2* p = new VkAttachmentReference2();
+            MarshalVkAttachmentReference2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR: {
+            VkMemoryGetFdInfoKHR* p = new VkMemoryGetFdInfoKHR();
+            MarshalVkMemoryGetFdInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO: {
+            VkBindSparseInfo* p = new VkBindSparseInfo();
+            MarshalVkBindSparseInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: {
+            VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV* p = new VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV();
+            MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR: {
+            VkSurfaceFormat2KHR* p = new VkSurfaceFormat2KHR();
+            MarshalVkSurfaceFormat2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: {
+            VkMemoryAllocateFlagsInfo* p = new VkMemoryAllocateFlagsInfo();
+            MarshalVkMemoryAllocateFlagsInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR: {
+            VkDisplayModeCreateInfoKHR* p = new VkDisplayModeCreateInfoKHR();
+            MarshalVkDisplayModeCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: {
+            VkAccelerationStructureCreateInfoNV* p = new VkAccelerationStructureCreateInfoNV();
+            MarshalVkAccelerationStructureCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT: {
+            VkDebugMarkerObjectNameInfoEXT* p = new VkDebugMarkerObjectNameInfoEXT();
+            MarshalVkDebugMarkerObjectNameInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR: {
+            VkSemaphoreGetFdInfoKHR* p = new VkSemaphoreGetFdInfoKHR();
+            MarshalVkSemaphoreGetFdInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR: {
+            VkAccelerationStructureVersionInfoKHR* p = new VkAccelerationStructureVersionInfoKHR();
+            MarshalVkAccelerationStructureVersionInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL: {
+            VkPerformanceConfigurationAcquireInfoINTEL* p = new VkPerformanceConfigurationAcquireInfoINTEL();
+            MarshalVkPerformanceConfigurationAcquireInfoINTEL::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+            VkPhysicalDeviceTransformFeedbackFeaturesEXT* p = new VkPhysicalDeviceTransformFeedbackFeaturesEXT();
+            MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV: {
+            VkIndirectCommandsLayoutCreateInfoNV* p = new VkIndirectCommandsLayoutCreateInfoNV();
+            MarshalVkIndirectCommandsLayoutCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: {
+            VkPhysicalDeviceFragmentShadingRatePropertiesKHR* p = new VkPhysicalDeviceFragmentShadingRatePropertiesKHR();
+            MarshalVkPhysicalDeviceFragmentShadingRatePropertiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR: {
+            VkImportFenceFdInfoKHR* p = new VkImportFenceFdInfoKHR();
+            MarshalVkImportFenceFdInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV: {
+            VkPipelineCoverageToColorStateCreateInfoNV* p = new VkPipelineCoverageToColorStateCreateInfoNV();
+            MarshalVkPipelineCoverageToColorStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT: {
+            VkPipelineColorBlendAdvancedStateCreateInfoEXT* p = new VkPipelineColorBlendAdvancedStateCreateInfoEXT();
+            MarshalVkPipelineColorBlendAdvancedStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_FEATURES_HUAWEI: {
+            VkPhysicalDeviceSubpassShadingFeaturesHUAWEI* p = new VkPhysicalDeviceSubpassShadingFeaturesHUAWEI();
+            MarshalVkPhysicalDeviceSubpassShadingFeaturesHUAWEI::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
+            VkPhysicalDeviceExtendedDynamicState2FeaturesEXT* p = new VkPhysicalDeviceExtendedDynamicState2FeaturesEXT();
+            MarshalVkPhysicalDeviceExtendedDynamicState2FeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
+            VkPhysicalDevice8BitStorageFeatures* p = new VkPhysicalDevice8BitStorageFeatures();
+            MarshalVkPhysicalDevice8BitStorageFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
+            VkPhysicalDeviceDriverProperties* p = new VkPhysicalDeviceDriverProperties();
+            MarshalVkPhysicalDeviceDriverProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
+            VkDedicatedAllocationImageCreateInfoNV* p = new VkDedicatedAllocationImageCreateInfoNV();
+            MarshalVkDedicatedAllocationImageCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT: {
+            VkPipelineDiscardRectangleStateCreateInfoEXT* p = new VkPipelineDiscardRectangleStateCreateInfoEXT();
+            MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV: {
+            VkGeometryAABBNV* p = new VkGeometryAABBNV();
+            MarshalVkGeometryAABBNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT: {
+            VkDisplayEventInfoEXT* p = new VkDisplayEventInfoEXT();
+            MarshalVkDisplayEventInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV: {
+            VkQueueFamilyCheckpointPropertiesNV* p = new VkQueueFamilyCheckpointPropertiesNV();
+            MarshalVkQueueFamilyCheckpointPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_QUERY_CREATE_INFO_INTEL: {
+            VkQueryPoolPerformanceQueryCreateInfoINTEL* p = new VkQueryPoolPerformanceQueryCreateInfoINTEL();
+            MarshalVkQueryPoolPerformanceQueryCreateInfoINTEL::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO: {
+            VkBindImageMemoryInfo* p = new VkBindImageMemoryInfo();
+            MarshalVkBindImageMemoryInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT: {
+            VkAttachmentReferenceStencilLayout* p = new VkAttachmentReferenceStencilLayout();
+            MarshalVkAttachmentReferenceStencilLayout::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT: {
+            VkShaderModuleValidationCacheCreateInfoEXT* p = new VkShaderModuleValidationCacheCreateInfoEXT();
+            MarshalVkShaderModuleValidationCacheCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV: {
+            VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV* p = new VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV();
+            MarshalVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: {
+            VkImageViewHandleInfoNVX* p = new VkImageViewHandleInfoNVX();
+            MarshalVkImageViewHandleInfoNVX::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+            VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR* p = new VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR();
+            MarshalVkPhysicalDeviceShaderTerminateInvocationFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
+            VkPhysicalDeviceRayTracingPipelineFeaturesKHR* p = new VkPhysicalDeviceRayTracingPipelineFeaturesKHR();
+            MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
+            VkPhysicalDeviceDepthClipEnableFeaturesEXT* p = new VkPhysicalDeviceDepthClipEnableFeaturesEXT();
+            MarshalVkPhysicalDeviceDepthClipEnableFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT: {
+            VkSamplerCustomBorderColorCreateInfoEXT* p = new VkSamplerCustomBorderColorCreateInfoEXT();
+            MarshalVkSamplerCustomBorderColorCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO: {
+            VkPipelineDynamicStateCreateInfo* p = new VkPipelineDynamicStateCreateInfo();
+            MarshalVkPipelineDynamicStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+            VkPhysicalDeviceTimelineSemaphoreFeatures* p = new VkPhysicalDeviceTimelineSemaphoreFeatures();
+            MarshalVkPhysicalDeviceTimelineSemaphoreFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX: {
+            VkCuFunctionCreateInfoNVX* p = new VkCuFunctionCreateInfoNVX();
+            MarshalVkCuFunctionCreateInfoNVX::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+            VkPhysicalDeviceDepthStencilResolveProperties* p = new VkPhysicalDeviceDepthStencilResolveProperties();
+            MarshalVkPhysicalDeviceDepthStencilResolveProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV: {
+            VkPipelineViewportSwizzleStateCreateInfoNV* p = new VkPipelineViewportSwizzleStateCreateInfoNV();
+            MarshalVkPipelineViewportSwizzleStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2: {
+            VkPhysicalDeviceSparseImageFormatInfo2* p = new VkPhysicalDeviceSparseImageFormatInfo2();
+            MarshalVkPhysicalDeviceSparseImageFormatInfo2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FENCE_CREATE_INFO: {
+            VkFenceCreateInfo* p = new VkFenceCreateInfo();
+            MarshalVkFenceCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV: {
+            VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV* p = new VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV();
+            MarshalVkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHR: {
+            VkDeviceGroupSwapchainCreateInfoKHR* p = new VkDeviceGroupSwapchainCreateInfoKHR();
+            MarshalVkDeviceGroupSwapchainCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT: {
+            VkDebugUtilsLabelEXT* p = new VkDebugUtilsLabelEXT();
+            MarshalVkDebugUtilsLabelEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
+            VkPhysicalDeviceInlineUniformBlockFeaturesEXT* p = new VkPhysicalDeviceInlineUniformBlockFeaturesEXT();
+            MarshalVkPhysicalDeviceInlineUniformBlockFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT: {
+            VkPhysicalDeviceImageDrmFormatModifierInfoEXT* p = new VkPhysicalDeviceImageDrmFormatModifierInfoEXT();
+            MarshalVkPhysicalDeviceImageDrmFormatModifierInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT: {
+            VkMultisamplePropertiesEXT* p = new VkMultisamplePropertiesEXT();
+            MarshalVkMultisamplePropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
+            VkPhysicalDeviceShaderClockFeaturesKHR* p = new VkPhysicalDeviceShaderClockFeaturesKHR();
+            MarshalVkPhysicalDeviceShaderClockFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT: {
+            VkImageDrmFormatModifierPropertiesEXT* p = new VkImageDrmFormatModifierPropertiesEXT();
+            MarshalVkImageDrmFormatModifierPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES: {
+            VkPhysicalDeviceVulkanMemoryModelFeatures* p = new VkPhysicalDeviceVulkanMemoryModelFeatures();
+            MarshalVkPhysicalDeviceVulkanMemoryModelFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EVENT_CREATE_INFO: {
+            VkEventCreateInfo* p = new VkEventCreateInfo();
+            MarshalVkEventCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBMIT_INFO_2_KHR: {
+            VkSubmitInfo2KHR* p = new VkSubmitInfo2KHR();
+            MarshalVkSubmitInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
+            VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR* p = new VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR();
+            MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD: {
+            VkPhysicalDeviceCoherentMemoryFeaturesAMD* p = new VkPhysicalDeviceCoherentMemoryFeaturesAMD();
+            MarshalVkPhysicalDeviceCoherentMemoryFeaturesAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: {
+            VkPhysicalDeviceFragmentShadingRateFeaturesKHR* p = new VkPhysicalDeviceFragmentShadingRateFeaturesKHR();
+            MarshalVkPhysicalDeviceFragmentShadingRateFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR: {
+            VkImageBlit2KHR* p = new VkImageBlit2KHR();
+            MarshalVkImageBlit2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO: {
+            VkSamplerCreateInfo* p = new VkSamplerCreateInfo();
+            MarshalVkSamplerCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT: {
+            VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT* p = new VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT();
+            MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: {
+            VkBindImageMemoryDeviceGroupInfo* p = new VkBindImageMemoryDeviceGroupInfo();
+            MarshalVkBindImageMemoryDeviceGroupInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+            VkPhysicalDevicePrivateDataFeaturesEXT* p = new VkPhysicalDevicePrivateDataFeaturesEXT();
+            MarshalVkPhysicalDevicePrivateDataFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV: {
+            VkPhysicalDeviceShaderSMBuiltinsPropertiesNV* p = new VkPhysicalDeviceShaderSMBuiltinsPropertiesNV();
+            MarshalVkPhysicalDeviceShaderSMBuiltinsPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: {
+            VkPhysicalDeviceMemoryPriorityFeaturesEXT* p = new VkPhysicalDeviceMemoryPriorityFeaturesEXT();
+            MarshalVkPhysicalDeviceMemoryPriorityFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2: {
+            VkSparseImageMemoryRequirements2* p = new VkSparseImageMemoryRequirements2();
+            MarshalVkSparseImageMemoryRequirements2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO: {
+            VkBindBufferMemoryInfo* p = new VkBindBufferMemoryInfo();
+            MarshalVkBindBufferMemoryInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_SHADER_GROUPS_CREATE_INFO_NV: {
+            VkGraphicsPipelineShaderGroupsCreateInfoNV* p = new VkGraphicsPipelineShaderGroupsCreateInfoNV();
+            MarshalVkGraphicsPipelineShaderGroupsCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO: {
+            VkPhysicalDeviceExternalFenceInfo* p = new VkPhysicalDeviceExternalFenceInfo();
+            MarshalVkPhysicalDeviceExternalFenceInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT: {
+            VkConditionalRenderingBeginInfoEXT* p = new VkConditionalRenderingBeginInfoEXT();
+            MarshalVkConditionalRenderingBeginInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET: {
+            VkCopyDescriptorSet* p = new VkCopyDescriptorSet();
+            MarshalVkCopyDescriptorSet::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO: {
+            VkDeviceMemoryOpaqueCaptureAddressInfo* p = new VkDeviceMemoryOpaqueCaptureAddressInfo();
+            MarshalVkDeviceMemoryOpaqueCaptureAddressInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
+            VkPhysicalDeviceCornerSampledImageFeaturesNV* p = new VkPhysicalDeviceCornerSampledImageFeaturesNV();
+            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO: {
+            VkDescriptorPoolCreateInfo* p = new VkDescriptorPoolCreateInfo();
+            MarshalVkDescriptorPoolCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDER_PASS_TRANSFORM_INFO_QCOM: {
+            VkCommandBufferInheritanceRenderPassTransformInfoQCOM* p = new VkCommandBufferInheritanceRenderPassTransformInfoQCOM();
+            MarshalVkCommandBufferInheritanceRenderPassTransformInfoQCOM::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES_EXT: {
+            VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT* p = new VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT();
+            MarshalVkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT: {
+            VkPhysicalDeviceFragmentDensityMapFeaturesEXT* p = new VkPhysicalDeviceFragmentDensityMapFeaturesEXT();
+            MarshalVkPhysicalDeviceFragmentDensityMapFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR: {
+            VkImportMemoryFdInfoKHR* p = new VkImportMemoryFdInfoKHR();
+            MarshalVkImportMemoryFdInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR: {
+            VkAccelerationStructureBuildSizesInfoKHR* p = new VkAccelerationStructureBuildSizesInfoKHR();
+            MarshalVkAccelerationStructureBuildSizesInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO_EXT: {
+            VkPrivateDataSlotCreateInfoEXT* p = new VkPrivateDataSlotCreateInfoEXT();
+            MarshalVkPrivateDataSlotCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2: {
+            VkMemoryRequirements2* p = new VkMemoryRequirements2();
+            MarshalVkMemoryRequirements2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV: {
+            VkPipelineRepresentativeFragmentTestStateCreateInfoNV* p = new VkPipelineRepresentativeFragmentTestStateCreateInfoNV();
+            MarshalVkPipelineRepresentativeFragmentTestStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT: {
+            VkRenderPassSampleLocationsBeginInfoEXT* p = new VkRenderPassSampleLocationsBeginInfoEXT();
+            MarshalVkRenderPassSampleLocationsBeginInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+            VkPhysicalDeviceLineRasterizationFeaturesEXT* p = new VkPhysicalDeviceLineRasterizationFeaturesEXT();
+            MarshalVkPhysicalDeviceLineRasterizationFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
+            VkPhysicalDeviceCustomBorderColorPropertiesEXT* p = new VkPhysicalDeviceCustomBorderColorPropertiesEXT();
+            MarshalVkPhysicalDeviceCustomBorderColorPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+            VkPhysicalDevicePointClippingProperties* p = new VkPhysicalDevicePointClippingProperties();
+            MarshalVkPhysicalDevicePointClippingProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO: {
+            VkDeviceQueueCreateInfo* p = new VkDeviceQueueCreateInfo();
+            MarshalVkDeviceQueueCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
+            VkPhysicalDeviceShaderAtomicInt64Features* p = new VkPhysicalDeviceShaderAtomicInt64Features();
+            MarshalVkPhysicalDeviceShaderAtomicInt64Features::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO: {
+            VkPipelineCacheCreateInfo* p = new VkPipelineCacheCreateInfo();
+            MarshalVkPipelineCacheCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO: {
+            VkTimelineSemaphoreSubmitInfo* p = new VkTimelineSemaphoreSubmitInfo();
+            MarshalVkTimelineSemaphoreSubmitInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_HDR_METADATA_EXT: {
+            VkHdrMetadataEXT* p = new VkHdrMetadataEXT();
+            MarshalVkHdrMetadataEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+            VkPhysicalDeviceDescriptorIndexingProperties* p = new VkPhysicalDeviceDescriptorIndexingProperties();
+            MarshalVkPhysicalDeviceDescriptorIndexingProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO: {
+            VkRenderPassMultiviewCreateInfo* p = new VkRenderPassMultiviewCreateInfo();
+            MarshalVkRenderPassMultiviewCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR: {
+            VkCopyAccelerationStructureInfoKHR* p = new VkCopyAccelerationStructureInfoKHR();
+            MarshalVkCopyAccelerationStructureInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR: {
+            VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR* p = new VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR();
+            MarshalVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: {
+            VkPipelineRasterizationStateStreamCreateInfoEXT* p = new VkPipelineRasterizationStateStreamCreateInfoEXT();
+            MarshalVkPipelineRasterizationStateStreamCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT: {
+            VkPipelineSampleLocationsStateCreateInfoEXT* p = new VkPipelineSampleLocationsStateCreateInfoEXT();
+            MarshalVkPipelineSampleLocationsStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+            VkPhysicalDeviceProtectedMemoryProperties* p = new VkPhysicalDeviceProtectedMemoryProperties();
+            MarshalVkPhysicalDeviceProtectedMemoryProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV: {
+            VkPhysicalDeviceMeshShaderPropertiesNV* p = new VkPhysicalDeviceMeshShaderPropertiesNV();
+            MarshalVkPhysicalDeviceMeshShaderPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO: {
+            VkDescriptorSetVariableDescriptorCountAllocateInfo* p = new VkDescriptorSetVariableDescriptorCountAllocateInfo();
+            MarshalVkDescriptorSetVariableDescriptorCountAllocateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT: {
+            VkPipelineRasterizationConservativeStateCreateInfoEXT* p = new VkPipelineRasterizationConservativeStateCreateInfoEXT();
+            MarshalVkPipelineRasterizationConservativeStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT: {
+            VkPhysicalDeviceFragmentDensityMap2FeaturesEXT* p = new VkPhysicalDeviceFragmentDensityMap2FeaturesEXT();
+            MarshalVkPhysicalDeviceFragmentDensityMap2FeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT: {
+            VkCalibratedTimestampInfoEXT* p = new VkCalibratedTimestampInfoEXT();
+            MarshalVkCalibratedTimestampInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT: {
+            VkDebugUtilsObjectNameInfoEXT* p = new VkDebugUtilsObjectNameInfoEXT();
+            MarshalVkDebugUtilsObjectNameInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
+            VkPhysicalDeviceExternalMemoryHostPropertiesEXT* p = new VkPhysicalDeviceExternalMemoryHostPropertiesEXT();
+            MarshalVkPhysicalDeviceExternalMemoryHostPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACQUIRE_PROFILING_LOCK_INFO_KHR: {
+            VkAcquireProfilingLockInfoKHR* p = new VkAcquireProfilingLockInfoKHR();
+            MarshalVkAcquireProfilingLockInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT: {
+            VkFilterCubicImageViewImageFormatPropertiesEXT* p = new VkFilterCubicImageViewImageFormatPropertiesEXT();
+            MarshalVkFilterCubicImageViewImageFormatPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT: {
+            VkPhysicalDeviceToolPropertiesEXT* p = new VkPhysicalDeviceToolPropertiesEXT();
+            MarshalVkPhysicalDeviceToolPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_DISPLAY_NATIVE_HDR_CREATE_INFO_AMD: {
+            VkSwapchainDisplayNativeHdrCreateInfoAMD* p = new VkSwapchainDisplayNativeHdrCreateInfoAMD();
+            MarshalVkSwapchainDisplayNativeHdrCreateInfoAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR: {
+            VkImageResolve2KHR* p = new VkImageResolve2KHR();
+            MarshalVkImageResolve2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL: {
+            VkPerformanceOverrideInfoINTEL* p = new VkPerformanceOverrideInfoINTEL();
+            MarshalVkPerformanceOverrideInfoINTEL::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: {
+            VkPhysicalDeviceAccelerationStructurePropertiesKHR* p = new VkPhysicalDeviceAccelerationStructurePropertiesKHR();
+            MarshalVkPhysicalDeviceAccelerationStructurePropertiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2: {
+            VkSparseImageFormatProperties2* p = new VkSparseImageFormatProperties2();
+            MarshalVkSparseImageFormatProperties2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR: {
+            VkSharedPresentSurfaceCapabilitiesKHR* p = new VkSharedPresentSurfaceCapabilitiesKHR();
+            MarshalVkSharedPresentSurfaceCapabilitiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT: {
+            VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT* p = new VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT();
+            MarshalVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV: {
+            VkPipelineViewportExclusiveScissorStateCreateInfoNV* p = new VkPipelineViewportExclusiveScissorStateCreateInfoNV();
+            MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV: {
+            VkDeviceDiagnosticsConfigCreateInfoNV* p = new VkDeviceDiagnosticsConfigCreateInfoNV();
+            MarshalVkDeviceDiagnosticsConfigCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_PROPERTIES_NV: {
+            VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV* p = new VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV();
+            MarshalVkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR: {
+            VkAccelerationStructureGeometryKHR* p = new VkAccelerationStructureGeometryKHR();
+            MarshalVkAccelerationStructureGeometryKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+            VkPhysicalDeviceCustomBorderColorFeaturesEXT* p = new VkPhysicalDeviceCustomBorderColorFeaturesEXT();
+            MarshalVkPhysicalDeviceCustomBorderColorFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD: {
+            VkPipelineRasterizationStateRasterizationOrderAMD* p = new VkPipelineRasterizationStateRasterizationOrderAMD();
+            MarshalVkPipelineRasterizationStateRasterizationOrderAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV: {
+            VkPhysicalDeviceInheritedViewportScissorFeaturesNV* p = new VkPhysicalDeviceInheritedViewportScissorFeaturesNV();
+            MarshalVkPhysicalDeviceInheritedViewportScissorFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_APPLICATION_INFO: {
+            VkApplicationInfo* p = new VkApplicationInfo();
+            MarshalVkApplicationInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
+            VkSurfaceProtectedCapabilitiesKHR* p = new VkSurfaceProtectedCapabilitiesKHR();
+            MarshalVkSurfaceProtectedCapabilitiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO: {
+            VkPipelineRasterizationStateCreateInfo* p = new VkPipelineRasterizationStateCreateInfo();
+            MarshalVkPipelineRasterizationStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
+            VkPhysicalDeviceShaderDrawParametersFeatures* p = new VkPhysicalDeviceShaderDrawParametersFeatures();
+            MarshalVkPhysicalDeviceShaderDrawParametersFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV: {
+            VkPhysicalDeviceCoverageReductionModeFeaturesNV* p = new VkPhysicalDeviceCoverageReductionModeFeaturesNV();
+            MarshalVkPhysicalDeviceCoverageReductionModeFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
+            VkPhysicalDeviceProvokingVertexFeaturesEXT* p = new VkPhysicalDeviceProvokingVertexFeaturesEXT();
+            MarshalVkPhysicalDeviceProvokingVertexFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+            VkPhysicalDeviceSubgroupProperties* p = new VkPhysicalDeviceSubgroupProperties();
+            MarshalVkPhysicalDeviceSubgroupProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT: {
+            VkPhysicalDeviceYcbcrImageArraysFeaturesEXT* p = new VkPhysicalDeviceYcbcrImageArraysFeaturesEXT();
+            MarshalVkPhysicalDeviceYcbcrImageArraysFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_NV: {
+            VkGeneratedCommandsMemoryRequirementsInfoNV* p = new VkGeneratedCommandsMemoryRequirementsInfoNV();
+            MarshalVkGeneratedCommandsMemoryRequirementsInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: {
+            VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT* p = new VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT();
+            MarshalVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2: {
+            VkRenderPassCreateInfo2* p = new VkRenderPassCreateInfo2();
+            MarshalVkRenderPassCreateInfo2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO: {
+            VkPhysicalDeviceExternalSemaphoreInfo* p = new VkPhysicalDeviceExternalSemaphoreInfo();
+            MarshalVkPhysicalDeviceExternalSemaphoreInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR: {
+            VkAccelerationStructureGeometryInstancesDataKHR* p = new VkAccelerationStructureGeometryInstancesDataKHR();
+            MarshalVkAccelerationStructureGeometryInstancesDataKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MOTION_BLUR_FEATURES_NV: {
+            VkPhysicalDeviceRayTracingMotionBlurFeaturesNV* p = new VkPhysicalDeviceRayTracingMotionBlurFeaturesNV();
+            MarshalVkPhysicalDeviceRayTracingMotionBlurFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+            VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT* p = new VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT();
+            MarshalVkPhysicalDeviceTexelBufferAlignmentPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+            VkMemoryDedicatedRequirements* p = new VkMemoryDedicatedRequirements();
+            MarshalVkMemoryDedicatedRequirements::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
+            VkPhysicalDeviceProvokingVertexPropertiesEXT* p = new VkPhysicalDeviceProvokingVertexPropertiesEXT();
+            MarshalVkPhysicalDeviceProvokingVertexPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT: {
+            VkPhysicalDeviceDiscardRectanglePropertiesEXT* p = new VkPhysicalDeviceDiscardRectanglePropertiesEXT();
+            MarshalVkPhysicalDeviceDiscardRectanglePropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV: {
+            VkPipelineCoverageReductionStateCreateInfoNV* p = new VkPipelineCoverageReductionStateCreateInfoNV();
+            MarshalVkPipelineCoverageReductionStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR: {
+            VkMemoryFdPropertiesKHR* p = new VkMemoryFdPropertiesKHR();
+            MarshalVkMemoryFdPropertiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO: {
+            VkSamplerYcbcrConversionCreateInfo* p = new VkSamplerYcbcrConversionCreateInfo();
+            MarshalVkSamplerYcbcrConversionCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
+            VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT* p = new VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT();
+            MarshalVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR: {
+            VkBufferMemoryBarrier2KHR* p = new VkBufferMemoryBarrier2KHR();
+            MarshalVkBufferMemoryBarrier2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR: {
+            VkDisplayPlaneCapabilities2KHR* p = new VkDisplayPlaneCapabilities2KHR();
+            MarshalVkDisplayPlaneCapabilities2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV: {
+            VkCommandBufferInheritanceViewportScissorInfoNV* p = new VkCommandBufferInheritanceViewportScissorInfoNV();
+            MarshalVkCommandBufferInheritanceViewportScissorInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV: {
+            VkPhysicalDeviceRayTracingPropertiesNV* p = new VkPhysicalDeviceRayTracingPropertiesNV();
+            MarshalVkPhysicalDeviceRayTracingPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX: {
+            VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX* p = new VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX();
+            MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_FEATURES_NV: {
+            VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV* p = new VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV();
+            MarshalVkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO: {
+            VkInstanceCreateInfo* p = new VkInstanceCreateInfo();
+            MarshalVkInstanceCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+            VkPhysicalDeviceLineRasterizationPropertiesEXT* p = new VkPhysicalDeviceLineRasterizationPropertiesEXT();
+            MarshalVkPhysicalDeviceLineRasterizationPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR: {
+            VkDisplayPlaneProperties2KHR* p = new VkDisplayPlaneProperties2KHR();
+            MarshalVkDisplayPlaneProperties2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT: {
+            VkDescriptorSetLayoutSupport* p = new VkDescriptorSetLayoutSupport();
+            MarshalVkDescriptorSetLayoutSupport::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
+            VkPhysicalDeviceConservativeRasterizationPropertiesEXT* p = new VkPhysicalDeviceConservativeRasterizationPropertiesEXT();
+            MarshalVkPhysicalDeviceConservativeRasterizationPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO: {
+            VkSemaphoreSignalInfo* p = new VkSemaphoreSignalInfo();
+            MarshalVkSemaphoreSignalInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO: {
+            VkBufferViewCreateInfo* p = new VkBufferViewCreateInfo();
+            MarshalVkBufferViewCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR: {
+            VkPerformanceQuerySubmitInfoKHR* p = new VkPerformanceQuerySubmitInfoKHR();
+            MarshalVkPerformanceQuerySubmitInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2: {
+            VkBufferMemoryRequirementsInfo2* p = new VkBufferMemoryRequirementsInfo2();
+            MarshalVkBufferMemoryRequirementsInfo2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV: {
+            VkExportMemoryAllocateInfoNV* p = new VkExportMemoryAllocateInfoNV();
+            MarshalVkExportMemoryAllocateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT: {
+            VkMemoryPriorityAllocateInfoEXT* p = new VkMemoryPriorityAllocateInfoEXT();
+            MarshalVkMemoryPriorityAllocateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2: {
+            VkAttachmentDescription2* p = new VkAttachmentDescription2();
+            MarshalVkAttachmentDescription2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO: {
+            VkBindBufferMemoryDeviceGroupInfo* p = new VkBindBufferMemoryDeviceGroupInfo();
+            MarshalVkBindBufferMemoryDeviceGroupInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO: {
+            VkPipelineVertexInputStateCreateInfo* p = new VkPipelineVertexInputStateCreateInfo();
+            MarshalVkPipelineVertexInputStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
+            VkExportMemoryAllocateInfo* p = new VkExportMemoryAllocateInfo();
+            MarshalVkExportMemoryAllocateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV: {
+            VkAccelerationStructureMemoryRequirementsInfoNV* p = new VkAccelerationStructureMemoryRequirementsInfoNV();
+            MarshalVkAccelerationStructureMemoryRequirementsInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR: {
+            VkAccelerationStructureDeviceAddressInfoKHR* p = new VkAccelerationStructureDeviceAddressInfoKHR();
+            MarshalVkAccelerationStructureDeviceAddressInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER: {
+            VkMemoryBarrier* p = new VkMemoryBarrier();
+            MarshalVkMemoryBarrier::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO: {
+            VkSemaphoreWaitInfo* p = new VkSemaphoreWaitInfo();
+            MarshalVkSemaphoreWaitInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
+            VkPhysicalDeviceColorWriteEnableFeaturesEXT* p = new VkPhysicalDeviceColorWriteEnableFeaturesEXT();
+            MarshalVkPhysicalDeviceColorWriteEnableFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+            VkPhysicalDeviceMemoryBudgetPropertiesEXT* p = new VkPhysicalDeviceMemoryBudgetPropertiesEXT();
+            MarshalVkPhysicalDeviceMemoryBudgetPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
+            VkPhysicalDevice4444FormatsFeaturesEXT* p = new VkPhysicalDevice4444FormatsFeaturesEXT();
+            MarshalVkPhysicalDevice4444FormatsFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES: {
+            VkExternalFenceProperties* p = new VkExternalFenceProperties();
+            MarshalVkExternalFenceProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT: {
+            VkPipelineRasterizationProvokingVertexStateCreateInfoEXT* p = new VkPipelineRasterizationProvokingVertexStateCreateInfoEXT();
+            MarshalVkPipelineRasterizationProvokingVertexStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+            VkPhysicalDeviceTransformFeedbackPropertiesEXT* p = new VkPhysicalDeviceTransformFeedbackPropertiesEXT();
+            MarshalVkPhysicalDeviceTransformFeedbackPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+            VkPhysicalDeviceIDProperties* p = new VkPhysicalDeviceIDProperties();
+            MarshalVkPhysicalDeviceIDProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL: {
+            VkPerformanceStreamMarkerInfoINTEL* p = new VkPerformanceStreamMarkerInfoINTEL();
+            MarshalVkPerformanceStreamMarkerInfoINTEL::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV: {
+            VkPhysicalDeviceCooperativeMatrixPropertiesNV* p = new VkPhysicalDeviceCooperativeMatrixPropertiesNV();
+            MarshalVkPhysicalDeviceCooperativeMatrixPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: {
+            VkSamplerReductionModeCreateInfo* p = new VkSamplerReductionModeCreateInfo();
+            MarshalVkSamplerReductionModeCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV: {
+            VkGeneratedCommandsInfoNV* p = new VkGeneratedCommandsInfoNV();
+            MarshalVkGeneratedCommandsInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR: {
+            VkPipelineFragmentShadingRateStateCreateInfoKHR* p = new VkPipelineFragmentShadingRateStateCreateInfoKHR();
+            MarshalVkPipelineFragmentShadingRateStateCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INTERNAL_REPRESENTATION_KHR: {
+            VkPipelineExecutableInternalRepresentationKHR* p = new VkPipelineExecutableInternalRepresentationKHR();
+            MarshalVkPipelineExecutableInternalRepresentationKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV: {
+            VkBindAccelerationStructureMemoryInfoNV* p = new VkBindAccelerationStructureMemoryInfoNV();
+            MarshalVkBindAccelerationStructureMemoryInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: {
+            VkExportSemaphoreCreateInfo* p = new VkExportSemaphoreCreateInfo();
+            MarshalVkExportSemaphoreCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR: {
+            VkCopyAccelerationStructureToMemoryInfoKHR* p = new VkCopyAccelerationStructureToMemoryInfoKHR();
+            MarshalVkCopyAccelerationStructureToMemoryInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES: {
+            VkExternalImageFormatProperties* p = new VkExternalImageFormatProperties();
+            MarshalVkExternalImageFormatProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2: {
+            VkFormatProperties2* p = new VkFormatProperties2();
+            MarshalVkFormatProperties2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: {
+            VkPhysicalDeviceUniformBufferStandardLayoutFeatures* p = new VkPhysicalDeviceUniformBufferStandardLayoutFeatures();
+            MarshalVkPhysicalDeviceUniformBufferStandardLayoutFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR: {
+            VkPhysicalDevicePerformanceQueryPropertiesKHR* p = new VkPhysicalDevicePerformanceQueryPropertiesKHR();
+            MarshalVkPhysicalDevicePerformanceQueryPropertiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT: {
+            VkImageDrmFormatModifierListCreateInfoEXT* p = new VkImageDrmFormatModifierListCreateInfoEXT();
+            MarshalVkImageDrmFormatModifierListCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT: {
+            VkVertexInputBindingDescription2EXT* p = new VkVertexInputBindingDescription2EXT();
+            MarshalVkVertexInputBindingDescription2EXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT: {
+            VkSurfaceCapabilities2EXT* p = new VkSurfaceCapabilities2EXT();
+            MarshalVkSurfaceCapabilities2EXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO: {
+            VkPipelineTessellationDomainOriginStateCreateInfo* p = new VkPipelineTessellationDomainOriginStateCreateInfo();
+            MarshalVkPipelineTessellationDomainOriginStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
+            VkSamplerYcbcrConversionInfo* p = new VkSamplerYcbcrConversionInfo();
+            MarshalVkSamplerYcbcrConversionInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MOTION_INFO_NV: {
+            VkAccelerationStructureMotionInfoNV* p = new VkAccelerationStructureMotionInfoNV();
+            MarshalVkAccelerationStructureMotionInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM: {
+            VkCopyCommandTransformInfoQCOM* p = new VkCopyCommandTransformInfoQCOM();
+            MarshalVkCopyCommandTransformInfoQCOM::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
+            VkExternalMemoryBufferCreateInfo* p = new VkExternalMemoryBufferCreateInfo();
+            MarshalVkExternalMemoryBufferCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2: {
+            VkPhysicalDeviceProperties2* p = new VkPhysicalDeviceProperties2();
+            MarshalVkPhysicalDeviceProperties2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV: {
+            VkGraphicsShaderGroupCreateInfoNV* p = new VkGraphicsShaderGroupCreateInfoNV();
+            MarshalVkGraphicsShaderGroupCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
+            VkPhysicalDeviceVulkan11Properties* p = new VkPhysicalDeviceVulkan11Properties();
+            MarshalVkPhysicalDeviceVulkan11Properties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: {
+            VkPhysicalDeviceBufferDeviceAddressFeatures* p = new VkPhysicalDeviceBufferDeviceAddressFeatures();
+            MarshalVkPhysicalDeviceBufferDeviceAddressFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR: {
+            VkPhysicalDeviceRayTracingPipelinePropertiesKHR* p = new VkPhysicalDeviceRayTracingPipelinePropertiesKHR();
+            MarshalVkPhysicalDeviceRayTracingPipelinePropertiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2: {
+            VkPhysicalDeviceImageFormatInfo2* p = new VkPhysicalDeviceImageFormatInfo2();
+            MarshalVkPhysicalDeviceImageFormatInfo2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR: {
+            VkPresentRegionsKHR* p = new VkPresentRegionsKHR();
+            MarshalVkPresentRegionsKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO: {
+            VkPhysicalDeviceExternalBufferInfo* p = new VkPhysicalDeviceExternalBufferInfo();
+            MarshalVkPhysicalDeviceExternalBufferInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
+            VkPhysicalDeviceDrmPropertiesEXT* p = new VkPhysicalDeviceDrmPropertiesEXT();
+            MarshalVkPhysicalDeviceDrmPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
+            VkPhysicalDeviceSubgroupSizeControlPropertiesEXT* p = new VkPhysicalDeviceSubgroupSizeControlPropertiesEXT();
+            MarshalVkPhysicalDeviceSubgroupSizeControlPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV: {
+            VkPhysicalDeviceMeshShaderFeaturesNV* p = new VkPhysicalDeviceMeshShaderFeaturesNV();
+            MarshalVkPhysicalDeviceMeshShaderFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2: {
+            VkPhysicalDeviceMemoryProperties2* p = new VkPhysicalDeviceMemoryProperties2();
+            MarshalVkPhysicalDeviceMemoryProperties2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2: {
+            VkDeviceQueueInfo2* p = new VkDeviceQueueInfo2();
+            MarshalVkDeviceQueueInfo2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: {
+            VkPhysicalDeviceExternalImageFormatInfo* p = new VkPhysicalDeviceExternalImageFormatInfo();
+            MarshalVkPhysicalDeviceExternalImageFormatInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: {
+            VkDeviceGroupRenderPassBeginInfo* p = new VkDeviceGroupRenderPassBeginInfo();
+            MarshalVkDeviceGroupRenderPassBeginInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES: {
+            VkExternalSemaphoreProperties* p = new VkExternalSemaphoreProperties();
+            MarshalVkExternalSemaphoreProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+            VkPhysicalDeviceShaderAtomicFloatFeaturesEXT* p = new VkPhysicalDeviceShaderAtomicFloatFeaturesEXT();
+            MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT: {
+            VkDeviceQueueGlobalPriorityCreateInfoEXT* p = new VkDeviceQueueGlobalPriorityCreateInfoEXT();
+            MarshalVkDeviceQueueGlobalPriorityCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV: {
+            VkCooperativeMatrixPropertiesNV* p = new VkCooperativeMatrixPropertiesNV();
+            MarshalVkCooperativeMatrixPropertiesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2_KHR: {
+            VkCopyImageToBufferInfo2KHR* p = new VkCopyImageToBufferInfo2KHR();
+            MarshalVkCopyImageToBufferInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV: {
+            VkIndirectCommandsLayoutTokenNV* p = new VkIndirectCommandsLayoutTokenNV();
+            MarshalVkIndirectCommandsLayoutTokenNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV: {
+            VkRayTracingShaderGroupCreateInfoNV* p = new VkRayTracingShaderGroupCreateInfoNV();
+            MarshalVkRayTracingShaderGroupCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHR: {
+            VkDeviceGroupPresentCapabilitiesKHR* p = new VkDeviceGroupPresentCapabilitiesKHR();
+            MarshalVkDeviceGroupPresentCapabilitiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO: {
+            VkPipelineColorBlendStateCreateInfo* p = new VkPipelineColorBlendStateCreateInfo();
+            MarshalVkPipelineColorBlendStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT: {
+            VkValidationFeaturesEXT* p = new VkValidationFeaturesEXT();
+            MarshalVkValidationFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR: {
+            VkPerformanceCounterKHR* p = new VkPerformanceCounterKHR();
+            MarshalVkPerformanceCounterKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO: {
+            VkRenderPassBeginInfo* p = new VkRenderPassBeginInfo();
+            MarshalVkRenderPassBeginInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
+            VkPhysicalDeviceMaintenance3Properties* p = new VkPhysicalDeviceMaintenance3Properties();
+            MarshalVkPhysicalDeviceMaintenance3Properties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR: {
+            VkImageSwapchainCreateInfoKHR* p = new VkImageSwapchainCreateInfoKHR();
+            MarshalVkImageSwapchainCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
+            VkPhysicalDeviceRobustness2FeaturesEXT* p = new VkPhysicalDeviceRobustness2FeaturesEXT();
+            MarshalVkPhysicalDeviceRobustness2FeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR: {
+            VkDisplayModeProperties2KHR* p = new VkDisplayModeProperties2KHR();
+            MarshalVkDisplayModeProperties2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
+            VkPhysicalDeviceVulkan12Features* p = new VkPhysicalDeviceVulkan12Features();
+            MarshalVkPhysicalDeviceVulkan12Features::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO: {
+            VkImageViewCreateInfo* p = new VkImageViewCreateInfo();
+            MarshalVkImageViewCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT: {
+            VkDebugMarkerMarkerInfoEXT* p = new VkDebugMarkerMarkerInfoEXT();
+            MarshalVkDebugMarkerMarkerInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_NV: {
+            VkGeometryNV* p = new VkGeometryNV();
+            MarshalVkGeometryNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT: {
+            VkDeviceEventInfoEXT* p = new VkDeviceEventInfoEXT();
+            MarshalVkDeviceEventInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: {
+            VkAcquireNextImageInfoKHR* p = new VkAcquireNextImageInfoKHR();
+            MarshalVkAcquireNextImageInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
+            VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL* p = new VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL();
+            MarshalVkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR: {
+            VkPipelineExecutableInfoKHR* p = new VkPipelineExecutableInfoKHR();
+            MarshalVkPipelineExecutableInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR: {
+            VkDisplaySurfaceCreateInfoKHR* p = new VkDisplaySurfaceCreateInfoKHR();
+            MarshalVkDisplaySurfaceCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_2_NV: {
+            VkQueueFamilyCheckpointProperties2NV* p = new VkQueueFamilyCheckpointProperties2NV();
+            MarshalVkQueueFamilyCheckpointProperties2NV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+            VkPhysicalDeviceRobustness2PropertiesEXT* p = new VkPhysicalDeviceRobustness2PropertiesEXT();
+            MarshalVkPhysicalDeviceRobustness2PropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO: {
+            VkSemaphoreCreateInfo* p = new VkSemaphoreCreateInfo();
+            MarshalVkSemaphoreCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT: {
+            VkDebugMarkerObjectTagInfoEXT* p = new VkDebugMarkerObjectTagInfoEXT();
+            MarshalVkDebugMarkerObjectTagInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
+            VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures* p = new VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures();
+            MarshalVkPhysicalDeviceSeparateDepthStencilLayoutsFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_WRITE_CREATE_INFO_EXT: {
+            VkPipelineColorWriteCreateInfoEXT* p = new VkPipelineColorWriteCreateInfoEXT();
+            MarshalVkPipelineColorWriteCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO: {
+            VkPipelineLayoutCreateInfo* p = new VkPipelineLayoutCreateInfo();
+            MarshalVkPipelineLayoutCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR: {
+            VkAccelerationStructureCreateInfoKHR* p = new VkAccelerationStructureCreateInfoKHR();
+            MarshalVkAccelerationStructureCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR: {
+            VkMemoryBarrier2KHR* p = new VkMemoryBarrier2KHR();
+            MarshalVkMemoryBarrier2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO: {
+            VkCommandPoolCreateInfo* p = new VkCommandPoolCreateInfo();
+            MarshalVkCommandPoolCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: {
+            VkPhysicalDeviceScalarBlockLayoutFeatures* p = new VkPhysicalDeviceScalarBlockLayoutFeatures();
+            MarshalVkPhysicalDeviceScalarBlockLayoutFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO: {
+            VkDescriptorSetLayoutCreateInfo* p = new VkDescriptorSetLayoutCreateInfo();
+            MarshalVkDescriptorSetLayoutCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: {
+            VkDeviceMemoryOverallocationCreateInfoAMD* p = new VkDeviceMemoryOverallocationCreateInfoAMD();
+            MarshalVkDeviceMemoryOverallocationCreateInfoAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE: {
+            VkPresentTimesInfoGOOGLE* p = new VkPresentTimesInfoGOOGLE();
+            MarshalVkPresentTimesInfoGOOGLE::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: {
+            VkDeviceGroupPresentInfoKHR* p = new VkDeviceGroupPresentInfoKHR();
+            MarshalVkDeviceGroupPresentInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: {
+            VkFragmentShadingRateAttachmentInfoKHR* p = new VkFragmentShadingRateAttachmentInfoKHR();
+            MarshalVkFragmentShadingRateAttachmentInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO: {
+            VkPipelineViewportStateCreateInfo* p = new VkPipelineViewportStateCreateInfo();
+            MarshalVkPipelineViewportStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO: {
+            VkRenderPassCreateInfo* p = new VkRenderPassCreateInfo();
+            MarshalVkRenderPassCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: {
+            VkPipelineRasterizationDepthClipStateCreateInfoEXT* p = new VkPipelineRasterizationDepthClipStateCreateInfoEXT();
+            MarshalVkPipelineRasterizationDepthClipStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR: {
+            VkSurfaceCapabilities2KHR* p = new VkSurfaceCapabilities2KHR();
+            MarshalVkSurfaceCapabilities2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: {
+            VkCommandBufferAllocateInfo* p = new VkCommandBufferAllocateInfo();
+            MarshalVkCommandBufferAllocateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT: {
+            VkDebugUtilsMessengerCallbackDataEXT* p = new VkDebugUtilsMessengerCallbackDataEXT();
+            MarshalVkDebugUtilsMessengerCallbackDataEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR: {
+            VkBufferImageCopy2KHR* p = new VkBufferImageCopy2KHR();
+            MarshalVkBufferImageCopy2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
+            VkDeviceGroupBindSparseInfo* p = new VkDeviceGroupBindSparseInfo();
+            MarshalVkDeviceGroupBindSparseInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
+            VkSamplerYcbcrConversionImageFormatProperties* p = new VkSamplerYcbcrConversionImageFormatProperties();
+            MarshalVkSamplerYcbcrConversionImageFormatProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT: {
+            VkPhysicalDeviceImageRobustnessFeaturesEXT* p = new VkPhysicalDeviceImageRobustnessFeaturesEXT();
+            MarshalVkPhysicalDeviceImageRobustnessFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT: {
+            VkValidationCacheCreateInfoEXT* p = new VkValidationCacheCreateInfoEXT();
+            MarshalVkValidationCacheCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
+            VkPhysicalDeviceFloatControlsProperties* p = new VkPhysicalDeviceFloatControlsProperties();
+            MarshalVkPhysicalDeviceFloatControlsProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2: {
+            VkSubpassDependency2* p = new VkSubpassDependency2();
+            MarshalVkSubpassDependency2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV: {
+            VkPhysicalDeviceShaderImageFootprintFeaturesNV* p = new VkPhysicalDeviceShaderImageFootprintFeaturesNV();
+            MarshalVkPhysicalDeviceShaderImageFootprintFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
+            VkPhysicalDeviceAccelerationStructureFeaturesKHR* p = new VkPhysicalDeviceAccelerationStructureFeaturesKHR();
+            MarshalVkPhysicalDeviceAccelerationStructureFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO: {
+            VkSubpassBeginInfo* p = new VkSubpassBeginInfo();
+            MarshalVkSubpassBeginInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: {
+            VkGraphicsPipelineCreateInfo* p = new VkGraphicsPipelineCreateInfo();
+            MarshalVkGraphicsPipelineCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO: {
+            VkDeviceCreateInfo* p = new VkDeviceCreateInfo();
+            MarshalVkDeviceCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO: {
+            VkFramebufferCreateInfo* p = new VkFramebufferCreateInfo();
+            MarshalVkFramebufferCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
+            VkDedicatedAllocationMemoryAllocateInfoNV* p = new VkDedicatedAllocationMemoryAllocateInfoNV();
+            MarshalVkDedicatedAllocationMemoryAllocateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV: {
+            VkPipelineViewportWScalingStateCreateInfoNV* p = new VkPipelineViewportWScalingStateCreateInfoNV();
+            MarshalVkPipelineViewportWScalingStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT: {
+            VkDisplayPowerInfoEXT* p = new VkDisplayPowerInfoEXT();
+            MarshalVkDisplayPowerInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO: {
+            VkQueryPoolCreateInfo* p = new VkQueryPoolCreateInfo();
+            MarshalVkQueryPoolCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2: {
+            VkImageFormatProperties2* p = new VkImageFormatProperties2();
+            MarshalVkImageFormatProperties2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO: {
+            VkExportFenceCreateInfo* p = new VkExportFenceCreateInfo();
+            MarshalVkExportFenceCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT: {
+            VkDrmFormatModifierPropertiesListEXT* p = new VkDrmFormatModifierPropertiesListEXT();
+            MarshalVkDrmFormatModifierPropertiesListEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE: {
+            VkMappedMemoryRange* p = new VkMappedMemoryRange();
+            MarshalVkMappedMemoryRange::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV: {
+            VkPipelineViewportCoarseSampleOrderStateCreateInfoNV* p = new VkPipelineViewportCoarseSampleOrderStateCreateInfoNV();
+            MarshalVkPipelineViewportCoarseSampleOrderStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
+            VkPhysicalDeviceRayQueryFeaturesKHR* p = new VkPhysicalDeviceRayQueryFeaturesKHR();
+            MarshalVkPhysicalDeviceRayQueryFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR: {
+            VkCommandBufferSubmitInfoKHR* p = new VkCommandBufferSubmitInfoKHR();
+            MarshalVkCommandBufferSubmitInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
+            VkPhysicalDeviceExtendedDynamicStateFeaturesEXT* p = new VkPhysicalDeviceExtendedDynamicStateFeaturesEXT();
+            MarshalVkPhysicalDeviceExtendedDynamicStateFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: {
+            VkPhysicalDeviceSubgroupSizeControlFeaturesEXT* p = new VkPhysicalDeviceSubgroupSizeControlFeaturesEXT();
+            MarshalVkPhysicalDeviceSubgroupSizeControlFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
+            VkPhysicalDeviceBufferDeviceAddressFeaturesEXT* p = new VkPhysicalDeviceBufferDeviceAddressFeaturesEXT();
+            MarshalVkPhysicalDeviceBufferDeviceAddressFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR: {
+            VkCopyMemoryToAccelerationStructureInfoKHR* p = new VkCopyMemoryToAccelerationStructureInfoKHR();
+            MarshalVkCopyMemoryToAccelerationStructureInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO: {
+            VkDescriptorSetAllocateInfo* p = new VkDescriptorSetAllocateInfo();
+            MarshalVkDescriptorSetAllocateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR: {
+            VkQueryPoolPerformanceCreateInfoKHR* p = new VkQueryPoolPerformanceCreateInfoKHR();
+            MarshalVkQueryPoolPerformanceCreateInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
+            VkPhysicalDeviceMultiDrawPropertiesEXT* p = new VkPhysicalDeviceMultiDrawPropertiesEXT();
+            MarshalVkPhysicalDeviceMultiDrawPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT: {
+            VkRenderPassFragmentDensityMapCreateInfoEXT* p = new VkRenderPassFragmentDensityMapCreateInfoEXT();
+            MarshalVkRenderPassFragmentDensityMapCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
+            VkPhysicalDevicePerformanceQueryFeaturesKHR* p = new VkPhysicalDevicePerformanceQueryFeaturesKHR();
+            MarshalVkPhysicalDevicePerformanceQueryFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT: {
+            VkPhysicalDeviceASTCDecodeFeaturesEXT* p = new VkPhysicalDeviceASTCDecodeFeaturesEXT();
+            MarshalVkPhysicalDeviceASTCDecodeFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD: {
+            VkPipelineCompilerControlCreateInfoAMD* p = new VkPipelineCompilerControlCreateInfoAMD();
+            MarshalVkPipelineCompilerControlCreateInfoAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+            VkWriteDescriptorSetInlineUniformBlockEXT* p = new VkWriteDescriptorSetInlineUniformBlockEXT();
+            MarshalVkWriteDescriptorSetInlineUniformBlockEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+            VkPhysicalDeviceMultiviewProperties* p = new VkPhysicalDeviceMultiviewProperties();
+            MarshalVkPhysicalDeviceMultiviewProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PRESENT_INFO_KHR: {
+            VkDisplayPresentInfoKHR* p = new VkDisplayPresentInfoKHR();
+            MarshalVkDisplayPresentInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR: {
+            VkPhysicalDeviceSynchronization2FeaturesKHR* p = new VkPhysicalDeviceSynchronization2FeaturesKHR();
+            MarshalVkPhysicalDeviceSynchronization2FeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV: {
+            VkPipelineCoverageModulationStateCreateInfoNV* p = new VkPipelineCoverageModulationStateCreateInfoNV();
+            MarshalVkPipelineCoverageModulationStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO: {
+            VkPipelineDepthStencilStateCreateInfo* p = new VkPipelineDepthStencilStateCreateInfo();
+            MarshalVkPipelineDepthStencilStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR: {
+            VkDisplayPlaneInfo2KHR* p = new VkDisplayPlaneInfo2KHR();
+            MarshalVkDisplayPlaneInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT: {
+            VkSampleLocationsInfoEXT* p = new VkSampleLocationsInfoEXT();
+            MarshalVkSampleLocationsInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV: {
+            VkPipelineViewportShadingRateImageStateCreateInfoNV* p = new VkPipelineViewportShadingRateImageStateCreateInfoNV();
+            MarshalVkPipelineViewportShadingRateImageStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO: {
+            VkMemoryOpaqueCaptureAddressAllocateInfo* p = new VkMemoryOpaqueCaptureAddressAllocateInfo();
+            MarshalVkMemoryOpaqueCaptureAddressAllocateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR: {
+            VkPhysicalDeviceFragmentShadingRateKHR* p = new VkPhysicalDeviceFragmentShadingRateKHR();
+            MarshalVkPhysicalDeviceFragmentShadingRateKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_INFO_KHR: {
+            VkPresentInfoKHR* p = new VkPresentInfoKHR();
+            MarshalVkPresentInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
+            VkImageFormatListCreateInfo* p = new VkImageFormatListCreateInfo();
+            MarshalVkImageFormatListCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: {
+            VkPhysicalDeviceGroupProperties* p = new VkPhysicalDeviceGroupProperties();
+            MarshalVkPhysicalDeviceGroupProperties::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO: {
+            VkComputePipelineCreateInfo* p = new VkComputePipelineCreateInfo();
+            MarshalVkComputePipelineCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET: {
+            VkWriteDescriptorSet* p = new VkWriteDescriptorSet();
+            MarshalVkWriteDescriptorSet::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
+            VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT* p = new VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT();
+            MarshalVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV: {
+            VkPhysicalDeviceExclusiveScissorFeaturesNV* p = new VkPhysicalDeviceExclusiveScissorFeaturesNV();
+            MarshalVkPhysicalDeviceExclusiveScissorFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR: {
+            VkImageMemoryBarrier2KHR* p = new VkImageMemoryBarrier2KHR();
+            MarshalVkImageMemoryBarrier2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR: {
+            VkAccelerationStructureGeometryAabbsDataKHR* p = new VkAccelerationStructureGeometryAabbsDataKHR();
+            MarshalVkAccelerationStructureGeometryAabbsDataKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
+            VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT* p = new VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT();
+            MarshalVkPhysicalDeviceVertexInputDynamicStateFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
+            VkBindImagePlaneMemoryInfo* p = new VkBindImagePlaneMemoryInfo();
+            MarshalVkBindImagePlaneMemoryInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT: {
+            VkPhysicalDeviceImageViewImageFormatInfoEXT* p = new VkPhysicalDeviceImageViewImageFormatInfoEXT();
+            MarshalVkPhysicalDeviceImageViewImageFormatInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2: {
+            VkQueueFamilyProperties2* p = new VkQueueFamilyProperties2();
+            MarshalVkQueueFamilyProperties2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2_KHR: {
+            VkCopyBufferInfo2KHR* p = new VkCopyBufferInfo2KHR();
+            MarshalVkCopyBufferInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR: {
+            VkPhysicalDeviceSurfaceInfo2KHR* p = new VkPhysicalDeviceSurfaceInfo2KHR();
+            MarshalVkPhysicalDeviceSurfaceInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2_KHR: {
+            VkCopyBufferToImageInfo2KHR* p = new VkCopyBufferToImageInfo2KHR();
+            MarshalVkCopyBufferToImageInfo2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO: {
+            VkFramebufferAttachmentsCreateInfo* p = new VkFramebufferAttachmentsCreateInfo();
+            MarshalVkFramebufferAttachmentsCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV: {
+            VkAccelerationStructureGeometryMotionTrianglesDataNV* p = new VkAccelerationStructureGeometryMotionTrianglesDataNV();
+            MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO: {
+            VkPipelineTessellationStateCreateInfo* p = new VkPipelineTessellationStateCreateInfo();
+            MarshalVkPipelineTessellationStateCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT: {
+            VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT* p = new VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT();
+            MarshalVkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
+            VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT* p = new VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT();
+            MarshalVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV: {
+            VkPipelineFragmentShadingRateEnumStateCreateInfoNV* p = new VkPipelineFragmentShadingRateEnumStateCreateInfoNV();
+            MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT: {
+            VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT* p = new VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT();
+            MarshalVkPhysicalDeviceGlobalPriorityQueryFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
+            VkImageViewUsageCreateInfo* p = new VkImageViewUsageCreateInfo();
+            MarshalVkImageViewUsageCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_REPORT_CALLBACK_DATA_EXT: {
+            VkDeviceMemoryReportCallbackDataEXT* p = new VkDeviceMemoryReportCallbackDataEXT();
+            MarshalVkDeviceMemoryReportCallbackDataEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE: {
+            VkMutableDescriptorTypeCreateInfoVALVE* p = new VkMutableDescriptorTypeCreateInfoVALVE();
+            MarshalVkMutableDescriptorTypeCreateInfoVALVE::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
+            VkPipelineVertexInputDivisorStateCreateInfoEXT* p = new VkPipelineVertexInputDivisorStateCreateInfoEXT();
+            MarshalVkPipelineVertexInputDivisorStateCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DIAGNOSTICS_CONFIG_FEATURES_NV: {
+            VkPhysicalDeviceDiagnosticsConfigFeaturesNV* p = new VkPhysicalDeviceDiagnosticsConfigFeaturesNV();
+            MarshalVkPhysicalDeviceDiagnosticsConfigFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: {
+            VkCommandBufferInheritanceConditionalRenderingInfoEXT* p = new VkCommandBufferInheritanceConditionalRenderingInfoEXT();
+            MarshalVkCommandBufferInheritanceConditionalRenderingInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV: {
+            VkFramebufferMixedSamplesCombinationNV* p = new VkFramebufferMixedSamplesCombinationNV();
+            MarshalVkFramebufferMixedSamplesCombinationNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_COPY_2_KHR: {
+            VkBufferCopy2KHR* p = new VkBufferCopy2KHR();
+            MarshalVkBufferCopy2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV: {
+            VkPhysicalDeviceShaderSMBuiltinsFeaturesNV* p = new VkPhysicalDeviceShaderSMBuiltinsFeaturesNV();
+            MarshalVkPhysicalDeviceShaderSMBuiltinsFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+            VkPhysicalDeviceIndexTypeUint8FeaturesEXT* p = new VkPhysicalDeviceIndexTypeUint8FeaturesEXT();
+            MarshalVkPhysicalDeviceIndexTypeUint8FeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR: {
+            VkPipelineExecutablePropertiesKHR* p = new VkPipelineExecutablePropertiesKHR();
+            MarshalVkPipelineExecutablePropertiesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
+            VkRenderPassAttachmentBeginInfo* p = new VkRenderPassAttachmentBeginInfo();
+            MarshalVkRenderPassAttachmentBeginInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO: {
+            VkShaderModuleCreateInfo* p = new VkShaderModuleCreateInfo();
+            MarshalVkShaderModuleCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT: {
+            VkHeadlessSurfaceCreateInfoEXT* p = new VkHeadlessSurfaceCreateInfoEXT();
+            MarshalVkHeadlessSurfaceCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2: {
+            VkImageSparseMemoryRequirementsInfo2* p = new VkImageSparseMemoryRequirementsInfo2();
+            MarshalVkImageSparseMemoryRequirementsInfo2::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD: {
+            VkDisplayNativeHdrSurfaceCapabilitiesAMD* p = new VkDisplayNativeHdrSurfaceCapabilitiesAMD();
+            MarshalVkDisplayNativeHdrSurfaceCapabilitiesAMD::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT: {
+            VkQueueFamilyGlobalPriorityPropertiesEXT* p = new VkQueueFamilyGlobalPriorityPropertiesEXT();
+            MarshalVkQueueFamilyGlobalPriorityPropertiesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_COPY_2_KHR: {
+            VkImageCopy2KHR* p = new VkImageCopy2KHR();
+            MarshalVkImageCopy2KHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT: {
+            VkVertexInputAttributeDescription2EXT* p = new VkVertexInputAttributeDescription2EXT();
+            MarshalVkVertexInputAttributeDescription2EXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO_EXT: {
+            VkDevicePrivateDataCreateInfoEXT* p = new VkDevicePrivateDataCreateInfoEXT();
+            MarshalVkDevicePrivateDataCreateInfoEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE: {
+            VkSubpassDescriptionDepthStencilResolve* p = new VkSubpassDescriptionDepthStencilResolve();
+            MarshalVkSubpassDescriptionDepthStencilResolve::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
+            VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT* p = new VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT();
+            MarshalVkPhysicalDevicePipelineCreationCacheControlFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+            VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT* p = new VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT();
+            MarshalVkPhysicalDeviceTexelBufferAlignmentFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
+            VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures* p = new VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures();
+            MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR: {
+            VkPipelineExecutableStatisticKHR* p = new VkPipelineExecutableStatisticKHR();
+            MarshalVkPipelineExecutableStatisticKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR: {
+            VkPerformanceCounterDescriptionKHR* p = new VkPerformanceCounterDescriptionKHR();
+            MarshalVkPerformanceCounterDescriptionKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_SUBMIT_INFO: {
+            VkSubmitInfo* p = new VkSubmitInfo();
+            MarshalVkSubmitInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT: {
+            VkDescriptorSetVariableDescriptorCountLayoutSupport* p = new VkDescriptorSetVariableDescriptorCountLayoutSupport();
+            MarshalVkDescriptorSetVariableDescriptorCountLayoutSupport::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
+            VkBindImageMemorySwapchainInfoKHR* p = new VkBindImageMemorySwapchainInfoKHR();
+            MarshalVkBindImageMemorySwapchainInfoKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+            VkPhysicalDevice16BitStorageFeatures* p = new VkPhysicalDevice16BitStorageFeatures();
+            MarshalVkPhysicalDevice16BitStorageFeatures::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV: {
+            VkPhysicalDeviceComputeShaderDerivativesFeaturesNV* p = new VkPhysicalDeviceComputeShaderDerivativesFeaturesNV();
+            MarshalVkPhysicalDeviceComputeShaderDerivativesFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO: {
+            VkRenderPassInputAttachmentAspectCreateInfo* p = new VkRenderPassInputAttachmentAspectCreateInfo();
+            MarshalVkRenderPassInputAttachmentAspectCreateInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV: {
+            VkGeometryTrianglesNV* p = new VkGeometryTrianglesNV();
+            MarshalVkGeometryTrianglesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR: {
+            VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR* p = new VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR();
+            MarshalVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
+            VkImagePlaneMemoryRequirementsInfo* p = new VkImagePlaneMemoryRequirementsInfo();
+            MarshalVkImagePlaneMemoryRequirementsInfo::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
+            VkPhysicalDeviceConditionalRenderingFeaturesEXT* p = new VkPhysicalDeviceConditionalRenderingFeaturesEXT();
+            MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV: {
+            VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV* p = new VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV();
+            MarshalVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV::read(memory, address, p);
+            return p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
+            VkPhysicalDeviceDescriptorIndexingFeatures* p = new VkPhysicalDeviceDescriptorIndexingFeatures();
+            MarshalVkPhysicalDeviceDescriptorIndexingFeatures::read(memory, address, p);
             return p;
         }
        default:
@@ -8284,20 +6333,1828 @@ void vulkanWriteNextPtr(KMemory* memory, U32 address, const void* p) {
     }
     VkStructureType type = (VkStructureType)memory->readd(address);
     switch (type) {
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
-            MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT::write(memory, address, (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)p);
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV: {
+            MarshalVkPhysicalDeviceCooperativeMatrixFeaturesNV::write(memory, address, (VkPhysicalDeviceCooperativeMatrixFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PROPERTIES_2_KHR: {
+            MarshalVkDisplayProperties2KHR::write(memory, address, (VkDisplayProperties2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_ASTC_DECODE_MODE_EXT: {
+            MarshalVkImageViewASTCDecodeModeEXT::write(memory, address, (VkImageViewASTCDecodeModeEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
+            MarshalVkExternalMemoryImageCreateInfo::write(memory, address, (VkExternalMemoryImageCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO: {
+            MarshalVkSemaphoreTypeCreateInfo::write(memory, address, (VkSemaphoreTypeCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASSS_SHADING_PIPELINE_CREATE_INFO_HUAWEI: {
+            MarshalVkSubpassShadingPipelineCreateInfoHUAWEI::write(memory, address, (VkSubpassShadingPipelineCreateInfoHUAWEI*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO: {
+            MarshalVkCommandBufferBeginInfo::write(memory, address, (VkCommandBufferBeginInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES: {
+            MarshalVkPhysicalDeviceSamplerFilterMinmaxProperties::write(memory, address, (VkPhysicalDeviceSamplerFilterMinmaxProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FENCE_GET_FD_INFO_KHR: {
+            MarshalVkFenceGetFdInfoKHR::write(memory, address, (VkFenceGetFdInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2_KHR: {
+            MarshalVkBlitImageInfo2KHR::write(memory, address, (VkBlitImageInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_FEATURES_NV: {
+            MarshalVkPhysicalDeviceShadingRateImageFeaturesNV::write(memory, address, (VkPhysicalDeviceShadingRateImageFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO_EXT: {
+            MarshalVkDescriptorPoolInlineUniformBlockCreateInfoEXT::write(memory, address, (VkDescriptorPoolInlineUniformBlockCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO: {
+            MarshalVkImageStencilUsageCreateInfo::write(memory, address, (VkImageStencilUsageCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_MEMORY_REPORT_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceDeviceMemoryReportFeaturesEXT::write(memory, address, (VkPhysicalDeviceDeviceMemoryReportFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_NV: {
+            MarshalVkExternalMemoryImageCreateInfoNV::write(memory, address, (VkExternalMemoryImageCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_STENCIL_LAYOUT: {
+            MarshalVkAttachmentDescriptionStencilLayout::write(memory, address, (VkAttachmentDescriptionStencilLayout*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_NV: {
+            MarshalVkRayTracingPipelineCreateInfoNV::write(memory, address, (VkRayTracingPipelineCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO: {
+            MarshalVkImageCreateInfo::write(memory, address, (VkImageCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
+            MarshalVkMemoryDedicatedAllocateInfo::write(memory, address, (VkMemoryDedicatedAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PROTECTED_SUBMIT_INFO: {
+            MarshalVkProtectedSubmitInfo::write(memory, address, (VkProtectedSubmitInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_MARKER_INFO_INTEL: {
+            MarshalVkPerformanceMarkerInfoINTEL::write(memory, address, (VkPerformanceMarkerInfoINTEL*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
+            MarshalVkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE::write(memory, address, (VkPhysicalDeviceMutableDescriptorTypeFeaturesVALVE*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADING_RATE_IMAGE_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceShadingRateImagePropertiesNV::write(memory, address, (VkPhysicalDeviceShadingRateImagePropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_TAG_INFO_EXT: {
+            MarshalVkDebugUtilsObjectTagInfoEXT::write(memory, address, (VkDebugUtilsObjectTagInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+            MarshalVkPhysicalDevicePushDescriptorPropertiesKHR::write(memory, address, (VkPhysicalDevicePushDescriptorPropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO_KHR: {
+            MarshalVkSemaphoreSubmitInfoKHR::write(memory, address, (VkSemaphoreSubmitInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR: {
+            MarshalVkWriteDescriptorSetAccelerationStructureKHR::write(memory, address, (VkWriteDescriptorSetAccelerationStructureKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
+            MarshalVkPhysicalDeviceShaderFloat16Int8Features::write(memory, address, (VkPhysicalDeviceShaderFloat16Int8Features*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2: {
+            MarshalVkSubpassDescription2::write(memory, address, (VkSubpassDescription2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_NV: {
+            MarshalVkPhysicalDeviceFragmentShaderBarycentricFeaturesNV::write(memory, address, (VkPhysicalDeviceFragmentShaderBarycentricFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES: {
+            MarshalVkPhysicalDeviceVulkan12Properties::write(memory, address, (VkPhysicalDeviceVulkan12Properties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLE_LOCATIONS_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceSampleLocationsPropertiesEXT::write(memory, address, (VkPhysicalDeviceSampleLocationsPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PCI_BUS_INFO_PROPERTIES_EXT: {
+            MarshalVkPhysicalDevicePCIBusInfoPropertiesEXT::write(memory, address, (VkPhysicalDevicePCIBusInfoPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO_EXT: {
+            MarshalVkPipelineCreationFeedbackCreateInfoEXT::write(memory, address, (VkPipelineCreationFeedbackCreateInfoEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
             MarshalVkPhysicalDeviceVertexAttributeDivisorFeaturesEXT::write(memory, address, (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-            MarshalVkPhysicalDeviceIDProperties::write(memory, address, (VkPhysicalDeviceIDProperties*)p);
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER: {
+            MarshalVkBufferMemoryBarrier::write(memory, address, (VkBufferMemoryBarrier*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_SUBMIT_INFO: {
+            MarshalVkDeviceGroupSubmitInfo::write(memory, address, (VkDeviceGroupSubmitInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO: {
+            MarshalVkPipelineMultisampleStateCreateInfo::write(memory, address, (VkPipelineMultisampleStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO: {
+            MarshalVkDescriptorUpdateTemplateCreateInfo::write(memory, address, (VkDescriptorUpdateTemplateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_TEXTURE_LOD_GATHER_FORMAT_PROPERTIES_AMD: {
+            MarshalVkTextureLODGatherFormatPropertiesAMD::write(memory, address, (VkTextureLODGatherFormatPropertiesAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_BUFFER_PROPERTIES: {
+            MarshalVkExternalBufferProperties::write(memory, address, (VkExternalBufferProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_END_INFO: {
+            MarshalVkSubpassEndInfo::write(memory, address, (VkSubpassEndInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO: {
+            MarshalVkPipelineShaderStageCreateInfo::write(memory, address, (VkPipelineShaderStageCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX: {
+            MarshalVkImageViewAddressPropertiesNVX::write(memory, address, (VkImageViewAddressPropertiesNVX*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO: {
+            MarshalVkDeviceGroupDeviceCreateInfo::write(memory, address, (VkDeviceGroupDeviceCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO: {
+            MarshalVkBufferCreateInfo::write(memory, address, (VkBufferCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT: {
+            MarshalVkBufferDeviceAddressCreateInfoEXT::write(memory, address, (VkBufferDeviceAddressCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_PROPERTIES_HUAWEI: {
+            MarshalVkPhysicalDeviceSubpassShadingPropertiesHUAWEI::write(memory, address, (VkPhysicalDeviceSubpassShadingPropertiesHUAWEI*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineRasterizationLineStateCreateInfoEXT::write(memory, address, (VkPipelineRasterizationLineStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
+            MarshalVkPhysicalDeviceFeatures2::write(memory, address, (VkPhysicalDeviceFeatures2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_FD_INFO_KHR: {
+            MarshalVkImportSemaphoreFdInfoKHR::write(memory, address, (VkImportSemaphoreFdInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV: {
+            MarshalVkAccelerationStructureInfoNV::write(memory, address, (VkAccelerationStructureInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_2_AMD: {
+            MarshalVkPhysicalDeviceShaderCoreProperties2AMD::write(memory, address, (VkPhysicalDeviceShaderCoreProperties2AMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_COUNTER_CREATE_INFO_EXT: {
+            MarshalVkSwapchainCounterCreateInfoEXT::write(memory, address, (VkSwapchainCounterCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM: {
+            MarshalVkRenderPassTransformBeginInfoQCOM::write(memory, address, (VkRenderPassTransformBeginInfoQCOM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VALIDATION_FLAGS_EXT: {
+            MarshalVkValidationFlagsEXT::write(memory, address, (VkValidationFlagsEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR: {
+            MarshalVkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR::write(memory, address, (VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR: {
+            MarshalVkPipelineInfoKHR::write(memory, address, (VkPipelineInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR: {
+            MarshalVkSwapchainCreateInfoKHR::write(memory, address, (VkSwapchainCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_HOST_POINTER_PROPERTIES_EXT: {
+            MarshalVkMemoryHostPointerPropertiesEXT::write(memory, address, (VkMemoryHostPointerPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceMultiDrawFeaturesEXT::write(memory, address, (VkPhysicalDeviceMultiDrawFeaturesEXT*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES: {
             MarshalVkPhysicalDeviceHostQueryResetFeatures::write(memory, address, (VkPhysicalDeviceHostQueryResetFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT: {
+            MarshalVkImageDrmFormatModifierExplicitCreateInfoEXT::write(memory, address, (VkImageDrmFormatModifierExplicitCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceInlineUniformBlockPropertiesEXT::write(memory, address, (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2: {
+            MarshalVkImageMemoryRequirementsInfo2::write(memory, address, (VkImageMemoryRequirementsInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
+            MarshalVkPhysicalDeviceProtectedMemoryFeatures::write(memory, address, (VkPhysicalDeviceProtectedMemoryFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTERS_FEATURES: {
+            MarshalVkPhysicalDeviceVariablePointersFeatures::write(memory, address, (VkPhysicalDeviceVariablePointersFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO: {
+            MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo::write(memory, address, (VkDescriptorSetLayoutBindingFlagsCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER: {
+            MarshalVkImageMemoryBarrier::write(memory, address, (VkImageMemoryBarrier*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
+            MarshalVkPhysicalDeviceVulkan11Features::write(memory, address, (VkPhysicalDeviceVulkan11Features*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_NV: {
+            MarshalVkWriteDescriptorSetAccelerationStructureNV::write(memory, address, (VkWriteDescriptorSetAccelerationStructureNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceFragmentDensityMapPropertiesEXT::write(memory, address, (VkPhysicalDeviceFragmentDensityMapPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2_KHR: {
+            MarshalVkResolveImageInfo2KHR::write(memory, address, (VkResolveImageInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO: {
+            MarshalVkMemoryAllocateInfo::write(memory, address, (VkMemoryAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+            MarshalVkPhysicalDeviceTimelineSemaphoreProperties::write(memory, address, (VkPhysicalDeviceTimelineSemaphoreProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2_KHR: {
+            MarshalVkCopyImageInfo2KHR::write(memory, address, (VkCopyImageInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_COMMAND_BUFFER_BEGIN_INFO: {
+            MarshalVkDeviceGroupCommandBufferBeginInfo::write(memory, address, (VkDeviceGroupCommandBufferBeginInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_OPAQUE_CAPTURE_ADDRESS_CREATE_INFO: {
+            MarshalVkBufferOpaqueCaptureAddressCreateInfo::write(memory, address, (VkBufferOpaqueCaptureAddressCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO: {
+            MarshalVkBufferDeviceAddressInfo::write(memory, address, (VkBufferDeviceAddressInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+            MarshalVkPhysicalDeviceImagelessFramebufferFeatures::write(memory, address, (VkPhysicalDeviceImagelessFramebufferFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceFragmentDensityMap2PropertiesEXT::write(memory, address, (VkPhysicalDeviceFragmentDensityMap2PropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_BUFFER_CREATE_INFO_NV: {
+            MarshalVkDedicatedAllocationBufferCreateInfoNV::write(memory, address, (VkDedicatedAllocationBufferCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR: {
+            MarshalVkDependencyInfoKHR::write(memory, address, (VkDependencyInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO: {
+            MarshalVkCommandBufferInheritanceInfo::write(memory, address, (VkCommandBufferInheritanceInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceVertexAttributeDivisorPropertiesEXT::write(memory, address, (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+            MarshalVkPhysicalDeviceSamplerYcbcrConversionFeatures::write(memory, address, (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR: {
+            MarshalVkAccelerationStructureGeometryTrianglesDataKHR::write(memory, address, (VkAccelerationStructureGeometryTrianglesDataKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+            MarshalVkPhysicalDeviceMultiviewFeatures::write(memory, address, (VkPhysicalDeviceMultiviewFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO: {
+            MarshalVkPipelineInputAssemblyStateCreateInfo::write(memory, address, (VkPipelineInputAssemblyStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CORE_PROPERTIES_AMD: {
+            MarshalVkPhysicalDeviceShaderCorePropertiesAMD::write(memory, address, (VkPhysicalDeviceShaderCorePropertiesAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2: {
+            MarshalVkAttachmentReference2::write(memory, address, (VkAttachmentReference2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR: {
+            MarshalVkMemoryGetFdInfoKHR::write(memory, address, (VkMemoryGetFdInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO: {
+            MarshalVkBindSparseInfo::write(memory, address, (VkBindSparseInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV::write(memory, address, (VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR: {
+            MarshalVkSurfaceFormat2KHR::write(memory, address, (VkSurfaceFormat2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO: {
+            MarshalVkMemoryAllocateFlagsInfo::write(memory, address, (VkMemoryAllocateFlagsInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR: {
+            MarshalVkDisplayModeCreateInfoKHR::write(memory, address, (VkDisplayModeCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_NV: {
+            MarshalVkAccelerationStructureCreateInfoNV::write(memory, address, (VkAccelerationStructureCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT: {
+            MarshalVkDebugMarkerObjectNameInfoEXT::write(memory, address, (VkDebugMarkerObjectNameInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR: {
+            MarshalVkSemaphoreGetFdInfoKHR::write(memory, address, (VkSemaphoreGetFdInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_VERSION_INFO_KHR: {
+            MarshalVkAccelerationStructureVersionInfoKHR::write(memory, address, (VkAccelerationStructureVersionInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_CONFIGURATION_ACQUIRE_INFO_INTEL: {
+            MarshalVkPerformanceConfigurationAcquireInfoINTEL::write(memory, address, (VkPerformanceConfigurationAcquireInfoINTEL*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT::write(memory, address, (VkPhysicalDeviceTransformFeedbackFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_CREATE_INFO_NV: {
+            MarshalVkIndirectCommandsLayoutCreateInfoNV::write(memory, address, (VkIndirectCommandsLayoutCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR: {
+            MarshalVkPhysicalDeviceFragmentShadingRatePropertiesKHR::write(memory, address, (VkPhysicalDeviceFragmentShadingRatePropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMPORT_FENCE_FD_INFO_KHR: {
+            MarshalVkImportFenceFdInfoKHR::write(memory, address, (VkImportFenceFdInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_TO_COLOR_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineCoverageToColorStateCreateInfoNV::write(memory, address, (VkPipelineCoverageToColorStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_ADVANCED_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineColorBlendAdvancedStateCreateInfoEXT::write(memory, address, (VkPipelineColorBlendAdvancedStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBPASS_SHADING_FEATURES_HUAWEI: {
+            MarshalVkPhysicalDeviceSubpassShadingFeaturesHUAWEI::write(memory, address, (VkPhysicalDeviceSubpassShadingFeaturesHUAWEI*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceExtendedDynamicState2FeaturesEXT::write(memory, address, (VkPhysicalDeviceExtendedDynamicState2FeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES: {
+            MarshalVkPhysicalDevice8BitStorageFeatures::write(memory, address, (VkPhysicalDevice8BitStorageFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
+            MarshalVkPhysicalDeviceDriverProperties::write(memory, address, (VkPhysicalDeviceDriverProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_IMAGE_CREATE_INFO_NV: {
+            MarshalVkDedicatedAllocationImageCreateInfoNV::write(memory, address, (VkDedicatedAllocationImageCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::write(memory, address, (VkPipelineDiscardRectangleStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_AABB_NV: {
+            MarshalVkGeometryAABBNV::write(memory, address, (VkGeometryAABBNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_EVENT_INFO_EXT: {
+            MarshalVkDisplayEventInfoEXT::write(memory, address, (VkDisplayEventInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_NV: {
+            MarshalVkQueueFamilyCheckpointPropertiesNV::write(memory, address, (VkQueueFamilyCheckpointPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_QUERY_CREATE_INFO_INTEL: {
+            MarshalVkQueryPoolPerformanceQueryCreateInfoINTEL::write(memory, address, (VkQueryPoolPerformanceQueryCreateInfoINTEL*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO: {
+            MarshalVkBindImageMemoryInfo::write(memory, address, (VkBindImageMemoryInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_STENCIL_LAYOUT: {
+            MarshalVkAttachmentReferenceStencilLayout::write(memory, address, (VkAttachmentReferenceStencilLayout*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_VALIDATION_CACHE_CREATE_INFO_EXT: {
+            MarshalVkShaderModuleValidationCacheCreateInfoEXT::write(memory, address, (VkShaderModuleValidationCacheCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV: {
+            MarshalVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV::write(memory, address, (VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX: {
+            MarshalVkImageViewHandleInfoNVX::write(memory, address, (VkImageViewHandleInfoNVX*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_TERMINATE_INVOCATION_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceShaderTerminateInvocationFeaturesKHR::write(memory, address, (VkPhysicalDeviceShaderTerminateInvocationFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR::write(memory, address, (VkPhysicalDeviceRayTracingPipelineFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceDepthClipEnableFeaturesEXT::write(memory, address, (VkPhysicalDeviceDepthClipEnableFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT: {
+            MarshalVkSamplerCustomBorderColorCreateInfoEXT::write(memory, address, (VkSamplerCustomBorderColorCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO: {
+            MarshalVkPipelineDynamicStateCreateInfo::write(memory, address, (VkPipelineDynamicStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+            MarshalVkPhysicalDeviceTimelineSemaphoreFeatures::write(memory, address, (VkPhysicalDeviceTimelineSemaphoreFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_CU_FUNCTION_CREATE_INFO_NVX: {
+            MarshalVkCuFunctionCreateInfoNVX::write(memory, address, (VkCuFunctionCreateInfoNVX*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+            MarshalVkPhysicalDeviceDepthStencilResolveProperties::write(memory, address, (VkPhysicalDeviceDepthStencilResolveProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SWIZZLE_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineViewportSwizzleStateCreateInfoNV::write(memory, address, (VkPipelineViewportSwizzleStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SPARSE_IMAGE_FORMAT_INFO_2: {
+            MarshalVkPhysicalDeviceSparseImageFormatInfo2::write(memory, address, (VkPhysicalDeviceSparseImageFormatInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FENCE_CREATE_INFO: {
+            MarshalVkFenceCreateInfo::write(memory, address, (VkFenceCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEVICE_GENERATED_COMMANDS_FEATURES_NV: {
+            MarshalVkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV::write(memory, address, (VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_SWAPCHAIN_CREATE_INFO_KHR: {
+            MarshalVkDeviceGroupSwapchainCreateInfoKHR::write(memory, address, (VkDeviceGroupSwapchainCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT: {
+            MarshalVkDebugUtilsLabelEXT::write(memory, address, (VkDebugUtilsLabelEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceInlineUniformBlockFeaturesEXT::write(memory, address, (VkPhysicalDeviceInlineUniformBlockFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT: {
+            MarshalVkPhysicalDeviceImageDrmFormatModifierInfoEXT::write(memory, address, (VkPhysicalDeviceImageDrmFormatModifierInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MULTISAMPLE_PROPERTIES_EXT: {
+            MarshalVkMultisamplePropertiesEXT::write(memory, address, (VkMultisamplePropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_CLOCK_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceShaderClockFeaturesKHR::write(memory, address, (VkPhysicalDeviceShaderClockFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_PROPERTIES_EXT: {
+            MarshalVkImageDrmFormatModifierPropertiesEXT::write(memory, address, (VkImageDrmFormatModifierPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES: {
+            MarshalVkPhysicalDeviceVulkanMemoryModelFeatures::write(memory, address, (VkPhysicalDeviceVulkanMemoryModelFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EVENT_CREATE_INFO: {
+            MarshalVkEventCreateInfo::write(memory, address, (VkEventCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBMIT_INFO_2_KHR: {
+            MarshalVkSubmitInfo2KHR::write(memory, address, (VkSubmitInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_UNIFORM_CONTROL_FLOW_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR::write(memory, address, (VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COHERENT_MEMORY_FEATURES_AMD: {
+            MarshalVkPhysicalDeviceCoherentMemoryFeaturesAMD::write(memory, address, (VkPhysicalDeviceCoherentMemoryFeaturesAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceFragmentShadingRateFeaturesKHR::write(memory, address, (VkPhysicalDeviceFragmentShadingRateFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR: {
+            MarshalVkImageBlit2KHR::write(memory, address, (VkImageBlit2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO: {
+            MarshalVkSamplerCreateInfo::write(memory, address, (VkSamplerCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT: {
+            MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT::write(memory, address, (VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_DEVICE_GROUP_INFO: {
+            MarshalVkBindImageMemoryDeviceGroupInfo::write(memory, address, (VkBindImageMemoryDeviceGroupInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+            MarshalVkPhysicalDevicePrivateDataFeaturesEXT::write(memory, address, (VkPhysicalDevicePrivateDataFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceShaderSMBuiltinsPropertiesNV::write(memory, address, (VkPhysicalDeviceShaderSMBuiltinsPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceMemoryPriorityFeaturesEXT::write(memory, address, (VkPhysicalDeviceMemoryPriorityFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SPARSE_IMAGE_MEMORY_REQUIREMENTS_2: {
+            MarshalVkSparseImageMemoryRequirements2::write(memory, address, (VkSparseImageMemoryRequirements2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_INFO: {
+            MarshalVkBindBufferMemoryInfo::write(memory, address, (VkBindBufferMemoryInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_SHADER_GROUPS_CREATE_INFO_NV: {
+            MarshalVkGraphicsPipelineShaderGroupsCreateInfoNV::write(memory, address, (VkGraphicsPipelineShaderGroupsCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_FENCE_INFO: {
+            MarshalVkPhysicalDeviceExternalFenceInfo::write(memory, address, (VkPhysicalDeviceExternalFenceInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT: {
+            MarshalVkConditionalRenderingBeginInfoEXT::write(memory, address, (VkConditionalRenderingBeginInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET: {
+            MarshalVkCopyDescriptorSet::write(memory, address, (VkCopyDescriptorSet*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OPAQUE_CAPTURE_ADDRESS_INFO: {
+            MarshalVkDeviceMemoryOpaqueCaptureAddressInfo::write(memory, address, (VkDeviceMemoryOpaqueCaptureAddressInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
+            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::write(memory, address, (VkPhysicalDeviceCornerSampledImageFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO: {
+            MarshalVkDescriptorPoolCreateInfo::write(memory, address, (VkDescriptorPoolCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDER_PASS_TRANSFORM_INFO_QCOM: {
+            MarshalVkCommandBufferInheritanceRenderPassTransformInfoQCOM::write(memory, address, (VkCommandBufferInheritanceRenderPassTransformInfoQCOM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT::write(memory, address, (VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceFragmentDensityMapFeaturesEXT::write(memory, address, (VkPhysicalDeviceFragmentDensityMapFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMPORT_MEMORY_FD_INFO_KHR: {
+            MarshalVkImportMemoryFdInfoKHR::write(memory, address, (VkImportMemoryFdInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR: {
+            MarshalVkAccelerationStructureBuildSizesInfoKHR::write(memory, address, (VkAccelerationStructureBuildSizesInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRIVATE_DATA_SLOT_CREATE_INFO_EXT: {
+            MarshalVkPrivateDataSlotCreateInfoEXT::write(memory, address, (VkPrivateDataSlotCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2: {
+            MarshalVkMemoryRequirements2::write(memory, address, (VkMemoryRequirements2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineRepresentativeFragmentTestStateCreateInfoNV::write(memory, address, (VkPipelineRepresentativeFragmentTestStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_SAMPLE_LOCATIONS_BEGIN_INFO_EXT: {
+            MarshalVkRenderPassSampleLocationsBeginInfoEXT::write(memory, address, (VkRenderPassSampleLocationsBeginInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceLineRasterizationFeaturesEXT::write(memory, address, (VkPhysicalDeviceLineRasterizationFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceCustomBorderColorPropertiesEXT::write(memory, address, (VkPhysicalDeviceCustomBorderColorPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+            MarshalVkPhysicalDevicePointClippingProperties::write(memory, address, (VkPhysicalDevicePointClippingProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO: {
+            MarshalVkDeviceQueueCreateInfo::write(memory, address, (VkDeviceQueueCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_INT64_FEATURES: {
+            MarshalVkPhysicalDeviceShaderAtomicInt64Features::write(memory, address, (VkPhysicalDeviceShaderAtomicInt64Features*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO: {
+            MarshalVkPipelineCacheCreateInfo::write(memory, address, (VkPipelineCacheCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO: {
+            MarshalVkTimelineSemaphoreSubmitInfo::write(memory, address, (VkTimelineSemaphoreSubmitInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_HDR_METADATA_EXT: {
+            MarshalVkHdrMetadataEXT::write(memory, address, (VkHdrMetadataEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES: {
+            MarshalVkPhysicalDeviceDescriptorIndexingProperties::write(memory, address, (VkPhysicalDeviceDescriptorIndexingProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO: {
+            MarshalVkRenderPassMultiviewCreateInfo::write(memory, address, (VkRenderPassMultiviewCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_INFO_KHR: {
+            MarshalVkCopyAccelerationStructureInfoKHR::write(memory, address, (VkCopyAccelerationStructureInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_WORKGROUP_MEMORY_EXPLICIT_LAYOUT_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR::write(memory, address, (VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT: {
+            MarshalVkPipelineRasterizationStateStreamCreateInfoEXT::write(memory, address, (VkPipelineRasterizationStateStreamCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_SAMPLE_LOCATIONS_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineSampleLocationsStateCreateInfoEXT::write(memory, address, (VkPipelineSampleLocationsStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+            MarshalVkPhysicalDeviceProtectedMemoryProperties::write(memory, address, (VkPhysicalDeviceProtectedMemoryProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceMeshShaderPropertiesNV::write(memory, address, (VkPhysicalDeviceMeshShaderPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO: {
+            MarshalVkDescriptorSetVariableDescriptorCountAllocateInfo::write(memory, address, (VkDescriptorSetVariableDescriptorCountAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineRasterizationConservativeStateCreateInfoEXT::write(memory, address, (VkPipelineRasterizationConservativeStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_DENSITY_MAP_2_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceFragmentDensityMap2FeaturesEXT::write(memory, address, (VkPhysicalDeviceFragmentDensityMap2FeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT: {
+            MarshalVkCalibratedTimestampInfoEXT::write(memory, address, (VkCalibratedTimestampInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT: {
+            MarshalVkDebugUtilsObjectNameInfoEXT::write(memory, address, (VkDebugUtilsObjectNameInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_MEMORY_HOST_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceExternalMemoryHostPropertiesEXT::write(memory, address, (VkPhysicalDeviceExternalMemoryHostPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACQUIRE_PROFILING_LOCK_INFO_KHR: {
+            MarshalVkAcquireProfilingLockInfoKHR::write(memory, address, (VkAcquireProfilingLockInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT: {
+            MarshalVkFilterCubicImageViewImageFormatPropertiesEXT::write(memory, address, (VkFilterCubicImageViewImageFormatPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TOOL_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceToolPropertiesEXT::write(memory, address, (VkPhysicalDeviceToolPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SWAPCHAIN_DISPLAY_NATIVE_HDR_CREATE_INFO_AMD: {
+            MarshalVkSwapchainDisplayNativeHdrCreateInfoAMD::write(memory, address, (VkSwapchainDisplayNativeHdrCreateInfoAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR: {
+            MarshalVkImageResolve2KHR::write(memory, address, (VkImageResolve2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_OVERRIDE_INFO_INTEL: {
+            MarshalVkPerformanceOverrideInfoINTEL::write(memory, address, (VkPerformanceOverrideInfoINTEL*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR: {
+            MarshalVkPhysicalDeviceAccelerationStructurePropertiesKHR::write(memory, address, (VkPhysicalDeviceAccelerationStructurePropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SPARSE_IMAGE_FORMAT_PROPERTIES_2: {
+            MarshalVkSparseImageFormatProperties2::write(memory, address, (VkSparseImageFormatProperties2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SHARED_PRESENT_SURFACE_CAPABILITIES_KHR: {
+            MarshalVkSharedPresentSurfaceCapabilitiesKHR::write(memory, address, (VkSharedPresentSurfaceCapabilitiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_2_PLANE_444_FORMATS_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT::write(memory, address, (VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_EXCLUSIVE_SCISSOR_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::write(memory, address, (VkPipelineViewportExclusiveScissorStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_DIAGNOSTICS_CONFIG_CREATE_INFO_NV: {
+            MarshalVkDeviceDiagnosticsConfigCreateInfoNV::write(memory, address, (VkDeviceDiagnosticsConfigCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV::write(memory, address, (VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR: {
+            MarshalVkAccelerationStructureGeometryKHR::write(memory, address, (VkAccelerationStructureGeometryKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceCustomBorderColorFeaturesEXT::write(memory, address, (VkPhysicalDeviceCustomBorderColorFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD: {
+            MarshalVkPipelineRasterizationStateRasterizationOrderAMD::write(memory, address, (VkPipelineRasterizationStateRasterizationOrderAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INHERITED_VIEWPORT_SCISSOR_FEATURES_NV: {
+            MarshalVkPhysicalDeviceInheritedViewportScissorFeaturesNV::write(memory, address, (VkPhysicalDeviceInheritedViewportScissorFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_APPLICATION_INFO: {
+            MarshalVkApplicationInfo::write(memory, address, (VkApplicationInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_PROTECTED_CAPABILITIES_KHR: {
+            MarshalVkSurfaceProtectedCapabilitiesKHR::write(memory, address, (VkSurfaceProtectedCapabilitiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO: {
+            MarshalVkPipelineRasterizationStateCreateInfo::write(memory, address, (VkPipelineRasterizationStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
+            MarshalVkPhysicalDeviceShaderDrawParametersFeatures::write(memory, address, (VkPhysicalDeviceShaderDrawParametersFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COVERAGE_REDUCTION_MODE_FEATURES_NV: {
+            MarshalVkPhysicalDeviceCoverageReductionModeFeaturesNV::write(memory, address, (VkPhysicalDeviceCoverageReductionModeFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceProvokingVertexFeaturesEXT::write(memory, address, (VkPhysicalDeviceProvokingVertexFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+            MarshalVkPhysicalDeviceSubgroupProperties::write(memory, address, (VkPhysicalDeviceSubgroupProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceYcbcrImageArraysFeaturesEXT::write(memory, address, (VkPhysicalDeviceYcbcrImageArraysFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_MEMORY_REQUIREMENTS_INFO_NV: {
+            MarshalVkGeneratedCommandsMemoryRequirementsInfoNV::write(memory, address, (VkGeneratedCommandsMemoryRequirementsInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT::write(memory, address, (VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2: {
+            MarshalVkRenderPassCreateInfo2::write(memory, address, (VkRenderPassCreateInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO: {
+            MarshalVkPhysicalDeviceExternalSemaphoreInfo::write(memory, address, (VkPhysicalDeviceExternalSemaphoreInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR: {
+            MarshalVkAccelerationStructureGeometryInstancesDataKHR::write(memory, address, (VkAccelerationStructureGeometryInstancesDataKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_MOTION_BLUR_FEATURES_NV: {
+            MarshalVkPhysicalDeviceRayTracingMotionBlurFeaturesNV::write(memory, address, (VkPhysicalDeviceRayTracingMotionBlurFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceTexelBufferAlignmentPropertiesEXT::write(memory, address, (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+            MarshalVkMemoryDedicatedRequirements::write(memory, address, (VkMemoryDedicatedRequirements*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceProvokingVertexPropertiesEXT::write(memory, address, (VkPhysicalDeviceProvokingVertexPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DISCARD_RECTANGLE_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceDiscardRectanglePropertiesEXT::write(memory, address, (VkPhysicalDeviceDiscardRectanglePropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_REDUCTION_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineCoverageReductionStateCreateInfoNV::write(memory, address, (VkPipelineCoverageReductionStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_FD_PROPERTIES_KHR: {
+            MarshalVkMemoryFdPropertiesKHR::write(memory, address, (VkMemoryFdPropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO: {
+            MarshalVkSamplerYcbcrConversionCreateInfo::write(memory, address, (VkSamplerYcbcrConversionCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT::write(memory, address, (VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR: {
+            MarshalVkBufferMemoryBarrier2KHR::write(memory, address, (VkBufferMemoryBarrier2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_CAPABILITIES_2_KHR: {
+            MarshalVkDisplayPlaneCapabilities2KHR::write(memory, address, (VkDisplayPlaneCapabilities2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_VIEWPORT_SCISSOR_INFO_NV: {
+            MarshalVkCommandBufferInheritanceViewportScissorInfoNV::write(memory, address, (VkCommandBufferInheritanceViewportScissorInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceRayTracingPropertiesNV::write(memory, address, (VkPhysicalDeviceRayTracingPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PER_VIEW_ATTRIBUTES_PROPERTIES_NVX: {
+            MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX::write(memory, address, (VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_ENUMS_FEATURES_NV: {
+            MarshalVkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV::write(memory, address, (VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO: {
+            MarshalVkInstanceCreateInfo::write(memory, address, (VkInstanceCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceLineRasterizationPropertiesEXT::write(memory, address, (VkPhysicalDeviceLineRasterizationPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_PROPERTIES_2_KHR: {
+            MarshalVkDisplayPlaneProperties2KHR::write(memory, address, (VkDisplayPlaneProperties2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_SUPPORT: {
+            MarshalVkDescriptorSetLayoutSupport::write(memory, address, (VkDescriptorSetLayoutSupport*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceConservativeRasterizationPropertiesEXT::write(memory, address, (VkPhysicalDeviceConservativeRasterizationPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO: {
+            MarshalVkSemaphoreSignalInfo::write(memory, address, (VkSemaphoreSignalInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO: {
+            MarshalVkBufferViewCreateInfo::write(memory, address, (VkBufferViewCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_QUERY_SUBMIT_INFO_KHR: {
+            MarshalVkPerformanceQuerySubmitInfoKHR::write(memory, address, (VkPerformanceQuerySubmitInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2: {
+            MarshalVkBufferMemoryRequirementsInfo2::write(memory, address, (VkBufferMemoryRequirementsInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_NV: {
+            MarshalVkExportMemoryAllocateInfoNV::write(memory, address, (VkExportMemoryAllocateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT: {
+            MarshalVkMemoryPriorityAllocateInfoEXT::write(memory, address, (VkMemoryPriorityAllocateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2: {
+            MarshalVkAttachmentDescription2::write(memory, address, (VkAttachmentDescription2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_BUFFER_MEMORY_DEVICE_GROUP_INFO: {
+            MarshalVkBindBufferMemoryDeviceGroupInfo::write(memory, address, (VkBindBufferMemoryDeviceGroupInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO: {
+            MarshalVkPipelineVertexInputStateCreateInfo::write(memory, address, (VkPipelineVertexInputStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
+            MarshalVkExportMemoryAllocateInfo::write(memory, address, (VkExportMemoryAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_NV: {
+            MarshalVkAccelerationStructureMemoryRequirementsInfoNV::write(memory, address, (VkAccelerationStructureMemoryRequirementsInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR: {
+            MarshalVkAccelerationStructureDeviceAddressInfoKHR::write(memory, address, (VkAccelerationStructureDeviceAddressInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER: {
+            MarshalVkMemoryBarrier::write(memory, address, (VkMemoryBarrier*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO: {
+            MarshalVkSemaphoreWaitInfo::write(memory, address, (VkSemaphoreWaitInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceColorWriteEnableFeaturesEXT::write(memory, address, (VkPhysicalDeviceColorWriteEnableFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceMemoryBudgetPropertiesEXT::write(memory, address, (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT: {
+            MarshalVkPhysicalDevice4444FormatsFeaturesEXT::write(memory, address, (VkPhysicalDevice4444FormatsFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES: {
+            MarshalVkExternalFenceProperties::write(memory, address, (VkExternalFenceProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineRasterizationProvokingVertexStateCreateInfoEXT::write(memory, address, (VkPipelineRasterizationProvokingVertexStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceTransformFeedbackPropertiesEXT::write(memory, address, (VkPhysicalDeviceTransformFeedbackPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+            MarshalVkPhysicalDeviceIDProperties::write(memory, address, (VkPhysicalDeviceIDProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_STREAM_MARKER_INFO_INTEL: {
+            MarshalVkPerformanceStreamMarkerInfoINTEL::write(memory, address, (VkPerformanceStreamMarkerInfoINTEL*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV: {
+            MarshalVkPhysicalDeviceCooperativeMatrixPropertiesNV::write(memory, address, (VkPhysicalDeviceCooperativeMatrixPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO: {
+            MarshalVkSamplerReductionModeCreateInfo::write(memory, address, (VkSamplerReductionModeCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GENERATED_COMMANDS_INFO_NV: {
+            MarshalVkGeneratedCommandsInfoNV::write(memory, address, (VkGeneratedCommandsInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR: {
+            MarshalVkPipelineFragmentShadingRateStateCreateInfoKHR::write(memory, address, (VkPipelineFragmentShadingRateStateCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INTERNAL_REPRESENTATION_KHR: {
+            MarshalVkPipelineExecutableInternalRepresentationKHR::write(memory, address, (VkPipelineExecutableInternalRepresentationKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_NV: {
+            MarshalVkBindAccelerationStructureMemoryInfoNV::write(memory, address, (VkBindAccelerationStructureMemoryInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO: {
+            MarshalVkExportSemaphoreCreateInfo::write(memory, address, (VkExportSemaphoreCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_ACCELERATION_STRUCTURE_TO_MEMORY_INFO_KHR: {
+            MarshalVkCopyAccelerationStructureToMemoryInfoKHR::write(memory, address, (VkCopyAccelerationStructureToMemoryInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES: {
+            MarshalVkExternalImageFormatProperties::write(memory, address, (VkExternalImageFormatProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2: {
+            MarshalVkFormatProperties2::write(memory, address, (VkFormatProperties2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES: {
+            MarshalVkPhysicalDeviceUniformBufferStandardLayoutFeatures::write(memory, address, (VkPhysicalDeviceUniformBufferStandardLayoutFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_PROPERTIES_KHR: {
+            MarshalVkPhysicalDevicePerformanceQueryPropertiesKHR::write(memory, address, (VkPhysicalDevicePerformanceQueryPropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT: {
+            MarshalVkImageDrmFormatModifierListCreateInfoEXT::write(memory, address, (VkImageDrmFormatModifierListCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VERTEX_INPUT_BINDING_DESCRIPTION_2_EXT: {
+            MarshalVkVertexInputBindingDescription2EXT::write(memory, address, (VkVertexInputBindingDescription2EXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_EXT: {
+            MarshalVkSurfaceCapabilities2EXT::write(memory, address, (VkSurfaceCapabilities2EXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO: {
+            MarshalVkPipelineTessellationDomainOriginStateCreateInfo::write(memory, address, (VkPipelineTessellationDomainOriginStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO: {
+            MarshalVkSamplerYcbcrConversionInfo::write(memory, address, (VkSamplerYcbcrConversionInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MOTION_INFO_NV: {
+            MarshalVkAccelerationStructureMotionInfoNV::write(memory, address, (VkAccelerationStructureMotionInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_COMMAND_TRANSFORM_INFO_QCOM: {
+            MarshalVkCopyCommandTransformInfoQCOM::write(memory, address, (VkCopyCommandTransformInfoQCOM*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
+            MarshalVkExternalMemoryBufferCreateInfo::write(memory, address, (VkExternalMemoryBufferCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2: {
+            MarshalVkPhysicalDeviceProperties2::write(memory, address, (VkPhysicalDeviceProperties2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GRAPHICS_SHADER_GROUP_CREATE_INFO_NV: {
+            MarshalVkGraphicsShaderGroupCreateInfoNV::write(memory, address, (VkGraphicsShaderGroupCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES: {
+            MarshalVkPhysicalDeviceVulkan11Properties::write(memory, address, (VkPhysicalDeviceVulkan11Properties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES: {
+            MarshalVkPhysicalDeviceBufferDeviceAddressFeatures::write(memory, address, (VkPhysicalDeviceBufferDeviceAddressFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR: {
+            MarshalVkPhysicalDeviceRayTracingPipelinePropertiesKHR::write(memory, address, (VkPhysicalDeviceRayTracingPipelinePropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2: {
+            MarshalVkPhysicalDeviceImageFormatInfo2::write(memory, address, (VkPhysicalDeviceImageFormatInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_REGIONS_KHR: {
+            MarshalVkPresentRegionsKHR::write(memory, address, (VkPresentRegionsKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_BUFFER_INFO: {
+            MarshalVkPhysicalDeviceExternalBufferInfo::write(memory, address, (VkPhysicalDeviceExternalBufferInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRM_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceDrmPropertiesEXT::write(memory, address, (VkPhysicalDeviceDrmPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceSubgroupSizeControlPropertiesEXT::write(memory, address, (VkPhysicalDeviceSubgroupSizeControlPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_NV: {
+            MarshalVkPhysicalDeviceMeshShaderFeaturesNV::write(memory, address, (VkPhysicalDeviceMeshShaderFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2: {
+            MarshalVkPhysicalDeviceMemoryProperties2::write(memory, address, (VkPhysicalDeviceMemoryProperties2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2: {
+            MarshalVkDeviceQueueInfo2::write(memory, address, (VkDeviceQueueInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: {
+            MarshalVkPhysicalDeviceExternalImageFormatInfo::write(memory, address, (VkPhysicalDeviceExternalImageFormatInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_RENDER_PASS_BEGIN_INFO: {
+            MarshalVkDeviceGroupRenderPassBeginInfo::write(memory, address, (VkDeviceGroupRenderPassBeginInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES: {
+            MarshalVkExternalSemaphoreProperties::write(memory, address, (VkExternalSemaphoreProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_ATOMIC_FLOAT_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT::write(memory, address, (VkPhysicalDeviceShaderAtomicFloatFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT: {
+            MarshalVkDeviceQueueGlobalPriorityCreateInfoEXT::write(memory, address, (VkDeviceQueueGlobalPriorityCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV: {
+            MarshalVkCooperativeMatrixPropertiesNV::write(memory, address, (VkCooperativeMatrixPropertiesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2_KHR: {
+            MarshalVkCopyImageToBufferInfo2KHR::write(memory, address, (VkCopyImageToBufferInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_INDIRECT_COMMANDS_LAYOUT_TOKEN_NV: {
+            MarshalVkIndirectCommandsLayoutTokenNV::write(memory, address, (VkIndirectCommandsLayoutTokenNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_NV: {
+            MarshalVkRayTracingShaderGroupCreateInfoNV::write(memory, address, (VkRayTracingShaderGroupCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHR: {
+            MarshalVkDeviceGroupPresentCapabilitiesKHR::write(memory, address, (VkDeviceGroupPresentCapabilitiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO: {
+            MarshalVkPipelineColorBlendStateCreateInfo::write(memory, address, (VkPipelineColorBlendStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT: {
+            MarshalVkValidationFeaturesEXT::write(memory, address, (VkValidationFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_KHR: {
+            MarshalVkPerformanceCounterKHR::write(memory, address, (VkPerformanceCounterKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO: {
+            MarshalVkRenderPassBeginInfo::write(memory, address, (VkRenderPassBeginInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
+            MarshalVkPhysicalDeviceMaintenance3Properties::write(memory, address, (VkPhysicalDeviceMaintenance3Properties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR: {
+            MarshalVkImageSwapchainCreateInfoKHR::write(memory, address, (VkImageSwapchainCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceRobustness2FeaturesEXT::write(memory, address, (VkPhysicalDeviceRobustness2FeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_MODE_PROPERTIES_2_KHR: {
+            MarshalVkDisplayModeProperties2KHR::write(memory, address, (VkDisplayModeProperties2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES: {
+            MarshalVkPhysicalDeviceVulkan12Features::write(memory, address, (VkPhysicalDeviceVulkan12Features*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO: {
+            MarshalVkImageViewCreateInfo::write(memory, address, (VkImageViewCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_MARKER_INFO_EXT: {
+            MarshalVkDebugMarkerMarkerInfoEXT::write(memory, address, (VkDebugMarkerMarkerInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_NV: {
+            MarshalVkGeometryNV::write(memory, address, (VkGeometryNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_EVENT_INFO_EXT: {
+            MarshalVkDeviceEventInfoEXT::write(memory, address, (VkDeviceEventInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR: {
+            MarshalVkAcquireNextImageInfoKHR::write(memory, address, (VkAcquireNextImageInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
+            MarshalVkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL::write(memory, address, (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR: {
+            MarshalVkPipelineExecutableInfoKHR::write(memory, address, (VkPipelineExecutableInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR: {
+            MarshalVkDisplaySurfaceCreateInfoKHR::write(memory, address, (VkDisplaySurfaceCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_CHECKPOINT_PROPERTIES_2_NV: {
+            MarshalVkQueueFamilyCheckpointProperties2NV::write(memory, address, (VkQueueFamilyCheckpointProperties2NV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceRobustness2PropertiesEXT::write(memory, address, (VkPhysicalDeviceRobustness2PropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO: {
+            MarshalVkSemaphoreCreateInfo::write(memory, address, (VkSemaphoreCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_TAG_INFO_EXT: {
+            MarshalVkDebugMarkerObjectTagInfoEXT::write(memory, address, (VkDebugMarkerObjectTagInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES: {
+            MarshalVkPhysicalDeviceSeparateDepthStencilLayoutsFeatures::write(memory, address, (VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COLOR_WRITE_CREATE_INFO_EXT: {
+            MarshalVkPipelineColorWriteCreateInfoEXT::write(memory, address, (VkPipelineColorWriteCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO: {
+            MarshalVkPipelineLayoutCreateInfo::write(memory, address, (VkPipelineLayoutCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR: {
+            MarshalVkAccelerationStructureCreateInfoKHR::write(memory, address, (VkAccelerationStructureCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR: {
+            MarshalVkMemoryBarrier2KHR::write(memory, address, (VkMemoryBarrier2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO: {
+            MarshalVkCommandPoolCreateInfo::write(memory, address, (VkCommandPoolCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES: {
+            MarshalVkPhysicalDeviceScalarBlockLayoutFeatures::write(memory, address, (VkPhysicalDeviceScalarBlockLayoutFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO: {
+            MarshalVkDescriptorSetLayoutCreateInfo::write(memory, address, (VkDescriptorSetLayoutCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD: {
+            MarshalVkDeviceMemoryOverallocationCreateInfoAMD::write(memory, address, (VkDeviceMemoryOverallocationCreateInfoAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE: {
+            MarshalVkPresentTimesInfoGOOGLE::write(memory, address, (VkPresentTimesInfoGOOGLE*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_INFO_KHR: {
+            MarshalVkDeviceGroupPresentInfoKHR::write(memory, address, (VkDeviceGroupPresentInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR: {
+            MarshalVkFragmentShadingRateAttachmentInfoKHR::write(memory, address, (VkFragmentShadingRateAttachmentInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO: {
+            MarshalVkPipelineViewportStateCreateInfo::write(memory, address, (VkPipelineViewportStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO: {
+            MarshalVkRenderPassCreateInfo::write(memory, address, (VkRenderPassCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineRasterizationDepthClipStateCreateInfoEXT::write(memory, address, (VkPipelineRasterizationDepthClipStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR: {
+            MarshalVkSurfaceCapabilities2KHR::write(memory, address, (VkSurfaceCapabilities2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO: {
+            MarshalVkCommandBufferAllocateInfo::write(memory, address, (VkCommandBufferAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT: {
+            MarshalVkDebugUtilsMessengerCallbackDataEXT::write(memory, address, (VkDebugUtilsMessengerCallbackDataEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR: {
+            MarshalVkBufferImageCopy2KHR::write(memory, address, (VkBufferImageCopy2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_GROUP_BIND_SPARSE_INFO: {
+            MarshalVkDeviceGroupBindSparseInfo::write(memory, address, (VkDeviceGroupBindSparseInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
+            MarshalVkSamplerYcbcrConversionImageFormatProperties::write(memory, address, (VkSamplerYcbcrConversionImageFormatProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_ROBUSTNESS_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceImageRobustnessFeaturesEXT::write(memory, address, (VkPhysicalDeviceImageRobustnessFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VALIDATION_CACHE_CREATE_INFO_EXT: {
+            MarshalVkValidationCacheCreateInfoEXT::write(memory, address, (VkValidationCacheCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
+            MarshalVkPhysicalDeviceFloatControlsProperties::write(memory, address, (VkPhysicalDeviceFloatControlsProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2: {
+            MarshalVkSubpassDependency2::write(memory, address, (VkSubpassDependency2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_FOOTPRINT_FEATURES_NV: {
+            MarshalVkPhysicalDeviceShaderImageFootprintFeaturesNV::write(memory, address, (VkPhysicalDeviceShaderImageFootprintFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceAccelerationStructureFeaturesKHR::write(memory, address, (VkPhysicalDeviceAccelerationStructureFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO: {
+            MarshalVkSubpassBeginInfo::write(memory, address, (VkSubpassBeginInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO: {
+            MarshalVkGraphicsPipelineCreateInfo::write(memory, address, (VkGraphicsPipelineCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO: {
+            MarshalVkDeviceCreateInfo::write(memory, address, (VkDeviceCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO: {
+            MarshalVkFramebufferCreateInfo::write(memory, address, (VkFramebufferCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEDICATED_ALLOCATION_MEMORY_ALLOCATE_INFO_NV: {
+            MarshalVkDedicatedAllocationMemoryAllocateInfoNV::write(memory, address, (VkDedicatedAllocationMemoryAllocateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_W_SCALING_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineViewportWScalingStateCreateInfoNV::write(memory, address, (VkPipelineViewportWScalingStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_POWER_INFO_EXT: {
+            MarshalVkDisplayPowerInfoEXT::write(memory, address, (VkDisplayPowerInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO: {
+            MarshalVkQueryPoolCreateInfo::write(memory, address, (VkQueryPoolCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2: {
+            MarshalVkImageFormatProperties2::write(memory, address, (VkImageFormatProperties2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_EXPORT_FENCE_CREATE_INFO: {
+            MarshalVkExportFenceCreateInfo::write(memory, address, (VkExportFenceCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT: {
+            MarshalVkDrmFormatModifierPropertiesListEXT::write(memory, address, (VkDrmFormatModifierPropertiesListEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE: {
+            MarshalVkMappedMemoryRange::write(memory, address, (VkMappedMemoryRange*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_COARSE_SAMPLE_ORDER_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineViewportCoarseSampleOrderStateCreateInfoNV::write(memory, address, (VkPipelineViewportCoarseSampleOrderStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceRayQueryFeaturesKHR::write(memory, address, (VkPhysicalDeviceRayQueryFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO_KHR: {
+            MarshalVkCommandBufferSubmitInfoKHR::write(memory, address, (VkCommandBufferSubmitInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceExtendedDynamicStateFeaturesEXT::write(memory, address, (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceSubgroupSizeControlFeaturesEXT::write(memory, address, (VkPhysicalDeviceSubgroupSizeControlFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceBufferDeviceAddressFeaturesEXT::write(memory, address, (VkPhysicalDeviceBufferDeviceAddressFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_ACCELERATION_STRUCTURE_INFO_KHR: {
+            MarshalVkCopyMemoryToAccelerationStructureInfoKHR::write(memory, address, (VkCopyMemoryToAccelerationStructureInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO: {
+            MarshalVkDescriptorSetAllocateInfo::write(memory, address, (VkDescriptorSetAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR: {
+            MarshalVkQueryPoolPerformanceCreateInfoKHR::write(memory, address, (VkQueryPoolPerformanceCreateInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT: {
+            MarshalVkPhysicalDeviceMultiDrawPropertiesEXT::write(memory, address, (VkPhysicalDeviceMultiDrawPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_FRAGMENT_DENSITY_MAP_CREATE_INFO_EXT: {
+            MarshalVkRenderPassFragmentDensityMapCreateInfoEXT::write(memory, address, (VkRenderPassFragmentDensityMapCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PERFORMANCE_QUERY_FEATURES_KHR: {
+            MarshalVkPhysicalDevicePerformanceQueryFeaturesKHR::write(memory, address, (VkPhysicalDevicePerformanceQueryFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ASTC_DECODE_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceASTCDecodeFeaturesEXT::write(memory, address, (VkPhysicalDeviceASTCDecodeFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COMPILER_CONTROL_CREATE_INFO_AMD: {
+            MarshalVkPipelineCompilerControlCreateInfoAMD::write(memory, address, (VkPipelineCompilerControlCreateInfoAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+            MarshalVkWriteDescriptorSetInlineUniformBlockEXT::write(memory, address, (VkWriteDescriptorSetInlineUniformBlockEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+            MarshalVkPhysicalDeviceMultiviewProperties::write(memory, address, (VkPhysicalDeviceMultiviewProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PRESENT_INFO_KHR: {
+            MarshalVkDisplayPresentInfoKHR::write(memory, address, (VkDisplayPresentInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceSynchronization2FeaturesKHR::write(memory, address, (VkPhysicalDeviceSynchronization2FeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_COVERAGE_MODULATION_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineCoverageModulationStateCreateInfoNV::write(memory, address, (VkPipelineCoverageModulationStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO: {
+            MarshalVkPipelineDepthStencilStateCreateInfo::write(memory, address, (VkPipelineDepthStencilStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_PLANE_INFO_2_KHR: {
+            MarshalVkDisplayPlaneInfo2KHR::write(memory, address, (VkDisplayPlaneInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT: {
+            MarshalVkSampleLocationsInfoEXT::write(memory, address, (VkSampleLocationsInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_SHADING_RATE_IMAGE_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineViewportShadingRateImageStateCreateInfoNV::write(memory, address, (VkPipelineViewportShadingRateImageStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MEMORY_OPAQUE_CAPTURE_ADDRESS_ALLOCATE_INFO: {
+            MarshalVkMemoryOpaqueCaptureAddressAllocateInfo::write(memory, address, (VkMemoryOpaqueCaptureAddressAllocateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR: {
+            MarshalVkPhysicalDeviceFragmentShadingRateKHR::write(memory, address, (VkPhysicalDeviceFragmentShadingRateKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PRESENT_INFO_KHR: {
+            MarshalVkPresentInfoKHR::write(memory, address, (VkPresentInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
+            MarshalVkImageFormatListCreateInfo::write(memory, address, (VkImageFormatListCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GROUP_PROPERTIES: {
+            MarshalVkPhysicalDeviceGroupProperties::write(memory, address, (VkPhysicalDeviceGroupProperties*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO: {
+            MarshalVkComputePipelineCreateInfo::write(memory, address, (VkComputePipelineCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET: {
+            MarshalVkWriteDescriptorSet::write(memory, address, (VkWriteDescriptorSet*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT::write(memory, address, (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXCLUSIVE_SCISSOR_FEATURES_NV: {
+            MarshalVkPhysicalDeviceExclusiveScissorFeaturesNV::write(memory, address, (VkPhysicalDeviceExclusiveScissorFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR: {
+            MarshalVkImageMemoryBarrier2KHR::write(memory, address, (VkImageMemoryBarrier2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_AABBS_DATA_KHR: {
+            MarshalVkAccelerationStructureGeometryAabbsDataKHR::write(memory, address, (VkAccelerationStructureGeometryAabbsDataKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_INPUT_DYNAMIC_STATE_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceVertexInputDynamicStateFeaturesEXT::write(memory, address, (VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
+            MarshalVkBindImagePlaneMemoryInfo::write(memory, address, (VkBindImagePlaneMemoryInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT: {
+            MarshalVkPhysicalDeviceImageViewImageFormatInfoEXT::write(memory, address, (VkPhysicalDeviceImageViewImageFormatInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2: {
+            MarshalVkQueueFamilyProperties2::write(memory, address, (VkQueueFamilyProperties2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2_KHR: {
+            MarshalVkCopyBufferInfo2KHR::write(memory, address, (VkCopyBufferInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR: {
+            MarshalVkPhysicalDeviceSurfaceInfo2KHR::write(memory, address, (VkPhysicalDeviceSurfaceInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2_KHR: {
+            MarshalVkCopyBufferToImageInfo2KHR::write(memory, address, (VkCopyBufferToImageInfo2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO: {
+            MarshalVkFramebufferAttachmentsCreateInfo::write(memory, address, (VkFramebufferAttachmentsCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_MOTION_TRIANGLES_DATA_NV: {
+            MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::write(memory, address, (VkAccelerationStructureGeometryMotionTrianglesDataNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO: {
+            MarshalVkPipelineTessellationStateCreateInfo::write(memory, address, (VkPipelineTessellationStateCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT::write(memory, address, (VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BLEND_OPERATION_ADVANCED_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT::write(memory, address, (VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_ENUM_STATE_CREATE_INFO_NV: {
+            MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV::write(memory, address, (VkPipelineFragmentShadingRateEnumStateCreateInfoNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GLOBAL_PRIORITY_QUERY_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceGlobalPriorityQueryFeaturesEXT::write(memory, address, (VkPhysicalDeviceGlobalPriorityQueryFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
+            MarshalVkImageViewUsageCreateInfo::write(memory, address, (VkImageViewUsageCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_MEMORY_REPORT_CALLBACK_DATA_EXT: {
+            MarshalVkDeviceMemoryReportCallbackDataEXT::write(memory, address, (VkDeviceMemoryReportCallbackDataEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_MUTABLE_DESCRIPTOR_TYPE_CREATE_INFO_VALVE: {
+            MarshalVkMutableDescriptorTypeCreateInfoVALVE::write(memory, address, (VkMutableDescriptorTypeCreateInfoVALVE*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT: {
+            MarshalVkPipelineVertexInputDivisorStateCreateInfoEXT::write(memory, address, (VkPipelineVertexInputDivisorStateCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DIAGNOSTICS_CONFIG_FEATURES_NV: {
+            MarshalVkPhysicalDeviceDiagnosticsConfigFeaturesNV::write(memory, address, (VkPhysicalDeviceDiagnosticsConfigFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT: {
+            MarshalVkCommandBufferInheritanceConditionalRenderingInfoEXT::write(memory, address, (VkCommandBufferInheritanceConditionalRenderingInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV: {
+            MarshalVkFramebufferMixedSamplesCombinationNV::write(memory, address, (VkFramebufferMixedSamplesCombinationNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BUFFER_COPY_2_KHR: {
+            MarshalVkBufferCopy2KHR::write(memory, address, (VkBufferCopy2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SM_BUILTINS_FEATURES_NV: {
+            MarshalVkPhysicalDeviceShaderSMBuiltinsFeaturesNV::write(memory, address, (VkPhysicalDeviceShaderSMBuiltinsFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceIndexTypeUint8FeaturesEXT::write(memory, address, (VkPhysicalDeviceIndexTypeUint8FeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR: {
+            MarshalVkPipelineExecutablePropertiesKHR::write(memory, address, (VkPipelineExecutablePropertiesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
+            MarshalVkRenderPassAttachmentBeginInfo::write(memory, address, (VkRenderPassAttachmentBeginInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO: {
+            MarshalVkShaderModuleCreateInfo::write(memory, address, (VkShaderModuleCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT: {
+            MarshalVkHeadlessSurfaceCreateInfoEXT::write(memory, address, (VkHeadlessSurfaceCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_SPARSE_MEMORY_REQUIREMENTS_INFO_2: {
+            MarshalVkImageSparseMemoryRequirementsInfo2::write(memory, address, (VkImageSparseMemoryRequirementsInfo2*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD: {
+            MarshalVkDisplayNativeHdrSurfaceCapabilitiesAMD::write(memory, address, (VkDisplayNativeHdrSurfaceCapabilitiesAMD*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_QUEUE_FAMILY_GLOBAL_PRIORITY_PROPERTIES_EXT: {
+            MarshalVkQueueFamilyGlobalPriorityPropertiesEXT::write(memory, address, (VkQueueFamilyGlobalPriorityPropertiesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_COPY_2_KHR: {
+            MarshalVkImageCopy2KHR::write(memory, address, (VkImageCopy2KHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_VERTEX_INPUT_ATTRIBUTE_DESCRIPTION_2_EXT: {
+            MarshalVkVertexInputAttributeDescription2EXT::write(memory, address, (VkVertexInputAttributeDescription2EXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO_EXT: {
+            MarshalVkDevicePrivateDataCreateInfoEXT::write(memory, address, (VkDevicePrivateDataCreateInfoEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE: {
+            MarshalVkSubpassDescriptionDepthStencilResolve::write(memory, address, (VkSubpassDescriptionDepthStencilResolve*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT: {
+            MarshalVkPhysicalDevicePipelineCreationCacheControlFeaturesEXT::write(memory, address, (VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceTexelBufferAlignmentFeaturesEXT::write(memory, address, (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
+            MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures::write(memory, address, (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR: {
+            MarshalVkPipelineExecutableStatisticKHR::write(memory, address, (VkPipelineExecutableStatisticKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PERFORMANCE_COUNTER_DESCRIPTION_KHR: {
+            MarshalVkPerformanceCounterDescriptionKHR::write(memory, address, (VkPerformanceCounterDescriptionKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_SUBMIT_INFO: {
+            MarshalVkSubmitInfo::write(memory, address, (VkSubmitInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT: {
+            MarshalVkDescriptorSetVariableDescriptorCountLayoutSupport::write(memory, address, (VkDescriptorSetVariableDescriptorCountLayoutSupport*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
+            MarshalVkBindImageMemorySwapchainInfoKHR::write(memory, address, (VkBindImageMemorySwapchainInfoKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+            MarshalVkPhysicalDevice16BitStorageFeatures::write(memory, address, (VkPhysicalDevice16BitStorageFeatures*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COMPUTE_SHADER_DERIVATIVES_FEATURES_NV: {
+            MarshalVkPhysicalDeviceComputeShaderDerivativesFeaturesNV::write(memory, address, (VkPhysicalDeviceComputeShaderDerivativesFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO: {
+            MarshalVkRenderPassInputAttachmentAspectCreateInfo::write(memory, address, (VkRenderPassInputAttachmentAspectCreateInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_GEOMETRY_TRIANGLES_NV: {
+            MarshalVkGeometryTrianglesNV::write(memory, address, (VkGeometryTrianglesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ZERO_INITIALIZE_WORKGROUP_MEMORY_FEATURES_KHR: {
+            MarshalVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR::write(memory, address, (VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeaturesKHR*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
+            MarshalVkImagePlaneMemoryRequirementsInfo::write(memory, address, (VkImagePlaneMemoryRequirementsInfo*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
+            MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT::write(memory, address, (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV: {
+            MarshalVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV::write(memory, address, (VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES: {
+            MarshalVkPhysicalDeviceDescriptorIndexingFeatures::write(memory, address, (VkPhysicalDeviceDescriptorIndexingFeatures*)p);
             break;
         }
        default:

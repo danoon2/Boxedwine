@@ -16,6 +16,30 @@ MAKE_DEP_UNIX
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
 #if WINE_VULKAN_DRIVER_VERSION >= 7
+
+// keep in sync with winedrv.cpp
+#define BOXED_BASE 0
+
+#define BOXED_VK_CREATE_INSTANCE                    (BOXED_BASE+89)
+#define BOXED_VK_CREATE_SWAPCHAIN                   (BOXED_BASE+90)
+#define BOXED_VK_CREATE_SURFACE                     (BOXED_BASE+91)
+#define BOXED_VK_DESTROY_INSTANCE                   (BOXED_BASE+92)
+#define BOXED_VK_DESTROY_SURFACE                    (BOXED_BASE+93)
+#define BOXED_VK_DESTROY_SWAPCHAIN                  (BOXED_BASE+94)
+#define BOXED_VK_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES (BOXED_BASE+95)
+#define BOXED_VK_GET_DEVICE_GROUP_SURFACE_PRESENT_MODES  (BOXED_BASE+96)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_PRESENT_RECTANGLES  (BOXED_BASE+97)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES   (BOXED_BASE+98)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS (BOXED_BASE+99)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES (BOXED_BASE+100)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_SUPPORT (BOXED_BASE+101)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_WIN32_PRESENTATION_SUPPORT (BOXED_BASE+102)
+#define BOXED_VK_GET_SWAPCHAIN_IMAGES                (BOXED_BASE+103)
+#define BOXED_VK_QUEUE_PRESENT                       (BOXED_BASE+104)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2   (BOXED_BASE+105)
+#define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2 (BOXED_BASE+106)
+#define BOXED_VK_GET_NATIVE_SURFACE                  (BOXED_BASE+107)
+
 static void* (*pvkGetDeviceProcAddr)(VkDevice, const char*);
 static void* (*pvkGetInstanceProcAddr)(VkInstance, const char*);
 
@@ -41,7 +65,7 @@ static VkResult boxedwine_vkCreateInstance(const VkInstanceCreateInfo* create_in
 {
     int result;
     TRACE("create_info %p, allocator %p, instance %p\n", create_info, allocator, instance);
-    CALL_3(1, create_info, allocator, instance);
+    CALL_3(BOXED_VK_CREATE_INSTANCE, create_info, allocator, instance);
     return (VkResult)result;
 }
 
@@ -49,7 +73,7 @@ static VkResult boxedwine_vkCreateSwapchainKHR(VkDevice device, const VkSwapchai
 {
     int result;
     TRACE("%p %p %p %p\n", device, create_info, allocator, swapchain);
-    CALL_4(160, device, create_info, allocator, swapchain);
+    CALL_4(BOXED_VK_CREATE_SWAPCHAIN, device, create_info, allocator, swapchain);
     return (VkResult)result;
 }
 
@@ -57,33 +81,33 @@ static VkResult boxedwine_vkCreateWin32SurfaceKHR(VkInstance instance, const VkW
 {
     int result;
     TRACE("%p %p %p %p\n", instance, create_info, allocator, surface);
-    CALL_4(168, instance, create_info, allocator, surface);
+    CALL_4(BOXED_VK_CREATE_SURFACE, instance, create_info, allocator, surface);
     return (VkResult)result;
 }
 
 static void boxedwine_vkDestroyInstance(VkInstance instance, const VkAllocationCallbacks* allocator)
 {
     TRACE("%p %p\n", instance, allocator);
-    CALL_NORETURN_2(2, instance, allocator);
+    CALL_NORETURN_2(BOXED_VK_DESTROY_INSTANCE, instance, allocator);
 }
 
 static void boxedwine_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface, const VkAllocationCallbacks* allocator)
 {
     TRACE("%p 0x%s %p\n", instance, wine_dbgstr_longlong(surface), allocator);
-    CALL_NORETURN_3(155, instance, &surface, allocator);
+    CALL_NORETURN_3(BOXED_VK_DESTROY_SURFACE, instance, &surface, allocator);
 }
 
 static void boxedwine_vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* allocator)
 {
     TRACE("%p, 0x%s %p\n", device, wine_dbgstr_longlong(swapchain), allocator);
-    CALL_NORETURN_3(161, device, &swapchain, allocator);
+    CALL_NORETURN_3(BOXED_VK_DESTROY_SWAPCHAIN, device, &swapchain, allocator);
 }
 
 static VkResult boxedwine_vkEnumerateInstanceExtensionProperties(const char* layer_name, uint32_t* count, VkExtensionProperties* properties)
 {
     int result;
     TRACE("layer_name %s, count %p, properties %p\n", debugstr_a(layer_name), count, properties);
-    CALL_3(16, layer_name, count, properties);
+    CALL_3(BOXED_VK_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES, layer_name, count, properties);
     return (VkResult)result;
 }
 
@@ -91,7 +115,7 @@ static VkResult boxedwine_vkGetDeviceGroupSurfacePresentModesKHR(VkDevice device
 {
     int result;
     TRACE("%p, 0x%s, %p\n", device, wine_dbgstr_longlong(surface), flags);
-    CALL_3(240, device, &surface, flags);
+    CALL_3(BOXED_VK_GET_DEVICE_GROUP_SURFACE_PRESENT_MODES, device, &surface, flags);
     return (VkResult)result;
 }
 
@@ -111,7 +135,7 @@ static VkResult boxedwine_vkGetPhysicalDevicePresentRectanglesKHR(VkPhysicalDevi
 {
     int result;
     TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, rects);
-    CALL_4(243, phys_dev, &surface, count, rects);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_PRESENT_RECTANGLES, phys_dev, &surface, count, rects);
     return (VkResult)result;
 }
 
@@ -119,7 +143,7 @@ static VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR(VkPhysicalDe
 {
     int result;
     TRACE("%p, 0x%s, %p\n", phys_dev, wine_dbgstr_longlong(surface), capabilities);
-    CALL_3(157, phys_dev, &surface, capabilities);
+    CALL_3(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES, phys_dev, &surface, capabilities);
     return (VkResult)result;
 }
 
@@ -127,7 +151,7 @@ static VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR(VkPhysicalD
 {
     int result;
     TRACE("%p, %p, %p\n", phys_dev, surface_info, capabilities);
-    CALL_3(259, phys_dev, surface_info, capabilities);
+    CALL_3(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2, phys_dev, surface_info, capabilities);
     return (VkResult)result;
 }
 
@@ -135,7 +159,7 @@ static VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR(VkPhysicalDevice 
 {
     int result;
     TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, formats);
-    CALL_4(158, phys_dev, &surface, count, formats);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS, phys_dev, &surface, count, formats);
     return (VkResult)result;
 }
 
@@ -143,7 +167,7 @@ static VkResult boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR(VkPhysicalDevice
 {
     int result;
     TRACE("%p, %p, %p, %p\n", phys_dev, surface_info, count, formats);
-    CALL_4(260, phys_dev, surface_info, count, formats);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2, phys_dev, surface_info, count, formats);
     return (VkResult)result;
 }
 
@@ -151,7 +175,7 @@ static VkResult boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR(VkPhysicalDe
 {
     int result;
     TRACE("%p, 0x%s, %p, %p\n", phys_dev, wine_dbgstr_longlong(surface), count, modes);
-    CALL_4(159, phys_dev, &surface, count, modes);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_PRESENT_MODES, phys_dev, &surface, count, modes);
     return (VkResult)result;
 }
 
@@ -159,7 +183,7 @@ static VkResult boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR(VkPhysicalDevice 
 {
     int result;
     TRACE("%p, %u, 0x%s, %p\n", phys_dev, index, wine_dbgstr_longlong(surface), supported);
-    CALL_4(156, phys_dev, index, &surface, supported);
+    CALL_4(BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_SUPPORT, phys_dev, index, &surface, supported);
     return (VkResult)result;
 }
 
@@ -167,7 +191,7 @@ static VkBool32 boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR(VkPhysi
 {
     int result;
     TRACE("%p %u\n", phys_dev, index);
-    CALL_2(169, phys_dev, index);
+    CALL_2(BOXED_VK_GET_PHYSICAL_DEVICE_WIN32_PRESENTATION_SUPPORT, phys_dev, index);
     return (VkBool32)result;
 }
 
@@ -175,7 +199,7 @@ static VkResult boxedwine_vkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKH
 {
     int result;
     TRACE("%p, 0x%s %p %p\n", device, wine_dbgstr_longlong(swapchain), count, images);
-    CALL_4(162, device, &swapchain, count, images);
+    CALL_4(BOXED_VK_GET_SWAPCHAIN_IMAGES, device, &swapchain, count, images);
     return (VkResult)result;
 }
 
@@ -183,7 +207,7 @@ static VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKH
 {
     int result;
     TRACE("%p, %p\n", queue, present_info);
-    CALL_2(164, queue, present_info);
+    CALL_2(BOXED_VK_QUEUE_PRESENT, queue, present_info);
     return (VkResult)result;
 }
 

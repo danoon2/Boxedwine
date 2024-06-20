@@ -4,7 +4,11 @@ import boxedwine.org.VkParam;
 import boxedwine.org.VkType;
 
 public class VkHostMarshalType {
-    public static void write(VkType t, StringBuilder out) throws Exception {
+    private static class PointerData {
+        boolean createdParamAddress = false;
+    }
+
+    public static void writeHeader(VkType t, StringBuilder out) throws Exception {
         out.append("class Marshal");
         out.append(t.name);
         out.append(" {\n");
@@ -15,346 +19,496 @@ public class VkHostMarshalType {
         out.append("    ");
         out.append(t.name);
         out.append(" s;\n");
+
         if (t.needMarshalIn) {
             out.append("    Marshal");
             out.append(t.name);
             out.append("(KMemory* memory, U32 address) {read(memory, address, &this->s);}\n");
+
             out.append("    static void read(KMemory* memory, U32 address, ");
             out.append(t.name);
             out.append("* s");
-            out.append(") {\n");
-            boolean createdParamAddress = false;
-            if (t.name.equals("VkComputePipelineCreateInfo")) {
-                int ii=0;
-            }
-            for (VkParam p : t.members) {
-                if (p.isPointer) {
-                    if (createdParamAddress) {
-                        out.append("        paramAddress = memory->readd(address);address+=4;\n");
-                    } else {
-                        out.append("        U32 paramAddress = memory->readd(address);address+=4;\n");
-                        createdParamAddress = true;
-                    }
-                    out.append("        if (paramAddress == 0) {\n");
-                    out.append("            s->");
-                    out.append(p.name);
-                    out.append(" = NULL;\n        } else {\n");
-                    if (p.name.equals("pNext")) {
-                        out.append("            s->pNext = vulkanGetNextPtr(memory, paramAddress);\n");
-                    } else if (p.len != null || p.arrayLen != 0) {
-                        if (p.isDoublePointer) {
-                            if (p.len != null) {
-                                String[] parts = p.len.split(",");
-                                if (parts.length == 2) {
-                                    if (p.paramType.needsMarshaling()) {
-                                        throw new Exception("oops");
-                                    }
-                                    out.append("            ");
-                                    out.append(p.paramType.name);
-                                    out.append("** ");
-                                    out.append(p.name);
-                                    out.append(" = new ");
-                                    out.append(p.paramType.name);
-                                    out.append("*[s->");
-                                    out.append(parts[0]);
-                                    out.append("];\n");
-                                    out.append("            for (int i=0;i<(int)s->");
-                                    out.append(parts[0]);
-                                    out.append(";i++) {\n");
-                                    out.append("                U32 size = ");
-                                    if (parts[1].equals("null-terminated")) {
-                                        out.append("memory->strlen(paramAddress + i*4)+1;\n");
-                                    } else {
-                                        throw new Exception("oops");
-                                    }
-                                    out.append("                ");
-                                    out.append(p.name);
-                                    out.append("[i] = new ");
-                                    out.append(p.paramType.name);
-                                    out.append("[size];\n");
-                                    out.append("                ");
-                                    out.append("memory->memcpy(");
-                                    out.append(p.name);
-                                    out.append("[i], paramAddress + i*4, size);\n");
-                                    out.append("            }\n");
-                                } else {
-                                    throw new Exception("oops");
-                                }
-                            } else {
-                                throw new  Exception("oops");
-                            }
-                        } else if (!p.paramType.needsMarshaling() || (p.isPointer && !p.isDoublePointer && p.paramType.type.equals("void")) || p.paramType.category.equals("enum")) {
-                            if (p.paramType.type.equals("VK_DEFINE_HANDLE")) {
-                                throw new  Exception("oops"); // would need to be marshalled since this is 4-bytes in win32 and 8-bytes on 64-bit host
-                            }
-                            out.append("            s->");
-                            out.append(p.name);
-                            out.append(" = new ");
-                            if (p.paramType.name.equals("void")) {
-                                if (p.isPointer) {
-                                    out.append("char");
-                                } else {
-                                    throw new Exception("oops");
-                                }
-                            } else {
-                                out.append(p.paramType.name);
-                            }
-                            out.append("[");
-                            String size;
-
-                            if (p.arrayLen != 0) {
-                                size = String.valueOf(p.arrayLen);
-                            } else if (p.len.startsWith("(")) {
-                                size = "(s->";
-                                size += String.valueOf(p.len.substring(1));
-                            } else if (!p.len.equals("null-terminated")) {
-                                size = "s->";
-                                size += String.valueOf(p.len);
-                            } else {
-                                size = "0";
-                            }
-                            if (!p.paramType.type.equals("void")) {
-                                size += " * sizeof(";
-                                size += p.paramType.name;
-                                size += ")";
-                            }
-                            out.append(size);
-                            out.append("];\n");
-                            out.append("            memory->memcpy((");
-                            out.append(p.paramType.name);
-                            out.append("*)s->");
-                            out.append(p.name);
-                            out.append(", paramAddress, ");
-                            out.append(size);
-                            out.append(");\n");
-                        } else if (p.paramType.type.equals("VK_DEFINE_HANDLE") && p.len != null && p.len.length() > 0) {
-                            out.append("            ");
-                            out.append(p.paramType.name);
-                            out.append("* ");
-                            out.append(p.name);
-                            out.append(" = new ");
-                            out.append(p.paramType.name);
-                            out.append("[s->");
-                            out.append(p.len);
-                            out.append("];\n");
-                            out.append("            for (int i=0;i<(int)s->");
-                            out.append(p.len);
-                            out.append(";i++) {\n");
-                            out.append("                ");
-                            out.append(p.name);
-                            out.append("[i] = (");
-                            out.append(p.paramType.name);
-                            out.append(")getVulkanPtr(memory, paramAddress);\n            }\n");
-                            out.append("            s->");
-                            out.append(p.name);
-                            out.append(" = ");
-                            out.append(p.name);
-                            out.append(";\n");
-                        } else if (p.paramType.category.equals("struct")) {
-                            if (p.len != null && p.len.length() > 0) {
-                                out.append("            ");
-                                out.append(p.paramType.name);
-                                out.append("* ");
-                                out.append(p.name);
-                                out.append(" = new ");
-                                out.append(p.paramType.name);
-                                out.append("[s->");
-                                out.append(p.len);
-                                out.append("];\n");
-                                out.append("            for (U32 i = 0; i < s->");
-                                out.append(p.len);
-                                out.append("; i++) {\n");
-
-                                out.append("                Marshal");
-                                out.append(p.paramType.name);
-                                out.append("::read(memory, paramAddress, &");
-                                out.append(p.name);
-                                out.append("[i]);\n");
-
-                                out.append("            }\n");
-                                out.append("            s->");
-                                out.append(p.name);
-                                out.append(" = ");
-                                out.append(p.name);
-                                out.append(";\n");
-                            } else {
-                                out.append("            ");
-                                out.append(p.paramType.name);
-                                out.append("* ");
-                                out.append(p.name);
-                                out.append(" = new ");
-                                out.append(p.paramType.name);
-                                out.append("();\n");
-                                out.append("            Marshal");
-                                out.append(p.paramType.name);
-                                out.append("::read(memory, paramAddress, ");
-                                out.append(p.name);
-                                out.append(");\n");
-                                out.append("            s->");
-                                out.append(p.name);
-                                out.append(" = ");
-                                out.append(p.name);
-                                out.append(";\n");
-                            }
-                            p.paramType.needMarshalIn = true;
-                        } else {
-                            throw new Exception("oops");
-                        }
-                    } else if (p.paramType.category.equals("struct")) {
-                        p.paramType.needMarshalIn = true;
-                        out.append("            ");
-                        out.append(p.paramType.name);
-                        out.append("* ");
-                        out.append(p.name);
-                        out.append(" = new ");
-                        out.append(p.paramType.name);
-                        out.append("();\n");
-                        out.append("            Marshal");
-                        out.append(p.paramType.name);
-                        out.append("::read(memory, paramAddress, ");
-                        out.append(p.name);
-                        out.append(");\n");
-                        out.append("            s->");
-                        out.append(p.name);
-                        out.append(" = ");
-                        out.append(p.name);
-                        out.append(";\n");
-                    } else {
-                        throw new Exception("oops");
-                    }
-                    out.append("        }\n");
-                } else {
-                    if (p.paramType.category.equals("struct") && p.paramType.needsMarshaling()) {
-                        p.paramType.needMarshalIn = true;
-                        out.append("        Marshal");
-                        out.append(p.paramType.name);
-                        out.append("::read(memory, address, &s->");
-                        out.append(p.name);
-                        out.append("); address+=");
-                        out.append(p.paramType.getSize());
-                         out.append(";\n");
-                    } else if (p.arrayLen > 0) {
-                        out.append("        memory->memcpy(&s->");
-                        out.append(p.name);
-                        out.append(", address, ");
-                        out.append(p.arrayLen);
-                        out.append(");address+=");
-                        out.append(p.arrayLen);
-                        out.append(";\n");
-                    } else {
-                        int width = p.paramType.getSize();
-                        if (width > 8 || p.arrayLen > 0 || p.paramType.category.equals("struct")) {
-                            out.append("        memory->memcpy(&s->");
-                            out.append(p.name);
-                            out.append(", address, ");
-                            out.append(width);
-                            out.append(");address+=");
-                            out.append(width);
-                            out.append(";\n");
-                        } else if (p.paramType.type.equals("VK_DEFINE_HANDLE")) {
-                            out.append("        s->");
-                            out.append(p.name);
-                            out.append(" = (");
-                            out.append(p.paramType.name);
-                            out.append(")getVulkanPtr(memory, memory->readd(address));address+=4;\n");
-                        } else {
-                            out.append("        s->");
-                            out.append(p.name);
-                            out.append(" = (");
-                            out.append(p.paramType.name);
-                            out.append(")memory->read");
-                            if (width == 8) {
-                                out.append("q(address);address+=8;\n");
-                            } else if (width == 4) {
-                                out.append("d(address);address+=4;\n");
-                            } else if (width == 2) {
-                                out.append("w(address);address+=2;\n");
-                            } else {
-                                throw new Exception("Unknown width");
-                            }
-                        }
-                    }
-                }
-            }
-            out.append("    }\n");
+            out.append(");\n");
         }
+
         if (t.needMarshalOut) {
             out.append("    static void write(KMemory* memory, U32 address, ");
             out.append(t.name);
             out.append("* s");
-            out.append(") {\n");
-            boolean createdParamAddress = false;
-            for (VkParam p : t.members) {
-                if (p.isPointer) {
-                    if (createdParamAddress) {
-                        out.append("        paramAddress = memory->readd(address);address+=4;\n");
-                    } else {
-                        out.append("        U32 paramAddress = memory->readd(address);address+=4;\n");
-                        createdParamAddress = true;
-                    }
-                    out.append("        if (paramAddress != 0) {\n");
-                    if (p.name.equals("pNext")) {
-                        out.append("            vulkanWriteNextPtr(memory, paramAddress, s->pNext);\n");
-                        out.append("            delete s->pNext;\n");
-                    } else if (p.paramType.category.equals("struct")) {
-                        p.paramType.needMarshalIn = true;
-                        out.append("            ");
-                        out.append(p.paramType.name);
-                        out.append("* ");
-                        out.append(p.name);
-                        out.append(" = new ");
-                        out.append(p.paramType.name);
-                        out.append("();\n");
-                        out.append("            Marshal");
-                        out.append(p.paramType.name);
-                        out.append("::read(memory, paramAddress, ");
-                        out.append(p.name);
-                        out.append(");\n");
-                        out.append("            s->");
-                        out.append(p.name);
-                        out.append(" = ");
-                        out.append(p.name);
-                        out.append(";\n");
-                    } else {
-                        out.append("kpanic(\"        Can't marshal void*\");\n");
-                    }
-                    out.append("        }\n");
+            out.append(");\n");
+        }
+        out.append("};\n\n");
+    }
+    private static void marshalInArrayOfPointers(VkParam param, StringBuilder out) throws Exception {
+        if (param.len != null) {
+            String[] parts = param.len.split(",");
+            if (parts.length == 2) {
+                if (param.paramType.needsMarshaling()) {
+                    throw new Exception("oops");
+                }
+                out.append("        ");
+                out.append(param.paramType.name);
+                out.append("** ");
+                out.append(param.name);
+                out.append(" = new ");
+                out.append(param.paramType.name);
+                out.append("*[s->");
+                out.append(parts[0]);
+                out.append("];\n");
+                out.append("        for (int i=0;i<(int)s->");
+                out.append(parts[0]);
+                out.append(";i++) {\n");
+                out.append("            U32 itemAddress = memory->readd(paramAddress + i*4);\n");
+                out.append("            U32 size = ");
+                if (parts[1].equals("null-terminated")) {
+                    out.append("memory->strlen(itemAddress)+1;\n");
                 } else {
-                    int width = p.getSize();
-                    if (width > 8 || p.arrayLen > 0 || p.paramType.category.equals("struct")) {
-                        out.append("        memory->memcpy(address, ");
-                        if (p.arrayLen == 0) {
-                            out.append("&");
+                    throw new Exception("oops");
+                }
+                out.append("            ");
+                out.append(param.name);
+                out.append("[i] = new ");
+                out.append(param.paramType.name);
+                out.append("[size];\n");
+                out.append("            ");
+                out.append("memory->memcpy(");
+                out.append(param.name);
+                out.append("[i], itemAddress, size);\n");
+                out.append("        }\n");
+                out.append("        s->");
+                out.append(param.name);
+                out.append(" = ");
+                out.append(param.name);
+                out.append(";\n");
+            } else {
+                throw new Exception("oops");
+            }
+        } else {
+            throw new Exception("oops");
+        }
+    }
+    private static String getParamLen(VkParam param) throws Exception {
+        if (param.len != null && param.len.length()>0) {
+            return "s->" + param.len;
+        }
+        if (param.arrayLen == 0) {
+            throw new Exception("oops");
+        }
+        return String.valueOf(param.arrayLen);
+    }
+    private static void marshalInArrayOfHandles(VkParam param, StringBuilder out) throws Exception {
+        out.append("        ");
+        out.append(param.paramType.name);
+        out.append("* ");
+        out.append(param.name);
+        out.append(" = new ");
+        out.append(param.paramType.name);
+        out.append("[");
+        out.append(getParamLen(param));
+        out.append("];\n");
+        out.append("        for (int i=0;i<(int)s->");
+        out.append(param.len);
+        out.append(";i++) {\n");
+        out.append("            U32 itemAddress = memory->readd(paramAddress + i*4);\n");
+        out.append("            ");
+        out.append(param.name);
+        out.append("[i] = (");
+        out.append(param.paramType.name);
+        out.append(")getVulkanPtr(memory, itemAddress);\n        }\n");
+        out.append("        s->");
+        out.append(param.name);
+        out.append(" = ");
+        out.append(param.name);
+        out.append(";\n");
+    }
+
+    private static void marshalInArrayOfData(VkParam param, StringBuilder out) throws Exception {
+        if (param.len.equals("null-terminated")) {
+            out.append("        U32 ");
+            out.append(param.name);
+            out.append("Len = memory->strlen(paramAddress)+1;\n");
+        }
+        out.append("        s->");
+        out.append(param.name);
+        out.append(" = new ");
+        if (param.paramType.name.equals("void")) {
+            if (param.isPointer) {
+                out.append("char");
+            } else {
+                throw new Exception("oops");
+            }
+        } else {
+            out.append(param.paramType.name);
+        }
+        out.append("[");
+        String size;
+
+        if (param.arrayLen != 0) {
+            size = String.valueOf(param.arrayLen);
+        } else if (param.len.startsWith("(")) {
+            size = "(s->";
+            size += String.valueOf(param.len.substring(1));
+        } else if (param.len.equals("null-terminated")) {
+            size = param.name + "Len";
+        } else {
+            if (Character.isDigit(param.len.charAt(0))) {
+                size = "";
+            } else {
+                size = "(U32)s->";
+            }
+            size += String.valueOf(param.len);
+        }
+        if (!param.paramType.type.equals("void")) {
+            size += " * sizeof(";
+            size += param.paramType.name;
+            size += ")";
+        }
+        out.append(size);
+        out.append("];\n");
+        out.append("        memory->memcpy((");
+        out.append(param.paramType.name);
+        out.append("*)s->");
+        out.append(param.name);
+        out.append(", paramAddress, ");
+        out.append(size);
+        out.append(");\n");
+    }
+    private static void marshalInArrayOfStructs(VkParam param, StringBuilder out) throws Exception {
+        out.append("        ");
+        out.append(param.paramType.name);
+        out.append("* ");
+        out.append(param.name);
+        out.append(" = new ");
+        out.append(param.paramType.name);
+        out.append("[");
+        out.append(getParamLen(param));
+        out.append("];\n");
+        out.append("        for (U32 i = 0; i < s->");
+        out.append(param.len);
+        out.append("; i++) {\n");
+
+        out.append("            Marshal");
+        out.append(param.paramType.name);
+        out.append("::read(memory, paramAddress + i");
+        out.append("*");
+        out.append(param.paramType.getSize());
+        out.append(", &");
+        out.append(param.name);
+        out.append("[i]);\n");
+
+        out.append("        }\n");
+        out.append("        s->");
+        out.append(param.name);
+        out.append(" = ");
+        out.append(param.name);
+        out.append(";\n");
+        param.paramType.needMarshalIn = true;
+    }
+
+    private static void marshalInPointerToStruct(VkParam param, StringBuilder out) {
+        param.paramType.needMarshalIn = true;
+        out.append("        ");
+        out.append(param.paramType.name);
+        out.append("* ");
+        out.append(param.name);
+        out.append(" = new ");
+        out.append(param.paramType.name);
+        out.append("();\n");
+        out.append("        Marshal");
+        out.append(param.paramType.name);
+        out.append("::read(memory, paramAddress, ");
+        out.append(param.name);
+        out.append(");\n");
+        out.append("        s->");
+        out.append(param.name);
+        out.append(" = ");
+        out.append(param.name);
+        out.append(";\n");
+    }
+
+    private static void marshalInPointer(VkParam param, StringBuilder out, PointerData data) throws Exception {
+        if (data.createdParamAddress) {
+            out.append("    paramAddress = memory->readd(address);address+=4;\n");
+        } else {
+            out.append("    U32 paramAddress = memory->readd(address);address+=4;\n");
+            data.createdParamAddress = true;
+        }
+        out.append("    if (paramAddress == 0) {\n");
+        out.append("        s->");
+        out.append(param.name);
+        out.append(" = NULL;\n    } else {\n");
+        if (param.name.equals("pNext")) {
+            out.append("        s->pNext = vulkanGetNextPtr(memory, paramAddress);\n");
+        } else if (param.isArray()) {
+            if (param.isDoublePointer) {
+                marshalInArrayOfPointers(param, out);
+            } else if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                marshalInArrayOfHandles(param, out);
+            } else if (!param.paramType.needsMarshaling() || (param.isPointer && !param.isDoublePointer && param.paramType.type.equals("void")) || param.paramType.category.equals("enum")) {
+                marshalInArrayOfData(param, out);
+            } else if (param.paramType.category.equals("struct")) {
+                marshalInArrayOfStructs(param, out);
+            } else {
+                throw new Exception("oops");
+            }
+        } else if (param.paramType.category.equals("struct")) {
+            marshalInPointerToStruct(param, out);
+        } else {
+            throw new Exception("oops");
+        }
+        out.append("    }\n");
+    }
+
+    private static void marshalInParam(VkParam param, StringBuilder out) throws Exception {
+        if (param.paramType.category.equals("struct") && param.paramType.needsMarshaling()) {
+            param.paramType.needMarshalIn = true;
+            out.append("    Marshal");
+            out.append(param.paramType.name);
+            out.append("::read(memory, address, &s->");
+            out.append(param.name);
+            out.append("); address+=");
+            out.append(param.paramType.getSize());
+            out.append(";\n");
+        } else if (param.arrayLen > 0) {
+            out.append("    memory->memcpy(&s->");
+            out.append(param.name);
+            out.append(", address, ");
+            out.append(param.arrayLen);
+            out.append(");address+=");
+            out.append(param.arrayLen);
+            out.append(";\n");
+        } else {
+            int width = param.paramType.getSize();
+            if (width > 8 || param.arrayLen > 0 || param.paramType.category.equals("struct")) {
+                out.append("    memory->memcpy(&s->");
+                out.append(param.name);
+                out.append(", address, ");
+                out.append(width);
+                out.append(");address+=");
+                out.append(width);
+                out.append(";\n");
+            } else if (param.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                out.append("    s->");
+                out.append(param.name);
+                out.append(" = (");
+                out.append(param.paramType.name);
+                out.append(")getVulkanPtr(memory, memory->readd(address));address+=4;\n");
+            } else {
+                if (param.paramType.type.equals("union")) {
+                    String memberName = null;
+                    for (VkParam member : param.paramType.members) {
+                        if (member.paramType.type.equals("uint64_t") && width == 8) {
+                            memberName = member.name;
                         }
-                        out.append("s->");
-                        out.append(p.name);
-                        out.append(", ");
-                        out.append(width);
-                        out.append("); address+=");
-                        out.append(width);
-                        out.append(";\n");
-                    } else {
-                        out.append("        memory->write");
-                        if (width == 8) {
-                            out.append("q(address, s->");
-                            out.append(p.name);
-                            out.append(");address+=8;\n");
-                        } else if (width == 4) {
-                            out.append("d(address, s->");
-                            out.append(p.name);
-                            out.append(");address+=4;\n");
-                        } else if (width == 2) {
-                            out.append("w(address, s->");
-                            out.append(p.name);
-                            out.append(");address+=2;\n");
-                        } else {
-                            throw new Exception("Unknown width");
+                    }
+                    if (memberName == null) {
+                        throw new Exception("oops");
+                    }
+                    out.append("    s->");
+                    out.append(param.name);
+                    out.append(".");
+                    out.append(memberName);
+                    out.append(" = ");
+                } else if (param.paramType.name.equals("float")) {
+                    out.append("    MarshalFloat ");
+                    out.append(param.name);
+                    out.append("Float;\n");
+                    out.append("    ");
+                    out.append(param.name);
+                    out.append("Float.i = ");
+                } else {
+                    out.append("    s->");
+                    out.append(param.name);
+                    out.append(" = (");
+                    out.append(param.paramType.name);
+                    out.append(")");
+                }
+                out.append("memory->read");
+                if (width == 8) {
+                    out.append("q(address);address+=8;\n");
+                } else if (width == 4) {
+                    out.append("d(address);address+=4;\n");
+                } else if (width == 2) {
+                    out.append("w(address);address+=2;\n");
+                } else if (width == 1) {
+                    out.append("b(address);address+=1;\n");
+                } else {
+                    throw new Exception("Unknown width");
+                }
+                if (param.paramType.name.equals("float")) {
+                    out.append("    s->");
+                    out.append(param.name);
+                    out.append(" = ");
+                    out.append(param.name);
+                    out.append("Float.f;\n");
+                }
+            }
+        }
+    }
+
+    private static void marshalIn(VkType t, StringBuilder out) throws Exception {
+        out.append("void Marshal");
+        out.append(t.name);
+        out.append("::read(KMemory* memory, U32 address, ");
+        out.append(t.name);
+        out.append("* s");
+        out.append(") {\n");
+        PointerData pointerData = new PointerData();
+
+        for (VkParam param : t.members) {
+            if (param.isPointer) {
+                marshalInPointer(param, out, pointerData);
+            } else {
+                marshalInParam(param, out);
+            }
+        }
+        out.append("}\n");
+    }
+
+    private static void marshalOutPointer(VkParam param, StringBuilder out, PointerData data) {
+        if (data.createdParamAddress) {
+            out.append("    paramAddress = memory->readd(address);address+=4;\n");
+        } else {
+            out.append("    U32 paramAddress = memory->readd(address);address+=4;\n");
+            data.createdParamAddress = true;
+        }
+        out.append("    if (paramAddress != 0) {\n");
+        if (param.name.equals("pNext")) {
+            out.append("        vulkanWriteNextPtr(memory, paramAddress, s->pNext);\n");
+            out.append("        delete s->pNext;\n");
+        } else if (param.paramType.category.equals("struct")) {
+            param.paramType.needMarshalIn = true;
+            out.append("        ");
+            out.append(param.paramType.name);
+            out.append("* ");
+            out.append(param.name);
+            out.append(" = new ");
+            out.append(param.paramType.name);
+            out.append("();\n");
+            out.append("        Marshal");
+            out.append(param.paramType.name);
+            out.append("::read(memory, paramAddress, ");
+            out.append(param.name);
+            out.append(");\n");
+            out.append("        s->");
+            out.append(param.name);
+            out.append(" = ");
+            out.append(param.name);
+            out.append(";\n");
+        } else {
+            out.append("        kpanic(\"Can't marshal void*\");\n");
+        }
+        out.append("    }\n");
+    }
+    private static void marshalOutParam(VkType type, VkParam param, StringBuilder out) throws Exception {
+        int width = param.getSize();
+        if (width > 8 || param.arrayLen > 0 || param.paramType.category.equals("struct")) {
+            out.append("    memory->memcpy(address, ");
+            if (param.arrayLen == 0) {
+                // for example
+                // typedef struct VkPhysicalDeviceLimits {
+                // ...
+                // uint32_t              maxComputeWorkGroupCount[3];
+                out.append("&");
+            }
+            out.append("s->");
+            out.append(param.name);
+            out.append(", ");
+            out.append(width);
+            out.append("); address+=");
+            out.append(width);
+            out.append(";\n");
+        } else {
+            if (width == 4 && param.paramType.type.equals("VK_DEFINE_HANDLE")) {
+                out.append("    kpanic(\"");
+                out.append(type.name);
+                out.append(".");
+                out.append(param.name);
+                out.append(" did not marshal write correctly\");\n");
+                return;
+            }
+            if (param.paramType.name.equals("float")) {
+                out.append("    MarshalFloat ");
+                out.append(param.name);
+                out.append("Float;\n");
+                out.append("    ");
+                out.append(param.name);
+                out.append("Float.f = s->");
+                out.append(param.name);
+                out.append(";\n    memory->writed(address, ");
+                out.append(param.name);
+                out.append("Float.i);address+=4;\n");
+                return;
+            }
+            out.append("    memory->write");
+            if (width == 8) {
+                boolean skipName = false;
+                out.append("q(address, ");
+                if (param.paramType.type.equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) {
+                    out.append("(U64)");
+                } else if (param.paramType.type.equals("union")) {
+                    for (VkParam member : param.paramType.members) {
+                        if (member.paramType.getSize() == 8) {
+                            out.append("s->");
+                            out.append(param.name);
+                            out.append(".");
+                            out.append(member.name);
+                            skipName = true;
+                            break;
                         }
                     }
                 }
+                if (!skipName) {
+                    out.append("s->");
+                    out.append(param.name);
+                }
+                out.append(");address+=8;\n");
+            } else if (width == 4) {
+                if (param.paramType.name.equals("size_t")) {
+                    // size_t is 32-bit on win32, but host might be 64-bit, this will remove the warning
+                    out.append("d(address, (U32)s->");
+                } else {
+                    out.append("d(address, s->");
+                }
+                out.append(param.name);
+                out.append(");address+=4;\n");
+            } else if (width == 2) {
+                out.append("w(address, s->");
+                out.append(param.name);
+                out.append(");address+=2;\n");
+            } else if (width == 1) {
+                out.append("b(address, s->");
+                out.append(param.name);
+                out.append(");address+=1;\n");
+            } else {
+                throw new Exception("Unknown width");
             }
-            out.append("    }\n");
         }
-        out.append("};\n\n");
+    }
+    private static void marshalOut(VkType t, StringBuilder out) throws Exception {
+        out.append("void Marshal");
+        out.append(t.name);
+        out.append("::write(KMemory* memory, U32 address, ");
+        out.append(t.name);
+        out.append("* s");
+        out.append(") {\n");
+        PointerData pointerData = new PointerData();
+        for (VkParam param : t.members) {
+            if (param.isPointer) {
+                marshalOutPointer(param, out, pointerData);
+            } else {
+                marshalOutParam(t, param, out);
+            }
+        }
+        out.append("}\n");
+    }
+
+    public static void write(VkType t, StringBuilder out) throws Exception {
+        if (t.needMarshalIn) {
+            marshalIn(t, out);
+        }
+        if (t.needMarshalOut) {
+            marshalOut(t, out);
+        }
     }
 }

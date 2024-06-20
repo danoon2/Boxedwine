@@ -28,12 +28,23 @@ static U32 freePtrMaps;
 
 BOXEDWINE_MUTEX freeVulkanPtrMutex;
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData) {
+
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+}
+
 U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
     if (!freePtrMaps) {
         KThread* thread = KThread::currentThread();
         U32 address = thread->memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
-        for (U32 i = 0; i < K_PAGE_SIZE; i += 8) {
+        for (U32 i = 0; i < K_PAGE_SIZE; i += 16) {
             memory->writed(address + i, freePtrMaps);
             freePtrMaps = address + i;
         }
@@ -53,6 +64,23 @@ U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
 #define VKFUNC(f)
 #include "vkfuncs.h" 
         info->instance = (VkInstance)value;
+
+#ifdef _DEBUG
+        PFN_vkCreateDebugUtilsMessengerEXT debugFunc = (PFN_vkCreateDebugUtilsMessengerEXT)pvkGetInstanceProcAddr((VkInstance)value, "vkCreateDebugUtilsMessengerEXT");
+        VkDebugUtilsMessengerCreateInfoEXT createInfo = { 0 };
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = debugCallback;
+        createInfo.pUserData = nullptr;
+
+        VkDebugUtilsMessengerEXT debugMessenger;
+        if (debugFunc) {
+            debugFunc(info->instance, &createInfo, nullptr, &debugMessenger);
+        } else {
+            klog("Vulkan debug function not found");
+        }
+#endif
     }
     memory->writeq(result + 8, (U64)info);
     return result;
@@ -170,7 +198,6 @@ static void BOXED_vkCreateWin32SurfaceKHR(CPU* cpu) {
     void* instance = getVulkanPtr(cpu->memory, cpu->peek32(1));
 
     void* surface = wnd->createVulkanSurface(instance);
-    int ii = sizeof(VkAttachmentLoadOp);
     if (!surface) {
         EAX = VK_ERROR_OUT_OF_HOST_MEMORY;
     } else {

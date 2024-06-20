@@ -6,6 +6,9 @@
 #ifndef BOXED_VK_EXTERN
 #define BOXED_VK_EXTERN extern
 #endif
+void* vulkanGetNextPtr(KMemory* memory, U32 address);
+void vulkanWriteNextPtr(KMemory* memory, U32 address, const void* pNext);
+void* getVulkanPtr(KMemory* memory, U32 address);
 BOXED_VK_EXTERN PFN_vkCreateInstance pvkCreateInstance;
 BOXED_VK_EXTERN PFN_vkEnumerateInstanceVersion pvkEnumerateInstanceVersion;
 BOXED_VK_EXTERN PFN_vkEnumerateInstanceLayerProperties pvkEnumerateInstanceLayerProperties;

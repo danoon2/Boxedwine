@@ -12,6 +12,7 @@ public class VkHostMarshalOutStructure extends VkHostMarshal {
         out.append(param.paramType.name);
         out.append(" ");
         out.append(param.name);
+        // even if param.paramType.returnedonly, we need to marshal it in just in case pNext has a value
         out.append("(cpu->memory, ");
         out.append(param.paramArg);
         out.append(");\n");

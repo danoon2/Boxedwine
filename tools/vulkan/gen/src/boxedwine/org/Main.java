@@ -19,7 +19,7 @@ public class Main {
     static Hashtable<String, String> defs = new Hashtable<>();
     static Hashtable<String, String> constants = new Hashtable<>();
     static HashSet<String> blacklistedExtensions = new HashSet<>();
-    static Hashtable<String, String> typeExtensions = new Hashtable<>();
+    static HashSet<String> unhandledStructMarshalling = new HashSet<>();
 
     static String hostSource = "source/vulkan/";
     static String fsSource = "tools/vulkan/";
@@ -67,10 +67,113 @@ public class Main {
         blacklistedExtensions.add("VK_NV_external_memory_capabilities");
         blacklistedExtensions.add("VK_NV_external_memory_win32");
 
-        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES", "VkPhysicalDeviceIDProperties");
-        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT", "VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT");
-        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT", "VkPhysicalDeviceTransformFeedbackFeaturesEXT");
-        typeExtensions.put("VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES", "VkPhysicalDeviceHostQueryResetFeatures");
+        unhandledStructMarshalling.add("VkExternalFormatANDROID");
+        unhandledStructMarshalling.add("VkSemaphoreGetWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkWin32KeyedMutexAcquireReleaseInfoNV");
+        unhandledStructMarshalling.add("VkImagePipeSurfaceCreateInfoFUCHSIA");
+        unhandledStructMarshalling.add("VkAndroidHardwareBufferFormatPropertiesANDROID");
+        unhandledStructMarshalling.add("VkImportSemaphoreZirconHandleInfoFUCHSIA");
+        unhandledStructMarshalling.add("VkImportMemoryWin32HandleInfoNV");
+        unhandledStructMarshalling.add("VkSemaphoreGetZirconHandleInfoFUCHSIA");
+        unhandledStructMarshalling.add("VkD3D12FenceSubmitInfoKHR");
+        unhandledStructMarshalling.add("VkAndroidHardwareBufferPropertiesANDROID");
+        unhandledStructMarshalling.add("VkWin32KeyedMutexAcquireReleaseInfoKHR");
+        unhandledStructMarshalling.add("VkMemoryGetZirconHandleInfoFUCHSIA");
+        unhandledStructMarshalling.add("VkSwapchainImageCreateInfoANDROID");
+        unhandledStructMarshalling.add("VkMemoryZirconHandlePropertiesFUCHSIA");
+        unhandledStructMarshalling.add("VkMemoryGetAndroidHardwareBufferInfoANDROID");
+        unhandledStructMarshalling.add("VkMemoryWin32HandlePropertiesKHR");
+        unhandledStructMarshalling.add("VkWin32SurfaceCreateInfoKHR");
+        unhandledStructMarshalling.add("VkImportMemoryZirconHandleInfoFUCHSIA");
+        unhandledStructMarshalling.add("VkFenceGetWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkMemoryGetWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkAndroidHardwareBufferUsageANDROID");
+        unhandledStructMarshalling.add("VkPhysicalDevicePresentationPropertiesANDROID");
+        unhandledStructMarshalling.add("VkDirectFBSurfaceCreateInfoEXT");
+        unhandledStructMarshalling.add("VkWaylandSurfaceCreateInfoKHR");
+        unhandledStructMarshalling.add("VkAndroidSurfaceCreateInfoKHR");
+        unhandledStructMarshalling.add("VkViSurfaceCreateInfoNN");
+        unhandledStructMarshalling.add("VkStreamDescriptorSurfaceCreateInfoGGP");
+        unhandledStructMarshalling.add("VkScreenSurfaceCreateInfoQNX");
+        unhandledStructMarshalling.add("VkDebugReportCallbackCreateInfoEXT");
+        unhandledStructMarshalling.add("VkExportMemoryWin32HandleInfoNV");
+        unhandledStructMarshalling.add("VkImportMemoryWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkExportMemoryWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkXlibSurfaceCreateInfoKHR");
+        unhandledStructMarshalling.add("VkXcbSurfaceCreateInfoKHR");
+        unhandledStructMarshalling.add("VkImportSemaphoreWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkExportSemaphoreWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkImportFenceWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkExportFenceWin32HandleInfoKHR");
+        unhandledStructMarshalling.add("VkIOSSurfaceCreateInfoMVK");
+        unhandledStructMarshalling.add("VkMacOSSurfaceCreateInfoMVK");
+        unhandledStructMarshalling.add("VkMetalSurfaceCreateInfoEXT");
+        unhandledStructMarshalling.add("VkNativeBufferANDROID");
+        unhandledStructMarshalling.add("VkDebugUtilsMessengerCreateInfoEXT");
+        unhandledStructMarshalling.add("VkDeviceDeviceMemoryReportCreateInfoEXT"); // has void* pUserData
+        unhandledStructMarshalling.add("VkImportMemoryHostPointerInfoEXT"); // has void* pHostPointer
+        unhandledStructMarshalling.add("VkImportAndroidHardwareBufferInfoANDROID");
+        unhandledStructMarshalling.add("VkCheckpointDataNV"); // has void* pCheckpointMarker
+        unhandledStructMarshalling.add("VkRayTracingShaderGroupCreateInfoKHR"); // has void* pShaderGroupCaptureReplayHandle
+        unhandledStructMarshalling.add("VkPresentFrameTokenGGP"); // custom OS type GgpFrameToken
+        unhandledStructMarshalling.add("VkSurfaceFullScreenExclusiveWin32InfoEXT"); // custom OS type HMONITOR
+        unhandledStructMarshalling.add("VkInitializePerformanceApiInfoINTEL"); // has void* pUserData
+        unhandledStructMarshalling.add("VkAccelerationStructureBuildGeometryInfoKHR"); // double point with len=geometryCount,1 : const VkAccelerationStructureGeometryKHR* const* ppGeometries
+        unhandledStructMarshalling.add("VkCheckpointData2NV"); // has void* pCheckpointMarker
+        unhandledStructMarshalling.add("VkVideoDecodeH264ProfileEXT"); // don't support vk_video/vulkan_video_codec_h264std.h
+        unhandledStructMarshalling.add("VkVideoDecodeH264SessionParametersAddInfoEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH264PictureInfoEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH264DpbSlotInfoEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH264MvcEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH265ProfileEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH265SessionParametersAddInfoEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH265PictureInfoEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH265DpbSlotInfoEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeH264SessionParametersAddInfoEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeH264DpbSlotInfoEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeH264ProfileEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeH264NaluSliceEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeH264NaluSliceEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH264SessionParametersAddInfoEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH264SessionParametersCreateInfoEXT");
+        unhandledStructMarshalling.add("VkVideoDecodeH265SessionParametersCreateInfoEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeH264SessionParametersCreateInfoEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeH264VclFrameInfoEXT");
+        unhandledStructMarshalling.add("VkVideoEncodeInfoKHR"); // requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoEncodeH264SessionCreateInfoEXT"); // requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoDecodeH265CapabilitiesEXT"); // requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoSessionCreateInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoDecodeH265SessionCreateInfoEXT");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoQueueFamilyProperties2KHR"); // requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoBeginCodingInfoKHR"); // requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoEncodeH264CapabilitiesEXT");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoGetMemoryPropertiesKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoPictureResourceKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoSessionParametersCreateInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoDecodeInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoEncodeH264EmitPictureParametersEXT");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoSessionParametersUpdateInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoReferenceSlotKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoCodingControlInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoEncodeRateControlInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoBindMemoryKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoCapabilitiesKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoDecodeH264CapabilitiesEXT");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoFormatPropertiesKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkPhysicalDeviceVideoFormatInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoProfilesKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoEndCodingInfoKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkVideoDecodeH264SessionCreateInfoEXT");// requires VK_ENABLE_BETA_EXTENSIONS
+
+        unhandledStructMarshalling.add("VkCuModuleCreateInfoNVX"); // has void* pData
+        unhandledStructMarshalling.add("VkCuLaunchInfoNVX"); // has void* pParams
+        unhandledStructMarshalling.add("VkRayTracingShaderGroupCreateInfoKHR"); // has void* pShaderGroupCaptureReplayHandle
+        unhandledStructMarshalling.add("VkRayTracingPipelineCreateInfoKHR"); // has VkRayTracingShaderGroupCreateInfoKHR (above this line, it can't be marshalled)
+        unhandledStructMarshalling.add("VkPhysicalDevicePortabilitySubsetPropertiesKHR"); // requires VK_ENABLE_BETA_EXTENSIONS
+        unhandledStructMarshalling.add("VkPhysicalDevicePortabilitySubsetFeaturesKHR");// requires VK_ENABLE_BETA_EXTENSIONS
+
+        unhandledStructMarshalling.add("VkSurfaceCapabilitiesFullScreenExclusiveEXT"); // wasn't defined
+        unhandledStructMarshalling.add("VkSurfaceFullScreenExclusiveInfoEXT"); // wasn't defined
 
         try {
             File inputFile = new File("lib/mesa/vkRegistry/vk.xml");
@@ -107,8 +210,9 @@ public class Main {
             types.put("PFN_vkVoidFunction", new VkType("PFN_vkVoidFunction", "void*", "platform", 4));
 
             parseConstants(doc.getElementsByTagName("enums"));
-            parseTypes(typesNode, typeList, true);
-            parseTypes(typesNode, typeList, false);
+
+            parseTypes(typesNode, typeList);
+
             Element commandsNode = (Element)doc.getElementsByTagName("commands").item(0);
             NodeList commands = commandsNode.getElementsByTagName("command");
             parseCommands(commandsNode, commands);
@@ -156,9 +260,28 @@ public class Main {
             writePassthroughFile(fosPassThrough);
             fosPassThrough.close();
 
+            for (VkType t : orderedTypes) {
+                if (t.needMarshalOut || t.needMarshalIn) {
+                    for (VkParam p : t.members) {
+                        for (VkParam m : p.paramType.members) {
+                            if (t.needMarshalIn) {
+                                m.paramType.needMarshalIn = true;
+                            }
+                            if (t.needMarshalOut) {
+                                m.paramType.needMarshalOut = true;
+                            }
+                        }
+                    }
+                }
+            }
+
             fosPassThrough = new FileOutputStream(hostSource+"vk_host.cpp");
-            VkHost.write(fosPassThrough, hostFunctions);
+            FileOutputStream fosMarshal = new FileOutputStream(hostSource+"vk_host_marshal.cpp");
+            FileOutputStream fosMarshalHeader = new FileOutputStream(hostSource+"vk_host_marshal.h");
+            VkHost.write(fosPassThrough, fosMarshal, fosMarshalHeader, hostFunctions);
             fosPassThrough.close();
+            fosMarshal.close();
+            fosMarshalHeader.close();
 
             fosPassThrough = new FileOutputStream(hostSource+"vk_host.h");
             VkHost.writeHeader(fosPassThrough, hostFunctions);
@@ -367,16 +490,16 @@ public class Main {
         }
         fos.write(out.toString().getBytes());
     }
-    public static void parseTypes(Node parent, NodeList nList, boolean ignoreMissingTypes) throws Exception {
+    public static void parseTypes(Node parent, NodeList nList) throws Exception {
         for (int temp = 0; temp < nList.getLength(); temp++) {
             Node command = nList.item(temp);
             if (command.getParentNode().isSameNode(parent)) {
-                parseType(command, ignoreMissingTypes);
+                parseType(command);
             }
         }
     }
 
-    public static void parseType(Node command, boolean ignoreMissingTypes) throws Exception {
+    public static void parseType(Node command) throws Exception {
         if (command.getNodeType() == Node.ELEMENT_NODE) {
             Element eElement = (Element) command;
             if (eElement.hasAttribute("alias")) {
@@ -426,7 +549,7 @@ public class Main {
                     t.members = new Vector<>();
                     for (int i = 0;i<members.getLength();i++) {
                         Node member = members.item(i);
-                        VkParam vkParam = parseParam(member, ignoreMissingTypes);
+                        VkParam vkParam = parseParam(t, member);
                         if (vkParam != null) {
                             t.members.add(vkParam);
                         }
@@ -446,8 +569,13 @@ public class Main {
             if (t.type == null) {
                 return;
             }
-            types.put(t.name, t);
-            orderedTypes.add(t);
+            VkType prev = types.get(t.name);
+            if (prev == null) {
+                types.put(t.name, t);
+                orderedTypes.add(t);
+            } else {
+                prev.copy(t);
+            }
         }
     }
     public static void parseCommands(Node parent, NodeList nList) throws Exception {
@@ -646,7 +774,7 @@ public class Main {
         for (int p = 0; p < params.getLength(); p++) {
             Node param = params.item(p);
             if (param.getParentNode().isSameNode(parent)) {
-                VkParam vkParam = parseParam(param, false);
+                VkParam vkParam = parseParam(null, param);
                 if (vkParam != null) {
                     fn.params.add(vkParam);
                 }
@@ -687,23 +815,33 @@ public class Main {
         }
     }
 
-    public static VkParam parseParam(Node paramNode, boolean ignoreMissingTypes) throws Exception {
+    public static VkParam parseParam(VkType parent, Node paramNode) throws Exception {
         if (paramNode.getNodeType() == Node.ELEMENT_NODE) {
             Element eElement = (Element) paramNode;
             VkParam param = new VkParam();
-            param.paramType = types.get(eElement.getElementsByTagName("type").item(0).getTextContent());
+            String typeName = eElement.getElementsByTagName("type").item(0).getTextContent();
+            param.paramType = types.get(typeName);
             if (param.paramType == null) {
                 param.paramType = new VkType();
                 param.paramType.category = "";
                 param.paramType.type = "";
+                param.paramType.name = typeName;
+                types.put(typeName, param.paramType);
             }
             param.name = eElement.getElementsByTagName("name").item(0).getTextContent();
             if (eElement.hasAttribute("altlen")) {
                 param.len = eElement.getAttribute("altlen");
             } else if (eElement.hasAttribute("len")) {
                 param.len = eElement.getAttribute("len");
+            } else if (eElement.hasAttribute("values")) {
+                parent.values = eElement.getAttribute("values");
             }
             param.full = eElement.getTextContent().replaceAll("\\s{2,}", " ").trim();
+            NodeList commentNode = eElement.getElementsByTagName("comment");
+            if (commentNode != null && commentNode.item(0) != null) {
+                String comment = commentNode.item(0).getTextContent();
+                param.full = param.full.replace(comment, "");
+            }
             param.isConst = param.full.contains("const ");
             if (param.full.contains("[")) {
                 int pos = param.full.indexOf('[');
@@ -719,7 +857,19 @@ public class Main {
                 }
             } else {
                 param.isDoublePointer = param.full.chars().filter(ch -> ch == '*').count() == 2;
+                if (param.isDoublePointer) {
+                    param.isDoublePointer = param.full.contains("* const*") || param.full.contains("* const *") || param.full.contains("**");
+                    if (!param.isDoublePointer) {
+                        System.out.println("Denide Double Pointer Status: "+param.full);
+                    }
+                }
                 param.isPointer = param.full.contains("*");
+                if (param.isPointer) {
+                    param.isPointer = param.full.contains("* ") || param.full.contains(" *") || param.full.contains("void*");
+                    if (!param.isPointer) {
+                        System.out.println("Denide Pointer Status: "+param.full);
+                    }
+                }
             }
             return param;
         }
