@@ -230,6 +230,15 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
         app2.args.push_back(B("-f"));
         app2.isWine = false;
         apps.push_back(app2);
+
+        BoxedApp app3;
+        app3.container = this;
+        app3.name = B("ldconfig");
+        app3.path = B("/sbin");
+        app3.cmd = B("/sbin/ldconfig");
+        app3.uid = 0;
+        app3.isWine = false;
+        apps.push_back(app3);
 #endif
     }    
     if (doesFileExist(B("/usr/local/bin/startx"))) {

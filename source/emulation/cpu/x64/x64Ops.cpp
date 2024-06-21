@@ -2493,7 +2493,7 @@ X64Decoder x64Decoder[1024] = {
 
     // 300
     invalidOp, inst32RMSafeG, invalidOp, lsl32, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, keepSame, invalidOp, invalidOp, invalidOp, invalidOp,
+    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 310
     sseXmmEx, sseExXmm, sseXmmEx, sseExXmm, sseXmmEx, sseXmmEx, sseXmmEx, sseExXmm,
     sseOp318, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, &op1f,

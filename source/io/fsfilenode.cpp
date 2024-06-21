@@ -104,7 +104,9 @@ bool FsFileNode::remove() {
         this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
             FsOpenNode* openNode = n->data;
             openNode->reopen();
-            openNode->seek(tmpPos[i++]);
+            if (openNode->isOpen()) {
+                openNode->seek(tmpPos[i++]);
+            }
         });
         result = true;
     }

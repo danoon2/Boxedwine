@@ -633,10 +633,10 @@ void WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* 
     struct gdi_gpu gdi_gpu =
     {
         .id = 1,
-        .vendor_id = 0,
-        .device_id = 0,
-        .subsys_id = 0,
-        .revision_id = 0,
+        .vendor_id = 1,
+        .device_id = 1,
+        .subsys_id = 1,
+        .revision_id = 1,
     };
     struct gdi_adapter gdi_adapter =
     {

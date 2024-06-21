@@ -51,7 +51,9 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
 
     std::vector<ComboboxItem> rendererOptions;
     rendererOptions.push_back(ComboboxItem(B("OpenGL"), B("gl")));
+#ifdef BOXEDWINE_VULKAN
     rendererOptions.push_back(ComboboxItem(B("Vulkan"), B("vulkan")));
+#endif
     rendererOptions.push_back(ComboboxItem(B("GDI"), B("gdi")));
     containerRendererControl = section->addComboboxRow(Msg::CONTAINER_VIEW_RENDERER_LABEL, Msg::CONTAINER_VIEW_RENDERER_HELP, rendererOptions);
     containerRendererControl->onChange = [this]() {

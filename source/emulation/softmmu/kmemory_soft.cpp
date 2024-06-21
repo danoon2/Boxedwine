@@ -21,6 +21,7 @@ static U32 callbackRamPos;
 
 void KMemoryData::shutdown() {
     callbackRam = nullptr;
+    callbackRamPos = 0;
 }
 
 KMemoryData* getMemData(KMemory* memory) {

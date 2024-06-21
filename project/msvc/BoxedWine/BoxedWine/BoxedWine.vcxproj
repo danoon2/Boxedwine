@@ -253,7 +253,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -682,6 +682,7 @@
     <ClInclude Include="..\..\..\..\source\vulkan\vkdef.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vkfuncs.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host.h" />
+    <ClInclude Include="..\..\..\..\source\vulkan\vk_host_marshal.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\..\lib\glew\src\glew.cpp">
@@ -1120,6 +1121,7 @@
     <ClCompile Include="..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\..\..\..\source\util\threadutils.cpp" />
     <ClCompile Include="..\..\..\..\source\vulkan\vk_host.cpp" />
+    <ClCompile Include="..\..\..\..\source\vulkan\vk_host_marshal.cpp" />
     <ClCompile Include="..\..\..\..\source\vulkan\vulkancommon.cpp" />
     <ClCompile Include="..\boxedwine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

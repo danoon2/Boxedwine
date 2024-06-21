@@ -25,6 +25,8 @@
 static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
 
 static U32 freePtrMaps;
+static U32 vulkanPtrCount;
+static U32 vulkanPtrHighMark;
 
 BOXEDWINE_MUTEX freeVulkanPtrMutex;
 
@@ -83,6 +85,8 @@ U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
 #endif
     }
     memory->writeq(result + 8, (U64)info);
+    vulkanPtrCount++;
+    vulkanPtrHighMark = std::max(vulkanPtrHighMark, vulkanPtrCount);
     return result;
 }
 
@@ -111,6 +115,7 @@ void freeVulkanPtr(KMemory* memory, U32 p) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
     memory->writed(p, freePtrMaps);
     freePtrMaps = p;
+    vulkanPtrCount--;
 }
 
 void* getVulkanPtr(KMemory* memory, U32 address) {
