@@ -106,7 +106,7 @@ void KProcess::onExec(KThread* thread) {
     this->mappedFiles.clear();
 
     for (int i = 0; i < MAX_SIG_ACTIONS; i++) {
-        this->sigActions.reset();
+        this->sigActions[i].reset();
     }
 
     if (this->timer.active) {
