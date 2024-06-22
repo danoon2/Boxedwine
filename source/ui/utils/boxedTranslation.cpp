@@ -360,6 +360,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "Renderer:";
     case Msg::CONTAINER_VIEW_RENDERER_HELP:
         return "This requires Wine 6.0 or higher.  DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.  Vulkan is considered experimental.";
+    case Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_LABEL:
+        return "Video Memory Size (MB):";
+    case Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_HELP:
+        return "This is the amount of video card memory that will reported to the app/game, this needs to be a number in Megabytes (MB).";
     case Msg::CONTAINER_VIEW_PROGRAMS_LABEL:
         return "Run in Container:";
     case Msg::CONTAINER_VIEW_COMPONENTS_LABEL:

@@ -30,6 +30,11 @@ private:
     std::shared_ptr<LayoutComboboxControl> containerWindowsVersionControl;
     std::shared_ptr<LayoutCheckboxControl> containerGdiControl;
     std::shared_ptr<LayoutComboboxControl> containerRendererControl;
+
+#ifdef _DEBUG
+    std::shared_ptr<LayoutTextInputControl> videoMemorySizeControl;
+#endif
+
     std::shared_ptr<LayoutComboboxControl> containerMouseWarpControl;
     std::shared_ptr<LayoutComboboxControl> containerMountDriveControl;
     std::shared_ptr<LayoutTextInputControl> containerMountPathControl;
