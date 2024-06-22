@@ -165,7 +165,7 @@ class MarshalReadWriteType {
     U32 type = 0;
     GLvoid* buffer = nullptr;
 public:
-    MarshalReadWriteType(CPU* cpu, U32 type, U32 address, U32 count) : cpu(cpu), address(address), type(type), count(count) {
+    MarshalReadWriteType(CPU* cpu, U32 type, U32 address, U32 count) : cpu(cpu), address(address), count(count), type(type) {
     }
     ~MarshalReadWriteType();
     GLvoid* getPtr();
