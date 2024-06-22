@@ -1,8 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
-<RuleSet Name="mine" ToolsVersion="17.0">
-  <Include Path="cppcorecheckdeclrules.ruleset" Action="Default" />
-  <Include Path="nativerecommendedrules.ruleset" Action="Default" />
-  <Rules AnalyzerId="Microsoft.Analyzers.NativeCodeAnalysis" RuleNamespace="Microsoft.Rules.Native">
-    <Rule Id="C26451" Action="None" />
-  </Rules>
-</RuleSet>
