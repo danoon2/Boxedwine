@@ -156,7 +156,6 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                     U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
                     cache->data = new KRamPtr[size];
                     cache->dataSize = size;
-                    ::memset(cache->data, 0, size * sizeof(KRamPtr));
                 }
                 mappedFile->systemCacheEntry = cache;
             }

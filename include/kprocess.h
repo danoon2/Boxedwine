@@ -40,8 +40,6 @@ public:
 
 class KSigAction {
 public:
-    KSigAction() = default;
-
     U32 handlerAndSigAction = 0;
     U64 mask = 0;
     U32 flags = 0;

@@ -5,7 +5,7 @@
 
 bool BoxedContainer::load(BString dirPath) {
     this->dirPath = dirPath;
-    BString iniFilePath = this->dirPath ^ "container.ini";
+    BString iniFilePath = this->dirPath.stringByApppendingPath("container.ini");
     ConfigFile config(iniFilePath);
     this->name = config.readString(B("Name"), B(""));
     BString wineVersion = config.readString(B("WineVersion"), B("")); // compat
@@ -59,7 +59,7 @@ BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, s
 }
 
 bool BoxedContainer::saveContainer() {
-    BString iniFilePath = dirPath ^ "container.ini";
+    BString iniFilePath = dirPath.stringByApppendingPath("container.ini");
     ConfigFile config(iniFilePath);
     config.writeString(B("Name"), this->name);
     std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
@@ -247,7 +247,7 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
         app.container = this;
         app.name = B("startx");
         app.path = B("/usr/local/bin/");
-        app.iconPath = GlobalSettings::getDemoFolder() ^ "startx.png";
+        app.iconPath = GlobalSettings::getDemoFolder().stringByApppendingPath("startx.png");
         if (!Fs::doesNativePathExist(app.iconPath)) {
             FsZip::extractFileFromZip(fs->filePath, B("icons/startx.png"), GlobalSettings::getDemoFolder());
         }
@@ -273,9 +273,10 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
         root = GlobalSettings::getRootFolder(this);
     } else {        
         root = GlobalSettings::getRootFolder(this);
-        path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c";
+        BString sep = BString::pathSeparator();
+        path = root.stringByApppendingPath("home") + sep + "username" + sep + ".wine" + sep + "drive_c";
     }
-    BString winDir = B("drive_c") ^ "windows";
+    BString winDir = B("drive_c").stringByApppendingPath("windows");
     Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root, mount, winDir] (BString filepath, bool isDir)->U32 {
         if (filepath.endsWith(".exe", true) && !filepath.contains(winDir)) {
             BString localPath = filepath.substr(root.length());
@@ -307,7 +308,8 @@ void BoxedContainer::getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount
 
 void BoxedContainer::getNewDesktopLinkApps(std::vector<BoxedApp>& apps) {
     BString root = GlobalSettings::getRootFolder(this);
-    BString path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ "users" ^ "username" ^ "Start Menu";
+    BString sep = BString::pathSeparator();
+    BString path = root.stringByApppendingPath("home") + sep + "username" + sep + ".wine" + sep + "drive_c" + sep + "users" + sep + "username" + sep + "Start Menu";
 
     Fs::iterateAllNativeFiles(path, true, true, [this, &apps, root] (BString filepath, bool isDir)->U32 {
         if (filepath.endsWith(".lnk", true)) {
@@ -341,7 +343,7 @@ void BoxedContainer::updateCachedSize() {
 }
 
 bool BoxedContainer::doesFileExist(const BString& localFilePath) {
-    BString nativePath = this->dirPath ^ "root" ^ Fs::nativeFromLocal(localFilePath);
+    BString nativePath = this->dirPath.stringByApppendingPath("root").stringByApppendingPath(Fs::nativeFromLocal(localFilePath));
     if (Fs::doesNativePathExist(nativePath)) {
         return true;
     }
@@ -581,7 +583,7 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
 }
 
 BString BoxedContainer::getLogPath() {
-    return this->dirPath ^ "lastLog.txt";    
+    return this->dirPath.stringByApppendingPath("lastLog.txt");
 }
 
 void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& todo, std::vector<BString>& needsDownload) {
@@ -596,14 +598,15 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
     if (package == "v4l-dvb-KERNEL.tcz") {
         return;
     }
-    BString location = GlobalSettings::getDataFolder() ^ "tcCache";
-    BString root = this->dirPath ^ "root";
-    BString installCheckDir = root ^ "usr" ^ "local" ^ "tce.installed";
-    BString installCheck = installCheckDir ^ package.substr(0, package.length() - 4);
+    BString location = GlobalSettings::getDataFolder().stringByApppendingPath("tcCache");
+    BString root = this->dirPath.stringByApppendingPath("root");
+    BString sep = BString::pathSeparator();
+    BString installCheckDir = root + sep + "usr" + sep + "local" + sep + "tce.installed";
+    BString installCheck = installCheckDir.stringByApppendingPath(package.substr(0, package.length() - 4));
     if (vectorContainsIgnoreCase(todo, package)) {
         return;
     }
-    BString cachedLocation = location ^ package;
+    BString cachedLocation = location.stringByApppendingPath(package);
     std::shared_ptr<FileSystemZip> fileSystem = this->fileSystem.lock();
     
     if (!Fs::doesNativePathExist(cachedLocation)) {
@@ -648,14 +651,14 @@ void BoxedContainer::installTinyCorePackage(BString package) {
     if (!needsDownload.size()) {
         doInstallTinyCorePackage(todo);
     } else {
-        BString location = GlobalSettings::getDataFolder() ^ "tcCache";
+        BString location = GlobalSettings::getDataFolder().stringByApppendingPath("tcCache");
         if (!Fs::doesNativePathExist(location)) {
             Fs::makeNativeDirs(location);
         }
         std::shared_ptr<FileSystemZip> fileSystem = this->fileSystem.lock();
         std::vector<DownloadItem> items;
         for (auto& package : needsDownload) {
-            items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, package), fileSystem->tinyCoreURL + package, B(""), location ^ package, 0));
+            items.push_back(DownloadItem(getTranslationWithFormat(Msg::DOWNLOADDLG_LABEL, true, package), fileSystem->tinyCoreURL + package, B(""), location.stringByApppendingPath(package), 0));
         }
         runOnMainUI([this, items, todo]() {
             new DownloadDlg(Msg::DOWNLOADDLG_TITLE, items, [this, todo](bool success) {
@@ -687,14 +690,15 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
         GlobalSettings::startUpArgs.addArg(B("-d"));
         GlobalSettings::startUpArgs.addArg(B("/"));
         GlobalSettings::startUpArgs.addArg("/tcCache/" + package);
-        GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), GlobalSettings::getDataFolder() ^ "tcCache", false));
+        GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), GlobalSettings::getDataFolder().stringByApppendingPath("tcCache"), false));
         dlg->addSubLabel("Extracting " + package, 5);
     } else if (package.length()>0) {
         GlobalSettings::startUpArgs.setWorkingDir(B("/usr/local/sbin"));
         GlobalSettings::startUpArgs.addArg(package);
         dlg->addSubLabel("Running post install " + Fs::getFileNameFromPath(package), 5);
     } else {
-        BString installed = GlobalSettings::getRootFolder(this) ^ "usr" ^ "local" ^ "tce.installed";
+        BString sep = BString::pathSeparator();
+        BString installed = GlobalSettings::getRootFolder(this).stringByApppendingPath("usr") + sep + "local" + sep + "tce.installed";
         Fs::iterateAllNativeFiles(installed, false, false, [&packages](BString filePath, bool isDir) {
             BString fileName = Fs::getFileNameFromNativePath(filePath);
             packages.push_back("/usr/local/tce.installed/" + fileName);

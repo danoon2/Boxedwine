@@ -205,7 +205,7 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory ^ fileName).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {
@@ -237,7 +237,7 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory ^ fileName).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {

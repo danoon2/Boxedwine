@@ -5,13 +5,13 @@ AppFile::AppFile(BString name, BString installType, BString iconPath, BString fi
     if (iconPath.length()) {
         int pos = iconPath.lastIndexOf('/');
         if (pos != -1) {
-            localIconPath = GlobalSettings::getDemoFolder() ^ iconPath.substr(pos + 1);
+            localIconPath = GlobalSettings::getDemoFolder().stringByApppendingPath(iconPath.substr(pos + 1));
         }
     }
     if (filePath.length()) {
         int pos = filePath.lastIndexOf('/');
         if (pos != -1) {
-            localFilePath = GlobalSettings::getDemoFolder() ^ filePath.substr(pos + 1);
+            localFilePath = GlobalSettings::getDemoFolder().stringByApppendingPath(filePath.substr(pos + 1));
         }
     }
 
@@ -176,7 +176,8 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
             BString root = GlobalSettings::getRootFolder(container);
             BString fileName = Fs::getFileNameFromNativePath(appPath);
             fileName = fileName.substr(0, fileName.length() - 4);
-            BString path = root ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ fileName;
+            BString sep = BString::pathSeparator();
+            BString path = root.stringByApppendingPath("home") + sep + "username" + sep + ".wine" + sep + "drive_c" + sep + fileName;
             if (!Fs::doesNativePathExist(path)) {
                 if (!Fs::makeNativeDirs(path)) {
                     BString errorMsg = getTranslationWithFormat(Msg::INSTALLVIEW_ERROR_FAILED_TO_CREATE_TEMP_DIR, true, path, BString::copy(strerror(errno)));
@@ -201,7 +202,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 return false; // don't continue to the next part of the install until we are done unzipping
             };
             runner.push_back(unzip);
-            appPath = destDir ^ this->installExe;
+            appPath = destDir.stringByApppendingPath(this->installExe);
         }
     }
 

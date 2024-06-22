@@ -1087,7 +1087,7 @@ U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
     if (!fdOut || !fdIn) {
         return -K_EBADFD;
     }
-    U64 pos;
+    U64 pos = 0;
 
     if (offset) {
         pos = fdIn->kobject->getPos();

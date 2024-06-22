@@ -775,11 +775,11 @@ U32 KNativeSocketObject::connect(KThread* thread, KFileDescriptor* fd, U32 addre
         return -K_ECONNREFUSED;
     }
     result = handleNativeSocketError(t, true);
-    if (result == -K_EWOULDBLOCK) {
+    if ((S32)result == -K_EWOULDBLOCK) {
         result = -K_EINPROGRESS;
         t->error = K_EINPROGRESS;
     }
-    if (result == -K_EINPROGRESS) {
+    if ((S32)result == -K_EINPROGRESS) {
         this->connected = true;
     }
 #ifndef BOXEDWINE_MULTI_THREADED
@@ -1348,7 +1348,7 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buff
     } else {
         std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
         result = handleNativeSocketError(t, false);
-        if (result == -K_EMSGSIZE) {
+        if ((S32)result == -K_EMSGSIZE) {
             if (length && buffer) {
                 memory->memcpy(buffer, tmp, length);
             }

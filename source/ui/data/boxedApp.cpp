@@ -54,7 +54,7 @@ bool BoxedApp::saveApp() {
             }
         }
         for (int i=0;i<10000;i++) {
-            BString iniPath = appDir ^ BString::valueOf(i) + ".ini";
+            BString iniPath = appDir.stringByApppendingPath(BString::valueOf(i) + ".ini");
             if (!Fs::doesNativePathExist(iniPath)) {
                 this->iniFilePath = iniPath;
                 break;
@@ -111,7 +111,7 @@ void BoxedApp::runAutomation() {
 
 bool BoxedApp::hasAutomation() {
 #ifdef BOXEDWINE_RECORDER
-    BString path = GlobalSettings::getAutomationFolder(this->container) ^ RECORDER_SCRIPT;
+    BString path = GlobalSettings::getAutomationFolder(this->container).stringByApppendingPath(RECORDER_SCRIPT);
     return Fs::doesNativePathExist(path);
 #else
     return false;
@@ -227,11 +227,11 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
         if (Fs::doesNativePathExist(nativeExePath)) {
             data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         } else {
-            BString nativeDir = this->container->getDir() ^ "tmp";
+            BString nativeDir = this->container->getDir().stringByApppendingPath("tmp");
             std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
             if (fs) {
                 FsZip::extractFileFromZip(fs->filePath, this->path.substr(1) + "/" + this->cmd, nativeDir);
-                BString nativePath = nativeDir ^ this->cmd;
+                BString nativePath = nativeDir.stringByApppendingPath(this->cmd);
                 data = extractIconFromExe(nativePath, iconSize, &width, &height);
                 Fs::deleteNativeFile(nativePath);
             }

@@ -87,7 +87,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::makeLocalDirs(B("/etc"));
 
     std::shared_ptr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
-    std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
+    std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath.stringByApppendingPath("dev"), true, rootNode);
     std::shared_ptr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
     KSystem::procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
     std::shared_ptr<FsNode> procSysNode = Fs::addFileNode(B("/proc/sys"), B(""), B(""), true, KSystem::procNode);
@@ -297,7 +297,7 @@ bool StartUpArgs::apply() {
             BString originalDepend = depend;
             if (!Fs::doesNativePathExist(depend)) {
                 BString parentPath = Fs::getNativeParentPath(zip);
-                depend = parentPath ^ depend;
+                depend = parentPath.stringByApppendingPath(depend);
             }
             if (!Fs::doesNativePathExist(depend)) {
                 klog("%s depends on %s, and %s could not be found", zip.c_str(), originalDepend.c_str(), originalDepend.c_str());

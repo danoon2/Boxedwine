@@ -346,7 +346,7 @@ U32 Fs::makeLocalDirs(const BString& path) {
             base = base + missingParts[i];
             BString nativePath = missingParts[i];
             Fs::localNameToRemote(nativePath);
-            nativePath = node->nativePath ^ nativePath;
+            nativePath = node->nativePath.stringByApppendingPath(nativePath);
             U32 result = MKDIR(nativePath.c_str());
             if (result) {
                 return -translateErr(errno);
@@ -379,7 +379,7 @@ BString Fs::getNativePathFromParentAndLocalFilename(const std::shared_ptr<FsNode
     BString nativeFileName = fileName;
     Fs::localNameToRemote(nativeFileName);
     if (parent) {
-        return parent->nativePath ^ nativeFileName;
+        return parent->nativePath.stringByApppendingPath(nativeFileName);
     }
     return nativeFileName;
 }
@@ -398,7 +398,7 @@ bool Fs::makeNativeDirs(const BString& path) {
     parts.erase(parts.begin(), parts.begin()+1);
 
     for (auto& part : parts) {
-        tmp = tmp ^ part;
+        tmp = tmp.stringByApppendingPath(part);
         if (!Fs::doesNativePathExist(tmp)) {
             U32 result = MKDIR(tmp.c_str());
             if (result!=0) {
@@ -423,7 +423,7 @@ U32 Fs::iterateAllNativeFiles(const BString& path, bool recursive, bool includeD
     Platform::listNodes(path, results);
     for (auto& n : results) {
         if (recursive && n.isDirectory) {
-            U32 result = iterateAllNativeFiles(path ^ n.name, true, includeDirs, f);
+            U32 result = iterateAllNativeFiles(path.stringByApppendingPath(n.name), true, includeDirs, f);
             if (result) {
                 return result;
             }
@@ -431,7 +431,7 @@ U32 Fs::iterateAllNativeFiles(const BString& path, bool recursive, bool includeD
         if (!includeDirs && n.isDirectory) {
             continue;
         }
-        U32 result = f(path ^ n.name, n.isDirectory);
+        U32 result = f(path.stringByApppendingPath(n.name), n.isDirectory);
         if (result) {
             return result;
         }

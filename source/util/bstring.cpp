@@ -894,30 +894,37 @@ void BString::makeWritable(int len) {
 }
 
 // guarantees single path separator between
-BString BString::operator^(const BString& s) const {
-    if (!s.data->str) {
-        return *this ^ "";
+BString BString::stringByApppendingPath(const BString& path) const {
+    if (!path.data->str) {
+        return stringByApppendingPath("");
     }
-    return *this ^ s.data->str;
+    return stringByApppendingPath(path.data->str);
 }
 
-BString BString::operator^(const char* s) const {
+BString BString::pathSeparator() {
+    BString result;
+    result += (char)std::filesystem::path::preferred_separator;
+    return result;
+}
+
+
+BString BString::stringByApppendingPath(const char* path) const {
     BStringData* d = allocNewData();
-    int sLen = (int)strlen(s);
+    int sLen = (int)strlen(path);
     char sep = (char)std::filesystem::path::preferred_separator;
     bool needAddSep = false;
     bool needRemoveSep = false;
 
     if (length() == 0) {
-        needAddSep = s[0] != sep;
+        needAddSep = path[0] != sep;
         needRemoveSep = false;
     } else {
-        needAddSep = s[0] != sep && data->str[data->len - 1] != sep;
-        needRemoveSep = s[0] == sep && data->str[data->len - 1] == sep;;
+        needAddSep = path[0] != sep && data->str[data->len - 1] != sep;
+        needRemoveSep = path[0] == sep && data->str[data->len - 1] == sep;;
     }
     if (needRemoveSep) {
         sLen--;
-        s++;
+        path++;
     }
     d->len = length() + sLen;
     if (needAddSep) {
@@ -931,7 +938,7 @@ BString BString::operator^(const char* s) const {
         d->str[data->len] = sep;
         offset = 1;
     }
-    memcpy(d->str + data->len + offset, s, sLen);
+    memcpy(d->str + data->len + offset, path, sLen);
     d->str[d->len] = 0;
     return BString(d);
 }

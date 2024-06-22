@@ -4,7 +4,8 @@
 
 BoxedReg::BoxedReg(BoxedContainer* container, bool system) {
 	BString root = GlobalSettings::getRootFolder(container);
-	this->filePath = root ^ "home" ^ "username" ^ ".wine" ^ (system?"system.reg":"user.reg");
+    BString sep = BString::pathSeparator();
+	this->filePath = root.stringByApppendingPath("home") + sep + "username" + sep + ".wine" + sep + (system?"system.reg":"user.reg");
 	if (!Fs::doesNativePathExist(this->filePath)) {
         std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
         if (fs) {

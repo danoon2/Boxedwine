@@ -45,7 +45,7 @@ void FsFileNode::getTmpPath(BString& nativePath, BString& localPath) {
     for (;nextTmpId<100000000;nextTmpId++) {
         BString name = "del"+BString::valueOf(nextTmpId)+".tmp";
         Fs::localNameToRemote(name);
-        nativePath = delDir->nativePath ^ name;
+        nativePath = delDir->nativePath.stringByApppendingPath(name);
         if (!Fs::doesNativePathExist(nativePath)) {
             localPath = "/tmp/del/"+name;
             break;
@@ -331,7 +331,7 @@ U32 FsFileNode::rename(BString path) {
 
     BString fileName = Fs::getFileNameFromPath(path);
     Fs::localNameToRemote(fileName);
-    BString nativePath = parent->nativePath ^ fileName;
+    BString nativePath = parent->nativePath.stringByApppendingPath(fileName);
     BString originalPath;
 
     if (this->isLink()) {

@@ -78,7 +78,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     if (!Fs::doesNativePathExist(GlobalSettings::dataFolderLocation)) {
         Fs::makeNativeDirs(GlobalSettings::dataFolderLocation);
     }
-    GlobalSettings::configFilePath = GlobalSettings::dataFolderLocation ^ "boxedwine.ini";
+    GlobalSettings::configFilePath = GlobalSettings::dataFolderLocation.stringByApppendingPath("boxedwine.ini");
     ConfigFile config(GlobalSettings::configFilePath);
     GlobalSettings::dataFolderLocation = config.readString(B("DataFolder"), GlobalSettings::dataFolderLocation);
     GlobalSettings::dataFolderLocation = GlobalSettings::dataFolderLocation.replace("//", "/");
@@ -132,14 +132,15 @@ void GlobalSettings::init(int argc, const char **argv) {
 
 void GlobalSettings::startUp() {
     GlobalSettings::initWineVersions();
-    BString containersPath = GlobalSettings::dataFolderLocation ^ B("Containers");
+    BString containersPath = GlobalSettings::dataFolderLocation.stringByApppendingPath("Containers");
     if (!Fs::doesNativePathExist(containersPath) && GlobalSettings::fileSystemVersions.size() > 0) {
         std::shared_ptr<FileSystemZip> fs = GlobalSettings::fileSystemVersions[0];
         if (fs->hasWine()) {
-            BString defaultContainerPath = containersPath ^ B("Default");
+            BString defaultContainerPath = containersPath.stringByApppendingPath("Default");
             Fs::makeNativeDirs(defaultContainerPath);
             BoxedContainer* container = BoxedContainer::createContainer(defaultContainerPath, B("Default"), fs);
-            BString nativePath = GlobalSettings::getRootFolder(container) ^ "home" ^ "username" ^ ".wine" ^ "drive_c" ^ "windows" ^ "system32";
+            BString sep = BString::pathSeparator();
+            BString nativePath = GlobalSettings::getRootFolder(container).stringByApppendingPath("home") + sep + "username" + sep + ".wine" + sep + "drive_c" + sep + "windows" + sep + "system32";
             Fs::makeNativeDirs(nativePath);
             BoxedApp app(B("WineMine"), B("/opt/wine/lib/wine/fakedlls"), B("winemine.exe"), container);
             app.saveApp();
@@ -289,8 +290,8 @@ void GlobalSettings::lookForFileSystems(BString path) {
 void GlobalSettings::initWineVersions() {
     GlobalSettings::lookForFileSystems(GlobalSettings::getFileSystemFolder());
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ "FileSystems");
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ ".." ^ "FileSystems");
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("FileSystems"));
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("..").stringByApppendingPath("FileSystems"));
     std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend(), [](auto& l, auto& r) {
         return *l < *r;
         });
@@ -300,35 +301,35 @@ void GlobalSettings::reloadWineVersions() {
     GlobalSettings::fileSystemVersions.clear();
     GlobalSettings::lookForFileSystems(GlobalSettings::getFileSystemFolder());
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ "FileSystems");
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath ^ ".." ^ "FileSystems");
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("FileSystems"));
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("..").stringByApppendingPath("FileSystems"));
     std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend(), [](auto& l, auto& r) {
         return *l < *r;
         });
 }
 
 BString GlobalSettings::getContainerFolder() {
-    return GlobalSettings::dataFolderLocation ^ "Containers";
+    return GlobalSettings::dataFolderLocation.stringByApppendingPath("Containers");
 }
 
 BString GlobalSettings::getFileSystemFolder() {
-    return GlobalSettings::dataFolderLocation ^ "FileSystems";
+    return GlobalSettings::dataFolderLocation.stringByApppendingPath("FileSystems");
 }
 
 BString GlobalSettings::getDemoFolder() {
-    return GlobalSettings::dataFolderLocation ^ "DemoCache";
+    return GlobalSettings::dataFolderLocation.stringByApppendingPath("DemoCache");
 }
 
 BString GlobalSettings::getRootFolder(BoxedContainer* container) {
-    return container->dirPath ^ "root";
+    return container->dirPath.stringByApppendingPath("root");
 }
 
 BString GlobalSettings::getAppFolder(BoxedContainer* container) {
-    return container->dirPath ^ "apps";
+    return container->dirPath.stringByApppendingPath("apps");
 }
 
 BString GlobalSettings::getAutomationFolder(BoxedContainer* container) {
-    return container->dirPath ^ "automation";
+    return container->dirPath.stringByApppendingPath("automation");
 }
 
 U32 GlobalSettings::scaleIntUI(U32 value) {
@@ -377,7 +378,7 @@ void GlobalSettings::loadFileLists() {
 
     for (auto& url : GlobalSettings::fileUrls) {
         BString name = Fs::getFileNameFromPath(url);
-        BString filesConfigPath = GlobalSettings::dataFolderLocation ^ name;
+        BString filesConfigPath = GlobalSettings::dataFolderLocation.stringByApppendingPath(name);
         pugi::xml_document doc;
         pugi::xml_parse_result result = doc.load_file(filesConfigPath.c_str());
         if (!result) {
@@ -504,7 +505,7 @@ AppFile* GlobalSettings::getComponentByOptionName(BString name) {
 
 bool GlobalSettings::checkFileListForUpdate() {
     BString filesConfigPath = GlobalSettings::dataFolderLocation + Fs::nativePathSeperator;
-    BString first = GlobalSettings::dataFolderLocation ^ Fs::getFileNameFromPath(GlobalSettings::fileUrls[0]);
+    BString first = GlobalSettings::dataFolderLocation.stringByApppendingPath(Fs::getFileNameFromPath(GlobalSettings::fileUrls[0]));
 
     PLATFORM_STAT_STRUCT buf;
     if (PLATFORM_STAT(first.c_str(), &buf) == 0) {
@@ -629,7 +630,7 @@ void GlobalSettings::updateFileList(BString fileLocation) {
 }
 
 void GlobalSettings::loadFonts() {
-    BString fontsPath = GlobalSettings::dataFolderLocation ^ "Fonts";
+    BString fontsPath = GlobalSettings::dataFolderLocation.stringByApppendingPath("Fonts");
     if (!Fs::doesNativePathExist(fontsPath)) {
         Fs::makeNativeDirs(fontsPath);
     }
@@ -645,15 +646,15 @@ void GlobalSettings::loadFonts() {
             zipFilePath = B("");
         }
     }
-    BString sansBoldFontsPath = fontsPath ^ "LiberationSans-Bold.ttf";
+    BString sansBoldFontsPath = fontsPath.stringByApppendingPath("LiberationSans-Bold.ttf");
     if (!Fs::doesNativePathExist(sansBoldFontsPath) && zipFilePath.length()) {
         FsZip::extractFileFromZip(zipFilePath, B("usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"), fontsPath);
     }
-    BString sansFontsPath = fontsPath ^ "LiberationSans-Regular.ttf";
+    BString sansFontsPath = fontsPath.stringByApppendingPath("LiberationSans-Regular.ttf");
     if (!Fs::doesNativePathExist(sansFontsPath) && zipFilePath.length()) {
         FsZip::extractFileFromZip(zipFilePath, B("usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"), fontsPath);
     }
-    BString awesomeFontPath = fontsPath ^ "fontawesome-webfont.ttf";
+    BString awesomeFontPath = fontsPath.stringByApppendingPath("fontawesome-webfont.ttf");
     if (!Fs::doesNativePathExist(awesomeFontPath) && zipFilePath.length()) {
         FsZip::extractFileFromZip(zipFilePath, B("usr/share/fonts/truetype/fontawesome-webfont.ttf"), fontsPath);
     }
@@ -796,7 +797,7 @@ BString GlobalSettings::createUniqueContainerPath(BString name) {
     std::srand((U32)std::time(nullptr));
     while (true) {
         BString tmp = BString::valueOf(std::rand(), 16);
-        BString result = GlobalSettings::getContainerFolder() ^ containerName + "-"+tmp;
+        BString result = GlobalSettings::getContainerFolder().stringByApppendingPath(containerName) + "-"+tmp;
         if (!Fs::doesNativePathExist(result)) {
             return result;
         }
@@ -805,10 +806,10 @@ BString GlobalSettings::createUniqueContainerPath(BString name) {
 
 BString FileSystemZip::getDependFilePath() const {
     if (this->depend.length()) {
-        BString result = GlobalSettings::getFileSystemFolder() ^ depend;
+        BString result = GlobalSettings::getFileSystemFolder().stringByApppendingPath(depend);
         if (!Fs::doesNativePathExist(result)) {
             BString parentPath = Fs::getNativeParentPath(this->filePath);
-            result = parentPath ^ depend;
+            result = parentPath.stringByApppendingPath(depend);
         }
         if (Fs::doesNativePathExist(result)) {
             return result;
@@ -819,7 +820,7 @@ BString FileSystemZip::getDependFilePath() const {
 }
 
 std::shared_ptr<FileSystemZip> FileSystemZip::getMissingDependency() const {
-    BString dependPath = GlobalSettings::getFileSystemFolder() ^ depend;
+    BString dependPath = GlobalSettings::getFileSystemFolder().stringByApppendingPath(depend);
     for (auto& w : GlobalSettings::availableFileSystemDependencies) {
         if (w->name == this->depend) {
             BString version;
@@ -850,5 +851,5 @@ BString FileSystemZip::getLocalFilePath() const {
         return B(""); // :TODO: error msg?
     }
     BString fileName = this->filePath.substr(pos + 1);
-    return GlobalSettings::getFileSystemFolder() ^ fileName;
+    return GlobalSettings::getFileSystemFolder().stringByApppendingPath(fileName);
 }
