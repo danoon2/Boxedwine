@@ -119,8 +119,11 @@ bool FsZip::init(BString zipPath, BString mount) {
             }
             BString localFileName = Fs::getFileNameFromPath(localPath);
             BString nativePath = Fs::getNativePathFromParentAndLocalFilename(parent, localFileName);
-            std::shared_ptr<FsFileNode> node = Fs::addFileNode(localPath, zipInfo[i].link, nativePath, zipInfo[i].isDirectory, parent);
-            node->zipNode = std::make_shared<FsZipNode>(zipInfo[i], shared_from_this());
+            std::shared_ptr<FsNode> existingNode = Fs::getNodeFromLocalPath(B(""), localPath, false);
+            if (!existingNode) {
+                std::shared_ptr<FsFileNode> node = Fs::addFileNode(localPath, zipInfo[i].link, nativePath, zipInfo[i].isDirectory, parent);
+                node->zipNode = std::make_shared<FsZipNode>(zipInfo[i], shared_from_this());
+            }
         }   
         delete[] zipInfo;
     }

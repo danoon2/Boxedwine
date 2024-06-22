@@ -49,7 +49,11 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	} else {
 		blockAlign = data->fmt.ex.nBlockAlign * data->cvt.len_mult;
 	}
-	U32 nframes = len / blockAlign;
+	if (blockAlign == 0) {
+		memset(stream, data->got.silence, len);
+		return;
+	}
+	U32 nframes = len / blockAlign;	
 	if (!process->memory->canRead(data->address_lcl_offs_frames, 4)) {
 		memset(stream, data->got.silence, len);
 		return;

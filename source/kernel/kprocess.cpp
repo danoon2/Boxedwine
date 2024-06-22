@@ -509,7 +509,6 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
     } else {
         FsOpenNode* openNode = node->open(accessFlags);
         if (!openNode) {
-            node->removeNodeFromParent();
             return translateOpenError();
         }
         openNode->openedPath = Fs::getFullPath(currentDirectory, localPath);

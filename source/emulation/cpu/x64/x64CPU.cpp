@@ -216,6 +216,11 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
             data->jumpTo(data->ip);
             break;
         }
+        KMemoryData* mem = getMemData(memory);
+        if (mem->isAddressDynamic(address, data->currentOp->len)) {
+            ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
+            break;
+        }
         data->mapAddress(address, data->bufferPos);
         data->translateInstruction();
         if (data->done || data->currentOp->inst == Invalid) {
