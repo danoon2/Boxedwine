@@ -59,6 +59,13 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     };
     containerRendererControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
 
+#ifdef _DEBUG
+    videoMemorySizeControl = section->addTextInputRow(Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_LABEL, Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_HELP, B("0"));
+    videoMemorySizeControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));
+    videoMemorySizeControl->onChange = [this]() {
+        this->currentContainerChanged = true;
+        };
+#endif
     std::vector<ComboboxItem> mouseOptions;
     mouseOptions.push_back(ComboboxItem(B("Enable"), B("enable")));
     mouseOptions.push_back(ComboboxItem(B("Disable"), B("disable")));
@@ -525,6 +532,9 @@ bool ContainersView::saveChanges() {
                 this->currentContainer->setGDI(containerGdiControl->isChecked());
                 this->currentContainer->setRenderer(B(containerGdiControl->isChecked()?"gdi":"gl"));
             }
+#ifdef _DEBUG
+            this->currentContainer->setVideoMemorySize(videoMemorySizeControl->getText());
+#endif
             this->currentContainer->setMouseWarpOverride(containerMouseWarpControl->getSelectionStringValue());
             this->currentContainer->saveContainer();
             this->currentContainerChanged = false;            
@@ -638,6 +648,10 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
     containerMountDriveControl->setRowHidden(!hasWine);
     containerGdiControl->setRowHidden(!hasWine);
     containerRendererControl->setRowHidden(!hasWine);
+
+#ifdef _DEBUG
+    videoMemorySizeControl->setRowHidden(!hasWine);
+#endif
     containerMouseWarpControl->setRowHidden(!hasWine);
     componentsControl->setRowHidden(!hasWine);
     containerWindowsVersionControl->setRowHidden(!hasWine);
@@ -666,6 +680,11 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
             containerGdiControl->setRowHidden(false);
             containerRendererControl->setRowHidden(true);
         }
+
+#ifdef _DEBUG
+        videoMemorySizeControl->setText(container->getVideoMemorySize());
+#endif
+
         containerMouseWarpControl->setSelectionStringValue(container->getMouseWarpOverride());
     }
     std::shared_ptr<FileSystemZip> fileSystem = currentContainer->getFileSystem().lock();

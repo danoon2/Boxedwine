@@ -49,6 +49,8 @@ public:
     void setGDI(bool gdi);
     BString getRenderer();
     void setRenderer(BString renderer);
+    BString getVideoMemorySize();
+    void setVideoMemorySize(BString videoMemorySize);
     BString getMouseWarpOverride();
     void setMouseWarpOverride(BString value);
     BString getWindowsVersion();

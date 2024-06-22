@@ -53,6 +53,7 @@ BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, s
     // FBO's don't work with the Mac OpenGL code, so for DirectDraw games, instead of using OpenGL with FBO's which Wine does by default, tell Wine to take care of it in software
     container->setGDI(true);
 #endif
+    container->setVideoMemorySize(B("256"));
     container->saveContainer();
     return container;
 }
@@ -403,6 +404,23 @@ BString BoxedContainer::getRenderer() {
 void BoxedContainer::setRenderer(BString renderer) {
     BoxedReg reg(this, false);
     reg.writeKey("Software\\Wine\\Direct3D", "renderer", renderer.c_str());
+    reg.save();
+}
+
+BString BoxedContainer::getVideoMemorySize() {
+    BoxedReg reg(this, false);
+    BString value;
+
+    reg.readKey("Software\\Wine\\Direct3D", "VideoMemorySize", value);
+    if (value.length() == 0) {
+        value = B("256");
+    }
+    return value;
+}
+
+void BoxedContainer::setVideoMemorySize(BString videoMemorySize) {
+    BoxedReg reg(this, false);
+    reg.writeKey("Software\\Wine\\Direct3D", "VideoMemorySize", videoMemorySize.c_str());
     reg.save();
 }
 
