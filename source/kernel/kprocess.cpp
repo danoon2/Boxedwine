@@ -105,7 +105,9 @@ void KProcess::onExec(KThread* thread) {
     this->privateShm.clear();
     this->mappedFiles.clear();
 
-    memset(this->sigActions, 0, sizeof(KSigAction)*MAX_SIG_ACTIONS);
+    for (int i = 0; i < MAX_SIG_ACTIONS; i++) {
+        this->sigActions.reset();
+    }
 
     if (this->timer.active) {
         removeTimer(&this->timer);

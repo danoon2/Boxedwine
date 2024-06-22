@@ -48,6 +48,13 @@ public:
 
     void writeSigAction(KMemory* memory, U32 address, U32 sigsetSize);
     void readSigAction(KMemory* memory, U32 address, U32 sigsetSize);
+    void reset() {
+        handlerAndSigAction = 0;
+        mask = 0;
+        flags = 0;
+        restorer = 0;
+        memset(sigInfo, 0, sizeof(sigInfo));
+    }
 };
 
 #define MAX_SIG_ACTIONS 64
