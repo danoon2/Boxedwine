@@ -335,6 +335,9 @@ public:
 	}
 
 	void remove(const Key& key) {
+		if (count == 0) {
+			return;
+		}
 		if (Slot* slot = get_slot(key)) {
 			// destroy key and value (we don't want to surprise users of RAII)
 			// This also marks the slot as unused.

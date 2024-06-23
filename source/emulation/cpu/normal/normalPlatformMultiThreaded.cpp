@@ -29,12 +29,14 @@ static void platformThread(CPU* cpu) {
     }
 
     std::shared_ptr<KProcess> process = cpu->thread->process;
-    cpu->thread->cleanup();
-    process->cleanupProcess();
-    process->deleteThread(cpu->thread);
+    cpu->thread->cleanup();    
 
     platformThreadCount--;
-    if (platformThreadCount == 0) {
+    if (platformThreadCount != 0) {
+        process->deleteThread(cpu->thread);
+    } else {
+        process->cleanupProcess();
+        process->deleteThread(cpu->thread);
         KSystem::shutingDown = true;
         KNativeSystem::postQuit();
     }
