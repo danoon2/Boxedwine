@@ -210,6 +210,7 @@ public:
     std::shared_ptr<SHM> getSHM(U32 key);
     void attachSHM(U32 address, const std::shared_ptr<SHM>& shm);
     void printMappedFiles();
+    void cleanupProcess();
 
     U32 id = 0;
     U32 parentId = 0;
@@ -291,8 +292,7 @@ private:
     U32 usedTLS[TLS_ENTRIES] = { 0 };
     BOXEDWINE_MUTEX usedTlsMutex;
 
-    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);
-    void cleanupProcess();
+    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);    
     void setupCommandlineNode();
     void initStdio();
     std::shared_ptr<FsNode> findInPath(BString path);

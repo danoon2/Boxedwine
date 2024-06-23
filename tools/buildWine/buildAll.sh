@@ -11,6 +11,11 @@ then
   git clone git://source.winehq.org/git/wine.git wine-git
 fi
 
+if [ ! -f TinyCore13XOrgWineBase.zip ]
+then
+  wget https://boxedwine.org/v/1/TinyCore13XOrgWineBase.zip
+fi
+
 if [ -d tmp_install ]
 then
   rm -rf tmp_install
@@ -103,16 +108,16 @@ do_build()
     else
       git apply ../patches/auto_refresh/auto_refresh3.patch
     fi
-#    rm -rf dlls/winealsa.drv/*
-#    cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
-#    if ((BVERSION >= 9000))
-#    then
-#      cp ../../wineboxedaudio.drv/winealsa.drv.spec.9000 dlls/winealsa.drv/winealsa.drv.spec
-#    fi
+    rm -rf dlls/winealsa.drv/*
+    cp -r ../../wineboxedaudio.drv/*.* dlls/winealsa.drv/
+    if ((BVERSION >= 9000))
+    then
+      cp ../../wineboxedaudio.drv/winealsa.drv.spec.9000 dlls/winealsa.drv/winealsa.drv.spec
+    fi
     if [[ $ADD_DEPENDS == 1 ]]
     then
       echo "@MAKE_DLL_RULES@" >> dlls/winex11.drv/Makefile.in
-#      echo "@MAKE_DLL_RULES@" >> dlls/winealsa.drv/Makefile.in
+      echo "@MAKE_DLL_RULES@" >> dlls/winealsa.drv/Makefile.in
     fi
 #for some reason I don't understand the config process will fail when looking for dependencies because the header does not exist, even though I wrapped it in a #ifdef
     touch include/wine/wglext.h
@@ -145,7 +150,14 @@ do_build()
     cd ../tmp_install
     mkdir home
     mkdir home/username
-    ../boxedwine -root . -zip ../debian10.zip /bin/wine notfound || true
+    ../boxedwine -root . -zip ../TinyCore13XOrgWineBase.zip -env "WINEDLLOVERRIDES=mscoree,mshtml=" /bin/wine notfound || true
+    rm -rf bin
+    rm -rf dev
+    rm -rf etc
+    rm -rf lib
+    rm -rf mnt
+    rm -rf proc
+    rm -rf tmp
     if [ -d opt/wine/lib/wine/i386-unix ]
     then
         rm opt/wine/lib/wine/i386-unix/winemenubuilder.exe.so
@@ -164,7 +176,8 @@ do_build()
         mv opt/wine/lib/wine/wineoss.drv.so opt/wine/lib/wine/wineoss.drv.dsp.so
     fi
     printf "Wine $VERSION" > wineVersion.txt
-    printf "debian10.zip" > depends.txt
+    printf "Wine $VERSION" > name.txt
+    #printf "debian10.zip" > depends.txt
     cp ../changes.txt changes.txt
     cp ../version.txt version.txt
     echo "git checkout wine-$VERSION" > build.txt
@@ -178,7 +191,8 @@ do_build()
     fi
     echo './configure CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --prefix=/opt/wine --disable-tests $EXTRA_ARGS' >> build.txt
     echo "make " >> build.txt
-    zip -r ../Wine-$VERSION.zip *
+    cp ../TinyCore13XOrgWineBase.zip ../Wine-$VERSION.zip
+    zip -ur ../Wine-$VERSION.zip *
     cd ../wine-git
     make clean
     rm -rf ../tmp_install
@@ -198,39 +212,39 @@ then
 # reverted because on slower systems it will fail to create a window, not sure why
   if [[ $ARG1 != "all" ]]
   then
-    do_build 9.2 9020 patch setupapidelay.patch
-    do_build 7.0 7000 patch ddraw_waitvblank.patch
-    do_build 6.0 6000 patch ddraw_waitvblank.patch
-    do_build 5.0 5000 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
-    do_build 4.1 4010 patch ddraw_waitvblank.patch
-    do_build 3.1 3010 patch ddraw_waitvblank.patch
+#    do_build 9.2 9020 patch setupapidelay.patch
+#    do_build 7.0 7000 patch ddraw_waitvblank.patch
+    do_build 6.2 6020 patch ddraw_waitvblank.patch
+#    do_build 5.0 5000 patch ddraw_waitvblank.patch patch wine5-lz.patch revert f2e5b8070776268912e1886d4516d7ddec6969fc
+#    do_build 4.1 4010 patch ddraw_waitvblank.patch
+#    do_build 3.1 3010 patch ddraw_waitvblank.patch
   else
-    do_build 8.2 8020
-    do_build 8.1 8010
-    do_build 8.0 8000
-    do_build 7.22 7220
-    do_build 7.21 7210
-    do_build 7.20 7200
-    do_build 7.19 7190
-    do_build 7.18 7180
-    do_build 7.17 7170
-    do_build 7.16 7160
-    do_build 7.15 7150
-    do_build 7.14 7140
-    do_build 7.13 7130
-    do_build 7.12 7120
-    do_build 7.11 7110
-    do_build 7.10 7100
-    do_build 7.9 7090
-    do_build 7.8 7080
-    do_build 7.7 7070
-    do_build 7.6 7060
-    do_build 7.5 7050
-    do_build 7.4 7040
-    do_build 7.3 7030
-    do_build 7.2 7020
-    do_build 7.1 7010
-    do_build 7.0 7000 patch ddraw_waitvblank.patch
+#    do_build 8.2 8020
+#    do_build 8.1 8010
+#    do_build 8.0 8000
+#    do_build 7.22 7220
+#    do_build 7.21 7210
+#    do_build 7.20 7200
+#    do_build 7.19 7190
+#    do_build 7.18 7180
+#    do_build 7.17 7170
+#    do_build 7.16 7160
+#    do_build 7.15 7150
+#    do_build 7.14 7140
+#    do_build 7.13 7130
+#    do_build 7.12 7120
+#    do_build 7.11 7110
+#    do_build 7.10 7100
+#    do_build 7.9 7090
+#    do_build 7.8 7080
+#    do_build 7.7 7070
+#    do_build 7.6 7060
+#    do_build 7.5 7050
+#    do_build 7.4 7040
+#    do_build 7.3 7030
+#    do_build 7.2 7020
+#    do_build 7.1 7010
+#    do_build 7.0 7000 patch ddraw_waitvblank.patch
     do_build 6.23 6230 patch ddraw_waitvblank.patch
     do_build 6.22 6220 patch ddraw_waitvblank.patch
     do_build 6.21 6210 patch ddraw_waitvblank.patch

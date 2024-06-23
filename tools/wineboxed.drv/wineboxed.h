@@ -8,7 +8,7 @@
 #include "winuser.h"
 #if BOXED_WINE_VERSION < 8100 || defined(WINE_UNIX_LIB)
 #if BOXED_WINE_VERSION >= 7000
-#include "ntgdi.h"
+// include "ntgdi.h"
 #endif
 #include "wine/gdi_driver.h"
 #else
