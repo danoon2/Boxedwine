@@ -60,6 +60,8 @@ public:
     BString wineTrickDlls;
     std::vector<BString> tinyCorePackages;
     BString tinyCoreURL;
+    BString tinyCoreBackupURL;
+    BString dist;
     U32 size;
     bool operator<(const FileSystemZip& rhs) const { 
         if (wineName.length() && rhs.wineName.length()) {
@@ -97,6 +99,7 @@ public:
     static const std::vector<std::shared_ptr<FileSystemZip>>& getFileSystemVersions() {return GlobalSettings::fileSystemVersions;}
     static const std::vector<std::shared_ptr<FileSystemZip>>& getAvailableFileSystemVersions() { return GlobalSettings::availableFileSystemVersions; }
     static BString getDataFolder() {return GlobalSettings::dataFolderLocation;}
+    static BString getCacheFolder() { return GlobalSettings::dataFolderLocation.stringByApppendingPath("cache"); }
     static void setDataFolder(BString location) {GlobalSettings::dataFolderLocation = location;}
     static void setTheme(BString theme);
     static BString getTheme() {return GlobalSettings::theme;}

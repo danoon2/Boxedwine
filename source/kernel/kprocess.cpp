@@ -202,8 +202,10 @@ KThread* KProcess::createThread() {
 }
 
 void KProcess::removeThread(KThread* thread) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadRemovedCondition);
-	BOXEDWINE_CONDITION_SIGNAL(threadRemovedCondition);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadRemovedCondition);
+        BOXEDWINE_CONDITION_SIGNAL(threadRemovedCondition);
+    }
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     this->threads.remove(thread->id);
@@ -220,7 +222,7 @@ U32 KProcess::getThreadCount() {
 }
 
 void KProcess::deleteThread(KThread* thread) {
-    thread->cleanup();        
+    thread->cleanup();  
     if (this->threads.size() == 1 && this->threads.get(thread->id)==thread) {
         delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
         this->memory = nullptr;
@@ -2702,22 +2704,29 @@ U32 KProcess::signal(U32 signal) {
         return 0;
     }
     {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
-        for (auto& t : this->threads) {
-            KThread* thread = t.value;
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
-            if (thread->sigWaitMask & signal) {
-                thread->foundWaitSignal = signal;
-                BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
-                return 0;
+        KThread* foundThread = nullptr;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+            for (auto& t : this->threads) {
+                KThread* thread = t.value;
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
+                if (thread->sigWaitMask & signal) {
+                    thread->foundWaitSignal = signal;
+                    BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
+                    return 0;
+                }
+            }
+            for (auto& t : this->threads) {
+                KThread* thread = t.value;
+
+                if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
+                    foundThread = thread;
+                    break;
+                }
             }
         }
-        for (auto& t : this->threads) {
-            KThread* thread = t.value;
-
-            if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
-                return thread->signal(signal, false);
-            }
+        if (foundThread) {
+            return foundThread->signal(signal, false);
         }
     }
     // didn't find a thread that could handle it

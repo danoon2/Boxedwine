@@ -104,6 +104,9 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         ep->ContextRecord->EFlags&=~AC;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
+    if (cpu != (BtCPU*)ep->ContextRecord->R13) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
     KMemoryData* mem = getMemData(cpu->memory);
     bool inBinaryTranslator = mem->isAddressExecutable((U8*)ep->ContextRecord->Rip);
 
@@ -113,10 +116,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         // motorhead installer will trigger this a few time
         // caesar 3 installer will trigger this when it exits
         return EXCEPTION_CONTINUE_SEARCH;
-    }
-    if (cpu!=(BtCPU*)ep->ContextRecord->R13) {
-        return EXCEPTION_CONTINUE_SEARCH;
-    }	
+    }    	
     
     syncFromException(ep, true);
     U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);

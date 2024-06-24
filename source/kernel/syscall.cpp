@@ -659,9 +659,9 @@ static U32 syscall_sigreturn(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_rseq(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_SIGNAL, cpu, "struct rseq *rseq=%X rseq_len=%d flags=%X sig=%X", ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "rseq: struct rseq *rseq=%X rseq_len=%d flags=%X sig=%X", ARG1, ARG2, ARG3, ARG4);
     U32 result = cpu->thread->rseq(ARG1, ARG2, ARG3, ARG4);
-    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
@@ -1544,11 +1544,16 @@ static U32 syscall_faccessat2(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {    
-#ifdef _DEBUG
-        //kwarn("syscall __NR_set_robust_list not implemented");
-#endif
-    U32 result = -K_ENOSYS;
-    SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: result=%d(0x%X) IGNORED\n", result, result);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: head=%X len=%X", ARG1, ARG2);
+    U32 result = cpu->thread->set_robust_list(ARG1, ARG2);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_get_robust_list(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: pid=%X head_ptr=%X len_ptr=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->get_robust_list(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 

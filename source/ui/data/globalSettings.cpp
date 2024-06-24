@@ -263,6 +263,12 @@ void GlobalSettings::lookForFileSystems(BString path) {
                 }
                 FsZip::readFileFromZip(filepath, B("depends.txt"), depend);
                 depend = depend.trim();
+                BString dist;
+                FsZip::readFileFromZip(filepath, B("dist.txt"), dist);
+                dist = dist.trim();
+                if (dist.isEmpty()) {
+                    dist = "shared";
+                }
                 FsZip::readFileFromZip(filepath, B("packages.txt"), packages);
                 std::shared_ptr<FileSystemZip> fs = std::make_shared<FileSystemZip>(name, wineVersion, fsVersion, filepath, B(""), depend);
                 GlobalSettings::fileSystemVersions.push_back(fs);
@@ -271,7 +277,11 @@ void GlobalSettings::lookForFileSystems(BString path) {
                     fs->tinyCoreURL = "http://" + fs->tinyCorePackages[0];
                     fs->tinyCorePackages.erase(fs->tinyCorePackages.begin());
                 }
-
+                if (fs->tinyCorePackages.size() && fs->tinyCorePackages[0].contains("x86/tcz/")) {
+                    fs->tinyCoreBackupURL = "http://" + fs->tinyCorePackages[0];
+                    fs->tinyCorePackages.erase(fs->tinyCorePackages.begin());
+                }
+                fs->dist = dist;
                 BString winetricksVersion;
                 if (FsZip::readFileFromZip(filepath, B("winetricksVersion.txt"), winetricksVersion) && winetricksVersion.length()) {
                     BString dlls;

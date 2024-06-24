@@ -80,6 +80,8 @@ public:
     U32 signalstack(U32 ss, U32 oss);
     U32 sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize);
     U32 sigreturn();
+    U32 set_robust_list(U32 head, U32 len);
+    U32 get_robust_list(U32 pid, U32 head_ptr, U32 len_ptr);
     U32 rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig);
     U32 sigsuspend(U32 mask, U32 sigsetSize);
     U32 sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool time64);
@@ -156,6 +158,11 @@ public:
 
     U32 condStartWaitTime = 0;
 private:
+    void exitRobustList();
+    U32 handleFutexDeath(U32 uaddr, bool pi, bool pending_op);
+
+    U32 robustList = 0;
+
     std::shared_ptr<FsNode> threadNode; // in /proc/<pid>/task/<tid>
     std::shared_ptr<FsNode> commNode; // in /proc/<pid>/task/<tid>/comm
 

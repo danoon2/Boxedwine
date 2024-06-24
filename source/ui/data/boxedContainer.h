@@ -63,6 +63,7 @@ private:
     void getTinyCorePackages(BString package, std::vector<BString>& todo, std::vector<BString>& needsDownload);
     void installNextTinyCorePackage(WaitDlg* dlg, std::vector<BString> packages);
     void doInstallTinyCorePackage(const std::vector<BString>& todo);
+    BString getCacheFolder();
 
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);

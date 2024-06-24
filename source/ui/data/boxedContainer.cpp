@@ -221,26 +221,6 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
         app.cmd = B("wineboot");
         app.args.push_back(B("-u"));
         apps.push_back(app);
-
-#ifdef _DEBUG
-        BoxedApp app2;
-        app2.container = this;
-        app2.name = B("fc-cache");
-        app2.path = B("/usr/local/bin");
-        app2.cmd = B("fc-cache");
-        app2.args.push_back(B("-f"));
-        app2.isWine = false;
-        apps.push_back(app2);
-
-        BoxedApp app3;
-        app3.container = this;
-        app3.name = B("ldconfig");
-        app3.path = B("/sbin");
-        app3.cmd = B("/sbin/ldconfig");
-        app3.uid = 0;
-        app3.isWine = false;
-        apps.push_back(app3);
-#endif
     }    
     if (doesFileExist(B("/usr/local/bin/startx"))) {
         BoxedApp app;
@@ -258,6 +238,25 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
         app.args.clear();
         apps.push_back(app);
     }
+#ifdef _DEBUG
+    BoxedApp app2;
+    app2.container = this;
+    app2.name = B("fc-cache");
+    app2.path = B("/usr/local/bin");
+    app2.cmd = B("fc-cache");
+    app2.args.push_back(B("-f"));
+    app2.isWine = false;
+    apps.push_back(app2);
+
+    BoxedApp app3;
+    app3.container = this;
+    app3.name = B("ldconfig");
+    app3.path = B("/sbin");
+    app3.cmd = B("/sbin/ldconfig");
+    app3.uid = 0;
+    app3.isWine = false;
+    apps.push_back(app3);
+#endif
     std::sort(apps.begin(), apps.end(), compareApps);
 }
 
@@ -586,19 +585,56 @@ BString BoxedContainer::getLogPath() {
     return this->dirPath.stringByApppendingPath("lastLog.txt");
 }
 
+BString BoxedContainer::getCacheFolder() {
+    std::shared_ptr<FileSystemZip> fs = fileSystem.lock();
+    return GlobalSettings::getCacheFolder().stringByApppendingPath(fs->dist);
+}
+
 void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& todo, std::vector<BString>& needsDownload) {
-    // libv4l2.tcz used for webcams
-    // libgphoto2.tcz digital camera access
-    // libdrm (direct rendering management)
-    // libxshmfence (shared-memory fences for synchronization between the X server and direct-rendering clients)
-    // libcups.tcz (printers)
-    if (package == "Xorg-7.7.tcz" || package == "libasound.tcz" || package == "libpulseaudio.tcz" || package == "libpcap.tcz" || package == "libsane.tcz" || package == "libv4l2.tcz" || package == "libgphoto2.tcz" || package == "libXdamage.tcz" || package == "libXxf86vm.tcz" || package == "libdrm.tcz" || package == "libxshmfence.tcz" || package == "Xorg-7.7-3d.tcz" || package == "libcups.tcz") {
-        //return;
-    }
+
+    // steps to create Xorg file system from base when I created TinyCore15XOrg
+    // 
+    // I installed these packages ontop of TineyCore15
+    // 
+    // copy /etc/sysconfig/*
+    // 
+    // pcre2
+    // icewm
+    // xfe
+    // ace-of-penguins
+    // gtk3
+    // gcc_libs
+    // openssl
+    // libevdev
+    // mtdev
+    // XOrg-7.7    
+    // gdk-pixbuf2-xlib
+    // gtk-update-icon-cache
+    // adwaita-icon-theme
+    // 
+    // I copied these files from TinyCore13
+    // 
+    // /usr/local/lib/xorg/modules/input/evdev_drv.so (I think this came from a much only file system, there doesn't seem to be a package for it anymore)
+    // /etc/xorg.conf
+    // /home/username/*    
+    //
+    // removed
+    // 
+    // 9MB lib\modules\6.6.8-tinycore\kernel
+    // 
+    // steps to create Wine Base file system from base when I created TinyCore15XOrgWineBase
+    //
+    // install winetricks, p7zip, git
+    // create /bin/wine.link to point to /opt/wine/bin/wine
+    // add libGL to /lib (don't forget to run ldconfig)
+    // update vulkan in /usr/local/lib to Boxedwine's version
+    // add winetricksVersion.txt, dlls.txt, fonts.txt and update to newest wineversion
+    // comment out block of code, search "Do sanity check unless running on Cygwin, where it's way too slow." this will speed up things
     if (package == "v4l-dvb-KERNEL.tcz") {
         return;
     }
-    BString location = GlobalSettings::getDataFolder().stringByApppendingPath("tcCache");
+   
+    BString location = getCacheFolder();
     BString root = this->dirPath.stringByApppendingPath("root");
     BString sep = BString::pathSeparator();
     BString installCheckDir = root + sep + "usr" + sep + "local" + sep + "tce.installed";
@@ -609,6 +645,9 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
     BString cachedLocation = location.stringByApppendingPath(package);
     std::shared_ptr<FileSystemZip> fileSystem = this->fileSystem.lock();
     
+    if (!Fs::doesNativePathExist(location)) {
+        Fs::makeNativeDirs(location);
+    }
     if (!Fs::doesNativePathExist(cachedLocation)) {
         needsDownload.push_back(package);        
     }
@@ -651,7 +690,7 @@ void BoxedContainer::installTinyCorePackage(BString package) {
     if (!needsDownload.size()) {
         doInstallTinyCorePackage(todo);
     } else {
-        BString location = GlobalSettings::getDataFolder().stringByApppendingPath("tcCache");
+        BString location = getCacheFolder();
         if (!Fs::doesNativePathExist(location)) {
             Fs::makeNativeDirs(location);
         }
@@ -690,7 +729,7 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
         GlobalSettings::startUpArgs.addArg(B("-d"));
         GlobalSettings::startUpArgs.addArg(B("/"));
         GlobalSettings::startUpArgs.addArg("/tcCache/" + package);
-        GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), GlobalSettings::getDataFolder().stringByApppendingPath("tcCache"), false));
+        GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), getCacheFolder(), false));
         dlg->addSubLabel("Extracting " + package, 5);
     } else if (package.length()>0) {
         GlobalSettings::startUpArgs.setWorkingDir(B("/usr/local/sbin"));

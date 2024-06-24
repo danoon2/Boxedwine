@@ -359,7 +359,8 @@ U32 Fs::makeLocalDirs(const BString& path) {
 
 void Fs::splitPath(const BString& path, std::vector<BString>& parts) {
     if (path.startsWith("/")) {
-        path.substr(1).split('/', parts);
+        BString tmp = path.substr(1);
+        tmp.split('/', parts);
     } else {
         path.split('/', parts);
     }

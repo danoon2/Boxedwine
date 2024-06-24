@@ -31,29 +31,12 @@ public:
 #define LARGEST_LEVEL 16
 #define TOTAL_LEVEL 13
 
-static PtrPool<BStringData>* freeStringData;
-static PtrPool<char>* freeMemoryBySize[TOTAL_LEVEL];
-
 char* getNewString(int level) {
-    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
-        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
-    }
-    char* result = freeMemoryBySize[level - SMALLEST_LEVEL]->get();
-    if (!result) {
-        U32 size = 1 << level;
-        result = new char[size * 100];
-        for (int i = 1; i < 100; i++, result += size) {
-            freeMemoryBySize[level - SMALLEST_LEVEL]->put(result);
-        }
-    }
-    return result;
+    return new char[1 << level];
 }
 
 void releaseString(int level, char* str) {
-    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
-        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
-    }
-    freeMemoryBySize[level - SMALLEST_LEVEL]->put(str);
+    delete[] str;
 }
 
 int powerOf2(int requestedSize) {
@@ -68,21 +51,12 @@ int powerOf2(int requestedSize) {
 
 void BStringData::decRefCount() {
     if (refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-        if (level != 0) {
-            releaseString(level, str);
-        }
-        if (!freeStringData) {
-            freeStringData = new PtrPool<BStringData>();
-        }
-        freeStringData->put(this);
+        delete this;
     }
 }
 
 static BStringData* allocNewData() {
-    if (!freeStringData) {
-        freeStringData = new PtrPool<BStringData>();
-    }
-    return freeStringData->get();
+    return new BStringData();
 }
 
 template <typename T>

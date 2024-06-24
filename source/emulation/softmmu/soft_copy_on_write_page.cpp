@@ -49,7 +49,12 @@ void CopyOnWritePage::writed(U32 address, U32 value) {
 
 U8 CopyOnWritePage::readb(U32 address) {
     if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::readb(address);
+        // even though we could call RWPage::readb(address), this would cause a race condition.
+        // at any momement a write could happen that replaces this page, so instead of locking
+        // the reads on the page, let just make the copy now
+        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+        copyOnWrite(address);
+        return data->memory->readb(address);
     }
     KThread::currentThread()->seg_access(address, true, false);
     return 0;
@@ -57,7 +62,9 @@ U8 CopyOnWritePage::readb(U32 address) {
 
 U16 CopyOnWritePage::readw(U32 address) {
     if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::readw(address);
+        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+        copyOnWrite(address);
+        return data->memory->readw(address);
     }
     KThread::currentThread()->seg_access(address, true, false);
     return 0;
@@ -65,7 +72,9 @@ U16 CopyOnWritePage::readw(U32 address) {
 
 U32 CopyOnWritePage::readd(U32 address) {
     if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::readd(address);
+        KMemoryData* data = getMemData(KThread::currentThread()->memory);
+        copyOnWrite(address);
+        return data->memory->readd(address);
     }
     KThread::currentThread()->seg_access(address, true, false);
     return 0;

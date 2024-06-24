@@ -750,6 +750,7 @@ void ContainersView::winetricks(const std::shared_ptr<FileSystemZip>& winetricks
     GlobalSettings::startUpArgs.addArg(B("/bin/sh"));
     GlobalSettings::startUpArgs.addArg(B("/usr/local/bin/winetricks"));
     GlobalSettings::startUpArgs.addArg(verb);
+    GlobalSettings::startUpArgs.setWorkingDir(B("/usr/local/bin"));
     GlobalSettings::startUpArgs.envValues.push_back(B("WINETRICKS_DOWNLOADER=curl"));
     GlobalSettings::startUpArgs.readyToLaunch = true;
 #ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS

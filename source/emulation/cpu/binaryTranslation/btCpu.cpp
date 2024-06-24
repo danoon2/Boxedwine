@@ -189,7 +189,7 @@ void BtCPU::startThread() {
     }
     std::shared_ptr<KProcess> process = thread->process;
     process->deleteThread(thread);
-
+    KThread::setCurrentThread(nullptr);
     platformThreadCount--;
     if (platformThreadCount == 0) {
         KSystem::shutingDown = true;
