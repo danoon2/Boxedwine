@@ -10,8 +10,8 @@ bool BoxedContainer::load(BString dirPath) {
     this->name = config.readString(B("Name"), B(""));
     BString wineVersion = config.readString(B("WineVersion"), B("")); // compat
     this->fileSystemZipName = config.readString(B("FileSystemZipName"), wineVersion);
-
     this->fileSystem = GlobalSettings::getInstalledFileSystemFromName(fileSystemZipName);
+    loadInstalledPackageList();
 
     int i = 1;
     while (true) {
@@ -39,6 +39,23 @@ BoxedContainer::~BoxedContainer() {
     for (auto& app : this->apps) {
         delete app;
     }
+}
+
+void BoxedContainer::loadInstalledPackageList() {
+    std::shared_ptr<FileSystemZip> fs = fileSystem.lock();
+    BString path = GlobalSettings::getRootFolder(this).stringByApppendingPath("installed.txt");
+    if (fs && !Fs::doesNativePathExist(path)) {
+        FsZip::extractFileFromZip(fs->filePath, B("installed.txt"), GlobalSettings::getRootFolder(this));
+    } 
+    
+    if (Fs::doesNativePathExist(path)) {
+        readLinesFromFile(path, installedPackages);
+    }
+}
+
+void BoxedContainer::saveInstalledPackageList() {
+    BString path = GlobalSettings::getRootFolder(this).stringByApppendingPath("installed.txt");
+    writeLinesToFile(path, installedPackages);
 }
 
 BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, std::shared_ptr<FileSystemZip> fileSystem) {
@@ -624,7 +641,7 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
     // 
     // steps to create Wine Base file system from base when I created TinyCore15XOrgWineBase
     //
-    // install winetricks, p7zip, git
+    // install winetricks, git
     // create /bin/wine.link to point to /opt/wine/bin/wine
     // add libGL to /lib (don't forget to run ldconfig)
     // update vulkan in /usr/local/lib to Boxedwine's version
@@ -634,6 +651,9 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
         return;
     }
    
+    if (vectorContainsIgnoreCase(installedPackages, package)) {
+        return;
+    }
     BString location = getCacheFolder();
     BString root = this->dirPath.stringByApppendingPath("root");
     BString sep = BString::pathSeparator();
@@ -670,9 +690,10 @@ void BoxedContainer::getTinyCorePackages(BString package, std::vector<BString>& 
 void BoxedContainer::doInstallTinyCorePackage(const std::vector<BString>& todo) {
     static WaitDlg* dlg;    
 
+    installingPackages.clear();
     runOnMainUI([todo, this]() {
-        dlg = new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslation(Msg::WAITDLG_UNZIPPING_APP_LABEL));
-        installNextTinyCorePackage(dlg, todo);
+        dlg = new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslation(Msg::WAITDLG_UNZIPPING_APP_LABEL));        
+        installNextTinyCorePackage(dlg, todo);        
         return false;
         });    
 }
@@ -723,14 +744,15 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
     GlobalSettings::startUpArgs = StartUpArgs();
     this->launch();
     if (package.endsWith(".tcz")) {
-        GlobalSettings::startUpArgs.setWorkingDir(B("/"));
+        GlobalSettings::startUpArgs.setWorkingDir(B(""));
         GlobalSettings::startUpArgs.addArg(B("/usr/local/bin/unsquashfs"));
         GlobalSettings::startUpArgs.addArg(B("-f"));
         GlobalSettings::startUpArgs.addArg(B("-d"));
         GlobalSettings::startUpArgs.addArg(B("/"));
         GlobalSettings::startUpArgs.addArg("/tcCache/" + package);
         GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/tcCache"), getCacheFolder(), false));
-        dlg->addSubLabel("Extracting " + package, 5);
+        dlg->addSubLabel("Extracting " + package, 5);        
+        installingPackages.push_back(package);
     } else if (package.length()>0) {
         GlobalSettings::startUpArgs.setWorkingDir(B("/usr/local/sbin"));
         GlobalSettings::startUpArgs.addArg(package);
@@ -738,9 +760,11 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
     } else {
         BString sep = BString::pathSeparator();
         BString installed = GlobalSettings::getRootFolder(this).stringByApppendingPath("usr") + sep + "local" + sep + "tce.installed";
-        Fs::iterateAllNativeFiles(installed, false, false, [&packages](BString filePath, bool isDir) {
+        Fs::iterateAllNativeFiles(installed, false, false, [this, &packages](BString filePath, bool isDir) {
             BString fileName = Fs::getFileNameFromNativePath(filePath);
-            packages.push_back("/usr/local/tce.installed/" + fileName);
+            if (vectorContainsIgnoreCase(installingPackages, fileName + ".tcz")) {
+                packages.push_back("/usr/local/tce.installed/" + fileName);
+            }
             return 0;
             });
         GlobalSettings::startUpArgs.setWorkingDir(B("/sbin"));        
@@ -760,6 +784,9 @@ void BoxedContainer::installNextTinyCorePackage(WaitDlg* dlg, std::vector<BStrin
                 });
         };
     } else {
+        installedPackages.insert(installedPackages.end(), installingPackages.begin(), installingPackages.end());
+        installingPackages.clear();
+        saveInstalledPackageList();
         BString containerPath = dirPath;
         GlobalSettings::startUpArgs.runOnRestartUI = [containerPath]() {
             gotoView(VIEW_CONTAINERS, containerPath);

@@ -614,8 +614,8 @@ void KThread::exitRobustList()
      * Fetch any possibly pending lock-add first, and handle it
      * if it exists:
      */
-    //if (fetch_robust_entry(this, &pending, head.list_op_pending, &pip))
-    //    return;
+    if (fetch_robust_entry(this, &pending, head.list_op_pending, &pip))
+        return;
 
     next_entry.address = 0;	/* avoid warning with gcc */
     while (entry.address != head.next) {

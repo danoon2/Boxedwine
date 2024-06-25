@@ -2110,7 +2110,7 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 321
     syscall_timerfd_create,   // 322
     nullptr,                  // 323 
-    nullptr,                  // 324 
+    nullptr,                  // 324 __NR_fallocate	
     syscall_timerfd_settime,  // 325
     syscall_timerfd_gettime,  // 326
     syscall_signalfd4,  // 327 __NR_signalfd4

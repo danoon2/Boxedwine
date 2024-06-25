@@ -63,6 +63,8 @@ private:
     void getTinyCorePackages(BString package, std::vector<BString>& todo, std::vector<BString>& needsDownload);
     void installNextTinyCorePackage(WaitDlg* dlg, std::vector<BString> packages);
     void doInstallTinyCorePackage(const std::vector<BString>& todo);
+    void loadInstalledPackageList();
+    void saveInstalledPackageList();
     BString getCacheFolder();
 
     void loadApps();
@@ -79,6 +81,8 @@ private:
     BString dirPath;
     std::vector<MountInfo> mounts;
     std::weak_ptr<FileSystemZip> fileSystem;
+    std::vector<BString> installedPackages;
+    std::vector<BString> installingPackages;
 };
 
 #endif
