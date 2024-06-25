@@ -2277,7 +2277,7 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     BString dir;
     U32 result = 0;
 
-    if (path.endsWith("/") || (flags & K_AT_EMPTY_PATH)) {
+    if (path.startsWith("/") || (flags & K_AT_EMPTY_PATH)) {
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
         if (result == 0 && (flags & K_AT_EMPTY_PATH)) {
             path = dir;

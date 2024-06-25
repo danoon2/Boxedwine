@@ -1459,6 +1459,13 @@ static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
     SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, name.c_str(), ARG3);
+#ifdef _DEBUG    
+    if (name == "c_rehash.sh") {
+        // not sure why installing ca_certificats with TinyCore Linux 15 needs this
+        klog("c_rehash.sh hack");
+        name = "/usr/local/sbin/c_rehash.sh";
+    }
+#endif
     U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
 #ifdef _DEBUG
     if (result>1000 && !name.contains("font")) {
