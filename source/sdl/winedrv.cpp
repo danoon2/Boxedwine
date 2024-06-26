@@ -2157,6 +2157,9 @@ static void boxeddrv_vkGetSwapchainImages(CPU* cpu) {
 static void boxeddrv_vkQueuePresent(CPU* cpu) {
 }
 
+static void boxeddrv_vkQueuePresent2(CPU* cpu) {
+}
+
 static void boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2(CPU* cpu) {
 }
 
@@ -2166,6 +2169,13 @@ static void boxeddrv_vkGetPhysicalDeviceSurfaceFormats2(CPU* cpu) {
 static void boxeddrv_vkGetNativeSurface(CPU* cpu) {
 
 }
+
+static void boxeddrv_vkGetHostExtension(CPU* cpu) {
+}
+
+static void boxeddrv_vkVulkanSurfacePresented(CPU* cpu) {
+}
+
 #endif
 void boxeddrv_wglShareLists(CPU* cpu) {
     EAX = KNativeWindow::getNativeWindow()->glShareLists(cpu->thread, ARG1, ARG2);
