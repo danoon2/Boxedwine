@@ -104,7 +104,7 @@ void BaseView::addTab(BString id, BString name, const std::shared_ptr<ImGuiLayou
 std::shared_ptr<LayoutComboboxControl> BaseView::createWindowsVersionCombobox(const std::shared_ptr<LayoutSection>& section) {
     std::vector<ComboboxItem> windowsVersion;
     for (auto& win : BoxedwineData::getWinVersions()) {
-        windowsVersion.push_back(ComboboxItem(win.szDescription));
+        windowsVersion.push_back(ComboboxItem(B(win.szDescription)));
     }
     std::shared_ptr<LayoutComboboxControl> result = section->addComboboxRow(Msg::CONTAINER_VIEW_WINDOWS_VERION_LABEL, Msg::CONTAINER_VIEW_WINDOWS_VERION_HELP, windowsVersion, BoxedwineData::getDefaultWindowsVersionIndex());
     result->setWidth((int)GlobalSettings::scaleFloatUIAndFont(150));

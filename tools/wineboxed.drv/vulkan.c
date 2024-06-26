@@ -39,6 +39,9 @@ WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 #define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2   (BOXED_BASE+105)
 #define BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2 (BOXED_BASE+106)
 #define BOXED_VK_GET_NATIVE_SURFACE                  (BOXED_BASE+107)
+#define BOXED_VK_GET_HOST_EXTENSION				(BOXED_BASE+110)
+#define BOXED_VK_QUEUE_PRESENT2				(BOXED_BASE+111)
+#define BOXED_VK_VULKAN_SURFACE_PRESENTED   (BOXED_BASE+112)
 
 static void* (*pvkGetDeviceProcAddr)(VkDevice, const char*);
 static void* (*pvkGetInstanceProcAddr)(VkInstance, const char*);
@@ -52,11 +55,14 @@ static BOOL wine_vk_init(void)
         ERR("Failed to load libvulkan.so.1.\n");
         return TRUE;
     }
-#define LOAD_FUNCPTR(f) p##f = dlsym(vulkan_handle, #f);
-    LOAD_FUNCPTR(vkGetDeviceProcAddr)
+
+#define LOAD_FUNCPTR(f) if ((p##f = dlsym(vulkan_handle, #f)) == NULL) { ERR("Failed to load %s", #f); return FALSE;}
+
+        LOAD_FUNCPTR(vkGetDeviceProcAddr)
         LOAD_FUNCPTR(vkGetInstanceProcAddr)
+
 #undef LOAD_FUNCPTR
-#undef LOAD_OPTIONAL_FUNCPTR
+
         return TRUE;
 
 }
@@ -203,6 +209,15 @@ static VkResult boxedwine_vkGetSwapchainImagesKHR(VkDevice device, VkSwapchainKH
     return (VkResult)result;
 }
 
+#if WINE_VULKAN_DRIVER_VERSION >= 24
+static VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* present_info, HWND* surfaces)
+{
+    int result;
+    TRACE("%p, %p, %p\n", queue, present_info, surfaces);
+    CALL_3(BOXED_VK_QUEUE_PRESENT2, queue, present_info, surfaces);
+    return (VkResult)result;
+}
+#else
 static VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* present_info)
 {
     int result;
@@ -210,12 +225,31 @@ static VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKH
     CALL_2(BOXED_VK_QUEUE_PRESENT, queue, present_info);
     return (VkResult)result;
 }
+#endif
 
 #if WINE_VULKAN_DRIVER_VERSION >= 10
 static VkSurfaceKHR boxedwine_wine_get_native_surface(VkSurfaceKHR surface)
 {
-    TRACE("0x%s\n", wine_dbgstr_longlong(surface));
-    return surface;
+    int result;
+    TRACE("%p\n", surface);
+    CALL_1(BOXED_VK_GET_NATIVE_SURFACE, surface);
+    return (VkSurfaceKHR)result;
+}
+#endif
+
+#if WINE_VULKAN_DRIVER_VERSION >= 20
+static const char* boxedwine_get_host_surface_extension() {
+    int result;
+    TRACE("\n");
+    CALL_0(BOXED_VK_GET_HOST_EXTENSION);
+    return (const char*)result;
+}
+#endif
+
+#if WINE_VULKAN_DRIVER_VERSION >= 25
+static void boxedwine_vulkan_surface_presented(HWND hwnd, VkResult result)
+    TRACE("%p, %p\n", (int)hwnd, result);
+    CALL_NORETURN_2(BOXED_VK_VULKAN_SURFACE_PRESENTED, hwnd, result);
 }
 #endif
 
@@ -289,7 +323,7 @@ static const struct vulkan_funcs vulkan_funcs =
     boxedwine_vkGetSwapchainImagesKHR,
     boxedwine_vkQueuePresentKHR,
 };
-#else
+#elif WINE_VULKAN_DRIVER_VERSION == 10
 static const struct vulkan_funcs vulkan_funcs =
 {
     boxedwine_vkCreateInstance,
@@ -313,7 +347,375 @@ static const struct vulkan_funcs vulkan_funcs =
     boxedwine_vkGetSwapchainImagesKHR,
     boxedwine_vkQueuePresentKHR,
 
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 10
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 11
+// no change, removed CDECL from __wine_get_vulkan_driver
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceSupportKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 12
+// removed vkGetPhysicalDeviceSurfaceSupportKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceSurfacePresentModesKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 13
+// removed vkGetPhysicalDeviceSurfacePresentModesKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceGroupSurfacePresentModesKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 14
+// removed vkGetDeviceGroupSurfacePresentModesKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 15
+// removed vkGetDeviceGroupSurfacePresentModesKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceCapabilitiesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 16
+// removed vkGetPhysicalDeviceSurfaceCapabilitiesKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDevicePresentRectanglesKHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 17
+// removed vkGetPhysicalDevicePresentRectanglesKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormats2KHR,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 18
+// removed vkGetPhysicalDeviceSurfaceFormats2KHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceSurfaceFormatsKHR,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 19
+// removed vkGetPhysicalDeviceSurfaceFormatsKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkEnumerateInstanceExtensionProperties,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 20
+// removed vkEnumerateInstanceExtensionProperties
+// added get_host_surface_extension
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateInstance,
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 21
+// removed vkCreateInstance
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroyInstance,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 22
+// removed vkDestroyInstance
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkGetSwapchainImagesKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 23
+// removed vkGetSwapchainImagesKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 24
+// added parameter to boxedwine_vkQueuePresentKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
+    boxedwine_wine_get_native_surface
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 25
+// added boxedwine_vulkan_surface_presented
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkDestroySwapchainKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
     boxedwine_wine_get_native_surface,
+    boxedwine_vulkan_surface_presented
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 26
+// removed vkDestroySwapchainKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateSwapchainKHR,
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
+    boxedwine_wine_get_native_surface,
+    boxedwine_vulkan_surface_presented
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 27
+// removed vkCreateSwapchainKHR
+static const struct vulkan_funcs vulkan_funcs =
+{
+    boxedwine_vkCreateWin32SurfaceKHR,
+    boxedwine_vkDestroySurfaceKHR,
+    boxedwine_vkGetDeviceProcAddr,
+    boxedwine_vkGetInstanceProcAddr,
+    boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    boxedwine_vkQueuePresentKHR,
+
+    boxedwine_get_host_surface_extension,
+    boxedwine_wine_get_native_surface,
+    boxedwine_vulkan_surface_presented
 };
 #endif
 
@@ -322,6 +724,40 @@ static const struct vulkan_funcs vulkan_funcs =
 // 8  Apr 7, 2020 (Wine 6.0)
 // 9  Jan 22, 2021 (Wine 6.1)
 // 10 Jan 26, 2021 (Wine 6.1)
+// 11 Jul 27, 2022 (Wine 7.14)
+// 12 Feb 1, 2024 (Wine 9.2)
+// 13 Feb 1, 2024 (Wine 9.2)
+// 14 Feb 1, 2024 (Wine 9.2)
+// 15 Feb 19, 2024 (Wine 9.3)
+// 16 Feb 19, 2024 (Wine 9.3)
+// 17 Feb 21, 2024 (Wine 9.3)
+// 18 Feb 22, 2024 (Wine 9.3)
+// 19 Feb 22, 2024 (Wine 9.3)
+// 20 Mar 28, 2024 (Wine 9.6)
+// 21 Mar 28, 2024 (Wine 9.6)
+// 22 Mar 28, 2024 (Wine 9.6)
+// 23 Apr 9, 2024 (Wine 9.7)
+// 24 Apr 11, 2024 (Wine 9.7)
+// 25 Apr 11, 2024 (Wine 9.7)
+// 26 Apr 11, 2024 (Wine 9.7)
+// 27 Apr 11, 2024 (Wine 9.7)
+
+#if WINE_GDI_DRIVER_VERSION >= 85
+UINT boxedwine_VulkanInit(UINT version, void* vulkan_handle, struct vulkan_funcs* vulkan_funcs) {
+    TRACE("version %d\n", version);
+    if (version != WINE_VULKAN_DRIVER_VERSION) {
+        ERR("version mismatch, vulkan wants %u but boxeddrv has %u\n", version, WINE_VULKAN_DRIVER_VERSION);
+        return NULL;
+    }
+
+    if (wine_vk_init()) {
+        *driver_funcs = vulkan_funcs;
+        return STATUS_SUCCESS;
+    }
+    return STATUS_PROCEDURE_NOT_FOUND;
+}
+
+#else
 
 #if WINE_VULKAN_DRIVER_VERSION >= 11
 const struct vulkan_funcs* boxeddrv_wine_get_vulkan_driver(UINT version)
@@ -342,4 +778,6 @@ const struct vulkan_funcs* CDECL boxeddrv_wine_get_vulkan_driver(PHYSDEV hdc, UI
         return &vulkan_funcs;
     return NULL;
 }
+#endif
+
 #endif

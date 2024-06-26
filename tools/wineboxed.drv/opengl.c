@@ -10,6 +10,11 @@ MAKE_DEP_UNIX
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
+// 21 Apr 23, 2020 Wine 5.7 opengl32: Make wgl driver entry points WINAPI.
+// 22 Nov 23, 2022 Wine 7.22 win32u: Don't use CDECL for __wine_get_wgl_driver. 
+// 23 Dec 6, 2022 Wine 8.0-rc1 opengl32: Use default calling convention for WGL driver entry points. 
+// 24 Apr 24, 2024 Wine 9.8 opengl32: Implement wglDescribePixelFormat using new driver API get_pixel_formats.
+
 #if BOXED_WINE_VERSION >= 7150
 #define SetLastError RtlSetLastWin32Error
 #endif
@@ -171,6 +176,12 @@ static struct wgl_context* boxeddrv_wglCreateContextAttribsARB(HDC hdc, struct w
     return result;
 }
 
+static void BGLAPI boxeddrv_get_pixel_formats(struct wgl_pixel_format* formats, UINT max_formats, UINT* num_formats, UINT* num_onscreen_formats) {
+    int result;
+    CALL_NORETURN_4(BOXED_GL_PIXEL_FORMATS, formats, max_formats, num_formats, num_onscreen_formats);
+    TRACE("boxeddrv_get_pixel_formats formats=%X max_formats=%d num_formats=%d num_onscreen_formats=%p\n", formats, max_formats, num_formats, num_onscreen_formats);
+}
+
 static struct opengl_funcs opengl_funcs =
 {
     {
@@ -184,6 +195,9 @@ static struct opengl_funcs opengl_funcs =
         boxeddrv_wglSetPixelFormat,       /* p_wglSetPixelFormat */
         boxeddrv_wglShareLists,           /* p_wglShareLists */
         boxeddrv_wglSwapBuffers,          /* p_wglSwapBuffers */
+#if WINE_WGL_DRIVER_VERSION >= 24
+        boxeddrv_get_pixel_formats
+#endif
     }
 };
 

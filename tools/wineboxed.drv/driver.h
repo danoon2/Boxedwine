@@ -26,7 +26,9 @@ struct opengl_funcs* CDECL boxeddrv_wine_get_wgl_driver(UINT version);
 struct opengl_funcs* CDECL boxeddrv_wine_get_wgl_driver(PHYSDEV hdc, UINT version);
 #endif
 
-#if WINE_VULKAN_DRIVER_VERSION >= 11
+#if WINE_GDI_DRIVER_VERSION >= 85
+UINT boxedwine_VulkanInit(UINT version, void* vulkan_handle, struct vulkan_funcs* vulkan_funcs);
+#elif WINE_VULKAN_DRIVER_VERSION >= 11
 const struct vulkan_funcs* boxeddrv_wine_get_vulkan_driver(UINT version);
 #elif WINE_GDI_DRIVER_VERSION >= 74
 const struct vulkan_funcs* CDECL boxeddrv_wine_get_vulkan_driver(UINT version);

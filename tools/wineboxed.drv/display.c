@@ -638,11 +638,6 @@ void WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* 
         .subsys_id = 1,
         .revision_id = 1,
     };
-    struct gdi_adapter gdi_adapter =
-    {
-        .id = 1,
-        .state_flags = DISPLAY_DEVICE_PRIMARY_DEVICE | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP,
-    };
     struct gdi_monitor gdi_monitor =
     {
         .rc_monitor = r,
@@ -666,20 +661,48 @@ void WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* 
 
     RtlUTF8ToUnicodeN(gdi_gpu.name, sizeof(gdi_gpu.name), &len, gpuName, strlen(gpuName));
     device_manager->add_gpu(&gdi_gpu, param);
-    device_manager->add_adapter(&gdi_adapter, param);    
+#if BOXED_WINE_VERSION < 9060
+    {
+        struct gdi_adapter gdi_adapter =
+        {
+            .id = 1,
+            .state_flags = DISPLAY_DEVICE_PRIMARY_DEVICE | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP,
+        };
+        device_manager->add_adapter(&gdi_adapter, param);
+    }
+#else
+    device_manager->add_source("1", DISPLAY_DEVICE_PRIMARY_DEVICE | DISPLAY_DEVICE_ATTACHED_TO_DESKTOP, param);
+#endif
 
 #if BOXED_WINE_VERSION < 8020
     RtlUTF8ToUnicodeN(gdi_monitor.name, sizeof(gdi_monitor.name), &len, monitorName, strlen(monitorName));
 #endif
     device_manager->add_monitor(&gdi_monitor, param);
 
-#if WINE_GDI_DRIVER_VERSION >= 81 && BOXED_WINE_VERSION >= 7140
+#if BOXED_WINE_VERSION >= 9070
+    {
+        DEVMODEW devModes[20]; // boxedwine had 18 when this was coded
+        DEVMODEW curMode;
+        DWORD count = 0;
+        TRACE("adding modes\n");
+        boxeddrv_EnumDisplaySettingsEx(0, -1, &curMode, 2); // -1 = ENUM_CURRENT_SETTINGS
+        while (boxeddrv_EnumDisplaySettingsEx(0, count, &devMode[count], 0)) {
+            BOOL isCurrent = memcmp(&curMode, &devMode[count], sizeof(DEVMODEW)) == 0;
+            TRACE("mode: %dx%dx%dbpp @%d Hz, cur=%d %sstretched %sinterlaced\n", (int)devMode[count].dmPelsWidth, (int)devMode[count].dmPelsHeight,
+                (int)devMode[count].dmBitsPerPel, (int)devMode[count].dmDisplayFrequency, (int)isCurrent,
+                devMode[count].dmDisplayFixedOutput == DMDFO_STRETCH ? "" : "un",
+                devMode[count].dmDisplayFlags & DM_INTERLACED ? "" : "non-");
+            count++;
+        }
+        device_manager->add_modes(&curMode, count, devMods, param);
+    }
+#elif WINE_GDI_DRIVER_VERSION >= 81 && BOXED_WINE_VERSION >= 7140
     {
         DEVMODEW devMode;
         DEVMODEW curMode;
         DWORD i = 0;
         TRACE("adding modes\n");
-        boxeddrv_EnumDisplaySettingsEx(1, -1, &curMode, 2);
+        boxeddrv_EnumDisplaySettingsEx(0, -1, &curMode, 2); // -1 = ENUM_CURRENT_SETTINGS
         while (boxeddrv_EnumDisplaySettingsEx(0, i, &devMode, 0)) {
             BOOL isCurrent = memcmp(&curMode, &devMode, sizeof(DEVMODEW)) == 0;
             TRACE("mode: %dx%dx%dbpp @%d Hz, cur=%d %sstretched %sinterlaced\n", (int)devMode.dmPelsWidth, (int)devMode.dmPelsHeight,

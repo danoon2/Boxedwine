@@ -158,6 +158,10 @@ static void notImplemented(const char* s) {
 #define BOXED_VK_GET_NATIVE_SURFACE                  (BOXED_BASE+107)
 
 #define BOXED_AUTO_FLUSH_PRIMARY                  (BOXED_BASE+108)
+#define BOXED_GL_PIXEL_FORMATS				(BOXED_BASE+109)
+#define BOXED_VK_GET_HOST_EXTENSION				(BOXED_BASE+110)
+#define BOXED_VK_QUEUE_PRESENT2				(BOXED_BASE+111)
+#define BOXED_VK_VULKAN_SURFACE_PRESENTED   (BOXED_BASE+112)
 
 # define __MSABI_LONG(x)         x
 
@@ -1681,6 +1685,11 @@ void boxeddrv_wglDescribePixelFormat(CPU* cpu) {
     EAX = KSystem::describePixelFormat(cpu->thread, ARG1, ARG2, ARG3, ARG4);
 }
 
+// void get_pixel_formats(struct wgl_pixel_format* formats, UINT max_formats, UINT* num_formats, UINT* num_onscreen_formats) 
+void boxeddrv_glPixelFormats(CPU* cpu) {
+    kpanic("boxeddrv_glPixelFormats not implemented yet");
+}
+
 void boxeddrv_wglGetPixelFormat(CPU* cpu) {
     std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
@@ -2020,8 +2029,9 @@ static void boxeddrv_vkEnumerateInstanceExtensionProperties(CPU* cpu) {
 }
 
 // VkResult boxedwine_vkGetDeviceGroupSurfacePresentModesKHR(VkDevice device, VkSurfaceKHR surface, VkDeviceGroupPresentModeFlagsKHR* flags)
+void vk_GetDeviceGroupSurfacePresentModesKHR(CPU* cpu);
 static void boxeddrv_vkGetDeviceGroupSurfacePresentModes(CPU* cpu) {
-    kpanic("boxeddrv_vkGetDeviceGroupSurfacePresentModes not implemented");
+    vk_GetDeviceGroupSurfacePresentModesKHR(cpu);
 }
 
 // VkResult boxedwine_vkGetPhysicalDevicePresentRectanglesKHR(VkPhysicalDevice phys_dev, VkSurfaceKHR surface, uint32_t* count, VkRect2D* rects)
@@ -2064,6 +2074,11 @@ static void boxeddrv_vkQueuePresent(CPU* cpu) {
     kpanic("boxeddrv_vkQueuePresent not implemented");
 }
 
+// VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKHR* present_info, HWND* surfaces)
+static void boxeddrv_vkQueuePresent2(CPU* cpu) {
+    kpanic("boxeddrv_vkQueuePresent2 not implemented");
+}
+
 // VkResult boxedwine_vkGetPhysicalDeviceSurfaceCapabilities2KHR(VkPhysicalDevice phys_dev, const VkPhysicalDeviceSurfaceInfo2KHR* surface_info, VkSurfaceCapabilities2KHR* capabilities)
 static void boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2(CPU* cpu) {
     kpanic("boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2 not implemented");
@@ -2081,6 +2096,16 @@ static void boxeddrv_vkGetNativeSurface(CPU* cpu) {
 
     kpanic("boxeddrv_vkGetNativeSurface not implemented");
     cpu->memory->writeq(ARG2, (U64)result);
+}
+
+// const char *boxedwine_get_host_surface_extension(void)
+static void boxeddrv_vkGetHostExtension(CPU* cpu) {
+    kpanic("boxeddrv_vkGetHostExtension not implemented");
+}
+
+// static void boxedwine_vulkan_surface_presented(HWND hwnd, VkResult result)
+static void boxeddrv_vkVulkanSurfacePresented(CPU* cpu) {
+    kpanic("boxeddrv_vkVulkanSurfacePresented not implemented");
 }
 
 #else 
@@ -2230,7 +2255,7 @@ U32 wine_callbackSize;
 
 void initWine() {
 	if (!wine_callback) {
-		wine_callback = new Int99Callback[109];
+		wine_callback = new Int99Callback[113];
 		wine_callback[BOXED_ACQUIRE_CLIPBOARD] = boxeddrv_AcquireClipboard;
 		wine_callback[BOXED_ACTIVATE_KEYBOARD_LAYOUT] = boxeddrv_ActivateKeyboardLayout;
 		wine_callback[BOXED_BEEP] = boxeddrv_Beep;
@@ -2337,11 +2362,15 @@ void initWine() {
         wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_WIN32_PRESENTATION_SUPPORT] = boxeddrv_vkGetPhysicalDeviceWine32PresentationSupport;
         wine_callback[BOXED_VK_GET_SWAPCHAIN_IMAGES] = boxeddrv_vkGetSwapchainImages;
         wine_callback[BOXED_VK_QUEUE_PRESENT] = boxeddrv_vkQueuePresent;
+        wine_callback[BOXED_VK_QUEUE_PRESENT2] = boxeddrv_vkQueuePresent2;
         wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_CAPABILITIES2] = boxeddrv_vkGetPhysicalDeviceSurfaceCapabilities2;
         wine_callback[BOXED_VK_GET_PHYSICAL_DEVICE_SURFACE_FORMATS2] = boxeddrv_vkGetPhysicalDeviceSurfaceFormats2;
         wine_callback[BOXED_VK_GET_NATIVE_SURFACE] = boxeddrv_vkGetNativeSurface;
+        wine_callback[BOXED_VK_GET_HOST_EXTENSION] = boxeddrv_vkGetHostExtension;
+        wine_callback[BOXED_VK_VULKAN_SURFACE_PRESENTED] = boxeddrv_vkVulkanSurfacePresented;
 
         wine_callback[BOXED_AUTO_FLUSH_PRIMARY] = boxeddrv_autoFlushPrimary;
-		wine_callbackSize = 109;
+        wine_callback[BOXED_GL_PIXEL_FORMATS] = boxeddrv_glPixelFormats;
+		wine_callbackSize = 113;
 	}
 }

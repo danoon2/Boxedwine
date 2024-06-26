@@ -127,6 +127,8 @@
 #define BOXED_HAS_WND                               (BOXED_BASE+87)
 #define BOXED_GET_VERSION                           (BOXED_BASE+88)
 
+#define BOXED_GL_PIXEL_FORMATS				(BOXED_BASE+109)
+
 #define CALL_0(index) __asm__("push %1\n\tint $0x98\n\taddl $4, %%esp": "=a" (result):"i"(index):); 
 #define CALL_1(index, arg1) __asm__("push %2\n\tpush %1\n\tint $0x98\n\taddl $8, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1): "esp"); 
 #define CALL_2(index, arg1,arg2) __asm__("push %3\n\tpush %2\n\tpush %1\n\tint $0x98\n\taddl $12, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1), "g"((DWORD)arg2): "esp");
