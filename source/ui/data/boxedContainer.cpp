@@ -530,7 +530,7 @@ BString BoxedContainer::getWindowsVersion() {
     for (auto& winVer : BoxedwineData::getWinVersions()) {
         if ((int)winVer.dwPlatformId != platform) continue;
         if ((int)winVer.dwMajorVersion != major) continue;
-        if (type.length() && winVer.szProductType != type) continue;
+        if (type.length() && type != winVer.szProductType) continue;
         best = winVer.szDescription;
         if (((int)winVer.dwMinorVersion == minor) && ((int)winVer.dwBuildNumber == build)) {
             return B(winVer.szDescription);
