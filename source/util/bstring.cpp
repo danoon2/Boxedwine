@@ -51,6 +51,9 @@ int powerOf2(int requestedSize) {
 
 void BStringData::decRefCount() {
     if (refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (level) {
+            releaseString(level, str);
+        }
         delete this;
     }
 }

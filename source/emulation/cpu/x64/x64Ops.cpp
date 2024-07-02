@@ -1184,7 +1184,17 @@ static U32 movEwSw(X64Asm* data) {
 // Mov Ed,Sw
 static U32 movEdSw(X64Asm* data) {
     U8 rm = data->fetch8();
-    data->writeToEFromCpuOffset(rm, segOffset[((rm >> 3) & 7)], 4, 4);
+    // https://c9x.me/x86/html/file_module_x86_id_176.html
+    // When the processor executes the instruction with a 32 - bit general - purpose register, it assumes that the 16 least - significant 
+    // bits of the general - purpose register are the destination or source operand.If the register is a destination operand, the resulting 
+    // value in the two high - order bytes of the register is implementation dependent.For the Pentium 4, Intel Xeon, and P6 family processors, 
+    // the two high - order bytes are filled with zeros; for earlier 32 - bit IA - 32 processors, the two high order bytes are undefined.
+    if (rm >= 0xc0) {
+        data->writeToEFromCpuOffset(rm, segOffset[((rm >> 3) & 7)], 4, 4);
+    } else {
+        // even though 32-bit instruction, only write 16-bits
+        data->writeToEFromCpuOffset(rm, segOffset[((rm >> 3) & 7)], 4, 2);
+    }
     return 0;
 }
 
