@@ -259,8 +259,10 @@ U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
     if (!result) {
         return -K_ESRCH;;
     }
-
-    return result->signal(signal, false);
+    // these signals should be asychronous, but either there is a bug in boxedwine in the kernel/syscall code or there is a race condition in wine,
+    // either way, blocking on SIGQUIT which is sent by wineserver seems to stop a server protocol error during shutdown.  I saw this frequently 
+    // starting in Wine 6.23 when closing notepad
+    return result->signal(signal, signal == 3);
 }
 
 /*

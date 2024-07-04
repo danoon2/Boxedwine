@@ -1,0 +1,7 @@
+Wine 6.7 - Wine 6.19 has severe issues with 16-bit apps
+  https://bugs.winehq.org/show_bug.cgi?id=51564
+
+Wine 6.20 - Wine 6.22 has a black background for Bang Bang and other 16-bit apps
+  https://bugs.winehq.org/show_bug.cgi?id=51899
+
+
