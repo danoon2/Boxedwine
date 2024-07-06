@@ -107,4 +107,4 @@ U32 readMemory32(U32 address) {
 
 x64 implementation of above pseudo code
 
-https://github.com/danoon2/Boxedwine/blob/041275a47556877e5c982eaf73551b0803ad83ec/source/emulation/cpu/x64/x64Asm.cpp#L942
+https://github.com/danoon2/Boxedwine/tree/master/source/emulation/cpu/x64/x64Asm.cpp#L942
