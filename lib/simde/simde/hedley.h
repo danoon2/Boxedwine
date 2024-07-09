@@ -586,7 +586,7 @@
 #  undef HEDLEY_HAS_BUILTIN
 #endif
 #if defined(__has_builtin)
-#  define HEDLEY_HAS_BUILTIN(builtin) __has_builtin(builtin)
+#  define HEDLEY_HAS_BUILTIN(builtin) (0)
 #else
 #  define HEDLEY_HAS_BUILTIN(builtin) (0)
 #endif

@@ -1924,6 +1924,18 @@
     <ClInclude Include="..\..\..\..\..\source\util\stb_image.h">
       <Filter>source\util</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-aes.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-bf16.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-complex.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-f16.h">
+      <Filter>lib\simde\simde</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\..\lib\sdl2\include\SDL_config.h.cmake">
