@@ -7256,7 +7256,7 @@ simde_mm_ucomineq_sd (simde__m128d a, simde__m128d b) {
 #if defined(SIMDE_X86_SSE2_ENABLE_NATIVE_ALIASES)
   #define _mm_ucomineq_sd(a, b) simde_mm_ucomineq_sd(a, b)
 #endif
-
+/*
 SIMDE_FUNCTION_ATTRIBUTES
 void
 simde_mm_lfence (void) {
@@ -7282,6 +7282,7 @@ simde_mm_mfence (void) {
 #if defined(SIMDE_X86_SSE2_ENABLE_NATIVE_ALIASES)
   #define _mm_mfence() simde_mm_mfence()
 #endif
+*/
 
 SIMDE_FUNCTION_ATTRIBUTES
 simde__m128i

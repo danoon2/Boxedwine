@@ -35,7 +35,7 @@
 
 #if defined(_WIN32) && !defined(SIMDE_X86_SSE_NATIVE) && defined(_MSC_VER)
   #define NOMINMAX
-  #include <windows.h>
+  //#include <windows.h>
 #endif
 
 #if defined(__ARM_ACLE)
@@ -3991,11 +3991,11 @@ simde_x_mm_setone_ps (void) {
   simde__m128 t = simde_mm_setzero_ps();
   return simde_mm_cmpeq_ps(t, t);
 }
-
+/*
 SIMDE_FUNCTION_ATTRIBUTES
 void
 simde_mm_sfence (void) {
-    /* TODO: Use Hedley. */
+    // TODO: Use Hedley. 
   #if defined(SIMDE_X86_SSE_NATIVE)
     _mm_sfence();
   #elif defined(__GNUC__) && ((__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7))
@@ -4020,7 +4020,7 @@ simde_mm_sfence (void) {
 #if defined(SIMDE_X86_SSE_ENABLE_NATIVE_ALIASES)
 #  define _mm_sfence() simde_mm_sfence()
 #endif
-
+*/
 #define SIMDE_MM_SHUFFLE(z, y, x, w) (((z) << 6) | ((y) << 4) | ((x) << 2) | (w))
 #if defined(SIMDE_X86_SSE_ENABLE_NATIVE_ALIASES)
 #  define _MM_SHUFFLE(z, y, x, w) SIMDE_MM_SHUFFLE(z, y, x, w)
