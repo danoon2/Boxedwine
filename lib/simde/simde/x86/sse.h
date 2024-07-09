@@ -698,9 +698,9 @@ simde_x_mm_round_ps (simde__m128 a, int rounding, int lax_rounding)
         HEDLEY_UNREACHABLE_RETURN(simde_mm_undefined_pd());
       #endif
       break;
-
-    default:
-      HEDLEY_UNREACHABLE_RETURN(simde_mm_undefined_pd());
+    // couldn't figure out why xcode reported simde_mm_undefined_pd as undefined but all the other platforms were fine 
+    //default:
+    //  HEDLEY_UNREACHABLE_RETURN(simde_mm_undefined_pd());
   }
 
   return simde__m128_from_private(r_);
