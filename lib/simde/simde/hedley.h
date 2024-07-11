@@ -184,6 +184,7 @@
 #  undef HEDLEY_EMSCRIPTEN_VERSION
 #endif
 #if defined(__EMSCRIPTEN__)
+#  include <emscripten.h>
 #  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_major__, __EMSCRIPTEN_minor__, __EMSCRIPTEN_tiny__)
 #endif
 
@@ -585,7 +586,7 @@
 #  undef HEDLEY_HAS_BUILTIN
 #endif
 #if defined(__has_builtin)
-#  define HEDLEY_HAS_BUILTIN(builtin) __has_builtin(builtin)
+#  define HEDLEY_HAS_BUILTIN(builtin) (0)
 #else
 #  define HEDLEY_HAS_BUILTIN(builtin) (0)
 #endif

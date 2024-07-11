@@ -63,7 +63,7 @@ Where some of the ops might be inlined and some might call out to other function
 
 ## Binary Translator
 
-The binary translator is much faster and it is also multi-threaded.  Each emulated thread will have its own host thread.  When building, BOXEDWINE_BINARY_TRANSLATOR, BOXEDWINE_MULTI_THREADED and BOXEDWINE_64BIT_MMU will need to be enabled/defined.  Because memory is handled by using a single continuous 4GB chunk of virtual memory per emulated process, thus allowing a single offset to be added to all memory instruction, the binary translator only works on 64-bit systems with large amounts of virtual memory.
+The binary translator is much faster and it is also multi-threaded.  Each emulated thread will have its own host thread.  When building, BOXEDWINE_BINARY_TRANSLATOR, BOXEDWINE_MULTI_THREADED and BOXEDWINE_64BIT_MMU or BOXEDWINE_ARMV8BT will need to be enabled/defined.  
 
 Currently binary translation has only been implemented for 2 architectures:
 
@@ -72,7 +72,7 @@ Currently binary translation has only been implemented for 2 architectures:
 
 The x64 version has been tested on Windows, Linux and Mac
 
-The ARMv8 version has been tested on a Raspberry Pi 4 and Mac M1
+The ARMv8 version has been tested on a Raspberry Pi 4/5 and Mac M1
 
 The binary translator will translate each x86 instruction to machine code compatible with the host CPU.
 
@@ -85,16 +85,26 @@ converts to
 add eax, 2
 ```
 
-All memory instructions require an offset which for x64 is stored in R14
+Memory pages are fully emulated.  So this code will work even on hosts with a large page size.  To prevent calling code when accessing memory, each page will store its read and write offsets in an array cache on a per emulated process basis.  That array will contain a 0/null entry if the app doesn't have permission for that page.  This allows the translated code to quickly check the read/write array and do the memory operation directly. 
+
+pseudo to read memory from binary translator
 
 ```
-add eax, DWORD PTR[rcx+4]
-```
-converts to
-```
-lea r9d, [rcx + 4]
-add eax, DWORD PTR[r9 + r14]
-```
-So when memory is used, a single instruction will often be translated into 2 or 3 instructions for x64.  It is important when doing the address calculation that address does not overflow, which is why even if the above 2 instructions could be combined into a single instruction on x64 like DWORD PTR[rcx + r14 + 4], it won't be.  The rcx+4 could overflow the 32-bit memory address because address calculations are 64-bit.
+U32 readMemory32(U32 address) {
+    U32 page = address >> 12;
+    U32 offset = address & 0xfff;
 
-The FPU is fully emulated for the binary translator, even on the x64 host.  Because of this the FPU should be considered slow.
+    U8* hostPage = processMemory->mmuReadPtr[page];
+
+    // test if we have permission, and that the read won't go past the end of the page
+    if (!hostPage || (offset > 0xffc)) {
+        // this will exit running in the generated emulation code and move to the Boxedwine host code via calling emulateSingleOp
+        jumpToEmulateSingleOp();
+    }
+    return *(U32*)hostPage + offset;
+}
+```
+
+x64 implementation of above pseudo code
+
+https://github.com/danoon2/Boxedwine/tree/master/source/emulation/cpu/x64/x64Asm.cpp#L942
