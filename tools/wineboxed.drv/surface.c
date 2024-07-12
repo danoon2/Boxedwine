@@ -63,6 +63,14 @@ MAKE_DEP_UNIX
 
 WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 
+static inline BOOL intersect_rect(RECT* dst, const RECT* src1, const RECT* src2)
+{
+    dst->left = max(src1->left, src2->left);
+    dst->top = max(src1->top, src2->top);
+    dst->right = min(src1->right, src2->right);
+    dst->bottom = min(src1->bottom, src2->bottom);
+    return !IsRectEmpty(dst);
+}
 
 /* only for use on sanitized BITMAPINFO structures */
 static inline int get_dib_info_size(const BITMAPINFO *info, UINT coloruse)
@@ -97,11 +105,13 @@ struct boxeddrv_window_surface
 {
     struct window_surface   header;
     HWND                    window;
+#if BOXED_WINE_VERSION < 9100
     RECT                    bounds;
-    HRGN                    region;
     HRGN                    drawn;
-    BOOL                    use_alpha;
-    RGNDATA                *blit_data;
+    RGNDATA* blit_data;
+#endif
+    HRGN                    region;    
+    BOOL                    use_alpha;    
     BYTE                   *bits;
     pthread_mutex_t         mutex;
     BITMAPINFO              info;   /* variable size, must be last */
@@ -153,6 +163,7 @@ RGNDATA *get_region_data(HRGN hrgn, HDC hdc_lptodp)
 /***********************************************************************
  *              update_blit_data
  */
+#if BOXED_WINE_VERSION < 9100
 static void update_blit_data(struct boxeddrv_window_surface *surface)
 {
     HeapFree(GetProcessHeap(), 0, surface->blit_data);
@@ -190,7 +201,7 @@ static void boxeddrv_surface_unlock(struct window_surface *window_surface)
 
     pthread_mutex_unlock(&surface->mutex);
 }
-
+#endif
 /***********************************************************************
  *              boxeddrv_surface_get_bitmap_info
  */
@@ -204,6 +215,7 @@ static void *boxeddrv_surface_get_bitmap_info(struct window_surface *window_surf
     return surface->bits;
 }
 
+#if BOXED_WINE_VERSION < 9100
 /***********************************************************************
  *              boxeddrv_surface_get_bounds
  */
@@ -214,10 +226,15 @@ static RECT *boxeddrv_surface_get_bounds(struct window_surface *window_surface)
     TRACE("surface = %p bounds = %s\n", window_surface, wine_dbgstr_rect(&surface->bounds));
     return &surface->bounds;
 }
+#endif
 
 /***********************************************************************
  *              boxeddrv_surface_set_region
  */
+#if BOXED_WINE_VERSION >= 9100
+static void boxeddrv_surface_set_clip(struct window_surface* window_surface, const RECT* rects, UINT count) {
+}
+#else
 static void boxeddrv_surface_set_region(struct window_surface *window_surface, HRGN region)
 {
     struct boxeddrv_window_surface *surface = get_boxed_surface(window_surface);
@@ -235,13 +252,22 @@ static void boxeddrv_surface_set_region(struct window_surface *window_surface, H
     {
         if (surface->region) DeleteObject(surface->region);
         surface->region = 0;
-    }
+    }    
     update_blit_data(surface);
-
     window_surface->funcs->unlock(window_surface);
 }
+#endif
 
 UINT GDI_CDECL boxeddrv_RealizePaletteEntries(DWORD num_entries, PALETTEENTRY* entries);
+
+#if BOXED_WINE_VERSION >= 9100
+static BOOL boxeddrv_surface_flush(struct window_surface* window_surface, const RECT* rect, const RECT* dirty)
+{
+    struct boxeddrv_window_surface* surface = get_boxed_surface(window_surface);
+    boxeddrv_FlushSurface(surface->window, surface->bits, 0, 0, surface->info.bmiHeader.biWidth, surface->info.bmiHeader.biHeight, dirty, 1);
+    return FALSE; /* bounds are reset asynchronously, from macdrv_get_surface_display_image */
+}
+#else
 static void boxeddrv_surface_flush(struct window_surface *window_surface)
 {
     struct boxeddrv_window_surface *surface = get_boxed_surface(window_surface);
@@ -269,7 +295,7 @@ static void boxeddrv_surface_flush(struct window_surface *window_surface)
         }
     }
     update_blit_data(surface);
-    reset_bounds(&surface->bounds);    
+    reset_bounds(bounds);    
 
     if (!isBoundsEmpty)
     {
@@ -282,10 +308,21 @@ static void boxeddrv_surface_flush(struct window_surface *window_surface)
     }
     window_surface->funcs->unlock(window_surface);
 }
-
+#endif
 /***********************************************************************
  *              boxeddrv_surface_destroy
  */
+#if BOXED_WINE_VERSION >= 9100
+static void boxeddrv_surface_destroy(struct window_surface* window_surface)
+{
+    struct boxeddrv_window_surface* surface = get_boxed_surface(window_surface);
+
+    TRACE("freeing %p bits %p\n", surface, surface->bits);
+    if (surface->region) NtGdiDeleteObjectApp(surface->region);
+    free(surface->bits);
+    free(surface);
+}
+#else
 static void boxeddrv_surface_destroy(struct window_surface *window_surface)
 {
     struct boxeddrv_window_surface *surface = get_boxed_surface(window_surface);
@@ -295,14 +332,24 @@ static void boxeddrv_surface_destroy(struct window_surface *window_surface)
     pthread_mutex_destroy(&surface->mutex);
     HeapFree(GetProcessHeap(), 0, surface);
 }
+#endif
 
 static const struct window_surface_funcs boxeddrv_surface_funcs =
 {
+#if BOXED_WINE_VERSION < 9100
     boxeddrv_surface_lock,
     boxeddrv_surface_unlock,
+#endif
     boxeddrv_surface_get_bitmap_info,
+#if BOXED_WINE_VERSION < 9100
     boxeddrv_surface_get_bounds,
+#endif
+
+#if BOXED_WINE_VERSION >= 9100
+    boxeddrv_surface_set_clip,
+#else
     boxeddrv_surface_set_region,
+#endif
     boxeddrv_surface_flush,
     boxeddrv_surface_destroy,
 };
@@ -355,6 +402,47 @@ static void set_color_info(BITMAPINFO *info)
  *              create_surface
  */
 INT GDI_CDECL boxeddrv_GetDeviceCaps(PHYSDEV dev, INT cap);
+
+#if BOXED_WINE_VERSION >= 9100
+struct window_surface* create_surface(HWND window, const RECT* rect, struct window_surface* old_surface, BOOL use_alpha)
+{
+    struct boxeddrv_window_surface* surface;
+    int width = rect->right - rect->left, height = rect->bottom - rect->top;
+    DWORD* colors;
+    DWORD window_background;
+
+    surface = calloc(1, FIELD_OFFSET(struct boxeddrv_window_surface, info.bmiColors[3]));
+    if (!surface) return NULL;
+    window_surface_init(&surface->header, &boxeddrv_surface_funcs, window, rect);
+
+    surface->info.bmiHeader.biSize = sizeof(surface->info.bmiHeader);
+    surface->info.bmiHeader.biWidth = width;
+    surface->info.bmiHeader.biHeight = -height; /* top-down */
+    surface->info.bmiHeader.biPlanes = 1;
+    surface->info.bmiHeader.biBitCount = 32;
+    surface->info.bmiHeader.biSizeImage = get_dib_image_size(&surface->info);
+    surface->info.bmiHeader.biCompression = BI_RGB;
+    surface->info.bmiHeader.biClrUsed = 0;
+
+    set_color_info(&surface->info);
+
+    surface->window = window;
+    if (old_surface) surface->header.bounds = old_surface->bounds;
+    surface->use_alpha = use_alpha;
+    surface->bits = malloc(surface->info.bmiHeader.biSizeImage);
+    if (!surface->bits) goto failed;
+    memset(surface->bits, 0, surface->info.bmiHeader.biSizeImage);
+
+    TRACE("created %p for %p %s bits %p-%p\n", surface, window, wine_dbgstr_rect(rect),
+        surface->bits, surface->bits + surface->info.bmiHeader.biSizeImage);
+
+    return &surface->header;
+
+failed:
+    window_surface_release(&surface->header);
+    return NULL;
+}
+#else
 struct window_surface *create_surface(HWND window, const RECT *rect, struct window_surface *old_surface, BOOL use_alpha)
 {
     struct boxeddrv_window_surface *surface;
@@ -375,7 +463,7 @@ struct window_surface *create_surface(HWND window, const RECT *rect, struct wind
             err = pthread_mutex_init(&surface->mutex, &attr);
         pthread_mutexattr_destroy(&attr);
     }
-    if (err)
+    if (err) 
     {
         HeapFree(GetProcessHeap(), 0, surface);
         return NULL;
@@ -396,8 +484,9 @@ struct window_surface *create_surface(HWND window, const RECT *rect, struct wind
     surface->header.funcs = &boxeddrv_surface_funcs;
     surface->header.rect  = *rect;
     surface->header.ref   = 1;
-    surface->window = window;
     reset_bounds(&surface->bounds);
+
+    surface->window = window;    
     if (old_boxed_surface && old_boxed_surface->drawn)
     {
         surface->drawn = CreateRectRgn(rect->left, rect->top, rect->right, rect->bottom);
@@ -423,7 +512,7 @@ failed:
     boxeddrv_surface_destroy(&surface->header);
     return NULL;
 }
-
+#endif
 
 /***********************************************************************
 *              surface_clip_to_visible_rect
@@ -431,6 +520,20 @@ failed:
 * Intersect the accumulated drawn region with a new visible rect,
 * effectively discarding stale drawing in the surface slack area.
 */
+#if BOXED_WINE_VERSION >= 9100
+void surface_clip_to_visible_rect(struct window_surface* window_surface, const RECT* visible_rect)
+{
+    struct boxeddrv_window_surface* surface = get_boxed_surface(window_surface);
+    RECT rect = *visible_rect;
+    OffsetRect(&rect, -rect.left, -rect.top);
+
+    if (!surface) return;
+
+    window_surface_lock(window_surface);
+    intersect_rect(&window_surface->bounds, &window_surface->bounds, &rect);
+    window_surface_unlock(window_surface);
+}
+#else
 void surface_clip_to_visible_rect(struct window_surface *window_surface, const RECT *visible_rect)
 {
     struct boxeddrv_window_surface *surface = get_boxed_surface(window_surface);
@@ -456,6 +559,7 @@ void surface_clip_to_visible_rect(struct window_surface *window_surface, const R
 
     window_surface->funcs->unlock(window_surface);
 }
+#endif
 
 #if BOXED_WINE_VERSION >= 6090
 BOOL WINE_CDECL boxeddrv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT* window_rect, const RECT* client_rect, RECT* visible_rect, struct window_surface** surface) {

@@ -53,8 +53,10 @@ void vk_CreateInstance(CPU* cpu) {
     static bool shown; if (!shown && ARG2) { klog("vkCreateInstance:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     VkInstance pInstance;
-    EAX = pvkCreateInstance(pCreateInfo, pAllocator, &pInstance);
-    cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, (U64)pInstance, NULL));
+    EAX = VK_ERROR_INITIALIZATION_FAILED;// pvkCreateInstance(pCreateInfo, pAllocator, &pInstance);
+    if (EAX == VK_SUCCESS) {
+        cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, (U64)pInstance, NULL));
+    }
 }
 void vk_DestroyInstance(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);

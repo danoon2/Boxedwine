@@ -162,6 +162,9 @@ static void notImplemented(const char* s) {
 #define BOXED_VK_GET_HOST_EXTENSION				(BOXED_BASE+110)
 #define BOXED_VK_QUEUE_PRESENT2				(BOXED_BASE+111)
 #define BOXED_VK_VULKAN_SURFACE_PRESENTED   (BOXED_BASE+112)
+#define BOXED_VK_DESTROY_SURFACE2           (BOXED_BASE+113)
+#define BOXED_VK_CREATE_SURFACE2            (BOXED_BASE+114)
+#define BOXED_VK_DETATCH_SURFACE            (BOXED_BASE+115)
 
 # define __MSABI_LONG(x)         x
 

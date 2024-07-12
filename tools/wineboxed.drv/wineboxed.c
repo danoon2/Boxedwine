@@ -366,7 +366,12 @@ LONG WINE_CDECL boxeddrv_ChangeDisplaySettingsEx(LPCWSTR devname, LPDEVMODEW dev
             return result;
         }
 #if BOXED_WINE_VERSION <= 7210
-        BOXEDDRV_DisplayDevices_Init(TRUE);
+#if BOXED_WINE_VERSION >= 9100
+        NtUserCallNoParam(NtUserCallNoParam_UpdateDisplayCache);
+#else
+        BOXEDDRV_DisplayDevices_Init(TRUE);        
+#endif
+
         TRACE("SetWindowPos\n");
         SetWindowPos(GetDesktopWindow(), 0, 0, 0, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE | SWP_DEFERERASE );
         TRACE("SendMessageTimeoutW\n");
@@ -780,7 +785,9 @@ static NTSTATUS boxedwine_init(void* arg)
 {
     TRACE("starting");
     BOXEDDRV_ProcessAttach();
+#if BOXED_WINE_VERSION < 9100
     BOXEDDRV_DisplayDevices_Init(FALSE);
+#endif
     TRACE("done");
     return STATUS_SUCCESS;
 }

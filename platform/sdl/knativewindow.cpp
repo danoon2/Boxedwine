@@ -897,7 +897,9 @@ void KNativeWindowSdl::displayChanged(KThread* thread) {
 
 void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
     preOpenGLCall(XSwapBuffer);
-    BoxedwineGL::current->swapBuffer(window);
+    if (BoxedwineGL::current) {
+        BoxedwineGL::current->swapBuffer(window);
+    }
 }
 
 #define BOXEDWINE_FLIP_MANUALLY
@@ -907,6 +909,11 @@ static S8 sdlBuffer[1024*1024*4];
 #endif
 
 void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
+    bool vFlip = false;
+    if ((S32)height < 0) {
+        height = (U32)(-(S32)height);
+        vFlip = true;
+    }
     if (!firstWindowCreated) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
         DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
@@ -967,9 +974,15 @@ void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32
             wnd->sdlTextureWidth = width;
         }        
 #ifdef BOXEDWINE_FLIP_MANUALLY        
-        for (U32 y = 0; y < height; y++) {
-            memory->memcpy(sdlBuffer+y*pitch, bits + (height - y - 1) * pitch, pitch);
-        } 
+        if (vFlip) {
+            for (U32 y = 0; y < height; y++) {
+                memory->memcpy(sdlBuffer + y * pitch, bits + y * pitch, pitch);
+            }
+        } else {
+            for (U32 y = 0; y < height; y++) {
+                memory->memcpy(sdlBuffer + y * pitch, bits + (height - y - 1) * pitch, pitch);
+            }
+        }
 #endif
         if (screenBpp()!=32) {
             // SDL_ConvertPixels(width, height, )

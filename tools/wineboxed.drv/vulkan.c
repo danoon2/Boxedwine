@@ -8,6 +8,11 @@ MAKE_DEP_UNIX
 
 #include <dlfcn.h>
 
+#include "ntstatus.h"
+#define WIN32_NO_STATUS
+#include "windef.h"
+#include "winbase.h"
+
 #ifdef BOXEDWINE_VULKAN
 #include "wine/vulkan.h"
 #include "wine/vulkan_driver.h"
@@ -42,6 +47,9 @@ WINE_DEFAULT_DEBUG_CHANNEL(boxeddrv);
 #define BOXED_VK_GET_HOST_EXTENSION				(BOXED_BASE+110)
 #define BOXED_VK_QUEUE_PRESENT2				(BOXED_BASE+111)
 #define BOXED_VK_VULKAN_SURFACE_PRESENTED   (BOXED_BASE+112)
+#define BOXED_VK_DESTROY_SURFACE2           (BOXED_BASE+113)
+#define BOXED_VK_CREATE_SURFACE2            (BOXED_BASE+114)
+#define BOXED_VK_DETATCH_SURFACE            (BOXED_BASE+115)
 
 static void* (*pvkGetDeviceProcAddr)(VkDevice, const char*);
 static void* (*pvkGetInstanceProcAddr)(VkInstance, const char*);
@@ -55,14 +63,11 @@ static BOOL wine_vk_init(void)
         ERR("Failed to load libvulkan.so.1.\n");
         return TRUE;
     }
-
-#define LOAD_FUNCPTR(f) if ((p##f = dlsym(vulkan_handle, #f)) == NULL) { ERR("Failed to load %s", #f); return FALSE;}
-
-        LOAD_FUNCPTR(vkGetDeviceProcAddr)
+#define LOAD_FUNCPTR(f) p##f = dlsym(vulkan_handle, #f);
+    LOAD_FUNCPTR(vkGetDeviceProcAddr)
         LOAD_FUNCPTR(vkGetInstanceProcAddr)
-
 #undef LOAD_FUNCPTR
-
+#undef LOAD_OPTIONAL_FUNCPTR
         return TRUE;
 
 }
@@ -91,17 +96,73 @@ static VkResult boxedwine_vkCreateWin32SurfaceKHR(VkInstance instance, const VkW
     return (VkResult)result;
 }
 
+#if WINE_VULKAN_DRIVER_VERSION >= 33
+static VkResult boxedwine_vulkan_surface_create(HWND hwnd, VkInstance instance, VkSurfaceKHR* surface, void** privateData)
+{
+    int result;
+    TRACE("%p %p %p %p\n", (int)hwnd, instance, surface, privateData);
+    CALL_4(BOXED_VK_CREATE_SURFACE2, hwnd, instance, surface, privateData);
+    return (VkResult)result;
+}
+#elif WINE_VULKAN_DRIVER_VERSION >= 31
+static VkResult boxedwine_vulkan_surface_create(HWND hwnd, VkInstance instance, VkSurfaceKHR* surface)
+{
+    int result;
+    TRACE("%p %p %p\n", hwnd, instance, surface);
+    CALL_4(BOXED_VK_CREATE_SURFACE, instance, 0, 0, surface);
+    return (VkResult)result;
+}
+#else
+static VkResult boxedwine_vulkan_surface_create(VkInstance instance, const VkWin32SurfaceCreateInfoKHR* create_info, VkSurfaceKHR* surface)
+{
+    int result;
+    TRACE("%p %p %p\n", instance, create_info, surface);
+    CALL_4(BOXED_VK_CREATE_SURFACE, instance, create_info, 0, surface);
+    return (VkResult)result;
+}
+#endif
+
+static void boxedwine_vulkan_surface_detach(HWND hwnd, void* privateData) {
+    TRACE("%p %p\n", (int)hwnd, privateData);
+    CALL_NORETURN_2(BOXED_VK_DETATCH_SURFACE, (int)hwnd, privateData);
+}
+
 static void boxedwine_vkDestroyInstance(VkInstance instance, const VkAllocationCallbacks* allocator)
 {
     TRACE("%p %p\n", instance, allocator);
     CALL_NORETURN_2(BOXED_VK_DESTROY_INSTANCE, instance, allocator);
 }
 
-static void boxedwine_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface, const VkAllocationCallbacks* allocator)
-{
-    TRACE("%p 0x%s %p\n", instance, wine_dbgstr_longlong(surface), allocator);
+static void boxedwine_vkDestroySurfaceKHR(VkInstance instance, VkSurfaceKHR surface, const VkAllocationCallbacks* allocator) {
+    TRACE("%p, 0x%s %p\n", instance, wine_dbgstr_longlong(surface), allocator);
     CALL_NORETURN_3(BOXED_VK_DESTROY_SURFACE, instance, &surface, allocator);
 }
+
+#if WINE_VULKAN_DRIVER_VERSION >= 33
+static void boxedwine_vulkan_surface_destroy(HWND hwnd, void* privateData)
+{
+    TRACE("%p %p\n", (int)hwnd, privateData);
+    CALL_NORETURN_2(BOXED_VK_DESTROY_SURFACE2, (int)hwnd, privateData);
+}
+#elif WINE_VULKAN_DRIVER_VERSION >= 32
+static void boxedwine_vulkan_surface_destroy(HWND hwnd, VkSurfaceKHR surface)
+{
+    TRACE("%p 0x%s\n", hwnd, wine_dbgstr_longlong(surface));
+    CALL_NORETURN_3(BOXED_VK_DESTROY_SURFACE, 0, &surface, 0);
+}
+#elif WINE_VULKAN_DRIVER_VERSION == 31
+static void boxedwine_vulkan_surface_destroy(HWND hwnd, VkInstance instance, VkSurfaceKHR surface)
+{
+    TRACE("%p %p 0x%s\n", hwnd, instance, wine_dbgstr_longlong(surface));
+    CALL_NORETURN_3(BOXED_VK_DESTROY_SURFACE, instance, &surface, 0);
+}
+#else
+static void boxedwine_vulkan_surface_destroy(VkInstance instance, VkSurfaceKHR surface)
+{
+    TRACE("%p 0x%s\n", instance, wine_dbgstr_longlong(surface));
+    CALL_NORETURN_3(BOXED_VK_DESTROY_SURFACE, instance, &surface, 0);
+}
+#endif
 
 static void boxedwine_vkDestroySwapchainKHR(VkDevice device, VkSwapchainKHR swapchain, const VkAllocationCallbacks* allocator)
 {
@@ -231,7 +292,7 @@ static VkResult boxedwine_vkQueuePresentKHR(VkQueue queue, const VkPresentInfoKH
 static VkSurfaceKHR boxedwine_wine_get_native_surface(VkSurfaceKHR surface)
 {
     int result;
-    TRACE("%p\n", surface);
+    TRACE("%s\n", wine_dbgstr_longlong(surface));
     CALL_1(BOXED_VK_GET_NATIVE_SURFACE, surface);
     return (VkSurfaceKHR)result;
 }
@@ -247,9 +308,9 @@ static const char* boxedwine_get_host_surface_extension() {
 #endif
 
 #if WINE_VULKAN_DRIVER_VERSION >= 25
-static void boxedwine_vulkan_surface_presented(HWND hwnd, VkResult result)
+static void boxedwine_vulkan_surface_presented(HWND hwnd, VkResult result) {
     TRACE("%p, %p\n", (int)hwnd, result);
-    CALL_NORETURN_2(BOXED_VK_VULKAN_SURFACE_PRESENTED, hwnd, result);
+    CALL_NORETURN_2(BOXED_VK_VULKAN_SURFACE_PRESENTED, (int)hwnd, result);
 }
 #endif
 
@@ -717,6 +778,49 @@ static const struct vulkan_funcs vulkan_funcs =
     boxedwine_wine_get_native_surface,
     boxedwine_vulkan_surface_presented
 };
+#elif WINE_VULKAN_DRIVER_VERSION == 28 || WINE_VULKAN_DRIVER_VERSION == 29
+static const struct vulkan_driver_funcs vulkan_funcs =
+{
+    .p_vkCreateWin32SurfaceKHR = boxedwine_vkCreateWin32SurfaceKHR,
+    .p_vkDestroySurfaceKHR = boxedwine_vkDestroySurfaceKHR,
+    .p_vulkan_surface_presented = boxedwine_vulkan_surface_presented,
+
+    .p_vkGetPhysicalDeviceWin32PresentationSupportKHR = boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    .p_get_host_surface_extension = boxedwine_get_host_surface_extension,
+    .p_wine_get_host_surface = boxedwine_wine_get_native_surface,
+};
+#elif WINE_VULKAN_DRIVER_VERSION >= 30 && WINE_VULKAN_DRIVER_VERSION <= 32
+static const struct vulkan_driver_funcs vulkan_funcs =
+{
+    .p_vulkan_surface_create = boxedwine_vulkan_surface_create,
+    .p_vulkan_surface_destroy = boxedwine_vulkan_surface_destroy,
+    .p_vulkan_surface_presented = boxedwine_vulkan_surface_presented,
+
+    .p_vkGetPhysicalDeviceWin32PresentationSupportKHR = boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    .p_get_host_surface_extension = boxedwine_get_host_surface_extension,
+    .p_wine_get_host_surface = boxedwine_wine_get_native_surface,
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 33
+static const struct vulkan_driver_funcs vulkan_funcs =
+{
+    .p_vulkan_surface_create = boxedwine_vulkan_surface_create,
+    .p_vulkan_surface_destroy = boxedwine_vulkan_surface_destroy,
+    .p_vulkan_surface_presented = boxedwine_vulkan_surface_presented,
+
+    .p_vkGetPhysicalDeviceWin32PresentationSupportKHR = boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    .p_get_host_surface_extension = boxedwine_get_host_surface_extension,
+};
+#elif WINE_VULKAN_DRIVER_VERSION == 34
+static const struct vulkan_driver_funcs vulkan_funcs =
+{
+    .p_vulkan_surface_create = boxedwine_vulkan_surface_create,
+    .p_vulkan_surface_destroy = boxedwine_vulkan_surface_destroy,
+    .p_vulkan_surface_detach = boxedwine_vulkan_surface_detach,
+    .p_vulkan_surface_presented = boxedwine_vulkan_surface_presented,
+
+    .p_vkGetPhysicalDeviceWin32PresentationSupportKHR = boxedwine_vkGetPhysicalDeviceWin32PresentationSupportKHR,
+    .p_get_host_surface_extension = boxedwine_get_host_surface_extension,
+};
 #endif
 
 // WINE_VULKAN_DRIVER_VERSION
@@ -741,21 +845,44 @@ static const struct vulkan_funcs vulkan_funcs =
 // 25 Apr 11, 2024 (Wine 9.7)
 // 26 Apr 11, 2024 (Wine 9.7)
 // 27 Apr 11, 2024 (Wine 9.7)
+// 28 Apr 25, 2024 (Wine 9.8)
+// 29 Apr 25, 2024 (Wine 9.8) // no changes in this file
+// 30 Apr 25, 2024 (Wine 9.8) // p_vkCreateWin32SurfaceKHR -> p_vulkan_surface_create, p_vkDestroySurfaceKHR -> p_vulkan_surface_destroy
+// 31 Apr 25, 2024 (Wine 9.8) // added HWND to p_vulkan_surface_create and p_vulkan_surface_destroy
+// 32 Apr 25, 2024 (Wine 9.8) // removed VkInstance instance from p_vulkan_surface_destroy
+// 33 May 1, 2024 (Wine 9.8) // added privateData to p_vulkan_surface_create and p_vulkan_surface_destroy, removed p_wine_get_host_surface
+// 34 May 1, 2024 (Wine 9.8) // added p_vulkan_surface_detach
 
-#if WINE_GDI_DRIVER_VERSION >= 85
-UINT boxedwine_VulkanInit(UINT version, void* vulkan_handle, struct vulkan_funcs* vulkan_funcs) {
+#if BOXED_WINE_VERSION >= 9050
+#if WINE_VULKAN_DRIVER_VERSION >= 28
+UINT boxeddrv_VulkanInit(UINT version, void* vulkan_handle, const struct vulkan_driver_funcs** driver_funcs) {
     TRACE("version %d\n", version);
     if (version != WINE_VULKAN_DRIVER_VERSION) {
-        ERR("version mismatch, vulkan wants %u but boxeddrv has %u\n", version, WINE_VULKAN_DRIVER_VERSION);
-        return NULL;
+        ERR("version mismatch, win32u wants %u but boxeddrv has %u\n", version, WINE_VULKAN_DRIVER_VERSION);
+        return STATUS_INVALID_PARAMETER;
     }
 
-    if (wine_vk_init()) {
-        *driver_funcs = vulkan_funcs;
-        return STATUS_SUCCESS;
+    if (!wine_vk_init()) {
+        return STATUS_PROCEDURE_NOT_FOUND;
     }
-    return STATUS_PROCEDURE_NOT_FOUND;
+    *driver_funcs = &vulkan_funcs;
+    return STATUS_SUCCESS;
 }
+#else
+UINT boxeddrv_VulkanInit(UINT version, void* vulkan_handle, struct vulkan_funcs* driver_funcs) {
+    TRACE("version %d\n", version);
+    if (version != WINE_VULKAN_DRIVER_VERSION) {
+        ERR("version mismatch, win32u wants %u but boxeddrv has %u\n", version, WINE_VULKAN_DRIVER_VERSION);
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    if (!wine_vk_init()) {
+        return STATUS_PROCEDURE_NOT_FOUND;
+    }
+    *driver_funcs = vulkan_funcs;
+    return STATUS_SUCCESS;
+}
+#endif
 
 #else
 
@@ -778,6 +905,7 @@ const struct vulkan_funcs* CDECL boxeddrv_wine_get_vulkan_driver(PHYSDEV hdc, UI
         return &vulkan_funcs;
     return NULL;
 }
+
 #endif
 
 #endif
