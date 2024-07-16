@@ -3300,6 +3300,10 @@ void X64Asm::int9A(U32 opLen) {
     done = true;
 }
 
+void X64Asm::int9B(U32 opLen) {
+    callHost(common_int9B);
+}
+
 void X64Asm::writeXchgEspEax() {
     write8(REX_MOD_RM|REX_BASE);
     write8(0x90+HOST_ESP);

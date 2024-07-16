@@ -36,6 +36,7 @@
 
 void gl_init(BString allowExtensions);
 void vulkan_init();
+void x11_init();
 void initWine();
 void initWineAudio();
 void createSysfs(const std::shared_ptr<FsNode> rootNode);
@@ -489,6 +490,7 @@ bool StartUpArgs::apply() {
 #ifdef BOXEDWINE_VULKAN
     vulkan_init();
 #endif
+    x11_init();
 
     if (this->args.size()) {
         klog_nonewline("Launching ");

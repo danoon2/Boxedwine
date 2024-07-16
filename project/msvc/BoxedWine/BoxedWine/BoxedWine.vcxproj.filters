@@ -586,6 +586,9 @@
     <ClCompile Include="..\..\..\..\source\vulkan\vk_host_marshal.cpp">
       <Filter>vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\x11common.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1417,6 +1420,9 @@
     </Filter>
     <Filter Include="process">
       <UniqueIdentifier>{fbbdcd0b-4e4a-409c-bc7f-0b7e5b5c3909}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\x11">
+      <UniqueIdentifier>{69091852-62d4-4cf9-ac9e-8e2cf901e390}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

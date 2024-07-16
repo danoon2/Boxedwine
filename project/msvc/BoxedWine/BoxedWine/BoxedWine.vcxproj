@@ -1123,6 +1123,7 @@
     <ClCompile Include="..\..\..\..\source\vulkan\vk_host.cpp" />
     <ClCompile Include="..\..\..\..\source\vulkan\vk_host_marshal.cpp" />
     <ClCompile Include="..\..\..\..\source\vulkan\vulkancommon.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\x11common.cpp" />
     <ClCompile Include="..\boxedwine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

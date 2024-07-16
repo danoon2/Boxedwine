@@ -3,6 +3,7 @@ U32 common_bound32(CPU* cpu, U32 reg, U32 address);
 void common_int98(CPU* cpu);
 void common_int99(CPU* cpu);
 void common_int9A(CPU* cpu);
+void common_int9B(CPU* cpu);
 void common_int3(CPU* cpu);
 void common_intIb(CPU* cpu);
 void common_cpuid(CPU* cpu);
