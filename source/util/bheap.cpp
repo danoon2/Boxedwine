@@ -1,0 +1,56 @@
+#include "boxedwine.h"
+#include "bheap.h"
+
+static int powerOf2(U32 requestedSize) {
+    U32 powerOf2Size = 1;
+	U32 size = 2;
+    while (size < requestedSize) {
+		size <<= 1;
+        powerOf2Size++;
+    }
+    return powerOf2Size;
+}
+
+BHeap::~BHeap() {
+	freeAll();
+}
+
+void BHeap::freeAll() {
+	for (auto& page : pages) {
+		memory->unmap(page, K_PAGE_SIZE);
+	}
+}
+
+U32 BHeap::alloc(KThread* thread, U32 len) {
+	U32 index = powerOf2(len + 4);
+	if (index < BHEAP_MIN_BUCKET) {
+		index = BHEAP_MIN_BUCKET;
+	}
+	if (index >= BHEAP_MIN_BUCKET + BHEAP_NUMBER_OF_BUCKETS) {
+		kpanic("BHeap::alloc len is too big");
+	}
+	index = index - BHEAP_MIN_BUCKET;
+	if (bucket[index].size() > 0) {
+		U32 result = bucket[index].back();
+		bucket[index].pop_back();
+		return result;
+	}
+	U32 address = memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
+	U32 size = 1 << (index + BHEAP_MIN_BUCKET);
+
+	pages.push_back(address);
+	for (U32 start = address; start < address + K_PAGE_SIZE; start += size) {
+		memory->writed(start, index);
+		bucket[index].push_back(start + 4);
+	}
+	return alloc(thread, len);
+}
+
+void BHeap::free(U32 address) {
+	U32 index = memory->readd(address - 4);
+	if (index >= BHEAP_NUMBER_OF_BUCKETS) {
+		kpanic("BHeap::free index out of bounds");
+	}
+	memory->memset(address, 0, (1 << (index + BHEAP_MIN_BUCKET)) - 4);
+	bucket[index].push_back(address);
+}
