@@ -307,6 +307,8 @@ public:
     std::shared_ptr<FsNode> processNode; // in /proc/<pid>
     std::shared_ptr<FsNode> taskNode; // in /proc/<pid>/task
     std::shared_ptr<FsNode> fdNode; // in /proc/<pid>/fd
+
+    BHashTable<BString, void*> perProcessData;
 };
 
 #endif

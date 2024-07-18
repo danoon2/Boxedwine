@@ -375,7 +375,7 @@ U8* KMemory::getIntPtr(U32 address, bool write) {
     U8* result;
 
     if (write) {
-        result = data->mmu[index]->getWritePtr(this, address, true);
+        result = data->mmu[index]->getWritePtr(this, address, 4, true);
     } else {
         result = data->mmu[index]->getReadPtr(this, address, true);
     }

@@ -589,6 +589,30 @@
     <ClCompile Include="..\..\..\..\source\x11\x11common.cpp">
       <Filter>source\x11</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\x11.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xdisplay.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\bheap.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\displaydata.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xdrawable.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xwindow.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xproperties.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xkeyboard.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1298,6 +1322,27 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host_marshal.h">
       <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\x11.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\bheap.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\displaydata.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xdrawable.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xwindow.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xproperties.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xkeyboard.h">
+      <Filter>source\x11</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

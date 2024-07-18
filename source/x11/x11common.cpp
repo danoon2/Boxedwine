@@ -18,15 +18,28 @@
 #include "boxedwine.h"
 #include "../../../tools/x11/X11_def.h"
 #include "x11.h"
+#include "xkeyboard.h"
 
 Int99Callback int9BCallback[X11_COUNT];
 U32 int9BCallbackSize = X11_COUNT;
 
-#define Success 0
+#define ARG1 cpu->peek32(1)
+#define ARG2 cpu->peek32(2)
+#define ARG3 cpu->peek32(3)
+#define ARG4 cpu->peek32(4)
+#define ARG5 cpu->peek32(5)
+#define ARG6 cpu->peek32(6)
+#define ARG7 cpu->peek32(7)
+#define ARG8 cpu->peek32(8)
+#define ARG9 cpu->peek32(9)
+#define ARG10 cpu->peek32(10)
+#define ARG11 cpu->peek32(11)
+#define ARG12 cpu->peek32(12)
 
 // Display* XOpenDisplay(const char* displayName) 
 static void x11_OpenDisplay(CPU* cpu) {
     // winex11 always pass null for displayName
+    EAX = X11::openDisplay(cpu->thread);
 }
 
 static void x11_CloseDisplay(CPU* cpu) {
@@ -39,8 +52,9 @@ static void x11_UnGrabServer(CPU* cpu) {
 }
 
 // Status XInitThreads()
+// This function returns a nonzero status if initialization was successful; otherwise, it returns zero
 static void x11_InitThread(CPU* cpu) {
-    EAX = Success;
+    EAX = 1;
 }
 
 static void x11_ClearArea(CPU* cpu) {
@@ -148,7 +162,31 @@ static void x11_KbTranslateKeysym(CPU* cpu) {
 static void x11_LookupKeysym(CPU* cpu) {
 }
 
+// KeySym* XGetKeyboardMapping(Display* display, KeyCode first_keycode, int keycode_count, int* keysyms_per_keycode_return) 
 static void x11_GetKeyboardMapping(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    Display* display = X11::getDisplay(thread, ARG1);
+    U32 first_keycode = (KeyCode)ARG2;
+    U32 keycode_count = ARG3;
+    U32 keysyms_per_keycode_return = ARG4;
+
+    if (first_keycode + keycode_count - 1 > display->max_keycode) {
+        EAX = BadValue;
+        return;
+    }
+
+    U32 keysyms = display->alloc(thread, sizeof(U32) * keycode_count);
+    EAX = keysyms;
+
+    for (U32 i = 0; i < keycode_count; i++) {
+        memory->writed(keysyms, XKeyboard::keycodeToKeysym(first_keycode + i));
+        memory->writed(keysyms_per_keycode_return, 1);
+
+        keysyms_per_keycode_return += 4;
+        keysyms += 4;
+    }
+
 }
 
 static void x11_FreeModifierMap(CPU* cpu) {
@@ -157,7 +195,14 @@ static void x11_FreeModifierMap(CPU* cpu) {
 static void x11_KbKeycodeToKeysym(CPU* cpu) {
 }
 
+// int XDisplayKeycodes(Display* display, int* min_keycodes_return, int* max_keycodes_return) {
 static void x11_DisplayKeycodes(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    Display* display = X11::getDisplay(thread, ARG1);
+    memory->writed(ARG2, display->min_keycode);
+    memory->writed(ARG3, display->max_keycode);
+    EAX = Success;
 }
 
 static void x11_GetModifierMapping(CPU* cpu) {
@@ -169,7 +214,101 @@ static void x11_RefreshKeyboardMapping(CPU* cpu) {
 static void x11_Bell(CPU* cpu) {
 }
 
+// int XGetWindowProperty(Display* display, Window w, Atom property, long long_offset, long long_length, Bool delete, Atom req_type, Atom* actual_type_return, int* actual_format_return, unsigned long* nitems_return, unsigned long* bytes_after_return, unsigned char** prop_return)
+//
+// https://tronche.com/gui/x/xlib/window-information/XGetWindowProperty.html
+//
+// long_offset 	Specifies the offset in the specified property (in 32-bit quantities) where the data is to be retrieved.
+// long_length 	Specifies the length in 32 - bit multiples of the data to be retrieved.
+// delete 	Specifies a Boolean value that determines whether the property is deleted.
+// req_type 	Specifies the atom identifier associated with the property type or AnyPropertyType.
+// actual_type_return 	Returns the atom identifier that defines the actual type of the property.
+// actual_format_return 	Returns the actual format of the property.
+// nitems_return 	Returns the actual number of 8 - bit, 16 - bit, or 32 - bit items stored in the prop_return data.
+// bytes_after_return 	Returns the number of bytes remaining to be read in the property if a partial read was performed.
+// prop_return 	Returns the data in the specified format.
+// 
+// If the specified property does not exist for the specified window, XGetWindowProperty() returns None to actual_type_return and the value zero to actual_format_return and bytes_after_return. The nitems_return argument is empty. In this case, the delete argument is ignored. 
+//
+// If the specified property exists but its type does not match the specified type, XGetWindowProperty() returns the actual property type to actual_type_return, the actual property format (never zero) to actual_format_return, and the property length in bytes (even if the actual_format_return is 16 or 32) to bytes_after_return. It also ignores the delete argument. The nitems_return argument is empty. 
+//
+// If delete is True and bytes_after_return is zero, XGetWindowProperty() deletes the property from the window and generates a PropertyNotify event on the window. 
+//
+// BadAtom 	A value for an Atom argument does not name a defined Atom.
+// BadValue 	Some numeric value falls outside the range of values accepted by the request.Unless a specific range is specified for an argument, the full range defined by the argument's type is accepted. Any argument defined as a set of alternatives can generate this error.
+// BadWindow 	A value for a Window argument does not name a defined Window.
 static void x11_GetWindowProperty(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    Display* display = X11::getDisplay(thread, ARG1);
+    DisplayData* data = display->data;
+    XWindowPtr window = data->getWindow(ARG2);    
+    U32 propertyAtom = ARG3;
+    U32 long_offset = ARG4 * 4;
+    U32 long_length = ARG5 * 4;
+    U32 deleteProperty = ARG6;
+    U32 req_type = ARG7;
+    U32 actual_type_return = ARG8;
+    U32 actual_format_return = ARG9;
+    U32 nitems_return = ARG10;
+    U32 bytes_after_return = ARG11;
+    U32 prop_return = ARG12;
+
+    memory->writed(actual_type_return, 0);
+    memory->writed(actual_format_return, 0);
+    memory->writed(nitems_return, 0);
+    memory->writed(bytes_after_return, 0);
+    memory->writed(prop_return, 0);
+
+    if (!window) {
+        EAX = BadWindow;
+        return;
+    }
+
+    BString propertyName;
+    if (!data->getAtom(propertyAtom, propertyName)) {
+        EAX = BadAtom;
+        return;
+    }
+    BString propertyType;
+    if (!data->getAtom(req_type, propertyType)) {
+        EAX = BadAtom;
+        return;
+    }
+    EAX = Success;
+
+    XPropertyPtr property = window->properties.getProperty(propertyAtom);
+    if (!property) {
+        return;
+    }
+    if (long_offset > property->length) {
+        EAX = BadValue;
+        return;
+    }
+
+    memory->writed(actual_type_return, property->type);
+    memory->writed(actual_format_return, property->format);    
+
+    U32 toCopy = std::min(long_length, property->length - long_offset);
+    if (toCopy == 0) {
+        // XGetWindowProperty() always allocates one extra byte in prop_return (even if the property is zero length) and sets it to zero so that simple properties consisting of characters do not have to be copied into yet another string before use. 
+        U32 valueAddress = display->alloc(thread, 1); // alloc guarantees zero'd out memory
+        memory->writed(prop_return, valueAddress);
+        return;
+    }
+    U32 valueAddress = display->alloc(thread, toCopy + 1);
+    memory->memcpy(valueAddress, property->value + long_offset, toCopy);
+    memory->writed(prop_return, valueAddress);
+
+    if (req_type == AnyPropertyType || req_type == property->type) {
+        memory->writed(nitems_return, toCopy * 8 / property->format);
+        memory->writed(bytes_after_return, property->length - long_offset - toCopy);
+        if (deleteProperty) {
+            window->properties.deleteProperty(propertyAtom);
+        }
+    } else {
+        memory->writed(bytes_after_return, property->length);
+    }
 }
 
 static void x11_DeleteProperty(CPU* cpu) {
@@ -184,13 +323,78 @@ static void x11_CheckTypedWindowEvent(CPU* cpu) {
 static void x11_GetGeometry(CPU* cpu) {
 }
 
+// Status XInternAtoms(Display* dpy, char** names, int count, Bool onlyIfExists, Atom* atoms_return)
 static void x11_InternAtoms(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    Display* display = X11::getDisplay(thread, ARG1);
+    DisplayData* data = display->data;
+    U32 names = ARG2;
+    U32 count = ARG3;
+    bool onlyIfExists = ARG4 != 0;
+    U32 atoms_return = ARG5;
+
+    for (U32 i = 0; i < count; i++) {
+        U32 nameAddress = memory->readd(names); names += 4;
+        BString name = memory->readString(nameAddress);
+        bool exists = false;
+        U32 atom = data->internAtom(name, onlyIfExists);
+        memory->writed(atoms_return, atom); atoms_return += 4;
+    }
+    EAX = Success;
 }
 
+// char* XGetAtomName(Display* display, Atom atom)
+static void x11_GetAtomName(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    Display* display = X11::getDisplay(thread, ARG1);
+    DisplayData* data = display->data;
+    U32 atom = ARG2;
+    BString name;
+
+    if (!data->getAtom(atom, name)) {
+        EAX = 0;
+    } else {
+        EAX = display->createString(thread, name);        
+    }
+}
+
+// Status XGetAtomNames(Display* dpy, Atom* atoms, int count, char** names_return)
 static void x11_GetAtomNames(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = thread->memory;
+    Display* display = X11::getDisplay(thread, ARG1);
+    DisplayData* data = display->data;
+    U32 atoms = ARG2;
+    U32 count = ARG3;
+    U32 names_return = ARG4;
+
+    for (U32 i = 0; i < count; i++) {
+        U32 atom = memory->readd(atoms);
+        U32 result = 0;
+        BString name;
+
+        if (data->getAtom(atom, name)) {            
+            result = display->createString(thread, name);
+        }
+        memory->writed(names_return, result);
+
+        names_return += 4;
+        atoms += 4;
+    }
+    EAX = Success;
 }
 
+// Colormap XCreateColormap(Display* display, Window w, Visual* visual, int alloc)
 static void x11_CreateColorMap(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    Visual* visual = X11::getVisual(thread, ARG3);
+
+    if (ARG4 == AllocNone && ((visual && visual->c_class == TrueColor) || !visual)) {
+        EAX = DummyAtom;
+    } else {
+        EAX = None;
+    }
 }
 
 static void x11_FreeColorMap(CPU* cpu) {
@@ -208,10 +412,65 @@ static void x11_AllocColor(CPU* cpu) {
 static void x11_AllocColorCells(CPU* cpu) {
 }
 
+// XVisualInfo* XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return)
 static void x11_GetVisualInfo(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    Display* display = X11::getDisplay(thread, ARG1);
+    U32 mask = ARG2;
+    XVisualInfo infoTemplate;
+    infoTemplate.read(memory, ARG3);
+
+    S32 count = 0;
+
+    display->iterateVisuals(thread, [mask, &count, &infoTemplate](S32 screenIndex, U32 visualAddress, Screen* screen, Depth* depth, Visual* visual) {
+        if (infoTemplate.match(mask, screenIndex, screen, depth, visual)) {
+            count++;
+        }
+        return true;
+        });
+    memory->writed(ARG4, count);
+    if (!count) {
+        EAX = 0;
+        return;
+    }
+    U32 listAddress = display->alloc(thread, (sizeof(XVisualInfo) + sizeof(U32)) * count);
+    EAX = listAddress;
+    U32 itemAddress = listAddress + sizeof(U32) * count;
+    display->iterateVisuals(thread, [&memory, &listAddress, &itemAddress, mask, &count, &infoTemplate](S32 screenIndex, U32 visualAddress, Screen* screen, Depth* depth, Visual* visual) {
+        if (infoTemplate.match(mask, screenIndex, screen, depth, visual)) {
+            XVisualInfo* visualInfo = (XVisualInfo*)memory->getIntPtr(itemAddress, true);
+            memory->writed(listAddress, itemAddress);
+            itemAddress += sizeof(XVisualInfo);
+            listAddress += sizeof(U32);
+            visualInfo->set(screenIndex, visualAddress, screen, depth, visual);
+        }
+        return true;
+        });
 }
 
+// XPixmapFormatValues* XListPixmapFormats(Display* display, int* count_return)
 static void x11_ListPixelFormats(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    Display* display = X11::getDisplay(thread, ARG1);
+    Screen* screen = display->getScreen(thread, display->default_screen);
+
+    U32 count_return = ARG2;
+
+    if (count_return) {
+        memory->writed(count_return, screen->ndepths);
+    }
+    U32 listAddress = display->alloc(thread, sizeof(XPixmapFormatValues) * screen->ndepths);
+    EAX = listAddress;
+
+    for (S32 i = 0; i < screen->ndepths; i++, listAddress += sizeof(U32)) {
+        XPixmapFormatValues* format = (XPixmapFormatValues*)memory->getIntPtr(listAddress);
+        Depth* depth = screen->getDepth(thread, i);
+        format->scanline_pad = 32;
+        format->depth = depth->depth;
+        format->bits_per_pixel = depth->getVisual(thread, 0)->bits_per_rgb;
+    }
 }
 
 static void x11_LockDisplay(CPU* cpu) {
@@ -322,7 +581,19 @@ static void x11_SetGraphicsExposures(CPU* cpu) {
 static void x11_SetFillStyle(CPU* cpu) {
 }
 
+// int XFree(void* data)
+//
+// It seems like this should return something, but I'm not sure, it's never check in winex11 so for now I'm not setting EAX
 static void x11_Free(CPU* cpu) {
+    U32 address = ARG1;
+    if (!address) {
+        return;
+    }
+    Display* display = X11::getCurrentProcessDisplay(cpu->thread);
+    if (!display) {
+        return;
+    }
+    display->free(ARG1);
 }
 
 static void x11_SetClipMask(CPU* cpu) {
@@ -424,9 +695,6 @@ static void x11_CreateImage(CPU* cpu) {
 static void x11_DisplayName(CPU* cpu) {
 }
 
-static void x11_GetAtomName(CPU* cpu) {
-}
-
 static void x11_GetDefault(CPU* cpu) {
 }
 
@@ -490,10 +758,20 @@ static void x11_WithDrawWindow(CPU* cpu) {
 static void x11_MbTextPropertyToTextList(CPU* cpu) {
 }
 
+// XrmQuark XrmUniqueQuark()
 static void x11_RmUniqueQuark(CPU* cpu) {
+    Display* display = X11::getCurrentProcessDisplay(cpu->thread);
+    if (!display) {
+        kpanic("x11_RmUniqueQuark was called before openDisplay, I wasn't expecting that");
+        EAX = 0;
+    } else {
+        EAX = display->data->getNextQuark();
+    }
 }
 
 void x11_init() {
+    XKeyboard::init();
+
     int9BCallbackSize = X11_COUNT;   
 
     int9BCallback[X11_OPEN_DISPLAY] = x11_OpenDisplay;
