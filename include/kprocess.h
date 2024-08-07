@@ -69,6 +69,7 @@ public:
 #define K_MAP_FIXED 0x10
 #define K_MAP_ANONYMOUS 0x20
 #define K_MAP_FIXED_NOREPLACE 0x100000
+#define K_MAP_BOXEDWINE 0x80000000
 
 #define K_MADV_DONTNEED 4
 
@@ -96,6 +97,8 @@ public:
     const U32 address;
     const U32 pid;
 };
+
+#define KProcessPtr std::shared_ptr<KProcess>
 
 class KProcess : public std::enable_shared_from_this<KProcess> {
 public:

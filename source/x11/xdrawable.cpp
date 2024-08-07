@@ -1,4 +1,6 @@
 #include "boxedwine.h"
 #include "xdrawable.h"
+#include "displaydata.h"
 
-U32 XDrawable::nextId = 0x10000;
+XDrawable::XDrawable(U32 width, U32 height, U32 depth) : id(DisplayData::getNextId()), width(width), height(height), depth(depth) {
+}

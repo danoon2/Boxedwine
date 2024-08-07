@@ -66,6 +66,7 @@ public:
 
     void memcpy(U32 address, const void* p, U32 len);
     void memcpy(void* p, U32 address, U32 len);
+    void memcpy(U32 dest, U32 src, U32 len);
     void strcpy(U32 address, const char* str);
     void memset(U32 address, char value, U32 len);
     int memcmp(U32 address, const void* p, U32 len);

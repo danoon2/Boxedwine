@@ -1,7 +1,7 @@
 #ifndef __BHEAP_H__
 #define __BEHAP_H__
 
-#define BHEAP_NUMBER_OF_BUCKETS 8
+#define BHEAP_NUMBER_OF_BUCKETS 9
 #define BHEAP_MIN_BUCKET 4
 
 class BHeap {

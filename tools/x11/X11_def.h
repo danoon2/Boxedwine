@@ -11,6 +11,7 @@
 #define CALL_10_R(index, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) __asm__("push %10\n\tpush %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x9b\n\taddl $44, %%esp"::"i"(index), "g"(arg1), "g"(arg2), "g"(arg3), "g"(arg4), "g"(arg5), "g"(arg6), "g"(arg7), "g"(arg8), "g"(arg9), "g"(arg10):"%eax");
 #define CALL_11_R(index, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) __asm__("push %11\n\tpush %10\n\tpush %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x9b\n\taddl $48, %%esp"::"i"(index), "g"(arg1), "g"(arg2), "g"(arg3), "g"(arg4), "g"(arg5), "g"(arg6), "g"(arg7), "g"(arg8), "g"(arg9), "g"(arg10), "g"(arg11):"%eax");
 #define CALL_12_R(index, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12) __asm__("push %12\n\tpush %11\n\tpush %10\n\tpush %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x9b\n\taddl $52, %%esp"::"i"(index), "g"(arg1), "g"(arg2), "g"(arg3), "g"(arg4), "g"(arg5), "g"(arg6), "g"(arg7), "g"(arg8), "g"(arg9), "g"(arg10), "g"(arg11), "g"(arg12):"%eax");
+#define CALL_13_R(index, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13) __asm__("push %13\n\tpush %12\n\tpush %11\n\tpush %10\n\tpush %9\n\tpush %8\n\tpush %7\n\tpush %6\n\tpush %5\n\tpush %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x9b\n\taddl $56, %%esp"::"i"(index), "g"(arg1), "g"(arg2), "g"(arg3), "g"(arg4), "g"(arg5), "g"(arg6), "g"(arg7), "g"(arg8), "g"(arg9), "g"(arg10), "g"(arg11), "g"(arg12), "g"(arg13):"%eax");
 
 #define CALL_0(index) __asm__("push %0\n\tint $0x9b\n\taddl $4, %%esp"::"i"(index)); 
 #define CALL_1(index, arg1) __asm__("push %1\n\tpush %0\n\tint $0x9b\n\taddl $8, %%esp"::"i"(index), "g"(arg1)); 
@@ -61,7 +62,7 @@
 #define X11_SET_TEXT_PROPERTY 29
 #define X11_SET_SELECTION_OWNER 30
 #define X11_GET_SELECTION_OWNER 31
-#define X11_CHECK_IF_EVENT 32
+#define X11_GET_EVENT 32
 #define X11_SEND_EVENT 33
 #define X11_FILTER_EVENT 34
 #define X11_LOOKUP_STRING 35
@@ -184,4 +185,35 @@
 #define X11_WITHDRAW_WINDOW 153
 #define X11_MB_TEXT_PROPERTY_TO_TEXT_LIST 154
 #define X11_RM_UNIQUE_QUARK 155
-#define X11_COUNT 156
+#define X11_LOCK_EVENTS 156
+#define X11_UNLOCK_EVENTS 157
+#define X11_REMOVE_EVENT 158
+#define X11_XINERAMA_QUERY_SCREENS 159
+#define X11_XRR_CONFIG_CURRENT_CONFIGURATION 160
+#define X11_XRR_CONFIG_CURRENT_RATE 161
+#define X11_XRR_FREE_SCREEN_CONFIG_INFO 162
+#define X11_XRR_GET_SCREEN_INFO 163
+#define X11_XRR_QUERY_EXTENSION 164
+#define X11_XRR_QUERY_VERSION 165
+#define X11_XRR_RATES 166
+#define X11_XRR_SET_SCREEN_CONFIG 167
+#define X11_XRR_SET_SCREEN_CONFIG_AND_RATE 168
+#define X11_XRR_SIZES 169
+#define X11_XRR_FREE_CRTC_INFO 170
+#define X11_XRR_FREE_OUTPUT_INFO 171
+#define X11_XRR_FREE_SCREEN_RESOURCES 172
+#define X11_XRR_GET_CRTC_INFO 173
+#define X11_XRR_GET_OUTPUT_INFO 174
+#define X11_XRR_GET_OUTPUT_PROPERTY 175
+#define X11_XRR_GET_SCREEN_RESOURCES 176
+#define X11_XRR_GET_SCREEN_RESOURCES_CURRENT 177
+#define X11_XRR_GET_SCREEN_SIZE_RANGE 178
+#define X11_XRR_SET_CRTC_CONFIG 179
+#define X11_XRR_SET_SCREEN_SIZE 180
+#define X11_XRR_SELECT_INPUT 181
+#define X11_XRR_GET_OUTPUT_PRIMARY 182
+#define X11_XRR_GET_PROVIDER_RESOURCES 183
+#define X11_XRR_FREE_PROVIDER_RESOURCES 184
+#define X11_XRR_GET_PROVIDER_INFO 185
+#define X11_XRR_FREE_PROVIDER_INFO 186
+#define X11_COUNT 187

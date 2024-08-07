@@ -208,8 +208,26 @@ Window XGetSelectionOwner(Display* display, Atom selection) {
 
 typedef Bool(*pfnEventPredicate)(Display* display, XEvent* event, XPointer arg);
 
+int lockEvents(Display* display) {
+	CALL_1_R(X11_LOCK_EVENTS, display);
+}
+
 Bool XCheckIfEvent(Display* display, XEvent* event_return, pfnEventPredicate predicate, XPointer arg) {
-	CALL_4_R(X11_CHECK_IF_EVENT, display, event_return, predicate, arg);
+	int count = lockEvents(display);
+	int i;
+
+	for (i = 0; i < count; i++) {
+		XEvent event;
+		CALL_3(X11_GET_EVENT, display, &event, i);
+		if (predicate(display, &event, arg)) {
+			*event_return = event;
+			CALL_2(X11_REMOVE_EVENT, display, i);
+			CALL_1(X11_UNLOCK_EVENTS, display);
+			return True;
+		}
+	}
+	CALL_1(X11_UNLOCK_EVENTS, display);
+	return False;
 }
 
 Status XSendEvent(Display* display, Window w, Bool propagate, long event_mask, XEvent* event_send) {

@@ -687,7 +687,9 @@
     <ClInclude Include="..\..\..\..\source\x11\displaydata.h" />
     <ClInclude Include="..\..\..\..\source\x11\x11.h" />
     <ClInclude Include="..\..\..\..\source\x11\xdrawable.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xgc.h" />
     <ClInclude Include="..\..\..\..\source\x11\xkeyboard.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xpixmap.h" />
     <ClInclude Include="..\..\..\..\source\x11\xproperties.h" />
     <ClInclude Include="..\..\..\..\source\x11\xwindow.h" />
   </ItemGroup>
@@ -1136,7 +1138,9 @@
     <ClCompile Include="..\..\..\..\source\x11\x11common.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xdisplay.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xdrawable.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xgc.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xkeyboard.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xpixmap.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xproperties.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xwindow.cpp" />
     <ClCompile Include="..\boxedwine.cpp">

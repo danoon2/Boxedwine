@@ -35,7 +35,7 @@ U32 BHeap::alloc(KThread* thread, U32 len) {
 		bucket[index].pop_back();
 		return result;
 	}
-	U32 address = memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
+	U32 address = memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE | K_MAP_BOXEDWINE, -1, 0);
 	U32 size = 1 << (index + BHEAP_MIN_BUCKET);
 
 	pages.push_back(address);

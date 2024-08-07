@@ -1,16 +1,17 @@
 #ifndef __X_DRAWABLE_H__
 #define __X_DRAWABLE_H__
 
+#define XDrawablePtr std::shared_ptr<XDrawable>
+
 class XDrawable {
 public:
-	XDrawable(U32 width, U32 height) : id(nextId++), width(width), height(height) {}
+	XDrawable(U32 width, U32 height, U32 depth);
 	const U32 id;
 
-private:
-	static U32 nextId;
-
+protected:	
 	U32 width;
 	U32 height;
+	U32 depth;
 };
 
 #endif

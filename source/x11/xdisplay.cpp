@@ -1,11 +1,12 @@
 #include "boxedwine.h"
 #include "x11.h"
+#include "displaydata.h"
 #include "knativewindow.h"
 #include "knativesystem.h"
 #include "ksocket.h"
 #include "xkeyboard.h"
 
-U32 createDepth(KMemory* memory, U32& nextAddress, S32 bpp, U32 visualArrayAddress, S32 visualArrayCount) {
+static U32 createDepth(KMemory* memory, U32& nextAddress, S32 bpp, U32 visualArrayAddress, S32 visualArrayCount) {
 	U32 depthAddress = nextAddress;
 	Depth* depth = (Depth*)memory->getIntPtr(depthAddress, true);
 	nextAddress += sizeof(Depth);
@@ -16,7 +17,7 @@ U32 createDepth(KMemory* memory, U32& nextAddress, S32 bpp, U32 visualArrayAddre
 	return depthAddress;
 }
 
-U32 createVisual(KMemory* memory, U32& nextAddress, U32 visualid, U32 c_class, U32 red_mask, U32 green_mask, U32 blue_mask, U32 bits_per_rgb, U32 map_entries) {
+static U32 createVisual(KMemory* memory, U32& nextAddress, U32 visualid, U32 c_class, U32 red_mask, U32 green_mask, U32 blue_mask, U32 bits_per_rgb, U32 map_entries) {
 	U32 visualAddress = nextAddress;
 	Visual* visual = (Visual*)memory->getIntPtr(visualAddress, true);
 	nextAddress += sizeof(Visual);
@@ -31,14 +32,15 @@ U32 createVisual(KMemory* memory, U32& nextAddress, U32 visualid, U32 c_class, U
 	return visualAddress;
 }
 
-U32 allocString(KMemory* memory, U32& nextAddress, const char* str) {
+static U32 allocString(KMemory* memory, U32& nextAddress, const char* str) {
 	U32 strAddress = nextAddress;
 	memory->strcpy(strAddress, str);
 	nextAddress += (U32)strlen(str) + 1;
 	return strAddress;
 }
 
-U32 createScreen(KMemory* memory, U32& nextAddress, Display* display, U32 displayAddress) {
+static U32 createScreen(KThread* thread, U32& nextAddress, Display* display, U32 displayAddress) {
+	KMemory* memory = thread->memory;
 	std::shared_ptr<KNativeWindow> nativeWindow = KNativeWindow::getNativeWindow();
 	U32 defaultVisual = createVisual(memory, nextAddress, VisualIdBase, TrueColor, 0xFF0000, 0xFF00, 0xFF, 32, 256);
 	U32 defaultDepth = createDepth(memory, nextAddress, 32, defaultVisual, 1);
@@ -61,22 +63,24 @@ U32 createScreen(KMemory* memory, U32& nextAddress, Display* display, U32 displa
 	screen->white_pixel = 0x00FFFFFF;
 	screen->black_pixel = 0x0;
 
-	XWindowPtr rootWindow = display->data->createNewWindow(nullptr, screen->width, screen->height);
+	XWindowPtr rootWindow = display->data->createNewWindow(thread, nullptr, screen->width, screen->height, screen->root_depth, 0, 0, InputOutput, 0);
 	screen->root = rootWindow->id;
 
 	U32 rect[] = { 0, 0, (U32)screen->width, (U32)screen->height };
 	U32 atom = display->data->internAtom(B("_GTK_WORKAREAS_D0"), false);
-	rootWindow->properties.setProperty(atom, XA_CARDINAL, 32, sizeof(U32)*4, (U8*)&rect);
+	rootWindow->setProperty(thread, atom, XA_CARDINAL, 32, sizeof(U32)*4, (U8*)&rect);
 	return screenAddress;
 }
 
 U32 X11::openDisplay(KThread* thread) {
-	if (getCurrentProcessDisplay(thread)) {
-		kpanic("Each process may only open one XDisplay at a time");
-	}	
+	Display* display = getCurrentProcessDisplay(thread);
+	if (display) {
+		display->refCount++;
+		return display->displayAddress;
+	}
 	KMemory* memory = thread->memory;
 	U32 displayAddress = memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
-	Display* display = (Display*)memory->getIntPtr(displayAddress, true);
+	display = (Display*)memory->getIntPtr(displayAddress, true);
 	U32 nextAddress = displayAddress + sizeof(Display);
 
 	ksocketpair(thread, K_AF_UNIX, K_SOCK_STREAM, 0, nextAddress, 0);
@@ -106,24 +110,15 @@ U32 X11::openDisplay(KThread* thread) {
 	XKeyboard::getMinMaxKeycodes(display->min_keycode, display->max_keycode);
 
 	display->data = new DisplayData(memory);
-	U32 screenAddress = createScreen(memory, nextAddress, display, displayAddress);
+	display->displayAddress = displayAddress;
+	display->refCount = 1;
+
+	U32 screenAddress = createScreen(thread, nextAddress, display, displayAddress);
 	display->screens = screenAddress;
 	thread->process->perProcessData.set(B("XDisplay"), display);	
 
 	printf("display = %x, screens = %x, screen = %x", displayAddress, display->screens, screenAddress);
 	return displayAddress;
-}
-
-Display* X11::getCurrentProcessDisplay(KThread* thread) {
-	return (Display*)thread->process->perProcessData.get(B("XDisplay"));
-}
-
-Display* X11::getDisplay(KThread* thread, U32 address) {
-	return (Display*)thread->memory->getIntPtr(address, true);
-}
-
-Visual* X11::getVisual(KThread* thread, U32 address) {
-	return (Visual*)thread->memory->getIntPtr(address, true);
 }
 
 Screen* Display::getScreen(KThread* thread, S32 screen) {

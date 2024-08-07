@@ -182,6 +182,8 @@ void BoxedApp::launch() {
 
     if (isWine) {
         GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
+        GlobalSettings::startUpArgs.addArg(B("explorer"));
+        GlobalSettings::startUpArgs.addArg(B("/desktop=VirtualDesktop,1024x786"));
         if (this->link.length() > 0) {
             GlobalSettings::startUpArgs.addArg(B("C:\\windows\\command\\start.exe"));
             GlobalSettings::startUpArgs.addArg(this->link);

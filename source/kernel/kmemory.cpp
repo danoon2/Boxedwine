@@ -103,7 +103,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
         }
         if (pageStart == 0) {
             // :TODO: this seems like a hack, there must be something wrong with how I implemented mmap
-            if (KSystem::wineMajorVersion >= 7) {
+            if (KSystem::wineMajorVersion >= 7 && (flags & K_MAP_BOXEDWINE) == 0) {
                 pageStart = 0x10000;
             } else {
                 pageStart = ADDRESS_PROCESS_MMAP_START;
@@ -336,6 +336,12 @@ void KMemory::memcpy(U32 address, const void* p, U32 len) {
         ptr += len;
         return true;
         });
+}
+
+void KMemory::memcpy(U32 dest, U32 src, U32 len) {
+    for (U32 i = 0; i < len; i++, src++, dest++) {
+        writeb(dest, readb(src));
+    }
 }
 
 void KMemory::memcpy(void* p, U32 address, U32 len) {

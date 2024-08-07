@@ -613,6 +613,12 @@
     <ClCompile Include="..\..\..\..\source\x11\xkeyboard.cpp">
       <Filter>source\x11</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xpixmap.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xgc.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1342,6 +1348,12 @@
       <Filter>source\x11</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\x11\xkeyboard.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xpixmap.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xgc.h">
       <Filter>source\x11</Filter>
     </ClInclude>
   </ItemGroup>

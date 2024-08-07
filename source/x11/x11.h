@@ -1,6 +1,5 @@
 #ifndef __X11_H__
 #define __X11_H__
-#include "displaydata.h"
 
 #define Bool S32
 #define Status S32
@@ -49,6 +48,14 @@
 #define XA_STRING 31
 #define XA_VISUALID 32
 #define XA_WINDOW 33
+#define XA_WM_COMMAND 34
+#define XA_WM_HINTS 35
+#define XA_WM_CLIENT_MACHINE 36
+#define XA_WM_ICON_NAME 37
+#define XA_WM_ICON_SIZE 38
+#define XA_WM_NAME 39
+#define XA_WM_NORMAL_HINTS 40
+#define XA_WM_SIZE_HINTS 41
 
 /* Byte order  used in imageByteOrder and bitmapBitOrder */
 
@@ -112,9 +119,550 @@ typedef XID Colormap;
 typedef XID GContext;
 typedef XID KeySym;
 
+#define XCSUCCESS 0	/* No error. */
+#define XCNOMEM   1    /* Out of memory */
+#define XCNOENT   2    /* No entry in table */
+
+#define NoSymbol	     0L	/* special KeySym */
+
+#define PropModeReplace         0
+#define PropModePrepend         1
+#define PropModeAppend          2
+
+/*****************************************************************
+ * EVENT DEFINITIONS
+ *****************************************************************/
+
+ /* Input Event Masks. Used as event-mask window attribute and as arguments
+	to Grab requests.  Not to be confused with event names.  */
+
+#define NoEventMask			0L
+#define KeyPressMask			(1L<<0)
+#define KeyReleaseMask			(1L<<1)
+#define ButtonPressMask			(1L<<2)
+#define ButtonReleaseMask		(1L<<3)
+#define EnterWindowMask			(1L<<4)
+#define LeaveWindowMask			(1L<<5)
+#define PointerMotionMask		(1L<<6)
+#define PointerMotionHintMask		(1L<<7)
+#define Button1MotionMask		(1L<<8)
+#define Button2MotionMask		(1L<<9)
+#define Button3MotionMask		(1L<<10)
+#define Button4MotionMask		(1L<<11)
+#define Button5MotionMask		(1L<<12)
+#define ButtonMotionMask		(1L<<13)
+#define KeymapStateMask			(1L<<14)
+#define ExposureMask			(1L<<15)
+#define VisibilityChangeMask		(1L<<16)
+#define StructureNotifyMask		(1L<<17)
+#define ResizeRedirectMask		(1L<<18)
+#define SubstructureNotifyMask		(1L<<19)
+#define SubstructureRedirectMask	(1L<<20)
+#define FocusChangeMask			(1L<<21)
+#define PropertyChangeMask		(1L<<22)
+#define ColormapChangeMask		(1L<<23)
+#define OwnerGrabButtonMask		(1L<<24)
+
+	/* Event names.  Used in "type" field in XEvent structures.  Not to be
+	confused with event masks above.  They start from 2 because 0 and 1
+	are reserved in the protocol for errors and replies. */
+
+#define KeyPress		2
+#define KeyRelease		3
+#define ButtonPress		4
+#define ButtonRelease		5
+#define MotionNotify		6
+#define EnterNotify		7
+#define LeaveNotify		8
+#define FocusIn			9
+#define FocusOut		10
+#define KeymapNotify		11
+#define Expose			12
+#define GraphicsExpose		13
+#define NoExpose		14
+#define VisibilityNotify	15
+#define CreateNotify		16
+#define DestroyNotify		17
+#define UnmapNotify		18
+#define MapNotify		19
+#define MapRequest		20
+#define ReparentNotify		21
+#define ConfigureNotify		22
+#define ConfigureRequest	23
+#define GravityNotify		24
+#define ResizeRequest		25
+#define CirculateNotify		26
+#define CirculateRequest	27
+#define PropertyNotify		28
+#define SelectionClear		29
+#define SelectionRequest	30
+#define SelectionNotify		31
+#define ColormapNotify		32
+#define ClientMessage		33
+#define MappingNotify		34
+#define GenericEvent		35
+#define LASTEvent		36	/* must be bigger than any event # */
+
 typedef unsigned char KeyCode;
 
 typedef U32 GC; // actually a pointer in X11
+
+struct XKeyEvent {
+	S32 type;		/* of event */
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;	        /* "event" window it is reported relative to */
+	Window root;	        /* root window that the event occurred on */
+	Window subwindow;	/* child window */
+	Time time;		/* milliseconds */
+	S32 x, y;		/* pointer x, y coordinates in event window */
+	S32 x_root, y_root;	/* coordinates relative to root */
+	U32 state;	/* key or button mask */
+	U32 keycode;	/* detail */
+	Bool same_screen;	/* same screen flag */
+
+	void read(KMemory* memory, U32 address);
+};
+
+typedef XKeyEvent XKeyPressedEvent;
+typedef XKeyEvent XKeyReleasedEvent;
+
+struct XButtonEvent {
+	S32 type;		/* of event */
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;	        /* "event" window it is reported relative to */
+	Window root;	        /* root window that the event occurred on */
+	Window subwindow;	/* child window */
+	Time time;		/* milliseconds */
+	S32 x, y;		/* pointer x, y coordinates in event window */
+	S32 x_root, y_root;	/* coordinates relative to root */
+	U32 state;	/* key or button mask */
+	U32 button;	/* detail */
+	Bool same_screen;	/* same screen flag */
+};
+typedef XButtonEvent XButtonPressedEvent;
+typedef XButtonEvent XButtonReleasedEvent;
+
+struct XMotionEvent {
+	S32 type;		/* of event */
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;	        /* "event" window reported relative to */
+	Window root;	        /* root window that the event occurred on */
+	Window subwindow;	/* child window */
+	Time time;		/* milliseconds */
+	S32 x, y;		/* pointer x, y coordinates in event window */
+	S32 x_root, y_root;	/* coordinates relative to root */
+	U32 state;	/* key or button mask */
+	char is_hint;		/* detail */
+	Bool same_screen;	/* same screen flag */
+};
+typedef XMotionEvent XPointerMovedEvent;
+
+struct XCrossingEvent {
+	S32 type;		/* of event */
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;	        /* "event" window reported relative to */
+	Window root;	        /* root window that the event occurred on */
+	Window subwindow;	/* child window */
+	Time time;		/* milliseconds */
+	S32 x, y;		/* pointer x, y coordinates in event window */
+	S32 x_root, y_root;	/* coordinates relative to root */
+	S32 mode;		/* NotifyNormal, NotifyGrab, NotifyUngrab */
+	S32 detail;
+	/*
+	 * NotifyAncestor, NotifyVirtual, NotifyInferior,
+	 * NotifyNonlinear,NotifyNonlinearVirtual
+	 */
+	Bool same_screen;	/* same screen flag */
+	Bool focus;		/* boolean focus */
+	U32 state;	/* key or button mask */
+};
+typedef XCrossingEvent XEnterWindowEvent;
+typedef XCrossingEvent XLeaveWindowEvent;
+
+struct XFocusChangeEvent {
+	S32 type;		/* FocusIn or FocusOut */
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;		/* window of event */
+	S32 mode;		/* NotifyNormal, NotifyWhileGrabbed,
+				   NotifyGrab, NotifyUngrab */
+	S32 detail;
+	/*
+	 * NotifyAncestor, NotifyVirtual, NotifyInferior,
+	 * NotifyNonlinear,NotifyNonlinearVirtual, NotifyPointer,
+	 * NotifyPointerRoot, NotifyDetailNone
+	 */
+};
+typedef XFocusChangeEvent XFocusInEvent;
+typedef XFocusChangeEvent XFocusOutEvent;
+
+/* generated on EnterWindow and FocusIn  when KeyMapState selected */
+struct XKeymapEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	char key_vector[32];
+};
+
+struct XExposeEvent  {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	S32 x, y;
+	S32 width, height;
+	S32 count;		/* if non-zero, at least this many more */
+};
+
+struct XGraphicsExposeEvent  {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Drawable drawable;
+	S32 x, y;
+	S32 width, height;
+	S32 count;		/* if non-zero, at least this many more */
+	S32 major_code;		/* core is CopyArea or CopyPlane */
+	S32 minor_code;		/* not defined in the core */
+};
+
+struct XNoExposeEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Drawable drawable;
+	S32 major_code;		/* core is CopyArea or CopyPlane */
+	S32 minor_code;		/* not defined in the core */
+};
+
+struct XVisibilityEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	S32 state;		/* Visibility state */
+};
+
+struct XCreateWindowEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window parent;		/* parent of the window */
+	Window window;		/* window id of window created */
+	S32 x, y;		/* window location */
+	S32 width, height;	/* size of window */
+	S32 border_width;	/* border width */
+	Bool override_redirect;	/* creation should be overridden */
+};
+
+struct XDestroyWindowEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window event;
+	Window window;
+};
+
+struct XUnmapEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window event;
+	Window window;
+	Bool from_configure;
+};
+
+struct XMapEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window event;
+	Window window;
+	Bool override_redirect;	/* boolean, is override set... */
+};
+
+struct XMapRequestEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window parent;
+	Window window;
+};
+
+struct XReparentEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window event;
+	Window window;
+	Window parent;
+	S32 x, y;
+	Bool override_redirect;
+};
+
+struct XConfigureEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window event;
+	Window window;
+	S32 x, y;
+	S32 width, height;
+	S32 border_width;
+	Window above;
+	Bool override_redirect;
+};
+
+struct XGravityEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window event;
+	Window window;
+	S32 x, y;
+};
+
+struct XResizeRequestEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	S32 width, height;
+};
+
+struct XConfigureRequestEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window parent;
+	Window window;
+	S32 x, y;
+	S32 width, height;
+	S32 border_width;
+	Window above;
+	S32 detail;		/* Above, Below, TopIf, BottomIf, Opposite */
+	U32 value_mask;
+};
+
+struct XCirculateEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window event;
+	Window window;
+	S32 place;		/* PlaceOnTop, PlaceOnBottom */
+};
+
+struct XCirculateRequestEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window parent;
+	Window window;
+	S32 place;		/* PlaceOnTop, PlaceOnBottom */
+};
+
+struct XPropertyEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	Atom atom;
+	Time time;
+	S32 state;		/* NewValue, Deleted */
+};
+
+struct XSelectionClearEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	Atom selection;
+	Time time;
+};
+
+struct XSelectionRequestEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window owner;
+	Window requestor;
+	Atom selection;
+	Atom target;
+	Atom property;
+	Time time;
+};
+
+struct XSelectionEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window requestor;
+	Atom selection;
+	Atom target;
+	Atom property;		/* ATOM or None */
+	Time time;
+};
+
+struct XColormapEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	Colormap colormap;	/* COLORMAP or None */
+	Bool c_new;		/* C++ */
+	S32 state;		/* ColormapInstalled, ColormapUninstalled */
+};
+
+struct XClientMessageEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;
+	Atom message_type;
+	S32 format;
+	union {
+		S8 b[20];
+		S16 s[10];
+		S32 l[5];
+	} data;
+};
+
+struct XMappingEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;	/* Display the event was read from */
+	Window window;		/* unused */
+	S32 request;		/* one of MappingModifier, MappingKeyboard,
+				   MappingPointer */
+	S32 first_keycode;	/* first keycode */
+	S32 count;		/* defines range of change w. first_keycode*/
+};
+
+struct XErrorEvent {
+	S32 type;
+	U32 display;	/* Display the event was read from */
+	XID resourceid;		/* resource id */
+	U32 serial;	/* serial number of failed request */
+	U8 error_code;	/* error code of failed request */
+	U8 request_code;	/* Major op-code of failed request */
+	U8 minor_code;	/* Minor op-code of failed request */
+};
+
+struct XAnyEvent {
+	S32 type;
+	U32 serial;	/* # of last request processed by server */
+	Bool send_event;	/* true if this came from a SendEvent request */
+	U32 display;/* Display the event was read from */
+	Window window;	/* window on which event was requested in event mask */
+};
+
+
+/***************************************************************
+ *
+ * GenericEvent.  This event is the standard event for all newer extensions.
+ */
+
+struct XGenericEvent {
+	S32            type;         /* of event. Always GenericEvent */
+	U32  serial;       /* # of last request processed */
+	Bool           send_event;   /* true if from SendEvent request */
+	U32 display;     /* Display the event was read from */
+	S32            extension;    /* major opcode of extension that caused the event */
+	S32            evtype;       /* actual event type. */
+};
+
+struct XGenericEventCookie {
+	S32            type;         /* of event. Always GenericEvent */
+	U32  serial;       /* # of last request processed */
+	Bool           send_event;   /* true if from SendEvent request */
+	U32 display;     /* Display the event was read from */
+	S32            extension;    /* major opcode of extension that caused the event */
+	S32            evtype;       /* actual event type. */
+	U32   cookie;
+	U32 data;
+};
+
+/*
+ * this union is defined so Xlib can always use the same sized
+ * event structure internally, to avoid memory fragmentation.
+ */
+union XEvent {
+	S32 type;		/* must not be changed; first element */
+	XAnyEvent xany;
+	XKeyEvent xkey;
+	XButtonEvent xbutton;
+	XMotionEvent xmotion;
+	XCrossingEvent xcrossing;
+	XFocusChangeEvent xfocus;
+	XExposeEvent xexpose;
+	XGraphicsExposeEvent xgraphicsexpose;
+	XNoExposeEvent xnoexpose;
+	XVisibilityEvent xvisibility;
+	XCreateWindowEvent xcreatewindow;
+	XDestroyWindowEvent xdestroywindow;
+	XUnmapEvent xunmap;
+	XMapEvent xmap;
+	XMapRequestEvent xmaprequest;
+	XReparentEvent xreparent;
+	XConfigureEvent xconfigure;
+	XGravityEvent xgravity;
+	XResizeRequestEvent xresizerequest;
+	XConfigureRequestEvent xconfigurerequest;
+	XCirculateEvent xcirculate;
+	XCirculateRequestEvent xcirculaterequest;
+	XPropertyEvent xproperty;
+	XSelectionClearEvent xselectionclear;
+	XSelectionRequestEvent xselectionrequest;
+	XSelectionEvent xselection;
+	XColormapEvent xcolormap;
+	XClientMessageEvent xclient;
+	XMappingEvent xmapping;
+	XErrorEvent xerror;
+	XKeymapEvent xkeymap;
+	XGenericEvent xgeneric;
+	XGenericEventCookie xcookie;
+	long pad[24];
+};
+
+/* Property notification */
+
+#define PropertyNewValue	0
+#define PropertyDelete		1
 
 struct XPixmapFormatValues {
 	U32 depth;
@@ -144,6 +692,8 @@ struct Visual {
 	U32 red_mask, green_mask, blue_mask;	/* mask values */
 	S32 bits_per_rgb;	/* log base 2 of distinct color values */
 	S32 map_entries;	/* color map entries */
+
+	void read(KMemory* memory, U32 address);
 };
 
 struct Depth {
@@ -154,13 +704,23 @@ struct Depth {
 	Visual* getVisual(KThread* thread, S32 visual, U32* address = nullptr);
 };
 
+struct XModifierKeymap  {
+	U32 max_keypermod;	/* This server's max number of keys per modifier */
+	U32 /* KeyCode* */ modifiermap;	/* An 8 by max_keypermod array of the modifiers */
+};
+
 struct XPoint {
 	S16 x, y;
 };
 
 struct XRectangle {
+	XRectangle() {}
+	XRectangle(KMemory* memory, U32 address) { read(memory, address); }
+
 	S16 x, y;
 	U16 width, height;
+
+	void read(KMemory* memory, U32 address);
 };
 
 // maintain emulate byte layout because of things like
@@ -191,6 +751,8 @@ struct Screen {
 
 	Depth* getDepth(KThread* thread, S32 depth);
 };
+
+class DisplayData;
 
 // used directly by winex11
 // fd // fcntl( ConnectionNumber(display), F_SETFD, 1 ); /* set close on exec flag */
@@ -246,20 +808,26 @@ struct Display
 /* AC */ XCharPtr xdefaults;	/* contents of defaults from server */
 	/* there is more to this structure, but it is private to Xlib */
 	DisplayData* data;
+	U32 displayAddress;
+	std::atomic_int refCount;
+	std::atomic_int nextEventSerial;
 
 	U32 alloc(KThread* thread, U32 len);
 	void free(U32 address);
 	U32 createString(KThread* thread, const BString& str);
 	Screen* getScreen(KThread* thread, S32 screen);
 	void iterateVisuals(KThread* thread, std::function<bool(S32 screenIndex, U32 visualAddress, Screen* screen, Depth* depth, Visual* visual)> pfn);
+	U32 getNextEventSerial();
+	U32 getEventTime();
 };
 
 class X11 {
 public:
 	static U32 openDisplay(KThread* thread);
 	static Display* getCurrentProcessDisplay(KThread* thread);
+	static Display* getProcessDisplay(U32 pid);
 	static Display* getDisplay(KThread* thread, U32 address);
-	static Visual* getVisual(KThread* thread, U32 address);
+	static Visual* getVisual(KThread* thread, U32 address, Visual* tmp);
 };
 
 #define None                 0	/* universal null resource or null atom */
