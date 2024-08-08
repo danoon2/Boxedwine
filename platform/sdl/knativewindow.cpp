@@ -179,6 +179,7 @@ public:
     U32 screenBpp() override {
         return bpp;
     }
+    U32 screenRate() override;
     bool getMousePos(int* x, int* y) override;
     void setMousePos(int x, int y) override;
 
@@ -2217,6 +2218,12 @@ int KNativeWindowSdl::key(U32 key, U32 down) {
         }
     }
     return 1;
+}
+
+U32 KNativeWindowSdl::screenRate() {
+    SDL_DisplayMode DM;
+    SDL_GetCurrentDisplayMode(0, &DM);
+    return DM.refresh_rate;
 }
 
 bool KNativeWindowSdl::getMousePos(int* x, int* y) {

@@ -68,10 +68,7 @@ private:
 
 	static std::atomic_int nextId;
 
-	KMemory* memory;
-
-	BOXEDWINE_MUTEX heapMutex;
-	BHeap heap;
+	KMemory* memory;	
 
 	BOXEDWINE_MUTEX atomMutex;
 	BHashTable<U32, BString> atoms;

@@ -484,7 +484,6 @@ static U32 fetch_robust_entry(KThread* thread, struct k_robust_list_head* entry,
  */
 U32 KThread::handleFutexDeath(U32 uaddr, bool pi, bool pending_op) {
     U32 uval, nval, mval;
-    int err;
 
     /* Futex address must be 32bit aligned */
     if ((((unsigned long)uaddr) % 4) != 0)

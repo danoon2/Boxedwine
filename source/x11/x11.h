@@ -203,6 +203,9 @@ typedef XID KeySym;
 #define GenericEvent		35
 #define LASTEvent		36	/* must be bigger than any event # */
 
+#define XRAND_Base 10000
+#define XRAND_Error_Base 11000
+
 typedef unsigned char KeyCode;
 
 typedef U32 GC; // actually a pointer in X11
@@ -668,6 +671,8 @@ struct XPixmapFormatValues {
 	U32 depth;
 	U32 bits_per_pixel;
 	U32 scanline_pad;
+
+	static U32 write(KMemory* memory, U32 address, U32 depth, U32 bits_per_pixel, U32 scanline_pad);
 };
 
 struct XExtData {
@@ -753,6 +758,7 @@ struct Screen {
 };
 
 class DisplayData;
+class XrrData;
 
 // used directly by winex11
 // fd // fcntl( ConnectionNumber(display), F_SETFD, 1 ); /* set close on exec flag */
@@ -808,12 +814,12 @@ struct Display
 /* AC */ XCharPtr xdefaults;	/* contents of defaults from server */
 	/* there is more to this structure, but it is private to Xlib */
 	DisplayData* data;
-	U32 displayAddress;
-	std::atomic_int refCount;
-	std::atomic_int nextEventSerial;
+	XrrData* xrrData;
 
-	U32 alloc(KThread* thread, U32 len);
-	void free(U32 address);
+	U32 displayAddress;
+	std::atomic_int nextEventSerial;
+	BOXEDWINE_MUTEX mutex;
+	
 	U32 createString(KThread* thread, const BString& str);
 	Screen* getScreen(KThread* thread, S32 screen);
 	void iterateVisuals(KThread* thread, std::function<bool(S32 screenIndex, U32 visualAddress, Screen* screen, Depth* depth, Visual* visual)> pfn);
@@ -824,10 +830,8 @@ struct Display
 class X11 {
 public:
 	static U32 openDisplay(KThread* thread);
-	static Display* getCurrentProcessDisplay(KThread* thread);
 	static Display* getProcessDisplay(U32 pid);
 	static Display* getDisplay(KThread* thread, U32 address);
-	static Visual* getVisual(KThread* thread, U32 address, Visual* tmp);
 };
 
 #define None                 0	/* universal null resource or null atom */

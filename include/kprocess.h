@@ -23,6 +23,8 @@
 #define ADDRESS_PROCESS_LOADER			     0xF0000
 #define ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS 0xF8000000
 
+#include "../source/util/bheap.h"
+
 class MappedFileCache;
 
 class MappedFile {
@@ -68,6 +70,17 @@ public:
 #define K_MAP_PRIVATE 0x02
 #define K_MAP_FIXED 0x10
 #define K_MAP_ANONYMOUS 0x20
+#define K_MAP_32BIT 0x40
+
+#define K_MAP_GROWSDOWN       0x00100                /* Stack-like segment.  */
+#define K_MAP_DENYWRITE       0x00800                /* ETXTBSY */
+#define K_MAP_EXECUTABLE      0x01000                /* Mark it as an executable.  */
+#define K_MAP_LOCKED          0x02000                /* Lock the mapping.  */
+#define K_MAP_NORESERVE       0x04000                /* Don't check for reservations.  */
+#define K_MAP_POPULATE        0x08000                /* Populate (prefault) pagetables.  */
+#define K_MAP_NONBLOCK        0x10000                /* Do not block on IO.  */
+#define K_MAP_STACK           0x20000
+
 #define K_MAP_FIXED_NOREPLACE 0x100000
 #define K_MAP_BOXEDWINE 0x80000000
 
@@ -115,6 +128,8 @@ public:
     BString getAbsoluteExePath();
     void clone(const std::shared_ptr<KProcess>& from);
     U32 getNextFileDescriptorHandle(int after);
+    U32 alloc(KThread* thread, U32 len);
+    void free(U32 address);
 
     BString getModuleName(U32 eip);
     U32 getModuleEip(U32 eip);    
@@ -287,6 +302,9 @@ private:
 
     BHashTable<U32, KThread*> threads;
     BOXEDWINE_MUTEX threadsMutex;
+
+    BOXEDWINE_MUTEX heapMutex;
+    BHeap heap;
 public:
     KThread* getThread() {return threads.begin()->value;}
     BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed

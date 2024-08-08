@@ -8,7 +8,7 @@ U32 DisplayData::getNextId() {
 	return ++nextId;
 }
 
-DisplayData::DisplayData(KMemory* memory) : memory(memory), heap(memory) {
+DisplayData::DisplayData(KMemory* memory) : memory(memory) {
 	initAtoms();
 }
 

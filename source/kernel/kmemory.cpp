@@ -109,7 +109,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                 pageStart = ADDRESS_PROCESS_MMAP_START;
             }
         }
-        if (!data->reserveAddress(pageStart, pageCount, &pageStart, addr != 0, true, PAGE_MAPPED)) {
+        if (!data->reserveAddress(pageStart, pageCount, &pageStart, false, addr == 0, PAGE_MAPPED)) {
             return -K_ENOMEM;
         }
         addr = pageStart << K_PAGE_SHIFT;

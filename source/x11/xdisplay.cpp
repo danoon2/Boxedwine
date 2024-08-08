@@ -73,14 +73,9 @@ static U32 createScreen(KThread* thread, U32& nextAddress, Display* display, U32
 }
 
 U32 X11::openDisplay(KThread* thread) {
-	Display* display = getCurrentProcessDisplay(thread);
-	if (display) {
-		display->refCount++;
-		return display->displayAddress;
-	}
 	KMemory* memory = thread->memory;
 	U32 displayAddress = memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
-	display = (Display*)memory->getIntPtr(displayAddress, true);
+	Display* display = (Display*)memory->getIntPtr(displayAddress, true);
 	U32 nextAddress = displayAddress + sizeof(Display);
 
 	ksocketpair(thread, K_AF_UNIX, K_SOCK_STREAM, 0, nextAddress, 0);
@@ -110,8 +105,8 @@ U32 X11::openDisplay(KThread* thread) {
 	XKeyboard::getMinMaxKeycodes(display->min_keycode, display->max_keycode);
 
 	display->data = new DisplayData(memory);
+	display->xrrData = nullptr;
 	display->displayAddress = displayAddress;
-	display->refCount = 1;
 
 	U32 screenAddress = createScreen(thread, nextAddress, display, displayAddress);
 	display->screens = screenAddress;
@@ -147,19 +142,9 @@ Depth* Screen::getDepth(KThread* thread, S32 depth) {
 }
 
 U32 Display::createString(KThread* thread, const BString& str) {
-	U32 result = alloc(thread, str.length() + 1);
+	U32 result = thread->process->alloc(thread, str.length() + 1);
 	thread->memory->memcpy(result, str.c_str(), str.length() + 1);
 	return result;
-}
-
-U32 Display::alloc(KThread* thread, U32 len) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(data->heapMutex);
-	return data->heap.alloc(thread, len);
-}
-
-void Display::free(U32 address) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(data->heapMutex);
-	data->heap.free(address);
 }
 
 void Display::iterateVisuals(KThread* thread, std::function<bool(S32 screenIndex, U32 visualAddress, Screen* screen, Depth* depth, Visual* visual)> pfn) {

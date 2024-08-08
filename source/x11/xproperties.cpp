@@ -70,7 +70,7 @@ void XTextProperty::create(Display* display, KThread* thread, U32 encoding, S8**
 	for (U32 i = 0; i < count; i++) {
 		len += (U32)strlen((const char*)list[i]) + 1;
 	}
-	U32 value = display->alloc(thread, len);
+	U32 value = thread->process->alloc(thread, len);
 	property->value = value;
 	for (U32 i = 0; i < count; i++) {
 		U32 len = (U32)strlen((const char*)list[i]) + 1;
@@ -89,7 +89,7 @@ void XTextProperty::create(Display* display, KThread* thread, U32 encoding, U32 
 	for (U32 i = 0; i < count; i++) {
 		len += memory->strlen(memory->readd(list + i*4)) + 1;
 	}
-	U32 value = display->alloc(thread, len);
+	U32 value = thread->process->alloc(thread, len);
 	property->value = value;
 	for (U32 i = 0; i < count; i++) {
 		U32 src = memory->readd(list + i * 4);

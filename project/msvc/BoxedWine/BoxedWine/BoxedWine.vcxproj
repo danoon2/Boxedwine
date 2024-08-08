@@ -691,6 +691,7 @@
     <ClInclude Include="..\..\..\..\source\x11\xkeyboard.h" />
     <ClInclude Include="..\..\..\..\source\x11\xpixmap.h" />
     <ClInclude Include="..\..\..\..\source\x11\xproperties.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xrandr.h" />
     <ClInclude Include="..\..\..\..\source\x11\xwindow.h" />
   </ItemGroup>
   <ItemGroup>
@@ -1142,6 +1143,7 @@
     <ClCompile Include="..\..\..\..\source\x11\xkeyboard.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xpixmap.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xproperties.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xrandr.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xwindow.cpp" />
     <ClCompile Include="..\boxedwine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

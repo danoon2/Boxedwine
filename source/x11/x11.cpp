@@ -27,10 +27,6 @@ U32 Display::getEventTime() {
 	return KSystem::getMilliesSinceStart();
 }
 
-Display* X11::getCurrentProcessDisplay(KThread* thread) {
-	return (Display*)thread->process->perProcessData.get(B("XDisplay"));
-}
-
 Display* X11::getProcessDisplay(U32 pid) {
 	KProcessPtr process = KSystem::getProcess(pid);
 	if (!process) {
@@ -43,10 +39,9 @@ Display* X11::getDisplay(KThread* thread, U32 address) {
 	return (Display*)thread->memory->getIntPtr(address, true);
 }
 
-Visual* X11::getVisual(KThread* thread, U32 address, Visual* tmp) {
-	if ((address & K_PAGE_MASK) + sizeof(Visual) < K_PAGE_SIZE) {
-		return (Visual*)thread->memory->getIntPtr(address, true);
-	}
-	tmp->read(thread->memory, address);
-	return tmp;
+U32 XPixmapFormatValues::write(KMemory* memory, U32 address, U32 depth, U32 bits_per_pixel, U32 scanline_pad) {
+	memory->writed(address, depth);
+	memory->writed(address+4, bits_per_pixel);
+	memory->writed(address+8, scanline_pad);
+	return 12;
 }

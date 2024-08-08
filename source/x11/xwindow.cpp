@@ -273,7 +273,7 @@ int XWindow::mapWindow(KThread* thread) {
 			event.xmap.event = parent->id;
 			event.xmap.window = id;
 			event.xmap.serial = display->getNextEventSerial();
-			event.xmap.override_redirect = False;
+			event.xmap.override_redirect = this->attributes.override_redirect;
 			display->data->putEvent(event);
 			});
 	}
@@ -285,7 +285,7 @@ int XWindow::mapWindow(KThread* thread) {
 		event.xmap.event = id;
 		event.xmap.window = id;
 		event.xmap.serial = display->getNextEventSerial();
-		event.xmap.override_redirect = False;
+		event.xmap.override_redirect = this->attributes.override_redirect;
 		display->data->putEvent(event);
 		});
 	if (attributes.backing_store != NotUseful) {
@@ -313,7 +313,7 @@ int XWindow::unmapWindow(KThread* thread) {
 			event.xmap.event = parent->id;
 			event.xmap.window = id;
 			event.xmap.serial = display->getNextEventSerial();
-			event.xmap.override_redirect = False;
+			event.xmap.override_redirect = this->attributes.override_redirect;
 			display->data->putEvent(event);
 			});
 	}
@@ -325,7 +325,7 @@ int XWindow::unmapWindow(KThread* thread) {
 		event.xmap.event = id;
 		event.xmap.window = id;
 		event.xmap.serial = display->getNextEventSerial();
-		event.xmap.override_redirect = False;
+		event.xmap.override_redirect = this->attributes.override_redirect;
 		display->data->putEvent(event);
 		});
 	return Success;

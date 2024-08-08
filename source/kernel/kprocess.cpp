@@ -185,6 +185,7 @@ void KProcess::cleanupProcess() {
     this->attachedShm.clear();
     this->privateShm.clear();
     this->mappedFiles.clear();
+    this->heap.freeAll(memory);
     // will be handled when thread exits, we don't want to delete current memory associated with execution
 #ifndef BOXEDWINE_BINARY_TRANSLATOR    
     if (memory) {
@@ -1149,7 +1150,7 @@ U32 KProcess::brk(KThread* thread, U32 address) {
                     return -K_ENOMEM;
                 }
             }
-            if (memory->mmap(thread, aligned, len - alreadyAllocated, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE|K_MAP_ANONYMOUS|K_MAP_FIXED, -1, 0)==aligned) {
+            if (memory->mmap(thread, aligned, len - alreadyAllocated, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED_NOREPLACE, -1, 0)==aligned) {
                 this->brkEnd+=len;
             }				
         }
@@ -2759,4 +2760,14 @@ void KProcess::printMappedFiles() {
         const std::shared_ptr<MappedFile>& mappedFile = n.value;
         klog("    %.8X - %.8X (offset=%x) %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, (U32)mappedFile->offset, mappedFile->file->openFile->node->path.c_str());
     }
+}
+
+U32 KProcess::alloc(KThread* thread, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
+    return heap.alloc(memory, thread, len);
+}
+
+void KProcess::free(U32 address) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
+    heap.free(memory, address);
 }

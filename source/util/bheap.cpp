@@ -11,17 +11,13 @@ static int powerOf2(U32 requestedSize) {
     return powerOf2Size;
 }
 
-BHeap::~BHeap() {
-	freeAll();
-}
-
-void BHeap::freeAll() {
+void BHeap::freeAll(KMemory* memory) {
 	for (auto& page : pages) {
 		memory->unmap(page, K_PAGE_SIZE);
 	}
 }
 
-U32 BHeap::alloc(KThread* thread, U32 len) {
+U32 BHeap::alloc(KMemory* memory, KThread* thread, U32 len) {
 	U32 index = powerOf2(len + 4);
 	if (index < BHEAP_MIN_BUCKET) {
 		index = BHEAP_MIN_BUCKET;
@@ -43,10 +39,10 @@ U32 BHeap::alloc(KThread* thread, U32 len) {
 		memory->writed(start, index);
 		bucket[index].push_back(start + 4);
 	}
-	return alloc(thread, len);
+	return alloc(memory, thread, len);
 }
 
-void BHeap::free(U32 address) {
+void BHeap::free(KMemory* memory, U32 address) {
 	U32 index = memory->readd(address - 4);
 	if (index >= BHEAP_NUMBER_OF_BUCKETS) {
 		kpanic("BHeap::free index out of bounds");
