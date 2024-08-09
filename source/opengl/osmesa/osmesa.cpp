@@ -78,7 +78,7 @@ public:
     U32 minor = 0;
     PixelFormat* pixelFormat = nullptr;
     OSMesaContext context = nullptr;
-    std::shared_ptr<Wnd> wnd;
+    WndPtr wnd;
 };
 
 class MesaBoxedwineGL : public BoxedwineGL {
@@ -87,13 +87,13 @@ public:
     void deleteContext(void* context) override;
     bool makeCurrent(void* context, void* window) override;
     BString getLastError() override;
-    void* createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) override;
+    void* createContext(void* window, const WndPtr& wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) override;
     void swapBuffer(void* window) override;
     void setSwapInterval(U32 vsync) override;
     bool shareList(const std::shared_ptr<KThreadGlContext>& src, const std::shared_ptr<KThreadGlContext>& dst, void* window) override;
 
 private:
-    void* internalCreateContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile, OSMesaContext sharedContext);
+    void* internalCreateContext(void* window, const WndPtr& wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile, OSMesaContext sharedContext);
 };
 
 void MesaBoxedwineGL::deleteContext(void* context) {
@@ -121,11 +121,11 @@ BString MesaBoxedwineGL::getLastError() {
     return B("");
 }
 
-void* MesaBoxedwineGL::createContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) {
+void* MesaBoxedwineGL::createContext(void* window, const WndPtr& wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) {
     return internalCreateContext(window, wnd, pixelFormat, width, height, major, minor, profile, nullptr);
 }
 
-void* MesaBoxedwineGL::internalCreateContext(void* window, std::shared_ptr<Wnd> wnd, PixelFormat * pixelFormat, U32 width, U32 height, int major, int minor, int profile, OSMesaContext sharedContext) {
+void* MesaBoxedwineGL::internalCreateContext(void* window, const WndPtr& wnd, PixelFormat * pixelFormat, U32 width, U32 height, int major, int minor, int profile, OSMesaContext sharedContext) {
     MesaBoxedwineGlContext* c = new MesaBoxedwineGlContext();
     int attribs[100] = { 0 };
     int n = 0;

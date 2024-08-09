@@ -1,5 +1,5 @@
 #include "boxedwine.h"
-#include "xkeyboard.h"
+#include "x11.h"
 #include <SDL.h>
 
 // http://www.techhelpmanual.com/57-keyboard_scan_codes.html

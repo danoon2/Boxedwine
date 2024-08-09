@@ -273,6 +273,16 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
     app3.uid = 0;
     app3.isWine = false;
     apps.push_back(app3);
+
+    BoxedApp app4;
+    app4.container = this;
+    app4.name = B("ldd");
+    app4.path = B("/usr/bin");
+    app4.cmd = B("/usr/bin/ldd");
+    app4.args.push_back(B("/opt/wine/lib/wine/i386-unix/winex11.so"));
+    app4.uid = 0;
+    app4.isWine = false;
+    apps.push_back(app4);
 #endif
     std::sort(apps.begin(), apps.end(), compareApps);
 }

@@ -1468,7 +1468,7 @@ static U32 syscall_openat(CPU* cpu, U32 eipCount) {
 #endif
     U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
 #ifdef _DEBUG
-    if (result>1000 && !name.contains("font")) {
+    if (result>1000 && !name.contains("font") && !name.startsWith("/sys")) {
         printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
     }
 #endif

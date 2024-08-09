@@ -395,7 +395,7 @@ void boxeddrv_DestroyCursorIcon(CPU* cpu) {
 
 // void CDECL drv_DestroyWindow(HWND hwnd)
 void boxeddrv_DestroyWindow(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd) {
         wnd->destroy();
     }
@@ -962,7 +962,7 @@ void boxeddrv_SetCursorPos(CPU* cpu) {
 
 // void CDECL drv_SetFocus(HWND hwnd, BOOL* canSetFocus)
 void boxeddrv_SetFocus(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd && wnd->setFocus()) {
         cpu->memory->writed(ARG2, 1);
     }
@@ -990,7 +990,7 @@ void boxeddrv_SetWindowStyle(CPU* cpu) {
 
 // void CDECL drv_SetWindowText(HWND hwnd, LPCWSTR text)
 void boxeddrv_SetWindowText(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd) {
         wnd->setText(cpu->memory->readStringW(ARG2));
     }
@@ -1236,7 +1236,7 @@ static void writeRect(KMemory* memory, U32 address, wRECT* rect) {
 
 // void CDECL drv_WindowPosChanged(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT *window_rect, const RECT *client_rect, const RECT *visible_rect, const RECT *valid_rects, DWORD style)
 void boxeddrv_WindowPosChanged(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     U32 style = ARG8;
     U32 swp_flags = ARG3;
 
@@ -1254,14 +1254,14 @@ void boxeddrv_WindowPosChanged(CPU* cpu) {
 
 // void boxeddrv_SetSurface(HWND wnd, struct window_surface *surface) {
 void boxeddrv_SetSurface(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
         wnd->surface = ARG2;
 }
 
 // struct window_surface* boxeddrv_GetSurface(HWND wnd)
 void boxeddrv_GetSurface(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
         EAX = wnd->surface;
     else
@@ -1270,12 +1270,16 @@ void boxeddrv_GetSurface(CPU* cpu) {
 
 // void CDECL drv_WindowPosChanging(HWND hwnd, HWND insert_after, UINT swp_flags, const RECT *window_rect, const RECT *client_rect, RECT *visible_rect, struct window_surface **surface)
 void boxeddrv_WindowPosChanging(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     wRECT rect;
     KMemory* memory = cpu->memory;
 
     if (!wnd) {
-        wnd = KNativeWindow::getNativeWindow()->createWnd(cpu->thread, cpu->thread->process->id, ARG1, ARG4, ARG5);
+        wRECT windowRect;
+        windowRect.readRect(memory, ARG4);
+        wRECT clientRect;
+        clientRect.readRect(memory, ARG5);
+        wnd = KNativeWindow::getNativeWindow()->createWnd(cpu->thread, cpu->thread->process->id, ARG1, windowRect, clientRect);
     } else {
         wnd->windowRect.readRect(memory, ARG4);
         wnd->clientRect.readRect(memory, ARG5);
@@ -1671,7 +1675,7 @@ void boxeddrv_wglCopyContext(CPU* cpu) {
 
 // HWND hwnd, int major, int minor, int profile, int flags
 void boxeddrv_wglCreateContext(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (!wnd) {
         EAX = 0;
     } else {
@@ -1694,7 +1698,7 @@ void boxeddrv_glPixelFormats(CPU* cpu) {
 }
 
 void boxeddrv_wglGetPixelFormat(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
         EAX = wnd->glGetPixelFormat();
     else
@@ -1724,7 +1728,7 @@ void boxeddrv_wglMakeCurrent(CPU* cpu) {
 
 // HWND hwnd, int fmt, const PIXELFORMATDESCRIPTOR *descr
 void boxeddrv_wglSetPixelFormat(CPU* cpu) {
-    std::shared_ptr<Wnd> wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
+    WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd) {
         EAX = wnd->glSetPixelFormat(ARG2);
     } else {

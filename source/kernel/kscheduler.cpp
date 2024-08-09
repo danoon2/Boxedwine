@@ -166,7 +166,7 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
-    std::shared_ptr<KNativeWindow> window = KNativeWindow::getNativeWindow();
+    KNativeWindowPtr window = KNativeWindow::getNativeWindow();
     if (window) {
         window->flipFB();
     }

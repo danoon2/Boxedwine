@@ -2771,3 +2771,9 @@ void KProcess::free(U32 address) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
     heap.free(memory, address);
 }
+
+U32 KProcess::createString(KThread* thread, const BString& str) {
+    U32 result = thread->process->alloc(thread, str.length() + 1);
+    thread->memory->memcpy(result, str.c_str(), str.length() + 1);
+    return result;
+}

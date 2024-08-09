@@ -4141,6 +4141,7 @@ static void x64_jmpAndTranslateIfNecessary() {
             break;
         }
     } catch (...) {
+        int ii = 0;
     }
     cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
 }

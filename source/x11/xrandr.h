@@ -1,8 +1,6 @@
 #ifndef __XRANDR_H__
 #define __XRANDR_H__
 
-#include "x11.h"
-
 /* Event selection bits */
 #define RRScreenChangeNotifyMask  (1L << 0)
 /* V1.2 additions */
@@ -75,9 +73,9 @@ struct XRRScreenResources {
     U32     modes; // XRRModeInfo*
 };
 
-U32 XrrGetSizes(KThread* thread, Display* display, U32 screen, U32 countAddress);
-U32 XrrConfigCurrentConfiguration(KThread* thread, Display* display, U32 screen, U32 rotationAddress);
+U32 XrrGetSizes(KThread* thread, U32 screen, U32 countAddress);
+U32 XrrConfigCurrentConfiguration(KThread* thread, U32 screen, U32 rotationAddress);
 U32 XrrConfigCurrentRate();
-U32 XrrRates(KThread* thread, Display* display, U32 screen, U32 sizeIndex, U32 rateCountAddress);
+U32 XrrRates(KThread* thread, U32 screen, U32 sizeIndex, U32 rateCountAddress);
 
 #endif

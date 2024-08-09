@@ -194,7 +194,7 @@ static void BOXED_vkCreateWin32SurfaceKHR(CPU* cpu) {
     //const VkAllocationCallbacks* allocator, 
     // VkSurfaceKHR* surface
 
-    std::shared_ptr<KNativeWindow> wnd = KNativeWindow::getNativeWindow();
+    KNativeWindowPtr wnd = KNativeWindow::getNativeWindow();
 
     if (!wnd->isVulkan) {
         wnd->needsVulkan = true;

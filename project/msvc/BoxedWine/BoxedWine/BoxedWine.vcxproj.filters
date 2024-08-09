@@ -622,6 +622,24 @@
     <ClCompile Include="..\..\..\..\source\x11\xrandr.cpp">
       <Filter>source\x11</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\ximage.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xserver.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xscreen.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xdepth.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xvisual.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xvisualinfo.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1360,6 +1378,27 @@
       <Filter>source\x11</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\x11\xrandr.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\ximage.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xserver.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xdisplay.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xscreen.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xdepth.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xvisual.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xvisualinfo.h">
       <Filter>source\x11</Filter>
     </ClInclude>
   </ItemGroup>

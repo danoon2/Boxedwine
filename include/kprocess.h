@@ -130,6 +130,7 @@ public:
     U32 getNextFileDescriptorHandle(int after);
     U32 alloc(KThread* thread, U32 len);
     void free(U32 address);
+    U32 createString(KThread* thread, const BString& str);
 
     BString getModuleName(U32 eip);
     U32 getModuleEip(U32 eip);    
@@ -328,8 +329,6 @@ public:
     std::shared_ptr<FsNode> processNode; // in /proc/<pid>
     std::shared_ptr<FsNode> taskNode; // in /proc/<pid>/task
     std::shared_ptr<FsNode> fdNode; // in /proc/<pid>/fd
-
-    BHashTable<BString, void*> perProcessData;
 };
 
 #endif

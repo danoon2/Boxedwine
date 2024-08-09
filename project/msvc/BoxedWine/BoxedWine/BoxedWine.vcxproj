@@ -686,12 +686,19 @@
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host_marshal.h" />
     <ClInclude Include="..\..\..\..\source\x11\displaydata.h" />
     <ClInclude Include="..\..\..\..\source\x11\x11.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xdepth.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xdisplay.h" />
     <ClInclude Include="..\..\..\..\source\x11\xdrawable.h" />
     <ClInclude Include="..\..\..\..\source\x11\xgc.h" />
+    <ClInclude Include="..\..\..\..\source\x11\ximage.h" />
     <ClInclude Include="..\..\..\..\source\x11\xkeyboard.h" />
     <ClInclude Include="..\..\..\..\source\x11\xpixmap.h" />
     <ClInclude Include="..\..\..\..\source\x11\xproperties.h" />
     <ClInclude Include="..\..\..\..\source\x11\xrandr.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xscreen.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xserver.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xvisual.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xvisualinfo.h" />
     <ClInclude Include="..\..\..\..\source\x11\xwindow.h" />
   </ItemGroup>
   <ItemGroup>
@@ -1137,13 +1144,19 @@
     <ClCompile Include="..\..\..\..\source\x11\displaydata.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\x11.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\x11common.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xdepth.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xdisplay.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xdrawable.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xgc.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\ximage.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xkeyboard.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xpixmap.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xproperties.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xrandr.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xscreen.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xserver.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xvisual.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xvisualinfo.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xwindow.cpp" />
     <ClCompile Include="..\boxedwine.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

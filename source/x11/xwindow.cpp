@@ -1,7 +1,6 @@
 #include "boxedwine.h"
 #include "x11.h"
-#include "xwindow.h"
-#include "displaydata.h"
+#include "knativewindow.h"
 
 void XKeyEvent::read(KMemory* memory, U32 address) {
 	type = (S32)memory->readd(address); address += 4;
@@ -114,7 +113,7 @@ void XSetWindowAttributes::copyWithMask(XSetWindowAttributes* attributes, U32 va
 	}
 }
 
-XWindow::XWindow(KThread* thread, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), c_class(c_class), border_width(border_width), isMapped(false) {
+XWindow::XWindow(const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), c_class(c_class), border_width(border_width), isMapped(false) {
 	if (parent) {
 		attributes.border_pixmap = parent->attributes.border_pixmap;
 		attributes.colormap = parent->attributes.colormap;					
@@ -127,7 +126,7 @@ void XWindow::onCreate(const XWindowPtr& self) {
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
 			parent->children.set(id, self);
 		}
-		parent->iterateEventMask(SubstructureNotifyMask, [=](Display* display) {
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.type = CreateNotify;
 			event.xcreatewindow.parent = parent->id;
@@ -137,20 +136,16 @@ void XWindow::onCreate(const XWindowPtr& self) {
 			event.xcreatewindow.width = width;
 			event.xcreatewindow.height = height;
 			event.xcreatewindow.border_width = border_width;
-			display->data->putEvent(event);
+			data->putEvent(event);
 			});
 	}
 }
 
-void XWindow::setAttributes(KThread* thread, XSetWindowAttributes* attributes, U32 valueMask) {
+void XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {
 	this->attributes.copyWithMask(attributes, valueMask);
 	if (valueMask & CWEventMask) {
-		setEventMask(thread, attributes->event_mask);
+		data->setEventMask(id, attributes->event_mask);
 	}
-}
-
-void XWindow::iterateEventMask(U32 mask, std::function<void(Display* display)> callback) {
-
 }
 
 void XWindow::iterateChildren(std::function<void(const XWindowPtr& child)> callback) {
@@ -160,19 +155,14 @@ void XWindow::iterateChildren(std::function<void(const XWindowPtr& child)> callb
 	}
 }
 
-U32 XWindow::getEventMask(KThread* thread) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMaskMutex);
-	U32 result = 0;
-	perProcessEventMask.get(thread->process->id, result);
-	return result;
+void XWindow::iterateMappedChildren(std::function<void(const XWindowPtr& child)> callback) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
+	for (auto& child : zchildren) {
+		callback(child);
+	}
 }
 
-void XWindow::setEventMask(KThread* thread, U32 mask) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMaskMutex);
-	perProcessEventMask.set(KThread::currentThread()->process->id, mask);
-}
-
-void XWindow::setTextProperty(KThread* thread, Display* display, XTextProperty* name, Atom property) {
+void XWindow::setTextProperty(KThread* thread, XTextProperty* name, Atom property) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(property, name->encoding, name->format, name->byteLen(thread->memory), name->value);
 }
@@ -182,37 +172,57 @@ XPropertyPtr XWindow::getProperty(U32 atom) {
 	return properties.getProperty(atom);
 }
 
-void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U8* value) {
+void XWindow::onSetProperty(U32 atom) {
+	if (atom == XA_WM_HINTS) {
+		XPropertyPtr prop = properties.getProperty(atom);
+		if (prop->length == sizeof(XWMHints)) {
+			XWMHints* hints = (XWMHints*)prop->value;
+			if (hints->flags & StateHint) {
+				if (hints->initial_state == NormalState) {
+					mapWindow(KThread::currentThread());
+				} else if (hints->initial_state == IconicState) {
+					mapWindow(KThread::currentThread());
+				} else {
+					unmapWindow(KThread::currentThread());
+				}
+			}
+		}
+	}
+}
+
+void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);
-	iterateEventMask(PropertyChangeMask, [=](Display* display) {
+	onSetProperty(atom);
+	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
 		XEvent event;
 		event.xproperty.type = PropertyNotify;
 		event.xproperty.atom = atom;
-		event.xproperty.display = display->displayAddress;
+		event.xproperty.display = data->displayAddress;
 		event.xproperty.send_event = False;
 		event.xproperty.state = PropertyNewValue;
 		event.xproperty.window = id;
-		event.xproperty.serial = display->getNextEventSerial();
-		event.xproperty.time = display->getEventTime();
-		display->data->putEvent(event);
+		event.xproperty.serial = data->getNextEventSerial();
+		event.xproperty.time = XServer::getServer()->getEventTime();
+		data->putEvent(event);
 		});
 }
 
 void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U32 value) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);
-	iterateEventMask(PropertyChangeMask, [=](Display* display) {
+	onSetProperty(atom);
+	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
 		XEvent event;
 		event.xproperty.type = PropertyNotify;
 		event.xproperty.atom = atom;
-		event.xproperty.display = display->displayAddress;
+		event.xproperty.display = data->displayAddress;
 		event.xproperty.send_event = False;
 		event.xproperty.state = PropertyNewValue;
 		event.xproperty.window = id;
-		event.xproperty.serial = display->getNextEventSerial();
-		event.xproperty.time = display->getEventTime();
-		display->data->putEvent(event);
+		event.xproperty.serial = data->getNextEventSerial();
+		event.xproperty.time = XServer::getServer()->getEventTime();
+		data->putEvent(event);
 		});
 }
 
@@ -221,79 +231,91 @@ void XWindow::deleteProperty(KThread* thread, U32 atom) {
 	XPropertyPtr prop = properties.getProperty(atom);
 	properties.deleteProperty(atom);
 	if (prop) {
-		iterateEventMask(PropertyChangeMask, [=](Display* display) {
+		XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
 			XEvent event;
 			event.xproperty.type = PropertyNotify;
 			event.xproperty.atom = atom;
-			event.xproperty.display = display->displayAddress;
+			event.xproperty.display = data->displayAddress;
 			event.xproperty.send_event = False;
 			event.xproperty.state = PropertyDelete;
 			event.xproperty.window = id;
-			event.xproperty.serial = display->getNextEventSerial();
-			event.xproperty.time = display->getEventTime();
-			display->data->putEvent(event);
+			event.xproperty.serial = data->getNextEventSerial();
+			event.xproperty.time = XServer::getServer()->getEventTime();
+			data->putEvent(event);
 			});
 	}
 }
 
-void XWindow::exposeNofity(Display* display, S32 x, S32 y, S32 width, S32 height, S32 count) {
+void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, S32 height, S32 count) {
 	XEvent event;
 	event.xexpose.type = Expose;
-	event.xexpose.display = display->displayAddress;
+	event.xexpose.display = data->displayAddress;
 	event.xexpose.send_event = False;
 	event.xexpose.window = id;
-	event.xexpose.serial = display->getNextEventSerial();
+	event.xexpose.serial = data->getNextEventSerial();
 	event.xexpose.x = x;
 	event.xexpose.y = y;
 	event.xexpose.width = width;
 	event.xexpose.height = height;
 	event.xexpose.count = count;
-	display->data->putEvent(event);
+	data->putEvent(event);
 
 	iterateChildren([](const XWindowPtr& child) {
 		if (child->isMapped && child->c_class == InputOutput) {
-			child->iterateEventMask(ExposureMask, [child](Display* display) {
-				child->exposeNofity(display, 0, 0, child->width, child->height, 0);
+			XServer::getServer()->iterateEventMask(child->id, ExposureMask, [=](const DisplayDataPtr& data) {
+				child->exposeNofity(data, 0, 0, child->width, child->height, 0);
 				});
 		}
 		});
+}
+
+void XWindow::setWmState(U32 state, U32 icon) {
+	XServer* server = XServer::getServer();
+	U32 wmStateAtom = server->internAtom(B("WM_STATE"), false);
+	XWMState wmState;
+
+	wmState.state = state;
+	wmState.icon = 0;
+	setProperty(wmStateAtom, wmStateAtom, 32, 8, (U8*)&wmState);
 }
 
 int XWindow::mapWindow(KThread* thread) {
 	if (isMapped) {
 		return Success;
 	}
-	isMapped = true;
+	isMapped = true;	
+	setWmState(NormalState, 0);
 	if (parent) {
-		parent->iterateEventMask(SubstructureNotifyMask, [=](Display* display) {
+		parent->zchildren.push_back(shared_from_this());
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event;
 			event.xmap.type = MapNotify;
-			event.xmap.display = display->displayAddress;
+			event.xmap.display = data->displayAddress;
 			event.xmap.send_event = False;
 			event.xmap.event = parent->id;
 			event.xmap.window = id;
-			event.xmap.serial = display->getNextEventSerial();
+			event.xmap.serial = data->getNextEventSerial();
 			event.xmap.override_redirect = this->attributes.override_redirect;
-			display->data->putEvent(event);
+			data->putEvent(event);
 			});
 	}
-	iterateEventMask(StructureNotifyMask, [=](Display* display) {
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
 		XEvent event;
 		event.xmap.type = MapNotify;
-		event.xmap.display = display->displayAddress;
+		event.xmap.display = data->displayAddress;
 		event.xmap.send_event = False;
 		event.xmap.event = id;
 		event.xmap.window = id;
-		event.xmap.serial = display->getNextEventSerial();
+		event.xmap.serial = data->getNextEventSerial();
 		event.xmap.override_redirect = this->attributes.override_redirect;
-		display->data->putEvent(event);
+		data->putEvent(event);
 		});
 	if (attributes.backing_store != NotUseful) {
 		kwarn("XWindow::mapWindow backing_store was expected to be NotUseful");
 	}
 	if (c_class == InputOutput) {
-		iterateEventMask(ExposureMask, [=](Display* display) {
-			exposeNofity(display, 0, 0, width, height, 0);
+		XServer::getServer()->iterateEventMask(id, ExposureMask, [=](const DisplayDataPtr& data) {
+			exposeNofity(data, 0, 0, width, height, 0);
 			});		
 	}
 	return Success;
@@ -304,29 +326,108 @@ int XWindow::unmapWindow(KThread* thread) {
 		return Success;
 	}
 	isMapped = false;
+	setWmState(WithdrawnState, 0);
 	if (parent) {
-		parent->iterateEventMask(SubstructureNotifyMask, [=](Display* display) {
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event;
 			event.xmap.type = UnmapNotify;
-			event.xmap.display = display->displayAddress;
+			event.xmap.display = data->displayAddress;
 			event.xmap.send_event = False;
 			event.xmap.event = parent->id;
 			event.xmap.window = id;
-			event.xmap.serial = display->getNextEventSerial();
+			event.xmap.serial = data->getNextEventSerial();
 			event.xmap.override_redirect = this->attributes.override_redirect;
-			display->data->putEvent(event);
+			data->putEvent(event);
 			});
 	}
-	iterateEventMask(StructureNotifyMask, [=](Display* display) {
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
 		XEvent event;
 		event.xmap.type = UnmapNotify;
-		event.xmap.display = display->displayAddress;
+		event.xmap.display = data->displayAddress;
 		event.xmap.send_event = False;
 		event.xmap.event = id;
 		event.xmap.window = id;
-		event.xmap.serial = display->getNextEventSerial();
+		event.xmap.serial = data->getNextEventSerial();
 		event.xmap.override_redirect = this->attributes.override_redirect;
-		display->data->putEvent(event);
+		data->putEvent(event);
 		});
 	return Success;
+}
+
+int XWindow::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height) {
+	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+	WndPtr wnd = nativeWindow->getWnd(id);
+	if (!wnd) {
+		return BadDrawable;
+	}
+	if (image->depth != nativeWindow->screenBpp()) {
+		return BadMatch;
+	}
+	nativeWindow->putBitsOnWnd(thread, wnd, image->data, image->bytes_per_line, src_x, src_y, dest_x, dest_y, width, height);
+	return Success;
+}
+
+void XWindow::draw() {
+	if (c_class == InputOnly || !isMapped) {
+		return;
+	}
+	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+	WndPtr wnd = nativeWindow->getWnd(id);
+	if (wnd) {
+		nativeWindow->draw(wnd, x, y);
+	}
+	iterateMappedChildren([](const XWindowPtr& child) {
+		child->draw();
+		});
+}
+
+XWindowPtr XWindow::previousSibling() {
+	for (U32 i = 0; i < (U32)zchildren.size(); i++) {
+		if (zchildren[i]->id == id) {
+			if (i > 0) {
+				return zchildren[i - 1];
+			}
+			return nullptr;
+		}
+	}
+	return nullptr;
+}
+
+void XWindow::configureNotify() {
+	XWindowPtr prev = previousSibling();
+	Drawable above = None;
+	if (prev) {
+		above = prev->id;
+	}
+
+	if (parent) {
+		XServer::getServer()->iterateEventMask(parent->id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+			XEvent event = {};
+			event.type = ConfigureNotify;
+			event.xconfigure.event = parent->id;
+			event.xconfigure.window = id;
+			event.xconfigure.x = x;
+			event.xconfigure.y = y;
+			event.xconfigure.width = width;
+			event.xconfigure.height = height;
+			event.xconfigure.border_width = border_width;
+			event.xconfigure.above = above;
+			event.xconfigure.override_redirect = attributes.override_redirect;
+			data->putEvent(event);
+			});
+	}
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XEvent event = {};
+		event.type = ConfigureNotify;
+		event.xconfigure.event = id;
+		event.xconfigure.window = id;
+		event.xconfigure.x = x;
+		event.xconfigure.y = y;
+		event.xconfigure.width = width;
+		event.xconfigure.height = height;
+		event.xconfigure.border_width = border_width;
+		event.xconfigure.above = above;
+		event.xconfigure.override_redirect = attributes.override_redirect;
+		data->putEvent(event);
+		});	
 }

@@ -1,6 +1,5 @@
 #include "boxedwine.h"
 #include "x11.h"
-#include "xproperties.h"
 
 XPropertyPtr XProperties::getProperty(U32 atom) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
@@ -63,7 +62,7 @@ U32 XTextProperty::byteLen(KMemory* memory) {
 	return result;
 }
 
-void XTextProperty::create(Display* display, KThread* thread, U32 encoding, S8** list, U32 count, XTextProperty* property) {
+void XTextProperty::create(KThread* thread, U32 encoding, S8** list, U32 count, XTextProperty* property) {
 	U32 len = 0;
 	KMemory* memory = thread->memory;
 
@@ -82,7 +81,7 @@ void XTextProperty::create(Display* display, KThread* thread, U32 encoding, S8**
 	property->format = 8;
 }
 
-void XTextProperty::create(Display* display, KThread* thread, U32 encoding, U32 list, U32 count, XTextProperty* property) {
+void XTextProperty::create(KThread* thread, U32 encoding, U32 list, U32 count, XTextProperty* property) {
 	U32 len = 0;
 	KMemory* memory = thread->memory;
 

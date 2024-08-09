@@ -94,15 +94,15 @@ struct _XPrivate;
 
 typedef U32 XID;
 
-typedef U32 XExtDataPtr; // struct _XExtData*
-typedef U32 XCharPtr; // char*
-typedef U32 XPrivatePtr; // struct _XPrivate*
-typedef U32 XrmHashBucketRecPtr; // struct _XrmHashBucketRec*
-typedef U32 ScreenFormatPtr; // ScreenFormat*
-typedef U32 ScreenPtr; // Screen*
-typedef U32 DisplayPtr; // Display*
-typedef U32 VisualPtr; // Visual*
-typedef U32 DepthPtr; // Depth*
+typedef U32 XExtDataPtrAddress; // struct _XExtData*
+typedef U32 XCharPtrAddress; // char*
+typedef U32 XPrivatePtrAddress; // struct _XPrivate*
+typedef U32 XrmHashBucketRecPtrAddress; // struct _XrmHashBucketRec*
+typedef U32 ScreenFormatPtrAddress; // ScreenFormat*
+typedef U32 ScreenPtrAddress; // Screen*
+typedef U32 DisplayPtrAddress; // Display*
+typedef U32 VisualPtrAddress; // Visual*
+typedef U32 DepthPtrAddress; // Depth*
 
 typedef U32 XID;
 typedef U32 Mask;
@@ -677,36 +677,17 @@ struct XPixmapFormatValues {
 
 struct XExtData {
 	S32 number;		/* number returned by XRegisterExtension */
-	XExtDataPtr next;	/* next item on list of data for structure */
+	XExtDataPtrAddress next;	/* next item on list of data for structure */
 	//int (*free_private)(	/* called to free private storage */struct _XExtData* extension);
 	U32 free_private;
 	XPointer private_data;	/* data private to this extension. */
 };
 
 struct ScreenFormat {
-	XExtDataPtr ext_data;	/* hook for extension to hang data */
+	XExtDataPtrAddress ext_data;	/* hook for extension to hang data */
 	S32 depth;		/* depth of this image format */
 	S32 bits_per_pixel;	/* bits/pixel at this depth */
 	S32 scanline_pad;	/* scanline must padded to this multiple */
-};
-
-struct Visual {
-	XExtDataPtr ext_data;	/* hook for extension to hang data */
-	VisualID visualid;	/* visual id of this visual */
-	S32 c_class;		/* class of screen (monochrome, etc.) */
-	U32 red_mask, green_mask, blue_mask;	/* mask values */
-	S32 bits_per_rgb;	/* log base 2 of distinct color values */
-	S32 map_entries;	/* color map entries */
-
-	void read(KMemory* memory, U32 address);
-};
-
-struct Depth {
-	S32 depth;		/* this depth (Z) of the depth */
-	S32 nvisuals;		/* number of Visual types at this depth */
-	VisualPtr visuals;	/* list of visuals possible at this depth */
-
-	Visual* getVisual(KThread* thread, S32 visual, U32* address = nullptr);
 };
 
 struct XModifierKeymap  {
@@ -728,111 +709,8 @@ struct XRectangle {
 	void read(KMemory* memory, U32 address);
 };
 
-// maintain emulate byte layout because of things like
-// #define ConnectionNumber(dpy) 	(((_XPrivDisplay)(dpy))->fd)
-
-// root // root_window = DefaultRootWindow(display);
-struct Screen {
-/*  0 */ XExtDataPtr ext_data;	/* hook for extension to hang data */
-/*  4 */ DisplayPtr display;/* back pointer to display structure */
-/*  8 */ Window root;		/* Root window id. */
-/*  C */ S32 width;
-/* 10 */ S32 height;
-/* 14 */ S32 mwidth;
-/* 18 */ S32 mheight;
-/* 1C */ S32 ndepths;		/* number of depths possible */
-/* 20 */ DepthPtr depths;		/* list of allowable depths on the screen */
-/* 24 */ S32 root_depth;		/* bits per pixel */
-/* 28 */ VisualPtr root_visual;	/* root visual */
-/* 2C */ GC default_gc;		/* GC for the root root visual */
-/* 30 */ Colormap cmap;		/* default color map */
-/* 34 */ U32 white_pixel;
-/* 38 */ U32 black_pixel;	/* White and Black pixel values */
-/* 3C */ S32 max_maps;
-/* 40 */ S32 min_maps;	/* max and min color maps */
-/* 44 */ S32 backing_store;	/* Never, WhenMapped, Always */
-/* 48 */ Bool save_unders;
-/* 4C */ S32 root_input_mask;	/* initial root input mask */
-
-	Depth* getDepth(KThread* thread, S32 depth);
-};
-
 class DisplayData;
 class XrrData;
-
-// used directly by winex11
-// fd // fcntl( ConnectionNumber(display), F_SETFD, 1 ); /* set close on exec flag */
-// default_screen // init_visuals( display, DefaultScreen( display ));
-// screens // root_window = DefaultRootWindow(display);
-struct Display
-{
-/*  0 */ XExtDataPtr ext_data;	/* hook for extension to hang data */
-/*  4 */ XPrivatePtr private1;
-/*  8 */ S32 fd;			/* Network socket. */
-/*  C */ S32 private2;
-/* 10 */ S32 proto_major_version;/* major version of server's X protocol */
-/* 14 */ S32 proto_minor_version;/* minor version of servers X protocol */
-/* 18 */ XCharPtr vendor;		/* vendor of the server hardware */
-/* 1C */ XID private3;
-/* 20 */ XID private4;
-/* 24 */ XID private5;
-/* 28 */ S32 private6;
-	// XID(*resource_alloc)(	/* allocator function */ struct _XDisplay*);
-/* 2C */ U32 resource_alloc;
-/* 30 */ S32 byte_order;		/* screen byte order, LSBFirst, MSBFirst */
-/* 34 */ S32 bitmap_unit;	/* padding and data requirements */
-/* 38 */ S32 bitmap_pad;		/* padding requirements on bitmaps */
-/* 3C */ S32 bitmap_bit_order;	/* LeastSignificant or MostSignificant */
-/* 40 */ S32 nformats;		/* number of pixmap formats in list */
-/* 44 */ ScreenFormatPtr pixmap_format;	/* pixmap format list */
-/* 48 */ S32 private8;
-/* 4C */ S32 release;		/* release of the server */
-/* 50 */ XPrivatePtr private9;
-/* 54 */ XPrivatePtr private10;
-/* 58 */ S32 qlen;		/* Length of input event queue */
-/* 5C */ U32 last_request_read; /* seq number of last event read */
-/* 60 */ U32 request;	/* sequence number of last request. */
-/* 64 */ XPointer private11;
-/* 68 */ XPointer private12;
-/* 6C */ XPointer private13;
-/* 70 */ XPointer private14;
-/* 74 */ U32 max_request_size; /* maximum number 32 bit words in request*/
-/* 78 */ XrmHashBucketRecPtr db;
-	// int (*private15)(struct _XDisplay*);
-/* 7C */ U32 private15;
-/* 80 */ XCharPtr display_name;	/* "host:display" string used on this connect*/
-/* 84 */ S32 default_screen;	/* default screen for operations */
-/* 88 */ S32 nscreens;		/* number of screens on this server*/
-/* 8C */ ScreenPtr screens;	/* pointer to list of screens */
-/* 90 */ U32 motion_buffer;	/* size of motion buffer */
-/* 94 */ U32 private16;
-/* 98 */ S32 min_keycode;	/* minimum defined keycode */
-/* 9C */ S32 max_keycode;	/* maximum defined keycode */
-/* A0 */ XPointer private17;
-/* A4 */ XPointer private18;
-/* A8 */ S32 private19;
-/* AC */ XCharPtr xdefaults;	/* contents of defaults from server */
-	/* there is more to this structure, but it is private to Xlib */
-	DisplayData* data;
-	XrrData* xrrData;
-
-	U32 displayAddress;
-	std::atomic_int nextEventSerial;
-	BOXEDWINE_MUTEX mutex;
-	
-	U32 createString(KThread* thread, const BString& str);
-	Screen* getScreen(KThread* thread, S32 screen);
-	void iterateVisuals(KThread* thread, std::function<bool(S32 screenIndex, U32 visualAddress, Screen* screen, Depth* depth, Visual* visual)> pfn);
-	U32 getNextEventSerial();
-	U32 getEventTime();
-};
-
-class X11 {
-public:
-	static U32 openDisplay(KThread* thread);
-	static Display* getProcessDisplay(U32 pid);
-	static Display* getDisplay(KThread* thread, U32 address);
-};
 
 #define None                 0	/* universal null resource or null atom */
 #define DummyAtom           99
@@ -853,21 +731,29 @@ public:
 #define VisualBitsPerRGBMask	0x100
 #define VisualAllMask		0x1FF
 
-struct XVisualInfo {
-	VisualPtr visual;
-	VisualID visualid;
-	S32 screen;
-	S32 depth;
-	S32 c_class;
-	U32 red_mask;
-	U32 green_mask;
-	U32 blue_mask;
-	S32 colormap_size;
-	S32 bits_per_rgb;
+#define XDrawablePtr std::shared_ptr<XDrawable>
+#define XGCPtr std::shared_ptr<XGC>
 
-	void set(S32 screenIndex, U32 visualAddress, Screen* screen, Depth* depth, Visual* visual);
-	void read(KMemory* memory, U32 address);
-	bool match(U32 mask, S32 screenIndex, const Screen* screen, const Depth* depth, const Visual* visual);
-};
+class XGC;
+class XDrawable;
+
+#include "xvisual.h"
+#include "xdepth.h"
+#include "xvisualinfo.h"
+#include "xdisplay.h"
+#include "xscreen.h"
+#include "displaydata.h"
+#include "xkeyboard.h"
+#include "xrandr.h"
+#include "xgc.h"
+#include "xproperties.h"
+#include "ximage.h"
+#include "xdrawable.h"
+#include "xpixmap.h"
+#include "xwindow.h"
+#include "xserver.h"
+
+#define X11_WRITED(c, a, f, v) memory->writed(a + offsetof(c, f), v);
+#define X11_READD(c, a, f) memory->readd(a + offsetof(c, f));
 
 #endif

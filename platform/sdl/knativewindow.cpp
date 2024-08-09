@@ -86,10 +86,8 @@ public:
     U32 activated = 0;
     U32 processId = 0;
     U32 hwnd = 0;
-#ifdef BOXEDWINE_RECORDER
     U8* bits = nullptr;
     U32 bitsSize = 0;
-#endif
     SDL_Texture* sdlTexture = nullptr;
     int sdlTextureHeight = 0;
     int sdlTextureWidth = 0;
@@ -186,10 +184,16 @@ public:
     bool setCursor(const char* moduleName, const char* resourceName, int resource) override;
     void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) override;
 
-    std::shared_ptr<Wnd> getWnd(U32 hwnd) override;
-    std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) override;
     void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) override;
-    void drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) override;
+    void putBitsOnWnd(KThread* thread, const WndPtr& w, U32 bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) override;
+
+    void clear() override;
+    void draw(const WndPtr& w, S32 x, S32 y) override;
+    void present() override;
+
+    WndPtr getWnd(U32 hwnd) override;
+    WndPtr createWnd(KThread* thread, U32 processId, U32 hwnd, const wRECT& windowRect, const wRECT& clientRect) override;
+    void drawWnd(KThread* thread, const WndPtr& w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) override;
 #ifndef BOXEDWINE_MULTI_THREADED
     void flipFB() override;
 #endif
@@ -199,7 +203,7 @@ public:
 
     U32 getGammaRamp(KThread* thread, U32 ramp) override;
 
-    U32 glCreateContext(KThread* thread, std::shared_ptr<Wnd> wnd, int major, int minor, int profile, int flags) override;
+    U32 glCreateContext(KThread* thread, const WndPtr& wnd, int major, int minor, int profile, int flags) override;
     void glDeleteContext(KThread* thread, U32 contextId) override;
     U32 glMakeCurrent(KThread* thread, U32 arg) override;
     U32 glShareLists(KThread* thread, U32 srcContext, U32 destContext) override;
@@ -345,7 +349,7 @@ void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, BStrin
     screen->vsync = vsync;
 }
 
-std::shared_ptr<Wnd> KNativeWindowSdl::getWnd(U32 hwnd) {
+WndPtr KNativeWindowSdl::getWnd(U32 hwnd) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     return hwndToWnd[hwnd];
 }
@@ -675,7 +679,7 @@ void KNativeWindowSdl::contextCreated() {
 
 // window needs to be on the main thread
 // context needs to be on the current thread
-U32 KNativeWindowSdl::glCreateContext(KThread* thread, std::shared_ptr<Wnd> w, int major, int minor, int profile, int flags) {
+U32 KNativeWindowSdl::glCreateContext(KThread* thread, const WndPtr& w, int major, int minor, int profile, int flags) {
 #if defined(BOXEDWINE_OPENGL_OSMESA)
     if (KSystem::openglType == OPENGL_TYPE_OSMESA) {
         initMesaOpenGL();
@@ -908,6 +912,73 @@ void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
 #if defined(BOXEDWINE_RECORDER) || defined(BOXEDWINE_FLIP_MANUALLY)
 static S8 sdlBuffer[1024*1024*4];
 #endif
+
+void KNativeWindowSdl::putBitsOnWnd(KThread* thread, const WndPtr& w, U32 bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) {
+    if (!firstWindowCreated) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+            displayChanged(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+    
+    preDrawWindow();
+
+    if (!thread->memory->canRead(bits, height * srcPitch)) {
+        return;
+    }
+    std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
+    if (!wnd) {
+        return;
+    }
+    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+    ChangeThread changeThread(thread);
+    KMemory* memory = thread->memory;
+    SDL_Texture* sdlTexture = nullptr;    
+    U32 dstHeight = w->windowRect.bottom - w->windowRect.top;
+    U32 dstWidth = w->windowRect.right - w->windowRect.left;
+    U32 bpp = screenBpp() == 8 ? 32 : screenBpp();
+    U32 dstPitch = (width * ((bpp + 7) / 8) + 3) & ~3;
+
+    if (wnd->sdlTexture) {
+        sdlTexture = (SDL_Texture*)wnd->sdlTexture;
+        if (sdlTexture && (((U32)wnd->sdlTextureHeight) != dstHeight || ((U32)wnd->sdlTextureWidth) != dstWidth)) {
+            SDL_DestroyTexture(sdlTexture);
+            wnd->sdlTexture = nullptr;
+            sdlTexture = nullptr;
+        }
+    }
+    if (!sdlTexture) {
+        U32 format = SDL_PIXELFORMAT_ARGB8888;
+        if (bpp == 16) {
+            format = SDL_PIXELFORMAT_RGB565;
+        } else if (bpp == 15) {
+            format = SDL_PIXELFORMAT_RGB555;
+        }
+        if (KSystem::videoEnabled && renderer) {
+            sdlTexture = SDL_CreateTexture(renderer, format, SDL_TEXTUREACCESS_STREAMING, dstWidth, dstHeight);
+            wnd->sdlTexture = sdlTexture;
+        }
+        wnd->sdlTextureHeight = dstHeight;
+        wnd->sdlTextureWidth = dstWidth;
+        if (wnd->bits) {
+            delete[] wnd->bits;
+        }
+        wnd->bits = new U8[dstHeight * dstPitch];
+        wnd->bitsSize = dstHeight * dstPitch;
+    } 
+    U32 copyPitch = std::min(srcPitch, dstPitch);
+    for (U32 y = 0; y < height; y++) {
+        memory->memcpy(wnd->bits + (y + dstY) * dstPitch, bits + (y + srcY) * srcPitch, copyPitch);
+    }
+    if (screenBpp() != 32) {
+        // SDL_ConvertPixels(width, height, )
+    }
+    
+    if (KSystem::videoEnabled && renderer) {
+        SDL_UpdateTexture(sdlTexture, nullptr, wnd->bits, dstPitch);
+    }
+    DISPATCH_MAIN_THREAD_BLOCK_END
+}
 
 void KNativeWindowSdl::bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) {
     bool vFlip = false;
@@ -1145,7 +1216,7 @@ void KNativeWindowSdl::setPrimarySurface(KThread* thread, U32 bits, U32 width, U
     }
 }
 
-void KNativeWindowSdl::drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) {
+void KNativeWindowSdl::drawWnd(KThread* thread, const WndPtr& w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) {
     if (!firstWindowCreated) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
         DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
@@ -1241,6 +1312,37 @@ void KNativeWindowSdl::setTitle(BString title) {
 U8* recorderBuffer;
 U32 recorderBufferSize;
 #endif
+
+void KNativeWindowSdl::clear() {
+    if (KSystem::videoEnabled && renderer) {
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+            SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
+            SDL_RenderClear(renderer);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+}
+
+void KNativeWindowSdl::draw(const WndPtr& w, S32 x, S32 y) {
+    std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
+    if (KSystem::videoEnabled && renderer && wnd && wnd->sdlTexture) {
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+        SDL_Rect dstrect;
+        dstrect.x = x * (int)scaleX / 100 + scaleXOffset;
+        dstrect.y = y * (int)scaleY / 100 + scaleYOffset;
+        dstrect.w = wnd->sdlTextureWidth * (int)scaleX / 100;
+        dstrect.h = wnd->sdlTextureHeight * (int)scaleY / 100;
+        SDL_RenderCopy(renderer, wnd->sdlTexture, nullptr, &dstrect);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+}
+
+void KNativeWindowSdl::present() {
+    if (KSystem::videoEnabled && renderer) {
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+            SDL_RenderPresent(renderer);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
+}
 
 void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
     KMemory* memory = thread->memory;
@@ -1367,10 +1469,10 @@ void KNativeWindowSdl::drawAllWindows(KThread* thread, U32 hWnd, int count) {
     KNativeWindow::windowUpdated = true;
 }
 
-std::shared_ptr<Wnd> KNativeWindowSdl::createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) {
+WndPtr KNativeWindowSdl::createWnd(KThread* thread, U32 processId, U32 hwnd, const wRECT& windowRect, const wRECT& clientRect) {
     std::shared_ptr<WndSdl> wnd = std::make_shared<WndSdl>();
-    wnd->windowRect.readRect(thread->memory, windowRect);
-    wnd->clientRect.readRect(thread->memory, clientRect);
+    wnd->windowRect = windowRect;
+    wnd->clientRect = clientRect;
     wnd->processId = processId;
     wnd->hwnd = hwnd;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
@@ -2841,7 +2943,7 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
     return true;
 }
 
-std::shared_ptr<KNativeWindow> KNativeWindow::getNativeWindow() {
+KNativeWindowPtr KNativeWindow::getNativeWindow() {
     return screen;    
 }
 

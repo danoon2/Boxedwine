@@ -1,10 +1,6 @@
 #ifndef __X_WINDOW_H__
 #define __X_WINDOW_H__
 
-#include "xdrawable.h"
-#include "xproperties.h"
-#include "x11.h"
-
 #define CWBackPixmap		(1L<<0)
 #define CWBackPixel		(1L<<1)
 #define CWBorderPixmap		(1L<<2)
@@ -54,6 +50,29 @@ struct XWMHints {
 	/* this structure may be extended in the future */
 };
 
+/* definition for flags of XWMHints */
+
+#define InputHint 		(1L << 0)
+#define StateHint 		(1L << 1)
+#define IconPixmapHint		(1L << 2)
+#define IconWindowHint		(1L << 3)
+#define IconPositionHint 	(1L << 4)
+#define IconMaskHint		(1L << 5)
+#define WindowGroupHint		(1L << 6)
+#define AllHints (InputHint|StateHint|IconPixmapHint|IconWindowHint| \
+IconPositionHint|IconMaskHint|WindowGroupHint)
+#define XUrgencyHint		(1L << 8)
+
+/* definitions for initial window state */
+#define WithdrawnState 0	/* for windows that are not mapped */
+#define NormalState 1	/* most applications want to start this way */
+#define IconicState 3	/* application wants to start as an icon */
+
+struct XWMState {
+	U32 state;
+	U32 icon; 	// WINDOW 	ID of icon window
+};
+
 typedef struct {
 	U32 flags;	/* marks which fields in this structure are defined */
 	S32 x, y;		/* obsolete for new window mgrs, but clients */
@@ -92,47 +111,50 @@ struct XSetWindowAttributes {
 };
 
 #define XWindowPtr std::shared_ptr<XWindow>
-class XWindow : public XDrawable {
+class XWindow : public XDrawable, public std::enable_shared_from_this<XWindow> {
 public:
-	XWindow(KThread* thread, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
+	XWindow(const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
 	void onCreate(const XWindowPtr& self);
 
-	void setAttributes(KThread* thread, XSetWindowAttributes* attributes, U32 valueMask);
-	U32 getEventMask(KThread* thread);
-	void setEventMask(KThread* thread, U32 mask);
-	void iterateEventMask(U32 mask, std::function<void(Display* display)> callback);
+	void setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
 	void iterateChildren(std::function<void(const XWindowPtr& child)> callback);
+	void iterateMappedChildren(std::function<void(const XWindowPtr& child)> callback);
 
-	void setTextProperty(KThread* thread, Display* display, XTextProperty* name, Atom property);
+	void setTextProperty(KThread* thread, XTextProperty* name, Atom property);
 		
 	XPropertyPtr getProperty(U32 atom);
-	void setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U8* value);
+	void setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value);
 	void setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U32 value);
 	void deleteProperty(KThread* thread, U32 atom);
 
 	int mapWindow(KThread* thread);
-	int unmapWindow(KThread* thread);
+	int unmapWindow(KThread* thread);	
 
 	const U32 c_class;
 
+	int putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height) override;
+
+	void draw();	
 private:
 	XWindowPtr parent;
 	S32 x;
 	S32 y;	
 	U32 border_width;
 	XSetWindowAttributes attributes;
-	bool isMapped;
-
-	BOXEDWINE_MUTEX eventMaskMutex;
-	BHashTable<U32, U32> perProcessEventMask;
+	bool isMapped;	
 
 	BOXEDWINE_MUTEX propertiesMutex;
 	XProperties properties;
 
 	BOXEDWINE_MUTEX childrenMutex;
 	BHashTable<U32, XWindowPtr> children;
+	std::vector<XWindowPtr> zchildren;
 
-	void exposeNofity(Display* display, S32 x, S32 y, S32 width, S32 height, S32 count);
+	void exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, S32 height, S32 count);
+	void configureNotify();
+	void onSetProperty(U32 atom);
+	void setWmState(U32 state, U32 icon);
+	XWindowPtr previousSibling();
 };
 
 #endif

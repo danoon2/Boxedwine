@@ -18,6 +18,8 @@ public:
     }
 };
 
+#define WndPtr std::shared_ptr<Wnd>
+
 class Wnd {
 public:
     Wnd() : surface(0) {}
@@ -34,9 +36,11 @@ public:
     U32 surface;
 };
 
+#define KNativeWindowPtr std::shared_ptr<KNativeWindow>
+
 class KNativeWindow {
 public:
-	static std::shared_ptr<KNativeWindow> getNativeWindow();
+	static KNativeWindowPtr getNativeWindow();
     static void init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, BString scaleQuality, U32 fullScreen, U32 vsync);
     static void shutdown();
 
@@ -62,10 +66,16 @@ public:
 	virtual bool setCursor(const char* moduleName, const char* resourceName, int resource) = 0;
 	virtual void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) = 0;
 
-    virtual std::shared_ptr<Wnd> getWnd(U32 hwnd) = 0;
-    virtual std::shared_ptr<Wnd> createWnd(KThread* thread, U32 processId, U32 hwnd, U32 windowRect, U32 clientRect) = 0;
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) = 0;
-    virtual void drawWnd(KThread* thread, std::shared_ptr<Wnd> w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) = 0;
+    virtual void putBitsOnWnd(KThread* thread, const WndPtr& w, U32 bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) = 0;
+
+    virtual void clear() = 0;
+    virtual void draw(const WndPtr& w, S32 x, S32 y) = 0;
+    virtual void present() = 0;
+
+    virtual WndPtr getWnd(U32 hwnd) = 0;
+    virtual WndPtr createWnd(KThread* thread, U32 processId, U32 hwnd, const wRECT& windowRect, const wRECT& clientRect) = 0;
+    virtual void drawWnd(KThread* thread, const WndPtr& w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) = 0;
 #ifndef BOXEDWINE_MULTI_THREADED
     virtual void flipFB() = 0;
 #endif
@@ -75,7 +85,7 @@ public:
 
     virtual U32 getGammaRamp(KThread* thread, U32 ramp) = 0;
 
-    virtual U32 glCreateContext(KThread* thread, std::shared_ptr<Wnd> wnd, int major, int minor, int profile, int flags) = 0;
+    virtual U32 glCreateContext(KThread* thread, const WndPtr& wnd, int major, int minor, int profile, int flags) = 0;
     virtual void glDeleteContext(KThread* thread, U32 contextId) = 0;
     virtual U32 glMakeCurrent(KThread* thread, U32 arg) = 0;
     virtual U32 glShareLists(KThread* thread, U32 srcContext, U32 destContext) = 0;

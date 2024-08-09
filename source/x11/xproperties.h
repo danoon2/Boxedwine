@@ -15,7 +15,6 @@ public:
 
 	U32 length;
 	U8* value;
-	bool needsDelete;
 };
 
 typedef std::shared_ptr<XProperty> XPropertyPtr;
@@ -33,8 +32,8 @@ private:
 };
 
 struct XTextProperty {
-	static void create(Display* display, KThread* thread, U32 encoding, S8** list, U32 count, XTextProperty* property);
-	static void create(Display* display, KThread* thread, U32 encoding, U32 list, U32 count, XTextProperty* property);
+	static void create(KThread* thread, U32 encoding, S8** list, U32 count, XTextProperty* property);
+	static void create(KThread* thread, U32 encoding, U32 list, U32 count, XTextProperty* property);
 
 	XTextProperty() {}
 	XTextProperty(KMemory* memory, U32 address) { read(memory, address); }
