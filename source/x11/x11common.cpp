@@ -92,7 +92,8 @@ static void x11_CreateWindow(CPU* cpu) {
     if (c_class == CopyFromParent) {
         c_class = parent->c_class;
     }
-    XWindowPtr result = server->createNewWindow(parent, width, height, depth, x, y, c_class, border_width);
+    XWindowPtr result = server->createNewWindow(data->displayId, parent, width, height, depth, x, y, c_class, border_width);
+
     if (attributes) {
         result->setAttributes(data, attributes, valuemask);
     }
@@ -157,12 +158,12 @@ static void x11_SelectInput(CPU* cpu) {
 // int XFindContext(Display* display, XID rid, XContext context, XPointer* data_return)
 static void x11_FindContext(CPU* cpu) {
     KThread* thread = cpu->thread;
-    XServer* server = XServer::getServer();
     KMemory* memory = cpu->memory;
-    //Display* display = X11::getDisplay(thread, ARG1);
+    XServer* server = XServer::getServer();
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
     U32 result = 0;
 
-    EAX = server->getContextData(ARG2, ARG3, result);
+    EAX = data->getContextData(ARG2, ARG3, result);
     if (EAX == XCSUCCESS) {
         memory->writed(ARG4, result);
     }
@@ -171,17 +172,19 @@ static void x11_FindContext(CPU* cpu) {
 // int XSaveContext(Display* display, XID rid, XContext context, _Xconst char* data)
 static void x11_SaveContext(CPU* cpu) {
     KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
-    //Display* display = X11::getDisplay(thread, ARG1);
-    EAX = server->setContextData(ARG2, ARG3, ARG4);    
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    EAX = data->setContextData(ARG2, ARG3, ARG4);    
 }
 
 // int XDeleteContext(Display* display, XID rid, XContext context)
 static void x11_DeleteContext(CPU* cpu) {
     KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
-    //Display* display = X11::getDisplay(thread, ARG1);
-    EAX = server->deleteContextData(ARG2, ARG3);
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    EAX = data->deleteContextData(ARG2, ARG3);
 }
 
 static void x11_GetInputFocus(CPU* cpu) {
@@ -318,12 +321,60 @@ static void x11_UnlockEvents(CPU* cpu) {
     data->unlockEvents();
 }
 
+// Status XSendEvent(Display* display, Window w, Bool propagate, long event_mask, XEvent* event_send)
 static void x11_SendEvent(CPU* cpu) {
-    kpanic("x11_SendEvent");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    U32 windowId = ARG2;
+    XWindowPtr window = server->getWindow(windowId);
+    U32 propagate = ARG3;
+    U32 event_mask = ARG4;
+
+    if (windowId == PointerWindow) {
+        // not used in winex11
+        kpanic("XSendEvent w=PointerWindow not implemented");
+    } else if (windowId == InputFocus) {
+        // not used in winex11
+        kpanic("XSendEvent w=InputFocus not implemented");
+    } else if (!window) {
+        EAX = BadWindow;
+        return;
+    }
+
+    XEvent event = {};
+#ifdef UNALIGNED_MEMORY
+    // :TODO: properly marshal
+    oops
+#else
+    memory->memcpy(&event, ARG5, sizeof(XEvent));
+#endif
+    event.xany.send_event = True;    
+    if (!event_mask) {
+        DisplayDataPtr dst = server->getDisplayDataById(window->displayId);
+        if (!dst) {
+            EAX = BadValue;
+            return;
+        }
+        event.xany.serial = dst->getNextEventSerial();
+        event.xany.display = dst->displayAddress;
+        dst->putEvent(event);
+    } else if (!propagate) {
+        server->iterateEventMask(window->id, event_mask, [&event](const DisplayDataPtr dst) {
+            event.xany.serial = dst->getNextEventSerial();
+            event.xany.display = dst->displayAddress;
+            dst->putEvent(event);
+            });
+    } else {
+        // not used in winex11
+        kpanic("XSendEvent propagate not implemented");
+    }
 }
 
+// Bool XFilterEvent(XEvent* event, Window window)
 static void x11_FilterEvent(CPU* cpu) {
-    kpanic("x11_FilterEvent");
+    EAX = False;
 }
 
 // int XLookupString(XKeyEvent* event_struct, char* buffer_return, int bytes_buffer, KeySym* keysym_return, XComposeStatus* status_in_out) 
@@ -800,7 +851,7 @@ static void x11_ListPixelFormats(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     U32 displayAddress = ARG1;
-    U32 defaultScreen = X11_READD(Display, displayAddress, default_screen)
+    U32 defaultScreen = X11_READD(Display, displayAddress, default_screen);
     U32 screenAddress = X11_READD(Display, displayAddress, screens) + sizeof(Screen) * defaultScreen;
     U32 ndepths = X11_READD(Screen, screenAddress, ndepths);
     U32 count_return = ARG2;

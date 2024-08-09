@@ -113,7 +113,7 @@ void XSetWindowAttributes::copyWithMask(XSetWindowAttributes* attributes, U32 va
 	}
 }
 
-XWindow::XWindow(const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), c_class(c_class), border_width(border_width), isMapped(false) {
+XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), displayId(displayId), c_class(c_class), border_width(border_width), isMapped(false) {
 	if (parent) {
 		attributes.border_pixmap = parent->attributes.border_pixmap;
 		attributes.colormap = parent->attributes.colormap;					
@@ -136,6 +136,8 @@ void XWindow::onCreate(const XWindowPtr& self) {
 			event.xcreatewindow.width = width;
 			event.xcreatewindow.height = height;
 			event.xcreatewindow.border_width = border_width;
+			event.xcreatewindow.serial = data->getNextEventSerial();
+			event.xcreatewindow.display = data->displayAddress;
 			data->putEvent(event);
 			});
 	}
@@ -195,7 +197,7 @@ void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value)
 	properties.setProperty(atom, type, format, length, value);
 	onSetProperty(atom);
 	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
-		XEvent event;
+		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
 		event.xproperty.atom = atom;
 		event.xproperty.display = data->displayAddress;
@@ -213,7 +215,7 @@ void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 l
 	properties.setProperty(atom, type, format, length, value);
 	onSetProperty(atom);
 	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
-		XEvent event;
+		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
 		event.xproperty.atom = atom;
 		event.xproperty.display = data->displayAddress;
@@ -232,7 +234,7 @@ void XWindow::deleteProperty(KThread* thread, U32 atom) {
 	properties.deleteProperty(atom);
 	if (prop) {
 		XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
-			XEvent event;
+			XEvent event = {};
 			event.xproperty.type = PropertyNotify;
 			event.xproperty.atom = atom;
 			event.xproperty.display = data->displayAddress;
@@ -247,7 +249,7 @@ void XWindow::deleteProperty(KThread* thread, U32 atom) {
 }
 
 void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, S32 height, S32 count) {
-	XEvent event;
+	XEvent event = {};
 	event.xexpose.type = Expose;
 	event.xexpose.display = data->displayAddress;
 	event.xexpose.send_event = False;
@@ -288,7 +290,7 @@ int XWindow::mapWindow(KThread* thread) {
 	if (parent) {
 		parent->zchildren.push_back(shared_from_this());
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
-			XEvent event;
+			XEvent event = {};
 			event.xmap.type = MapNotify;
 			event.xmap.display = data->displayAddress;
 			event.xmap.send_event = False;
@@ -300,7 +302,7 @@ int XWindow::mapWindow(KThread* thread) {
 			});
 	}
 	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
-		XEvent event;
+		XEvent event = {};
 		event.xmap.type = MapNotify;
 		event.xmap.display = data->displayAddress;
 		event.xmap.send_event = False;
@@ -329,7 +331,7 @@ int XWindow::unmapWindow(KThread* thread) {
 	setWmState(WithdrawnState, 0);
 	if (parent) {
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
-			XEvent event;
+			XEvent event = {};
 			event.xmap.type = UnmapNotify;
 			event.xmap.display = data->displayAddress;
 			event.xmap.send_event = False;
@@ -341,7 +343,7 @@ int XWindow::unmapWindow(KThread* thread) {
 			});
 	}
 	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
-		XEvent event;
+		XEvent event = {};
 		event.xmap.type = UnmapNotify;
 		event.xmap.display = data->displayAddress;
 		event.xmap.send_event = False;
@@ -413,6 +415,8 @@ void XWindow::configureNotify() {
 			event.xconfigure.border_width = border_width;
 			event.xconfigure.above = above;
 			event.xconfigure.override_redirect = attributes.override_redirect;
+			event.xconfigure.serial = data->getNextEventSerial();
+			event.xconfigure.display = data->displayAddress;
 			data->putEvent(event);
 			});
 	}
@@ -428,6 +432,8 @@ void XWindow::configureNotify() {
 		event.xconfigure.border_width = border_width;
 		event.xconfigure.above = above;
 		event.xconfigure.override_redirect = attributes.override_redirect;
+		event.xconfigure.serial = data->getNextEventSerial();
+		event.xconfigure.display = data->displayAddress;
 		data->putEvent(event);
 		});	
 }

@@ -137,9 +137,9 @@ U32 XServer::getNextQuark() {
 	return nextQuarkID;
 }
 
-XWindowPtr XServer::createNewWindow(const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) {
+XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
-	XWindowPtr result = std::make_shared<XWindow>(parent, width, height, depth, x, y, c_class, border_width);
+	XWindowPtr result = std::make_shared<XWindow>(displayId, parent, width, height, depth, x, y, c_class, border_width);
 	windows.set(result->id, result);
 	result->onCreate(result);
 	return result;
@@ -148,7 +148,7 @@ XWindowPtr XServer::createNewWindow(const XWindowPtr& parent, U32 width, U32 hei
 XWindowPtr XServer::getRoot() {
 	if (!root) {
 		KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-		root = createNewWindow(nullptr, nativeWindow->screenWidth(), nativeWindow->screenHeight(), nativeWindow->screenBpp(), 0, 0, InputOutput, 0);
+		root = createNewWindow(0, nullptr, nativeWindow->screenWidth(), nativeWindow->screenHeight(), nativeWindow->screenBpp(), 0, 0, InputOutput, 0);
 
 		U32 rect[] = { 0, 0, (U32)nativeWindow->screenWidth(), (U32)nativeWindow->screenHeight() };
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
@@ -208,39 +208,14 @@ void XServer::removeGC(U32 gc) {
 	gcs.remove(gc);
 }
 
-int XServer::getContextData(U32 context, U32 contextType, U32& ptr) {
-	ContextDataPtr data = contextData.get(context);
-	if (!data) {
-		return XCNOENT;
-	}
-	if (!data->get(contextType, ptr)) {
-		return XCNOENT;
-	}
-	return XCSUCCESS;
-}
-
-int XServer::setContextData(U32 context, U32 contextType, U32 ptr) {
-	ContextDataPtr data = contextData.get(context);
-	if (!data) {
-		return XCNOENT;
-	}
-	data->put(contextType, ptr);
-	return XCSUCCESS;
-}
-
-int XServer::deleteContextData(U32 context, U32 contextType) {
-	ContextDataPtr data = contextData.get(context);
-	if (!data) {
-		return XCNOENT;
-	}
-	if (!data->remove(contextType)) {
-		return XCNOENT;
-	}
-	return XCSUCCESS;
-}
-
 void XServer::iterateEventMask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& display)> callback) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
 
+	for (auto& display : displays) {
+		if (display.value->getEventMask(wndId) & mask) {
+			callback(display.value);
+		}
+	}
 }
 
 static U32 createScreen(KThread* thread, U32 displayAddress) {
@@ -305,6 +280,7 @@ U32 XServer::openDisplay(KThread* thread) {
 	X11_WRITED(Display, displayAddress, screens, screenAddress);
 	U32 displayId = XServer::getNextId();
 	X11_WRITED(Display, displayAddress, id, displayId);
+	data->displayId = displayId;
 
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
 	displays.set(displayId, data);
@@ -314,6 +290,11 @@ U32 XServer::openDisplay(KThread* thread) {
 
 DisplayDataPtr XServer::getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address) {
 	U32 id = X11_READD(Display, address, id);
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+	return displays.get(id);
+}
+
+DisplayDataPtr XServer::getDisplayDataById(U32 id) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
 	return displays.get(id);
 }

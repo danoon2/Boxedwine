@@ -734,6 +734,9 @@ class XrrData;
 #define XDrawablePtr std::shared_ptr<XDrawable>
 #define XGCPtr std::shared_ptr<XGC>
 
+#define PointerWindow        0L	/* destination window in SendEvent */
+#define InputFocus           1L	/* destination window in SendEvent */
+
 class XGC;
 class XDrawable;
 
@@ -753,7 +756,7 @@ class XDrawable;
 #include "xwindow.h"
 #include "xserver.h"
 
-#define X11_WRITED(c, a, f, v) memory->writed(a + offsetof(c, f), v);
-#define X11_READD(c, a, f) memory->readd(a + offsetof(c, f));
+#define X11_WRITED(c, a, f, v) memory->writed(a + offsetof(c, f), v)
+#define X11_READD(c, a, f) memory->readd(a + offsetof(c, f))
 
 #endif

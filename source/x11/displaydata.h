@@ -4,6 +4,28 @@
 #include "../util/bheap.h"
 
 #define DisplayDataPtr std::shared_ptr<DisplayData>
+#define ContextDataPtr std::shared_ptr<ContextData>
+
+class ContextData {
+public:
+	bool get(U32 contextType, U32& result) {
+		return data.get(contextType, result);
+	}
+	void put(U32 contextType, U32 ptr) {
+		data.set(contextType, ptr);
+	}
+	bool remove(U32 contextType) {
+		U32 prev;
+
+		if (data.get(contextType, prev)) {
+			data.remove(contextType);
+			return true;
+		}
+		return false;
+	}
+private:
+	BHashTable<U32, U32> data;
+};
 
 class DisplayData {
 public:
@@ -18,7 +40,12 @@ public:
 
 	U32 getNextEventSerial();	
 	
+	int getContextData(U32 context, U32 contextType, U32& ptr);
+	int setContextData(U32 context, U32 contextType, U32 ptr);
+	int deleteContextData(U32 context, U32 contextType);
+
 	U32 displayAddress;
+	U32 displayId;
 
 	BOXEDWINE_MUTEX mutex;
 private:	
@@ -29,6 +56,9 @@ private:
 
 	BOXEDWINE_MUTEX eventMaskMutex;
 	BHashTable<U32, U32> perWindowEventMask;
+
+	BOXEDWINE_MUTEX contextMutex;
+	BHashTable<U32, ContextDataPtr> contextData;
 };
 
 #endif

@@ -113,7 +113,7 @@ struct XSetWindowAttributes {
 #define XWindowPtr std::shared_ptr<XWindow>
 class XWindow : public XDrawable, public std::enable_shared_from_this<XWindow> {
 public:
-	XWindow(const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
+	XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
 	void onCreate(const XWindowPtr& self);
 
 	void setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
@@ -130,11 +130,12 @@ public:
 	int mapWindow(KThread* thread);
 	int unmapWindow(KThread* thread);	
 
+	const U32 displayId;
 	const U32 c_class;
 
 	int putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height) override;
 
-	void draw();	
+	void draw();		
 private:
 	XWindowPtr parent;
 	S32 x;
