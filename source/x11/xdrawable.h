@@ -17,6 +17,7 @@ public:
 	U32 height() { return h; }
 	void setSize(U32 width, U32 height);
 
+	bool isDirty = false;
 protected:		
 	U32 depth;
 

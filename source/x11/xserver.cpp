@@ -160,13 +160,20 @@ XWindowPtr XServer::getRoot(KThread* thread) {
 }
 
 void XServer::draw(KThread* thread) {
-	BOXEDWINE_CRITICAL_SECTION;
+	static U32 lastDraw;
+	U32 now = KSystem::getMilliesSinceStart();
+	if (now - lastDraw < 16) {
+		return;
+	}
+	lastDraw = now;
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-	nativeWindow->clear();
-	root->iterateChildren([](XWindowPtr child) {
-		child->draw();
+	nativeWindow->runOnUiThread([=]() {
+		nativeWindow->clear();
+		root->iterateChildren([](XWindowPtr child) {
+			child->draw();
+			});
+		nativeWindow->present(thread);
 		});
-	nativeWindow->present(thread);
 }
 
 XWindowPtr XServer::getWindow(U32 window) {

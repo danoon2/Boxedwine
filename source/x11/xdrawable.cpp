@@ -45,6 +45,7 @@ int XDrawable::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage*
 		src += image->bytes_per_line;
 		dst += bytes_per_line;
 	}
+	isDirty = true;
 	return Success;
 }
 
@@ -67,5 +68,6 @@ int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S3
 			p += bytes_per_line/4;
 		}
 	}
+	isDirty = true;
 	return Success;
 }

@@ -479,8 +479,8 @@ void XWindow::draw() {
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 	WndPtr wnd = nativeWindow->getWnd(id);
 	if (wnd) {
-		nativeWindow->putBitsOnWnd(wnd, data, bytes_per_line, 0, 0, 0, 0, width(), height());
-		nativeWindow->draw(wnd, x, y);
+		nativeWindow->putBitsOnWnd(wnd, data, bytes_per_line, x, y, width(), height(), isDirty);
+		isDirty = false;
 	}
 	iterateMappedChildren([](const XWindowPtr& child) {
 		child->draw();
