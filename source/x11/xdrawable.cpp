@@ -32,18 +32,28 @@ int XDrawable::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage*
 	if (gc->values.function != GXcopy) {
 		kpanic("XPixmap::putImage function not supported %d", gc->values.function);
 	}
-	if (depth != image->bits_per_pixel) {
+	return copyImageData(thread, image->data, image->bytes_per_line, image->bits_per_pixel, src_x, src_y, dest_x, dest_y, width, height);
+}
+
+int XDrawable::copyImageData(KThread* thread, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
+	if (bits_per_pixel != this->bits_per_pixel) {
 		return BadMatch;
 	}
-	U32 src = image->data + image->bytes_per_line * src_y;
-	U8* dst = data + bytes_per_line * dest_y;
+	U32 src = data + bytes_per_line * src_y;
+	U8* dst = this->data + this->bytes_per_line * dst_y;
 	KMemory* memory = thread->memory;
-	U32 copyPerLine = (image->bits_per_pixel * width + 7) / 8;
+	if (dst_x + width > w) {
+		width = w - dst_x;
+	}
+	if (dst_y + height > h) {
+		height = h - dst_y;
+	}
+	U32 copyPerLine = (bits_per_pixel * width + 7) / 8;
 
 	for (U32 y = 0; y < height; y++) {
-		memory->memcpy(dst, src, copyPerLine);
-		src += image->bytes_per_line;
-		dst += bytes_per_line;
+		memory->memcpy(dst + dst_x * this->bits_per_pixel, src + src_x * bits_per_pixel, copyPerLine);
+		src += bytes_per_line;
+		dst += this->bytes_per_line;
 	}
 	isDirty = true;
 	return Success;

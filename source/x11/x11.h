@@ -747,6 +747,7 @@ class XrrData;
 class XGC;
 class XDrawable;
 
+#include "xcolor.h"
 #include "xvisual.h"
 #include "xdepth.h"
 #include "xvisualinfo.h"
@@ -760,6 +761,7 @@ class XDrawable;
 #include "ximage.h"
 #include "xdrawable.h"
 #include "xpixmap.h"
+#include "xcursor.h"
 #include "xwindow.h"
 #include "xserver.h"
 

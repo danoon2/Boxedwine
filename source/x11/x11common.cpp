@@ -298,16 +298,19 @@ static void x11_UnmapWindow(CPU* cpu) {
     EAX = window->unmapWindow(thread);
 }
 
+// int XGrabPointer(Display* display, Window grab_window, Bool owner_events, unsigned int event_mask, int pointer_mode, int keyboard_mode, Window confine_to, Cursor cursor, Time time)
 static void x11_GrabPointer(CPU* cpu) {
-    kpanic("x11_GrabPointer");
+    EAX = Success;
 }
 
+// int XUngrabPointer(Display* display, Time time)
 static void x11_UngrabPointer(CPU* cpu) {
-    kpanic("x11_UngrabPointer");
+    EAX = Success;
 }
 
+// int XWarpPointer(Display* display, Window src_w, Window dest_w, int src_x, int src_y, unsigned int src_width, unsigned int src_height, int dest_x, int dest_y)
 static void x11_WarpPointer(CPU* cpu) {
-    kpanic("x11_WarpPointer");
+    EAX = Success;
 }
 
 static void x11_QueryPointer(CPU* cpu) {
@@ -1044,8 +1047,18 @@ static void x11_CreatePixmap(CPU* cpu) {
     EAX = pixmap->id;
 }
 
+// Pixmap XCreateBitmapFromData(Display* display, Drawable d, const char* data, unsigned int width, unsigned int height)
 static void x11_CreateBitmapFromData(CPU* cpu) {
-    kpanic("x11_CreateBitmapFromData");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XWindowPtr window = server->getWindow(ARG2); // even though it's a Drawable passed in, spec says it must be an InputOnly window
+    U32 data = ARG3;
+    U32 width = ARG4;
+    U32 height = ARG5;
+
+    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(width, height, window->getDepth());
+    pixmap->copyImageData(thread, data, pixmap->getBytesPerLine(), pixmap->getBitsPerPixel() , 0, 0, 0, 0, width, height);
+    EAX = pixmap->id;
 }
 
 // int XFreePixmap(Display* display, Pixmap pixmap)
@@ -1054,8 +1067,18 @@ static void x11_FreePixmap(CPU* cpu) {
     EAX = server->removePixmap(ARG2);
 }
 
+// Cursor XCreatePixmapCursor(Display* display, Pixmap source, Pixmap mask, XColor* foreground_color, XColor* background_color, unsigned int x, unsigned int y)
 static void x11_CreatePixmapCursor(CPU* cpu) {
-    kpanic("x11_CreatePixmapCursor");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XColor fg;
+    XColor bg;
+    fg.read(memory, ARG4);
+    bg.read(memory, ARG5);
+    XCursorPtr cursor = std::make_shared<XCursor>(ARG2, ARG3, fg, bg, ARG6, ARG7);
+    server->addCursor(cursor);
+    EAX = cursor->id;
 }
 
 // Cursor XCreateFontCursor(Display* display, unsigned int shape)
@@ -1063,8 +1086,17 @@ static void x11_CreateFontCursor(CPU* cpu) {
     EAX = ARG2;
 }
 
+// int XDefineCursor(Display* display, Window w, Cursor cursor)
 static void x11_DefineCursor(CPU* cpu) {
-    kpanic("x11_DefineCursor");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XWindowPtr window = server->getWindow(ARG2);
+    if (!window) {
+        EAX = BadWindow;
+        return;
+    }
+    window->cursor = server->getCursor(ARG3);
+    EAX = Success;
 }
 
 static void x11_FreeCursor(CPU* cpu) {

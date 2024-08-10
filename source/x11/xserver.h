@@ -29,6 +29,9 @@ public:
 
 	XDrawablePtr getDrawable(U32 xid);	
 	
+	void addCursor(const XCursorPtr& cursor);
+	XCursorPtr getCursor(U32 id);
+
 	void iterateEventMask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& data)> callback);
 
 	U32 openDisplay(KThread* thread);
@@ -71,6 +74,9 @@ private:
 
 	BOXEDWINE_MUTEX displayMutex;
 	BHashTable<U32, DisplayDataPtr> displays;
+
+	BOXEDWINE_MUTEX cursorsMutex;
+	BHashTable<U32, XCursorPtr> cursors;
 
 	void initAtoms();
 	void setAtom(const BString& name, U32 key);

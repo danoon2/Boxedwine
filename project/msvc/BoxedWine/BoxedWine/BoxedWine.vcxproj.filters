@@ -640,6 +640,12 @@
     <ClCompile Include="..\..\..\..\source\x11\xvisualinfo.cpp">
       <Filter>source\x11</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xcursor.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\x11\xcolor.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1399,6 +1405,12 @@
       <Filter>source\x11</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\x11\xvisualinfo.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xcursor.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\x11\xcolor.h">
       <Filter>source\x11</Filter>
     </ClInclude>
   </ItemGroup>

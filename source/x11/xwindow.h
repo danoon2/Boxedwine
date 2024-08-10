@@ -153,7 +153,9 @@ public:
 	const U32 displayId;
 	const U32 c_class;
 
-	void draw();		
+	void draw();
+
+	XCursorPtr cursor;
 private:
 	XWindowPtr parent;
 	S32 x;

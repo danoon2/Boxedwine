@@ -221,6 +221,16 @@ XDrawablePtr XServer::getDrawable(U32 xid) {
 	return getWindow(xid);
 }
 
+void XServer::addCursor(const XCursorPtr& cursor) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
+	cursors.set(cursor->id, cursor);
+}
+
+XCursorPtr XServer::getCursor(U32 id) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
+	return cursors.get(id);
+}
+
 XGCPtr XServer::createGC(XDrawablePtr drawable) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(gcsMutex);
 	XGCPtr result = std::make_shared<XGC>(drawable);
