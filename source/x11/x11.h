@@ -57,6 +57,11 @@
 #define XA_WM_NORMAL_HINTS 40
 #define XA_WM_SIZE_HINTS 41
 
+#define XA_LAST_PREDEFINED 68
+
+#define _NET_WM_STATE 100
+#define _NET_WM_STATE_FULLSCREEN 101
+
 /* Byte order  used in imageByteOrder and bitmapBitOrder */
 
 #define LSBFirst		0
@@ -736,6 +741,8 @@ class XrrData;
 
 #define PointerWindow        0L	/* destination window in SendEvent */
 #define InputFocus           1L	/* destination window in SendEvent */
+
+#define PointerRoot          1L	/* focus window in SetInputFocus */
 
 class XGC;
 class XDrawable;

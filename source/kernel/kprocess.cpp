@@ -185,7 +185,6 @@ void KProcess::cleanupProcess() {
     this->attachedShm.clear();
     this->privateShm.clear();
     this->mappedFiles.clear();
-    this->heap.freeAll(memory);
     // will be handled when thread exits, we don't want to delete current memory associated with execution
 #ifndef BOXEDWINE_BINARY_TRANSLATOR    
     if (memory) {

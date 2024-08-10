@@ -67,11 +67,11 @@ public:
 	virtual void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) = 0;
 
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) = 0;
-    virtual void putBitsOnWnd(KThread* thread, const WndPtr& w, U32 bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) = 0;
+    virtual void putBitsOnWnd(const WndPtr& w, U8* bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) = 0;
 
     virtual void clear() = 0;
     virtual void draw(const WndPtr& w, S32 x, S32 y) = 0;
-    virtual void present() = 0;
+    virtual void present(KThread* thread) = 0;
 
     virtual WndPtr getWnd(U32 hwnd) = 0;
     virtual WndPtr createWnd(KThread* thread, U32 processId, U32 hwnd, const wRECT& windowRect, const wRECT& clientRect) = 0;

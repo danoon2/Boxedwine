@@ -185,11 +185,11 @@ public:
     void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) override;
 
     void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) override;
-    void putBitsOnWnd(KThread* thread, const WndPtr& w, U32 bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) override;
+    void putBitsOnWnd(const WndPtr& w, U8* bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) override;
 
     void clear() override;
     void draw(const WndPtr& w, S32 x, S32 y) override;
-    void present() override;
+    void present(KThread* thread) override;
 
     WndPtr getWnd(U32 hwnd) override;
     WndPtr createWnd(KThread* thread, U32 processId, U32 hwnd, const wRECT& windowRect, const wRECT& clientRect) override;
@@ -913,26 +913,14 @@ void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
 static S8 sdlBuffer[1024*1024*4];
 #endif
 
-void KNativeWindowSdl::putBitsOnWnd(KThread* thread, const WndPtr& w, U32 bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) {
-    if (!firstWindowCreated) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
-        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
-            displayChanged(thread);
-        DISPATCH_MAIN_THREAD_BLOCK_END
-    }
-    
+void KNativeWindowSdl::putBitsOnWnd(const WndPtr& w, U8* bits, U32 srcPitch, S32 srcX, S32 srcY, S32 dstX, S32 dstY, U32 width, U32 height) {        
     preDrawWindow();
 
-    if (!thread->memory->canRead(bits, height * srcPitch)) {
-        return;
-    }
     std::shared_ptr<WndSdl> wnd = std::dynamic_pointer_cast<WndSdl>(w);
     if (!wnd) {
         return;
     }
     DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
-    ChangeThread changeThread(thread);
-    KMemory* memory = thread->memory;
     SDL_Texture* sdlTexture = nullptr;    
     U32 dstHeight = w->windowRect.bottom - w->windowRect.top;
     U32 dstWidth = w->windowRect.right - w->windowRect.left;
@@ -968,7 +956,7 @@ void KNativeWindowSdl::putBitsOnWnd(KThread* thread, const WndPtr& w, U32 bits, 
     } 
     U32 copyPitch = std::min(srcPitch, dstPitch);
     for (U32 y = 0; y < height; y++) {
-        memory->memcpy(wnd->bits + (y + dstY) * dstPitch, bits + (y + srcY) * srcPitch, copyPitch);
+        memcpy(wnd->bits + (y + dstY) * dstPitch, bits + (y + srcY) * srcPitch, copyPitch);
     }
     if (screenBpp() != 32) {
         // SDL_ConvertPixels(width, height, )
@@ -1336,7 +1324,13 @@ void KNativeWindowSdl::draw(const WndPtr& w, S32 x, S32 y) {
     }
 }
 
-void KNativeWindowSdl::present() {
+void KNativeWindowSdl::present(KThread* thread) {
+    if (!firstWindowCreated) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(sdlMutex);
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+            displayChanged(thread);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }
     if (KSystem::videoEnabled && renderer) {
         DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
             SDL_RenderPresent(renderer);

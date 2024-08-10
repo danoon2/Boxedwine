@@ -64,8 +64,9 @@ static void x11_ClearArea(CPU* cpu) {
     kpanic("x11_ClearArea");
 }
 
+// int XSync(Display* display, Bool discard)
 static void x11_Sync(CPU* cpu) {
-    kpanic("x11_Sync");
+    EAX = Success;
 }
 
 // Window XCreateWindow(Display* display, Window parent, int x, int y, unsigned int width, unsigned int height, unsigned int border_width, int depth, unsigned int class, Visual* visual, unsigned long valuemask, XSetWindowAttributes* attributes)
@@ -115,8 +116,22 @@ static void x11_TranslateCoordinates(CPU* cpu) {
     kpanic("x11_TranslateCoordinates");
 }
 
+// int XDestroyWindow(Display* display, Window w) 
 static void x11_DestroyWindow(CPU* cpu) {
-    kpanic("x11_DestroyWindow");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr w = server->getWindow(ARG2);
+    U32 mask = ARG3;
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    EAX = server->destroyWindow(w->id);
+    WndPtr nativeWindow = KNativeWindow::getNativeWindow()->getWnd(w->id);
+    if (nativeWindow) {
+        nativeWindow->destroy();
+    }
 }
 
 static void x11_ReparentWindow(CPU* cpu) {
@@ -127,16 +142,72 @@ static void x11_QueryTree(CPU* cpu) {
     kpanic("x11_QueryTree");
 }
 
+//int XChangeWindowAttributes(Display* display, Window w, unsigned long valuemask, XSetWindowAttributes* attributes)
 static void x11_ChangeWindowAttributes(CPU* cpu) {
-    kpanic("x11_ChangeWindowAttributes");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr w = server->getWindow(ARG2);
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    U32 mask = ARG3;
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    XSetWindowAttributes tmpAttributes;
+    XSetWindowAttributes* attributes = XSetWindowAttributes::get(memory, ARG4, &tmpAttributes);
+    w->setAttributes(data, attributes, mask);
+    EAX = Success;
 }
 
+// int XConfigureWindow(Display* display, Window w, unsigned int value_mask, XWindowChanges* values)
 static void x11_ConfigureWindow(CPU* cpu) {
-    kpanic("x11_ConfigureWindow");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr w = server->getWindow(ARG2);
+    U32 mask = ARG3;
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    XWindowChanges changes;
+    changes.read(memory, ARG4);
+    EAX = w->configure(mask, &changes);
 }
 
+// Status XReconfigureWMWindow(Display* display, Window w, int screen_number, unsigned int mask, XWindowChanges* changes) {
+static void x11_ReconfigureWMWindow(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr w = server->getWindow(ARG2);
+    U32 mask = ARG4;
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    XWindowChanges changes;
+    changes.read(memory, ARG5);
+    EAX = w->configure(mask, &changes);
+}
+
+// int XSetInputFocus(Display* display, Window focus, int revert_to, Time time)
 static void x11_SetInputFocus(CPU* cpu) {
-    kpanic("x11_SetInputFocus");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 focus = ARG2;
+    if (focus != PointerRoot) {
+        XWindowPtr w = server->getWindow(ARG2);
+        if (!w) {
+            EAX = BadWindow;
+            return;
+        }
+    }
+    server->inputFocus = focus;
+    server->inputFocusRevertTo = ARG3;
+    EAX = Success;
 }
 
 // int XSelectInput(Display* display, Window w, long event_mask)
@@ -175,7 +246,7 @@ static void x11_SaveContext(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
-    EAX = data->setContextData(ARG2, ARG3, ARG4);    
+    EAX = data->setContextData(ARG2, ARG3, ARG4);
 }
 
 // int XDeleteContext(Display* display, XID rid, XContext context)
@@ -350,6 +421,10 @@ static void x11_SendEvent(CPU* cpu) {
 #else
     memory->memcpy(&event, ARG5, sizeof(XEvent));
 #endif
+    if (event.type == ClientMessage && event.xclient.message_type == _NET_WM_STATE) {
+        EAX = window->handleNetWmStatePropertyEvent(thread, event);
+        return;
+    }
     event.xany.send_event = True;    
     if (!event_mask) {
         DisplayDataPtr dst = server->getDisplayDataById(window->displayId);
@@ -863,7 +938,7 @@ static void x11_ListPixelFormats(CPU* cpu) {
     EAX = listAddress;
 
     U32 depthsAddress = X11_READD(Screen, screenAddress, depths);
-    for (S32 i = 0; i < ndepths; i++) {
+    for (U32 i = 0; i < ndepths; i++) {
         U32 depthAddress = depthsAddress + i * sizeof(Depth);
         Depth depth;
         depth.read(memory, depthAddress);
@@ -921,11 +996,22 @@ static void x11_PutImage(CPU* cpu) {
     U32 width = ARG9;
     U32 height = ARG10;
     EAX = d->putImage(thread, gc, &image, src_x, src_y, dest_x, dest_y, width, height);    
-    server->draw();
+    server->draw(thread);
 }
 
+// int XFlush(Display* display)
+static void x11_Flush(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    server->draw(thread);
+    EAX = Success;
+}
+
+// int XDestroyImage(XImage* ximage)
 static void x11_DestroyImage(CPU* cpu) {
-    kpanic("x11_DestroyImage");
+    KThread* thread = cpu->thread;
+    thread->process->free(ARG1);
+    EAX = Success;
 }
 
 static void x11_GetPixel(CPU* cpu) {
@@ -934,6 +1020,14 @@ static void x11_GetPixel(CPU* cpu) {
 
 static void x11_PutPixel(CPU* cpu) {
     kpanic("x11_PutPixel");
+}
+
+static void x11_SubImage(CPU* cpu) {
+    kpanic("x11_SubImage");
+}
+
+static void x11_AddPixel(CPU* cpu) {
+    kpanic("x11_AddPixel");
 }
 
 // Pixmap XCreatePixmap(Display* display, Drawable d, unsigned int width, unsigned int height, unsigned int depth)
@@ -954,8 +1048,10 @@ static void x11_CreateBitmapFromData(CPU* cpu) {
     kpanic("x11_CreateBitmapFromData");
 }
 
+// int XFreePixmap(Display* display, Pixmap pixmap)
 static void x11_FreePixmap(CPU* cpu) {
-    kpanic("x11_FreePixmap");
+    XServer* server = XServer::getServer();
+    EAX = server->removePixmap(ARG2);
 }
 
 static void x11_CreatePixmapCursor(CPU* cpu) {
@@ -975,16 +1071,43 @@ static void x11_FreeCursor(CPU* cpu) {
     kpanic("x11_FreeCursor");
 }
 
+// int XSetFunction(Display* display, GC gc, int function)
 static void x11_SetFunction(CPU* cpu) {
-    kpanic("x11_SetFunction");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XGCPtr gc = server->getGC(ARG1);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    gc->values.function = ARG2;
+    EAX = Success;
 }
 
+// int XSetBackground(Display* display, GC gc, unsigned long background)
 static void x11_SetBackground(CPU* cpu) {
-    kpanic("x11_SetBackground");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XGCPtr gc = server->getGC(ARG1);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    gc->values.background = ARG2;
+    EAX = Success;
 }
 
+// int XSetForeground(Display* display, GC gc, unsigned long foreground)
 static void x11_SetForeground(CPU* cpu) {
-    kpanic("x11_SetForeground");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XGCPtr gc = server->getGC(ARG1);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    gc->values.foreground = ARG2;
+    EAX = Success;
 }
 
 static void x11_CopyPlane(CPU* cpu) {
@@ -1037,8 +1160,21 @@ static void x11_DrawRectangle(CPU* cpu) {
     kpanic("x11_DrawRectangle");
 }
 
+// int XFillRectangle(Display* display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height)
 static void x11_FillRectangle(CPU* cpu) {
-    kpanic("x11_FillRectangle");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr drawable = server->getDrawable(ARG2);
+    if (!drawable) {
+        EAX = BadDrawable;
+        return;
+    }
+    XGCPtr gc = server->getGC(ARG3);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    EAX = drawable->fillRectangle(thread, gc, ARG4, ARG5, ARG6, ARG7);
 }
 
 static void x11_FillRectangles(CPU* cpu) {
@@ -1083,6 +1219,7 @@ static void x11_FreeGC(CPU* cpu) {
         return;
     }
     server->removeGC(ARG2);
+    EAX = Success;
 }
 
 // int XSetSubwindowMode(Display* display, GC gc, int subwindow_mode) {
@@ -1177,7 +1314,7 @@ static void x11_SetTransientForHint(CPU* cpu) {
         return;
     }
     U32 prop_window = ARG3;
-    w->setProperty(server->internAtom(B("WM_TRANSIENT_FOR"), false), XA_WINDOW, 32, 4, (U8*)&prop_window);
+    w->setProperty(thread, server->internAtom(B("WM_TRANSIENT_FOR"), false), XA_WINDOW, 32, 4, (U8*)&prop_window);
     EAX = Success;
 }
 
@@ -1316,10 +1453,6 @@ static void x11_SetWMProperties(CPU* cpu) {
         kpanic("x11_SetWMProperties not implemented");
     }
     EAX = Success;
-}
-
-static void x11_ReconfigureWMWindow(CPU* cpu) {
-    kpanic("x11_ReconfigureWMWindow");
 }
 
 static void x11_VaCreateNestedList(CPU* cpu) {
@@ -1893,6 +2026,9 @@ void x11_init() {
     int9BCallback[X11_XRR_FREE_PROVIDER_RESOURCES] = x11_XRRFreeProviderResources;
     int9BCallback[X11_XRR_GET_PROVIDER_INFO] = x11_XRRGetProviderInfo;
     int9BCallback[X11_XRR_FREE_PROVIDER_INFO] = x11_XRRFreeProviderInfo;
+    int9BCallback[X11_FLUSH] = x11_Flush;
+    int9BCallback[X11_SUB_IMAGE] = x11_SubImage;
+    int9BCallback[X11_ADD_PIXEL] = x11_AddPixel;
 }
 
 void callX11(CPU* cpu, U32 index) {

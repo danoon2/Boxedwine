@@ -102,6 +102,8 @@ void XServer::initAtoms() {
 	for (int i = 0; names[i] != NULL; i++) {
 		setAtom(B(names[i]), i);
 	}
+	setAtom(B("_NET_WM_STATE"), _NET_WM_STATE);
+	setAtom(B("_NET_WM_STATE_FULLSCREEN"), _NET_WM_STATE_FULLSCREEN);
 	nextAtomID = 100;
 }
 
@@ -145,30 +147,41 @@ XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32
 	return result;
 }
 
-XWindowPtr XServer::getRoot() {
+XWindowPtr XServer::getRoot(KThread* thread) {
 	if (!root) {
 		KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 		root = createNewWindow(0, nullptr, nativeWindow->screenWidth(), nativeWindow->screenHeight(), nativeWindow->screenBpp(), 0, 0, InputOutput, 0);
 
 		U32 rect[] = { 0, 0, (U32)nativeWindow->screenWidth(), (U32)nativeWindow->screenHeight() };
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
-		root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect);
+		root->setProperty(thread, atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect);
 	}
 	return root;
 }
 
-void XServer::draw() {
+void XServer::draw(KThread* thread) {
+	BOXEDWINE_CRITICAL_SECTION;
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 	nativeWindow->clear();
 	root->iterateChildren([](XWindowPtr child) {
 		child->draw();
 		});
-	nativeWindow->present();
+	nativeWindow->present(thread);
 }
 
 XWindowPtr XServer::getWindow(U32 window) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
 	return windows.get(window);
+}
+
+int XServer::destroyWindow(U32 window) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
+	XWindowPtr w = windows.get(window);
+	if (!w) {
+		return BadWindow;
+	}
+	windows.remove(window);
+	return Success;
 }
 
 XPixmapPtr XServer::createNewPixmap(U32 width, U32 height, U32 depth) {
@@ -181,6 +194,16 @@ XPixmapPtr XServer::createNewPixmap(U32 width, U32 height, U32 depth) {
 XPixmapPtr XServer::getPixmap(U32 pixmap) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pixmapsMutex);
 	return pixmaps.get(pixmap);
+}
+
+int XServer::removePixmap(U32 pixmap) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pixmapsMutex);
+	XPixmapPtr old = pixmaps.get(pixmap);
+	if (old) {
+		pixmaps.remove(pixmap);
+		return Success;
+	}
+	return BadPixmap;
 }
 
 XDrawablePtr XServer::getDrawable(U32 xid) {
@@ -237,7 +260,7 @@ static U32 createScreen(KThread* thread, U32 displayAddress) {
 	X11_WRITED(Screen, screenAddress, root_visual, defaultVisual);
 	X11_WRITED(Screen, screenAddress, white_pixel, 0x00FFFFFF);
 	X11_WRITED(Screen, screenAddress, black_pixel, 0);
-	X11_WRITED(Screen, screenAddress, root, server->getRoot()->id);
+	X11_WRITED(Screen, screenAddress, root, server->getRoot(thread)->id);
 	// screen->cmap; // winex11 references this, but maybe not for TrueColor screen?
 	
 	return screenAddress;

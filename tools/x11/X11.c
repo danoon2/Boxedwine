@@ -409,7 +409,7 @@ int XPutImage(Display* display, Drawable d, GC gc, XImage* image, int src_x, int
 	CALL_10_R(X11_PUT_IMAGE, display, d, gc, image, src_x, src_y, dest_x, dest_y, width, height);
 }
 
-XImage* XCreateImage(Display* display, Visual* visual, unsigned int depth, int format, int offset, char* data, unsigned int width, unsigned int height, int bitmap_pad, int bytes_per_line) {
+XImage* XCreateImage1(Display* display, Visual* visual, unsigned int depth, int format, int offset, char* data, unsigned int width, unsigned int height, int bitmap_pad, int bytes_per_line) {
 	CALL_10_R(X11_CREATE_IMAGE, display, visual, depth, format, offset, data, width, height, bitmap_pad, bytes_per_line);
 }
 
@@ -423,6 +423,25 @@ unsigned long XGetPixel(XImage* ximage, int x, int y) {
 
 int XPutPixel(XImage* ximage, int x, int y, unsigned long pixel) {
 	CALL_4_R(X11_PUT_PIXEL, ximage, x, y, pixel);
+}
+
+XImage* XSubImage(XImage* ximage, int x, int y, unsigned int width, unsigned int height) {
+	CALL_5_R(X11_SUB_IMAGE, ximage, x, y, width, height);
+}
+
+int XAddPixel(XImage* ximage, long value) {
+	CALL_2_R(X11_ADD_PIXEL, ximage, value);
+}
+
+XImage* XCreateImage(Display* display, Visual* visual, unsigned int depth, int format, int offset, char* data, unsigned int width, unsigned int height, int bitmap_pad, int bytes_per_line) {
+	XImage* image = XCreateImage1(display, visual, depth, format, offset, data, width, height, bitmap_pad, bytes_per_line);
+	image->f.destroy_image = XDestroyImage;
+	image->f.get_pixel = XGetPixel;
+	image->f.put_pixel = XPutPixel;
+	image->f.sub_image = XSubImage;
+	image->f.add_pixel = XAddPixel;
+	image->f.create_image = XCreateImage;
+	return image;
 }
 
 Pixmap XCreatePixmap(Display* display, Drawable d, unsigned int width, unsigned int height, unsigned int depth) {
@@ -550,7 +569,7 @@ int XSetClipRectangles(Display* display, GC gc, int clip_x_origin, int clip_y_or
 }
 
 int XFlush(Display* display) {
-	return Success;
+	CALL_1_R(X11_FLUSH, display);
 }
 
 int XSetTransientForHint(Display* display, Window w, Window prop_window) {

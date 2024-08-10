@@ -2,6 +2,16 @@
 #include "x11.h"
 #include "knativewindow.h"
 
+void XWindowChanges::read(KMemory* memory, U32 address) {
+	x = memory->readd(address);
+	y = memory->readd(address + 4);
+	width = memory->readd(address + 8);
+	height = memory->readd(address + 12);
+	border_width = memory->readd(address + 16);
+	sibling = memory->readd(address + 20);
+	stack_mode = memory->readd(address + 24);
+};
+
 void XKeyEvent::read(KMemory* memory, U32 address) {
 	type = (S32)memory->readd(address); address += 4;
 	serial = memory->readd(address); address += 4;
@@ -42,9 +52,11 @@ XSetWindowAttributes* XSetWindowAttributes::get(KMemory* memory, U32 address, XS
 	if (!address) {
 		return nullptr;
 	}
+#ifndef UNALIGNED_MEMORY
 	if ((address & K_PAGE_MASK) + sizeof(XSetWindowAttributes) < K_PAGE_SIZE) {
 		return (XSetWindowAttributes*)memory->getIntPtr(address, true);
 	}
+#endif
 	tmp->read(memory, address);
 	return tmp;
 }
@@ -113,7 +125,7 @@ void XSetWindowAttributes::copyWithMask(XSetWindowAttributes* attributes, U32 va
 	}
 }
 
-XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), displayId(displayId), c_class(c_class), border_width(border_width), isMapped(false) {
+XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), displayId(displayId), c_class(c_class), border_width(border_width) {
 	if (parent) {
 		attributes.border_pixmap = parent->attributes.border_pixmap;
 		attributes.colormap = parent->attributes.colormap;					
@@ -133,8 +145,8 @@ void XWindow::onCreate(const XWindowPtr& self) {
 			event.xcreatewindow.window = id;
 			event.xcreatewindow.x = x;
 			event.xcreatewindow.y = y;
-			event.xcreatewindow.width = width;
-			event.xcreatewindow.height = height;
+			event.xcreatewindow.width = width();
+			event.xcreatewindow.height = height();
 			event.xcreatewindow.border_width = border_width;
 			event.xcreatewindow.serial = data->getNextEventSerial();
 			event.xcreatewindow.display = data->displayAddress;
@@ -174,7 +186,7 @@ XPropertyPtr XWindow::getProperty(U32 atom) {
 	return properties.getProperty(atom);
 }
 
-void XWindow::onSetProperty(U32 atom) {
+void XWindow::onSetProperty(KThread* thread, U32 atom) {
 	if (atom == XA_WM_HINTS) {
 		XPropertyPtr prop = properties.getProperty(atom);
 		if (prop->length == sizeof(XWMHints)) {
@@ -189,13 +201,38 @@ void XWindow::onSetProperty(U32 atom) {
 				}
 			}
 		}
+	} else if (atom == _NET_WM_STATE) {
+		XPropertyPtr prop = properties.getProperty(atom);
+		bool full = prop->contains32(_NET_WM_STATE_FULLSCREEN);
+
+		if (full != isFullScreen) {
+			XWindowChanges changes;
+			if (full) {
+				changes.x = 0;
+				changes.y = 0;
+				changes.width = KNativeWindow::getNativeWindow()->screenWidth();
+				changes.height = KNativeWindow::getNativeWindow()->screenHeight();
+				restoreRect.x = x;
+				restoreRect.y = y;
+				restoreRect.width = width();
+				restoreRect.height = height();
+				mapWindow(thread);
+			} else {
+				changes.x = restoreRect.x;
+				changes.y = restoreRect.y;
+				changes.width = restoreRect.width;
+				changes.height = restoreRect.height;
+			}
+			isFullScreen = full;
+			configure(CWX | CWY | CWWidth | CWHeight, &changes);
+		}
 	}
 }
 
-void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value) {
+void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U8* value) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);
-	onSetProperty(atom);
+	onSetProperty(thread, atom);
 	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
@@ -213,7 +250,7 @@ void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value)
 void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U32 value) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);
-	onSetProperty(atom);
+	onSetProperty(thread, atom);
 	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
@@ -248,6 +285,81 @@ void XWindow::deleteProperty(KThread* thread, U32 atom) {
 	}
 }
 
+int XWindow::handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event) {
+	U32 count = 0;
+	for (U32 i = 1; i < 5; i++) {
+		if (event.xclient.data.l[i] <= 1) {
+			break;
+		}
+		count++;
+	}
+	XPropertyPtr prop = getProperty(event.xclient.message_type);
+	if (!prop) {
+		if (event.xclient.data.l[0] == 1) {
+			setProperty(thread, (U32)event.xclient.message_type, XA_ATOM, 32, count * 4, (U8*)&event.xclient.data.l[1]);
+		}
+	} else {
+		U32* values = (U32*)prop->value;
+		U32 existingCount = prop->length / 4;
+		U32 removedCount = 0;
+		if (event.xclient.data.l[0] == 0) {
+			for (U32 i = 0; i < count; i++) {
+				for (U32 j = 0; j < existingCount; j++) {
+					if (event.xclient.data.l[i + 1] == values[j]) {
+						values[j] = 0;
+						removedCount++;
+					}
+				}
+			}
+			if (removedCount) {
+				U32 newCount = existingCount - removedCount;
+				if (!newCount) {
+					deleteProperty(thread, event.xclient.message_type);
+				} else {
+					U32* newValues = new U32[newCount];
+					U32 index = 0;
+
+					for (U32 i = 0; i < existingCount; i++) {
+						if (values[i]) {
+							newValues[index] = values[i];
+							index++;
+						}
+					}
+					setProperty(thread, (U32)event.xclient.message_type, XA_ATOM, 32, newCount * 4, (U8*)newValues);
+					delete[] newValues;
+				}
+			}
+		} else if (event.xclient.data.l[0] == 1) {
+			U32* newValues = new U32[existingCount + count];
+			U32 addIndex = existingCount;
+
+			memcpy(newValues, values, sizeof(U32) * existingCount);
+			for (U32 i = 0; i < count; i++) {
+				bool found = false;
+				for (U32 j = 0; j < existingCount; j++) {
+					if (event.xclient.data.l[i + 1] == values[j]) {
+						found = true;
+						break;
+					}
+				}				
+				if (!found) {
+					newValues[addIndex] = event.xclient.data.l[i + 1];
+					addIndex++;
+				}
+			}
+			if (addIndex != existingCount) {
+				setProperty(thread, (U32)event.xclient.message_type, XA_ATOM, 32, addIndex * 4, (U8*)newValues);
+			}
+			delete[] newValues;
+		} else if (event.xclient.data.l[0] == 1) {
+			kpanic("XWindow::handleNetWmStatePropertyEvent toggle not handled");
+		} else {
+			return BadValue;
+		}
+	}
+	return Success;
+}
+
 void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, S32 height, S32 count) {
 	XEvent event = {};
 	event.xexpose.type = Expose;
@@ -265,20 +377,20 @@ void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, 
 	iterateChildren([](const XWindowPtr& child) {
 		if (child->isMapped && child->c_class == InputOutput) {
 			XServer::getServer()->iterateEventMask(child->id, ExposureMask, [=](const DisplayDataPtr& data) {
-				child->exposeNofity(data, 0, 0, child->width, child->height, 0);
+				child->exposeNofity(data, 0, 0, child->width(), child->height(), 0);
 				});
 		}
 		});
 }
 
-void XWindow::setWmState(U32 state, U32 icon) {
+void XWindow::setWmState(KThread* thread, U32 state, U32 icon) {
 	XServer* server = XServer::getServer();
 	U32 wmStateAtom = server->internAtom(B("WM_STATE"), false);
 	XWMState wmState;
 
 	wmState.state = state;
 	wmState.icon = 0;
-	setProperty(wmStateAtom, wmStateAtom, 32, 8, (U8*)&wmState);
+	setProperty(thread, wmStateAtom, wmStateAtom, 32, 8, (U8*)&wmState);
 }
 
 int XWindow::mapWindow(KThread* thread) {
@@ -286,9 +398,12 @@ int XWindow::mapWindow(KThread* thread) {
 		return Success;
 	}
 	isMapped = true;	
-	setWmState(NormalState, 0);
+	setWmState(thread, NormalState, 0);
 	if (parent) {
-		parent->zchildren.push_back(shared_from_this());
+		{
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
+			parent->zchildren.push_back(shared_from_this());
+		}
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.xmap.type = MapNotify;
@@ -317,7 +432,7 @@ int XWindow::mapWindow(KThread* thread) {
 	}
 	if (c_class == InputOutput) {
 		XServer::getServer()->iterateEventMask(id, ExposureMask, [=](const DisplayDataPtr& data) {
-			exposeNofity(data, 0, 0, width, height, 0);
+			exposeNofity(data, 0, 0, width(), height(), 0);
 			});		
 	}
 	return Success;
@@ -328,7 +443,7 @@ int XWindow::unmapWindow(KThread* thread) {
 		return Success;
 	}
 	isMapped = false;
-	setWmState(WithdrawnState, 0);
+	setWmState(thread, WithdrawnState, 0);
 	if (parent) {
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
@@ -356,26 +471,15 @@ int XWindow::unmapWindow(KThread* thread) {
 	return Success;
 }
 
-int XWindow::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height) {
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-	WndPtr wnd = nativeWindow->getWnd(id);
-	if (!wnd) {
-		return BadDrawable;
-	}
-	if (image->depth != nativeWindow->screenBpp()) {
-		return BadMatch;
-	}
-	nativeWindow->putBitsOnWnd(thread, wnd, image->data, image->bytes_per_line, src_x, src_y, dest_x, dest_y, width, height);
-	return Success;
-}
-
 void XWindow::draw() {
 	if (c_class == InputOnly || !isMapped) {
 		return;
 	}
+
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 	WndPtr wnd = nativeWindow->getWnd(id);
 	if (wnd) {
+		nativeWindow->putBitsOnWnd(wnd, data, bytes_per_line, 0, 0, 0, 0, width(), height());
 		nativeWindow->draw(wnd, x, y);
 	}
 	iterateMappedChildren([](const XWindowPtr& child) {
@@ -384,6 +488,7 @@ void XWindow::draw() {
 }
 
 XWindowPtr XWindow::previousSibling() {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
 	for (U32 i = 0; i < (U32)zchildren.size(); i++) {
 		if (zchildren[i]->id == id) {
 			if (i > 0) {
@@ -410,8 +515,8 @@ void XWindow::configureNotify() {
 			event.xconfigure.window = id;
 			event.xconfigure.x = x;
 			event.xconfigure.y = y;
-			event.xconfigure.width = width;
-			event.xconfigure.height = height;
+			event.xconfigure.width = width();
+			event.xconfigure.height = height();
 			event.xconfigure.border_width = border_width;
 			event.xconfigure.above = above;
 			event.xconfigure.override_redirect = attributes.override_redirect;
@@ -427,8 +532,8 @@ void XWindow::configureNotify() {
 		event.xconfigure.window = id;
 		event.xconfigure.x = x;
 		event.xconfigure.y = y;
-		event.xconfigure.width = width;
-		event.xconfigure.height = height;
+		event.xconfigure.width = width();
+		event.xconfigure.height = height();
 		event.xconfigure.border_width = border_width;
 		event.xconfigure.above = above;
 		event.xconfigure.override_redirect = attributes.override_redirect;
@@ -436,4 +541,58 @@ void XWindow::configureNotify() {
 		event.xconfigure.display = data->displayAddress;
 		data->putEvent(event);
 		});	
+}
+
+int XWindow::configure(U32 mask, XWindowChanges* changes) {
+	bool sizeChanged = false;
+	U32 width = this->width();
+	U32 height = this->height();
+
+	if (mask & CWX) {
+		x = changes->x;
+		sizeChanged = true;
+	}
+	if (mask & CWY) {
+		y = changes->y;
+		sizeChanged = true;
+	}
+	if (mask & CWWidth) {
+		width = changes->width;
+		sizeChanged = true;
+	}
+	if (mask & CWHeight) {
+		height = changes->height;
+		sizeChanged = true;
+	}
+	if (mask & CWBorderWidth) {
+		border_width = changes->border_width;
+	}
+	if (mask & CWSibling) {
+		kpanic("XReconfigureWMWindow CWSibling not handled");
+	}
+	if (mask & CWStackMode) {
+		if (parent) {
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
+			int index = vectorIndexOf(parent->zchildren, shared_from_this());
+			if (index >= 0) {
+				parent->zchildren.erase(parent->zchildren.begin() + index);
+				parent->zchildren.push_back(shared_from_this());
+			}
+		}
+	}
+	if (sizeChanged) {
+		if (width != this->width() || height != this->height()) {
+			setSize(width, height);
+		}
+		KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+		WndPtr win = nativeWindow->getWnd(id);
+		if (win) {
+			win->windowRect.left = x;
+			win->windowRect.top = y;
+			win->windowRect.right = x + width;
+			win->windowRect.bottom = y + height;
+		}
+	}
+	configureNotify();
+	return Success;
 }

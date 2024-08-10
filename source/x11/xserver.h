@@ -17,9 +17,11 @@ public:
 
 	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
 	XWindowPtr getWindow(U32 window);
+	int destroyWindow(U32 window);
 
 	XPixmapPtr createNewPixmap(U32 width, U32 height, U32 depth);
 	XPixmapPtr getPixmap(U32 pixmap);
+	int removePixmap(U32 pixmap);
 
 	XGCPtr createGC(XDrawablePtr drawable);
 	XGCPtr getGC(U32 gc);
@@ -35,13 +37,15 @@ public:
 
 	Screen* getScreen(KThread* thread, S32 screen);	
 
-	void draw();
-	XWindowPtr getRoot();
+	void draw(KThread* thread);
+	XWindowPtr getRoot(KThread* thread);
 	U32 getEventTime();
 
 	static U32 getNextId();
 
 	XrrData* xrrData = nullptr;
+	U32 inputFocus = 0;
+	U32 inputFocusRevertTo = 0;
 private:
 	static std::atomic_int nextId;
 	static XServer* server;

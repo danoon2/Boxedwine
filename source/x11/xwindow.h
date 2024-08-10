@@ -73,6 +73,24 @@ struct XWMState {
 	U32 icon; 	// WINDOW 	ID of icon window
 };
 
+struct XWindowChanges {
+	S32 x, y;
+	S32 width, height;
+	S32 border_width;
+	Window sibling;
+	S32 stack_mode;
+
+	void read(KMemory* memory, U32 address);
+};
+
+#define CWX			(1<<0)
+#define CWY			(1<<1)
+#define CWWidth			(1<<2)
+#define CWHeight		(1<<3)
+#define CWBorderWidth		(1<<4)
+#define CWSibling		(1<<5)
+#define CWStackMode		(1<<6)
+
 typedef struct {
 	U32 flags;	/* marks which fields in this structure are defined */
 	S32 x, y;		/* obsolete for new window mgrs, but clients */
@@ -121,19 +139,19 @@ public:
 	void iterateMappedChildren(std::function<void(const XWindowPtr& child)> callback);
 
 	void setTextProperty(KThread* thread, XTextProperty* name, Atom property);
-		
+	int configure(U32 mask, XWindowChanges* changes);
+
 	XPropertyPtr getProperty(U32 atom);
-	void setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value);
+	void setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U8* value);
 	void setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U32 value);
 	void deleteProperty(KThread* thread, U32 atom);
+	int handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event);
 
 	int mapWindow(KThread* thread);
 	int unmapWindow(KThread* thread);	
 
 	const U32 displayId;
 	const U32 c_class;
-
-	int putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height) override;
 
 	void draw();		
 private:
@@ -142,7 +160,9 @@ private:
 	S32 y;	
 	U32 border_width;
 	XSetWindowAttributes attributes;
-	bool isMapped;	
+	bool isMapped = false;	
+	bool isFullScreen = false;
+	XRectangle restoreRect;
 
 	BOXEDWINE_MUTEX propertiesMutex;
 	XProperties properties;
@@ -153,8 +173,8 @@ private:
 
 	void exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, S32 height, S32 count);
 	void configureNotify();
-	void onSetProperty(U32 atom);
-	void setWmState(U32 state, U32 icon);
+	void onSetProperty(KThread* thread, U32 atom);
+	void setWmState(KThread* thread, U32 state, U32 icon);
 	XWindowPtr previousSibling();
 };
 

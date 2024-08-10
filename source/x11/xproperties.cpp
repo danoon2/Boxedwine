@@ -8,15 +8,14 @@ XPropertyPtr XProperties::getProperty(U32 atom) {
 
 void XProperties::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
-	U8* oldValue = value;
-	value = new U8[length];
-	memcpy(value, oldValue, length);
-	XPropertyPtr property = std::make_shared<XProperty>(type, format, length, value);
-	properties.set(atom, property);
+	U8* newValue = new U8[length];
+	memcpy(newValue, value, length);
+	XPropertyPtr property = std::make_shared<XProperty>(type, format, length, newValue);
+	properties.set(atom, property);	
 }
 
 void XProperties::setProperty(U32 atom, U32 type, U32 format, U32 length, U32 address) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);	
 	U8* value = new U8[length];
 	KThread::currentThread()->memory->memcpy(value, address, length);
 	XPropertyPtr property = std::make_shared<XProperty>(type, format, length, value);

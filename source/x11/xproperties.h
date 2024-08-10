@@ -15,6 +15,16 @@ public:
 
 	U32 length;
 	U8* value;
+
+	bool contains32(U32 v) {
+		U32* value32 = (U32*)value;
+		for (U32 i = 0; i < length / 4; i++) {
+			if (value32[i] == v) {
+				return true;
+			}
+		}
+		return false;
+	}
 };
 
 typedef std::shared_ptr<XProperty> XPropertyPtr;
