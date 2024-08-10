@@ -56,11 +56,46 @@
 #define XA_WM_NAME 39
 #define XA_WM_NORMAL_HINTS 40
 #define XA_WM_SIZE_HINTS 41
+#define XA_WM_ZOOM_HINTS 42
+#define XA_MIN_SPACE 43
+#define XA_NORM_SPACE 44
+#define XA_MAX_SPACE 45
+#define XA_END_SPACE 46
+#define XA_SUPERSCRIPT_X 47
+#define XA_SUPERSCRIPT_Y 48
+#define XA_SUBSCRIPT_X 49
+#define XA_SUBSCRIPT_Y 50
+#define XA_UNDERLINE_POSITION 51
+#define XA_UNDERLINE_THICKNESS 52
+#define XA_STRIKEOUT_ASCENT 53
+#define XA_STRIKEOUT_DESCENT 54
+#define XA_ITALIC_ANGLE 55
+#define XA_X_HEIGHT 56
+#define XA_QUAD_WIDTH 57
+#define XA_WEIGHT 58
+#define XA_POINT_SIZE 59
+#define XA_RESOLUTION 60
+#define XA_COPYRIGHT 61
+#define XA_NOTICE 62
+#define XA_FONT_NAME 63
+
+#define XA_FAMILY_NAME 64
+#define XA_FULL_NAME 65
+#define XA_CAP_HEIGHT 66
+#define XA_WM_CLASS 67
+#define XA_WM_TRANSIENT_FOR 68
 
 #define XA_LAST_PREDEFINED 68
 
 #define _NET_WM_STATE 100
 #define _NET_WM_STATE_FULLSCREEN 101
+#define _NET_WM_WINDOW_TYPE 102
+#define _NET_WM_WINDOW_TYPE_NORMAL 103
+#define _NET_WM_WINDOW_TYPE_DIALOG 104
+#define WM_STATE 105
+#define _NET_WM_NAME 106
+#define _MOTIF_WM_HINTS 107
+#define _NET_WM_ICON 108
 
 /* Byte order  used in imageByteOrder and bitmapBitOrder */
 

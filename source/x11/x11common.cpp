@@ -1346,7 +1346,7 @@ static void x11_SetTransientForHint(CPU* cpu) {
         return;
     }
     U32 prop_window = ARG3;
-    w->setProperty(thread, server->internAtom(B("WM_TRANSIENT_FOR"), false), XA_WINDOW, 32, 4, (U8*)&prop_window);
+    w->setProperty(thread, XA_WM_TRANSIENT_FOR, XA_WINDOW, 32, 4, (U8*)&prop_window);
     EAX = Success;
 }
 

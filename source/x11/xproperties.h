@@ -5,10 +5,11 @@
 
 class XProperty {
 public:
-	XProperty(U32 type, U32 format, U32 length, U8* value) : type(type), format(format), length(length), value(value) {}
+	XProperty(U32 atom, U32 type, U32 format, U32 length, U8* value) : atom(atom), type(type), format(format), length(length), value(value) {}
 	~XProperty() {
 		delete[] value;
 	}
+	U32 atom;
 	U32 type;
 
 	U32 format; // 8, 16 or 32
@@ -25,6 +26,8 @@ public:
 		}
 		return false;
 	}
+
+	void log();
 };
 
 typedef std::shared_ptr<XProperty> XPropertyPtr;

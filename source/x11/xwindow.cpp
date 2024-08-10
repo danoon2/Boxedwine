@@ -187,6 +187,12 @@ XPropertyPtr XWindow::getProperty(U32 atom) {
 }
 
 void XWindow::onSetProperty(KThread* thread, U32 atom) {
+	if (1) {
+		XPropertyPtr prop = properties.getProperty(atom);
+		if (prop) {
+			prop->log();
+		}
+	}
 	if (atom == XA_WM_HINTS) {
 		XPropertyPtr prop = properties.getProperty(atom);
 		if (prop->length == sizeof(XWMHints)) {
@@ -385,12 +391,11 @@ void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, 
 
 void XWindow::setWmState(KThread* thread, U32 state, U32 icon) {
 	XServer* server = XServer::getServer();
-	U32 wmStateAtom = server->internAtom(B("WM_STATE"), false);
 	XWMState wmState;
 
 	wmState.state = state;
 	wmState.icon = 0;
-	setProperty(thread, wmStateAtom, wmStateAtom, 32, 8, (U8*)&wmState);
+	setProperty(thread, WM_STATE, WM_STATE, 32, 8, (U8*)&wmState);
 }
 
 int XWindow::mapWindow(KThread* thread) {
@@ -595,4 +600,28 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 	}
 	configureNotify();
 	return Success;
+}
+
+bool XWindow::isDialog() {
+	U32 type = NET_WM_WINDOW_TYPE();
+	if (type == _NET_WM_WINDOW_TYPE_DIALOG || (type == 0 && WM_TRANSIENT_FOR() && !attributes.override_redirect)) {
+		return true;
+	}
+	return false;
+}
+
+U32 XWindow::NET_WM_WINDOW_TYPE() {
+	XPropertyPtr prop = getProperty(_NET_WM_WINDOW_TYPE);
+	if (prop && prop->length) {
+		return *(U32*)prop->value;
+	}
+	return 0;
+}
+
+U32 XWindow::WM_TRANSIENT_FOR() {
+	XPropertyPtr prop = getProperty(XA_WM_TRANSIENT_FOR);
+	if (prop && prop->length) {
+		return *(U32*)prop->value;
+	}
+	return 0;
 }

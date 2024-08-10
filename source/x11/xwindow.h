@@ -178,6 +178,9 @@ private:
 	void onSetProperty(KThread* thread, U32 atom);
 	void setWmState(KThread* thread, U32 state, U32 icon);
 	XWindowPtr previousSibling();
+
+	U32 NET_WM_WINDOW_TYPE();
+	U32 WM_TRANSIENT_FOR();
 };
 
 #endif
