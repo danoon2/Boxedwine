@@ -179,6 +179,7 @@ private:
 	void setWmState(KThread* thread, U32 state, U32 icon);
 	XWindowPtr previousSibling();
 
+	bool isDialog();
 	U32 NET_WM_WINDOW_TYPE();
 	U32 WM_TRANSIENT_FOR();
 };

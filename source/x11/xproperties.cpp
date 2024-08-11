@@ -88,7 +88,7 @@ void XProperty::log() {
 		if (type == XA_ATOM) {
 			log += ":";
 			U32* atoms = (U32*)value;
-			for (int i = 0; i < length / 4; i++) {
+			for (U32 i = 0; i < length / 4; i++) {
 				BString name;
 				if (XServer::getServer()->getAtom(atoms[i], name)) {
 					log += " ";
@@ -139,14 +139,14 @@ void XProperty::log() {
 		} else if (type == XA_WINDOW) {
 			log += ":";
 			U32* atoms = (U32*)value;
-			for (int i = 0; i < length / 4; i++) {
+			for (U32 i = 0; i < length / 4; i++) {
 				log += " ";
 				log.append(atoms[i], 16);
 			}
 		} else if (type == XA_CARDINAL && atom != _NET_WM_ICON) {
 			log += ":";
 			U32* atoms = (U32*)value;
-			for (int i = 0; i < length / 4; i++) {
+			for (U32 i = 0; i < length / 4; i++) {
 				log += " ";
 				log.append(atoms[i], 16);
 			}

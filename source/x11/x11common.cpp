@@ -1107,12 +1107,12 @@ static void x11_FreeCursor(CPU* cpu) {
 static void x11_SetFunction(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
-    XGCPtr gc = server->getGC(ARG1);
+    XGCPtr gc = server->getGC(ARG2);
     if (!gc) {
         EAX = BadGC;
         return;
     }
-    gc->values.function = ARG2;
+    gc->values.function = ARG3;
     EAX = Success;
 }
 
@@ -1120,12 +1120,12 @@ static void x11_SetFunction(CPU* cpu) {
 static void x11_SetBackground(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
-    XGCPtr gc = server->getGC(ARG1);
+    XGCPtr gc = server->getGC(ARG2);
     if (!gc) {
         EAX = BadGC;
         return;
     }
-    gc->values.background = ARG2;
+    gc->values.background = ARG3;
     EAX = Success;
 }
 
@@ -1133,12 +1133,12 @@ static void x11_SetBackground(CPU* cpu) {
 static void x11_SetForeground(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
-    XGCPtr gc = server->getGC(ARG1);
+    XGCPtr gc = server->getGC(ARG2);
     if (!gc) {
         EAX = BadGC;
         return;
     }
-    gc->values.foreground = ARG2;
+    gc->values.foreground = ARG3;
     EAX = Success;
 }
 
@@ -1168,8 +1168,21 @@ static void x11_SetDashes(CPU* cpu) {
     kpanic("x11_SetDashes");
 }
 
+// int XDrawLine(Display* display, Drawable d, GC gc, int x1, int y1, int x2, int y2)
 static void x11_DrawLine(CPU* cpu) {
-    //kpanic("x11_DrawLine");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr drawable = server->getDrawable(ARG2);
+    if (!drawable) {
+        EAX = BadDrawable;
+        return;
+    }
+    XGCPtr gc = server->getGC(ARG3);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    EAX = drawable->drawLine(thread, gc, ARG4, ARG5, ARG6, ARG7);
 }
 
 static void x11_DrawLines(CPU* cpu) {

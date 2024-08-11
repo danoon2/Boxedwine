@@ -59,7 +59,42 @@ int XDrawable::copyImageData(KThread* thread, U32 data, U32 bytes_per_line, U32 
 	return Success;
 }
 
+int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2) {
+	if (x1 == x2) {
+		if (bits_per_pixel == 32) {
+			U32* p = (U32*)data;
+			U32 color = gc->values.foreground;
+			p += bytes_per_line / 4 * y1;
+			p += x1;
+			for (U32 y = y1; y < y2; y++) {
+				*p = color;
+				p += bytes_per_line / 4;
+			}
+		} else {
+			kpanic("XDrawable::drawLine depth %d not supported", bits_per_pixel);
+		}
+	} else if (y1 == y2) {
+		if (bits_per_pixel == 32) {
+			U32* p = (U32*)data;
+			U32 color = 0xff00;
+			p += bytes_per_line / 4 * y1;
+			for (U32 x = x1; x < x2; x++) {
+				*p = color;
+				p++;
+			}
+		} else {
+			kpanic("XDrawable::drawLine depth %d not supported", bits_per_pixel);
+		}
+	} else {
+		kpanic("XDrawable::drawLine diag line not supported");
+	}
+	return Success;
+}
+
 int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
+	if (gc->values.tile) {
+		kpanic("XDrawable::fillRectangle tile not supported");
+	}
 	if (width > this->width() - x) {
 		width = this->width() - x;
 	}
@@ -70,13 +105,15 @@ int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S3
 	if (bits_per_pixel == 32) {
 		U32* p = (U32*)data;
 		U32 color = gc->values.foreground;
-		p += bytes_per_line * y;
+		p += bytes_per_line / 4 * y;
 		for (U32 dstY = 0; dstY < height; dstY++) {
 			for (U32 dstX = 0; dstX < width; dstX++) {
 				p[x + dstX] = color;
 			}
 			p += bytes_per_line/4;
 		}
+	} else {
+		int ii = 0;
 	}
 	isDirty = true;
 	return Success;
