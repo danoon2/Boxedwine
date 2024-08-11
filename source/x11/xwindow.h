@@ -150,6 +150,9 @@ public:
 	int mapWindow(KThread* thread);
 	int unmapWindow(KThread* thread);	
 
+	void windowToScreen(S32& x, S32& y);
+	void screenToWindow(S32& x, S32& y);
+
 	const U32 displayId;
 	const U32 c_class;
 

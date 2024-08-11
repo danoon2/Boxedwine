@@ -112,8 +112,25 @@ static void x11_CreateWindow(CPU* cpu) {
     EAX = result->id;
 }
 
+// Bool XTranslateCoordinates(Display* display, Window src_w, Window dest_w, int src_x, int src_y, int* dest_x_return, int* dest_y_return, Window* child_return) {
 static void x11_TranslateCoordinates(CPU* cpu) {
-    kpanic("x11_TranslateCoordinates");
+    // child_return not used in winx11
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr src_w = server->getWindow(ARG2);
+    XWindowPtr dest_w = server->getWindow(ARG3);
+    if (!src_w || !dest_w) {
+        EAX = BadWindow;
+        return;
+    }
+    S32 x = ARG4;
+    S32 y = ARG5;
+    src_w->windowToScreen(x, y);
+    dest_w->screenToWindow(x, y);
+    memory->writed(ARG6, x);
+    memory->writed(ARG7, y);
+    EAX = Success;
 }
 
 // int XDestroyWindow(Display* display, Window w) 
@@ -1702,8 +1719,16 @@ static void x11_WindowEvent(CPU* cpu) {
     kpanic("x11_WindowEvent");
 }
 
+// Status XWithdrawWindow(Display* display, Window w, int screen_number)
 static void x11_WithDrawWindow(CPU* cpu) {
-    kpanic("x11_WithDrawWindow");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XWindowPtr w = server->getWindow(ARG2);
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    EAX = w->unmapWindow(thread);
 }
 
 static void x11_MbTextPropertyToTextList(CPU* cpu) {

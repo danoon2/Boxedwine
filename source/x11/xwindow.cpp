@@ -176,6 +176,26 @@ void XWindow::iterateMappedChildren(std::function<void(const XWindowPtr& child)>
 	}
 }
 
+void XWindow::windowToScreen(S32& x, S32& y) {
+	XWindowPtr p = parent;
+
+	while (p) {
+		x += p->x;
+		y += p->y;
+		p = p->parent;
+	}
+}
+
+void XWindow::screenToWindow(S32& x, S32& y) {
+	XWindowPtr p = parent;
+
+	while (p) {
+		x -= p->x;
+		y -= p->y;
+		p = p->parent;
+	}
+}
+
 void XWindow::setTextProperty(KThread* thread, XTextProperty* name, Atom property) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(property, name->encoding, name->format, name->byteLen(thread->memory), name->value);
@@ -191,46 +211,6 @@ void XWindow::onSetProperty(KThread* thread, U32 atom) {
 		XPropertyPtr prop = properties.getProperty(atom);
 		if (prop) {
 			prop->log();
-		}
-	}
-	if (atom == XA_WM_HINTS) {
-		XPropertyPtr prop = properties.getProperty(atom);
-		if (prop->length == sizeof(XWMHints)) {
-			XWMHints* hints = (XWMHints*)prop->value;
-			if (hints->flags & StateHint) {
-				if (hints->initial_state == NormalState) {
-					mapWindow(KThread::currentThread());
-				} else if (hints->initial_state == IconicState) {
-					mapWindow(KThread::currentThread());
-				} else {
-					unmapWindow(KThread::currentThread());
-				}
-			}
-		}
-	} else if (atom == _NET_WM_STATE) {
-		XPropertyPtr prop = properties.getProperty(atom);
-		bool full = prop->contains32(_NET_WM_STATE_FULLSCREEN);
-
-		if (full != isFullScreen) {
-			XWindowChanges changes;
-			if (full) {
-				changes.x = 0;
-				changes.y = 0;
-				changes.width = KNativeWindow::getNativeWindow()->screenWidth();
-				changes.height = KNativeWindow::getNativeWindow()->screenHeight();
-				restoreRect.x = x;
-				restoreRect.y = y;
-				restoreRect.width = width();
-				restoreRect.height = height();
-				mapWindow(thread);
-			} else {
-				changes.x = restoreRect.x;
-				changes.y = restoreRect.y;
-				changes.width = restoreRect.width;
-				changes.height = restoreRect.height;
-			}
-			isFullScreen = full;
-			configure(CWX | CWY | CWWidth | CWHeight, &changes);
 		}
 	}
 }
