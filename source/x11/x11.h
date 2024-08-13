@@ -243,8 +243,24 @@ typedef XID KeySym;
 #define GenericEvent		35
 #define LASTEvent		36	/* must be bigger than any event # */
 
+#define NotifyNormal		0
+#define NotifyGrab		1
+#define NotifyUngrab		2
+#define NotifyWhileGrabbed	3
+
+#define NotifyHint		1	/* for MotionNotify events */
+
 #define XRAND_Base 10000
 #define XRAND_Error_Base 11000
+
+#define GrabModeSync		0
+#define GrabModeAsync		1
+
+#define GrabSuccess		0
+#define AlreadyGrabbed		1
+#define GrabInvalidTime		2
+#define GrabNotViewable		3
+#define GrabFrozen		4
 
 typedef unsigned char KeyCode;
 

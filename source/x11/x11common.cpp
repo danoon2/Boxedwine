@@ -127,9 +127,11 @@ static void x11_TranslateCoordinates(CPU* cpu) {
     S32 x = ARG4;
     S32 y = ARG5;
     src_w->windowToScreen(x, y);
+    XWindowPtr w = server->getRoot(thread)->getWindowFromPoint(x, y);
     dest_w->screenToWindow(x, y);
     memory->writed(ARG6, x);
     memory->writed(ARG7, y);
+    memory->writed(ARG8, w ? w->id : 0);
     EAX = Success;
 }
 
@@ -317,11 +319,67 @@ static void x11_UnmapWindow(CPU* cpu) {
 
 // int XGrabPointer(Display* display, Window grab_window, Bool owner_events, unsigned int event_mask, int pointer_mode, int keyboard_mode, Window confine_to, Cursor cursor, Time time)
 static void x11_GrabPointer(CPU* cpu) {
-    EAX = Success;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr window = server->getWindow(ARG2);
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    
+    if (!window) {
+        EAX = BadWindow;
+        return;
+    }
+    if (!window->mapped()) {
+        EAX = GrabNotViewable;
+        return;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(server->grabbedMutex);
+    if (server->grabbed && server->grabbedDisplay->displayId != data->displayId) {
+        EAX = AlreadyGrabbed;
+        return;
+    }
+    if (ARG3) {
+        // not used by winex11
+        kpanic("XGrabPointer owner_events not implemented");
+    }
+    if (ARG4 == GrabModeSync || ARG5 == GrabModeSync) {
+        // not used by winex11
+        kpanic("XGrabPointer GrabModeSync not implemented");
+    }
+    if (ARG8) {
+        // not used by winex11
+        kpanic("XGrabPointer cursor not implemented");
+    }
+    if (ARG7) {
+        server->grabbedConfined = server->getWindow(ARG7);
+        if (!server->grabbedConfined) {
+            EAX = BadWindow;
+            return;
+        }
+    }
+
+    server->grabbedDisplay = data;
+    server->grabbed = window;
+    server->grabbedMask = ARG4;
+    server->grabbedTime = ARG9;
+    if (!server->grabbedTime) {
+        server->grabbedTime = KSystem::getMilliesSinceStart();
+    }
+    EAX = GrabSuccess;
 }
 
 // int XUngrabPointer(Display* display, Time time)
 static void x11_UngrabPointer(CPU* cpu) {
+    XServer* server = XServer::getServer();
+    XWindowPtr window = server->getWindow(ARG2);
+
+    if (!window) {
+        EAX = BadWindow;
+        return;
+    }
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(server->grabbedMutex);
+    server->grabbed = nullptr;
+    server->grabbedDisplay = nullptr;
+    server->grabbedConfined = nullptr;
     EAX = Success;
 }
 
@@ -330,8 +388,33 @@ static void x11_WarpPointer(CPU* cpu) {
     EAX = Success;
 }
 
+// Bool XQueryPointer(Display* display, Window w, Window* root_return, Window* child_return, int* root_x_return, int* root_y_return, int* win_x_return, int* win_y_return, unsigned int* mask_return)
 static void x11_QueryPointer(CPU* cpu) {
-    kpanic("x11_QueryPointer");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr window = server->getWindow(ARG2);
+    XWindowPtr root = server->getRoot(thread);
+
+    if (!window) {
+        EAX = BadWindow;
+        return;
+    }
+    S32 x = 0;
+    S32 y = 0;
+    KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
+
+    memory->writed(ARG3, root->id);
+
+    XWindowPtr child = root->getWindowFromPoint(x, y);
+    memory->writed(ARG4, child->id);
+    memory->writed(ARG5, x);
+    memory->writed(ARG6, y);
+    window->screenToWindow(x, y);
+    memory->writed(ARG7, x);
+    memory->writed(ARG8, y);
+    memory->writed(ARG9, server->getInputModifiers());
+    EAX = Success;
 }
 
 // int XmbTextListToTextProperty(Display* display, char** list, int count, XICCEncodingStyle style, XTextProperty* text_prop_return)

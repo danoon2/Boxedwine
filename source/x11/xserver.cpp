@@ -6,9 +6,12 @@
 std::atomic_int XServer::nextId = 0x10000;
 XServer* XServer::server;
 
-XServer* XServer::getServer() {
+XServer* XServer::getServer(bool existingOnly) {
 	if (server) {
 		return server;
+	}
+	if (existingOnly) {
+		return nullptr;
 	}
 	BOXEDWINE_CRITICAL_SECTION;
 	if (!server) {
@@ -256,11 +259,26 @@ void XServer::removeGC(U32 gc) {
 }
 
 void XServer::iterateEventMask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& display)> callback) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+	std::vector<U32> ids;
 
-	for (auto& display : displays) {
-		if (display.value->getEventMask(wndId) & mask) {
-			callback(display.value);
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+
+		for (auto& display : displays) {
+			ids.push_back(display.key);
+		}
+	}
+	for (U32& key : ids) {
+		DisplayDataPtr data;
+		{
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+			data = displays.get(key);
+		}
+		if (data) {
+			// don't hold displayMutext when calling this, since the callback will likely lock events
+			if (data->getEventMask(wndId) & mask) {
+				callback(data);
+			}
 		}
 	}
 }
@@ -328,6 +346,7 @@ U32 XServer::openDisplay(KThread* thread) {
 	U32 displayId = XServer::getNextId();
 	X11_WRITED(Display, displayAddress, id, displayId);
 	data->displayId = displayId;
+	data->root = root->id;
 
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
 	displays.set(displayId, data);
@@ -348,4 +367,41 @@ DisplayDataPtr XServer::getDisplayDataById(U32 id) {
 
 U32 XServer::getEventTime() {
 	return KSystem::getMilliesSinceStart();
+}
+
+U32 XServer::getInputModifiers() {
+	return 0; // :TODO:
+}
+
+void XServer::mouseMove(S32 x, S32 y, bool relative) {
+	if (grabbed) {
+		if (!(grabbedMask & PointerMotionMask)) {
+			return;
+		}
+		grabbed->motionNotify(grabbedDisplay, x, y);
+		return;
+	}
+	XWindowPtr wnd = root->getWindowFromPoint(x, y);
+	if (wnd) {
+		wnd->mouseMoveScreenCoords(x, y);
+	}
+}
+
+void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
+	if (grabbed) {
+		U32 mask = pressed ? ButtonPressMask : ButtonReleaseMask;
+		if (!(grabbedMask & mask)) {
+			return;
+		}
+		if (grabbedConfined) {
+			int ii = 0;
+		}
+		grabbed->buttonNotify(grabbedDisplay, button, x, y, pressed);
+		return;
+	}
+
+	XWindowPtr wnd = root->getWindowFromPoint(x, y);
+	if (wnd) {
+		wnd->mouseButtonScreenCoords(button, x, y, pressed);
+	}
 }

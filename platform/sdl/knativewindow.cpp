@@ -33,6 +33,7 @@
 #include "../../source/util/threadutils.h"
 #include "../../source/sdl/startupArgs.h"
 #include "../../source/opengl/boxedwineGL.h"
+#include "../../source/x11/x11.h"
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
 #include "../../source/ui/mainui.h"
@@ -1655,6 +1656,11 @@ int KNativeWindowSdl::mouseMove(int x, int y, bool relative) {
     if (!wnd)
         wnd = getFirstVisibleWnd();
     if (wnd) {
+        XServer* server = XServer::getServer(true);
+        if (server) {
+            server->mouseMove(x, y, relative);
+            return 1;
+        }
         std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);
@@ -1727,6 +1733,11 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
     if (!wnd)
         wnd = getFirstVisibleWnd();
     if (wnd) {
+        XServer* server = XServer::getServer(true);
+        if (server) {
+            server->mouseButton(button + 1, x, y, down?true:false);
+            return 1;
+        }
         std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
         if (process) {
             KFileDescriptor* fd = process->getFileDescriptor(process->eventQueueFD);

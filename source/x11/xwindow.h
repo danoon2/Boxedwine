@@ -152,11 +152,18 @@ public:
 
 	void windowToScreen(S32& x, S32& y);
 	void screenToWindow(S32& x, S32& y);
+	void mouseMoveScreenCoords(S32 x, S32 y);
+	void mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed);
+	void motionNotify(const DisplayDataPtr& data, S32 x, S32 y);
+	void buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y, bool pressed);
 
+	XWindowPtr getParent() {return parent;}
+	bool mapped() {return this->isMapped;}
 	const U32 displayId;
 	const U32 c_class;
 
 	void draw();
+	XWindowPtr getWindowFromPoint(S32 x, S32 y);
 
 	XCursorPtr cursor;
 private:

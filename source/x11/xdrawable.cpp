@@ -43,13 +43,13 @@ int XDrawable::copyImageData(KThread* thread, U32 data, U32 bytes_per_line, U32 
 	U8* dst = this->data + this->bytes_per_line * dst_y;
 	KMemory* memory = thread->memory;
 	if (dst_x + width > w) {
-		if (w > dst_x) {
+		if ((S32)w < dst_x) {
 			return Success;
 		}
 		width = w - dst_x;
 	}
-	if (dst_y + height > h) {
-		if (h > dst_y) {
+	if (dst_y + (S32)height > (S32)h) {
+		if ((S32)h < dst_y) {
 			return Success;
 		}
 		height = h - dst_y;
@@ -67,7 +67,7 @@ int XDrawable::copyImageData(KThread* thread, U32 data, U32 bytes_per_line, U32 
 
 int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2) {
 	if (x1 == x2) {
-		if (x1 >= w) {
+		if (x1 >= (S32)w) {
 			return Success;
 		}
 		if (bits_per_pixel == 32) {
@@ -75,7 +75,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 			U32 color = gc->values.foreground;
 			p += bytes_per_line / 4 * y1;
 			p += x1;
-			for (U32 y = y1; y < y2 && y < h; y++) {
+			for (S32 y = y1; y < y2 && y < (S32)h; y++) {
 				*p = color;
 				p += bytes_per_line / 4;
 			}
@@ -83,14 +83,14 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 			kpanic("XDrawable::drawLine depth %d not supported", bits_per_pixel);
 		}
 	} else if (y1 == y2) {
-		if (y1 >= h) {
+		if (y1 >= (S32)h) {
 			return Success;
 		}
 		if (bits_per_pixel == 32) {
 			U32* p = (U32*)data;
 			U32 color = 0xff00;
 			p += bytes_per_line / 4 * y1;
-			for (U32 x = x1; x < x2 && x < w; x++) {
+			for (S32 x = x1; x < x2 && x < (S32)w; x++) {
 				*p = color;
 				p++;
 			}

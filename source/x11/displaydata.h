@@ -46,6 +46,7 @@ public:
 
 	U32 displayAddress;
 	U32 displayId;
+	U32 root;
 
 	BOXEDWINE_MUTEX mutex;
 private:	

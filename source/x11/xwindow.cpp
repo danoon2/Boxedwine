@@ -177,7 +177,7 @@ void XWindow::iterateMappedChildren(std::function<void(const XWindowPtr& child)>
 }
 
 void XWindow::windowToScreen(S32& x, S32& y) {
-	XWindowPtr p = parent;
+	XWindowPtr p = shared_from_this();
 
 	while (p) {
 		x += p->x;
@@ -187,7 +187,7 @@ void XWindow::windowToScreen(S32& x, S32& y) {
 }
 
 void XWindow::screenToWindow(S32& x, S32& y) {
-	XWindowPtr p = parent;
+	XWindowPtr p = shared_from_this();
 
 	while (p) {
 		x -= p->x;
@@ -604,4 +604,81 @@ U32 XWindow::WM_TRANSIENT_FOR() {
 		return *(U32*)prop->value;
 	}
 	return 0;
+}
+
+XWindowPtr XWindow::getWindowFromPoint(S32 x, S32 y) {
+	for (int i = (int)zchildren.size() - 1; i>=0; i--) {
+		const XWindowPtr& child = zchildren.at(i);
+		if (x >= child->x && x < child->x + (S32)child->width() && y >= child->y && y < child->y + (S32)child->height()) {
+			x -= child->x;
+			y -= child->y;
+			XWindowPtr result = child->getWindowFromPoint(x, y);
+			if (result) {
+				return result;
+			}
+			return child;
+		}
+	}
+	return shared_from_this();
+}
+
+void XWindow::motionNotify(const DisplayDataPtr& data, S32 x, S32 y) {
+	S32 window_x = x;
+	S32 window_y = y;
+	screenToWindow(window_x, window_y);
+
+	// winex11 doesn't seem to use subwindow
+	XEvent event = {};
+	event.type = MotionNotify;
+	event.xmotion.serial = data->getNextEventSerial();
+	event.xmotion.display = data->displayAddress;
+	event.xmotion.window = id;
+	event.xmotion.root = data->root;
+	event.xmotion.subwindow = 0;
+	event.xmotion.time = XServer::getServer()->getEventTime();
+	event.xmotion.x = window_x;
+	event.xmotion.y = window_y;
+	event.xmotion.x_root = x;
+	event.xmotion.y_root = y;
+	event.xmotion.state = XServer::getServer()->getInputModifiers();
+	event.xmotion.is_hint = NotifyNormal;
+	event.xmotion.same_screen = True;
+	data->putEvent(event);
+}
+
+void XWindow::mouseMoveScreenCoords(S32 x, S32 y) {		
+	XServer::getServer()->iterateEventMask(id, PointerMotionMask, [=](const DisplayDataPtr& data) {
+		motionNotify(data, x, y);
+		});
+}
+
+void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y, bool pressed) {
+	S32 window_x = x;
+	S32 window_y = y;
+	screenToWindow(window_x, window_y);
+
+	// winex11 doesn't seem to use subwindow
+	XEvent event = {};
+	event.type = pressed ? ButtonPress : ButtonRelease;
+	event.xbutton.serial = data->getNextEventSerial();
+	event.xbutton.display = data->displayAddress;
+	event.xbutton.window = id;
+	event.xbutton.root = data->root;
+	event.xbutton.subwindow = 0;
+	event.xbutton.time = XServer::getServer()->getEventTime();
+	event.xbutton.x = window_x;
+	event.xbutton.y = window_y;
+	event.xbutton.x_root = x;
+	event.xbutton.y_root = y;
+	event.xbutton.state = XServer::getServer()->getInputModifiers();
+	event.xbutton.button = button;
+	event.xbutton.same_screen = True;
+	data->putEvent(event);
+}
+
+void XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {
+	
+	XServer::getServer()->iterateEventMask(id, pressed ? ButtonPressMask : ButtonReleaseMask, [=](const DisplayDataPtr& data) {
+		buttonNotify(data, button, x, y, pressed);
+		});
 }

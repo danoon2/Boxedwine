@@ -7,9 +7,12 @@
 
 class XServer {
 public:	
-	static XServer* getServer();
-
+	static XServer* getServer(bool existingOnly = false);
+	
 	XServer();
+	
+	void mouseMove(S32 x, S32 y, bool relative);
+	void mouseButton(U32 button, S32 x, S32 y, bool pressed);
 
 	U32 internAtom(const BString& name, bool onlyIfExists);
 	bool getAtom(U32 atom, BString& name);
@@ -43,10 +46,19 @@ public:
 	void draw(KThread* thread);
 	XWindowPtr getRoot(KThread* thread);
 	U32 getEventTime();
+	U32 getInputModifiers();
 
 	static U32 getNextId();
 
 	XrrData* xrrData = nullptr;
+	XWindowPtr grabbed;
+	XWindowPtr grabbedConfined;
+	DisplayDataPtr grabbedDisplay;
+	BOXEDWINE_MUTEX grabbedMutex;
+
+	U32 grabbedMask;
+	U32 grabbedTime;
+
 	U32 inputFocus = 0;
 	U32 inputFocusRevertTo = 0;
 private:
