@@ -44,13 +44,32 @@ public:
 	Screen* getScreen(KThread* thread, S32 screen);	
 
 	void draw(KThread* thread);
-	XWindowPtr getRoot(KThread* thread);
+	const XWindowPtr& getRoot();
 	U32 getEventTime();
 	U32 getInputModifiers();
+	U32 grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbed, XWindowPtr confined, U32 mask, U32 time);
+	U32 ungrabPointer(const DisplayDataPtr& display, U32 time);
+	U32 setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo, U32 time, bool trace = false);
+	int mapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
+	int unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
 
 	static U32 getNextId();
 
 	XrrData* xrrData = nullptr;
+
+	XWindowPtr inputFocus;
+	U32 inputFocusRevertTo = 0;
+
+	XWindowPtr pointerWindow;
+	
+	bool trace = true;
+	bool traceGC = false;
+private:
+	static std::atomic_int nextId;
+	static XServer* server;
+
+	XWindowPtr root;
+
 	XWindowPtr grabbed;
 	XWindowPtr grabbedConfined;
 	DisplayDataPtr grabbedDisplay;
@@ -58,14 +77,6 @@ public:
 
 	U32 grabbedMask;
 	U32 grabbedTime;
-
-	U32 inputFocus = 0;
-	U32 inputFocusRevertTo = 0;
-private:
-	static std::atomic_int nextId;
-	static XServer* server;
-
-	XWindowPtr root;
 
 	BOXEDWINE_MUTEX atomMutex;
 	BHashTable<U32, BString> atoms;
@@ -92,6 +103,11 @@ private:
 
 	void initAtoms();
 	void setAtom(const BString& name, U32 key);
+
+	void pointerMoved(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode);
+	void pointerMovedBetweenSiblings(const XWindowPtr& from, const XWindowPtr& to, const XWindowPtr& commonAncestor, S32 x, S32 y, U32 mode);
+	void pointerMovedChildToParent(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode);
+	void pointerMovedParentToChild(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode);
 };
 
 #endif

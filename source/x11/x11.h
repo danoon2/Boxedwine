@@ -248,6 +248,17 @@ typedef XID KeySym;
 #define NotifyUngrab		2
 #define NotifyWhileGrabbed	3
 
+/* Notify detail */
+
+#define NotifyAncestor		0
+#define NotifyVirtual		1
+#define NotifyInferior		2
+#define NotifyNonlinear		3
+#define NotifyNonlinearVirtual	4
+#define NotifyPointer		5
+#define NotifyPointerRoot	6
+#define NotifyDetailNone	7
+
 #define NotifyHint		1	/* for MotionNotify events */
 
 #define XRAND_Base 10000

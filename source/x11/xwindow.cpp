@@ -137,6 +137,7 @@ void XWindow::onCreate(const XWindowPtr& self) {
 		{
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
 			parent->children.set(id, self);
+			parent->zchildren.push_back(self);
 		}
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
@@ -151,6 +152,18 @@ void XWindow::onCreate(const XWindowPtr& self) {
 			event.xcreatewindow.serial = data->getNextEventSerial();
 			event.xcreatewindow.display = data->displayAddress;
 			data->putEvent(event);
+
+			if (XServer::getServer()->trace) {
+				BString log;
+				log.append(data->displayId, 16);
+				log += " Event";
+				log += " CreateNotify";
+				log += " window=";
+				log.append(id, 16);
+				log += " parent=";
+				log.append(parent->id, 16);
+				klog(log.c_str());
+			}
 			});
 	}
 }
@@ -162,17 +175,25 @@ void XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* at
 	}
 }
 
-void XWindow::iterateChildren(std::function<void(const XWindowPtr& child)> callback) {
+void XWindow::iterateChildren(bool frontToBack, bool mapped, std::function<bool(const XWindowPtr& child)> callback) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
-	for (auto& child : children) {
-		callback(child.value);
-	}
-}
-
-void XWindow::iterateMappedChildren(std::function<void(const XWindowPtr& child)> callback) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
-	for (auto& child : zchildren) {
-		callback(child);
+	if (frontToBack) {
+		for (int i = (int)zchildren.size() - 1; i >= 0; i--) {
+			const XWindowPtr& child = zchildren.at(i);
+			if (!mapped || child->mapped()) {
+				if (!callback(child)) {
+					break;
+				}
+			}
+		}
+	} else {
+		for (auto& child : zchildren) {
+			if (!mapped || child->mapped()) {
+				if (!callback(child)) {
+					break;
+				}
+			}
+		}
 	}
 }
 
@@ -196,9 +217,22 @@ void XWindow::screenToWindow(S32& x, S32& y) {
 	}
 }
 
-void XWindow::setTextProperty(KThread* thread, XTextProperty* name, Atom property) {
+void XWindow::setTextProperty(const DisplayDataPtr& data, KThread* thread, XTextProperty* name, Atom property, bool trace) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(property, name->encoding, name->format, name->byteLen(thread->memory), name->value);
+	if (trace && XServer::getServer()->trace) {
+		XPropertyPtr prop = properties.getProperty(property);
+		if (prop) {
+			BString log;
+
+			log.append(data->displayId, 16);
+			log += " ChangeProperty mode=Replace(0x00) window=";
+			log.append(id, 16);
+			log += " ";
+			log += prop->log();
+			klog(log.c_str());
+		}
+	}
 }
 
 XPropertyPtr XWindow::getProperty(U32 atom) {
@@ -206,19 +240,24 @@ XPropertyPtr XWindow::getProperty(U32 atom) {
 	return properties.getProperty(atom);
 }
 
-void XWindow::onSetProperty(KThread* thread, U32 atom) {
-	if (1) {
+void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
+	properties.setProperty(atom, type, format, length, value);	
+
+	if (trace && XServer::getServer()->trace) {
 		XPropertyPtr prop = properties.getProperty(atom);
 		if (prop) {
-			prop->log();
+			BString log;
+
+			log.append(data->displayId, 16);
+			log += " ChangeProperty mode=Replace(0x00) window=";
+			log.append(id, 16);
+			log += " ";
+			log += prop->log();
+			klog(log.c_str());
 		}
 	}
-}
 
-void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U8* value) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
-	properties.setProperty(atom, type, format, length, value);
-	onSetProperty(thread, atom);
 	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
@@ -230,13 +269,44 @@ void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 l
 		event.xproperty.serial = data->getNextEventSerial();
 		event.xproperty.time = XServer::getServer()->getEventTime();
 		data->putEvent(event);
+
+		if (XServer::getServer()->trace) {
+			BString log;
+			log.append(data->displayId, 16);
+			log += " Event";
+			log += " PropertyNotify";
+			log += " window=";
+			log.append(id, 16);
+			log += " atom=";
+			log.append(atom, 16);
+			log += "(";
+			BString name;
+			XServer::getServer()->getAtom(atom, name);
+			log += name;
+			log += ")";
+			log += " state=NewValue";
+			klog(log.c_str());
+		}
 		});
 }
 
-void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U32 value) {
+void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);
-	onSetProperty(thread, atom);
+	if (trace && XServer::getServer()->trace) {
+		XPropertyPtr prop = getProperty(atom);
+		if (prop) {
+			BString log;
+
+			log.append(data->displayId, 16);
+			log += " ChangeProperty mode=Replace(0x00) window=";
+			log.append(id, 16);
+			log += " ";
+			log += prop->log();
+			klog(log.c_str());
+		}
+	}
+
 	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
@@ -248,10 +318,28 @@ void XWindow::setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 l
 		event.xproperty.serial = data->getNextEventSerial();
 		event.xproperty.time = XServer::getServer()->getEventTime();
 		data->putEvent(event);
+
+		if (XServer::getServer()->trace) {
+			BString log;
+			log.append(data->displayId, 16);
+			log += " Event";
+			log += " PropertyNotify";
+			log += " window=";
+			log.append(id, 16);
+			log += " atom=";
+			log.append(atom, 16);
+			log += "(";
+			BString name;
+			XServer::getServer()->getAtom(atom, name);
+			log += name;
+			log += ")";
+			log += " state=NewValue";
+			klog(log.c_str());
+		}
 		});
 }
 
-void XWindow::deleteProperty(KThread* thread, U32 atom) {
+void XWindow::deleteProperty(const DisplayDataPtr& data, U32 atom, bool trace) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	XPropertyPtr prop = properties.getProperty(atom);
 	properties.deleteProperty(atom);
@@ -267,11 +355,29 @@ void XWindow::deleteProperty(KThread* thread, U32 atom) {
 			event.xproperty.serial = data->getNextEventSerial();
 			event.xproperty.time = XServer::getServer()->getEventTime();
 			data->putEvent(event);
+
+			if (XServer::getServer()->trace) {
+				BString log;
+				log.append(data->displayId, 16);
+				log += " Event";
+				log += " PropertyNotify";
+				log += " window=";
+				log.append(id, 16);
+				log += " atom=";
+				log.append(atom, 16);
+				log += "(";
+				BString name;
+				XServer::getServer()->getAtom(atom, name);
+				log += name;
+				log += ")";
+				log += " state=Delete";
+				klog(log.c_str());
+			}
 			});
 	}
 }
 
-int XWindow::handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event) {
+int XWindow::handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEvent& event) {
 	U32 count = 0;
 	for (U32 i = 1; i < 5; i++) {
 		if (event.xclient.data.l[i] <= 1) {
@@ -282,7 +388,7 @@ int XWindow::handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event)
 	XPropertyPtr prop = getProperty(event.xclient.message_type);
 	if (!prop) {
 		if (event.xclient.data.l[0] == 1) {
-			setProperty(thread, (U32)event.xclient.message_type, XA_ATOM, 32, count * 4, (U8*)&event.xclient.data.l[1]);
+			setProperty(data, (U32)event.xclient.message_type, XA_ATOM, 32, count * 4, (U8*)&event.xclient.data.l[1]);
 		}
 	} else {
 		U32* values = (U32*)prop->value;
@@ -300,7 +406,7 @@ int XWindow::handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event)
 			if (removedCount) {
 				U32 newCount = existingCount - removedCount;
 				if (!newCount) {
-					deleteProperty(thread, event.xclient.message_type);
+					deleteProperty(data, event.xclient.message_type);
 				} else {
 					U32* newValues = new U32[newCount];
 					U32 index = 0;
@@ -311,7 +417,7 @@ int XWindow::handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event)
 							index++;
 						}
 					}
-					setProperty(thread, (U32)event.xclient.message_type, XA_ATOM, 32, newCount * 4, (U8*)newValues);
+					setProperty(data, (U32)event.xclient.message_type, XA_ATOM, 32, newCount * 4, (U8*)newValues);
 					delete[] newValues;
 				}
 			}
@@ -334,7 +440,7 @@ int XWindow::handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event)
 				}
 			}
 			if (addIndex != existingCount) {
-				setProperty(thread, (U32)event.xclient.message_type, XA_ATOM, 32, addIndex * 4, (U8*)newValues);
+				setProperty(data, (U32)event.xclient.message_type, XA_ATOM, 32, addIndex * 4, (U8*)newValues);
 			}
 			delete[] newValues;
 		} else if (event.xclient.data.l[0] == 1) {
@@ -360,35 +466,48 @@ void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, 
 	event.xexpose.count = count;
 	data->putEvent(event);
 
-	iterateChildren([](const XWindowPtr& child) {
-		if (child->isMapped && child->c_class == InputOutput) {
+	if (XServer::getServer()->trace) {
+		BString log;
+		log.append(data->displayId, 16);
+		log += " Event";
+		log += " Expose";
+		log += " win=";
+		log.append(id, 16);
+		log += " x=";
+		log += x;
+		log += " y=";
+		log += y;
+		log += " width=";
+		log += width;
+		log += " height=";
+		log += height;
+	}
+	iterateChildren(false, true, [](const XWindowPtr& child) {
+		if (child->c_class == InputOutput) {
 			XServer::getServer()->iterateEventMask(child->id, ExposureMask, [=](const DisplayDataPtr& data) {
 				child->exposeNofity(data, 0, 0, child->width(), child->height(), 0);
 				});
 		}
+		return true;
 		});
 }
 
-void XWindow::setWmState(KThread* thread, U32 state, U32 icon) {
+void XWindow::setWmState(const DisplayDataPtr& data, U32 state, U32 icon) {
 	XServer* server = XServer::getServer();
 	XWMState wmState;
 
 	wmState.state = state;
 	wmState.icon = 0;
-	setProperty(thread, WM_STATE, WM_STATE, 32, 8, (U8*)&wmState);
+	setProperty(data, WM_STATE, WM_STATE, 32, 8, (U8*)&wmState);
 }
 
-int XWindow::mapWindow(KThread* thread) {
+int XWindow::mapWindow(const DisplayDataPtr& data) {
 	if (isMapped) {
 		return Success;
 	}
 	isMapped = true;	
-	setWmState(thread, NormalState, 0);
+	setWmState(data, NormalState, 0);
 	if (parent) {
-		{
-			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
-			parent->zchildren.push_back(shared_from_this());
-		}
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.xmap.type = MapNotify;
@@ -399,6 +518,18 @@ int XWindow::mapWindow(KThread* thread) {
 			event.xmap.serial = data->getNextEventSerial();
 			event.xmap.override_redirect = this->attributes.override_redirect;
 			data->putEvent(event);
+
+			if (XServer::getServer()->trace) {
+				BString log;
+				log.append(data->displayId, 16);
+				log += " Event";
+				log += " MapNotify";
+				log += " win=";
+				log.append(id, 16);
+				log += " event=";
+				log.append(parent->id, 16);
+				klog(log.c_str());
+			}
 			});
 	}
 	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
@@ -411,6 +542,17 @@ int XWindow::mapWindow(KThread* thread) {
 		event.xmap.serial = data->getNextEventSerial();
 		event.xmap.override_redirect = this->attributes.override_redirect;
 		data->putEvent(event);
+
+		if (XServer::getServer()->trace) {
+			BString log;
+			log.append(data->displayId, 16);
+			log += " Event";
+			log += " MapNotify";
+			log += " win=";
+			log.append(id, 16);
+			log += " event=";
+			log.append(id, 16);
+		}
 		});
 	if (attributes.backing_store != NotUseful) {
 		kwarn("XWindow::mapWindow backing_store was expected to be NotUseful");
@@ -423,12 +565,12 @@ int XWindow::mapWindow(KThread* thread) {
 	return Success;
 }
 
-int XWindow::unmapWindow(KThread* thread) {
+int XWindow::unmapWindow(const DisplayDataPtr& data) {
 	if (!isMapped) {
 		return Success;
 	}
 	isMapped = false;
-	setWmState(thread, WithdrawnState, 0);
+	setWmState(data, WithdrawnState, 0);
 	if (parent) {
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
@@ -440,6 +582,17 @@ int XWindow::unmapWindow(KThread* thread) {
 			event.xmap.serial = data->getNextEventSerial();
 			event.xmap.override_redirect = this->attributes.override_redirect;
 			data->putEvent(event);
+
+			if (XServer::getServer()->trace) {
+				BString log;
+				log.append(data->displayId, 16);
+				log += " Event";
+				log += " MapNotify";
+				log += " win=";
+				log.append(id, 16);
+				log += " event=";
+				log.append(parent->id, 16);
+			}
 			});
 	}
 	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
@@ -452,6 +605,17 @@ int XWindow::unmapWindow(KThread* thread) {
 		event.xmap.serial = data->getNextEventSerial();
 		event.xmap.override_redirect = this->attributes.override_redirect;
 		data->putEvent(event);
+
+		if (XServer::getServer()->trace) {
+			BString log;
+			log.append(data->displayId, 16);
+			log += " Event";
+			log += " MapNotify";
+			log += " win=";
+			log.append(id, 16);
+			log += " event=";
+			log.append(id, 16);
+		}
 		});
 	return Success;
 }
@@ -467,8 +631,9 @@ void XWindow::draw() {
 		nativeWindow->putBitsOnWnd(wnd, data, bytes_per_line, x, y, width(), height(), isDirty);
 		isDirty = false;
 	}
-	iterateMappedChildren([](const XWindowPtr& child) {
+	iterateChildren(false, true, [](const XWindowPtr& child) {
 		child->draw();
+		return true;
 		});
 }
 
@@ -508,6 +673,17 @@ void XWindow::configureNotify() {
 			event.xconfigure.serial = data->getNextEventSerial();
 			event.xconfigure.display = data->displayAddress;
 			data->putEvent(event);
+
+			if (XServer::getServer()->trace) {
+				BString log;
+				log.append(data->displayId, 16);
+				log += " Event";
+				log += " ConfigureNotify";
+				log += " win=";
+				log.append(id, 16);
+				log += " event=";
+				log.append(parent->id, 16);
+			}
 			});
 	}
 	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
@@ -525,6 +701,17 @@ void XWindow::configureNotify() {
 		event.xconfigure.serial = data->getNextEventSerial();
 		event.xconfigure.display = data->displayAddress;
 		data->putEvent(event);
+
+		if (XServer::getServer()->trace) {
+			BString log;
+			log.append(data->displayId, 16);
+			log += " Event";
+			log += " ConfigureNotify";
+			log += " win=";
+			log.append(id, 16);
+			log += " event=";
+			log.append(id, 16);
+		}
 		});	
 }
 
@@ -652,6 +839,124 @@ void XWindow::mouseMoveScreenCoords(S32 x, S32 y) {
 		});
 }
 
+void XWindow::getAncestorTree(std::vector<XWindowPtr>& ancestors) {
+	XWindowPtr w = shared_from_this();
+	while (w) {
+		ancestors.push_back(w);
+		w = w->parent;
+	}
+}
+
+XWindowPtr XWindow::getLeastCommonAncestor(const XWindowPtr& wnd) {
+	if (wnd->parent->id == id) {
+		return wnd->parent;
+	}
+	if (parent->id == wnd->id) {
+		return wnd;
+	}
+	if (wnd->id == id) {
+		return wnd;
+	}
+	std::vector<XWindowPtr> tree1;
+	std::vector<XWindowPtr> tree2;
+
+	getAncestorTree(tree1);
+	wnd->getAncestorTree(tree2);
+
+	
+	XWindowPtr result = XServer::getServer()->getRoot();
+	for (int i = 0; i < tree1.size() && i < tree2.size(); i++) {
+		if (tree1.at(i)->id == tree2.at(i)->id) {
+			result = tree1.at(i);
+		}
+	}
+	return result;
+}
+
+bool XWindow::doesThisOrAncestorHaveFocus() {
+	XWindowPtr w = shared_from_this();
+	XWindowPtr focus = XServer::getServer()->inputFocus;
+
+	if (!focus) {
+		return false;
+	}
+	while (w) {
+		if (w->id == focus->id) {
+			return true;
+		}
+		w = w->parent;
+	}
+	return false;
+}
+
+void XWindow::crossingNotify(const DisplayDataPtr& data, bool in, S32 x, S32 y, S32 mode, S32 detail) {
+	S32 window_x = x;
+	S32 window_y = y;
+	screenToWindow(window_x, window_y);
+
+	XEvent event = {};
+	event.type = in ? EnterNotify : LeaveNotify;
+	event.xcrossing.serial = data->getNextEventSerial();
+	event.xcrossing.display = data->displayAddress;
+	event.xcrossing.window = id;
+	event.xcrossing.root = data->root;
+	event.xcrossing.subwindow = 0;
+	event.xcrossing.time = XServer::getServer()->getEventTime();
+	event.xcrossing.x = window_x;
+	event.xcrossing.y = window_y;
+	event.xcrossing.x_root = x;
+	event.xcrossing.y_root = y;
+	event.xcrossing.mode = mode;
+	event.xcrossing.detail = detail;
+	event.xcrossing.same_screen = True;
+	event.xcrossing.focus = doesThisOrAncestorHaveFocus() ? True : False;
+	event.xcrossing.state = XServer::getServer()->getInputModifiers();
+	data->putEvent(event);
+
+	if (XServer::getServer()->trace) {
+		BString log;
+		log.append(data->displayId, 16);
+		log += " Event";
+		log += in ? " EnterNotify" : "LeaveNotify";
+		log += " win=";
+		log.append(id, 16);
+		klog(log.c_str());
+	}
+}
+
+void XWindow::focusOut() {
+	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [=](const DisplayDataPtr& data) {
+		focusNotify(data, false, NotifyNormal, NotifyDetailNone);
+		});
+}
+
+void XWindow::focusIn() {
+	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [=](const DisplayDataPtr& data) {
+		focusNotify(data, true, NotifyNormal, NotifyDetailNone);
+		});
+}
+
+void XWindow::focusNotify(const DisplayDataPtr& data, bool isIn, S32 mode, S32 detail) {
+	XEvent event = {};
+	event.type = isIn ? FocusIn : FocusOut;
+	event.xfocus.serial = data->getNextEventSerial();
+	event.xfocus.display = data->displayAddress;
+	event.xfocus.window = id;
+	event.xfocus.mode = mode;
+	event.xfocus.detail = detail;
+	data->putEvent(event);
+
+	if (XServer::getServer()->trace) {
+		BString log;
+		log.append(data->displayId, 16);
+		log += " Event";
+		log += isIn ? " FocusIn" : "FocusOut";
+		log += " win=";
+		log.append(id, 16);
+		klog(log.c_str());
+	}
+}
+
 void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y, bool pressed) {
 	S32 window_x = x;
 	S32 window_y = y;
@@ -674,6 +979,20 @@ void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y,
 	event.xbutton.button = button;
 	event.xbutton.same_screen = True;
 	data->putEvent(event);
+
+	if (XServer::getServer()->trace) {
+		BString log;
+		log.append(data->displayId, 16);
+		log += " Event";
+		log += pressed ? " ButtonPress" : " ButtonRelease";
+		log += " button=";
+		log += button;
+		log += " root=";
+		log.append(XServer::getServer()->getRoot()->id, 16);
+		log += " event=";
+		log.append(id, 16);
+		klog(log.c_str());
+	}
 }
 
 void XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {

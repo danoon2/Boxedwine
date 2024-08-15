@@ -181,7 +181,7 @@ public:
         return bpp;
     }
     U32 screenRate() override;
-    bool getMousePos(int* x, int* y) override;
+    bool getMousePos(int* x, int* y, bool allowWarp = true) override;
     void setMousePos(int x, int y) override;
 
     bool setCursor(const char* moduleName, const char* resourceName, int resource) override;
@@ -257,7 +257,7 @@ private:
     int yToScreen(int y);
     int yFromScreen(int y);
 
-    void checkMousePos(int& x, int& y);
+    bool checkMousePos(int& x, int& y, bool allowWarp);
 };
 
 static std::shared_ptr<KNativeWindowSdl> screen;
@@ -1602,7 +1602,7 @@ int KNativeWindowSdl::yFromScreen(int y) {
     return (y - (int)scaleYOffset) * 100 / (int)scaleY;
 }
 
-void KNativeWindowSdl::checkMousePos(int& x, int& y) {
+bool KNativeWindowSdl::checkMousePos(int& x, int& y, bool allowWarp) {
     bool warp = false;
     if (x < 0) {
         x = 0;
@@ -1620,7 +1620,7 @@ void KNativeWindowSdl::checkMousePos(int& x, int& y) {
         y = (int)height;
         warp = true;
     }
-    if (warp && window) {
+    if (allowWarp && warp && window) {
         int scaledX = xToScreen(x);
         int scaledY = yToScreen(y);
         DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
@@ -1629,6 +1629,7 @@ void KNativeWindowSdl::checkMousePos(int& x, int& y) {
             }
         DISPATCH_MAIN_THREAD_BLOCK_END
     }
+    return allowWarp || !warp;
 }
 
 void KNativeWindowSdl::setMousePos(int x, int y) {
@@ -1645,7 +1646,7 @@ int KNativeWindowSdl::mouseMove(int x, int y, bool relative) {
     x = xFromScreen(x);
     y = yFromScreen(y);
     
-    checkMousePos(x, y);
+    checkMousePos(x, y, true);
 
     lastX = x;
     lastY = y;
@@ -1691,7 +1692,7 @@ int KNativeWindowSdl::mouseWheel(int amount, int x, int y) {
     x = xFromScreen(x);
     y = yFromScreen(y);
 
-    checkMousePos(x, y);
+    checkMousePos(x, y, true);
 
     std::shared_ptr<WndSdl> wnd = getWndFromPoint(x, y);
     if (!wnd)
@@ -1727,7 +1728,7 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
     x = xFromScreen(x);
     y = yFromScreen(y);
 
-    checkMousePos(x, y);
+    checkMousePos(x, y, true);
 
     std::shared_ptr<WndSdl> wnd = getWndFromPoint(x, y);
     if (!wnd)
@@ -2332,7 +2333,7 @@ U32 KNativeWindowSdl::screenRate() {
     return DM.refresh_rate;
 }
 
-bool KNativeWindowSdl::getMousePos(int* x, int* y) {
+bool KNativeWindowSdl::getMousePos(int* x, int* y, bool allowWarp) {
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
         *x = lastX;
@@ -2345,9 +2346,7 @@ bool KNativeWindowSdl::getMousePos(int* x, int* y) {
     *x = xFromScreen(*x);
     *y = yFromScreen(*y);
 
-    checkMousePos(*x, *y);
-
-    return result;
+    return checkMousePos(*x, *y, false);
 }
 
 

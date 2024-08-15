@@ -60,7 +60,7 @@ public:
 	virtual U32 screenHeight() = 0;
 	virtual U32 screenBpp() = 0;
     virtual U32 screenRate() = 0;
-	virtual bool getMousePos(int* x, int* y) = 0;
+	virtual bool getMousePos(int* x, int* y, bool allowWarp = true) = 0;
 	virtual void setMousePos(int x, int y) = 0;
 	
 	virtual bool setCursor(const char* moduleName, const char* resourceName, int resource) = 0;

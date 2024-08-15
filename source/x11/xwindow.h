@@ -135,20 +135,19 @@ public:
 	void onCreate(const XWindowPtr& self);
 
 	void setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
-	void iterateChildren(std::function<void(const XWindowPtr& child)> callback);
-	void iterateMappedChildren(std::function<void(const XWindowPtr& child)> callback);
+	void iterateChildren(bool frontToBack, bool mapped, std::function<bool(const XWindowPtr& child)> callback);
 
-	void setTextProperty(KThread* thread, XTextProperty* name, Atom property);
+	void setTextProperty(const DisplayDataPtr& data, KThread* thread, XTextProperty* name, Atom property, bool trace = false);
 	int configure(U32 mask, XWindowChanges* changes);
 
 	XPropertyPtr getProperty(U32 atom);
-	void setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U8* value);
-	void setProperty(KThread* thread, U32 atom, U32 type, U32 format, U32 length, U32 value);
-	void deleteProperty(KThread* thread, U32 atom);
-	int handleNetWmStatePropertyEvent(KThread* thread, const XEvent& event);
+	void setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace = false);
+	void setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace = false);
+	void deleteProperty(const DisplayDataPtr& data, U32 atom, bool trace = false);
+	int handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEvent& event);
 
-	int mapWindow(KThread* thread);
-	int unmapWindow(KThread* thread);	
+	int mapWindow(const DisplayDataPtr& data);
+	int unmapWindow(const DisplayDataPtr& data);
 
 	void windowToScreen(S32& x, S32& y);
 	void screenToWindow(S32& x, S32& y);
@@ -156,6 +155,7 @@ public:
 	void mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed);
 	void motionNotify(const DisplayDataPtr& data, S32 x, S32 y);
 	void buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y, bool pressed);
+	void crossingNotify(const DisplayDataPtr& data, bool in, S32 x, S32 y, S32 mode, S32 detail);
 
 	XWindowPtr getParent() {return parent;}
 	bool mapped() {return this->isMapped;}
@@ -164,6 +164,14 @@ public:
 
 	void draw();
 	XWindowPtr getWindowFromPoint(S32 x, S32 y);
+
+	void focusOut();
+	void focusIn();
+
+	bool doesThisOrAncestorHaveFocus();
+	XWindowPtr getLeastCommonAncestor(const XWindowPtr& wnd);
+
+	void getAncestorTree(std::vector<XWindowPtr>& ancestors);
 
 	XCursorPtr cursor;
 private:
@@ -185,8 +193,9 @@ private:
 
 	void exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, S32 height, S32 count);
 	void configureNotify();
-	void onSetProperty(KThread* thread, U32 atom);
-	void setWmState(KThread* thread, U32 state, U32 icon);
+	void focusNotify(const DisplayDataPtr& data, bool isIn, S32 mode, S32 detail);
+
+	void setWmState(const DisplayDataPtr& data, U32 state, U32 icon);
 	XWindowPtr previousSibling();
 
 	bool isDialog();

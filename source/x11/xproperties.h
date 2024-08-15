@@ -27,7 +27,7 @@ public:
 		return false;
 	}
 
-	void log();
+	BString log();
 };
 
 typedef std::shared_ptr<XProperty> XPropertyPtr;

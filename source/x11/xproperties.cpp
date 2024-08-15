@@ -81,78 +81,85 @@ static BString getMwmDecor(U32 func) {
 	return result;
 }
 
-void XProperty::log() {
+BString XProperty::log() {
 	BString log;
+	BString name;
+	BString typeName;
+	XServer::getServer()->getAtom(atom, name);
+	XServer::getServer()->getAtom(atom, typeName);
+	log = "property=";
+	log.append(atom, 16);
+	log.append("(");
+	log.append(name);
+	log.append(") type=");
+	log.append(type, 16);
+	log.append("(");
+	log.append(typeName);
+	log.append(") ");
 
-	if (XServer::getServer()->getAtom(atom, log)) {
-		if (type == XA_ATOM) {
-			log += ":";
-			U32* atoms = (U32*)value;
-			for (U32 i = 0; i < length / 4; i++) {
-				BString name;
-				if (XServer::getServer()->getAtom(atoms[i], name)) {
-					log += " ";
-					log += name;
-				}
-			}
-		} else if (type == WM_STATE) {
-			U32* atoms = (U32*)value;
-			log += ": ";
-			log += getState(atoms[0]);
-			log += " ";
-			log += atoms[1];
-		} else if (atom == XA_WM_HINTS) {
-			U32* atoms = (U32*)value;
-			log += ": flags=";
-			log.append(atoms[0], 16);
-			log += " input=";
-			log += atoms[1];
-			log += " initial_state=";
-			log += getState(atoms[2]);
-			log += " icon_pixmap=";
-			log += atoms[3];
-			log += " icon_window=";
-			log += atoms[4];
-			log += " icon_x=";
-			log += atoms[5];
-			log += " icon_y=";
-			log += atoms[6];
-			log += " icon_mask=";
-			log += atoms[7];
-			log += " window_group=";
-			log += atoms[8];
-		} else if (atom == _NET_WM_NAME) {
-			log += ": ";
-			log.append((char*)value, length);
-		} else if (atom == _MOTIF_WM_HINTS) {
-			U32* atoms = (U32*)value;
-			log += ": flags =";
-			log += getMwmFlags(atoms[0]);
-			log += " functions =";
-			log += getMwmFunc(atoms[1]);
-			log += " decorations =";
-			log += getMwmDecor(atoms[2]);
-			log += " input_mode = ";
-			log += atoms[3];
-			log += " status = ";
-			log += atoms[4];
-		} else if (type == XA_WINDOW) {
-			log += ":";
-			U32* atoms = (U32*)value;
-			for (U32 i = 0; i < length / 4; i++) {
+	if (type == XA_ATOM) {
+		U32* atoms = (U32*)value;
+		for (U32 i = 0; i < length / 4; i++) {
+			BString name;
+			if (XServer::getServer()->getAtom(atoms[i], name)) {
 				log += " ";
-				log.append(atoms[i], 16);
-			}
-		} else if (type == XA_CARDINAL && atom != _NET_WM_ICON) {
-			log += ":";
-			U32* atoms = (U32*)value;
-			for (U32 i = 0; i < length / 4; i++) {
-				log += " ";
-				log.append(atoms[i], 16);
+				log += name;
 			}
 		}
-		klog(log.c_str());
+	} else if (type == WM_STATE) {
+		U32* atoms = (U32*)value;
+		log += getState(atoms[0]);
+		log += " ";
+		log += atoms[1];
+	} else if (atom == XA_WM_HINTS) {
+		U32* atoms = (U32*)value;
+		log += " flags=";
+		log.append(atoms[0], 16);
+		log += " input=";
+		log += atoms[1];
+		log += " initial_state=";
+		log += getState(atoms[2]);
+		log += " icon_pixmap=";
+		log += atoms[3];
+		log += " icon_window=";
+		log += atoms[4];
+		log += " icon_x=";
+		log += atoms[5];
+		log += " icon_y=";
+		log += atoms[6];
+		log += " icon_mask=";
+		log += atoms[7];
+		log += " window_group=";
+		log += atoms[8];
+	} else if (atom == _NET_WM_NAME) {
+		log += " ";
+		log.append((char*)value, length);
+	} else if (atom == _MOTIF_WM_HINTS) {
+		U32* atoms = (U32*)value;
+		log += " flags =";
+		log += getMwmFlags(atoms[0]);
+		log += " functions =";
+		log += getMwmFunc(atoms[1]);
+		log += " decorations =";
+		log += getMwmDecor(atoms[2]);
+		log += " input_mode = ";
+		log += atoms[3];
+		log += " status = ";
+		log += atoms[4];
+	} else if (type == XA_WINDOW) {
+		U32* atoms = (U32*)value;
+		for (U32 i = 0; i < length / 4; i++) {
+			log += " ";
+			log.append(atoms[i], 16);
+		}
+	} else if (type == XA_CARDINAL && atom != _NET_WM_ICON) {
+		U32* atoms = (U32*)value;
+		for (U32 i = 0; i < length / 4; i++) {
+			log += " ";
+			log.append(atoms[i], 16);
+		}
 	}
+	return log;
 }
 
 typedef struct {

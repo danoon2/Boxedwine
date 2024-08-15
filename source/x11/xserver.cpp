@@ -157,14 +157,41 @@ XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32
 	return result;
 }
 
-XWindowPtr XServer::getRoot(KThread* thread) {
+U32 XServer::setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo, U32 time, bool trace) {
+	if (trace && this->trace) {
+		BString log;
+
+		log.append(data->displayId, 16);
+		log += " SetInputFocus";
+		log += " revert-to=";
+		log.append(server->inputFocusRevertTo, 16);
+		log += " focus=";
+		log.append(window, 16);
+	}
+	inputFocusRevertTo = revertTo;
+	XWindowPtr w = getWindow(window);
+	
+	if (server->inputFocus != w) {
+		if (server->inputFocus) {
+			server->inputFocus->focusOut();
+		}
+		server->inputFocus = w;
+		if (w) {
+			w->focusIn();
+		}
+	}
+	return Success;
+}
+
+const XWindowPtr& XServer::getRoot() {
 	if (!root) {
 		KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 		root = createNewWindow(0, nullptr, nativeWindow->screenWidth(), nativeWindow->screenHeight(), nativeWindow->screenBpp(), 0, 0, InputOutput, 0);
 
 		U32 rect[] = { 0, 0, (U32)nativeWindow->screenWidth(), (U32)nativeWindow->screenHeight() };
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
-		root->setProperty(thread, atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect);
+		root->setProperty(nullptr, atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
+		pointerWindow = root;
 	}
 	return root;
 }
@@ -179,8 +206,9 @@ void XServer::draw(KThread* thread) {
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 	nativeWindow->runOnUiThread([=]() {
 		nativeWindow->clear();
-		root->iterateChildren([](XWindowPtr child) {
+		root->iterateChildren(false, true, [](XWindowPtr child) {
 			child->draw();
+			return true;
 			});
 		nativeWindow->present(thread);
 		});
@@ -288,7 +316,7 @@ static U32 createScreen(KThread* thread, U32 displayAddress) {
 	XServer* server = XServer::getServer();
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 	U32 defaultVisual = Visual::create(thread, VisualIdBase, TrueColor, 0xFF0000, 0xFF00, 0xFF, 32, 256);
-	U32 defaultDepth = Depth::create(thread, 32, defaultVisual, 1);
+	U32 defaultDepth = Depth::create(thread, 24, defaultVisual, 1);
 
 	U32 screenAddress = thread->process->alloc(thread, sizeof(Screen));
 	X11_WRITED(Screen, screenAddress, display, displayAddress);
@@ -296,13 +324,13 @@ static U32 createScreen(KThread* thread, U32 displayAddress) {
 	X11_WRITED(Screen, screenAddress, height, nativeWindow->screenHeight());
 	X11_WRITED(Screen, screenAddress, mwidth, (U32)(nativeWindow->screenWidth() * 0.2646));
 	X11_WRITED(Screen, screenAddress, mheight, (U32)(nativeWindow->screenHeight() * 0.2646));
-	X11_WRITED(Screen, screenAddress, ndepths, 1); // 32 :TODO: do I need 8 and 16 or can I make Wine emulate it
+	X11_WRITED(Screen, screenAddress, ndepths, 1); // 24 :TODO: do I need 8 and 16 or can I make Wine emulate it
 	X11_WRITED(Screen, screenAddress, depths, defaultDepth);
-	X11_WRITED(Screen, screenAddress, root_depth, 32);
+	X11_WRITED(Screen, screenAddress, root_depth, 24);
 	X11_WRITED(Screen, screenAddress, root_visual, defaultVisual);
 	X11_WRITED(Screen, screenAddress, white_pixel, 0x00FFFFFF);
 	X11_WRITED(Screen, screenAddress, black_pixel, 0);
-	X11_WRITED(Screen, screenAddress, root, server->getRoot(thread)->id);
+	X11_WRITED(Screen, screenAddress, root, server->getRoot()->id);
 	// screen->cmap; // winex11 references this, but maybe not for TrueColor screen?
 	
 	return screenAddress;
@@ -373,6 +401,181 @@ U32 XServer::getInputModifiers() {
 	return 0; // :TODO:
 }
 
+// https://tronche.com/gui/x/xlib/events/window-entry-exit/normal.html
+/*
+EnterNotify and LeaveNotify events are generated when the pointer moves from one window to another window.Normal events are identified by XEnterWindowEvent or XLeaveWindowEvent structures whose mode member is set to NotifyNormal.
+
+When the pointer moves from window A to window B and A is an inferior of B, the X server does the following :
+  * It generates a LeaveNotify event on window A, with the detail member of the XLeaveWindowEvent structure set to NotifyAncestor.
+  * It generates a LeaveNotify event on each window between window A and window B, exclusive, with the detail member of each XLeaveWindowEvent structure set to NotifyVirtual.
+  * It generates an EnterNotify event on window B, with the detail member of the XEnterWindowEvent structure set to NotifyInferior.
+
+When the pointer moves from window A to window B and B is an inferior of A, the X server does the following :
+  * It generates a LeaveNotify event on window A, with the detail member of the XLeaveWindowEvent structure set to NotifyInferior.
+  * It generates an EnterNotify event on each window between window A and window B, exclusive, with the detail member of each XEnterWindowEvent structure set to NotifyVirtual.
+  * It generates an EnterNotify event on window B, with the detail member of the XEnterWindowEvent structure set to NotifyAncestor.
+
+When the pointer moves from window A to window B and window C is their least common ancestor, the X server does the following :
+  * It generates a LeaveNotify event on window A, with the detail member of the XLeaveWindowEvent structure set to NotifyNonlinear.
+  * It generates a LeaveNotify event on each window between window A and window C, exclusive, with the detail member of each XLeaveWindowEvent structure set to NotifyNonlinearVirtual.
+  * It generates an EnterNotify event on each window between window C and window B, exclusive, with the detail member of each XEnterWindowEvent structure set to NotifyNonlinearVirtual.
+  * It generates an EnterNotify event on window B, with the detail member of the XEnterWindowEvent structure set to NotifyNonlinear.
+
+When the pointer moves from window A to window B on different screens, the X server does the following :
+  * It generates a LeaveNotify event on window A, with the detail member of the XLeaveWindowEvent structure set to NotifyNonlinear.
+  * If window A is not a root window, it generates a LeaveNotify event on each window above window A up to and including its root, with the detail member of each XLeaveWindowEvent structure set to NotifyNonlinearVirtual.
+  * If window B is not a root window, it generates an EnterNotify event on each window from window B's root down to but not including window B, with the detail member of each XEnterWindowEvent structure set to NotifyNonlinearVirtual.
+  * It generates an EnterNotify event on window B, with the detail member of the XEnterWindowEvent structure set to NotifyNonlinear.
+*/
+
+// First Case: When the pointer moves from window A to window B and B is an inferior of A
+void XServer::pointerMovedParentToChild(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode) {
+	XServer::getServer()->iterateEventMask(from->id, LeaveWindowMask, [=](const DisplayDataPtr& data) {
+		from->crossingNotify(data, false, x, y, mode, NotifyAncestor);
+		});
+
+	// gather windows from child to parent (not including child/parent)
+	std::vector<XWindowPtr> betweenWindows;
+	XWindowPtr betweenWindow = to->getParent();
+	while (betweenWindow && betweenWindow->id != from->id) {
+		betweenWindows.push_back(betweenWindow);
+		betweenWindow = betweenWindow->getParent();
+	}
+
+	// now iterate from parent to child (not including child/parent)
+	for (auto it = betweenWindows.rbegin(); it != betweenWindows.rend(); ++it) {
+		XServer::getServer()->iterateEventMask((*it)->id, LeaveWindowMask, [=](const DisplayDataPtr& data) {
+			from->crossingNotify(data, false, x, y, mode, NotifyVirtual);
+			});
+	}
+
+	XServer::getServer()->iterateEventMask(to->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
+		from->crossingNotify(data, true, x, y, mode, NotifyInferior);
+		});
+}
+
+// Second Case: When the pointer moves from window A to window B and B is an inferior of A
+void XServer::pointerMovedChildToParent(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode) {
+	XServer::getServer()->iterateEventMask(from->id, LeaveWindowMask, [=](const DisplayDataPtr& data) {
+		from->crossingNotify(data, false, x, y, mode, NotifyInferior);
+		});
+
+	// iterate from child to parent (not including child/parent)
+	XWindowPtr betweenWindow = from->getParent();
+	while (betweenWindow && betweenWindow->id != from->id) {
+		XServer::getServer()->iterateEventMask(betweenWindow->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
+			from->crossingNotify(data, true, x, y, mode, NotifyVirtual);
+			});
+		betweenWindow = betweenWindow->getParent();
+	}
+	XServer::getServer()->iterateEventMask(to->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
+		from->crossingNotify(data, true, x, y, mode, NotifyInferior);
+		});
+}
+
+// Third Case: When the pointer moves from window A to window B and window C is their least common ancestor
+void XServer::pointerMovedBetweenSiblings(const XWindowPtr& from, const XWindowPtr& to, const XWindowPtr& commonAncestor, S32 x, S32 y, U32 mode) {
+	XServer::getServer()->iterateEventMask(from->id, LeaveWindowMask, [=](const DisplayDataPtr& data) {
+		from->crossingNotify(data, false, x, y, mode, NotifyNonlinear);
+		});
+
+	// iterate from first window to common ancestor (not including child/parent)
+	XWindowPtr betweenWindow = from->getParent();
+	while (betweenWindow && betweenWindow->id != commonAncestor->id) {
+		XServer::getServer()->iterateEventMask(betweenWindow->id, LeaveWindowMask, [=](const DisplayDataPtr& data) {
+			from->crossingNotify(data, false, x, y, mode, NotifyNonlinearVirtual);
+			});
+		betweenWindow = betweenWindow->getParent();
+	}
+
+	// gather windows from common ancestor to second window (not including child/parent)
+	std::vector<XWindowPtr> betweenWindows;
+	betweenWindow = to->getParent();
+	while (betweenWindow && betweenWindow->id != commonAncestor->id) {
+		betweenWindows.push_back(betweenWindow);
+		betweenWindow = betweenWindow->getParent();
+	}
+
+	// now iterate from common ancestor to second window (not including child/parent)
+	for (auto it = betweenWindows.rbegin(); it != betweenWindows.rend(); ++it) {
+		XServer::getServer()->iterateEventMask((*it)->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
+			from->crossingNotify(data, true, x, y, mode, NotifyNonlinearVirtual);
+			});
+	}
+
+	XServer::getServer()->iterateEventMask(to->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
+		from->crossingNotify(data, true, x, y, mode, NotifyNonlinear);
+		});
+}
+
+void XServer::pointerMoved(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode) {
+	const XWindowPtr& commonAncestor = from->getLeastCommonAncestor(to);
+
+	if (commonAncestor->id == from->id) {
+		pointerMovedParentToChild(from, to, x, y, mode);
+	} else if (commonAncestor->id == to->id) {
+		pointerMovedChildToParent(from, to, x, y, mode);
+	} else {
+		pointerMovedBetweenSiblings(from, to, commonAncestor, x, y, mode);
+	}
+}
+
+int XServer::mapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
+	if (server->trace) {
+		BString log;
+
+		log.append(data->displayId, 16);
+		log += " MapWindow";
+		log += " window=";
+		log.append(window->id, 16);
+		klog(log.c_str());
+	}
+	int result = window->mapWindow(data);
+
+	if (result == Success) {
+		int x = 0;
+		int y = 0;
+		KNativeWindow::getNativeWindow()->getMousePos(&x, &y, false);
+
+		XWindowPtr wnd = root->getWindowFromPoint(x, y);
+		if (wnd) {
+			if (wnd != server->pointerWindow) {
+				server->pointerMoved(server->pointerWindow, wnd, x, y, NotifyNormal);
+				server->pointerWindow = wnd;
+			}
+		}
+	}
+	return result;
+}
+
+int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
+	if (server->trace) {
+		BString log;
+
+		log.append(data->displayId, 16);
+		log += " UnmapWindow";
+		log += " window=";
+		log.append(window->id, 16);
+		klog(log.c_str());
+	}
+	int result = window->unmapWindow(data);
+
+	if (result == Success) {
+		int x = 0;
+		int y = 0;
+		KNativeWindow::getNativeWindow()->getMousePos(&x, &y, false);
+
+		XWindowPtr wnd = root->getWindowFromPoint(x, y);
+		if (wnd) {
+			if (wnd != server->pointerWindow) {
+				server->pointerMoved(server->pointerWindow, wnd, x, y, NotifyNormal);
+				server->pointerWindow = wnd;
+			}
+		}
+	}
+	return result;
+}
+
 void XServer::mouseMove(S32 x, S32 y, bool relative) {
 	if (grabbed) {
 		if (!(grabbedMask & PointerMotionMask)) {
@@ -383,6 +586,10 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 	}
 	XWindowPtr wnd = root->getWindowFromPoint(x, y);
 	if (wnd) {
+		if (wnd != pointerWindow) {
+			pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
+			pointerWindow = wnd;
+		}
 		wnd->mouseMoveScreenCoords(x, y);
 	}
 }
@@ -404,4 +611,49 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 	if (wnd) {
 		wnd->mouseButtonScreenCoords(button, x, y, pressed);
 	}
+}
+
+U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbed, XWindowPtr confined, U32 mask, U32 time) {
+	if (!time) {
+		time = KSystem::getMilliesSinceStart();
+	}
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+	if (grabbedDisplay && grabbedDisplay->displayId != display->displayId) {
+		return AlreadyGrabbed;
+	}
+	this->grabbed = grabbed;
+	this->grabbedConfined = confined;
+	this->grabbedMask = mask;
+	this->grabbedTime = time;
+	this->grabbedDisplay = display;	
+
+	if (pointerWindow->id != grabbed->id) {
+		S32 x = 0;
+		S32 y = 0;
+		KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
+		pointerMoved(pointerWindow, grabbed, x, y, NotifyGrab);
+		pointerWindow = grabbed;
+	}
+	return GrabSuccess;
+}
+
+// https://www.x.org/releases/X11R7.6/doc/xproto/x11protocol.html#requests:UngrabPointer
+U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
+	if (!grabbed) {
+		return GrabSuccess; // :TODO: couldn't find this use case in the x11 spec
+	}
+	XWindowPtr prev = grabbed;
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->grabbedMutex);
+		this->grabbed = nullptr;
+		this->grabbedDisplay = nullptr;
+		this->grabbedConfined = nullptr;
+	}
+	S32 x = 0;
+	S32 y = 0;
+	KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
+
+	pointerWindow = root->getWindowFromPoint(x, y);
+	pointerMoved(prev, pointerWindow, x, y, NotifyUngrab);
+	return GrabSuccess;
 }
