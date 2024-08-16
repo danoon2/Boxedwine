@@ -1,9 +1,22 @@
 #include "boxedwine.h"
 #include "x11.h"
+#include "kunixsocket.h"
 
 void DisplayData::putEvent(const XEvent& event) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMutex);
-	eventQueue.push_back(event);
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMutex);
+		eventQueue.push_back(event);
+
+		KFileDescriptor* server = this->process->getFileDescriptor(this->serverFd);
+		KFileDescriptor* client = this->process->getFileDescriptor(this->clientFd);
+		if (server && server->kobject->type == KTYPE_UNIX_SOCKET) {
+			std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(server->kobject);
+			std::shared_ptr<KUnixSocketObject> c = std::dynamic_pointer_cast<KUnixSocketObject>(client->kobject);
+			if (c && !c->isReadReady()) {
+				s->writeNative((U8*)"1", 1); // so that poll will work
+			}
+		}
+	}
 }
 
 U32 DisplayData::lockEvents() {
@@ -23,6 +36,18 @@ void DisplayData::removeEvent(U32 index) {
 		return;
 	}
 	eventQueue.erase(eventQueue.begin()+index);
+	if (eventQueue.empty()) {
+		KFileDescriptor* fd = this->process->getFileDescriptor(this->clientFd);
+		if (fd && fd->kobject->type == KTYPE_UNIX_SOCKET) {
+			std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
+			while (s->isReadReady()) {
+				U8 b;
+				if (s->readNative(&b, 1) != 1) {
+					break;
+				}
+			}
+		}
+	}
 }
 
 void DisplayData::unlockEvents() {

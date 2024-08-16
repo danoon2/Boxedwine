@@ -47,6 +47,9 @@ public:
 	U32 displayAddress;
 	U32 displayId;
 	U32 root;
+	U32 clientFd;
+	U32 serverFd;
+	KProcessPtr process;
 
 	BOXEDWINE_MUTEX mutex;
 private:	

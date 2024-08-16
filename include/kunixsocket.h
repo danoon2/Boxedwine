@@ -55,6 +55,7 @@ public:
 
     static U32 unixsocket_write_native_nowait(const std::shared_ptr<KObject>& obj, U8* value, int len);
 
+    void signalReadReady();
 private:        
     std::list< std::weak_ptr<KUnixSocketObject> > pendingConnections; // weak, if object is destroyed it should remove itself from this list
     std::weak_ptr<KUnixSocketObject> connecting;

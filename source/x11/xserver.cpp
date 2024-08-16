@@ -375,6 +375,9 @@ U32 XServer::openDisplay(KThread* thread) {
 	X11_WRITED(Display, displayAddress, id, displayId);
 	data->displayId = displayId;
 	data->root = root->id;
+	data->clientFd = fd1;
+	data->serverFd = fd2;
+	data->process = thread->process;
 
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
 	displays.set(displayId, data);

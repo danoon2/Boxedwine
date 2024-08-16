@@ -159,6 +159,7 @@ BString XProperty::log() {
 			log.append(atoms[i], 16);
 		}
 	}
+	log.replace(B("%"), B("%%"));
 	return log;
 }
 

@@ -213,6 +213,11 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
     return len;
 }
 
+void KUnixSocketObject::signalReadReady() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
+}
+
 U32 KUnixSocketObject::unixsocket_write_native_nowait(const std::shared_ptr<KObject>& obj, U8* value, int len) {
     if (obj->type!=KTYPE_UNIX_SOCKET)
         return 0;

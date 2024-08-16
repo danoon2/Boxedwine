@@ -848,10 +848,10 @@ void XWindow::getAncestorTree(std::vector<XWindowPtr>& ancestors) {
 }
 
 XWindowPtr XWindow::getLeastCommonAncestor(const XWindowPtr& wnd) {
-	if (wnd->parent->id == id) {
+	if (wnd->parent && wnd->parent->id == id) {
 		return wnd->parent;
 	}
-	if (parent->id == wnd->id) {
+	if (parent && parent->id == wnd->id) {
 		return wnd;
 	}
 	if (wnd->id == id) {
