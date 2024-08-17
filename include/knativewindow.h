@@ -54,8 +54,8 @@ public:
 
     KNativeWindow() : isVulkan(false), needsVulkan(false) {}
     virtual ~KNativeWindow() {}
-    void updateDisplay(KThread* thread) { screenChanged(thread, screenWidth(), screenHeight(), screenBpp()); }
-	virtual void screenChanged(KThread* thread, U32 width, U32 height, U32 bpp) = 0;
+    void updateDisplay() { screenChanged(screenWidth(), screenHeight(), screenBpp()); }
+	virtual void screenChanged(U32 width, U32 height, U32 bpp) = 0;
 	virtual U32 screenWidth() = 0;
 	virtual U32 screenHeight() = 0;
 	virtual U32 screenBpp() = 0;
@@ -70,12 +70,12 @@ public:
 
     virtual void clear() = 0;
     virtual void putBitsOnWnd(const WndPtr& w, U8* bits, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, bool isDirty) = 0;
-    virtual void present(KThread* thread) = 0;
+    virtual void present() = 0;
     virtual void runOnUiThread(std::function<void()> callback) = 0;
 
     virtual WndPtr getWnd(U32 hwnd) = 0;
     virtual WndPtr createWnd(KThread* thread, U32 processId, U32 hwnd, const wRECT& windowRect, const wRECT& clientRect) = 0;
-    virtual void drawWnd(KThread* thread, const WndPtr& w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) = 0;
+    virtual void drawWnd(const WndPtr& w, U8* bytes, U32 pitch, U32 bpp, U32 width, U32 height) = 0;
 #ifndef BOXEDWINE_MULTI_THREADED
     virtual void flipFB() = 0;
 #endif

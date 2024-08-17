@@ -32,15 +32,18 @@ int XDrawable::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage*
 	if (gc->values.function != GXcopy) {
 		kpanic("XPixmap::putImage function not supported %d", gc->values.function);
 	}
-	return copyImageData(thread, image->data, image->bytes_per_line, image->bits_per_pixel, src_x, src_y, dest_x, dest_y, width, height);
+	return copyImageData(thread, gc, image->data, image->bytes_per_line, image->bits_per_pixel, src_x, src_y, dest_x, dest_y, width, height);
 }
 
-int XDrawable::copyImageData(KThread* thread, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
+int XDrawable::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
 	if (bits_per_pixel != this->bits_per_pixel) {
 		return BadMatch;
 	}
-	U32 src = data + bytes_per_line * src_y;
-	U8* dst = this->data + this->bytes_per_line * dst_y;
+	if (gc && (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin)) {
+		klog("XDrawable::copyImageData clipping not implemented");
+	}
+	U32 src = data + bytes_per_line * src_y + (bits_per_pixel * src_x + 7) / 8;
+	U8* dst = this->data + this->bytes_per_line * dst_y + (bits_per_pixel * dst_x + 7) / 8;
 	KMemory* memory = thread->memory;
 	if (dst_x + width > w) {
 		if ((S32)w < dst_x) {
@@ -61,7 +64,7 @@ int XDrawable::copyImageData(KThread* thread, U32 data, U32 bytes_per_line, U32 
 		src += bytes_per_line;
 		dst += this->bytes_per_line;
 	}
-	isDirty = true;
+	setDirty();
 	return Success;
 }
 
@@ -104,14 +107,17 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 }
 
 int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
+	if (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin) {
+		klog("XDrawable::copyImageData clipping not implemented");
+	}
 	if (gc->values.tile) {
 		kpanic("XDrawable::fillRectangle tile not supported");
 	}
-	if (width > this->width() - x) {
-		width = this->width() - x;
+	if (width > w - x) {
+		width = w - x;
 	}
-	if (height > this->height() - y) {
-		height = this->height() - y;
+	if (height > h - y) {
+		height = h - y;
 	}
 
 	if (bits_per_pixel == 32) {
@@ -127,6 +133,6 @@ int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S3
 	} else {
 		int ii = 0;
 	}
-	isDirty = true;
+	setDirty();
 	return Success;
 }

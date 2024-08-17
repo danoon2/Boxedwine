@@ -170,7 +170,7 @@ void* MesaBoxedwineGL::internalCreateContext(void* window, const WndPtr& wnd, Pi
 void MesaBoxedwineGL::swapBuffer(void* window) {
     MesaBoxedwineGlContext* c = (MesaBoxedwineGlContext*)KThread::currentThread()->currentContext;
     pglFlush();
-    KNativeWindow::getNativeWindow()->drawWnd(KThread::currentThread(), c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
+    KNativeWindow::getNativeWindow()->drawWnd(c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
 }
 
 void MesaBoxedwineGL::setSwapInterval(U32 vsync) {
@@ -235,7 +235,7 @@ void osmesa_glFinish(CPU* cpu) {
 void osmesa_glFlush(CPU* cpu) {
     MesaBoxedwineGlContext* c = (MesaBoxedwineGlContext*)KThread::currentThread()->currentContext;
     pglFlush();
-    KNativeWindow::getNativeWindow()->drawWnd(KThread::currentThread(), c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
+    KNativeWindow::getNativeWindow()->drawWnd(c->wnd, c->buffer, c->pitch, c->bpp, c->width, c->height);
 }
 
 // GLXContext glXCreateContext(Display *dpy, XVisualInfo *vis, GLXContext share_list, Bool direct)

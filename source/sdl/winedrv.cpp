@@ -353,7 +353,7 @@ void boxeddrv_ChangeDisplaySettingsEx(CPU* cpu) {
             height = memory->readd(devmode + 176);
         }
         if (!(flags & (CDS_TEST | CDS_NORESET))) {
-            KNativeWindow::getNativeWindow()->screenChanged(cpu->thread, width, height, bpp);
+            KNativeWindow::getNativeWindow()->screenChanged(width, height, bpp);
         }
     }	    
     memory->writed(ARG6, DISP_CHANGE_SUCCESSFUL);

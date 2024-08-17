@@ -16,6 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
+#include "../x11/x11.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static KList<KTimerCallback*> timers;
@@ -166,6 +167,11 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
+    XServer* server = XServer::getServer(true);
+    if (server) {
+        server->draw();
+    }
+
     KNativeWindowPtr window = KNativeWindow::getNativeWindow();
     if (window) {
         window->flipFB();

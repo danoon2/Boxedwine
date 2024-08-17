@@ -505,7 +505,8 @@ int XWindow::mapWindow(const DisplayDataPtr& data) {
 	if (isMapped) {
 		return Success;
 	}
-	isMapped = true;	
+	isMapped = true;
+	setDirty();
 	setWmState(data, NormalState, 0);
 	if (parent) {
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
@@ -569,9 +570,10 @@ int XWindow::unmapWindow(const DisplayDataPtr& data) {
 	if (!isMapped) {
 		return Success;
 	}
-	isMapped = false;
+	isMapped = false;	
 	setWmState(data, WithdrawnState, 0);
 	if (parent) {
+		setDirty();
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.xmap.type = UnmapNotify;
@@ -587,7 +589,7 @@ int XWindow::unmapWindow(const DisplayDataPtr& data) {
 				BString log;
 				log.append(data->displayId, 16);
 				log += " Event";
-				log += " MapNotify";
+				log += " UnmapNotify";
 				log += " win=";
 				log.append(id, 16);
 				log += " event=";
@@ -610,14 +612,26 @@ int XWindow::unmapWindow(const DisplayDataPtr& data) {
 			BString log;
 			log.append(data->displayId, 16);
 			log += " Event";
-			log += " MapNotify";
+			log += " UnmapNotify";
 			log += " win=";
 			log.append(id, 16);
 			log += " event=";
 			log.append(id, 16);
 		}
 		});
+	if (c_class == InputOutput && parent) {
+		XServer::getServer()->iterateEventMask(parent->id, ExposureMask, [=](const DisplayDataPtr& data) {
+			exposeNofity(data, 0, 0, parent->width(), parent->height(), 0);
+			});
+	}
 	return Success;
+}
+
+void XWindow::setDirty() {
+	if (!isDirty) {
+		isDirty = true;
+		XServer::getServer()->isDisplayDirty = true;
+	}
 }
 
 void XWindow::draw() {
@@ -746,7 +760,7 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 		if (parent) {
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
 			int index = vectorIndexOf(parent->zchildren, shared_from_this());
-			if (index >= 0) {
+			if (index >= 0 && index < parent->zchildren.size() - 1) {
 				parent->zchildren.erase(parent->zchildren.begin() + index);
 				parent->zchildren.push_back(shared_from_this());
 			}

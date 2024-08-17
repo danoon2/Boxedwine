@@ -285,6 +285,10 @@ public:
     BOXEDWINE_MUTEX normalBlockMutex;
 #endif
     BOXEDWINE_MUTEX fdsMutex;
+
+    // x11 stuff
+    BOXEDWINE_MUTEX keySymToNameMutex;
+    BHashTable<U32, U32> keySymToName;
 private:
     BHashTable<U32, KFileDescriptor*> fds;    
 

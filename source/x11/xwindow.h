@@ -163,6 +163,7 @@ public:
 	const U32 c_class;
 
 	void draw();
+	void setDirty() override;
 	XWindowPtr getWindowFromPoint(S32 x, S32 y);
 
 	void focusOut();

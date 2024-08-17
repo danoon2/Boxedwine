@@ -14,7 +14,7 @@ public:
 	int fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height);
 	int drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2);
 
-	int copyImageData(KThread* thread, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height);
+	int copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height);
 
 	U32 width() { return w; }
 	U32 height() { return h; }
@@ -24,6 +24,7 @@ public:
 
 	void setSize(U32 width, U32 height);
 
+	virtual void setDirty() {};
 	bool isDirty = false;
 protected:		
 	U32 depth;

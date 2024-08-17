@@ -196,21 +196,31 @@ const XWindowPtr& XServer::getRoot() {
 	return root;
 }
 
-void XServer::draw(KThread* thread) {
+void XServer::draw(bool drawNow) {
 	static U32 lastDraw;
+
+	if (!isDisplayDirty) {
+		return;
+	}
+	BOXEDWINE_CRITICAL_SECTION;
+	if (!isDisplayDirty) {
+		return;
+	}
 	U32 now = KSystem::getMilliesSinceStart();
-	if (now - lastDraw < 16) {
+	if (!drawNow && (now - lastDraw < 16)) {
 		return;
 	}
 	lastDraw = now;
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+	isDisplayDirty = false;
+	
+	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();	
 	nativeWindow->runOnUiThread([=]() {
 		nativeWindow->clear();
 		root->iterateChildren(false, true, [](XWindowPtr child) {
 			child->draw();
 			return true;
 			});
-		nativeWindow->present(thread);
+		nativeWindow->present();
 		});
 }
 

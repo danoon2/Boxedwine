@@ -198,7 +198,7 @@ static void BOXED_vkCreateWin32SurfaceKHR(CPU* cpu) {
 
     if (!wnd->isVulkan) {
         wnd->needsVulkan = true;
-        wnd->updateDisplay(cpu->thread);
+        wnd->updateDisplay();
     }
     void* instance = getVulkanPtr(cpu->memory, cpu->peek32(1));
 

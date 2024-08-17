@@ -6,6 +6,7 @@
 #include "knativesystem.h"
 #include "knativewindow.h"
 #include "devfb.h"
+#include "../../x11/x11.h"
 
 U32 getNextTimer();
 void runTimers();
@@ -49,6 +50,11 @@ bool doMainLoop() {
                 timeout = t - KSystem::killTime;
             }
         }
+        XServer* server = XServer::getServer(true);
+        if (server) {
+            server->draw();
+            timeout = 17;
+        } 
         if (flipFB()) {
             timeout = 17;
         }

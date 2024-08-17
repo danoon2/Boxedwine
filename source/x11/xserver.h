@@ -43,7 +43,7 @@ public:
 
 	Screen* getScreen(KThread* thread, S32 screen);	
 
-	void draw(KThread* thread);
+	void draw(bool drawNow = false);
 	const XWindowPtr& getRoot();
 	U32 getEventTime();
 	U32 getInputModifiers();
@@ -64,6 +64,8 @@ public:
 	
 	bool trace = true;
 	bool traceGC = false;
+	bool isDisplayDirty = false;
+
 private:
 	static std::atomic_int nextId;
 	static XServer* server;

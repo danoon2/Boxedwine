@@ -220,7 +220,7 @@ static void x11_ConfigureWindow(CPU* cpu) {
         log.append(data->displayId, 16);
         log += " ConfigureWindow";
         log += " window=";
-        log += w->id;
+        log.append(w->id, 16);
         log += " values={";
         if (mask & CWX) {
             log += "x=";
@@ -332,8 +332,13 @@ static void x11_DeleteContext(CPU* cpu) {
     EAX = data->deleteContextData(ARG2, ARG3);
 }
 
+// int XGetInputFocus(Display* display, Window* focus_return, int* revert_to_return)
 static void x11_GetInputFocus(CPU* cpu) {
-    kpanic("x11_GetInputFocus");
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    memory->writed(ARG2, server->inputFocus->id);
+    memory->writed(ARG3, server->inputFocusRevertTo);
+    EAX = Success;
 }
 
 static void x11_FreeFont(CPU* cpu) {
@@ -643,8 +648,28 @@ static void x11_MbLookupString(CPU* cpu) {
     kpanic("x11_MbLookupString");
 }
 
+// char* XKeysymToString(KeySym keysym)
 static void x11_KeysymToString(CPU* cpu) {
-    kpanic("x11_KeysymToString");
+    char buffer[16];
+    U32 keysym = ARG1;
+    KProcessPtr process = cpu->thread->process;
+    U32 result = 0;
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->keySymToNameMutex);
+    if (process->keySymToName.get(keysym, result)) {
+        EAX = result;
+        return;
+    }
+    U32 len = XKeyboard::translate(keysym, 0, buffer, 16);
+    if (!len || !buffer[0]) {
+        EAX = 0;
+        return;
+    }
+    result = process->alloc(cpu->thread, len + 1);
+    cpu->memory->memcpy(result, buffer, len);
+    cpu->memory->writeb(result + len, 0);
+    process->keySymToName.set(keysym, result);
+    EAX = result;
 }
 
 // int XkbTranslateKeySym(Display* dpy, KeySym* sym_return, unsigned int modifiers, char* buffer, int nbytes, int* extra_rtrn)
@@ -1171,14 +1196,12 @@ static void x11_PutImage(CPU* cpu) {
     U32 width = ARG9;
     U32 height = ARG10;
     EAX = d->putImage(thread, gc, &image, src_x, src_y, dest_x, dest_y, width, height);    
-    server->draw(thread);
 }
 
 // int XFlush(Display* display)
 static void x11_Flush(CPU* cpu) {
-    KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
-    server->draw(thread);
+    server->draw(true);
     EAX = Success;
 }
 
@@ -1229,7 +1252,7 @@ static void x11_CreateBitmapFromData(CPU* cpu) {
     U32 height = ARG5;
 
     std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(width, height, window->getDepth());
-    pixmap->copyImageData(thread, data, pixmap->getBytesPerLine(), pixmap->getBitsPerPixel() , 0, 0, 0, 0, width, height);
+    pixmap->copyImageData(thread, nullptr, data, pixmap->getBytesPerLine(), pixmap->getBitsPerPixel() , 0, 0, 0, 0, width, height);
     EAX = pixmap->id;
 }
 
