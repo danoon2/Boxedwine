@@ -132,10 +132,12 @@ struct XSetWindowAttributes {
 class XWindow : public XDrawable, public std::enable_shared_from_this<XWindow> {
 public:
 	XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
-	void onCreate(const XWindowPtr& self);
+	void onCreate();
+	void onDestroy();
 
 	void setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
-	void iterateChildren(bool frontToBack, bool mapped, std::function<bool(const XWindowPtr& child)> callback);
+	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback);
+	void iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback);
 
 	void setTextProperty(const DisplayDataPtr& data, KThread* thread, XTextProperty* name, Atom property, bool trace = false);
 	int configure(U32 mask, XWindowChanges* changes);

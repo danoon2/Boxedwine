@@ -183,6 +183,7 @@ public:
     U32 screenRate() override;
     bool getMousePos(int* x, int* y, bool allowWarp = true) override;
     void setMousePos(int x, int y) override;
+    U32 getInputModifiers() override;
 
     bool setCursor(const char* moduleName, const char* resourceName, int resource) override;
     void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) override;
@@ -1695,6 +1696,13 @@ int KNativeWindowSdl::mouseWheel(int amount, int x, int y) {
 
     checkMousePos(x, y, true);
 
+    XServer* server = XServer::getServer(true);
+    if (server) {
+        U32 btn = amount > 0 ? 4 : 5;
+        server->mouseButton(btn, x, y, true);
+        server->mouseButton(btn, x, y, false);
+        return 1;
+    }
     std::shared_ptr<WndSdl> wnd = getWndFromPoint(x, y);
     if (!wnd)
         wnd = getFirstVisibleWnd();
@@ -1737,7 +1745,17 @@ int KNativeWindowSdl::mouseButton(U32 down, U32 button, int x, int y) {
     if (wnd) {
         XServer* server = XServer::getServer(true);
         if (server) {
-            server->mouseButton(button + 1, x, y, down?true:false);
+            U32 btn = button + 1;
+            if (btn == 2) {
+                btn = 3;
+            } else if (btn == 3) {
+                btn = 2;
+            } else if (btn == 4) {
+                btn = 8;
+            } else if (btn == 5) {
+                btn = 9;
+            }
+            server->mouseButton(btn, x, y, down?true:false);
             return 1;
         }
         std::shared_ptr<KProcess> process = KSystem::getProcess(wnd->processId);
@@ -2334,6 +2352,28 @@ U32 KNativeWindowSdl::screenRate() {
     return DM.refresh_rate;
 }
 
+U32 KNativeWindowSdl::getInputModifiers() {
+    int x, y;
+    unsigned int result = SDL_GetMouseState(&x, &y);
+    U32 modifiers = 0;
+    if (result & SDL_BUTTON_LMASK) {
+        modifiers |= NATIVE_LEFT_BUTTON_MASK;
+    }
+    if (result & SDL_BUTTON_RMASK) {
+        modifiers |= NATIVE_RIGHT_BUTTON_MASK;
+    }
+    if (result & SDL_BUTTON_MMASK) {
+        modifiers |= NATIVE_MIDDLE_BUTTON_MASK;
+    }
+    if (result & SDL_BUTTON_X1MASK) {
+        modifiers |= Button8Mask;
+    }
+    if (result & SDL_BUTTON_X2MASK) {
+        modifiers |= Button9Mask;
+    }
+    return modifiers;
+}
+
 bool KNativeWindowSdl::getMousePos(int* x, int* y, bool allowWarp) {
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
@@ -2859,6 +2899,14 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(1, e->motion.x, e->motion.y);
             if (!mouseButton(1, 1, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
                 onMouseButtonDown(1);
+        } else if (e->button.button == SDL_BUTTON_X1) {
+            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(1, e->motion.x, e->motion.y);
+            if (!mouseButton(1, 3, (relativeMouse ? 0 : e->motion.x), (relativeMouse ? 0 : e->motion.y)))
+                onMouseButtonDown(1);
+        } else if (e->button.button == SDL_BUTTON_X2) {
+            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(1, e->motion.x, e->motion.y);
+            if (!mouseButton(1, 4, (relativeMouse ? 0 : e->motion.x), (relativeMouse ? 0 : e->motion.y)))
+                onMouseButtonDown(1);
         }
     } else if (e->type == SDL_MOUSEBUTTONUP) {
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -2880,6 +2928,14 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
         } else if (e->button.button == SDL_BUTTON_RIGHT) {
             BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(1, e->motion.x, e->motion.y);
             if (!mouseButton(0, 1, (relativeMouse?0:e->motion.x), (relativeMouse?0:e->motion.y)))
+                onMouseButtonUp(1);
+        } else if (e->button.button == SDL_BUTTON_X1) {
+            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(2, e->motion.x, e->motion.y);
+            if (!mouseButton(0, 3, (relativeMouse ? 0 : e->motion.x), (relativeMouse ? 0 : e->motion.y)))
+                onMouseButtonUp(2);
+        } else if (e->button.button == SDL_BUTTON_X2) {
+            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(1, e->motion.x, e->motion.y);
+            if (!mouseButton(0, 4, (relativeMouse ? 0 : e->motion.x), (relativeMouse ? 0 : e->motion.y)))
                 onMouseButtonUp(1);
         }
     } else if (e->type == SDL_MOUSEWHEEL) {

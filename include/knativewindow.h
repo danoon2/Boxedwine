@@ -38,6 +38,12 @@ public:
 
 #define KNativeWindowPtr std::shared_ptr<KNativeWindow>
 
+#define NATIVE_LEFT_BUTTON_MASK 0x01
+#define NATIVE_MIDDLE_BUTTON_MASK 0x02
+#define NATIVE_RIGHT_BUTTON_MASK 0x04
+#define NATIVE_BUTTON_4_MASK 0x08
+#define NATIVE_BUTTON_5_MASK 0x10
+
 class KNativeWindow {
 public:
 	static KNativeWindowPtr getNativeWindow();
@@ -62,7 +68,8 @@ public:
     virtual U32 screenRate() = 0;
 	virtual bool getMousePos(int* x, int* y, bool allowWarp = true) = 0;
 	virtual void setMousePos(int x, int y) = 0;
-	
+    virtual U32 getInputModifiers() = 0;
+
 	virtual bool setCursor(const char* moduleName, const char* resourceName, int resource) = 0;
 	virtual void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) = 0;
 

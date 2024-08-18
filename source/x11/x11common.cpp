@@ -84,6 +84,7 @@ static void x11_CreateWindow(CPU* cpu) {
     U32 border_width = ARG7;
     U32 depth = ARG8;
     U32 c_class = ARG9;
+
     // Visual visual;
     // visual.read(memory, ARG10);
     U32 valuemask = ARG11;
@@ -113,6 +114,8 @@ static void x11_CreateWindow(CPU* cpu) {
         log.append(width);
         log += " width=";
         log.append(height);
+        log += " c_class=";
+        log.append(c_class);
         klog(log.c_str());
     }
 
@@ -793,8 +796,9 @@ static void x11_RefreshKeyboardMapping(CPU* cpu) {
     kpanic("x11_RefreshKeyboardMapping");
 }
 
+// int XBell(Display* display, int percent)
 static void x11_Bell(CPU* cpu) {
-    kpanic("x11_Bell");
+    EAX = Success;
 }
 
 // int XGetWindowProperty(Display* display, Window w, Atom property, long long_offset, long long_length, Bool delete, Atom req_type, Atom* actual_type_return, int* actual_format_return, unsigned long* nitems_return, unsigned long* bytes_after_return, unsigned char** prop_return)
@@ -1233,7 +1237,7 @@ static void x11_CreatePixmap(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
     // Display* display = X11::getDisplay(thread, ARG1);
-    XWindowPtr window = server->getWindow(ARG2); // even though it's a Drawable passed in, spec says it must be an InputOnly window
+    XWindowPtr window = server->getWindow(ARG2); // even though it's a Drawable passed in, spec says it may be an InputOnly window
     U32 width = ARG3;
     U32 height = ARG4;
     U32 depth = ARG5;
@@ -1246,7 +1250,7 @@ static void x11_CreatePixmap(CPU* cpu) {
 static void x11_CreateBitmapFromData(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
-    XWindowPtr window = server->getWindow(ARG2); // even though it's a Drawable passed in, spec says it must be an InputOnly window
+    XWindowPtr window = server->getWindow(ARG2); // even though it's a Drawable passed in, spec says it may be an InputOnly window
     U32 data = ARG3;
     U32 width = ARG4;
     U32 height = ARG5;

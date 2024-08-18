@@ -153,7 +153,7 @@ XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
 	XWindowPtr result = std::make_shared<XWindow>(displayId, parent, width, height, depth, x, y, c_class, border_width);
 	windows.set(result->id, result);
-	result->onCreate(result);
+	result->onCreate();
 	return result;
 }
 
@@ -216,8 +216,10 @@ void XServer::draw(bool drawNow) {
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();	
 	nativeWindow->runOnUiThread([=]() {
 		nativeWindow->clear();
-		root->iterateChildren(false, true, [](XWindowPtr child) {
-			child->draw();
+		root->iterateMappedChildrenBackToFront([](XWindowPtr child) {
+			if (child->c_class == InputOutput) {
+				child->draw();
+			}
 			return true;
 			});
 		nativeWindow->present();
@@ -235,6 +237,7 @@ int XServer::destroyWindow(U32 window) {
 	if (!w) {
 		return BadWindow;
 	}
+	w->onDestroy();
 	windows.remove(window);
 	return Success;
 }
@@ -411,7 +414,25 @@ U32 XServer::getEventTime() {
 }
 
 U32 XServer::getInputModifiers() {
-	return 0; // :TODO:
+	U32 modifiers = KNativeWindow::getNativeWindow()->getInputModifiers();
+	U32 result = 0;
+
+	if (modifiers & NATIVE_LEFT_BUTTON_MASK) {
+		result |= Button1Mask;
+	}	
+	if (modifiers & NATIVE_MIDDLE_BUTTON_MASK) {
+		result |= Button2Mask;
+	}
+	if (modifiers & NATIVE_RIGHT_BUTTON_MASK) {
+		result |= Button3Mask;
+	}
+	if (modifiers & NATIVE_BUTTON_4_MASK) {
+		result |= Button4Mask;
+	}
+	if (modifiers & NATIVE_BUTTON_5_MASK) {
+		result |= Button5Mask;
+	}
+	return result;
 }
 
 // https://tronche.com/gui/x/xlib/events/window-entry-exit/normal.html

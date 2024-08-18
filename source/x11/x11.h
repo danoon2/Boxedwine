@@ -273,6 +273,48 @@ typedef XID KeySym;
 #define GrabNotViewable		3
 #define GrabFrozen		4
 
+#define ShiftMask		(1<<0)
+#define LockMask		(1<<1)
+#define ControlMask		(1<<2)
+#define Mod1Mask		(1<<3)
+#define Mod2Mask		(1<<4)
+#define Mod3Mask		(1<<5)
+#define Mod4Mask		(1<<6)
+#define Mod5Mask		(1<<7)
+
+/* modifier names.  Used to build a SetModifierMapping request or
+   to read a GetModifierMapping request.  These correspond to the
+   masks defined above. */
+#define ShiftMapIndex		0
+#define LockMapIndex		1
+#define ControlMapIndex		2
+#define Mod1MapIndex		3
+#define Mod2MapIndex		4
+#define Mod3MapIndex		5
+#define Mod4MapIndex		6
+#define Mod5MapIndex		7
+
+
+   /* button masks.  Used in same manner as Key masks above. Not to be confused
+	  with button names below. */
+
+#define Button1Mask		(1<<8)
+#define Button2Mask		(1<<9)
+#define Button3Mask		(1<<10)
+
+// v scroll up/down
+#define Button4Mask		(1<<11)
+#define Button5Mask		(1<<12)
+
+// h scroll up/down
+#define Button6Mask		(1<<13)
+#define Button7Mask		(1<<14)
+
+// x1
+#define Button8Mask		(1<<15)
+// x2
+#define Button9Mask		(1<<16)
+
 typedef unsigned char KeyCode;
 
 typedef U32 GC; // actually a pointer in X11

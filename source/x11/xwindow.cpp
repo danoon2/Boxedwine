@@ -132,12 +132,68 @@ XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height,
 	}
 }
 
-void XWindow::onCreate(const XWindowPtr& self) {	
+void XWindow::onDestroy() {
 	if (parent) {
 		{
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
-			parent->children.set(id, self);
-			parent->zchildren.push_back(self);
+			parent->children.remove(id);
+			int index = vectorIndexOf(parent->zchildren, shared_from_this());
+			if (index >= 0 && index < parent->zchildren.size()) {
+				parent->zchildren.erase(parent->zchildren.begin() + index);
+			}
+		}
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
+			XEvent event = {};
+			event.type = DestroyNotify;
+			event.xdestroywindow.event = parent->id;
+			event.xdestroywindow.window = id;
+			event.xcreatewindow.serial = data->getNextEventSerial();
+			event.xcreatewindow.display = data->displayAddress;
+			data->putEvent(event);
+
+			if (XServer::getServer()->trace) {
+				BString log;
+				log.append(data->displayId, 16);
+				log += " Event";
+				log += " DestroyNotify";
+				log += " event=";
+				log.append(parent->id, 16);
+				log += " window=";
+				log.append(id, 16);				
+				klog(log.c_str());
+			}
+			});
+		// unlike CreateNotify, this can generate StructureNotify
+		XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+			XEvent event = {};
+			event.type = DestroyNotify;
+			event.xdestroywindow.event = id;
+			event.xdestroywindow.window = id;
+			event.xcreatewindow.serial = data->getNextEventSerial();
+			event.xcreatewindow.display = data->displayAddress;
+			data->putEvent(event);
+
+			if (XServer::getServer()->trace) {
+				BString log;
+				log.append(data->displayId, 16);
+				log += " Event";
+				log += " DestroyNotify";
+				log += " event=";
+				log.append(id, 16);
+				log += " window=";
+				log.append(id, 16);				
+				klog(log.c_str());
+			}
+			});
+	}
+}
+
+void XWindow::onCreate() {	
+	if (parent) {
+		{
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
+			parent->children.set(id, shared_from_this());
+			parent->zchildren.push_back(shared_from_this());
 		}
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
@@ -165,6 +221,7 @@ void XWindow::onCreate(const XWindowPtr& self) {
 				klog(log.c_str());
 			}
 			});
+		// doesn't generate StructureNotifyMask
 	}
 }
 
@@ -175,23 +232,23 @@ void XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* at
 	}
 }
 
-void XWindow::iterateChildren(bool frontToBack, bool mapped, std::function<bool(const XWindowPtr& child)> callback) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
-	if (frontToBack) {
-		for (int i = (int)zchildren.size() - 1; i >= 0; i--) {
-			const XWindowPtr& child = zchildren.at(i);
-			if (!mapped || child->mapped()) {
-				if (!callback(child)) {
-					break;
-				}
+void XWindow::iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback) {
+	for (int i = (int)zchildren.size() - 1; i >= 0; i--) {
+		const XWindowPtr& child = zchildren.at(i);
+		if (child->mapped()) {
+			if (!callback(child)) {
+				break;
 			}
 		}
-	} else {
-		for (auto& child : zchildren) {
-			if (!mapped || child->mapped()) {
-				if (!callback(child)) {
-					break;
-				}
+	}
+}
+
+void XWindow::iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
+	for (auto& child : zchildren) {
+		if (child->mapped()) {
+			if (!callback(child)) {
+				break;
 			}
 		}
 	}
@@ -482,7 +539,7 @@ void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, 
 		log += " height=";
 		log += height;
 	}
-	iterateChildren(false, true, [](const XWindowPtr& child) {
+	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {
 		if (child->c_class == InputOutput) {
 			XServer::getServer()->iterateEventMask(child->id, ExposureMask, [=](const DisplayDataPtr& data) {
 				child->exposeNofity(data, 0, 0, child->width(), child->height(), 0);
@@ -645,20 +702,24 @@ void XWindow::draw() {
 		nativeWindow->putBitsOnWnd(wnd, data, bytes_per_line, x, y, width(), height(), isDirty);
 		isDirty = false;
 	}
-	iterateChildren(false, true, [](const XWindowPtr& child) {
-		child->draw();
+	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {
+		if (child->c_class == InputOutput) {
+			child->draw();
+		}
 		return true;
 		});
 }
 
 XWindowPtr XWindow::previousSibling() {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
-	for (U32 i = 0; i < (U32)zchildren.size(); i++) {
-		if (zchildren[i]->id == id) {
-			if (i > 0) {
-				return zchildren[i - 1];
+	if (parent) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
+		for (U32 i = 0; i < (U32)parent->zchildren.size(); i++) {
+			if (parent->zchildren[i]->id == id) {
+				if (i > 0) {
+					return parent->zchildren[i - 1];
+				}
+				return nullptr;
 			}
-			return nullptr;
 		}
 	}
 	return nullptr;
@@ -810,6 +871,9 @@ U32 XWindow::WM_TRANSIENT_FOR() {
 XWindowPtr XWindow::getWindowFromPoint(S32 x, S32 y) {
 	for (int i = (int)zchildren.size() - 1; i>=0; i--) {
 		const XWindowPtr& child = zchildren.at(i);
+		if (!child->isMapped) {
+			continue;
+		}
 		if (x >= child->x && x < child->x + (S32)child->width() && y >= child->y && y < child->y + (S32)child->height()) {
 			x -= child->x;
 			y -= child->y;
@@ -994,6 +1058,12 @@ void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y,
 	event.xbutton.same_screen = True;
 	data->putEvent(event);
 
+	// The state member is set to indicate the logical state of the pointer buttons and modifier keys just prior to the event
+	if (pressed) {
+		event.xbutton.state &= ~((Button1Mask) << (button - 1));
+	} else {
+		event.xbutton.state |= ((Button1Mask) << (button - 1));
+	}
 	if (XServer::getServer()->trace) {
 		BString log;
 		log.append(data->displayId, 16);
