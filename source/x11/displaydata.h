@@ -37,6 +37,7 @@ public:
 		
 	U32 getEventMask(U32 window);
 	void setEventMask(U32 window, U32 mask);
+	int setInput2Mask(U32 window, U32 mask);
 
 	U32 getNextEventSerial();	
 	
@@ -60,6 +61,7 @@ private:
 
 	BOXEDWINE_MUTEX eventMaskMutex;
 	BHashTable<U32, U32> perWindowEventMask;
+	BHashTable<U32, U32> perWindowEventMask2;
 
 	BOXEDWINE_MUTEX contextMutex;
 	BHashTable<U32, ContextDataPtr> contextData;

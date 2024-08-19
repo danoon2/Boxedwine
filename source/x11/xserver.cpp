@@ -26,6 +26,7 @@ U32 XServer::getNextId() {
 
 XServer::XServer() {
 	initAtoms();
+	extensionXinput2 = internAtom(B("XInputExtension"), false);
 }
 
 void XServer::initAtoms() {

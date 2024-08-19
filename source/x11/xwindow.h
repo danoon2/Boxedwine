@@ -135,7 +135,7 @@ public:
 	void onCreate();
 	void onDestroy();
 
-	void setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
+	int setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
 	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback);
 	void iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback);
 

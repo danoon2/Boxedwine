@@ -693,6 +693,7 @@
     <ClInclude Include="..\..\..\..\source\x11\xdrawable.h" />
     <ClInclude Include="..\..\..\..\source\x11\xgc.h" />
     <ClInclude Include="..\..\..\..\source\x11\ximage.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xinput2.h" />
     <ClInclude Include="..\..\..\..\source\x11\xkeyboard.h" />
     <ClInclude Include="..\..\..\..\source\x11\xpixmap.h" />
     <ClInclude Include="..\..\..\..\source\x11\xproperties.h" />
@@ -1153,6 +1154,7 @@
     <ClCompile Include="..\..\..\..\source\x11\xdrawable.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xgc.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\ximage.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xinput2.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xkeyboard.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xpixmap.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xproperties.cpp" />

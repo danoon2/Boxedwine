@@ -198,8 +198,7 @@ static void x11_ChangeWindowAttributes(CPU* cpu) {
     }
     XSetWindowAttributes tmpAttributes;
     XSetWindowAttributes* attributes = XSetWindowAttributes::get(memory, ARG4, &tmpAttributes);
-    w->setAttributes(data, attributes, mask);
-    EAX = Success;
+    EAX = w->setAttributes(data, attributes, mask);
 }
 
 // int XConfigureWindow(Display* display, Window w, unsigned int value_mask, XWindowChanges* values)
@@ -2021,8 +2020,17 @@ static void x11_QueryColor(CPU* cpu) {
     kpanic("x11_QueryColor");
 }
 
+// Bool XQueryExtension(Display* display, _Xconst char* name, int* major_opcode_return, int* first_event_return, int* first_error_return) 
 static void x11_QueryExtension(CPU* cpu) {
-    kpanic("x11_QueryExtension");
+    BString name = cpu->memory->readString(ARG2);
+    if (name == "XInputExtension") {
+        cpu->memory->writed(ARG3, XServer::getServer()->getExtensionInput2());
+        cpu->memory->writed(ARG4, 0);
+        cpu->memory->writed(ARG5, 0);
+        EAX = True;
+    } else {
+        EAX = False;
+    }
 }
 
 static void x11_ShapeCombineMask(CPU* cpu) {
@@ -2250,6 +2258,50 @@ static void x11_XRRFreeProviderInfo(CPU* cpu) {
     kpanic("x11_XRRFreeProviderInfo");
 }
 
+// Bool XIGetClientPointer(Display* dpy, Window win, int* deviceid)
+static void x11_XIGetClientPointer(CPU* cpu) {
+    kpanic("x11_XIGetClientPointer");
+}
+
+// void XIFreeDeviceInfo(XIDeviceInfo* info)
+static void x11_XIFreeDeviceInfo(CPU* cpu) {
+    kpanic("x11_XIFreeDeviceInfo");
+}
+
+// XIDeviceInfo* XIQueryDevice(Display* dpy, int deviceid, int* ndevices_return)
+static void x11_XIQueryDevice(CPU* cpu) {
+    kpanic("x11_XIQueryDevice");
+}
+
+// Status XIQueryVersion(Display* dpy, int* major_version_inout, int* minor_version_inout)
+static void x11_XIQueryVersion(CPU* cpu) {
+    cpu->memory->writed(ARG3, XI_DEVICE_ID);
+    EAX = Success;
+}
+
+// int XISelectEvents(Display* dpy, Window win, XIEventMask* masks, int num_masks)
+static void x11_XISelectEvents(CPU* cpu) {
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    XWindowPtr w = server->getWindow(ARG2);
+
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    if (ARG4 != 1) {
+        // wine only passes 1
+        kpanic("x11_XISelectEvents num_masks was expected to be 1");
+    }
+    XIEventMask mask;
+    mask.read(memory, ARG3);
+    if (mask.mask_len > 4 && memory->readb(mask.maskAddress + 4)) {
+        kpanic("x11_XISelectEvents currently expecting masks in the first 32-bits");
+    }
+    EAX = data->setInput2Mask(ARG2, memory->readd(mask.maskAddress));
+}
+
 void x11_init() {
     XKeyboard::init();
 
@@ -2444,6 +2496,12 @@ void x11_init() {
     int9BCallback[X11_FLUSH] = x11_Flush;
     int9BCallback[X11_SUB_IMAGE] = x11_SubImage;
     int9BCallback[X11_ADD_PIXEL] = x11_AddPixel;
+
+    int9BCallback[X11_XI_GET_CLIENT_POINTER] = x11_XIGetClientPointer;
+    int9BCallback[X11_XI_FREE_DEVICE_INFO] = x11_XIFreeDeviceInfo;
+    int9BCallback[X11_XI_QUERY_DEVICE] = x11_XIQueryDevice;
+    int9BCallback[X11_XI_QUERY_VERSION] = x11_XIQueryVersion;
+    int9BCallback[X11_XI_SELECT_EVENTS] = x11_XISelectEvents;
 }
 
 void callX11(CPU* cpu, U32 index) {

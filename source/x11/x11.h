@@ -868,6 +868,7 @@ class XDrawable;
 #include "xcursor.h"
 #include "xwindow.h"
 #include "xserver.h"
+#include "xinput2.h"
 
 #define X11_WRITED(c, a, f, v) memory->writed(a + offsetof(c, f), v)
 #define X11_READD(c, a, f) memory->readd(a + offsetof(c, f))

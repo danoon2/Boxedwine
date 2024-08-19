@@ -225,11 +225,28 @@ void XWindow::onCreate() {
 	}
 }
 
-void XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {
-	this->attributes.copyWithMask(attributes, valueMask);
+int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {	
 	if (valueMask & CWEventMask) {
+		// per spec
+		// https://tronche.com/gui/x/xlib/window/XChangeWindowAttributes.html
+		// Multiple clients can select input on the same window.Their event masks are maintained separately.When an event is generated, it is reported to all interested clients.However, only one client at a time can select for SubstructureRedirectMask ResizeRedirectMask and ButtonPressMask If a client attempts to select any of these event masks and some other client has already selected one, a BadAccess error results.There is only one do - not- propagate - mask for a window, not one per client.
+		const U32 mask = ButtonPressMask | SubstructureRedirectMask | ResizeRedirectMask;
+		if (attributes->event_mask & mask) {
+			bool existing = false;
+
+			XServer::getServer()->iterateEventMask(id, mask, [&existing, data](const DisplayDataPtr& foundData) {
+				if (foundData->displayId != data->displayId) {
+					existing = true;
+				}
+				});
+			if (existing) {
+				return BadAccess;
+			}
+		}
 		data->setEventMask(id, attributes->event_mask);
 	}
+	this->attributes.copyWithMask(attributes, valueMask);
+	return Success;
 }
 
 void XWindow::iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback) {

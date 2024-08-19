@@ -1,6 +1,8 @@
 #ifndef __X_SERVER_H__
 #define __X_SERVER_H__
 
+#define XI_DEVICE_ID 1
+
 #define XServerPtr std::shared_ptr<XServer>
 
 #define XServerDisplayDataPtr std::shared_ptr<XServerDisplayData>
@@ -17,6 +19,7 @@ public:
 	U32 internAtom(const BString& name, bool onlyIfExists);
 	bool getAtom(U32 atom, BString& name);
 	U32 getNextQuark();
+	U32 getExtensionInput2() {return this->extensionXinput2;}
 
 	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
 	XWindowPtr getWindow(U32 window);
@@ -79,6 +82,8 @@ private:
 
 	U32 grabbedMask;
 	U32 grabbedTime;
+
+	U32 extensionXinput2;
 
 	BOXEDWINE_MUTEX atomMutex;
 	BHashTable<U32, BString> atoms;
