@@ -1,6 +1,8 @@
 #ifndef __XINPUT2_H__
 #define __XINPUT2_H__
 
+//https://www.x.org/releases/X11R7.7/doc/inputproto/XI2proto.txt
+
 #define XI_2_Major                              2
 #define XI_2_Minor                              4
 
@@ -228,12 +230,103 @@
 #define XI_BarrierHitMask                (1 << XI_BarrierHit)
 #define XI_BarrierLeaveMask              (1 << XI_BarrierLeave)
 
+struct XIModifierState {
+    S32    base;
+    S32    latched;
+    S32    locked;
+    S32    effective;
+};
+
+typedef XIModifierState XIGroupState;
+
+struct XIButtonState {
+    S32 mask_len;
+    U32 maskAddress;
+};
+
+struct XIValuatorState {
+    S32 mask_len;
+    U32 maskAddress; // char*
+    U32 valuesAddress; // double*
+};
+
 struct XIEventMask {
     S32 deviceid;
     S32 mask_len;
     U32 maskAddress;
 
     void read(KMemory* memory, U32 address);
+};
+
+struct XIAnyClassInfo {
+    S32         type;
+    S32         sourceid;
+};
+
+struct XIButtonClassInfo {
+    S32 type;
+    S32 sourceid;
+    S32 num_buttons;
+    U32 labelsAddress; // Atom*
+    XIButtonState state;
+};
+
+struct XIKeyClassInfo {
+    S32 type;
+    S32 sourceid;
+    S32 num_keycodes;
+    U32 keycodesAddress; // int*
+};
+
+struct XIValuatorClassInfo {
+    S32         type;
+    S32         sourceid;
+    S32         number;
+    Atom        label;
+    double      min;
+    double      max;
+    double      value;
+    S32         resolution;
+    S32         mode;
+
+    static void write(KMemory* memory, U32 address, S32 type, S32 sourceid, S32 number, Atom label, double min, double max, double value, S32 resolution, S32 mode);
+};
+
+/* new in XI 2.1 */
+struct XIScrollClassInfo
+{
+    S32         type;
+    S32         sourceid;
+    S32         number;
+    S32         scroll_type;
+    double      increment;
+    S32         flags;
+};
+
+struct XITouchClassInfo {
+    S32         type;
+    S32         sourceid;
+    S32         mode;
+    S32         num_touches;
+};
+
+/* new in XI 2.4 */
+struct XIGestureClassInfo {
+    S32         type;
+    S32         sourceid;
+    S32         num_touches;
+};
+
+struct XIDeviceInfo {
+    S32                 deviceid;
+    U32 nameAddress; // char*
+    S32                 use;
+    S32                 attachment;
+    Bool                enabled;
+    S32                 num_classes;
+    U32 classesAddress; // XIAnyClassInfo**
+
+    static void write(KMemory* memory, U32 address, S32 deviceid, U32 name, S32 use, S32 attachment, Bool enabled, S32 num_classes, U32 classes);
 };
 
 #endif

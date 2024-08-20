@@ -32,13 +32,6 @@
 #define ARG8 cpu->peek32(8)
 #define ARG9 cpu->peek32(9)
 
-struct int2Float {
-	union {
-		U32 i;
-		float f;
-	};
-};
-
 float fARG(U32 arg) {
 	struct int2Float i;
 	i.i = arg;

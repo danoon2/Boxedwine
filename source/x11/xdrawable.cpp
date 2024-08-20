@@ -108,7 +108,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 
 int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
 	if (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin) {
-		klog("XDrawable::copyImageData clipping not implemented");
+		klog("XDrawable::fillRectangle clipping not implemented");
 	}
 	if (gc->values.tile) {
 		kpanic("XDrawable::fillRectangle tile not supported");
@@ -134,5 +134,17 @@ int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S3
 		int ii = 0;
 	}
 	setDirty();
+	return Success;
+}
+
+int XDrawable::drawRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
+	if (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin) {
+		klog("XDrawable::drawRectangle clipping not implemented");
+	}
+	// draw rectangle with no overlapping pixels
+	drawLine(thread, gc, x, y, x + width, y); // top (includes left and right)
+	drawLine(thread, gc, x + width, y + 1, x + width, y + height); // right	( includes bottom but not top)
+	drawLine(thread, gc, x, y + 1, x, y + height); // left (includes bottom but not top)
+	drawLine(thread, gc, x + 1, y + height, x + width - 1, y + height); // bottom (does not include left and right)
 	return Success;
 }

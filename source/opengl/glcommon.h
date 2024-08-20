@@ -33,20 +33,6 @@
 #define GL_FUNC(name) name
 #endif
 
-struct int2Float {
-    union {
-        U32 i;
-        float f;
-    };
-};
-
-struct long2Double {
-    union {
-        U64 l;
-        double d;
-    };
-};
-
 // index 0 is the gl call number
 #define ARG1 cpu->peek32(1)
 #define ARG2 cpu->peek32(2)

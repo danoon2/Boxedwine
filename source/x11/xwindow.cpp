@@ -807,6 +807,28 @@ void XWindow::configureNotify() {
 		});	
 }
 
+int XWindow::moveResize(S32 x, S32 y, U32 width, U32 height) {
+	if (this->x == x && this->y == y && this->width() == width && this->height() == height) {
+		return Success;
+	}
+	if (width != this->width() || height != this->height()) {
+		setSize(width, height);
+	}
+
+	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+	WndPtr win = nativeWindow->getWnd(id);
+	if (win) {
+		win->windowRect.left = x;
+		win->windowRect.top = y;
+		win->windowRect.right = x + width;
+		win->windowRect.bottom = y + height;
+	}
+	configureNotify();
+	// :TODO:
+	// exposeNofity
+	return Success;
+}
+
 int XWindow::configure(U32 mask, XWindowChanges* changes) {
 	bool sizeChanged = false;
 	U32 width = this->width();
@@ -858,6 +880,8 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 		}
 	}
 	configureNotify();
+	// :TODO:
+	// exposeNofity
 	return Success;
 }
 

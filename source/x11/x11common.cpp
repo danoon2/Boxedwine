@@ -42,8 +42,17 @@ static void x11_OpenDisplay(CPU* cpu) {
     EAX = XServer::getServer()->openDisplay(cpu->thread);
 }
 
+// int XCloseDisplay(Display* display)
 static void x11_CloseDisplay(CPU* cpu) {
-    kpanic("x11_CloseDisplay");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    if (!data) {
+        EAX = BadGC;
+        return;
+    }
+    EAX = server->closeDisplay(thread, data);
 }
 
 static void x11_GrabServer(CPU* cpu) {
@@ -74,7 +83,6 @@ static void x11_CreateWindow(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
-    // Display* display = X11::getDisplay(thread, ARG1);
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
     XWindowPtr parent = server->getWindow(ARG2);
     U32 x = ARG3;
@@ -347,8 +355,18 @@ static void x11_FreeFont(CPU* cpu) {
     kpanic("x11_FreeFont");
 }
 
+// int XMoveResizeWindow(Display* display, Window w, int x, int y, unsigned int width, unsigned int height)
 static void x11_MoveResizeWindow(CPU* cpu) {
-    kpanic("x11_MoveResizeWindow");
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    XWindowPtr window = server->getWindow(ARG2);
+
+    if (!window) {
+        EAX = BadWindow;
+        return;
+    }
+    EAX = window->moveResize(ARG2, ARG3, ARG4, ARG5);
 }
 
 // int XMapWindow(Display* display, Window w) {
@@ -1429,8 +1447,40 @@ static void x11_DrawArc(CPU* cpu) {
     kpanic("x11_DrawArc");
 }
 
+// int XDrawRectangle(Display* display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height)
 static void x11_DrawRectangle(CPU* cpu) {
-    kpanic("x11_DrawRectangle");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr drawable = server->getDrawable(ARG2);
+    if (!drawable) {
+        EAX = BadDrawable;
+        return;
+    }
+    XGCPtr gc = server->getGC(ARG3);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    if (server->traceGC) {
+        BString log;
+        DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(cpu->memory, ARG1);
+
+        log.append(data->displayId, 16);
+        log += " DrawRectangle drawable=";
+        log.append(ARG2, 16);
+        log += " gc=";
+        log.append(ARG3, 16);
+        log += " x=";
+        log += ARG4;
+        log += " y=";
+        log += ARG5;
+        log += " width=";
+        log += ARG6;
+        log += " height=";
+        log += ARG7;
+        klog(log.c_str());
+    }
+    EAX = drawable->drawRectangle(thread, gc, ARG4, ARG5, ARG6, ARG7);
 }
 
 // int XFillRectangle(Display* display, Drawable d, GC gc, int x, int y, unsigned int width, unsigned int height)
@@ -1936,8 +1986,9 @@ static void x11_CreateFontSet(CPU* cpu) {
     EAX = 1;
 }
 
+// void XFreeFontSet(Display* display, XFontSet font_set)
 static void x11_FreeFontSet(CPU* cpu) {
-    kpanic("x11_FreeFontSet");
+
 }
 
 static void x11_CreateIC(CPU* cpu) {
@@ -2260,22 +2311,45 @@ static void x11_XRRFreeProviderInfo(CPU* cpu) {
 
 // Bool XIGetClientPointer(Display* dpy, Window win, int* deviceid)
 static void x11_XIGetClientPointer(CPU* cpu) {
-    kpanic("x11_XIGetClientPointer");
+    KMemory* memory = cpu->memory;
+    memory->writed(ARG3, XI_DEVICE_ID);
+    EAX = True;
 }
 
 // void XIFreeDeviceInfo(XIDeviceInfo* info)
 static void x11_XIFreeDeviceInfo(CPU* cpu) {
-    kpanic("x11_XIFreeDeviceInfo");
+    cpu->thread->process->free(ARG1);
 }
 
 // XIDeviceInfo* XIQueryDevice(Display* dpy, int deviceid, int* ndevices_return)
+//
+// returns 1x XIDeviceInfo for each pointer, right now boxedwine only supports 1 pointer 
 static void x11_XIQueryDevice(CPU* cpu) {
-    kpanic("x11_XIQueryDevice");
+    KMemory* memory = cpu->memory;
+    KThread* thread = cpu->thread;
+    memory->writed(ARG3, 1);
+    const char* name = "Boxedwine Mouse";
+    U32 deviceAddress = cpu->thread->process->alloc(thread, sizeof(XIDeviceInfo) + sizeof(XIValuatorClassInfo) * 2 + strlen(name) + 1 + 8);
+    U32 listAddress = deviceAddress + sizeof(XIDeviceInfo);
+    U32 classAddress = listAddress + 8;
+    U32 classAddress2 = classAddress + sizeof(XIValuatorClassInfo);
+    U32 nameAddress = classAddress2 + sizeof(XIValuatorClassInfo);
+
+    memory->strcpy(nameAddress, name);
+
+    // wine will interpret min/max=0 to have a scale of 1
+    XIValuatorClassInfo::write(memory, classAddress, XIValuatorClass, XI_DEVICE_ID, 0, 0, 0, 0, 0, 300, XIModeRelative);
+    XIValuatorClassInfo::write(memory, classAddress2, XIValuatorClass, XI_DEVICE_ID, 1, 0, 0, 0, 0, 300, XIModeRelative);
+    XIDeviceInfo::write(memory, deviceAddress, XI_DEVICE_ID, nameAddress, XIMasterPointer, 0, True, 2, listAddress);
+    memory->writed(listAddress, classAddress);
+    memory->writed(listAddress + 4, classAddress2);
+    EAX = deviceAddress;
 }
 
 // Status XIQueryVersion(Display* dpy, int* major_version_inout, int* minor_version_inout)
 static void x11_XIQueryVersion(CPU* cpu) {
-    cpu->memory->writed(ARG3, XI_DEVICE_ID);
+    cpu->memory->writed(ARG2, 2);
+    cpu->memory->writed(ARG3, 2);
     EAX = Success;
 }
 

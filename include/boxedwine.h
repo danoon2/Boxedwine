@@ -48,6 +48,20 @@
 
 #include "platform.h"
 
+struct int2Float {
+    union {
+        U32 i;
+        float f;
+    };
+};
+
+struct long2Double {
+    union {
+        U64 l;
+        double d;
+    };
+};
+
 #include "log.h"
 
 #include "../source/emulation/softmmu/soft_ram.h"

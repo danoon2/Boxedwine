@@ -350,6 +350,24 @@ static U32 createScreen(KThread* thread, U32 displayAddress) {
 	return screenAddress;
 }
 
+int XServer::closeDisplay(KThread* thread, const DisplayDataPtr& data) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+	
+	KMemory* memory = thread->memory;
+	U32 vendor = X11_READD(Display, data->displayAddress, vendor);
+	thread->process->free(vendor);
+
+	U32 screen = X11_READD(Display, data->displayAddress, screens);
+	U32 depths = X11_READD(Screen, screen, depths);
+	thread->process->free(depths);
+	U32 visual = X11_READD(Screen, screen, root_visual);
+	thread->process->free(visual);
+	thread->process->free(screen);
+	thread->process->free(data->displayAddress);
+	displays.remove(data->displayId);
+	return Success;
+}
+
 U32 XServer::openDisplay(KThread* thread) {
 	KMemory* memory = thread->memory;
 	U32 displayAddress = thread->process->alloc(thread, sizeof(Display));

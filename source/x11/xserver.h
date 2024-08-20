@@ -41,6 +41,7 @@ public:
 	void iterateEventMask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& data)> callback);
 
 	U32 openDisplay(KThread* thread);
+	int closeDisplay(KThread* thread, const DisplayDataPtr& data);
 	DisplayDataPtr getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address);
 	DisplayDataPtr getDisplayDataById(U32 id);
 
@@ -65,7 +66,7 @@ public:
 
 	XWindowPtr pointerWindow;
 	
-	bool trace = true;
+	bool trace = false;
 	bool traceGC = false;
 	bool isDisplayDirty = false;
 
