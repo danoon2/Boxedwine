@@ -401,10 +401,6 @@ int XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, i
 	CALL_10_R(X11_COPY_AREA, display, src, dest, gc, src_x, src_y, width, height, dest_x, dest_y);
 }
 
-XImage* XGetImage(Display* display, Drawable d, int x, int y, unsigned int width, unsigned int height, unsigned long plane_mask, int format) {
-	CALL_8_R(X11_GET_IMAGE, display, d, x, y, width, height, plane_mask, format);
-}
-
 int XPutImage(Display* display, Drawable d, GC gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height) {	
 	CALL_10_R(X11_PUT_IMAGE, display, d, gc, image, src_x, src_y, dest_x, dest_y, width, height);
 }
@@ -435,6 +431,21 @@ int XAddPixel(XImage* ximage, long value) {
 
 XImage* XCreateImage(Display* display, Visual* visual, unsigned int depth, int format, int offset, char* data, unsigned int width, unsigned int height, int bitmap_pad, int bytes_per_line) {
 	XImage* image = XCreateImage1(display, visual, depth, format, offset, data, width, height, bitmap_pad, bytes_per_line);
+	image->f.destroy_image = XDestroyImage;
+	image->f.get_pixel = XGetPixel;
+	image->f.put_pixel = XPutPixel;
+	image->f.sub_image = XSubImage;
+	image->f.add_pixel = XAddPixel;
+	image->f.create_image = XCreateImage;
+	return image;
+}
+
+XImage* XGetImage1(Display* display, Drawable d, int x, int y, unsigned int width, unsigned int height, unsigned long plane_mask, int format) {
+	CALL_8_R(X11_GET_IMAGE, display, d, x, y, width, height, plane_mask, format);
+}
+
+XImage* XGetImage(Display* display, Drawable d, int x, int y, unsigned int width, unsigned int height, unsigned long plane_mask, int format) {
+	XImage* image = XGetImage1(display, d, x, y, width, height, plane_mask, format);
 	image->f.destroy_image = XDestroyImage;
 	image->f.get_pixel = XGetPixel;
 	image->f.put_pixel = XPutPixel;

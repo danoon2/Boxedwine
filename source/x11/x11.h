@@ -848,6 +848,12 @@ class XrrData;
 
 #define PointerRoot          1L	/* focus window in SetInputFocus */
 
+#define XYBitmap		0	/* depth 1, XYFormat */
+#define XYPixmap		1	/* depth == drawable depth */
+#define ZPixmap			2	/* depth == drawable depth */
+
+#define AllPlanes 		((U32)~0)
+
 class XGC;
 class XDrawable;
 

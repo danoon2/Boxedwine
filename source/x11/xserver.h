@@ -65,8 +65,9 @@ public:
 	U32 inputFocusRevertTo = 0;
 
 	XWindowPtr pointerWindow;
-	
-	bool trace = false;
+	Visual visual;
+
+	bool trace = true;
 	bool traceGC = false;
 	bool isDisplayDirty = false;
 

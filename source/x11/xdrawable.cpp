@@ -10,7 +10,40 @@ XDrawable::~XDrawable() {
 	delete[] data;
 }
 
+U32 XDrawable::getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U32 planeMask, U32 format, U32 redMask, U32 greenMask, U32 blueMask) {
+	U32 image = thread->process->alloc(thread, sizeof(XImage));
+	if (planeMask != AllPlanes) {
+		kpanic("XDrawable::createXImage wasn't expecting planeMask = %x", planeMask);
+	}
+	if (format != ZPixmap) {
+		kpanic("XDrawable::createXImage wasn't expecting format = %x", format);
+	}
+	U32 bytesPerLine = calculateBytesPerLine(width, bits_per_pixel);
+	U32 len = bytesPerLine * height;
+	U32 data = thread->process->alloc(thread, len);
+
+	U32 dst = data;
+	U8* src = this->data + this->bytes_per_line * y + (bits_per_pixel * x + 7) / 8;
+	for (U32 y = 0; y < height; y++) {
+		thread->memory->memcpy(dst, src, bytesPerLine);
+		src += this->bytes_per_line;
+		dst += bytesPerLine;
+	}
+
+	XImage::set(thread->memory, image, width, height, 0, format, data, 32, depth, bytesPerLine, bits_per_pixel, redMask, greenMask, blueMask);
+	return image;
+}
+
+U32 XDrawable::calculateBytesPerLine(U32 bitsPerPixel, U32 width) {
+	U32 result = width * bitsPerPixel / 8;
+	result = (result + 3) / 4 * 4;
+	return result;
+}
+
 void XDrawable::setSize(U32 width, U32 height) {
+	if (width == 0 && height != 0) {
+		int ii = 0;
+	}
 	w = width;
 	h = height;
 	if (depth == 24) {
@@ -18,8 +51,7 @@ void XDrawable::setSize(U32 width, U32 height) {
 	} else {
 		bits_per_pixel = depth;
 	}
-	bytes_per_line = width * bits_per_pixel / 8;
-	bytes_per_line = (bytes_per_line + 3) / 4 * 4;
+	bytes_per_line = calculateBytesPerLine(bits_per_pixel, width);
 	size = height * bytes_per_line;
 	if (data) {
 		delete[] data;

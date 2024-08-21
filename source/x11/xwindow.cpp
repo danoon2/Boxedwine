@@ -133,6 +133,17 @@ XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height,
 }
 
 void XWindow::onDestroy() {
+	U32 transient = WM_TRANSIENT_FOR();
+	if (transient) {
+		XWindowPtr transientForWindow = XServer::getServer()->getWindow(transient);
+		if (transientForWindow) {
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(transientForWindow->childrenMutex);
+			int index = vectorIndexOf(transientForWindow->transientChildren, shared_from_this());
+			if (index >= 0 && index < transientForWindow->transientChildren.size()) {
+				transientForWindow->transientChildren.erase(transientForWindow->transientChildren.begin() + index);
+			}
+		}
+	}
 	if (parent) {
 		{
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
@@ -140,7 +151,7 @@ void XWindow::onDestroy() {
 			int index = vectorIndexOf(parent->zchildren, shared_from_this());
 			if (index >= 0 && index < parent->zchildren.size()) {
 				parent->zchildren.erase(parent->zchildren.begin() + index);
-			}
+			}			
 		}
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
@@ -225,6 +236,32 @@ void XWindow::onCreate() {
 	}
 }
 
+void XWindow::setTransient(const DisplayDataPtr& data, U32 w) {
+	U32 prev = WM_TRANSIENT_FOR();
+	if (prev == w) {
+		return;
+	}
+	if (prev) {
+		XWindowPtr previousTransientForWindow = XServer::getServer()->getWindow(prev);
+		if (previousTransientForWindow) {
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(previousTransientForWindow->childrenMutex);
+			int  index = vectorIndexOf(previousTransientForWindow->transientChildren, shared_from_this());
+			if (index >= 0 && index < previousTransientForWindow->transientChildren.size()) {
+				previousTransientForWindow->transientChildren.erase(previousTransientForWindow->transientChildren.begin() + index);
+			}
+		}
+	}
+	setProperty(data, XA_WM_TRANSIENT_FOR, XA_WINDOW, 32, 4, (U8*)&w, true);
+	if (w) {
+		XWindowPtr transientForWindow = XServer::getServer()->getWindow(w);
+		if (transientForWindow) {
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(transientForWindow->childrenMutex);
+			transientForWindow->transientChildren.push_back(shared_from_this());	
+		}
+	}
+	isTransient = w != 0;
+}
+
 int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {	
 	if (valueMask & CWEventMask) {
 		// per spec
@@ -249,23 +286,43 @@ int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* att
 	return Success;
 }
 
-void XWindow::iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback) {
+void XWindow::iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
+	if (includeTransients) {
+		for (int i = (int)transientChildren.size() - 1; i >= 0; i--) {
+			const XWindowPtr& child = transientChildren.at(i);
+			if (child->mapped()) {
+				if (!callback(child)) {
+					return;
+				}
+			}
+		}
+	}
 	for (int i = (int)zchildren.size() - 1; i >= 0; i--) {
 		const XWindowPtr& child = zchildren.at(i);
-		if (child->mapped()) {
+		if (child->mapped() && (!includeTransients || !child->isTransient)) {
 			if (!callback(child)) {
 				break;
 			}
 		}
-	}
+	}	
 }
 
-void XWindow::iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback) {
+void XWindow::iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
 	for (auto& child : zchildren) {
-		if (child->mapped()) {
+		if (child->mapped() && (!includeTransients || !child->isTransient)) {
 			if (!callback(child)) {
-				break;
+				return;
+			}
+		}
+	}
+	if (includeTransients) {
+		for (auto& child : transientChildren) {
+			if (child->mapped()) {
+				if (!callback(child)) {
+					break;
+				}
 			}
 		}
 	}
@@ -720,11 +777,9 @@ void XWindow::draw() {
 		isDirty = false;
 	}
 	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {
-		if (child->c_class == InputOutput) {
-			child->draw();
-		}
+		child->draw();
 		return true;
-		});
+		}, true);
 }
 
 XWindowPtr XWindow::previousSibling() {
@@ -881,7 +936,11 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 	}
 	configureNotify();
 	// :TODO:
-	// exposeNofity
+	if (c_class == InputOutput && isMapped) {
+		XServer::getServer()->iterateEventMask(id, ExposureMask, [=](const DisplayDataPtr& data) {
+			exposeNofity(data, 0, 0, this->width(), this->height(), 0);
+			});
+	}
 	return Success;
 }
 
@@ -909,21 +968,36 @@ U32 XWindow::WM_TRANSIENT_FOR() {
 	return 0;
 }
 
-XWindowPtr XWindow::getWindowFromPoint(S32 x, S32 y) {
-	for (int i = (int)zchildren.size() - 1; i>=0; i--) {
-		const XWindowPtr& child = zchildren.at(i);
+XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY, S32 parentX, S32 parentY) {
+	XWindowPtr result;
+
+	iterateMappedChildrenFrontToBack([screenX, screenY, parentX, parentY, &result](const XWindowPtr& child) {
 		if (!child->isMapped) {
-			continue;
+			return true;
+		}
+		S32 x = parentX;
+		S32 y = parentY;
+
+		if (child->isTransient) {
+			x = screenX;
+			y = screenY;
+
+			if (child->parent && child->parent->parent) {
+				child->parent->screenToWindow(x, y);
+			}
 		}
 		if (x >= child->x && x < child->x + (S32)child->width() && y >= child->y && y < child->y + (S32)child->height()) {
-			x -= child->x;
-			y -= child->y;
-			XWindowPtr result = child->getWindowFromPoint(x, y);
+			result = child->getWindowFromPoint(screenX, screenY, x - child->x, y - child->y);
 			if (result) {
-				return result;
+				return false;
 			}
-			return child;
+			result = child;
+			return false;
 		}
+		return true;
+		}, true);
+	if (result) {
+		return result;
 	}
 	return shared_from_this();
 }

@@ -136,8 +136,9 @@ public:
 	void onDestroy();
 
 	int setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
-	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback);
-	void iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback);
+	void setTransient(const DisplayDataPtr& data, U32 w);
+	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
+	void iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
 
 	void setTextProperty(const DisplayDataPtr& data, KThread* thread, XTextProperty* name, Atom property, bool trace = false);
 	int configure(U32 mask, XWindowChanges* changes);
@@ -167,7 +168,7 @@ public:
 
 	void draw();
 	void setDirty() override;
-	XWindowPtr getWindowFromPoint(S32 x, S32 y);
+	XWindowPtr getWindowFromPoint(S32 screenX, S32 screenY, S32 parentX, S32 parentY);
 
 	void focusOut();
 	void focusIn();
@@ -186,6 +187,7 @@ private:
 	XSetWindowAttributes attributes;
 	bool isMapped = false;	
 	bool isFullScreen = false;
+	bool isTransient = false;
 	XRectangle restoreRect;
 
 	BOXEDWINE_MUTEX propertiesMutex;
@@ -194,6 +196,7 @@ private:
 	BOXEDWINE_MUTEX childrenMutex;
 	BHashTable<U32, XWindowPtr> children;
 	std::vector<XWindowPtr> zchildren;
+	std::vector<XWindowPtr> transientChildren;
 
 	void exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, S32 height, S32 count);
 	void configureNotify();

@@ -158,7 +158,7 @@ static void x11_TranslateCoordinates(CPU* cpu) {
     S32 x = ARG4;
     S32 y = ARG5;
     src_w->windowToScreen(x, y);
-    XWindowPtr w = server->getRoot()->getWindowFromPoint(x, y);
+    XWindowPtr w = server->getRoot()->getWindowFromPoint(x, y, x, y);
     dest_w->screenToWindow(x, y);
     memory->writed(ARG6, x);
     memory->writed(ARG7, y);
@@ -366,7 +366,7 @@ static void x11_MoveResizeWindow(CPU* cpu) {
         EAX = BadWindow;
         return;
     }
-    EAX = window->moveResize(ARG2, ARG3, ARG4, ARG5);
+    EAX = window->moveResize(ARG3, ARG4, ARG5, ARG6);
 }
 
 // int XMapWindow(Display* display, Window w) {
@@ -482,7 +482,7 @@ static void x11_QueryPointer(CPU* cpu) {
 
     memory->writed(ARG3, root->id);
 
-    XWindowPtr child = root->getWindowFromPoint(x, y);
+    XWindowPtr child = root->getWindowFromPoint(x, y, x, y);
     memory->writed(ARG4, child->id);
     memory->writed(ARG5, x);
     memory->writed(ARG6, y);
@@ -1188,8 +1188,13 @@ static void x11_CopyArea(CPU* cpu) {
     kpanic("x11_CopyArea");
 }
 
+// XImage* XGetImage(Display* display, Drawable d, int x, int y, unsigned int width, unsigned int height, unsigned long plane_mask, int format)
 static void x11_GetImage(CPU* cpu) {
-    kpanic("x11_GetImage");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr d = server->getDrawable(ARG2);
+
+    EAX = d->getImage(thread, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, server->visual.red_mask, server->visual.green_mask, server->visual.blue_mask);
 }
 
 // int XPutImage(Display* display, Drawable d, GC gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height)
@@ -1197,7 +1202,6 @@ static void x11_PutImage(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
     KMemory* memory = cpu->memory;
-    // Display* display = X11::getDisplay(thread, ARG1);
     XDrawablePtr d = server->getDrawable(ARG2);
     if (!d) {
         EAX = BadDrawable;
@@ -1229,7 +1233,14 @@ static void x11_Flush(CPU* cpu) {
 // int XDestroyImage(XImage* ximage)
 static void x11_DestroyImage(CPU* cpu) {
     KThread* thread = cpu->thread;
-    thread->process->free(ARG1);
+    KMemory* memory = cpu->memory;
+    U32 imageAddress = ARG1;
+    U32 data = X11_READD(XImage, imageAddress, data);
+
+    if (data) {
+        thread->process->free(data);
+    }
+    thread->process->free(imageAddress);
     EAX = Success;
 }
 
@@ -1250,11 +1261,12 @@ static void x11_AddPixel(CPU* cpu) {
 }
 
 // Pixmap XCreatePixmap(Display* display, Drawable d, unsigned int width, unsigned int height, unsigned int depth)
+//
+// The server uses the specified drawable to determine on which screen to create the pixmap. The pixmap can be used only on this screen and only with other drawables of the same depth
 static void x11_CreatePixmap(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
     // Display* display = X11::getDisplay(thread, ARG1);
-    XWindowPtr window = server->getWindow(ARG2); // even though it's a Drawable passed in, spec says it may be an InputOnly window
     U32 width = ARG3;
     U32 height = ARG4;
     U32 depth = ARG5;
@@ -1758,8 +1770,7 @@ static void x11_SetTransientForHint(CPU* cpu) {
         EAX = BadWindow;
         return;
     }
-    U32 prop_window = ARG3;
-    w->setProperty(data, XA_WM_TRANSIENT_FOR, XA_WINDOW, 32, 4, (U8*)&prop_window, true);
+    w->setTransient(data, ARG3);
     EAX = Success;
 }
 
