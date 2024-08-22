@@ -29,6 +29,8 @@ private:
 
 class DisplayData {
 public:
+	void close(KThread* thread);
+
 	void putEvent(const XEvent& event);
 	U32 lockEvents();
 	XEvent* getEvent(U32 index); // only call between lockEvents/unlockEvents
@@ -51,6 +53,7 @@ public:
 	U32 clientFd;
 	U32 serverFd;
 	KProcessPtr process;
+	XrrData* xrrData = nullptr;
 
 	BOXEDWINE_MUTEX mutex;
 private:	

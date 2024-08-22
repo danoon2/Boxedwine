@@ -136,22 +136,22 @@ public:
 	void onDestroy();
 
 	int setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask);
-	void setTransient(const DisplayDataPtr& data, U32 w);
+	void setTransient(U32 w);
 	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
 	void iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
 
-	void setTextProperty(const DisplayDataPtr& data, KThread* thread, XTextProperty* name, Atom property, bool trace = false);
+	void setTextProperty(KThread* thread, XTextProperty* name, Atom property, bool trace = false);
 	int configure(U32 mask, XWindowChanges* changes);
 	int moveResize(S32 x, S32 y, U32 width, U32 height);
 
 	XPropertyPtr getProperty(U32 atom);
-	void setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace = false);
-	void setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace = false);
-	void deleteProperty(const DisplayDataPtr& data, U32 atom, bool trace = false);
-	int handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEvent& event);
+	void setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace = false);
+	void setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace = false);
+	void deleteProperty(U32 atom, bool trace = false);
+	int handleNetWmStatePropertyEvent(const XEvent& event);
 
-	int mapWindow(const DisplayDataPtr& data);
-	int unmapWindow(const DisplayDataPtr& data);
+	int mapWindow();
+	int unmapWindow();
 
 	void windowToScreen(S32& x, S32& y);
 	void screenToWindow(S32& x, S32& y);
@@ -180,6 +180,8 @@ public:
 
 	XCursorPtr cursor;
 private:
+	friend class XServer;
+
 	XWindowPtr parent;
 	S32 x;
 	S32 y;	
@@ -202,7 +204,7 @@ private:
 	void configureNotify();
 	void focusNotify(const DisplayDataPtr& data, bool isIn, S32 mode, S32 detail);
 
-	void setWmState(const DisplayDataPtr& data, U32 state, U32 icon);
+	void setWmState(U32 state, U32 icon);
 	XWindowPtr previousSibling();
 
 	bool isDialog();

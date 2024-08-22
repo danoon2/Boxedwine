@@ -3,21 +3,31 @@
 #include "knativesystem.h"
 #include "knativewindow.h"
 
-class XrrData {
-public:
-    U32 sizesAddress = 0; // XRRScreenSize*
-    U32 sizesCount = 0;
-    U32 ratesAddress = 0;
-};
-
 U32 XrrConfigCurrentRate() {
     return KNativeWindow::getNativeWindow()->screenRate();
 }
 
-U32 XrrRates(KThread* thread, U32 screen, U32 sizeIndex, U32 rateCountAddress) {
+bool XrrGetSize(KThread* thread, const DisplayDataPtr& displayData, U32 sizeIndex, U32& cx, U32& cy) {
+    KMemory* memory = thread->memory;
+    XrrData* data = displayData->xrrData;
+
+    if (!data || !data->sizesAddress) {
+        XrrGetSizes(thread, displayData, 0, 0);
+        data = displayData->xrrData;
+    }
+    if (sizeIndex >= data->sizesCount) {
+        return false;
+    }
+
+    cx = memory->readd(data->sizesAddress + sizeIndex * 16);
+    cy = memory->readd(data->sizesAddress + sizeIndex * 16 + 4);
+    return true;
+}
+
+U32 XrrRates(KThread* thread, const DisplayDataPtr& displayData, U32 screen, U32 sizeIndex, U32 rateCountAddress) {
     KMemory* memory = thread->memory;
     XServer* server = XServer::getServer();
-    XrrData* data = server->xrrData;
+    XrrData* data = displayData->xrrData;
 
     memory->writed(rateCountAddress, 1);
     if (data->ratesAddress) {
@@ -30,14 +40,13 @@ U32 XrrRates(KThread* thread, U32 screen, U32 sizeIndex, U32 rateCountAddress) {
     return data->ratesAddress;
 }
 
-U32 XrrConfigCurrentConfiguration(KThread* thread, U32 screen, U32 rotationAddress) {
+U32 XrrConfigCurrentConfiguration(KThread* thread, const DisplayDataPtr& displayData, U32 rotationAddress) {
     KMemory* memory = thread->memory;
-    XServer* server = XServer::getServer();
-    XrrData* data = server->xrrData;
+    XrrData* data = displayData->xrrData;
 
     if (!data || !data->sizesAddress) {
-        XrrGetSizes(thread, 0, 0);
-        data = server->xrrData;
+        XrrGetSizes(thread, displayData, 0, 0);
+        data = displayData->xrrData;
     }
     U32 cx = KNativeWindow::getNativeWindow()->screenWidth();
     U32 cy = KNativeWindow::getNativeWindow()->screenHeight();
@@ -51,18 +60,17 @@ U32 XrrConfigCurrentConfiguration(KThread* thread, U32 screen, U32 rotationAddre
     return 0;
 }
 
-U32 XrrGetSizes(KThread* thread, U32 screen, U32 countAddress) {
+U32 XrrGetSizes(KThread* thread, const DisplayDataPtr& data, U32 screen, U32 countAddress) {
     KMemory* memory = thread->memory;
-    XServer* server = XServer::getServer();
 
-    if (!server->xrrData) {
-        server->xrrData = new XrrData();
+    if (!data->xrrData) {
+        data->xrrData = new XrrData();
     }
-    if (server->xrrData->sizesAddress) {
+    if (data->xrrData->sizesAddress) {
         if (countAddress) {
-            memory->writed(countAddress, server->xrrData->sizesCount);
+            memory->writed(countAddress, data->xrrData->sizesCount);
         }
-        return server->xrrData->sizesAddress;
+        return data->xrrData->sizesAddress;
     }
     U32 desktopCx = 0;
     U32 desktopCy = 0;
@@ -79,8 +87,9 @@ U32 XrrGetSizes(KThread* thread, U32 screen, U32 countAddress) {
         count++;
     }
     U32 sizes = thread->process->alloc(thread, sizeof(XRRScreenSize) * count);
-    server->xrrData->sizesAddress = sizes;
-    server->xrrData->sizesCount = count;
+    
+    data->xrrData->sizesAddress = sizes;
+    data->xrrData->sizesCount = count;
     if (desktopCx > 1600) {
         memory->writed(sizes, desktopCx); sizes += 4;
         memory->writed(sizes, desktopCy); sizes += 4;
@@ -112,7 +121,7 @@ U32 XrrGetSizes(KThread* thread, U32 screen, U32 countAddress) {
     memory->writed(sizes, 0); sizes += 4;
     memory->writed(sizes, 0);
     if (countAddress) {
-        memory->writed(countAddress, server->xrrData->sizesCount);
+        memory->writed(countAddress, data->xrrData->sizesCount);
     }
-    return server->xrrData->sizesAddress;
+    return data->xrrData->sizesAddress;
 }

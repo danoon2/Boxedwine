@@ -27,7 +27,7 @@ public:
 		return false;
 	}
 
-	BString log();
+	BString description();
 };
 
 typedef std::shared_ptr<XProperty> XPropertyPtr;
@@ -39,6 +39,7 @@ public:
 	void setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value);
 	void deleteProperty(U32 atom);
 
+	BString description();
 private:
 	BOXEDWINE_MUTEX propertiesMutex;
 	BHashTable<U32, XPropertyPtr> properties;

@@ -73,9 +73,22 @@ struct XRRScreenResources {
     U32     modes; // XRRModeInfo*
 };
 
-U32 XrrGetSizes(KThread* thread, U32 screen, U32 countAddress);
-U32 XrrConfigCurrentConfiguration(KThread* thread, U32 screen, U32 rotationAddress);
+class XrrData {
+public:
+    U32 sizesAddress = 0; // XRRScreenSize*
+    U32 sizesCount = 0;
+    U32 ratesAddress = 0;
+};
+
+#define RRSetConfigSuccess		0
+#define RRSetConfigInvalidConfigTime	1
+#define RRSetConfigInvalidTime		2
+#define RRSetConfigFailed		3
+
+U32 XrrGetSizes(KThread* thread, const DisplayDataPtr& data, U32 screen, U32 countAddress);
+U32 XrrConfigCurrentConfiguration(KThread* thread, const DisplayDataPtr& data, U32 rotationAddress);
 U32 XrrConfigCurrentRate();
-U32 XrrRates(KThread* thread, U32 screen, U32 sizeIndex, U32 rateCountAddress);
+U32 XrrRates(KThread* thread, const DisplayDataPtr& data, U32 screen, U32 sizeIndex, U32 rateCountAddress);
+bool XrrGetSize(KThread* thread, const DisplayDataPtr& displayData, U32 sizeIndex, U32& cx, U32& cy);
 
 #endif

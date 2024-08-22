@@ -47,6 +47,9 @@ U32 BHeap::alloc(KMemory* memory, KThread* thread, U32 len) {
 }
 
 void BHeap::free(KMemory* memory, U32 address) {
+	if (!address) {
+		return;
+	}
 	U32 index = memory->readd(address - 4);
 	if (index >= BHEAP_NUMBER_OF_BUCKETS) {
 		memory->unmap(address - 4, index);

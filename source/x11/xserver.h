@@ -44,6 +44,7 @@ public:
 	int closeDisplay(KThread* thread, const DisplayDataPtr& data);
 	DisplayDataPtr getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address);
 	DisplayDataPtr getDisplayDataById(U32 id);
+	void changeScreen(U32 width, U32 height, U32 bpp);
 
 	Screen* getScreen(KThread* thread, S32 screen);	
 
@@ -58,8 +59,6 @@ public:
 	int unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
 
 	static U32 getNextId();
-
-	XrrData* xrrData = nullptr;
 
 	XWindowPtr inputFocus;
 	U32 inputFocusRevertTo = 0;

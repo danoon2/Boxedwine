@@ -236,7 +236,7 @@ void XWindow::onCreate() {
 	}
 }
 
-void XWindow::setTransient(const DisplayDataPtr& data, U32 w) {
+void XWindow::setTransient(U32 w) {
 	U32 prev = WM_TRANSIENT_FOR();
 	if (prev == w) {
 		return;
@@ -251,7 +251,7 @@ void XWindow::setTransient(const DisplayDataPtr& data, U32 w) {
 			}
 		}
 	}
-	setProperty(data, XA_WM_TRANSIENT_FOR, XA_WINDOW, 32, 4, (U8*)&w, true);
+	setProperty( XA_WM_TRANSIENT_FOR, XA_WINDOW, 32, 4, (U8*)&w, true);
 	if (w) {
 		XWindowPtr transientForWindow = XServer::getServer()->getWindow(w);
 		if (transientForWindow) {
@@ -348,22 +348,8 @@ void XWindow::screenToWindow(S32& x, S32& y) {
 	}
 }
 
-void XWindow::setTextProperty(const DisplayDataPtr& data, KThread* thread, XTextProperty* name, Atom property, bool trace) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
-	properties.setProperty(property, name->encoding, name->format, name->byteLen(thread->memory), name->value);
-	if (trace && XServer::getServer()->trace) {
-		XPropertyPtr prop = properties.getProperty(property);
-		if (prop) {
-			BString log;
-
-			log.append(data->displayId, 16);
-			log += " ChangeProperty mode=Replace(0x00) window=";
-			log.append(id, 16);
-			log += " ";
-			log += prop->log();
-			klog(log.c_str());
-		}
-	}
+void XWindow::setTextProperty(KThread* thread, XTextProperty* name, Atom property, bool trace) {
+	setProperty(property, name->encoding, name->format, name->byteLen(thread->memory), name->value);
 }
 
 XPropertyPtr XWindow::getProperty(U32 atom) {
@@ -371,7 +357,7 @@ XPropertyPtr XWindow::getProperty(U32 atom) {
 	return properties.getProperty(atom);
 }
 
-void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace) {
+void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);	
 
@@ -380,11 +366,10 @@ void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 fo
 		if (prop) {
 			BString log;
 
-			log.append(data->displayId, 16);
-			log += " ChangeProperty mode=Replace(0x00) window=";
+			log += "ChangeProperty mode=Replace(0x00) window=";
 			log.append(id, 16);
 			log += " ";
-			log += prop->log();
+			log += prop->description();
 			klog(log.c_str());
 		}
 	}
@@ -421,7 +406,7 @@ void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 fo
 		});
 }
 
-void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace) {
+void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);
 	if (trace && XServer::getServer()->trace) {
@@ -429,11 +414,10 @@ void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 fo
 		if (prop) {
 			BString log;
 
-			log.append(data->displayId, 16);
-			log += " ChangeProperty mode=Replace(0x00) window=";
+			log += "ChangeProperty mode=Replace(0x00) window=";
 			log.append(id, 16);
 			log += " ";
-			log += prop->log();
+			log += prop->description();
 			klog(log.c_str());
 		}
 	}
@@ -470,7 +454,7 @@ void XWindow::setProperty(const DisplayDataPtr& data, U32 atom, U32 type, U32 fo
 		});
 }
 
-void XWindow::deleteProperty(const DisplayDataPtr& data, U32 atom, bool trace) {
+void XWindow::deleteProperty(U32 atom, bool trace) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	XPropertyPtr prop = properties.getProperty(atom);
 	properties.deleteProperty(atom);
@@ -508,7 +492,7 @@ void XWindow::deleteProperty(const DisplayDataPtr& data, U32 atom, bool trace) {
 	}
 }
 
-int XWindow::handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEvent& event) {
+int XWindow::handleNetWmStatePropertyEvent(const XEvent& event) {
 	U32 count = 0;
 	for (U32 i = 1; i < 5; i++) {
 		if (event.xclient.data.l[i] <= 1) {
@@ -519,7 +503,7 @@ int XWindow::handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEv
 	XPropertyPtr prop = getProperty(event.xclient.message_type);
 	if (!prop) {
 		if (event.xclient.data.l[0] == 1) {
-			setProperty(data, (U32)event.xclient.message_type, XA_ATOM, 32, count * 4, (U8*)&event.xclient.data.l[1]);
+			setProperty((U32)event.xclient.message_type, XA_ATOM, 32, count * 4, (U8*)&event.xclient.data.l[1]);
 		}
 	} else {
 		U32* values = (U32*)prop->value;
@@ -537,7 +521,7 @@ int XWindow::handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEv
 			if (removedCount) {
 				U32 newCount = existingCount - removedCount;
 				if (!newCount) {
-					deleteProperty(data, event.xclient.message_type);
+					deleteProperty(event.xclient.message_type);
 				} else {
 					U32* newValues = new U32[newCount];
 					U32 index = 0;
@@ -548,7 +532,7 @@ int XWindow::handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEv
 							index++;
 						}
 					}
-					setProperty(data, (U32)event.xclient.message_type, XA_ATOM, 32, newCount * 4, (U8*)newValues);
+					setProperty((U32)event.xclient.message_type, XA_ATOM, 32, newCount * 4, (U8*)newValues);
 					delete[] newValues;
 				}
 			}
@@ -571,7 +555,7 @@ int XWindow::handleNetWmStatePropertyEvent(const DisplayDataPtr& data, const XEv
 				}
 			}
 			if (addIndex != existingCount) {
-				setProperty(data, (U32)event.xclient.message_type, XA_ATOM, 32, addIndex * 4, (U8*)newValues);
+				setProperty((U32)event.xclient.message_type, XA_ATOM, 32, addIndex * 4, (U8*)newValues);
 			}
 			delete[] newValues;
 		} else if (event.xclient.data.l[0] == 1) {
@@ -612,6 +596,7 @@ void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, 
 		log += width;
 		log += " height=";
 		log += height;
+		klog(log.c_str());
 	}
 	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {
 		if (child->c_class == InputOutput) {
@@ -623,22 +608,22 @@ void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, 
 		});
 }
 
-void XWindow::setWmState(const DisplayDataPtr& data, U32 state, U32 icon) {
+void XWindow::setWmState(U32 state, U32 icon) {
 	XServer* server = XServer::getServer();
 	XWMState wmState;
 
 	wmState.state = state;
 	wmState.icon = 0;
-	setProperty(data, WM_STATE, WM_STATE, 32, 8, (U8*)&wmState);
+	setProperty(WM_STATE, WM_STATE, 32, 8, (U8*)&wmState);
 }
 
-int XWindow::mapWindow(const DisplayDataPtr& data) {
+int XWindow::mapWindow() {
 	if (isMapped) {
 		return Success;
 	}
 	isMapped = true;
 	setDirty();
-	setWmState(data, NormalState, 0);
+	setWmState(NormalState, 0);
 	if (parent) {
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
@@ -697,12 +682,12 @@ int XWindow::mapWindow(const DisplayDataPtr& data) {
 	return Success;
 }
 
-int XWindow::unmapWindow(const DisplayDataPtr& data) {
+int XWindow::unmapWindow() {
 	if (!isMapped) {
 		return Success;
 	}
 	isMapped = false;	
-	setWmState(data, WithdrawnState, 0);
+	setWmState(WithdrawnState, 0);
 	if (parent) {
 		setDirty();
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
@@ -830,6 +815,7 @@ void XWindow::configureNotify() {
 				log.append(id, 16);
 				log += " event=";
 				log.append(parent->id, 16);
+				klog(log.c_str());
 			}
 			});
 	}
@@ -858,6 +844,7 @@ void XWindow::configureNotify() {
 			log.append(id, 16);
 			log += " event=";
 			log.append(id, 16);
+			klog(log.c_str());
 		}
 		});	
 }

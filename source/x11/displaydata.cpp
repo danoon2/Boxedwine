@@ -107,3 +107,12 @@ int DisplayData::deleteContextData(U32 context, U32 contextType) {
 	}
 	return XCSUCCESS;
 }
+
+void DisplayData::close(KThread* thread) {
+	if (xrrData) {
+		thread->process->free(xrrData->ratesAddress);
+		thread->process->free(xrrData->sizesAddress);
+		delete xrrData;
+		xrrData = nullptr;
+	}
+}

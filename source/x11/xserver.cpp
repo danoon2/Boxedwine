@@ -191,7 +191,8 @@ const XWindowPtr& XServer::getRoot() {
 
 		U32 rect[] = { 0, 0, (U32)nativeWindow->screenWidth(), (U32)nativeWindow->screenHeight() };
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
-		root->setProperty(nullptr, atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
+		root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
+		root->isMapped = true; // so that grab works
 		pointerWindow = root;
 	}
 	return root;
@@ -421,6 +422,16 @@ U32 XServer::openDisplay(KThread* thread) {
 	return displayAddress;
 }
 
+void XServer::changeScreen(U32 width, U32 height, U32 bpp) {
+	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+	nativeWindow->screenChanged(width, height, bpp);
+	root->moveResize(0, 0, width, height);
+
+	U32 rect[] = { 0, 0, (U32)nativeWindow->screenWidth(), (U32)nativeWindow->screenHeight() };
+	U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
+	root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
+}
+
 DisplayDataPtr XServer::getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address) {
 	U32 id = X11_READD(Display, address, id);
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
@@ -587,7 +598,7 @@ int XServer::mapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 		log.append(window->id, 16);
 		klog(log.c_str());
 	}
-	int result = window->mapWindow(data);
+	int result = window->mapWindow();
 
 	if (result == Success) {
 		int x = 0;
@@ -618,7 +629,7 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 	if (grabbed == window) {
 		grabbed = nullptr;
 	}
-	int result = window->unmapWindow(data);
+	int result = window->unmapWindow();
 
 	if (result == Success) {
 		int x = 0;

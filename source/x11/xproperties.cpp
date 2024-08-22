@@ -81,7 +81,7 @@ static BString getMwmDecor(U32 func) {
 	return result;
 }
 
-BString XProperty::log() {
+BString XProperty::description() {
 	BString log;
 	BString name;
 	BString typeName;
@@ -193,6 +193,18 @@ void XProperties::setProperty(U32 atom, U32 type, U32 format, U32 length, U32 ad
 
 void XProperties::deleteProperty(U32 atom) {
 	properties.remove(atom);
+}
+
+BString XProperties::description() {
+	BString log;
+
+	for (auto& it : properties) {
+		if (log.length()) {
+			log += "\n";
+		}
+		log += it.value->description();
+	}
+	return log;
 }
 
 U32 XTextProperty::byteLen(KMemory* memory) {
