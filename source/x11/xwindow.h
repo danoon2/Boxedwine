@@ -179,6 +179,7 @@ public:
 	void getAncestorTree(std::vector<XWindowPtr>& ancestors);
 
 	XCursorPtr cursor;
+	XColorMapPtr colorMap;
 private:
 	friend class XServer;
 

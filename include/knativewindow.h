@@ -76,7 +76,7 @@ public:
     virtual void bltWnd(KThread* thread, U32 hwnd, U32 bits, S32 xOrg, S32 yOrg, U32 width, U32 height, U32 rect) = 0;
 
     virtual void clear() = 0;
-    virtual void putBitsOnWnd(const WndPtr& w, U8* bits, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, bool isDirty) = 0;
+    virtual void putBitsOnWnd(const WndPtr& w, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) = 0;
     virtual void present() = 0;
     virtual void runOnUiThread(std::function<void()> callback) = 0;
 

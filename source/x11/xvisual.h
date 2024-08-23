@@ -10,8 +10,9 @@ struct Visual {
 	S32 map_entries;	/* color map entries */
 
 	void read(KMemory* memory, U32 address);
-	static U32 create(KThread* thread, U32 visualid, U32 c_class, U32 red_mask, U32 green_mask, U32 blue_mask, U32 bits_per_rgb, U32 map_entries);
+	void write(KMemory* memory, U32 address);
 };
 
+typedef std::shared_ptr<Visual> VisualPtr;
 
 #endif

@@ -7,6 +7,8 @@ struct XColor {
 	U8 flags;  /* do_red, do_green, do_blue */
 	U8 pad;
 
+	static U32 size;
+
 	void read(KMemory* memory, U32 address);
 };
 

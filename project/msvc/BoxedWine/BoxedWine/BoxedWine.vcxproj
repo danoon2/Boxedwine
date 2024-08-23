@@ -687,6 +687,7 @@
     <ClInclude Include="..\..\..\..\source\x11\displaydata.h" />
     <ClInclude Include="..\..\..\..\source\x11\x11.h" />
     <ClInclude Include="..\..\..\..\source\x11\xcolor.h" />
+    <ClInclude Include="..\..\..\..\source\x11\xcolormap.h" />
     <ClInclude Include="..\..\..\..\source\x11\xcursor.h" />
     <ClInclude Include="..\..\..\..\source\x11\xdepth.h" />
     <ClInclude Include="..\..\..\..\source\x11\xdisplay.h" />
@@ -1148,6 +1149,7 @@
     <ClCompile Include="..\..\..\..\source\x11\x11.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\x11common.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xcolor.cpp" />
+    <ClCompile Include="..\..\..\..\source\x11\xcolormap.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xcursor.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xdepth.cpp" />
     <ClCompile Include="..\..\..\..\source\x11\xdisplay.cpp" />

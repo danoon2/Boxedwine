@@ -26,7 +26,47 @@ U32 XServer::getNextId() {
 
 XServer::XServer() {
 	initAtoms();
+	initVisuals();
 	extensionXinput2 = internAtom(B("XInputExtension"), false);
+}
+
+void XServer::addDepth(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel) {
+	VisualPtr visual = std::make_shared<Visual>();
+	visual->visualid = getNextId();
+	visual->bits_per_rgb = bitsPerPixel;
+	visual->red_mask = redMask;
+	visual->green_mask = greenMask;
+	visual->blue_mask = blueMask;
+	visual->c_class = bitsPerPixel <= 8 ? PseudoColor : TrueColor;
+	visual->map_entries = 256;
+
+	visuals.set(visual->visualid, visual);
+	visualByDepth.set(depth, visual);
+}
+
+void XServer::initVisuals() {
+	U32 depth = KNativeWindow::getNativeWindow()->screenBpp();
+	if (depth == 32) {
+		depth = 24;
+	}
+	depths.push_back(depth);
+
+	addDepth(0xFF0000, 0xFF00, 0xFF, 24, 32);
+	if (depth != 24) {
+		depths.push_back(24);
+	}
+	addDepth(0xF800, 0x7E0, 0x1F, 16, 16); 
+	if (depth != 16) {
+		depths.push_back(16);
+	}	
+	addDepth(0x7C00, 0x3E0, 0x1F, 15, 16);
+	if (depth != 15) {
+		depths.push_back(15);
+	}
+	addDepth(0, 0, 0, 8, 8);
+	if (depth != 8) {
+		depths.push_back(8);
+	}
 }
 
 void XServer::initAtoms() {
@@ -193,6 +233,8 @@ const XWindowPtr& XServer::getRoot() {
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
 		root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
 		root->isMapped = true; // so that grab works
+		root->colorMap = getDefaultColorMap();
+		root->attributes.colormap = root->colorMap->id;
 		pointerWindow = root;
 	}
 	return root;
@@ -204,17 +246,18 @@ void XServer::draw(bool drawNow) {
 	if (!isDisplayDirty) {
 		return;
 	}
-	BOXEDWINE_CRITICAL_SECTION;
-	if (!isDisplayDirty) {
-		return;
+	{
+		BOXEDWINE_CRITICAL_SECTION;
+		if (!isDisplayDirty) {
+			return;
+		}
+		U32 now = KSystem::getMilliesSinceStart();
+		if (!drawNow && (now - lastDraw < 16)) {
+			return;
+		}
+		lastDraw = now;
+		isDisplayDirty = false;
 	}
-	U32 now = KSystem::getMilliesSinceStart();
-	if (!drawNow && (now - lastDraw < 16)) {
-		return;
-	}
-	lastDraw = now;
-	isDisplayDirty = false;
-	
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();	
 	nativeWindow->runOnUiThread([=]() {
 		nativeWindow->clear();
@@ -329,27 +372,53 @@ void XServer::iterateEventMask(U32 wndId, U32 mask, std::function<void(const Dis
 	}
 }
 
-static U32 createScreen(KThread* thread, U32 displayAddress) {
-	KMemory* memory = thread->memory;
-	XServer* server = XServer::getServer();
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-	U32 defaultVisual = Visual::create(thread, VisualIdBase, TrueColor, 0xFF0000, 0xFF00, 0xFF, 32, 256);
-	U32 defaultDepth = Depth::create(thread, 24, defaultVisual, 1);
+XColorMapPtr XServer::getDefaultColorMap() {
+	if (!defaultColorMap) {
+		defaultColorMap = std::make_shared<XColorMap>();
+		colorMaps.set(defaultColorMap->id, defaultColorMap);
+	}
+	return defaultColorMap;
+}
 
-	U32 screenAddress = thread->process->alloc(thread, sizeof(Screen));
+U32 XServer::createScreen(KThread* thread, U32 displayAddress) {
+	KMemory* memory = thread->memory;
+	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+	U32 screenAddress = thread->process->alloc(thread, sizeof(Screen) + (sizeof(Depth) + sizeof(Visual)) * visualByDepth.size());
+	U32 depthVisualAddress = screenAddress + sizeof(Screen);	
+	U32 defaultVisualAddress = depthVisualAddress;
+
+	std::vector<Depth> screenDepths;
+
+	for (auto& depth : depths) {
+		VisualPtr visual = visualByDepth.get(depth);
+		visual->write(memory, depthVisualAddress);
+
+		Depth d;
+		d.depth = depth;
+		d.nvisuals = 1;
+		d.visuals = depthVisualAddress;
+		screenDepths.push_back(d);
+		depthVisualAddress += sizeof(Visual);
+	}
+	U32 depthList = depthVisualAddress;
+	for (auto& depth : screenDepths) {
+		depth.write(memory, depthVisualAddress);
+		depthVisualAddress += sizeof(Depth);
+	}
+
 	X11_WRITED(Screen, screenAddress, display, displayAddress);
 	X11_WRITED(Screen, screenAddress, width, nativeWindow->screenWidth());
 	X11_WRITED(Screen, screenAddress, height, nativeWindow->screenHeight());
 	X11_WRITED(Screen, screenAddress, mwidth, (U32)(nativeWindow->screenWidth() * 0.2646));
 	X11_WRITED(Screen, screenAddress, mheight, (U32)(nativeWindow->screenHeight() * 0.2646));
-	X11_WRITED(Screen, screenAddress, ndepths, 1); // 24 :TODO: do I need 8 and 16 or can I make Wine emulate it
-	X11_WRITED(Screen, screenAddress, depths, defaultDepth);
-	X11_WRITED(Screen, screenAddress, root_depth, 24);
-	X11_WRITED(Screen, screenAddress, root_visual, defaultVisual);
+	X11_WRITED(Screen, screenAddress, ndepths, (U32)depths.size());
+	X11_WRITED(Screen, screenAddress, depths, depthList);
+	X11_WRITED(Screen, screenAddress, root_depth, screenDepths[0].depth);
+	X11_WRITED(Screen, screenAddress, root_visual, defaultVisualAddress);
 	X11_WRITED(Screen, screenAddress, white_pixel, 0x00FFFFFF);
 	X11_WRITED(Screen, screenAddress, black_pixel, 0);
 	X11_WRITED(Screen, screenAddress, root, server->getRoot()->id);
-	// screen->cmap; // winex11 references this, but maybe not for TrueColor screen?
+	X11_WRITED(Screen, screenAddress, cmap, server->getDefaultColorMap()->id);
 	
 	return screenAddress;
 }
@@ -362,10 +431,6 @@ int XServer::closeDisplay(KThread* thread, const DisplayDataPtr& data) {
 	thread->process->free(vendor);
 
 	U32 screen = X11_READD(Display, data->displayAddress, screens);
-	U32 depths = X11_READD(Screen, screen, depths);
-	thread->process->free(depths);
-	U32 visual = X11_READD(Screen, screen, root_visual);
-	thread->process->free(visual);
 	thread->process->free(screen);
 	thread->process->free(data->displayAddress);
 	displays.remove(data->displayId);
@@ -728,4 +793,16 @@ U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
 	pointerWindow = root->getWindowFromPoint(x, y, x, y);
 	pointerMoved(prev, pointerWindow, x, y, NotifyUngrab);
 	return GrabSuccess;
+}
+
+U32 XServer::createColorMap(const Visual* visual, int alloc) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(colorMapMutex);
+	XColorMapPtr colorMap = std::make_shared<XColorMap>();
+	colorMaps.set(colorMap->id, colorMap);
+	return colorMap->id;
+}
+
+XColorMapPtr XServer::getColorMap(U32 id) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(colorMapMutex);
+	return colorMaps.get(id);
 }

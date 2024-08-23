@@ -128,7 +128,8 @@ void XSetWindowAttributes::copyWithMask(XSetWindowAttributes* attributes, U32 va
 XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), displayId(displayId), c_class(c_class), border_width(border_width) {
 	if (parent) {
 		attributes.border_pixmap = parent->attributes.border_pixmap;
-		attributes.colormap = parent->attributes.colormap;					
+		attributes.colormap = parent->attributes.colormap;
+		colorMap = parent->colorMap;
 	}
 }
 
@@ -281,6 +282,9 @@ int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* att
 			}
 		}
 		data->setEventMask(id, attributes->event_mask);
+	}
+	if (valueMask & CWColormap) {
+		colorMap = XServer::getServer()->getColorMap(attributes->colormap);
 	}
 	this->attributes.copyWithMask(attributes, valueMask);
 	return Success;
@@ -758,7 +762,12 @@ void XWindow::draw() {
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
 	WndPtr wnd = nativeWindow->getWnd(id);
 	if (wnd) {
-		nativeWindow->putBitsOnWnd(wnd, data, bytes_per_line, x, y, width(), height(), isDirty);
+		U32* palette = nullptr;
+		if (isDirty && colorMap) {
+			colorMap->buildCache();
+			palette = colorMap->nativePixels;
+		}
+		nativeWindow->putBitsOnWnd(wnd, data, bits_per_pixel, bytes_per_line, x, y, width(), height(), palette, isDirty);
 		isDirty = false;
 	}
 	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {

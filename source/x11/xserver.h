@@ -57,6 +57,9 @@ public:
 	U32 setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo, U32 time, bool trace = false);
 	int mapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
 	int unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
+	U32 createColorMap(const Visual* visual, int alloc);
+	XColorMapPtr getDefaultColorMap();
+	XColorMapPtr getColorMap(U32 id);
 
 	static U32 getNextId();
 
@@ -65,6 +68,7 @@ public:
 
 	XWindowPtr pointerWindow;
 	Visual visual;
+	BOXEDWINE_MUTEX mutex;
 
 	bool trace = true;
 	bool traceGC = false;
@@ -109,8 +113,20 @@ private:
 	BOXEDWINE_MUTEX cursorsMutex;
 	BHashTable<U32, XCursorPtr> cursors;
 
+	BOXEDWINE_MUTEX colorMapMutex;
+	BHashTable<U32, XColorMapPtr> colorMaps;
+	XColorMapPtr defaultColorMap;
+
+	// created up front and not modified, so reason to thread protect
+	BHashTable<U32, VisualPtr> visuals;
+	BHashTable<U32, VisualPtr> visualByDepth;
+	std::vector<U32> depths;
+
 	void initAtoms();
+	void initVisuals();
 	void setAtom(const BString& name, U32 key);
+	void addDepth(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel);
+	U32 createScreen(KThread* thread, U32 displayAddress);
 
 	void pointerMoved(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode);
 	void pointerMovedBetweenSiblings(const XWindowPtr& from, const XWindowPtr& to, const XWindowPtr& commonAncestor, S32 x, S32 y, U32 mode);

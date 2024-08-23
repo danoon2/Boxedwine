@@ -823,10 +823,13 @@ class XrrData;
 
 #define None                 0	/* universal null resource or null atom */
 #define DummyAtom           99
-#define VisualIdBase       1000
 
 #define AllocNone		0	/* create map with no entries */
 #define AllocAll		1	/* allocate entire map writeable */
+
+#define DoRed			(1<<0)
+#define DoGreen			(1<<1)
+#define DoBlue			(1<<2)
 
 #define VisualNoMask		0x0
 #define VisualIDMask 		0x1
@@ -866,6 +869,7 @@ class XDrawable;
 #include "displaydata.h"
 #include "xkeyboard.h"
 #include "xrandr.h"
+#include "xcolormap.h"
 #include "xgc.h"
 #include "xproperties.h"
 #include "ximage.h"

@@ -55,12 +55,18 @@ static void x11_CloseDisplay(CPU* cpu) {
     EAX = server->closeDisplay(thread, data);
 }
 
+// int XGrabServer(Display* display)
 static void x11_GrabServer(CPU* cpu) {
-    kpanic("x11_GrabServer");
+    XServer* server = XServer::getServer();
+    BOXEDWINE_MUTEX_LOCK(server->mutex);
+    EAX = Success;
 }
 
+// int XUngrabServer(Display* display)
 static void x11_UnGrabServer(CPU* cpu) {
-    kpanic("x11_UnGrabServer");
+    XServer* server = XServer::getServer();
+    BOXEDWINE_MUTEX_UNLOCK(server->mutex);
+    EAX = Success;
 }
 
 // Status XInitThreads()
@@ -567,7 +573,7 @@ static void x11_SetTextProperty(CPU* cpu) {
 }
 
 static void x11_SetSelectionOwner(CPU* cpu) {
-    kpanic("x11_SetSelectionOwner");
+    //kpanic("x11_SetSelectionOwner");
 }
 
 // Window XGetSelectionOwner(Display* display, Atom selection)
@@ -1111,6 +1117,8 @@ static void x11_GetAtomNames(CPU* cpu) {
 static void x11_CreateColorMap(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = thread->memory;
+    XServer* server = XServer::getServer();
+    U32 displayId = ARG1;
     Visual visual;
     U32 visualAddress = ARG3;
 
@@ -1121,28 +1129,229 @@ static void x11_CreateColorMap(CPU* cpu) {
     if (ARG4 == AllocNone && ((visualAddress && visual.c_class == TrueColor) || !visualAddress)) {
         EAX = DummyAtom;
     } else {
-        EAX = None;
+        EAX = server->createColorMap(&visual, ARG4);
+        if (ARG4 == AllocAll) {
+            XColorMapPtr colorMap = server->getColorMap(EAX);
+            for (U32 i = 0; i < MAX_COLORMAP_SIZE; i++) {
+                colorMap->colors->flags |= (COLOR_ALLOCATED | COLOR_WRITE);
+                colorMap->colors->uses.set(displayId, 1);
+            }
+        }
     }
 }
 
 static void x11_FreeColorMap(CPU* cpu) {
-    kpanic("x11_FreeColorMap");
+    //kpanic("x11_FreeColorMap");
 }
 
+// int XFreeColors(Display* display, Colormap colormap, unsigned long* pixels, int npixels, unsigned long planes)
 static void x11_FreeColors(CPU* cpu) {
-    kpanic("x11_FreeColors");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 cmap = ARG2;
+    XColorMapPtr colorMap = server->getColorMap(cmap);
+    U32 displayId = ARG1;
+
+    if (!colorMap) {
+        EAX = BadColor;
+        return;
+    }
+    U32 pixelsAddress = ARG3;
+    U32 npixels = ARG4;
+
+    EAX = Success;
+    for (U32 i = 0; i < npixels; i++) {
+        U32 index = memory->readd(pixelsAddress);
+        if (index >= MAX_COLORMAP_SIZE) {
+            EAX = BadValue;
+            return;
+        }
+        XColorMapColor& c = colorMap->colors[index];
+        if (!(c.flags & COLOR_ALLOCATED)) {
+            // All specified pixels that are allocated by the client in the colormap are freed, even if one or more pixels produce an error.
+            EAX = BadAccess;
+        }
+        c.uses.remove(displayId);
+        if (c.uses.size() == 0) {
+            c.flags = 0;
+        } else {
+            int ii = 0;
+        }
+        pixelsAddress += 4;
+    }    
 }
 
+// int XQueryColors(Display* display, Colormap colormap, XColor* defs_in_out, int ncolors) 
 static void x11_QueryColors(CPU* cpu) {
-    kpanic("x11_QueryColors");
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XColorMapPtr colorMap = server->getColorMap(ARG2);
+
+    if (!colorMap) {
+        EAX = BadColor;
+        return;
+    }
+    U32 count = ARG4;
+    U32 colorsAddress = ARG3;
+
+    if (count > MAX_COLORMAP_SIZE) {
+        EAX = BadValue;
+        return;
+    }
+
+    for (U32 i = 0; i < count; i++) {
+        U32 pixel = memory->readd(colorsAddress);
+        const XColorMapColor& c = colorMap->colors[pixel];
+        memory->writew(colorsAddress + 4, (U16)c.r << 8);
+        memory->writew(colorsAddress + 6, (U16)c.g << 8);
+        memory->writew(colorsAddress + 8, (U16)c.b << 8);
+        colorsAddress += XColor::size;
+    }
+    EAX = Success;
 }
 
+// int XStoreColor(Display* display, Colormap colormap, XColor* color)
+static void x11_StoreColor(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XColorMapPtr colorMap = server->getColorMap(ARG2);
+
+    if (!colorMap) {
+        EAX = BadColor;
+        return;
+    }
+    U32 colorAddress = ARG3;
+    U32 index = memory->readd(colorAddress);
+    if (colorAddress < MAX_COLORMAP_SIZE) {
+        EAX = BadValue;
+        return;
+    }
+    XColorMapColor& c = colorMap->colors[index];
+    if (!(c.flags & COLOR_WRITE)) {
+        EAX = BadAccess;
+        return;
+    }
+    c.r = (U8)(memory->readw(colorAddress + 4) >> 8);
+    c.g = (U8)(memory->readw(colorAddress + 6) >> 8);
+    c.b = (U8)(memory->readw(colorAddress + 8) >> 8);
+    colorMap->dirty = true;
+    EAX = Success;
+}
+
+// int XQueryColor(Display* display, Colormap colormap, XColor* def_in_out)
+static void x11_QueryColor(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XColorMapPtr colorMap = server->getColorMap(ARG2);
+
+    if (!colorMap) {
+        EAX = BadColor;
+        return;
+    }
+    U32 colorAddress = ARG3;
+
+    U32 index = memory->readd(colorAddress);
+    if (index >= MAX_COLORMAP_SIZE) {
+        EAX = BadValue;
+        return;
+    }
+    XColorMapColor& c = colorMap->colors[index];
+    memory->writew(colorAddress + 4, (U16)(c.r << 8));
+    memory->writew(colorAddress + 6, (U16)(c.g << 8));
+    memory->writew(colorAddress + 8, (U16)(c.b << 8));
+
+    EAX = Success;
+}
+
+// Status XAllocColor(Display* display, Colormap colormap, XColor* screen_in_out)
 static void x11_AllocColor(CPU* cpu) {
-    kpanic("x11_AllocColor");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XColorMapPtr colorMap = server->getColorMap(ARG2);
+    U32 displayId = ARG1;
+
+    if (!colorMap) {
+        EAX = BadColor;
+        return;
+    }
+
+    int freeIndex = -1;
+    U32 colorAddress = ARG3;
+
+    U8 r = (U8)(memory->readw(colorAddress + 4) >> 8);
+    U8 g = (U8)(memory->readw(colorAddress + 6) >> 8);
+    U8 b = (U8)(memory->readw(colorAddress + 8) >> 8);
+
+    for (U32 i = 0; i < MAX_COLORMAP_SIZE; i++) {
+        XColorMapColor& c = colorMap->colors[i];
+
+        if ((c.flags & COLOR_ALLOCATED) && c.r == r && c.g == g && c.b == b) {
+            EAX = 1;
+            memory->writed(colorAddress, i);
+            c.uses.set(displayId, 1);
+            c.flags = COLOR_ALLOCATED;
+            return;
+        } else if (freeIndex == -1 && !(c.flags & COLOR_ALLOCATED)) {
+            freeIndex = i;
+        } else if (c.flags & COLOR_WRITE) {
+            int ii = 0;
+        }
+    }
+    if (freeIndex >= 0) {
+        EAX = 1;
+        colorMap->colors[freeIndex].r = r;
+        colorMap->colors[freeIndex].g = g;
+        colorMap->colors[freeIndex].b = b;
+        colorMap->colors[freeIndex].flags = COLOR_ALLOCATED;
+        colorMap->colors[freeIndex].uses.set(displayId, 1);
+        colorMap->dirty = true;
+        memory->writed(colorAddress, freeIndex);
+    } else {
+        EAX = 0;
+    }
 }
 
+// Status XAllocColorCells(Display* display, Colormap colormap, Bool contig, unsigned long* plane_masks_return, unsigned int nplanes, unsigned long* pixels_return, unsigned int npixels)
 static void x11_AllocColorCells(CPU* cpu) {
-    kpanic("x11_AllocColorCells");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XColorMapPtr colorMap = server->getColorMap(ARG2);
+    U32 displayId = ARG1;
+    U32 npixels = ARG7;
+    U32 nextPixelIndex = 0;
+    U32 pixelsAddress = ARG6;
+    U32 available = 0;
+
+    for (U32 i = 0; i < MAX_COLORMAP_SIZE && npixels; i++) {
+        XColorMapColor& c = colorMap->colors[i];
+
+        if (c.flags & COLOR_ALLOCATED) {
+            continue;
+        }
+        available++;
+    }
+    if (npixels > available) {
+        EAX = 0;
+        return;
+    }
+    for (U32 i = 0; i < MAX_COLORMAP_SIZE && npixels; i++) {
+        XColorMapColor& c = colorMap->colors[i];
+
+        if (c.flags & COLOR_ALLOCATED) {
+            continue;
+        }
+        c.flags |= (COLOR_ALLOCATED | COLOR_WRITE);
+        c.uses.set(displayId, 1);
+        memory->writed(pixelsAddress, i);
+        pixelsAddress += 4;
+        npixels--;
+    }
+    EAX = 1;
 }
 
 // XVisualInfo* XGetVisualInfo(Display* display, long vinfo_mask, XVisualInfo* vinfo_template, int* nitems_return)
@@ -2111,10 +2320,6 @@ static void x11_MatchVisualInfo(CPU* cpu) {
     kpanic("x11_MatchVisualInfo");
 }
 
-static void x11_QueryColor(CPU* cpu) {
-    kpanic("x11_QueryColor");
-}
-
 // Bool XQueryExtension(Display* display, _Xconst char* name, int* major_opcode_return, int* first_event_return, int* first_error_return) 
 static void x11_QueryExtension(CPU* cpu) {
     BString name = cpu->memory->readString(ARG2);
@@ -2157,10 +2362,6 @@ static void x11_ShmPutImage(CPU* cpu) {
     kpanic("x11_ShmPutImage");
 }
 
-static void x11_StoreColor(CPU* cpu) {
-    kpanic("x11_StoreColor");
-}
-
 static void x11_WindowEvent(CPU* cpu) {
     kpanic("x11_WindowEvent");
 }
@@ -2197,6 +2398,7 @@ struct XineramaScreenInfo {
     S16 height;
 };
 
+// XineramaScreenInfo* XineramaQueryScreens(Display* dpy, int* number)
 static void x11_XineramaQueryScreens(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
@@ -2207,6 +2409,7 @@ static void x11_XineramaQueryScreens(CPU* cpu) {
     info->y_org = 0;
     info->width = KNativeWindow::defaultScreenWidth;
     info->height = KNativeWindow::defaultScreenHeight;
+    memory->writed(ARG2, 1);
     EAX = resultAddress;
 }
 
@@ -2437,7 +2640,11 @@ static void x11_XISelectEvents(CPU* cpu) {
     if (mask.mask_len > 4 && memory->readb(mask.maskAddress + 4)) {
         kpanic("x11_XISelectEvents currently expecting masks in the first 32-bits");
     }
-    EAX = data->setInput2Mask(ARG2, memory->readd(mask.maskAddress));
+    if (mask.mask_len == 0) {
+        EAX = data->setInput2Mask(ARG2, 0);
+    } else {
+        EAX = data->setInput2Mask(ARG2, memory->readd(mask.maskAddress));
+    }
 }
 
 void x11_init() {
