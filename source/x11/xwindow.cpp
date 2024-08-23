@@ -260,7 +260,7 @@ void XWindow::setTransient(U32 w) {
 			transientForWindow->transientChildren.push_back(shared_from_this());	
 		}
 	}
-	isTransient = w != 0;
+	transientForCache = w;
 }
 
 int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {	
@@ -304,7 +304,7 @@ void XWindow::iterateMappedChildrenFrontToBack(std::function<bool(const XWindowP
 	}
 	for (int i = (int)zchildren.size() - 1; i >= 0; i--) {
 		const XWindowPtr& child = zchildren.at(i);
-		if (child->mapped() && (!includeTransients || !child->isTransient)) {
+		if (child->mapped() && (!includeTransients || !child->isTransient())) {
 			if (!callback(child)) {
 				break;
 			}
@@ -315,7 +315,7 @@ void XWindow::iterateMappedChildrenFrontToBack(std::function<bool(const XWindowP
 void XWindow::iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
 	for (auto& child : zchildren) {
-		if (child->mapped() && (!includeTransients || !child->isTransient)) {
+		if (child->mapped() && (!includeTransients || !child->isTransient())) {
 			if (!callback(child)) {
 				return;
 			}
@@ -940,6 +940,18 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 	return Success;
 }
 
+bool XWindow::isSelfAndAllParentsMapped() {
+	return isMapped && (!parent || parent->isSelfAndAllParentsMapped());
+}
+
+bool XWindow::isTransient() {
+	if (transientForCache) {
+		XWindowPtr w = XServer::getServer()->getWindow(transientForCache);
+		return w && w->isSelfAndAllParentsMapped();
+	}
+	return false;
+}
+
 bool XWindow::isDialog() {
 	U32 type = NET_WM_WINDOW_TYPE();
 	if (type == _NET_WM_WINDOW_TYPE_DIALOG || (type == 0 && WM_TRANSIENT_FOR() && !attributes.override_redirect)) {
@@ -974,7 +986,7 @@ XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY, S32 parentX, S3
 		S32 x = parentX;
 		S32 y = parentY;
 
-		if (child->isTransient) {
+		if (child->isTransient()) {
 			x = screenX;
 			y = screenY;
 

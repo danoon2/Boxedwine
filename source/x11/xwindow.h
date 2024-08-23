@@ -190,7 +190,7 @@ private:
 	XSetWindowAttributes attributes;
 	bool isMapped = false;	
 	bool isFullScreen = false;
-	bool isTransient = false;
+	U32 transientForCache = 0;
 	XRectangle restoreRect;
 
 	BOXEDWINE_MUTEX propertiesMutex;
@@ -209,6 +209,8 @@ private:
 	XWindowPtr previousSibling();
 
 	bool isDialog();
+	bool isTransient();
+	bool isSelfAndAllParentsMapped();
 	U32 NET_WM_WINDOW_TYPE();
 	U32 WM_TRANSIENT_FOR();
 };
