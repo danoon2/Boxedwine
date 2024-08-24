@@ -133,6 +133,21 @@ XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height,
 	}
 }
 
+void XWindow::removeFromParent() {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
+	parent->children.remove(id);
+	int index = vectorIndexOf(parent->zchildren, shared_from_this());
+	if (index >= 0 && index < parent->zchildren.size()) {
+		parent->zchildren.erase(parent->zchildren.begin() + index);
+	}
+}
+
+void XWindow::addToParent() {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
+	parent->children.set(id, shared_from_this());
+	parent->zchildren.push_back(shared_from_this());
+}
+
 void XWindow::onDestroy() {
 	U32 transient = WM_TRANSIENT_FOR();
 	if (transient) {
@@ -146,14 +161,7 @@ void XWindow::onDestroy() {
 		}
 	}
 	if (parent) {
-		{
-			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
-			parent->children.remove(id);
-			int index = vectorIndexOf(parent->zchildren, shared_from_this());
-			if (index >= 0 && index < parent->zchildren.size()) {
-				parent->zchildren.erase(parent->zchildren.begin() + index);
-			}			
-		}
+		removeFromParent();
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.type = DestroyNotify;
@@ -203,9 +211,7 @@ void XWindow::onDestroy() {
 void XWindow::onCreate() {	
 	if (parent) {
 		{
-			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
-			parent->children.set(id, shared_from_this());
-			parent->zchildren.push_back(shared_from_this());
+			addToParent();
 		}
 		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
 			XEvent event = {};
@@ -747,6 +753,82 @@ int XWindow::unmapWindow() {
 	return Success;
 }
 
+int XWindow::reparentWindow(const XWindowPtr& parent, S32 x, S32 y) {
+	if (parent->c_class == InputOnly && c_class != InputOnly) {
+		return BadMatch;
+	}
+	bool needToRemap = false;
+
+	if (isMapped) {
+		unmapWindow();
+		needToRemap = true;
+	}
+	removeFromParent();
+	this->parent = parent;
+	this->x = x;
+	this->y = y;
+	addToParent();
+
+	XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XEvent event = {};
+		event.xreparent.type = ReparentNotify;
+		event.xreparent.display = data->displayAddress;
+		event.xreparent.event = parent->id;
+		event.xreparent.window = id;
+		event.xreparent.parent = parent->id;
+		event.xreparent.x = x;
+		event.xreparent.y = y;
+		event.xreparent.serial = data->getNextEventSerial();
+		event.xreparent.override_redirect = this->attributes.override_redirect;
+		data->putEvent(event);
+
+		if (XServer::getServer()->trace) {
+			BString log;
+			log.append(data->displayId, 16);
+			log += " Event";
+			log += " ReparentNofity";
+			log += " event=";
+			log.append(parent->id, 16);
+			log += " win=";
+			log.append(id, 16);
+			log += " parent=";
+			log.append(parent->id, 16);
+			klog(log.c_str());
+		}
+	});
+
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XEvent event = {};
+		event.xreparent.type = ReparentNotify;
+		event.xreparent.display = data->displayAddress;
+		event.xreparent.event = id;
+		event.xreparent.window = id;
+		event.xreparent.parent = parent->id;
+		event.xreparent.x = x;
+		event.xreparent.y = y;
+		event.xreparent.serial = data->getNextEventSerial();
+		event.xreparent.override_redirect = this->attributes.override_redirect;
+
+		if (XServer::getServer()->trace) {
+			BString log;
+			log.append(data->displayId, 16);
+			log += " Event";
+			log += " ReparentNofity";			
+			log += " event=";
+			log.append(id, 16);
+			log += " win=";
+			log.append(id, 16);
+			log += " parent=";
+			log.append(parent->id, 16);
+		}
+	});
+
+	if (needToRemap) {
+		mapWindow();
+	}
+	return Success;
+}
+
 void XWindow::setDirty() {
 	if (!isDirty) {
 		isDirty = true;
@@ -763,7 +845,7 @@ void XWindow::draw() {
 	WndPtr wnd = nativeWindow->getWnd(id);
 	if (wnd) {
 		U32* palette = nullptr;
-		if (isDirty && colorMap) {
+		if (colorMap) {
 			colorMap->buildCache();
 			palette = colorMap->nativePixels;
 		}
@@ -976,32 +1058,28 @@ U32 XWindow::WM_TRANSIENT_FOR() {
 	return 0;
 }
 
-XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY, S32 parentX, S32 parentY) {
+XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY) {
 	XWindowPtr result;
 
-	iterateMappedChildrenFrontToBack([screenX, screenY, parentX, parentY, &result](const XWindowPtr& child) {
+	iterateMappedChildrenFrontToBack([screenX, screenY, &result, this](const XWindowPtr& child) {
 		if (!child->isMapped) {
 			return true;
 		}
-		S32 x = parentX;
-		S32 y = parentY;
+		S32 x = screenX;
+		S32 y = screenY;
 
-		if (child->isTransient()) {
-			x = screenX;
-			y = screenY;
-
-			if (child->parent && child->parent->parent) {
-				child->parent->screenToWindow(x, y);
-			}
+		child->parent->screenToWindow(x, y);
+		
+		bool inChild = x >= child->x && x < child->x + (S32)child->width() && y >= child->y && y < child->y + (S32)child->height();
+		result = child->getWindowFromPoint(screenX, screenY);
+		if (result && (inChild || result->isTransient())) {
+			return false;
 		}
-		if (x >= child->x && x < child->x + (S32)child->width() && y >= child->y && y < child->y + (S32)child->height()) {
-			result = child->getWindowFromPoint(screenX, screenY, x - child->x, y - child->y);
-			if (result) {
-				return false;
-			}
+		if ((inChild || child->isTransient())) {
 			result = child;
 			return false;
 		}
+
 		return true;
 		}, true);
 	if (result) {

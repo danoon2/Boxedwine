@@ -164,7 +164,7 @@ static void x11_TranslateCoordinates(CPU* cpu) {
     S32 x = ARG4;
     S32 y = ARG5;
     src_w->windowToScreen(x, y);
-    XWindowPtr w = server->getRoot()->getWindowFromPoint(x, y, x, y);
+    XWindowPtr w = server->getRoot()->getWindowFromPoint(x, y);
     dest_w->screenToWindow(x, y);
     memory->writed(ARG6, x);
     memory->writed(ARG7, y);
@@ -190,8 +190,25 @@ static void x11_DestroyWindow(CPU* cpu) {
     }
 }
 
+// int XReparentWindow(Display* display, Window w, Window parent, int x, int y)
 static void x11_ReparentWindow(CPU* cpu) {
-    kpanic("x11_ReparentWindow");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();    
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    XWindowPtr w = server->getWindow(ARG2);
+    XWindowPtr parent = server->getWindow(ARG3);
+
+    if (!w) {
+        EAX = BadWindow;
+        return;
+    }
+    if (!parent) {
+        EAX = BadWindow;
+        return;
+    }
+    EAX = w->reparentWindow(parent, ARG4, ARG5);
+    
 }
 
 static void x11_QueryTree(CPU* cpu) {
@@ -534,7 +551,7 @@ static void x11_QueryPointer(CPU* cpu) {
 
     memory->writed(ARG3, root->id);
 
-    XWindowPtr child = root->getWindowFromPoint(x, y, x, y);
+    XWindowPtr child = root->getWindowFromPoint(x, y);
     memory->writed(ARG4, child->id);
     memory->writed(ARG5, x);
     memory->writed(ARG6, y);

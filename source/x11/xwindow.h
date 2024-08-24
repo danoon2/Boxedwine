@@ -152,6 +152,7 @@ public:
 
 	int mapWindow();
 	int unmapWindow();
+	int reparentWindow(const XWindowPtr& parent, S32 x, S32 y);
 
 	void windowToScreen(S32& x, S32& y);
 	void screenToWindow(S32& x, S32& y);
@@ -168,7 +169,7 @@ public:
 
 	void draw();
 	void setDirty() override;
-	XWindowPtr getWindowFromPoint(S32 screenX, S32 screenY, S32 parentX, S32 parentY);
+	XWindowPtr getWindowFromPoint(S32 screenX, S32 screenY);
 
 	void focusOut();
 	void focusIn();
@@ -207,6 +208,8 @@ private:
 
 	void setWmState(U32 state, U32 icon);
 	XWindowPtr previousSibling();
+	void removeFromParent();
+	void addToParent();
 
 	bool isDialog();
 	bool isTransient();

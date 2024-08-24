@@ -70,7 +70,7 @@ public:
 	Visual visual;
 	BOXEDWINE_MUTEX mutex;
 
-	bool trace = true;
+	bool trace = false;
 	bool traceGC = false;
 	bool isDisplayDirty = false;
 

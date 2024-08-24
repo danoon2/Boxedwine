@@ -670,7 +670,7 @@ int XServer::mapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 		int y = 0;
 		KNativeWindow::getNativeWindow()->getMousePos(&x, &y, false);
 
-		XWindowPtr wnd = root->getWindowFromPoint(x, y, x, y);
+		XWindowPtr wnd = root->getWindowFromPoint(x, y);
 		if (wnd) {
 			if (wnd != server->pointerWindow) {
 				server->pointerMoved(server->pointerWindow, wnd, x, y, NotifyNormal);
@@ -702,7 +702,7 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 		
 		KNativeWindow::getNativeWindow()->getMousePos(&x, &y, false);
 
-		XWindowPtr wnd = root->getWindowFromPoint(x, y, x, y);
+		XWindowPtr wnd = root->getWindowFromPoint(x, y);
 		if (wnd) {
 			if (wnd != server->pointerWindow) {
 				server->pointerMoved(server->pointerWindow, wnd, x, y, NotifyNormal);
@@ -721,7 +721,7 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 		grabbed->motionNotify(grabbedDisplay, x, y);
 		return;
 	}
-	XWindowPtr wnd = root->getWindowFromPoint(x, y, x, y);
+	XWindowPtr wnd = root->getWindowFromPoint(x, y);
 	if (wnd) {
 		if (wnd != pointerWindow) {
 			pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
@@ -744,7 +744,7 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 		return;
 	}
 
-	XWindowPtr wnd = root->getWindowFromPoint(x, y, x, y);
+	XWindowPtr wnd = root->getWindowFromPoint(x, y);
 	if (wnd) {
 		wnd->mouseButtonScreenCoords(button, x, y, pressed);
 	}
@@ -790,7 +790,7 @@ U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
 	S32 y = 0;
 	KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
 
-	pointerWindow = root->getWindowFromPoint(x, y, x, y);
+	pointerWindow = root->getWindowFromPoint(x, y);
 	pointerMoved(prev, pointerWindow, x, y, NotifyUngrab);
 	return GrabSuccess;
 }
