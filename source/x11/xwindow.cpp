@@ -1236,6 +1236,31 @@ void XWindow::focusNotify(const DisplayDataPtr& data, bool isIn, S32 mode, S32 d
 	}
 }
 
+void XWindow::keyNotify(const DisplayDataPtr& data, U32 key, S32 x, S32 y, bool pressed) {
+	S32 window_x = x;
+	S32 window_y = y;
+	screenToWindow(window_x, window_y);
+
+	// winex11 doesn't seem to use subwindow
+	XEvent event = {};
+
+	event.type = pressed ? KeyPress : KeyRelease;
+	event.xkey.serial = data->getNextEventSerial();
+	event.xkey.display = data->displayAddress;
+	event.xkey.window = id;
+	event.xkey.root = data->root;
+	event.xkey.subwindow = 0;
+	event.xkey.time = XServer::getServer()->getEventTime();
+	event.xkey.x = window_x;
+	event.xkey.y = window_y;
+	event.xkey.x_root = x;
+	event.xkey.y_root = y;
+	event.xkey.state = XServer::getServer()->getInputModifiers();
+	event.xkey.keycode = key;
+	event.xkey.same_screen = True;
+	data->putEvent(event);
+}
+
 void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y, bool pressed) {
 	S32 window_x = x;
 	S32 window_y = y;
@@ -1284,5 +1309,12 @@ void XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {
 	
 	XServer::getServer()->iterateEventMask(id, pressed ? ButtonPressMask : ButtonReleaseMask, [=](const DisplayDataPtr& data) {
 		buttonNotify(data, button, x, y, pressed);
+		});
+}
+
+void XWindow::keyScreenCoords(U32 key, S32 x, S32 y, bool pressed) {
+
+	XServer::getServer()->iterateEventMask(id, pressed ? KeyPressMask : KeyReleaseMask, [=](const DisplayDataPtr& data) {
+		keyNotify(data, key, x, y, pressed);
 		});
 }

@@ -225,7 +225,7 @@ public:
     int mouseMove(int x, int y, bool relative) override;
     int mouseWheel(int amount, int x, int y) override;
     int mouseButton(U32 down, U32 button, int x, int y) override;
-    int key(U32 key, U32 down) override;
+    int key(U32 sdlScanCode, U32 key, U32 down) override;
 
     void* createVulkanSurface(void* instance) override;
 
@@ -673,7 +673,7 @@ void* KNativeWindowSdl::createVulkanSurface(void* instance) {
 #include "../../tools/opengl/gldef.h"
 void KNativeWindowSdl::preOpenGLCall(U32 index) {
     // The Breakdown requires this extra time check, I'm not sure what call it uses to actually draw on the screen
-    if (index == XSwapBuffer || index == Finish || index == Flush || (screen->windowIsHidden && screen->timeWindowWasCreated + 1000 < KSystem::getMilliesSinceStart())) {
+    if (index == kXSwapBuffer || index == Finish || index == Flush || (screen->windowIsHidden && screen->timeWindowWasCreated + 1000 < KSystem::getMilliesSinceStart())) {
         screen->preDrawWindow();
     }
 }
@@ -906,7 +906,7 @@ void KNativeWindowSdl::displayChanged() {
 }
 
 void KNativeWindowSdl::glSwapBuffers(KThread* thread) {
-    preOpenGLCall(XSwapBuffer);
+    preOpenGLCall(kXSwapBuffer);
     if (BoxedwineGL::current) {
         BoxedwineGL::current->swapBuffer(window);
     }
@@ -1923,12 +1923,22 @@ void KNativeWindowSdl::createAndSetCursor(const char* moduleName, const char* re
 #define SDLK_KP8 SDLK_KP_8
 #define SDLK_KP9 SDLK_KP_9
 
-int KNativeWindowSdl::key(U32 key, U32 down) {
+int KNativeWindowSdl::key(U32 sdlScanCode, U32 key, U32 down) {
     static U32 lastProcessId;
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(hwndToWndMutex);
     
     if (!hwndToWnd.size())
         return 0;
+
+    XServer* server = XServer::getServer(true);
+    if (server) {
+        U32 x11Key = XKeyboard::sdl2x11(sdlScanCode);
+        if (x11Key) {
+            server->key(x11Key, down ? true : false);
+        }
+        return 1;
+    }
+
     std::shared_ptr<WndSdl> wnd = getFirstVisibleWnd();
     std::shared_ptr<KProcess> process;
 
@@ -2375,6 +2385,9 @@ U32 KNativeWindowSdl::screenRate() {
     return DM.refresh_rate;
 }
 
+#ifndef KMOD_SCROLL
+#define KMOD_SCROLL KMOD_RESERVED
+#endif
 U32 KNativeWindowSdl::getInputModifiers() {
     int x, y;
     unsigned int result = SDL_GetMouseState(&x, &y);
@@ -2389,10 +2402,29 @@ U32 KNativeWindowSdl::getInputModifiers() {
         modifiers |= NATIVE_MIDDLE_BUTTON_MASK;
     }
     if (result & SDL_BUTTON_X1MASK) {
-        modifiers |= Button8Mask;
+        modifiers |= NATIVE_BUTTON_4_MASK;
     }
     if (result & SDL_BUTTON_X2MASK) {
-        modifiers |= Button9Mask;
+        modifiers |= NATIVE_BUTTON_5_MASK;
+    }
+    SDL_Keymod mods = SDL_GetModState();
+    if (mods & KMOD_SHIFT) {
+        modifiers |= NATIVE_SHIFT_MASK;
+    }
+    if (mods & KMOD_CAPS) {
+        modifiers |= NATIVE_CAPS_MASK;
+    }
+    if (mods & KMOD_CTRL) {
+        modifiers |= NATIVE_CONTROL_MASK;
+    }
+    if (mods & KMOD_ALT) {
+        modifiers |= NATIVE_CONTROL_MASK;
+    }
+    if (mods & KMOD_NUM) {
+        modifiers |= NATIVE_NUM_MASK;
+    }
+    if (mods & KMOD_SCROLL) {
+        modifiers |= NATIVE_SCROLL_MASK;
     }
     return modifiers;
 }
@@ -2989,7 +3021,7 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
             if (e->key.keysym.sym==SDLK_SCROLLOCK) {
                 KSystem::printStacks();
             }
-            else if (!key(e->key.keysym.sym, 1)) {
+            else if (!key(e->key.keysym.scancode, e->key.keysym.sym, 1)) {
                 onKeyDown(translate(e->key.keysym.sym));
             }
 /*
@@ -3018,7 +3050,7 @@ bool KNativeWindowSdl::handlSdlEvent(SDL_Event* e) {
         }
 #endif
         if (!BOXEDWINE_RECORDER_HANDLE_KEY_UP(e->key.keysym.sym, e->key.keysym.sym == SDLK_F11)) {
-            if (!key(e->key.keysym.sym, 0)) {
+            if (!key(e->key.keysym.scancode, e->key.keysym.sym, 0)) {
                 onKeyUp(translate(e->key.keysym.sym));
             }
         }

@@ -713,7 +713,15 @@ static void x11_LookupString(CPU* cpu) {
         // winex11 always passes null for this
         kpanic("x11_LookupString status_in_out was not null");
     }
-    U32 keysym = XKeyboard::keycodeToKeysym(event.keycode, 0);
+    U32 keysym = 0;
+    
+    if (event.state & NumMask) {
+        keysym = XKeyboard::keycodeToKeysym(event.keycode, 5);
+    }
+
+    if (!keysym) {
+        keysym = XKeyboard::keycodeToKeysym(event.keycode, (event.state & ShiftMask) ? 1 : 0);
+    }
     EAX = 0;
 
     if (!keysym) {
@@ -800,10 +808,7 @@ static void x11_GetKeyboardMapping(CPU* cpu) {
     U32 first_keycode = (KeyCode)ARG2;
     U32 keycode_count = ARG3;
     U32 keysyms_per_keycode_return = ARG4;
-    U32 modifiersCount = 0;
-    U32 numberOfKeysPerModifier = 0;
-
-    XKeyboard::getModifiers(modifiersCount, numberOfKeysPerModifier);
+    U32 modifiersCount = 6;
 
     if (first_keycode + keycode_count - 1 > max_keycode) {
         EAX = BadValue;
@@ -824,9 +829,14 @@ static void x11_GetKeyboardMapping(CPU* cpu) {
 
 }
 
+// KeyCode XKeysymToKeycode(Display* display, KeySym keysym)
+static void x11_KeysymToKeycode(CPU* cpu) {
+    EAX = XKeyboard::keysymToKeycode(ARG2);
+}
+
 // KeySym XkbKeycodeToKeysym(Display* dpy, KeyCode kc, int group, int level)
 static void x11_KbKeycodeToKeysym(CPU* cpu) {
-    EAX = XKeyboard::keycodeToKeysym(ARG2, ARG4);
+    EAX = XKeyboard::keycodeToKeysym((KeyCode)ARG2, ARG4);
 }
 
 // int XDisplayKeycodes(Display* display, int* min_keycodes_return, int* max_keycodes_return) {
@@ -846,23 +856,12 @@ static void x11_GetModifierMapping(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     U32 resultAddress = thread->process->alloc(thread, sizeof(XModifierKeymap));
-    U32 numberOfModifiers = 0;
-    U32 numberOfKeysPerModifier = 0;
-    const U16* modifiers = XKeyboard::getModifiers(numberOfModifiers, numberOfKeysPerModifier);
-    U32 modifiermapAddress = thread->process->alloc(thread, sizeof(KeyCode) * 8 * numberOfKeysPerModifier);
+    const U8* modifiers = XKeyboard::getModifiers();
+    U32 modifiermapAddress = thread->process->alloc(thread, sizeof(KeyCode) * 8);
 
-    memory->writed(resultAddress, numberOfKeysPerModifier);
+    memory->writed(resultAddress, 1);
     memory->writed(resultAddress + 4, modifiermapAddress);
-
-    for (U32 i = 0; i < 8; i++) {
-        for (U32 j = 0; j < numberOfKeysPerModifier; j++) {
-            if (i < numberOfModifiers) {
-                memory->writeb(modifiermapAddress, (KeyCode)*modifiers);
-                modifiermapAddress++;
-                modifiers++;
-            }
-        }
-    }
+    memory->memcpy(modifiermapAddress, modifiers, 8);
     EAX = resultAddress;
 }
 
@@ -1515,7 +1514,7 @@ static void x11_GetPixel(CPU* cpu) {
 }
 
 static void x11_PutPixel(CPU* cpu) {
-    kpanic("x11_PutPixel");
+    //kpanic("x11_PutPixel");
 }
 
 static void x11_SubImage(CPU* cpu) {
@@ -2318,16 +2317,13 @@ static void x11_GetWindowAttributes(CPU* cpu) {
 }
 
 static void x11_IconifyWindow(CPU* cpu) {
-    kpanic("x11_IconifyWindow");
+    //kpanic("x11_IconifyWindow");
 }
 
 static void x11_InternAtom(CPU* cpu) {
     kpanic("x11_InternAtom");
 }
 
-static void x11_KeysymToKeycode(CPU* cpu) {
-    kpanic("x11_KeysymToKeycode");
-}
 
 static void x11_LocaleOfIM(CPU* cpu) {
     kpanic("x11_LocaleOfIM");

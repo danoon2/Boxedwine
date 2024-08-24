@@ -15,6 +15,7 @@ public:
 	
 	void mouseMove(S32 x, S32 y, bool relative);
 	void mouseButton(U32 button, S32 x, S32 y, bool pressed);
+	void key(U32 key, bool pressed);
 
 	U32 internAtom(const BString& name, bool onlyIfExists);
 	bool getAtom(U32 atom, BString& name);

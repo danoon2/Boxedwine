@@ -43,6 +43,12 @@ public:
 #define NATIVE_RIGHT_BUTTON_MASK 0x04
 #define NATIVE_BUTTON_4_MASK 0x08
 #define NATIVE_BUTTON_5_MASK 0x10
+#define NATIVE_SHIFT_MASK 0x20
+#define NATIVE_CAPS_MASK 0x40
+#define NATIVE_CONTROL_MASK 0x80
+#define NATIVE_ALT_MASK 0x100
+#define NATIVE_NUM_MASK 0x200
+#define NATIVE_SCROLL_MASK 0x400
 
 class KNativeWindow {
 public:
@@ -110,7 +116,7 @@ public:
     virtual int mouseMove(int x, int y, bool relative) = 0;
     virtual int mouseWheel(int amount, int x, int y) = 0;
     virtual int mouseButton(U32 down, U32 button, int x, int y) = 0;
-    virtual int key(U32 key, U32 down) = 0;  // the key code is specific to the back end
+    virtual int key(U32 sdlScanCode, U32 key, U32 down) = 0;  // the key code is specific to the back end
 
 #ifdef BOXEDWINE_RECORDER
     // return true to continue processing for custom handlers

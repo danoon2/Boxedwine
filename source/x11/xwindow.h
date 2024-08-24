@@ -158,8 +158,10 @@ public:
 	void screenToWindow(S32& x, S32& y);
 	void mouseMoveScreenCoords(S32 x, S32 y);
 	void mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed);
+	void keyScreenCoords(U32 key, S32 x, S32 y, bool pressed);
 	void motionNotify(const DisplayDataPtr& data, S32 x, S32 y);
 	void buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y, bool pressed);
+	void keyNotify(const DisplayDataPtr& data, U32 key, S32 x, S32 y, bool pressed);
 	void crossingNotify(const DisplayDataPtr& data, bool in, S32 x, S32 y, S32 mode, S32 detail);
 
 	XWindowPtr getParent() {return parent;}

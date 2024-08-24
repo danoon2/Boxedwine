@@ -169,7 +169,7 @@ void Player::runSlice() {
             runSlice();
         }
     } else if (this->nextCommand=="KEYDOWN" || this->nextCommand=="KEYUP") {
-        KNativeWindow::getNativeWindow()->key(atoi(this->nextValue.c_str()), (this->nextCommand=="KEYDOWN")?1:0);
+        KNativeWindow::getNativeWindow()->key(0, atoi(this->nextValue.c_str()), (this->nextCommand=="KEYDOWN")?1:0);
         instance->readCommand();
         if (this->nextCommand=="KEYUP") {
             runSlice();

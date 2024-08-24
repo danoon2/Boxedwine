@@ -296,12 +296,13 @@
 class XKeyboard {
 public:
 	static void getMinMaxKeycodes(S32& minKeycode, S32& maxKeyCode);
-	static const U16* getModifiers(U32& numberOfModifiers, U32& numberOfKeysPerModifier);
+	static const U8* getModifiers();
 	static void init();
 
 	static U32 keycodeToKeysym(U32 keycode, U32 level);
 	static U32 keysymToKeycode(U32 keysym);
 	static U32 translate(U32& keysym, U32 modifiers, char* buffer, U32 bufferLen);
+	static U32 sdl2x11(U32 sdlScanCode);
 };
 
 #endif

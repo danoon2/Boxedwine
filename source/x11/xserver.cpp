@@ -205,18 +205,18 @@ U32 XServer::setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo,
 		log.append(data->displayId, 16);
 		log += " SetInputFocus";
 		log += " revert-to=";
-		log.append(server->inputFocusRevertTo, 16);
+		log.append(this->inputFocusRevertTo, 16);
 		log += " focus=";
 		log.append(window, 16);
 	}
 	inputFocusRevertTo = revertTo;
 	XWindowPtr w = getWindow(window);
 	
-	if (server->inputFocus != w) {
-		if (server->inputFocus) {
-			server->inputFocus->focusOut();
+	if (this->inputFocus != w) {
+		if (this->inputFocus) {
+			this->inputFocus->focusOut();
 		}
-		server->inputFocus = w;
+		this->inputFocus = w;
 		if (w) {
 			w->focusIn();
 		}
@@ -526,10 +526,28 @@ U32 XServer::getInputModifiers() {
 		result |= Button3Mask;
 	}
 	if (modifiers & NATIVE_BUTTON_4_MASK) {
-		result |= Button4Mask;
+		result |= Button8Mask;
 	}
 	if (modifiers & NATIVE_BUTTON_5_MASK) {
-		result |= Button5Mask;
+		result |= Button8Mask;
+	}
+	if (modifiers & NATIVE_SHIFT_MASK) {
+		result |= ShiftMask;
+	}
+	if (modifiers & NATIVE_CAPS_MASK) {
+		result |= LockMask;
+	}
+	if (modifiers & NATIVE_CONTROL_MASK) {
+		result |= ControlMask;
+	}
+	if (modifiers & NATIVE_ALT_MASK) {
+		result |= Mod1Mask;
+	}
+	if (modifiers & NATIVE_NUM_MASK) {
+		result |= NumMask;
+	}
+	if (modifiers & NATIVE_SCROLL_MASK) {
+		result |= ScrollMask;
 	}
 	return result;
 }
@@ -748,6 +766,13 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 	if (wnd) {
 		wnd->mouseButtonScreenCoords(button, x, y, pressed);
 	}
+}
+
+void XServer::key(U32 key, bool pressed) {
+	S32 x = 0;
+	S32 y = 0;
+	KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
+	inputFocus->keyScreenCoords(key, x, y, pressed);
 }
 
 U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbed, XWindowPtr confined, U32 mask, U32 time) {

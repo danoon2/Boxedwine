@@ -282,6 +282,9 @@ typedef XID KeySym;
 #define Mod4Mask		(1<<6)
 #define Mod5Mask		(1<<7)
 
+#define NumMask Mod2Mask
+#define ScrollMask Mod3Mask
+
 /* modifier names.  Used to build a SetModifierMapping request or
    to read a GetModifierMapping request.  These correspond to the
    masks defined above. */
