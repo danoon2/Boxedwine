@@ -1401,7 +1401,7 @@ static void x11_GetVisualInfo(CPU* cpu) {
             memory->writed(listAddress, itemAddress);
             itemAddress += sizeof(XVisualInfo);
             listAddress += sizeof(U32);
-            visualInfo->set(screenIndex, visualAddress, depth, visual);
+            visualInfo->set(screenIndex, visualAddress, depth->depth, visual);
         }
         return true;
         });
@@ -1485,7 +1485,7 @@ static void x11_PutImage(CPU* cpu) {
     U32 dest_y = ARG8;
     U32 width = ARG9;
     U32 height = ARG10;
-    EAX = d->putImage(thread, gc, &image, src_x, src_y, dest_x, dest_y, width, height);    
+    EAX = d->putImage(thread, gc, &image, src_x, src_y, dest_x, dest_y, width, height);
 }
 
 // int XFlush(Display* display)
@@ -2341,7 +2341,11 @@ static void x11_QueryExtension(CPU* cpu) {
         cpu->memory->writed(ARG4, 0);
         cpu->memory->writed(ARG5, 0);
         EAX = True;
-    } else {
+    } else if (name == "GLX") {
+        cpu->memory->writed(ARG3, XServer::getServer()->getExtensionGLX());
+        cpu->memory->writed(ARG4, 0);
+        cpu->memory->writed(ARG5, 0);
+    }  else {
         EAX = False;
     }
 }

@@ -14,6 +14,19 @@ void XVisualInfo::read(KMemory* memory, U32 address) {
 	bits_per_rgb = (S32)memory->readd(address);
 }
 
+void XVisualInfo::write(KMemory* memory, U32 address) {
+	memory->writed(address, visual); address += 4;
+	memory->writed(address, visualid); address += 4;
+	memory->writed(address, screen); address += 4;
+	memory->writed(address, depth); address += 4;
+	memory->writed(address, c_class); address += 4;
+	memory->writed(address, red_mask); address += 4;
+	memory->writed(address, green_mask); address += 4;
+	memory->writed(address, blue_mask); address += 4;
+	memory->writed(address, colormap_size); address += 4;
+	memory->writed(address, bits_per_rgb);
+}
+
 bool XVisualInfo::match(U32 mask, S32 screenIndex, const Depth* depth, const Visual* visual) {
 	if ((mask & VisualIDMask) && this->visualid != visual->visualid) {
 		return false;
@@ -45,10 +58,11 @@ bool XVisualInfo::match(U32 mask, S32 screenIndex, const Depth* depth, const Vis
 	return true;
 }
 
-void XVisualInfo::set(S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
+void XVisualInfo::set(S32 screenIndex, U32 visualAddress, U32 depth, Visual* visual) {
+	this->screen = screenIndex;
 	this->visual = visualAddress;
 	this->visualid = visual->visualid;
-	this->depth = depth->depth;
+	this->depth = depth;
 	this->c_class = visual->c_class;
 	this->red_mask = visual->red_mask;
 	this->green_mask = visual->green_mask;

@@ -28,9 +28,10 @@ XServer::XServer() {
 	initAtoms();
 	initVisuals();
 	extensionXinput2 = internAtom(B("XInputExtension"), false);
+	extensionGLX = internAtom(B("GLX"), false);
 }
 
-void XServer::addDepth(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel) {
+VisualPtr XServer::addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel, U32 pixelFormatIndex) {
 	VisualPtr visual = std::make_shared<Visual>();
 	visual->visualid = getNextId();
 	visual->bits_per_rgb = bitsPerPixel;
@@ -39,9 +40,17 @@ void XServer::addDepth(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 
 	visual->blue_mask = blueMask;
 	visual->c_class = bitsPerPixel <= 8 ? PseudoColor : TrueColor;
 	visual->map_entries = 256;
+	visual->ext_data = pixelFormatIndex;
 
+	if (depth == 32) {
+		depth = 24;
+	}
+	if (!visualsByDepth.contains(depth)) {
+		visualsByDepth.set(depth, std::make_shared<std::vector<VisualPtr>>());
+	}
+	visualsByDepth.get(depth)->push_back(visual);
 	visuals.set(visual->visualid, visual);
-	visualByDepth.set(depth, visual);
+	return visual;
 }
 
 void XServer::initVisuals() {
@@ -51,21 +60,44 @@ void XServer::initVisuals() {
 	}
 	depths.push_back(depth);
 
-	addDepth(0xFF0000, 0xFF00, 0xFF, 24, 32);
+	addVisual(0xFF0000, 0xFF00, 0xFF, 24, 32, 0);
 	if (depth != 24) {
 		depths.push_back(24);
 	}
-	addDepth(0xF800, 0x7E0, 0x1F, 16, 16); 
+	addVisual(0xF800, 0x7E0, 0x1F, 16, 16, 0);
 	if (depth != 16) {
 		depths.push_back(16);
 	}	
-	addDepth(0x7C00, 0x3E0, 0x1F, 15, 16);
+	addVisual(0x7C00, 0x3E0, 0x1F, 15, 16, 0);
 	if (depth != 15) {
 		depths.push_back(15);
 	}
-	addDepth(0, 0, 0, 8, 8);
+	addVisual(0, 0, 0, 8, 8, 0);
 	if (depth != 8) {
 		depths.push_back(8);
+	}
+	U32 index = 1;
+	while (true) {
+		PixelFormat* pf = KSystem::getPixelFormat(index);
+		if (!pf) {
+			break;
+		}
+		if (pf->dwFlags & K_PFD_SUPPORT_OPENGL) {
+			VisualPtr visual = addVisual(pf->cRedBits << pf->cRedShift, pf->cGreenBits << pf->cGreenShift, pf->cBlueBits << pf->cBlueShift, pf->cColorBits, pf->cColorBits, index);
+
+			CLXFBConfigPtr fbConfig = std::make_shared<CLXFBConfig>();
+			U32 depth = pf->cColorBits;
+			if (depth == 32) {
+				depth = 24;
+			}
+			fbConfig->depth = depth;
+			fbConfig->fbId = getNextId();
+			fbConfig->pixelFormatIndex = index;
+			fbConfig->visualId = visual->visualid;
+			fbConfigById.set(fbConfig->fbId, fbConfig);
+			fbConfigByPixelIndex.set(index, fbConfig);
+		}
+		index++;
 	}
 }
 
@@ -383,22 +415,29 @@ XColorMapPtr XServer::getDefaultColorMap() {
 U32 XServer::createScreen(KThread* thread, U32 displayAddress) {
 	KMemory* memory = thread->memory;
 	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-	U32 screenAddress = thread->process->alloc(thread, sizeof(Screen) + (sizeof(Depth) + sizeof(Visual)) * visualByDepth.size());
+	U32 visualsCount = 0;
+	for (auto& visuals : visualsByDepth) {
+		visualsCount += (U32)visuals.value->size();
+	}
+	U32 screenAddress = thread->process->alloc(thread, (U32)(sizeof(Screen) + (sizeof(Depth) * depths.size()) + (sizeof(Visual) * visualsCount)));
 	U32 depthVisualAddress = screenAddress + sizeof(Screen);	
 	U32 defaultVisualAddress = depthVisualAddress;
 
 	std::vector<Depth> screenDepths;
 
 	for (auto& depth : depths) {
-		VisualPtr visual = visualByDepth.get(depth);
-		visual->write(memory, depthVisualAddress);
-
 		Depth d;
 		d.depth = depth;
-		d.nvisuals = 1;
+		d.nvisuals = (S32)visualsByDepth.get(depth)->size();
 		d.visuals = depthVisualAddress;
 		screenDepths.push_back(d);
-		depthVisualAddress += sizeof(Visual);
+
+		for (S32 i = 0; i < d.nvisuals; i++) {
+			VisualPtr visual = visualsByDepth.get(depth)->at(i);
+			visual->write(memory, depthVisualAddress);
+			
+			depthVisualAddress += sizeof(Visual);
+		}
 	}
 	U32 depthList = depthVisualAddress;
 	for (auto& depth : screenDepths) {

@@ -880,6 +880,7 @@ class XDrawable;
 #include "xpixmap.h"
 #include "xcursor.h"
 #include "xwindow.h"
+#include "xfbconfig.h"
 #include "xserver.h"
 #include "xinput2.h"
 

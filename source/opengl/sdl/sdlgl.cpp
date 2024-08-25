@@ -207,10 +207,10 @@ void initSdlOpenGL() {
 
     int99Callback[Finish] = sdl_glFinish;
     int99Callback[Flush] = sdl_glFlush;
-    int99Callback[XCreateContext] = sdl_glXCreateContext;
-    int99Callback[XMakeCurrent] = sdl_glXMakeCurrent;
-    int99Callback[XDestroyContext] = sdl_glXDestroyContext;
-    int99Callback[XSwapBuffer] = sdl_glXSwapBuffers;
+    int99Callback[kXCreateContext] = sdl_glXCreateContext;
+    int99Callback[kXMakeCurrent] = sdl_glXMakeCurrent;
+    int99Callback[kXDestroyContext] = sdl_glXDestroyContext;
+    int99Callback[kXSwapBuffer] = sdl_glXSwapBuffers;
 }
 
 #endif

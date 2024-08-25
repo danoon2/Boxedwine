@@ -299,10 +299,10 @@ void initMesaOpenGL() {
 
         int99Callback[Finish] = osmesa_glFinish;
         int99Callback[Flush] = osmesa_glFlush;
-        int99Callback[XCreateContext] = osmesa_glXCreateContext;
-        int99Callback[XMakeCurrent] = osmesa_glXMakeCurrent;
-        int99Callback[XDestroyContext] = osmesa_glXDestroyContext;
-        int99Callback[XSwapBuffer] = osmesa_glXSwapBuffers;
+        int99Callback[kXCreateContext] = osmesa_glXCreateContext;
+        int99Callback[kXMakeCurrent] = osmesa_glXMakeCurrent;
+        int99Callback[kXDestroyContext] = osmesa_glXDestroyContext;
+        int99Callback[kXSwapBuffer] = osmesa_glXSwapBuffers;
     }
 }
 

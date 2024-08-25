@@ -338,14 +338,14 @@
 #define InterleavedArrays 336
 #define SamplePass 337
 
-#define XCreateContext 338
-#define XMakeCurrent 339
-#define XDestroyContext 340
-#define XSwapBuffer 341
+#define kXCreateContext 338
+#define kXMakeCurrent 339
+#define kXDestroyContext 340
+#define kXSwapBuffer 341
 
 #define GL_EXT_BASE 342
-
+#define GL_X_BASE
 #undef MemoryBarrier
 #include "gldef_ext.h"
-
+#include "glxdef.h"
 #endif

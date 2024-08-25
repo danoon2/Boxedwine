@@ -749,7 +749,8 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, const WndPtr& w, int majo
 #endif
         contextCreated();
         result = nextGlId;
-        thread->addGlContext(nextGlId++, context);
+        KThreadGlContextPtr info = thread->addGlContext(nextGlId++, context);
+        info->wnd = w;
         contextCount++;
         if (!wnd->openGlContext)
             wnd->openGlContext = context;       

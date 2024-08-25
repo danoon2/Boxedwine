@@ -13,8 +13,9 @@ struct XVisualInfo {
 	S32 colormap_size;
 	S32 bits_per_rgb;
 
-	void set(S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual);
+	void set(S32 screenIndex, U32 visualAddress, U32 depth, Visual* visual);
 	void read(KMemory* memory, U32 address);
+	void write(KMemory* memory, U32 address);
 	bool match(U32 mask, S32 screenIndex, const Depth* depth, const Visual* visual);
 };
 

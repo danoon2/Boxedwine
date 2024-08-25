@@ -1473,8 +1473,10 @@ void KThread::removeGlContextById(U32 id) {
     this->glContext.remove(id);
 }
 
-void KThread::addGlContext(U32 id, void* context) {
-    this->glContext.set(id, std::make_shared<KThreadGlContext>(context));
+KThreadGlContextPtr KThread::addGlContext(U32 id, void* context) {
+    KThreadGlContextPtr result = std::make_shared<KThreadGlContext>(context);
+    this->glContext.set(id, result);
+    return result;
 }
 
 void KThread::removeAllGlContexts() {

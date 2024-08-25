@@ -39,6 +39,7 @@ public:
 
 class KProcess;
 class Memory;
+class Wnd;
 
 class KThreadGlContext {
 public:
@@ -47,7 +48,10 @@ public:
     void* context = nullptr;
     bool hasBeenMadeCurrent = false;
     bool sharing = false;
+    std::shared_ptr<Wnd> wnd;
 };
+
+typedef std::shared_ptr<KThreadGlContext> KThreadGlContextPtr;
 
 class KThread {
 public:
@@ -116,9 +120,9 @@ public:
     U64 waitingForSignalToEndMaskToRestore = 0;
     U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
-    std::shared_ptr<KThreadGlContext> getGlContextById(U32 id);
+    KThreadGlContextPtr getGlContextById(U32 id);
     void removeGlContextById(U32 id);
-    void addGlContext(U32 id, void* context);
+    KThreadGlContextPtr addGlContext(U32 id, void* context);
     void removeAllGlContexts();
     bool hasContextBeenMadeCurrentSinceCreation = false;
 

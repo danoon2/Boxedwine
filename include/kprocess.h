@@ -268,6 +268,7 @@ public:
     BHashTable<U32, U32> glStrings;    
     U32 glStringsiExtensions = 0;
     std::vector<U32> glStringsiExtensionsOffset;
+    U32 glxStringExtensions = 0;
     U32 numberOfExtensions = 0;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;

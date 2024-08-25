@@ -2553,4 +2553,4 @@
 #define WindowPos4svMESA (GL_EXT_BASE+2552)
 #define WriteMaskEXT (GL_EXT_BASE+2553)
 #define GetStringi (GL_EXT_BASE+2554)
-#define GL_FUNC_COUNT (GL_EXT_BASE+2555)
+#define LAST_EXT (GL_EXT_BASE+2554)

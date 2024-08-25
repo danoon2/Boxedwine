@@ -21,6 +21,7 @@ public:
 	bool getAtom(U32 atom, BString& name);
 	U32 getNextQuark();
 	U32 getExtensionInput2() {return this->extensionXinput2;}
+	U32 getExtensionGLX() {return this->extensionGLX;}
 
 	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
 	XWindowPtr getWindow(U32 window);
@@ -47,8 +48,6 @@ public:
 	DisplayDataPtr getDisplayDataById(U32 id);
 	void changeScreen(U32 width, U32 height, U32 bpp);
 
-	Screen* getScreen(KThread* thread, S32 screen);	
-
 	void draw(bool drawNow = false);
 	const XWindowPtr& getRoot();
 	U32 getEventTime();
@@ -61,6 +60,7 @@ public:
 	U32 createColorMap(const Visual* visual, int alloc);
 	XColorMapPtr getDefaultColorMap();
 	XColorMapPtr getColorMap(U32 id);
+	VisualPtr getVisual(U32 id) {return visuals.get(id);}
 
 	static U32 getNextId();
 
@@ -75,6 +75,9 @@ public:
 	bool traceGC = false;
 	bool isDisplayDirty = false;
 
+	// no need to protect, create only when server starts
+	BHashTable<U32, CLXFBConfigPtr> fbConfigById;
+	BHashTable<U32, CLXFBConfigPtr> fbConfigByPixelIndex;
 private:
 	static std::atomic_int nextId;
 	static XServer* server;
@@ -90,6 +93,7 @@ private:
 	U32 grabbedTime;
 
 	U32 extensionXinput2;
+	U32 extensionGLX;
 
 	BOXEDWINE_MUTEX atomMutex;
 	BHashTable<U32, BString> atoms;
@@ -120,13 +124,13 @@ private:
 
 	// created up front and not modified, so reason to thread protect
 	BHashTable<U32, VisualPtr> visuals;
-	BHashTable<U32, VisualPtr> visualByDepth;
+	BHashTable<U32, std::shared_ptr<std::vector<VisualPtr>>> visualsByDepth;
 	std::vector<U32> depths;
 
 	void initAtoms();
 	void initVisuals();
 	void setAtom(const BString& name, U32 key);
-	void addDepth(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel);
+	VisualPtr addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel, U32 pixelFormatIndex);
 	U32 createScreen(KThread* thread, U32 displayAddress);
 
 	void pointerMoved(const XWindowPtr& from, const XWindowPtr& to, S32 x, S32 y, U32 mode);

@@ -92,6 +92,9 @@ int XDrawable::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U3
 	U32 copyPerLine = (bits_per_pixel * width + 7) / 8;
 
 	for (U32 y = 0; y < height; y++) {
+		if (!memory->canRead(src, copyPerLine)) {
+			return BadValue;
+		}
 		memory->memcpy(dst, src, copyPerLine);
 		src += bytes_per_line;
 		dst += this->bytes_per_line;

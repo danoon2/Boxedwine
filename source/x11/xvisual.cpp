@@ -13,6 +13,7 @@ void Visual::read(KMemory* memory, U32 address) {
 }
 
 void Visual::write(KMemory* memory, U32 address) {
+	X11_WRITED(Visual, address, ext_data, ext_data);
 	X11_WRITED(Visual, address, visualid, visualid);
 	X11_WRITED(Visual, address, c_class, c_class);
 	X11_WRITED(Visual, address, red_mask, red_mask);
