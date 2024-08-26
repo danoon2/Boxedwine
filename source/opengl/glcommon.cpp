@@ -33,7 +33,7 @@
 
 #include "glMarshal.h"
 
-thread_local static BString glExt;
+static BString glExt;
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
