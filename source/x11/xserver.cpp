@@ -628,12 +628,12 @@ void XServer::pointerMovedParentToChild(const XWindowPtr& from, const XWindowPtr
 	// now iterate from parent to child (not including child/parent)
 	for (auto it = betweenWindows.rbegin(); it != betweenWindows.rend(); ++it) {
 		XServer::getServer()->iterateEventMask((*it)->id, LeaveWindowMask, [=](const DisplayDataPtr& data) {
-			from->crossingNotify(data, false, x, y, mode, NotifyVirtual);
+			(*it)->crossingNotify(data, false, x, y, mode, NotifyVirtual);
 			});
 	}
 
 	XServer::getServer()->iterateEventMask(to->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
-		from->crossingNotify(data, true, x, y, mode, NotifyInferior);
+		to->crossingNotify(data, true, x, y, mode, NotifyInferior);
 		});
 }
 
@@ -647,12 +647,12 @@ void XServer::pointerMovedChildToParent(const XWindowPtr& from, const XWindowPtr
 	XWindowPtr betweenWindow = from->getParent();
 	while (betweenWindow && betweenWindow->id != from->id) {
 		XServer::getServer()->iterateEventMask(betweenWindow->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
-			from->crossingNotify(data, true, x, y, mode, NotifyVirtual);
+			betweenWindow->crossingNotify(data, true, x, y, mode, NotifyVirtual);
 			});
 		betweenWindow = betweenWindow->getParent();
 	}
 	XServer::getServer()->iterateEventMask(to->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
-		from->crossingNotify(data, true, x, y, mode, NotifyInferior);
+		to->crossingNotify(data, true, x, y, mode, NotifyInferior);
 		});
 }
 
@@ -666,7 +666,7 @@ void XServer::pointerMovedBetweenSiblings(const XWindowPtr& from, const XWindowP
 	XWindowPtr betweenWindow = from->getParent();
 	while (betweenWindow && betweenWindow->id != commonAncestor->id) {
 		XServer::getServer()->iterateEventMask(betweenWindow->id, LeaveWindowMask, [=](const DisplayDataPtr& data) {
-			from->crossingNotify(data, false, x, y, mode, NotifyNonlinearVirtual);
+			betweenWindow->crossingNotify(data, false, x, y, mode, NotifyNonlinearVirtual);
 			});
 		betweenWindow = betweenWindow->getParent();
 	}
@@ -682,12 +682,12 @@ void XServer::pointerMovedBetweenSiblings(const XWindowPtr& from, const XWindowP
 	// now iterate from common ancestor to second window (not including child/parent)
 	for (auto it = betweenWindows.rbegin(); it != betweenWindows.rend(); ++it) {
 		XServer::getServer()->iterateEventMask((*it)->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
-			from->crossingNotify(data, true, x, y, mode, NotifyNonlinearVirtual);
+			(*it)->crossingNotify(data, true, x, y, mode, NotifyNonlinearVirtual);
 			});
 	}
 
 	XServer::getServer()->iterateEventMask(to->id, EnterWindowMask, [=](const DisplayDataPtr& data) {
-		from->crossingNotify(data, true, x, y, mode, NotifyNonlinear);
+		to->crossingNotify(data, true, x, y, mode, NotifyNonlinear);
 		});
 }
 
@@ -777,7 +777,9 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 			pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
 			pointerWindow = wnd;
 		}
-		wnd->mouseMoveScreenCoords(x, y);
+		while (wnd && !wnd->mouseMoveScreenCoords(x, y)) {
+			wnd = wnd->parent;
+		}
 	}
 }
 
@@ -795,8 +797,8 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 	}
 
 	XWindowPtr wnd = root->getWindowFromPoint(x, y);
-	if (wnd) {
-		wnd->mouseButtonScreenCoords(button, x, y, pressed);
+	while (wnd && !wnd->mouseButtonScreenCoords(button, x, y, pressed)) {
+		wnd = wnd->parent;
 	}
 }
 

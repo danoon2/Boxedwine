@@ -1147,20 +1147,22 @@ void XWindow::motionNotify(const DisplayDataPtr& data, S32 x, S32 y) {
 	data->putEvent(event);
 }
 
-void XWindow::mouseMoveScreenCoords(S32 x, S32 y) {		
-	bool input2Found = false;
+bool XWindow::mouseMoveScreenCoords(S32 x, S32 y) {		
+	bool found = false;
 
-	XServer::getServer()->iterateInput2Mask(id, XI_RawMotionMask, [&input2Found, this, x, y](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateInput2Mask(id, XI_RawMotionMask, [&found, this, x, y](const DisplayDataPtr& data) {
 		input2MotionNotify(data, x, y);
-		input2Found = true;
+		found = true;
 		});
 
-	if (input2Found) {
-		return;
+	if (found) {
+		return true;
 	}
-	XServer::getServer()->iterateEventMask(id, PointerMotionMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, PointerMotionMask, [&found, this, x, y](const DisplayDataPtr& data) {
 		motionNotify(data, x, y);
+		found = true;
 		});
+	return found;
 }
 
 void XWindow::getAncestorTree(std::vector<XWindowPtr>& ancestors) {
@@ -1350,11 +1352,14 @@ void XWindow::buttonNotify(const DisplayDataPtr& data, U32 button, S32 x, S32 y,
 	}
 }
 
-void XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {
-	
-	XServer::getServer()->iterateEventMask(id, pressed ? ButtonPressMask : ButtonReleaseMask, [=](const DisplayDataPtr& data) {
+bool XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {
+	bool found = false;
+
+	XServer::getServer()->iterateEventMask(id, pressed ? ButtonPressMask : ButtonReleaseMask, [&found, this, button, x, y, pressed](const DisplayDataPtr& data) {
 		buttonNotify(data, button, x, y, pressed);
+		found = true;
 		});
+	return false;
 }
 
 void XWindow::keyScreenCoords(U32 key, S32 x, S32 y, bool pressed) {

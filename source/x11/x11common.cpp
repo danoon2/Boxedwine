@@ -531,6 +531,7 @@ static void x11_UngrabPointer(CPU* cpu) {
 
 // int XWarpPointer(Display* display, Window src_w, Window dest_w, int src_x, int src_y, unsigned int src_width, unsigned int src_height, int dest_x, int dest_y)
 static void x11_WarpPointer(CPU* cpu) {
+    KNativeWindow::getNativeWindow()->setMousePos(ARG8, ARG9);
     EAX = Success;
 }
 
@@ -2657,10 +2658,22 @@ static void x11_XISelectEvents(CPU* cpu) {
     if (mask.mask_len > 4 && memory->readb(mask.maskAddress + 4)) {
         kpanic("x11_XISelectEvents currently expecting masks in the first 32-bits");
     }
+    U32 value = 0;
     if (mask.mask_len == 0) {
         EAX = data->setInput2Mask(ARG2, 0);
     } else {
-        EAX = data->setInput2Mask(ARG2, memory->readd(mask.maskAddress));
+        value = memory->readd(mask.maskAddress);
+        EAX = data->setInput2Mask(ARG2, value);
+    }
+    if (server->trace) {
+        BString log;
+
+        log.append(data->displayId, 16);
+        log += " XISelectEvents win=";
+        log.append(w->id, 16);
+        log += " mask=";
+        log.append(value, 16);
+        klog(log.c_str());
     }
 }
 

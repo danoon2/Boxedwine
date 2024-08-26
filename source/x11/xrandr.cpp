@@ -31,12 +31,10 @@ U32 XrrRates(KThread* thread, const DisplayDataPtr& displayData, U32 screen, U32
 
     memory->writed(rateCountAddress, 1);
     if (data->ratesAddress) {
-        klog("rateCountAddress = %x rateAddress = %x", rateCountAddress, data->ratesAddress);
         return data->ratesAddress;
     }
     data->ratesAddress = thread->process->alloc(thread, 2);
     memory->writew(data->ratesAddress, XrrConfigCurrentRate());
-    klog("rateCountAddress = %x rateAddress = %x", rateCountAddress, data->ratesAddress);
     return data->ratesAddress;
 }
 

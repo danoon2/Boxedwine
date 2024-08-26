@@ -1003,12 +1003,12 @@ void gl_common_XCreateWindow(CPU* cpu) {
     w->windowRect.bottom = win->height();
     w->glSetPixelFormat(cfg->glPixelFormat);
     nativeWindow->screenChanged(win->width(), win->height(), nativeWindow->screenBpp());
-
+    EAX = win->id;
 }
 
 // void glXDestroyWindow(Display* dpy, GLXWindow win)
 void gl_common_XDestroyWindow(CPU* cpu) {
-    kpanic("glXDestroyWindow");
+    
 }
 
 // GLXContext glXCreateContextAttribsARB(Display* dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int* attrib_list)
