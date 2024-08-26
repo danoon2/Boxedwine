@@ -303,7 +303,6 @@ void glcommon_glGetString(CPU* cpu) {
     U32 len = (U32)strlen(result) + 1;
     U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
     cpu->memory->memcpy(address, (void*)result, len);
-    cpu->thread->process->glStringsiExtensions = address;
 
     process->glStrings.set(name, address);
     EAX = address;
@@ -651,6 +650,9 @@ void glcommon_glGetError(CPU* cpu) {
 #define GLX_COLOR_INDEX_BIT		0x00000002
 #define GLX_PBUFFER_CLOBBER_MASK	0x08000000
 
+#define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
+#define GLX_CONTEXT_FLAGS_ARB 0x2094
 
     /*
      * GLX 1.4 and later:
@@ -717,12 +719,12 @@ void gl_common_XCreateContext(CPU* cpu) {
     U32 shareList = ARG3;
     XVisualInfo info;
     info.read(memory, ARG2);
-    U32 pixelFormatIndex = memory->readd(info.visual);
+    U32 pixelFormatId = memory->readd(info.visual); // pixel format index is in visual.ext_data (first member)
     KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
     wRECT w = {};
     WndPtr glWnd = nativeWindow->createWnd(thread, thread->process->id, 0, w, w);
 
-    glWnd->glSetPixelFormat(pixelFormatIndex);
+    glWnd->glSetPixelFormat(PlatformOpenGL::getFormat(pixelFormatId));
     EAX = KNativeWindow::getNativeWindow()->glCreateContext(thread, glWnd, 0, 0, 0, 0);
 }
 
@@ -795,18 +797,17 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     U32 attribute = ARG3;
-    CLXFBConfigPtr cfg = server->fbConfigById.get(ARG2);
-    PixelFormat* pf = KSystem::getPixelFormat(cfg->pixelFormatIndex);
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
 
     switch (attribute) {
     case GLX_DOUBLEBUFFER:
-        memory->writed(ARG4, (pf->dwFlags & K_PFD_DOUBLEBUFFER) ? True : False);
+        memory->writed(ARG4, (cfg->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) ? True : False);
         break;
     case GLX_STEREO:
-        memory->writed(ARG4, (pf->dwFlags & K_PFD_STEREO) ? True : False);
+        memory->writed(ARG4, (cfg->glPixelFormat->pf.dwFlags & K_PFD_STEREO) ? True : False);
         break;
     case GLX_FBCONFIG_ID:
-        memory->writed(ARG4, cfg->visualId);
+        memory->writed(ARG4, cfg->fbId);
         break;
     case GLX_VISUAL_ID:
         memory->writed(ARG4, cfg->visualId);
@@ -814,73 +815,81 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
     case GLX_DRAWABLE_TYPE:
     {
         U32 result = 0;
-        if (pf->dwFlags & K_PFD_DRAW_TO_WINDOW) {
+        if (cfg->glPixelFormat->pf.dwFlags & K_PFD_DRAW_TO_WINDOW) {
             result |= GLX_WINDOW_BIT;
         }
-        if (pf->dwFlags & K_PFD_DRAW_TO_BITMAP) {
+        if (cfg->glPixelFormat->pf.dwFlags & K_PFD_DRAW_TO_BITMAP) {
             result |= GLX_PIXMAP_BIT;
         }
-        // GLX_WINDOW_BIT, GLX_PIXMAP_BIT, and GLX_PBUFFER_BIT.
+        if (cfg->glPixelFormat->pbuffer) {
+            result |= GLX_PBUFFER_BIT;
+        }
         memory->writed(ARG4, result);
         break;
     }
     case GLX_RENDER_TYPE:
-        if (pf->iPixelType == K_PFD_TYPE_RGBA) {
+        if (cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_RGBA) {
             memory->writed(ARG4, GLX_RGBA_BIT);
-        } else if (pf->iPixelType == K_PFD_TYPE_COLORINDEX) {
+        } else if (cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_COLORINDEX) {
             memory->writed(ARG4, GLX_COLOR_INDEX_BIT);
         } else {
-            kpanic("gl_common_XGetFBConfigAttrib unhandled GLX_RENDER_TYPE %x", pf->iPixelType);
+            kpanic("gl_common_XGetFBConfigAttrib unhandled GLX_RENDER_TYPE %x", cfg->glPixelFormat->pf.iPixelType);
         }
         break;
     case GLX_BUFFER_SIZE:
-        memory->writed(ARG4, pf->cColorBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cColorBits);
         break;
     case GLX_RED_SIZE:
-        memory->writed(ARG4, pf->cRedBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cRedBits);
         break;
     case GLX_GREEN_SIZE:
-        memory->writed(ARG4, pf->cGreenBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cGreenBits);
         break;
     case GLX_BLUE_SIZE:
-        memory->writed(ARG4, pf->cBlueBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cBlueBits);
         break;
     case GLX_ALPHA_SIZE:
-        memory->writed(ARG4, pf->cAlphaBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAlphaBits);
         break;
     case GLX_ACCUM_RED_SIZE:
-        memory->writed(ARG4, pf->cAccumRedBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumRedBits);
         break;
     case GLX_ACCUM_BLUE_SIZE:
-        memory->writed(ARG4, pf->cAccumBlueBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumBlueBits);
         break;
     case GLX_ACCUM_GREEN_SIZE:
-        memory->writed(ARG4, pf->cAccumGreenBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumGreenBits);
         break;
     case GLX_ACCUM_ALPHA_SIZE:
-        memory->writed(ARG4, pf->cAccumAlphaBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumAlphaBits);
         break;
     case GLX_AUX_BUFFERS:
-        memory->writed(ARG4, pf->cAuxBuffers);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAuxBuffers);
         break;
     case GLX_DEPTH_SIZE:
-        memory->writed(ARG4, pf->cDepthBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cDepthBits);
         break;
     case GLX_STENCIL_SIZE:
-        memory->writed(ARG4, pf->cStencilBits);
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cStencilBits);
         break;
     case GLX_TRANSPARENT_TYPE:
         memory->writed(ARG4, GLX_NONE);
         break;
     case GLX_MAX_PBUFFER_PIXELS:
-        EAX = False;
-        return;
+        memory->writed(ARG4, cfg->glPixelFormat->pbufferMaxPixels);
+        break;
     case GLX_MAX_PBUFFER_WIDTH:
-        EAX = False;
-        return;
+        memory->writed(ARG4, cfg->glPixelFormat->pbufferMaxWidth);
+        break;
     case GLX_MAX_PBUFFER_HEIGHT:
-        EAX = False;
-        return;
+        memory->writed(ARG4, cfg->glPixelFormat->pbufferMaxHeight);
+        break;
+    case GLX_SAMPLE_BUFFERS:
+        memory->writed(ARG4, cfg->glPixelFormat->sampleBuffers);
+        break;
+    case GLX_SAMPLES:
+        memory->writed(ARG4, cfg->glPixelFormat->samples);
+        break;
     default:
         kpanic("gl_common_XGetFBConfigAttrib attribute not handled: %x", attribute);
     }
@@ -892,28 +901,20 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
 void gl_common_XGetFBConfigs(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+
     U32 count = 0;
     U32 screen = ARG2;
 
-    Display::iterateVisuals(thread, ARG1, [&count, screen](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
-        if (visual->ext_data && screenIndex == screen) {
-            count++;
-        }
-        return true;
-        });
-    U32 resultAddress = thread->process->alloc(thread, count * 4); // list of ids
+    U32 resultAddress = thread->process->alloc(thread, server->getFbConfigCount() * 4); // list of ids
     EAX = resultAddress;
 
-    Display::iterateVisuals(thread, ARG1, [&resultAddress, memory, screen](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
-        if (visual->ext_data && screenIndex == screen) {
-            CLXFBConfigPtr cfg = XServer::getServer()->fbConfigByPixelIndex.get(visual->ext_data);
-            memory->writed(resultAddress, cfg->fbId);
-            resultAddress += 4;
-        }
-        return true;
-        });
     
-    memory->writed(ARG3, count);
+    server->iterateFbConfigs([memory, &resultAddress](const CLXFBConfigPtr& cfg) {
+        memory->writed(resultAddress, cfg->fbId);
+        resultAddress += 4;
+        });
+    memory->writed(ARG3, server->getFbConfigCount());
 }
 
 // XVisualInfo* glXGetVisualFromFBConfig(Display* dpy, GLXFBConfig config)
@@ -921,7 +922,7 @@ void gl_common_XGetVisualFromFBConfig(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
-    CLXFBConfigPtr cfg = server->fbConfigById.get(ARG2);
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
     if (!cfg) {
         EAX = 0;
         return;
@@ -984,7 +985,7 @@ void gl_common_XDestroyPixmap(CPU* cpu) {
 // GLXWindow glXCreateWindow(Display* dpy, GLXFBConfig config, Window win, const int* attrib_list)
 void gl_common_XCreateWindow(CPU* cpu) {
     XServer* server = XServer::getServer();
-    CLXFBConfigPtr cfg = server->fbConfigById.get(ARG2);
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
     XWindowPtr win = server->getWindow(ARG3);
     if (!cfg || !win) {
         EAX = 0;
@@ -1000,7 +1001,7 @@ void gl_common_XCreateWindow(CPU* cpu) {
     w->windowRect.top = 0;
     w->windowRect.right = win->width();
     w->windowRect.bottom = win->height();
-    w->glSetPixelFormat(cfg->pixelFormatIndex);
+    w->glSetPixelFormat(cfg->glPixelFormat);
     nativeWindow->screenChanged(win->width(), win->height(), nativeWindow->screenBpp());
 
 }
@@ -1012,7 +1013,45 @@ void gl_common_XDestroyWindow(CPU* cpu) {
 
 // GLXContext glXCreateContextAttribsARB(Display* dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int* attrib_list)
 void gl_common_XCreateContextAttribsARB(CPU* cpu) {
-    kpanic("glXCreateContextAttribsARB");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    U32 share_context = ARG3;
+    U32 direct = ARG4;
+    U32 attribList = ARG5;
+    U32 major = 0;
+    U32 minor = 0;
+    U32 flags = 0;
+
+    while (true) {
+        U32 attrib = memory->readd(attribList);
+        attribList += 4;
+        if (!attrib) {
+            break;
+        }
+        switch (attrib) {
+        case GLX_CONTEXT_MAJOR_VERSION_ARB:
+            major = memory->readd(attribList);
+            attribList += 4;
+            break;
+        case GLX_CONTEXT_MINOR_VERSION_ARB:
+            minor = memory->readd(attribList);
+            attribList += 4;
+            break;
+        case GLX_CONTEXT_FLAGS_ARB:
+            flags = memory->readd(attribList);
+            attribList += 4;
+            break;
+        default:
+            kpanic("gl_common_XCreateContextAttribsARB unhandled attribute %x", attrib);
+        }
+    }
+    KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+    wRECT w = {};
+    WndPtr glWnd = nativeWindow->createWnd(thread, thread->process->id, 0, w, w);
+    glWnd->glSetPixelFormat(cfg->glPixelFormat);
+    EAX = KNativeWindow::getNativeWindow()->glCreateContext(thread, glWnd, major, minor, 0, flags);
 }
 
 // void glXSwapIntervalEXT(Display* dpy, GLXDrawable drawable, int interval)

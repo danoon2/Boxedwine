@@ -1700,7 +1700,7 @@ void boxeddrv_glPixelFormats(CPU* cpu) {
 void boxeddrv_wglGetPixelFormat(CPU* cpu) {
     WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd)
-        EAX = wnd->glGetPixelFormat();
+        EAX = wnd->glGetPixelFormat()->id;
     else
         EAX = 0;
 }
@@ -1730,7 +1730,8 @@ void boxeddrv_wglMakeCurrent(CPU* cpu) {
 void boxeddrv_wglSetPixelFormat(CPU* cpu) {
     WndPtr wnd = KNativeWindow::getNativeWindow()->getWnd(ARG1);
     if (wnd) {
-        EAX = wnd->glSetPixelFormat(ARG2);
+        wnd->glSetPixelFormat(PlatformOpenGL::getFormat(ARG2));
+        EAX = 1;
     } else {
         EAX = 0;
     }

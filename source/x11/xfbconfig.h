@@ -1,11 +1,13 @@
 #ifndef __XFBCONFIG_H__
 #define __XFBCONFIG_H__
 
+#include "platformOpenGL.h"
+
 class CLXFBConfig {
 public:
     U32 fbId;
     U32 visualId;
-    U32 pixelFormatIndex;
+    GLPixelFormatPtr glPixelFormat;
     U32 depth;
 };
 

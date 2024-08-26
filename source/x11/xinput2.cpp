@@ -34,3 +34,21 @@ void XIValuatorClassInfo::write(KMemory* memory, U32 address, S32 type, S32 sour
 	memory->writed(address + 36, resolution);
 	memory->writed(address + 40, mode);
 }
+
+void XIRawEvent::serialize(U32* data) {
+	data[0] = type;
+	data[1] = serial;
+	data[2] = send_event;
+	data[3] = displayAddress;
+	data[4] = extension;
+	data[5] = evtype;
+	data[6] = time;
+	data[7] = deviceid;
+	data[8] = sourceid;
+	data[9] = detail;
+	data[10] = flags;
+	data[11] = valuators.mask_len;
+	data[12] = valuators.maskAddress;
+	data[13] = valuators.valuesAddress;
+	data[14] = raw_values;
+}

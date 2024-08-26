@@ -493,6 +493,7 @@
     <ClInclude Include="..\..\..\..\include\meminfo.h" />
     <ClInclude Include="..\..\..\..\include\mixer.h" />
     <ClInclude Include="..\..\..\..\include\platform.h" />
+    <ClInclude Include="..\..\..\..\include\platformOpenGL.h" />
     <ClInclude Include="..\..\..\..\include\player.h" />
     <ClInclude Include="..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\include\recorder.h" />
@@ -829,6 +830,7 @@
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
+    <ClCompile Include="..\..\..\..\platform\windows\platformOpenGL.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp" />

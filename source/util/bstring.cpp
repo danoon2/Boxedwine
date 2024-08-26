@@ -32,7 +32,7 @@ public:
 #define TOTAL_LEVEL 13
 
 char* getNewString(int level) {
-    return new char[1 << level];
+    return new char[(U32)(1 << level)];
 }
 
 void releaseString(int level, char* str) {

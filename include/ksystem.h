@@ -150,6 +150,7 @@ public:
     static U32 emulatedMilliesToHost(U32 millies);
     static U32 describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr);
     static PixelFormat* getPixelFormat(U32 index);
+    static U32 getPixelFormatCount();
     static U32 findPixelFormat(U32 flags, U32 colorType, U32 cRedBits, U32 cGreenBits, U32 cBlueBits, U32 cAlphaBits, U32 cAccumBits, U32 cDepthBits, U32 cStencilBits);
 
     static std::shared_ptr<FsNode> procNode;

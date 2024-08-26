@@ -39,6 +39,7 @@ public:
 		
 	U32 getEventMask(U32 window);
 	void setEventMask(U32 window, U32 mask);
+	U32 getInput2Mask(U32 window);
 	int setInput2Mask(U32 window, U32 mask);
 
 	U32 getNextEventSerial();	

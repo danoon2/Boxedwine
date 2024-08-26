@@ -1,6 +1,8 @@
 #ifndef __KNATIVEWINDOW_H__
 #define __KNATIVEWINDOW_H__
 
+#include "platformOpenGL.h"
+
 class wRECT {
 public:
     wRECT() : left(0), top(0), right(0), bottom(0) {}
@@ -27,8 +29,8 @@ public:
     virtual void setText(BString text) = 0;
     virtual void show(bool bShow) = 0;    
     virtual void destroy() = 0;
-    virtual U32 glSetPixelFormat(U32 index) = 0;
-    virtual U32 glGetPixelFormat() = 0;
+    virtual void glSetPixelFormat(const GLPixelFormatPtr& format) = 0;
+    virtual GLPixelFormatPtr glGetPixelFormat() = 0;
     virtual bool setFocus() = 0;
 
     wRECT windowRect;

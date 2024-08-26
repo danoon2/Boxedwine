@@ -279,7 +279,7 @@ void BoxedContainer::findApps(std::vector<BoxedApp>& apps) {
     app4.name = B("ldd");
     app4.path = B("/usr/bin");
     app4.cmd = B("/usr/bin/ldd");
-    app4.args.push_back(B("/opt/wine/lib/wine/i386-unix/winex11.so"));
+    app4.args.push_back(B("/opt/wine/lib/wine/winex11.drv.so"));
     app4.uid = 0;
     app4.isWine = false;
     apps.push_back(app4);

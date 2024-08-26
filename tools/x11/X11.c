@@ -5,6 +5,11 @@
 #include <X11/XKBlib.h>
 #include <X11/Xutil.h>
 
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glx.h>
+#include <GL/glxext.h>
+
 #include "X11_def.h"
 
 Display* XOpenDisplay(const char* displayName) {
@@ -715,4 +720,12 @@ char* XServerVendor(Display* display) {
 
 int XVendorRelease(Display* display) {
 	return 1;
+}
+
+Bool XGetEventData(Display* dpy, XGenericEventCookie* cookie) {
+	CALL_2_R(X11_GET_EVENT_DATA, dpy, cookie);
+}
+
+void XFreeEventData(Display* dpy, XGenericEventCookie* cookie) {
+	CALL_2(X11_FREE_EVENT_DATA, dpy, cookie);
 }

@@ -2664,6 +2664,52 @@ static void x11_XISelectEvents(CPU* cpu) {
     }
 }
 
+// Bool XGetEventData(Display* dpy, XGenericEventCookie* cookie)
+void x11_GetEventData(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 cookieAddress = ARG2;
+    U32 type = X11_READD(XGenericEventCookie, cookieAddress, type);
+    U32 evtype = X11_READD(XGenericEventCookie, cookieAddress, evtype);
+    U32 extension = X11_READD(XGenericEventCookie, cookieAddress, extension);
+    if (type == GenericEvent && evtype == XI_RawMotion && extension == server->getExtensionInput2()) {
+        // seems a bit bad to assume this, but wine passes in the entire event, so we will just assume our data is there in the padding
+        U32 rawAddress = cookieAddress + 32;
+        S32 x = X11_READD(XIRawEvent, rawAddress, valuators.maskAddress);
+        S32 y = X11_READD(XIRawEvent, rawAddress, valuators.valuesAddress);
+        X11_WRITED(XGenericEventCookie, cookieAddress, data, rawAddress);
+        X11_WRITED(XIRawEvent, rawAddress, valuators.maskAddress, rawAddress + 24);
+
+        U32 values = thread->process->alloc(thread, 16); // 16 = 2x doubles
+        double dx = x;
+        double dy = y;
+        long2Double d;
+        d.d = dx;
+        memory->writeq(values, d.l);
+        d.d = dy;
+        memory->writeq(values + 8, d.l);
+        X11_WRITED(XIRawEvent, rawAddress, valuators.valuesAddress, values);
+    }
+    EAX = True;
+}
+
+// void XFreeEventData(Display* dpy, XGenericEventCookie* cookie)
+void x11_FreeEventData(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 cookieAddress = ARG2;
+    U32 type = X11_READD(XGenericEventCookie, cookieAddress, type);
+    U32 evtype = X11_READD(XGenericEventCookie, cookieAddress, evtype);
+    U32 extension = X11_READD(XGenericEventCookie, cookieAddress, extension);
+    if (type == GenericEvent && evtype == XI_RawMotion && extension == server->getExtensionInput2()) {
+        U32 rawAddress = cookieAddress + 32;
+        U32 values = X11_READD(XIRawEvent, rawAddress, valuators.valuesAddress);
+        thread->process->free(values);
+    }
+}
+
 void x11_init() {
     XKeyboard::init();
 
@@ -2864,6 +2910,9 @@ void x11_init() {
     int9BCallback[X11_XI_QUERY_DEVICE] = x11_XIQueryDevice;
     int9BCallback[X11_XI_QUERY_VERSION] = x11_XIQueryVersion;
     int9BCallback[X11_XI_SELECT_EVENTS] = x11_XISelectEvents;
+
+    int9BCallback[X11_GET_EVENT_DATA] = x11_GetEventData;
+    int9BCallback[X11_FREE_EVENT_DATA] = x11_FreeEventData;
 }
 
 void callX11(CPU* cpu, U32 index) {

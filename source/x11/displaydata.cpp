@@ -66,6 +66,13 @@ void DisplayData::setEventMask(U32 window, U32 mask) {
 	perWindowEventMask.set(window, mask);
 }
 
+U32 DisplayData::getInput2Mask(U32 window) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMaskMutex);
+	U32 result = 0;
+	perWindowEventMask2.get(window, result);
+	return result;
+}
+
 int DisplayData::setInput2Mask(U32 window, U32 mask) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMaskMutex);
 	perWindowEventMask2.set(window, mask);

@@ -655,6 +655,9 @@
     <ClCompile Include="..\..\..\..\source\x11\xfbconfig.cpp">
       <Filter>source\x11</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\windows\platformOpenGL.cpp">
+      <Filter>platform\windows</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1430,6 +1433,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\x11\xfbconfig.h">
       <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\platformOpenGL.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

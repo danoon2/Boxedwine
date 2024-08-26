@@ -972,6 +972,11 @@ PixelFormat* KSystem::getPixelFormat(U32 index) {
     return nullptr;
 }
 
+U32 KSystem::getPixelFormatCount() {
+    initDisplayModes();
+    return numberOfPfs;
+}
+
 U32 KSystem::describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr)
 {
     KMemory* memory = thread->memory;

@@ -26,6 +26,7 @@ U32 XServer::getNextId() {
 
 XServer::XServer() {
 	initAtoms();
+	initDepths();
 	initVisuals();
 	extensionXinput2 = internAtom(B("XInputExtension"), false);
 	extensionGLX = internAtom(B("GLX"), false);
@@ -41,10 +42,7 @@ VisualPtr XServer::addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth
 	visual->c_class = bitsPerPixel <= 8 ? PseudoColor : TrueColor;
 	visual->map_entries = 256;
 	visual->ext_data = pixelFormatIndex;
-
-	if (depth == 32) {
-		depth = 24;
-	}
+	
 	if (!visualsByDepth.contains(depth)) {
 		visualsByDepth.set(depth, std::make_shared<std::vector<VisualPtr>>());
 	}
@@ -53,51 +51,21 @@ VisualPtr XServer::addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth
 	return visual;
 }
 
-void XServer::initVisuals() {
+void XServer::initDepths() {
 	U32 depth = KNativeWindow::getNativeWindow()->screenBpp();
-	if (depth == 32) {
-		depth = 24;
-	}
 	depths.push_back(depth);
 
-	addVisual(0xFF0000, 0xFF00, 0xFF, 24, 32, 0);
-	if (depth != 24) {
-		depths.push_back(24);
+	if (depth != 32) {
+		depths.push_back(32);
 	}
-	addVisual(0xF800, 0x7E0, 0x1F, 16, 16, 0);
 	if (depth != 16) {
 		depths.push_back(16);
 	}	
-	addVisual(0x7C00, 0x3E0, 0x1F, 15, 16, 0);
 	if (depth != 15) {
 		depths.push_back(15);
 	}
-	addVisual(0, 0, 0, 8, 8, 0);
 	if (depth != 8) {
 		depths.push_back(8);
-	}
-	U32 index = 1;
-	while (true) {
-		PixelFormat* pf = KSystem::getPixelFormat(index);
-		if (!pf) {
-			break;
-		}
-		if (pf->dwFlags & K_PFD_SUPPORT_OPENGL) {
-			VisualPtr visual = addVisual(pf->cRedBits << pf->cRedShift, pf->cGreenBits << pf->cGreenShift, pf->cBlueBits << pf->cBlueShift, pf->cColorBits, pf->cColorBits, index);
-
-			CLXFBConfigPtr fbConfig = std::make_shared<CLXFBConfig>();
-			U32 depth = pf->cColorBits;
-			if (depth == 32) {
-				depth = 24;
-			}
-			fbConfig->depth = depth;
-			fbConfig->fbId = getNextId();
-			fbConfig->pixelFormatIndex = index;
-			fbConfig->visualId = visual->visualid;
-			fbConfigById.set(fbConfig->fbId, fbConfig);
-			fbConfigByPixelIndex.set(index, fbConfig);
-		}
-		index++;
 	}
 }
 
@@ -398,6 +366,31 @@ void XServer::iterateEventMask(U32 wndId, U32 mask, std::function<void(const Dis
 		if (data) {
 			// don't hold displayMutext when calling this, since the callback will likely lock events
 			if (data->getEventMask(wndId) & mask) {
+				callback(data);
+			}
+		}
+	}
+}
+
+void XServer::iterateInput2Mask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& display)> callback) {
+	std::vector<U32> ids;
+
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+
+		for (auto& display : displays) {
+			ids.push_back(display.key);
+		}
+	}
+	for (U32& key : ids) {
+		DisplayDataPtr data;
+		{
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+			data = displays.get(key);
+		}
+		if (data) {
+			// don't hold displayMutext when calling this, since the callback will likely lock events
+			if (data->getInput2Mask(wndId) & mask) {
 				callback(data);
 			}
 		}
@@ -869,4 +862,36 @@ U32 XServer::createColorMap(const Visual* visual, int alloc) {
 XColorMapPtr XServer::getColorMap(U32 id) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(colorMapMutex);
 	return colorMaps.get(id);
+}
+
+void XServer::initVisuals() {	
+	addVisual(0xFF0000, 0xFF00, 0xFF, 32, 32, 0);
+	addVisual(0xF800, 0x7E0, 0x1F, 16, 16, 0);
+	addVisual(0x7C00, 0x3E0, 0x1F, 15, 16, 0);
+	addVisual(0, 0, 0, 8, 8, 0);
+
+	// will iterate hardware support opengl formats if available and regular pixel formats
+	PlatformOpenGL::iterateFormats([this](const GLPixelFormatPtr& format) {
+		CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
+		cfg->fbId = getNextId();
+		cfg->glPixelFormat = format;
+		cfg->depth = format->pf.cColorBits;
+		VisualPtr vis = addVisual(format->pf.cRedBits << format->pf.cRedShift, format->pf.cGreenBits << format->pf.cGreenShift, format->pf.cBlueBits << format->pf.cBlueShift, format->pf.cColorBits, cfg->depth, format->id);
+		cfg->visualId = vis->visualid;
+		fbConfigById.set(cfg->fbId, cfg);
+	});	
+}
+
+CLXFBConfigPtr XServer::getFbConfig(U32 id) {
+	return fbConfigById.get(id);
+}
+
+U32 XServer::getFbConfigCount() {
+	return (U32)fbConfigById.size();
+}
+
+void XServer::iterateFbConfigs(std::function<void(const CLXFBConfigPtr& cfg)> callback) {
+	for (auto& cfg : fbConfigById) {
+		callback(cfg.value);
+	}
 }

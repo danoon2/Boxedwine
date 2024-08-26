@@ -1,4 +1,4 @@
-#define XBASE LAST_EXT
+#define XBASE (LAST_EXT+1)
 
 #define kXChooseVisual (XBASE+0)
 #define kXCopyContext (XBASE+1)

@@ -29,7 +29,7 @@
 #include "devinput.h"
 #include "kunixsocket.h"
 #include "sdlcallback.h"
-#include "pixelformat.h"
+#include "platformOpenGL.h"
 #include "../../source/util/threadutils.h"
 #include "../../source/sdl/startupArgs.h"
 #include "../../source/opengl/boxedwineGL.h"
@@ -66,14 +66,12 @@ public:
     void show(bool bShow) override;
     void destroy() override;
 
-    U32 glSetPixelFormat(U32 index) override {
-        pixelFormatIndex = index;
-        pixelFormat = KSystem::getPixelFormat(index);
-        return 1;
+    void glSetPixelFormat(const GLPixelFormatPtr& format) override {
+        pixelFormat = format;
     }
 
-    U32 glGetPixelFormat() override {
-        return pixelFormatIndex;
+    GLPixelFormatPtr glGetPixelFormat() override {
+        return pixelFormat;
     }
 
     bool setFocus() override {
@@ -81,8 +79,9 @@ public:
     }
 
     BString text;
-    PixelFormat* pixelFormat = nullptr;
+    GLPixelFormatPtr pixelFormat;
     U32 pixelFormatIndex = 0;
+    U32 openGlPixelFormatIndex = 0;
     void* openGlContext = nullptr;
     U32 activated = 0;
     U32 processId = 0;
@@ -351,6 +350,7 @@ void KNativeWindow::init(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, BStrin
     screen->scaleQuality = scaleQuality;
     screen->fullScreen = fullScreen;
     screen->vsync = vsync;
+    PlatformOpenGL::init();
 }
 
 WndPtr KNativeWindowSdl::getWnd(U32 hwnd) {
@@ -582,18 +582,18 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
     firstWindowCreated = 1;
     SDL_GL_ResetAttributes();
 
-    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, wnd->pixelFormat->cRedBits);
-    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, wnd->pixelFormat->cGreenBits);
-    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, wnd->pixelFormat->cBlueBits);
-    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, wnd->pixelFormat->cAlphaBits);
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, wnd->pixelFormat->pf.cRedBits);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, wnd->pixelFormat->pf.cGreenBits);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, wnd->pixelFormat->pf.cBlueBits);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, wnd->pixelFormat->pf.cAlphaBits);
 
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, wnd->pixelFormat->cDepthBits);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, wnd->pixelFormat->cStencilBits);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, wnd->pixelFormat->pf.cDepthBits);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, wnd->pixelFormat->pf.cStencilBits);
 
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_RED_SIZE, wnd->pixelFormat->cAccumRedBits);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE, wnd->pixelFormat->cAccumGreenBits);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE, wnd->pixelFormat->cAccumBlueBits);
-    SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE, wnd->pixelFormat->cAccumAlphaBits);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_RED_SIZE, wnd->pixelFormat->pf.cAccumRedBits);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_GREEN_SIZE, wnd->pixelFormat->pf.cAccumGreenBits);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_BLUE_SIZE, wnd->pixelFormat->pf.cAccumBlueBits);
+    SDL_GL_SetAttribute(SDL_GL_ACCUM_ALPHA_SIZE, wnd->pixelFormat->pf.cAccumAlphaBits);
 
     if (major) {
         if (major >= 3) {
@@ -604,10 +604,10 @@ U32 sdlCreateOpenglWindow_main_thread(KThread* thread, std::shared_ptr<WndSdl> w
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minor);
 //#endif
     }
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, (wnd->pixelFormat->dwFlags & K_PFD_DOUBLEBUFFER)?1:0);
-    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->dwFlags & K_PFD_GENERIC_FORMAT)?0:1);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, (wnd->pixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER)?1:0);
+    SDL_GL_SetAttribute(SDL_GL_ACCELERATED_VISUAL, (wnd->pixelFormat->pf.dwFlags & K_PFD_GENERIC_FORMAT)?0:1);
 
-    if (wnd->pixelFormat->dwFlags & K_PFD_SWAP_COPY) {
+    if (wnd->pixelFormat->pf.dwFlags & K_PFD_SWAP_COPY) {
         kwarn("Boxedwine: pixel format swap copy not supported");
     }
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0); 
@@ -746,7 +746,7 @@ U32 KNativeWindowSdl::glCreateContext(KThread* thread, const WndPtr& w, int majo
             }
 #else
             {}
-#endif
+#endif        
         contextCreated();
         result = nextGlId;
         KThreadGlContextPtr info = thread->addGlContext(nextGlId++, context);

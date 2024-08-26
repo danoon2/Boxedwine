@@ -41,6 +41,7 @@ public:
 	XCursorPtr getCursor(U32 id);
 
 	void iterateEventMask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& data)> callback);
+	void iterateInput2Mask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& data)> callback);
 
 	U32 openDisplay(KThread* thread);
 	int closeDisplay(KThread* thread, const DisplayDataPtr& data);
@@ -75,9 +76,10 @@ public:
 	bool traceGC = false;
 	bool isDisplayDirty = false;
 
-	// no need to protect, create only when server starts
-	BHashTable<U32, CLXFBConfigPtr> fbConfigById;
-	BHashTable<U32, CLXFBConfigPtr> fbConfigByPixelIndex;
+	CLXFBConfigPtr getFbConfig(U32 id);	
+	U32 getFbConfigCount();
+	void iterateFbConfigs(std::function<void(const CLXFBConfigPtr& cfg)> callback);
+
 private:
 	static std::atomic_int nextId;
 	static XServer* server;
@@ -126,8 +128,10 @@ private:
 	BHashTable<U32, VisualPtr> visuals;
 	BHashTable<U32, std::shared_ptr<std::vector<VisualPtr>>> visualsByDepth;
 	std::vector<U32> depths;
+	BHashTable<U32, CLXFBConfigPtr> fbConfigById;	
 
 	void initAtoms();
+	void initDepths();
 	void initVisuals();
 	void setAtom(const BString& name, U32 key);
 	VisualPtr addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel, U32 pixelFormatIndex);

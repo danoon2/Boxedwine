@@ -329,4 +329,23 @@ struct XIDeviceInfo {
     static void write(KMemory* memory, U32 address, S32 deviceid, U32 name, S32 use, S32 attachment, Bool enabled, S32 num_classes, U32 classes);
 };
 
+struct XIRawEvent {
+    S32           type;         /* GenericEvent */
+    U32 serial;       /* # of last request processed by server */
+    Bool          send_event;   /* true if this came from a SendEvent request */
+    U32 displayAddress;     /* Display the event was read from */
+    S32           extension;    /* XI extension offset */
+    S32           evtype;       /* XI_RawKeyPress, XI_RawKeyRelease, etc. */
+    Time          time;
+    S32           deviceid;
+    S32           sourceid;     /* Bug: Always 0. https://bugs.freedesktop.org//show_bug.cgi?id=34240 */
+    S32           detail;
+    S32           flags;
+    XIValuatorState valuators;
+    U32 raw_values; // double*
+
+    void serialize(U32* data);
+    void unserialize(U32* data);
+};
+
 #endif

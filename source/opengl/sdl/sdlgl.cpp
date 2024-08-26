@@ -33,7 +33,7 @@ public:
     void deleteContext(void* context) override;
     bool makeCurrent(void* context, void* window) override;
     BString getLastError() override;
-    void* createContext(void* window, const WndPtr& wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) override;
+    void* createContext(void* window, const WndPtr& wnd, const GLPixelFormatPtr& pixelFormat, U32 width, U32 height, int major, int minor, int profile) override;
     void swapBuffer(void* window) override;
     void setSwapInterval(U32 vsync) override;
     bool shareList(const std::shared_ptr<KThreadGlContext>& src, const std::shared_ptr<KThreadGlContext>& dst, void* window) override;
@@ -51,7 +51,7 @@ BString SdlBoxedwineGL::getLastError() {
     return BString::copy(SDL_GetError());
 }
 
-void* SdlBoxedwineGL::createContext(void* window, const WndPtr& wnd, PixelFormat* pixelFormat, U32 width, U32 height, int major, int minor, int profile) {
+void* SdlBoxedwineGL::createContext(void* window, const WndPtr& wnd, const GLPixelFormatPtr& pixelFormat, U32 width, U32 height, int major, int minor, int profile) {
     return SDL_GL_CreateContext((SDL_Window*)window);
 }
 
