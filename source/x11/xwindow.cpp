@@ -1010,6 +1010,9 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 			win->windowRect.top = y;
 			win->windowRect.right = x + width;
 			win->windowRect.bottom = y + height;
+			if (win->glGetPixelFormat()) {
+				nativeWindow->screenChanged(width, height, nativeWindow->screenBpp());
+			}
 		}
 	}
 	configureNotify();
@@ -1305,6 +1308,21 @@ void XWindow::keyNotify(const DisplayDataPtr& data, U32 key, S32 x, S32 y, bool 
 	event.xkey.state = XServer::getServer()->getInputModifiers();
 	event.xkey.keycode = key;
 	event.xkey.same_screen = True;
+
+	if (XServer::getServer()->trace) {
+		BString log;
+		log.append(data->displayId, 16);
+		log += " Event";
+		log += pressed ? " KeyPress" : " KeyRelease";
+		log += " key=";
+		log.append(key, 16);
+		log += " root=";
+		log.append(XServer::getServer()->getRoot()->id, 16);
+		log += " state=";
+		log.append(event.xkey.state, 16);
+		klog(log.c_str());
+	}
+
 	data->putEvent(event);
 }
 
