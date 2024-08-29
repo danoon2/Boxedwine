@@ -174,7 +174,7 @@ U32 getPixelsLen(bool read, U32 is3d, GLsizei width, GLsizei height, GLsizei dep
 
     GLint skipPixels = 0;
     GLint skipRows = 0;
-    GLint alignment = 0;
+    GLint alignment = 1;
     GLint pixels_per_row = 0;
     GLint skipImages = 0;
 

@@ -23,11 +23,11 @@ public:
 	U32 getExtensionInput2() {return this->extensionXinput2;}
 	U32 getExtensionGLX() {return this->extensionGLX;}
 
-	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
+	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual);
 	XWindowPtr getWindow(U32 window);
 	int destroyWindow(U32 window);
 
-	XPixmapPtr createNewPixmap(U32 width, U32 height, U32 depth);
+	XPixmapPtr createNewPixmap(U32 width, U32 height, U32 depth, const VisualPtr& visual);
 	XPixmapPtr getPixmap(U32 pixmap);
 	int removePixmap(U32 pixmap);
 
@@ -47,7 +47,7 @@ public:
 	int closeDisplay(KThread* thread, const DisplayDataPtr& data);
 	DisplayDataPtr getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address);
 	DisplayDataPtr getDisplayDataById(U32 id);
-	void changeScreen(U32 width, U32 height, U32 bpp);
+	void changeScreen(U32 width, U32 height);
 
 	void draw(bool drawNow = false);
 	const XWindowPtr& getRoot();
@@ -69,7 +69,7 @@ public:
 	U32 inputFocusRevertTo = 0;
 
 	XWindowPtr pointerWindow;
-	Visual visual;
+	VisualPtr visual;
 	BOXEDWINE_MUTEX mutex;
 
 	bool trace = false;
@@ -78,7 +78,7 @@ public:
 
 	CLXFBConfigPtr getFbConfig(U32 id);	
 	U32 getFbConfigCount();
-	void iterateFbConfigs(std::function<void(const CLXFBConfigPtr& cfg)> callback);
+	void iterateFbConfigs(std::function<bool(const CLXFBConfigPtr& cfg)> callback);
 
 private:
 	static std::atomic_int nextId;

@@ -131,7 +131,7 @@ struct XSetWindowAttributes {
 #define XWindowPtr std::shared_ptr<XWindow>
 class XWindow : public XDrawable, public std::enable_shared_from_this<XWindow> {
 public:
-	XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width);
+	XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual);
 	void onCreate();
 	void onDestroy();
 
@@ -139,6 +139,8 @@ public:
 	void setTransient(U32 w);
 	void iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
 	void iterateMappedChildrenBackToFront(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients = false);
+	void iterateAllMappedDescendants(std::function<void(const XWindowPtr& child)> callback);
+	VisualPtr getVisual() {return visual;}
 
 	void setTextProperty(KThread* thread, XTextProperty* name, Atom property, bool trace = false);
 	int configure(U32 mask, XWindowChanges* changes);
@@ -168,6 +170,7 @@ public:
 
 	XWindowPtr getParent() {return parent;}
 	bool mapped() {return this->isMapped;}
+	bool isThisAndAncestorsMapped();
 	const U32 displayId;
 	const U32 c_class;
 
@@ -185,12 +188,13 @@ public:
 
 	XCursorPtr cursor;
 	XColorMapPtr colorMap;
+	bool isOpenGL = false;
 private:
 	friend class XServer;
 
 	XWindowPtr parent;
-	S32 x;
-	S32 y;	
+	S32 left;
+	S32 top;	
 	U32 border_width;
 	XSetWindowAttributes attributes;
 	bool isMapped = false;	
@@ -217,7 +221,6 @@ private:
 
 	bool isDialog();
 	bool isTransient();
-	bool isSelfAndAllParentsMapped();
 	U32 NET_WM_WINDOW_TYPE();
 	U32 WM_TRANSIENT_FOR();
 };

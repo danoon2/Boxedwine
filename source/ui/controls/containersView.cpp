@@ -2,10 +2,6 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-#ifdef BOXEDWINE_OPENGL_OSMESA
-bool isMesaOpenglAvailable();
-#endif
-
 ContainersView::ContainersView(BString tab, BString app) : BaseView(B("ContainersView")), currentContainer(nullptr), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(nullptr), currentAppChanged(false) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();

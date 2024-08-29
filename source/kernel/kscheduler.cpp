@@ -172,10 +172,6 @@ bool runSlice() {
         server->draw();
     }
 
-    KNativeWindowPtr window = KNativeWindow::getNativeWindow();
-    if (window) {
-        window->flipFB();
-    }
     U64 elapsedTime = 0;
 
     contextTimeRemaining = contextTime;
@@ -183,7 +179,7 @@ bool runSlice() {
         U64 threadStartTime = KSystem::getMicroCounter();
         KListNode<KThread*>* node = scheduledThreads.front();
         KThread* currentThread = (KThread*)node->data;
-        KNativeWindow::getNativeWindow()->glUpdateContextForThread(currentThread);
+        KNativeSystem::scheduledNewThread(currentThread);
         sysCallTime = 0;    
 
         ChangeThread c(currentThread);

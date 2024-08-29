@@ -1,0 +1,50 @@
+#ifndef __KNATIVESCREEN_H__
+#define __KNATIVESCREEN_H__
+
+#include "knativeinput.h"
+
+class KNativeScreen {
+public:
+	virtual KNativeInputPtr getInput() = 0;
+
+	virtual void setScreenSize(U32 cx, U32 cy) = 0;
+
+	virtual U32 screenBpp() = 0;
+	virtual U32 screenRate() = 0;	
+	virtual U32 screenWidth() = 0;
+	virtual U32 screenHeight() = 0;
+
+	virtual void setTitle(const BString& title) = 0;
+
+	virtual void clear() = 0;
+	// id is used for texture caching
+	// if isDirty is false then the cached texture will be drawn
+	virtual void putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) = 0;
+	virtual void present() = 0;
+	virtual bool presentedSinceLastCheck() = 0;
+	virtual void clearTextureCache(U32 id) = 0;	
+
+#ifdef BOXEDWINE_RECORDER
+	// return true to continue processing for custom handlers
+	virtual void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) = 0;
+
+	virtual void pushWindowSurface() = 0;
+	virtual void popWindowSurface() = 0;
+	virtual void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) = 0;
+#endif
+
+	virtual bool partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) = 0;
+	virtual bool screenShot(const BString& filepath, U8* buffer, U32 bufferlen) = 0;
+	virtual bool saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) = 0;
+
+	virtual bool setCursor(const char* moduleName, const char* resourceName, int resource) = 0;
+	virtual void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) = 0;
+
+private:
+	friend class KNativeInputSDL;
+	virtual void warpMouse(int x, int y) = 0;
+};
+
+typedef std::shared_ptr<KNativeScreen> KNativeScreenPtr;
+
+#endif

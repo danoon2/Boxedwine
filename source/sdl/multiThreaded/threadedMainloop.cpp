@@ -4,9 +4,9 @@
 #include "../../ui/mainui.h"
 #endif
 #include "knativesystem.h"
-#include "knativewindow.h"
 #include "devfb.h"
 #include "../../x11/x11.h"
+#include "platformOpenGL.h"
 
 U32 getNextTimer();
 void runTimers();
@@ -71,13 +71,13 @@ bool doMainLoop() {
         }
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {
-            KNativeWindow::getNativeWindow()->waitForEvent(10);
+            KNativeSystem::getCurrentInput()->waitForEvent(10);
             BOXEDWINE_RECORDER_RUN_SLICE();
         } else  {
-            KNativeWindow::getNativeWindow()->waitForEvent(timeout);
+            KNativeSystem::getCurrentInput()->waitForEvent(timeout);
         }
 #else
-        KNativeWindow::getNativeWindow()->waitForEvent(timeout);
+        KNativeSystem::getCurrentWindow()->waitForEvent(timeout);
 #endif    
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {
@@ -98,9 +98,9 @@ bool doMainLoop() {
                 title.append(getSize(allocatedRamPages));
             }
 
-            KNativeWindow::getNativeWindow()->setTitle(title);
+            KNativeSystem::getScreen()->setTitle(title);
         }
-        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+        if (!KNativeSystem::getCurrentInput()->processEvents()) {
             return true;
         }
     };

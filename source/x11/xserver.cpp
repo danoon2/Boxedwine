@@ -1,7 +1,11 @@
 #include "boxedwine.h"
 #include "x11.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 #include "ksocket.h"
+
+#ifdef BOXEDWINE_OPENGL_OSMESA
+#include "../../source/opengl/osmesa/osmesa.h"
+#endif
 
 std::atomic_int XServer::nextId = 0x10000;
 XServer* XServer::server;
@@ -28,6 +32,7 @@ XServer::XServer() {
 	initAtoms();
 	initDepths();
 	initVisuals();
+	visual = visualsByDepth.get(depths.front())->front();
 	extensionXinput2 = internAtom(B("XInputExtension"), false);
 	extensionGLX = internAtom(B("GLX"), false);
 }
@@ -52,7 +57,7 @@ VisualPtr XServer::addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth
 }
 
 void XServer::initDepths() {
-	U32 depth = KNativeWindow::getNativeWindow()->screenBpp();
+	U32 depth = KNativeSystem::getScreen()->screenBpp();
 	depths.push_back(depth);
 
 	if (depth != 32) {
@@ -62,7 +67,7 @@ void XServer::initDepths() {
 		depths.push_back(16);
 	}	
 	if (depth != 15) {
-		depths.push_back(15);
+		//depths.push_back(15);
 	}
 	if (depth != 8) {
 		depths.push_back(8);
@@ -190,9 +195,9 @@ U32 XServer::getNextQuark() {
 	return nextQuarkID;
 }
 
-XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) {
+XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
-	XWindowPtr result = std::make_shared<XWindow>(displayId, parent, width, height, depth, x, y, c_class, border_width);
+	XWindowPtr result = std::make_shared<XWindow>(displayId, parent, width, height, depth, x, y, c_class, border_width, visual);
 	windows.set(result->id, result);
 	result->onCreate();
 	return result;
@@ -226,10 +231,11 @@ U32 XServer::setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo,
 
 const XWindowPtr& XServer::getRoot() {
 	if (!root) {
-		KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-		root = createNewWindow(0, nullptr, nativeWindow->screenWidth(), nativeWindow->screenHeight(), nativeWindow->screenBpp(), 0, 0, InputOutput, 0);
+		KNativeScreenPtr screen = KNativeSystem::getScreen();
 
-		U32 rect[] = { 0, 0, (U32)nativeWindow->screenWidth(), (U32)nativeWindow->screenHeight() };
+		root = createNewWindow(0, nullptr, screen->screenWidth(), screen->screenHeight(), screen->screenBpp(), 0, 0, InputOutput, 0, visual);
+
+		U32 rect[] = { 0, 0, (U32)screen->screenWidth(), (U32)screen->screenHeight() };
 		U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
 		root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
 		root->isMapped = true; // so that grab works
@@ -258,16 +264,16 @@ void XServer::draw(bool drawNow) {
 		lastDraw = now;
 		isDisplayDirty = false;
 	}
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();	
-	nativeWindow->runOnUiThread([=]() {
-		nativeWindow->clear();
+	KNativeScreenPtr screen = KNativeSystem::getScreen();
+	screen->getInput()->runOnUiThread([=]() {
+		screen->clear();
 		root->iterateMappedChildrenBackToFront([](XWindowPtr child) {
 			if (child->c_class == InputOutput) {
 				child->draw();
 			}
 			return true;
 			}, true);
-		nativeWindow->present();
+		screen->present();
 		});
 }
 
@@ -287,12 +293,13 @@ int XServer::destroyWindow(U32 window) {
 	if (w == grabbed) {
 		grabbed = nullptr;
 	}
+
 	return Success;
 }
 
-XPixmapPtr XServer::createNewPixmap(U32 width, U32 height, U32 depth) {
+XPixmapPtr XServer::createNewPixmap(U32 width, U32 height, U32 depth, const VisualPtr& visual) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(pixmapsMutex);
-	XPixmapPtr result = std::make_shared<XPixmap>(width, height, depth);
+	XPixmapPtr result = std::make_shared<XPixmap>(width, height, depth, visual);
 	pixmaps.set(result->id, result);
 	return result;
 }
@@ -407,7 +414,8 @@ XColorMapPtr XServer::getDefaultColorMap() {
 
 U32 XServer::createScreen(KThread* thread, U32 displayAddress) {
 	KMemory* memory = thread->memory;
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
+	KNativeScreenPtr screen = KNativeSystem::getScreen();
+
 	U32 visualsCount = 0;
 	for (auto& visuals : visualsByDepth) {
 		visualsCount += (U32)visuals.value->size();
@@ -439,10 +447,10 @@ U32 XServer::createScreen(KThread* thread, U32 displayAddress) {
 	}
 
 	X11_WRITED(Screen, screenAddress, display, displayAddress);
-	X11_WRITED(Screen, screenAddress, width, nativeWindow->screenWidth());
-	X11_WRITED(Screen, screenAddress, height, nativeWindow->screenHeight());
-	X11_WRITED(Screen, screenAddress, mwidth, (U32)(nativeWindow->screenWidth() * 0.2646));
-	X11_WRITED(Screen, screenAddress, mheight, (U32)(nativeWindow->screenHeight() * 0.2646));
+	X11_WRITED(Screen, screenAddress, width, screen->screenWidth());
+	X11_WRITED(Screen, screenAddress, height, screen->screenHeight());
+	X11_WRITED(Screen, screenAddress, mwidth, (U32)(screen->screenWidth() * 0.2646));
+	X11_WRITED(Screen, screenAddress, mheight, (U32)(screen->screenHeight() * 0.2646));
 	X11_WRITED(Screen, screenAddress, ndepths, (U32)depths.size());
 	X11_WRITED(Screen, screenAddress, depths, depthList);
 	X11_WRITED(Screen, screenAddress, root_depth, screenDepths[0].depth);
@@ -503,7 +511,6 @@ U32 XServer::openDisplay(KThread* thread) {
 	data->displayAddress = displayAddress;	
 
 	U32 screenAddress = createScreen(thread, displayAddress);
-	visual.read(memory, X11_READD(Screen, screenAddress, root_visual));
 	X11_WRITED(Display, displayAddress, screens, screenAddress);
 	U32 displayId = XServer::getNextId();
 	X11_WRITED(Display, displayAddress, id, displayId);
@@ -519,12 +526,11 @@ U32 XServer::openDisplay(KThread* thread) {
 	return displayAddress;
 }
 
-void XServer::changeScreen(U32 width, U32 height, U32 bpp) {
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-	nativeWindow->screenChanged(width, height, bpp);
+void XServer::changeScreen(U32 width, U32 height) {
+	KNativeSystem::changeScreenSize(width, height);
 	root->moveResize(0, 0, width, height);
 
-	U32 rect[] = { 0, 0, (U32)nativeWindow->screenWidth(), (U32)nativeWindow->screenHeight() };
+	U32 rect[] = { 0, 0, width, height };
 	U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
 	root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
 }
@@ -545,7 +551,7 @@ U32 XServer::getEventTime() {
 }
 
 U32 XServer::getInputModifiers() {
-	U32 modifiers = KNativeWindow::getNativeWindow()->getInputModifiers();
+	U32 modifiers = KNativeSystem::getCurrentInput()->getInputModifiers();
 	U32 result = 0;
 
 	if (modifiers & NATIVE_LEFT_BUTTON_MASK) {
@@ -718,7 +724,7 @@ int XServer::mapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 	if (result == Success) {
 		int x = 0;
 		int y = 0;
-		KNativeWindow::getNativeWindow()->getMousePos(&x, &y, false);
+		KNativeSystem::getCurrentInput()->getMousePos(&x, &y, false);
 
 		XWindowPtr wnd = root->getWindowFromPoint(x, y);
 		if (wnd) {
@@ -750,7 +756,7 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 		int x = 0;
 		int y = 0;
 		
-		KNativeWindow::getNativeWindow()->getMousePos(&x, &y, false);
+		KNativeSystem::getCurrentInput()->getMousePos(&x, &y, false);
 
 		XWindowPtr wnd = root->getWindowFromPoint(x, y);
 		if (wnd) {
@@ -805,7 +811,7 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 void XServer::key(U32 key, bool pressed) {
 	S32 x = 0;
 	S32 y = 0;
-	KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
+	KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
 	inputFocus->keyScreenCoords(key, x, y, pressed);
 }
 
@@ -826,7 +832,7 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 	if (pointerWindow->id != grabbed->id) {
 		S32 x = 0;
 		S32 y = 0;
-		KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
+		KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
 		pointerMoved(pointerWindow, grabbed, x, y, NotifyGrab);
 		pointerWindow = grabbed;
 	}
@@ -847,7 +853,7 @@ U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
 	}
 	S32 x = 0;
 	S32 y = 0;
-	KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
+	KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
 
 	pointerWindow = root->getWindowFromPoint(x, y);
 	pointerMoved(prev, pointerWindow, x, y, NotifyUngrab);
@@ -867,21 +873,71 @@ XColorMapPtr XServer::getColorMap(U32 id) {
 }
 
 void XServer::initVisuals() {	
-	addVisual(0xFF0000, 0xFF00, 0xFF, 32, 32, 0);
-	addVisual(0xF800, 0x7E0, 0x1F, 16, 16, 0);
-	addVisual(0x7C00, 0x3E0, 0x1F, 15, 16, 0);
-	addVisual(0, 0, 0, 8, 8, 0);
+	// add these first for each depth as a default
+	VisualPtr vis32 = addVisual(0xFF0000, 0xFF00, 0xFF, 32, 32, 0);
+	VisualPtr vis16 = addVisual(0xF800, 0x7E0, 0x1F, 16, 16, 0);
+	//VisualPtr vis15 = addVisual(0x7C00, 0x3E0, 0x1F, 15, 16, 0);
+	VisualPtr vis8 = addVisual(0, 0, 0, 8, 8, 0);
+	
+#ifdef BOXEDWINE_OPENGL_OSMESA
+	if (1 /*KSystem::openglType == OPENGL_TYPE_OSMESA*/) {
+		OsMesaGL::iterateFormats([this, &vis32, &vis16, &vis8](const GLPixelFormatPtr& format) {
+			PixelFormat* pf = &format->pf;
 
-	// will iterate hardware support opengl formats if available and regular pixel formats
-	PlatformOpenGL::iterateFormats([this](const GLPixelFormatPtr& format) {
-		CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
-		cfg->fbId = getNextId();
-		cfg->glPixelFormat = format;
-		cfg->depth = format->pf.cColorBits;
-		VisualPtr vis = addVisual(format->pf.cRedBits << format->pf.cRedShift, format->pf.cGreenBits << format->pf.cGreenShift, format->pf.cBlueBits << format->pf.cBlueShift, format->pf.cColorBits, cfg->depth, format->id);
-		cfg->visualId = vis->visualid;
-		fbConfigById.set(cfg->fbId, cfg);
-	});	
+			U32 rMask = ((1 << pf->cRedBits) - 1) << pf->cRedShift;
+			U32 gMask = ((1 << pf->cGreenBits) - 1) << pf->cGreenShift;
+			U32 bMask = ((1 << pf->cBlueBits) - 1) << pf->cBlueShift;
+			U32 depth = pf->cColorBits;
+
+			CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
+
+			// try to match a real format with a default
+			if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+				vis32->ext_data = format->id;
+				cfg->visualId = vis32->visualid;
+				vis32 = nullptr;
+			} else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+				vis16->ext_data = format->id;
+				cfg->visualId = vis16->visualid;
+				vis16 = nullptr;
+			} else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+				vis8->ext_data = format->id;
+				cfg->visualId = vis8->visualid;
+				vis8 = nullptr;
+			} else {
+				cfg->visualId = addVisual(format->pf.cRedBits << format->pf.cRedShift, format->pf.cGreenBits << format->pf.cGreenShift, format->pf.cBlueBits << format->pf.cBlueShift, format->depth, format->bitsPerPixel, format->id)->visualid;
+			}			
+			cfg->fbId = getNextId();
+			cfg->glPixelFormat = format;
+			cfg->depth = format->pf.cColorBits;
+			fbConfigById.set(cfg->fbId, cfg);
+		});
+		return;
+	}
+#endif
+	U32 count = KSystem::getPixelFormatCount();
+	for (U32 i = 1; i < count; i++) {
+		PixelFormat* pf = KSystem::getPixelFormat(i);
+
+		U32 rMask = ((1 << pf->cRedBits) - 1) << pf->cRedShift;
+		U32 gMask = ((1 << pf->cGreenBits) - 1) << pf->cGreenShift;
+		U32 bMask = ((1 << pf->cGreenBits) - 1) << pf->cBlueShift;
+		U32 depth = pf->cColorBits;
+
+		// try to match a real format with a default
+		if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+			vis32->ext_data = i;
+			vis32 = nullptr;
+		} else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+			vis16->ext_data = i;
+			vis16 = nullptr;
+		} else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+			vis8->ext_data = i;
+			vis8 = nullptr;
+		} else {
+			addVisual(rMask, gMask, bMask, depth, depth, i);
+		}
+	}
 }
 
 CLXFBConfigPtr XServer::getFbConfig(U32 id) {
@@ -892,8 +948,10 @@ U32 XServer::getFbConfigCount() {
 	return (U32)fbConfigById.size();
 }
 
-void XServer::iterateFbConfigs(std::function<void(const CLXFBConfigPtr& cfg)> callback) {
+void XServer::iterateFbConfigs(std::function<bool(const CLXFBConfigPtr& cfg)> callback) {
 	for (auto& cfg : fbConfigById) {
-		callback(cfg.value);
+		if (!callback(cfg.value)) {
+			break;
+		}
 	}
 }

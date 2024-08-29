@@ -23,7 +23,7 @@
 #include "loader.h"
 #include "kstat.h"
 #include "knativesystem.h"
-#include "knativewindow.h"
+#include "knativeinput.h"
 #include "knativeaudio.h"
 #include "knativesocket.h"
 
@@ -37,7 +37,6 @@
 void gl_init(BString allowExtensions);
 void vulkan_init();
 void x11_init();
-void initWine();
 void initWineAudio();
 void createSysfs(const std::shared_ptr<FsNode> rootNode);
 
@@ -361,7 +360,8 @@ bool StartUpArgs::apply() {
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
     //envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
-    envValues.push_back(B("WINEDEBUG=+wgl"));
+    // envValues.push_back(B("WINEDEBUG=+wgl"));
+
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
     // if I create more env values that are longer it doesn't crash, what is special about this one?
@@ -480,8 +480,7 @@ bool StartUpArgs::apply() {
     }
     KSystem::videoEnabled = this->videoEnabled;
     KSystem::soundEnabled = this->soundEnabled;
-    KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
-    initWine();
+    KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     initWineAudio();
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
@@ -514,7 +513,7 @@ bool StartUpArgs::apply() {
         writeSource();
 #endif    
 	KSystem::destroy();
-    KNativeWindow::shutdown();
+    KNativeSystem::shutdown();
     KNativeAudio::shutdown();
     dspShutdown();
 

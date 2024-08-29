@@ -1,6 +1,5 @@
 U32 common_bound16(CPU* cpu, U32 reg, U32 address);
 U32 common_bound32(CPU* cpu, U32 reg, U32 address);
-void common_int98(CPU* cpu);
 void common_int99(CPU* cpu);
 void common_int9A(CPU* cpu);
 void common_int9B(CPU* cpu);

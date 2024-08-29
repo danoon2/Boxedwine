@@ -19,7 +19,7 @@
 
 #ifdef BOXEDWINE_OPENGL
 #include GLH
-#include "knativewindow.h"
+#include "knativesystem.h"
 #include "glcommon.h"
 
 #undef GL_FUNCTION
@@ -653,6 +653,7 @@ void glcommon_glGetError(CPU* cpu) {
 #define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 #define GLX_CONTEXT_FLAGS_ARB 0x2094
+#define GLX_CONTEXT_PROFILE_MASK_ARB 0x9126
 
     /*
      * GLX 1.4 and later:
@@ -664,10 +665,10 @@ void glcommon_glGetError(CPU* cpu) {
 void gl_common_XChooseVisual(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
     U32 address = ARG3;
     U32 value;
 
-    U32 flags = K_PFD_SUPPORT_OPENGL;
     U32 colorType = PF_COLOR_TYPE_NOTSET;
     U32 cRedBits = 0;
     U32 cGreenBits = 0;
@@ -676,25 +677,45 @@ void gl_common_XChooseVisual(CPU* cpu) {
     U32 cAccumBits = 0;
     U32 cDepthBits = 0;
     U32 cStencilBits = 0;
+    bool doubleBuffer = false;
 
     while (value = cpu->memory->readd(address)) {
         if (value == GLX_RGBA) {
-            colorType = PF_COLOR_TYPE_RGBA;
+            colorType = K_PFD_TYPE_RGBA;
         } else if (value == GLX_DOUBLEBUFFER) {
-            flags |= K_PFD_DOUBLEBUFFER;
+            doubleBuffer = true;
         } 
         else {
             kpanic("gl_common_XChooseVisual unhandled attribute %d", value);
         }
         address += 4;
     }
-    U32 pixelFormatIndex = KSystem::findPixelFormat(flags, colorType, cRedBits, cGreenBits, cBlueBits, cAlphaBits, cAccumBits, cDepthBits, cStencilBits);
 
+    U32 visualId = 0;
+
+    server->iterateFbConfigs([&visualId, doubleBuffer, colorType](const CLXFBConfigPtr& cfg) {
+        if (!(cfg->glPixelFormat->pf.dwFlags & K_PFD_SUPPORT_OPENGL)) {
+            return true;
+        }
+        bool isDoubleBuffer = (cfg->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) != 0;
+        if (isDoubleBuffer != doubleBuffer) {
+            return true;
+        }
+        if (colorType != cfg->glPixelFormat->pf.iPixelType) {
+            return true;
+        }
+        visualId = cfg->visualId;
+        return false;
+    });
+
+    if (!visualId) {
+        EAX = 0;
+        return;
+    }
     U32 result = thread->process->alloc(thread, sizeof(XVisualInfo));
     bool found = false;
-
-    Display::iterateVisuals(thread, ARG1, [&memory, result, &found, pixelFormatIndex](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
-        if (visual->ext_data == pixelFormatIndex) {
+    Display::iterateVisuals(thread, ARG1, [&memory, result, &found, visualId](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
+        if (visual->visualid == visualId) {
             XVisualInfo visualInfo;
             visualInfo.set(screenIndex, visualAddress, depth->depth, visual);
             visualInfo.write(memory, result);
@@ -703,6 +724,7 @@ void gl_common_XChooseVisual(CPU* cpu) {
         }
         return true;
         });
+
     if (found) {
         EAX = result;
     } else {
@@ -720,23 +742,29 @@ void gl_common_XCreateContext(CPU* cpu) {
     XVisualInfo info;
     info.read(memory, ARG2);
     U32 pixelFormatId = memory->readd(info.visual); // pixel format index is in visual.ext_data (first member)
-    KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-    wRECT w = {};
-    WndPtr glWnd = nativeWindow->createWnd(thread, thread->process->id, 0, w, w);
+    KOpenGLPtr gl = KNativeSystem::getOpenGL();
 
-    glWnd->glSetPixelFormat(PlatformOpenGL::getFormat(pixelFormatId));
-    EAX = KNativeWindow::getNativeWindow()->glCreateContext(thread, glWnd, 0, 0, 0, 0);
+    EAX = gl->glCreateContext(thread, gl->getFormat(pixelFormatId), 0, 0, 0, 0, shareList);
 }
 
 // void glXDestroyContext(Display* dpy, GLXContext ctx) {
-void gl_common_XDestroyContext(CPU* cpu) {
-    // :TODO: destroy window with 0 id if it has this context
-    kpanic("glXDestroyContext");
+void gl_common_XDestroyContext(CPU* cpu) {      
+    KNativeSystem::getOpenGL()->glDestroyContext(cpu->thread, ARG2);
 }
 
 // Bool glXMakeCurrent(Display* dpy, GLXDrawable drawable, GLXContext ctx) {
 void gl_common_XMakeCurrent(CPU* cpu) {
-    kpanic("glXMakeCurrent");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr d = server->getDrawable(ARG2);
+    U32 ctx = ARG3;
+
+    if (ctx && !d) {
+        EAX = False;
+        return;
+    }
+    thread->currentContext = ctx;
+    EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? True : False;
 }
 
 // void pglXCopyContext(Display* dpy, GLXContext src, GLXContext dst, unsigned long mask)
@@ -908,11 +936,11 @@ void gl_common_XGetFBConfigs(CPU* cpu) {
 
     U32 resultAddress = thread->process->alloc(thread, server->getFbConfigCount() * 4); // list of ids
     EAX = resultAddress;
-
     
     server->iterateFbConfigs([memory, &resultAddress](const CLXFBConfigPtr& cfg) {
         memory->writed(resultAddress, cfg->fbId);
         resultAddress += 4;
+        return true;
         });
     memory->writed(ARG3, server->getFbConfigCount());
 }
@@ -974,16 +1002,20 @@ void gl_common_XMakeContextCurrent(CPU* cpu) {
 
 // GLXPixmap glXCreatePixmap(Display* dpy, GLXFBConfig config, Pixmap pixmap, const int* attrib_list)
 void gl_common_XCreatePixmap(CPU* cpu) {
-    kpanic("glXCreatePixmap");
+    U32 resultAddress = cpu->thread->process->alloc(cpu->thread, 8);
+    cpu->memory->writed(resultAddress, ARG3);
+    cpu->memory->writed(resultAddress + 4, ARG2);
+    EAX = resultAddress;
 }
 
 // void glXDestroyPixmap(Display* dpy, GLXPixmap pixmap)
 void gl_common_XDestroyPixmap(CPU* cpu) {
-    kpanic("glXDestroyPixmap");
+    cpu->thread->process->free(ARG2);
 }
 
 // GLXWindow glXCreateWindow(Display* dpy, GLXFBConfig config, Window win, const int* attrib_list)
 void gl_common_XCreateWindow(CPU* cpu) {
+    KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
     CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
     XWindowPtr win = server->getWindow(ARG3);
@@ -995,20 +1027,20 @@ void gl_common_XCreateWindow(CPU* cpu) {
         // not set by wine
         kpanic("gl_common_XCreateWindow attrib_list not implemented");
     }
-    KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-    WndPtr w = nativeWindow->getWnd(win->id);
-    w->windowRect.left = 0;
-    w->windowRect.top = 0;
-    w->windowRect.right = win->width();
-    w->windowRect.bottom = win->height();
-    w->glSetPixelFormat(cfg->glPixelFormat);
-    nativeWindow->screenChanged(win->width(), win->height(), nativeWindow->screenBpp());
+    win->isOpenGL = true;
+    KNativeSystem::getOpenGL()->glCreateWindow(thread, win, cfg);    
     EAX = win->id;
 }
 
 // void glXDestroyWindow(Display* dpy, GLXWindow win)
 void gl_common_XDestroyWindow(CPU* cpu) {
-    
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XWindowPtr win = server->getWindow(ARG2);
+    if (win) {
+        KNativeSystem::getOpenGL()->glDestroyWindow(thread, win);
+        win->isOpenGL = false;
+    }
 }
 
 // GLXContext glXCreateContextAttribsARB(Display* dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int* attrib_list)
@@ -1023,6 +1055,7 @@ void gl_common_XCreateContextAttribsARB(CPU* cpu) {
     U32 major = 0;
     U32 minor = 0;
     U32 flags = 0;
+    U32 profile = 0;
 
     while (true) {
         U32 attrib = memory->readd(attribList);
@@ -1043,15 +1076,15 @@ void gl_common_XCreateContextAttribsARB(CPU* cpu) {
             flags = memory->readd(attribList);
             attribList += 4;
             break;
+        case GLX_CONTEXT_PROFILE_MASK_ARB:
+            profile = memory->readd(attribList);
+            attribList += 4;
+            break;
         default:
             kpanic("gl_common_XCreateContextAttribsARB unhandled attribute %x", attrib);
         }
     }
-    KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-    wRECT w = {};
-    WndPtr glWnd = nativeWindow->createWnd(thread, thread->process->id, 0, w, w);
-    glWnd->glSetPixelFormat(cfg->glPixelFormat);
-    EAX = KNativeWindow::getNativeWindow()->glCreateContext(thread, glWnd, major, minor, 0, flags);
+    EAX = KNativeSystem::getOpenGL()->glCreateContext(thread, cfg->glPixelFormat, major, minor, profile, flags, share_context);
 }
 
 // void glXSwapIntervalEXT(Display* dpy, GLXDrawable drawable, int interval)
@@ -1061,7 +1094,14 @@ void gl_common_XSwapIntervalEXT(CPU* cpu) {
 
 // void glXSwapBuffers(Display* dpy, GLXDrawable drawable) 
 void gl_common_XSwapBuffers(CPU* cpu) {
-    KNativeWindow::getNativeWindow()->glSwapBuffers(cpu->thread);
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr d = server->getDrawable(ARG2);
+    if (!d) {
+        EAX = BadDrawable;
+        return;
+    }
+    KNativeSystem::getOpenGL()->glSwapBuffers(thread, d);
 }
 
 // create variables to hold standard opengl calls like glClear
@@ -1152,7 +1192,7 @@ void gl_init() {
 
 void callOpenGL(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_OPENGL
-    KNativeWindow::getNativeWindow()->preOpenGLCall(index);
+    //KNativeWindow::getNativeWindow()->preOpenGLCall(index);
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
         lastGlCallTime = KSystem::getMilliesSinceStart();

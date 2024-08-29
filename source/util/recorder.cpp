@@ -1,5 +1,5 @@
 #include "boxedwine.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 
 #ifdef BOXEDWINE_RECORDER
 Recorder* Recorder::instance;
@@ -53,7 +53,7 @@ void Recorder::fullScrennShot() {
     fileName.append("screenshot");
     fileName.append(BString::valueOf(this->screenShotCount));
     fileName.append(".bmp");    
-    KNativeWindow::getNativeWindow()->screenShot(fileName, nullptr, 0);
+    KNativeSystem::getScreen()->screenShot(fileName, nullptr, 0);
     out("SCREENSHOT=");
     out(Fs::getFileNameFromNativePath(fileName).c_str());
     out("\r\n");
@@ -67,7 +67,7 @@ void Recorder::partialScreenShot(U32 x, U32 y, U32 w, U32 h) {
     fileName.append("screenshot");
     fileName.append(BString::valueOf(this->screenShotCount));
     fileName.append(".bmp");  
-    KNativeWindow::getNativeWindow()->partialScreenShot(fileName, x, y, w, h, nullptr, 0);
+    KNativeSystem::getScreen()->partialScreenShot(fileName, x, y, w, h, nullptr, 0);
     out("SCREENSHOT=");
     out(BString::valueOf(x).c_str());
     out(",");
@@ -87,13 +87,14 @@ void Recorder::takeScreenShot() {
     int y = 0;
     int w = 0;
     int h = 0;
-    KNativeWindow::getNativeWindow()->pushWindowSurface();
-    KNativeWindow::getNativeWindow()->processCustomEvents([this, &x, &y, &w, &h](bool isKeyDown, int key, bool isF11) {
+    KNativeScreenPtr screen = KNativeSystem::getScreen();
+    screen->pushWindowSurface();
+    screen->processCustomEvents([this, &x, &y, &w, &h, screen](bool isKeyDown, int key, bool isF11) {
             if (isF11) {
                 if (w == 0 || h == 0) {
                     fullScrennShot();
                 } else {
-                    KNativeWindow::getNativeWindow()->popWindowSurface();
+                    screen->popWindowSurface();
                     partialScreenShot(x, y, w, h);
                 }
                 return false;
@@ -112,13 +113,13 @@ void Recorder::takeScreenShot() {
                     h = mousey - y;
             }
             return true;
-        }, [&tracking, &x, &y, &w, &h](int mousex, int mousey) {
+        }, [&tracking, &x, &y, &w, &h, screen](int mousex, int mousey) {
             if (tracking) {
                 if (mousex > x)
                     w = mousex - x;
                 if (mousey > y)
                     h = mousey - y;
-                KNativeWindow::getNativeWindow()->drawRectOnPushedSurfaceAndDisplay(x, y, w, h, 0x80, 0x80, 0x80, 0x80);
+                screen->drawRectOnPushedSurfaceAndDisplay(x, y, w, h, 0x80, 0x80, 0x80, 0x80);
             }
             return true;
         });     
@@ -213,8 +214,9 @@ U32 BOXEDWINE_RECORDER_QUIT() {
         } else {
             klog("script: failed");
             klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
-            if (KNativeWindow::getNativeWindow()) {
-                KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr, 0);
+            KNativeScreenPtr screen = KNativeSystem::getScreen();
+            if (screen) {
+                screen->screenShot(B("failed.bmp"), nullptr, 0);
             }
         }        
     }

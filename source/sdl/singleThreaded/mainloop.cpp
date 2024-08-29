@@ -34,7 +34,7 @@ bool doMainLoop() {
         U32 t;
 
         BOXEDWINE_RECORDER_RUN_SLICE();
-        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+        if (!KNativeSystem::getCurrentWindow()->processEvents()) {
             shouldQuit = true;
             break;
         }
@@ -51,14 +51,14 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;
             if (KSystem::title.length()) {
-                KNativeWindow::getNativeWindow()->setTitle(KSystem::title);
+                KNativeSystem::getCurrentWindow()->setTitle(KSystem::title);
             } else {
                 BString title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY );
                 title.append(" MIPS");
                 title.append(getMIPS());
                 title.append(" : ");
                 title.append(getSize(allocatedRamPages));
-                KNativeWindow::getNativeWindow()->setTitle(title);
+                KNativeSystem::getCurrentWindow()->setTitle(title);
             }            
         }
         if (ran) {

@@ -18,7 +18,6 @@
 
 #include "boxedwine.h"
 
-#include "knativewindow.h"
 #include "knativesystem.h"
 #include "knativeaudio.h"
 

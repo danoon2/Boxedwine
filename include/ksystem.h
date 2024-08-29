@@ -118,7 +118,7 @@ public:
     static U32 getRunningProcessCount();
     static U32 getProcessCount();
     static void printStacks();
-    static void wakeThreadsWaitingOnProcessStateChanged();
+    static void wakeThreadsWaitingOnProcessStateChanged();    
 
     // syscalls
     static U32 clock_getres(KThread* thread, U32 clk_id, U32 timespecAddress);
@@ -153,7 +153,7 @@ public:
     static U32 getPixelFormatCount();
     static U32 findPixelFormat(U32 flags, U32 colorType, U32 cRedBits, U32 cGreenBits, U32 cBlueBits, U32 cAlphaBits, U32 cAccumBits, U32 cDepthBits, U32 cStencilBits);
 
-    static std::shared_ptr<FsNode> procNode;
+    static std::shared_ptr<FsNode> procNode;    
 private:
     static void initDisplayModes();
     static void internalEraseProcess(U32 id);

@@ -58,6 +58,8 @@ public:
     KThread(U32 id, const std::shared_ptr<KProcess>& process);
     ~KThread();
 
+    static void runOnMainThread(std::function<void()> callback);
+
     void addCallbackOnExit(std::function<void(U32 id)> callback) {callbacksOnExit.push_back(callback);}
 
     void reset();
@@ -129,7 +131,7 @@ public:
     BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
     BString name;
 public:
-    void* currentContext = nullptr;
+    U32 currentContext = 0;
     U32 glLastError = 0;
     bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer;

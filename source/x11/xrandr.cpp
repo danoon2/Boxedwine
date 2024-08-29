@@ -1,10 +1,9 @@
 #include "boxedwine.h"
 #include "x11.h"
 #include "knativesystem.h"
-#include "knativewindow.h"
 
 U32 XrrConfigCurrentRate() {
-    return KNativeWindow::getNativeWindow()->screenRate();
+    return KNativeSystem::getScreen()->screenRate();
 }
 
 bool XrrGetSize(KThread* thread, const DisplayDataPtr& displayData, U32 sizeIndex, U32& cx, U32& cy) {
@@ -46,8 +45,9 @@ U32 XrrConfigCurrentConfiguration(KThread* thread, const DisplayDataPtr& display
         XrrGetSizes(thread, displayData, 0, 0);
         data = displayData->xrrData;
     }
-    U32 cx = KNativeWindow::getNativeWindow()->screenWidth();
-    U32 cy = KNativeWindow::getNativeWindow()->screenHeight();
+    KNativeScreenPtr screen = KNativeSystem::getScreen();
+    U32 cx = screen->screenWidth();
+    U32 cy = screen->screenHeight();
 
     memory->writed(rotationAddress, 0);
     for (U32 i = 0; i < data->sizesCount; i++) {

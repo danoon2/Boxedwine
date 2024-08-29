@@ -253,7 +253,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -472,7 +472,9 @@
     <ClInclude Include="..\..\..\..\include\knativesocket.h" />
     <ClInclude Include="..\..\..\..\include\knativesystem.h" />
     <ClInclude Include="..\..\..\..\include\knativethread.h" />
-    <ClInclude Include="..\..\..\..\include\knativewindow.h" />
+    <ClInclude Include="..\..\..\..\include\knativeinput.h" />
+    <ClInclude Include="..\..\..\..\include\kopengl.h" />
+    <ClInclude Include="..\..\..\..\include\knativescreen.h" />
     <ClInclude Include="..\..\..\..\include\knetlink.h" />
     <ClInclude Include="..\..\..\..\include\kobject.h" />
     <ClInclude Include="..\..\..\..\include\kpoll.h" />
@@ -522,6 +524,8 @@
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\zip.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h" />
+    <ClInclude Include="..\..\..\..\platform\sdl\knativescreenSDL.h" />
+    <ClInclude Include="..\..\..\..\platform\sdl\knativeinputSDL.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
@@ -619,11 +623,11 @@
     <ClInclude Include="..\..\..\..\source\io\fszipnode.h" />
     <ClInclude Include="..\..\..\..\source\io\fszipopennode.h" />
     <ClInclude Include="..\..\..\..\source\kernel\loader\kelf.h" />
-    <ClInclude Include="..\..\..\..\source\opengl\boxedwineGL.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glcommon.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glfunctions.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glfunctions_ext.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glMarshal.h" />
+    <ClInclude Include="..\..\..\..\source\opengl\osmesa\osmesa.h" />
     <ClInclude Include="..\..\..\..\source\sdl\mainloop.h" />
     <ClInclude Include="..\..\..\..\source\sdl\startupArgs.h" />
     <ClInclude Include="..\..\..\..\source\sdl\wnd.h" />
@@ -826,7 +830,9 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativeaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativethread.cpp" />
-    <ClCompile Include="..\..\..\..\platform\sdl\knativewindow.cpp" />
+    <ClCompile Include="..\..\..\..\platform\sdl\knativeinputSDL.cpp" />
+    <ClCompile Include="..\..\..\..\platform\sdl\knativescreenGL.cpp" />
+    <ClCompile Include="..\..\..\..\platform\sdl\knativescreenSDL.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\windows\platform.cpp" />
@@ -933,7 +939,6 @@
     <ClCompile Include="..\..\..\..\source\kernel\sys\sysfb.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\sys\sysfs.cpp" />
     <ClCompile Include="..\..\..\..\source\kernel\sys\sysmouse.cpp" />
-    <ClCompile Include="..\..\..\..\source\opengl\boxedwineGL.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glcommon.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glext.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glfunctions_ext1.cpp" />
@@ -949,7 +954,6 @@
     <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\startupArgs.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp" />
-    <ClCompile Include="..\..\..\..\source\sdl\winedrv.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
     </ClCompile>

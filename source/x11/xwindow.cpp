@@ -1,6 +1,6 @@
 #include "boxedwine.h"
 #include "x11.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 
 void XWindowChanges::read(KMemory* memory, U32 address) {
 	x = memory->readd(address);
@@ -125,7 +125,7 @@ void XSetWindowAttributes::copyWithMask(XSetWindowAttributes* attributes, U32 va
 	}
 }
 
-XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width) : XDrawable(width, height, depth), parent(parent), x(x), y(y), displayId(displayId), c_class(c_class), border_width(border_width) {
+XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual) : XDrawable(width, height, depth, visual, true), parent(parent), left(x), top(y), displayId(displayId), c_class(c_class), border_width(border_width) {
 	if (parent) {
 		attributes.border_pixmap = parent->attributes.border_pixmap;
 		attributes.colormap = parent->attributes.colormap;
@@ -218,8 +218,8 @@ void XWindow::onCreate() {
 			event.type = CreateNotify;
 			event.xcreatewindow.parent = parent->id;
 			event.xcreatewindow.window = id;
-			event.xcreatewindow.x = x;
-			event.xcreatewindow.y = y;
+			event.xcreatewindow.x = left;
+			event.xcreatewindow.y = top;
 			event.xcreatewindow.width = width();
 			event.xcreatewindow.height = height();
 			event.xcreatewindow.border_width = border_width;
@@ -296,6 +296,16 @@ int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* att
 	return Success;
 }
 
+void XWindow::iterateAllMappedDescendants(std::function<void(const XWindowPtr& child)> callback) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
+	for (auto& child : zchildren) {
+		if (child->mapped()) {
+			callback(child);
+			child->iterateAllMappedDescendants(callback);
+		}
+	}
+}
+
 void XWindow::iterateMappedChildrenFrontToBack(std::function<bool(const XWindowPtr& child)> callback, bool includeTransients) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(childrenMutex);
 	if (includeTransients) {
@@ -342,8 +352,8 @@ void XWindow::windowToScreen(S32& x, S32& y) {
 	XWindowPtr p = shared_from_this();
 
 	while (p) {
-		x += p->x;
-		y += p->y;
+		x += p->left;
+		y += p->top;
 		p = p->parent;
 	}
 }
@@ -352,8 +362,8 @@ void XWindow::screenToWindow(S32& x, S32& y) {
 	XWindowPtr p = shared_from_this();
 
 	while (p) {
-		x -= p->x;
-		y -= p->y;
+		x -= p->left;
+		y -= p->top;
 		p = p->parent;
 	}
 }
@@ -689,6 +699,7 @@ int XWindow::mapWindow() {
 			exposeNofity(data, 0, 0, width(), height(), 0);
 			});		
 	}
+	KNativeSystem::showWindow(id, isThisAndAncestorsMapped());
 	return Success;
 }
 
@@ -750,6 +761,7 @@ int XWindow::unmapWindow() {
 			exposeNofity(data, 0, 0, parent->width(), parent->height(), 0);
 			});
 	}
+	KNativeSystem::showWindow(id, false);
 	return Success;
 }
 
@@ -765,8 +777,8 @@ int XWindow::reparentWindow(const XWindowPtr& parent, S32 x, S32 y) {
 	}
 	removeFromParent();
 	this->parent = parent;
-	this->x = x;
-	this->y = y;
+	this->left = x;
+	this->top = y;
 	addToParent();
 
 	XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
@@ -841,17 +853,17 @@ void XWindow::draw() {
 		return;
 	}
 
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-	WndPtr wnd = nativeWindow->getWnd(id);
-	if (wnd) {
-		U32* palette = nullptr;
-		if (colorMap) {
-			colorMap->buildCache();
-			palette = colorMap->nativePixels;
-		}
-		nativeWindow->putBitsOnWnd(wnd, data, bits_per_pixel, bytes_per_line, x, y, width(), height(), palette, isDirty);
-		isDirty = false;
+	U32* palette = nullptr;
+	if (colorMap) {
+		colorMap->buildCache();
+		palette = colorMap->nativePixels;
 	}
+	S32 screenX = left;
+	S32 screenY = top;
+	//windowToScreen(screenX, screenY);
+	KNativeSystem::getScreen()->putBitsOnWnd(id, data, visual->bits_per_rgb, bytes_per_line, screenX, screenY, width(), height(), palette, isDirty);
+	isDirty = false;
+
 	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {
 		child->draw();
 		return true;
@@ -886,8 +898,8 @@ void XWindow::configureNotify() {
 			event.type = ConfigureNotify;
 			event.xconfigure.event = parent->id;
 			event.xconfigure.window = id;
-			event.xconfigure.x = x;
-			event.xconfigure.y = y;
+			event.xconfigure.x = left;
+			event.xconfigure.y = top;
 			event.xconfigure.width = width();
 			event.xconfigure.height = height();
 			event.xconfigure.border_width = border_width;
@@ -915,8 +927,8 @@ void XWindow::configureNotify() {
 		event.type = ConfigureNotify;
 		event.xconfigure.event = id;
 		event.xconfigure.window = id;
-		event.xconfigure.x = x;
-		event.xconfigure.y = y;
+		event.xconfigure.x = left;
+		event.xconfigure.y = top;
 		event.xconfigure.width = width();
 		event.xconfigure.height = height();
 		event.xconfigure.border_width = border_width;
@@ -941,21 +953,15 @@ void XWindow::configureNotify() {
 }
 
 int XWindow::moveResize(S32 x, S32 y, U32 width, U32 height) {
-	if (this->x == x && this->y == y && this->width() == width && this->height() == height) {
+	if (this->left == x && this->top == y && this->width() == width && this->height() == height) {
 		return Success;
 	}
 	if (width != this->width() || height != this->height()) {
 		setSize(width, height);
 	}
 
-	KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-	WndPtr win = nativeWindow->getWnd(id);
-	if (win) {
-		win->windowRect.left = x;
-		win->windowRect.top = y;
-		win->windowRect.right = x + width;
-		win->windowRect.bottom = y + height;
-	}
+	KNativeSystem::moveWindow(id, x, y, width, height);
+	
 	configureNotify();
 	// :TODO:
 	// exposeNofity
@@ -968,11 +974,11 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 	U32 height = this->height();
 
 	if (mask & CWX) {
-		x = changes->x;
+		left = changes->x;
 		sizeChanged = true;
 	}
 	if (mask & CWY) {
-		y = changes->y;
+		top = changes->y;
 		sizeChanged = true;
 	}
 	if (mask & CWWidth) {
@@ -1003,17 +1009,7 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 		if (width != this->width() || height != this->height()) {
 			setSize(width, height);
 		}
-		KNativeWindowPtr nativeWindow = KNativeWindow::getNativeWindow();
-		WndPtr win = nativeWindow->getWnd(id);
-		if (win) {
-			win->windowRect.left = x;
-			win->windowRect.top = y;
-			win->windowRect.right = x + width;
-			win->windowRect.bottom = y + height;
-			if (win->glGetPixelFormat()) {
-				nativeWindow->screenChanged(width, height, nativeWindow->screenBpp());
-			}
-		}
+		KNativeSystem::moveWindow(id, left, top, width, height);
 	}
 	configureNotify();
 	// :TODO:
@@ -1025,14 +1021,11 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 	return Success;
 }
 
-bool XWindow::isSelfAndAllParentsMapped() {
-	return isMapped && (!parent || parent->isSelfAndAllParentsMapped());
-}
 
 bool XWindow::isTransient() {
 	if (transientForCache) {
 		XWindowPtr w = XServer::getServer()->getWindow(transientForCache);
-		return w && w->isSelfAndAllParentsMapped();
+		return w && w->isThisAndAncestorsMapped();
 	}
 	return false;
 }
@@ -1073,7 +1066,7 @@ XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY) {
 
 		child->parent->screenToWindow(x, y);
 		
-		bool inChild = x >= child->x && x < child->x + (S32)child->width() && y >= child->y && y < child->y + (S32)child->height();
+		bool inChild = x >= child->left && x < child->left + (S32)child->width() && y >= child->top && y < child->top + (S32)child->height();
 		result = child->getWindowFromPoint(screenX, screenY);
 		if (result && (inChild || result->isTransient())) {
 			return false;
@@ -1200,6 +1193,18 @@ XWindowPtr XWindow::getLeastCommonAncestor(const XWindowPtr& wnd) {
 		}
 	}
 	return result;
+}
+
+bool XWindow::isThisAndAncestorsMapped() {
+	XWindowPtr w = shared_from_this();
+
+	while (w) {
+		if (!w->isMapped) {
+			return false;
+		}
+		w = w->parent;
+	}
+	return true;
 }
 
 bool XWindow::doesThisOrAncestorHaveFocus() {

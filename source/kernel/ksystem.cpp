@@ -934,6 +934,7 @@ void KSystem::initDisplayModes() {
 }
 
 U32 KSystem::findPixelFormat(U32 flags, U32 colorType, U32 cRedBits, U32 cGreenBits, U32 cBlueBits, U32 cAlphaBits, U32 cAccumBits, U32 cDepthBits, U32 cStencilBits) {
+    initDisplayModes();
     for (U32 i = 1; i < numberOfPfs; i++) {
         if (flags && (pfs[i].dwFlags & flags) != flags) {
             continue;

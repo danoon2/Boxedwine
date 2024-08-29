@@ -1,12 +1,23 @@
 #include "boxedwine.h"
+
+#ifdef BOXEDWINE_OPENGL
 #include "platformOpenGL.h"
 #include <Windows.h>
 #include GLH
+#include "../source/x11/x11.h"
+#include "../source/opengl/glcommon.h"
 
 BHashTable<U32, GLPixelFormatPtr> PlatformOpenGL::formatsById;
 std::vector<GLPixelFormatPtr> PlatformOpenGL::formats;
 bool PlatformOpenGL::initialized;
 bool PlatformOpenGL::hardwareListLoaded;
+
+static BHashTable<U32, HGLRC> contexts;
+static std::atomic_int nextContextId = 1;
+static BOXEDWINE_MUTEX contextMutex;
+
+static BHashTable<U32, HWND> nativeWindowHandles;
+static BOXEDWINE_MUTEX windowMutex;
 
 LRESULT dummyWndProc(HWND hwnd, UINT umsg, WPARAM wp, LPARAM lp)
 {
@@ -76,6 +87,9 @@ typedef const char* (WINAPI* PFNWGLGETEXTENSIONSSTRINGARBPROC) (HDC hdc);
 typedef BOOL(WINAPI* PFNWGLGETPIXELFORMATATTRIBIVARBPROC) (HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes, const int* piAttributes, int* piValues);
 typedef BOOL(WINAPI* PFNWGLCHOOSEPIXELFORMATARBPROC) (HDC hdc, const int* piAttribIList, const FLOAT* pfAttribFList, UINT nMaxFormats, int* piFormats, UINT* nNumFormats);
 
+static PFNWGLCREATECONTEXTATTRIBSARBPROC pfnWglCreateContextAttribsARB;
+static PFNWGLCHOOSEPIXELFORMATARBPROC pfnWglChoosePixelFormat;
+
 bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLPixelFormatPtr>& glformats) {
     WNDCLASS tmpClass;
     memset(&tmpClass, 0, sizeof(WNDCLASS));
@@ -113,10 +127,10 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
 
         wglMakeCurrent(hdc, hrc);
 
-        PFNWGLCREATECONTEXTATTRIBSARBPROC pfnWglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
+        pfnWglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
         PFNWGLGETEXTENSIONSSTRINGARBPROC pfnWglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)wglGetProcAddress("wglGetExtensionsStringARB");
         PFNWGLGETPIXELFORMATATTRIBIVARBPROC pfnWglGetPixelFormatAttribiv = (PFNWGLGETPIXELFORMATATTRIBIVARBPROC)wglGetProcAddress("wglGetPixelFormatAttribivARB");
-        PFNWGLCHOOSEPIXELFORMATARBPROC pfnWglChoosePixelFormat = (PFNWGLCHOOSEPIXELFORMATARBPROC)wglGetProcAddress("wglChoosePixelFormatARB");
+        pfnWglChoosePixelFormat = (PFNWGLCHOOSEPIXELFORMATARBPROC)wglGetProcAddress("wglChoosePixelFormatARB");
 
         bool arbPixelFormat = false;
         bool arbMultisample = false;
@@ -262,6 +276,289 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
     return formatsById.size() > 0;
 }
 
+LRESULT glWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    LRESULT result = 0;
+    switch (message) {
+    case WM_PAINT:
+        PAINTSTRUCT ps;
+        BeginPaint(hWnd, &ps);
+        EndPaint(hWnd, &ps);
+        break;
+    case WM_SIZE:
+        //glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+        break;
+    case WM_KEYDOWN:
+        break;
+    case WM_CLOSE:
+        //wglMakeCurrent(window.deviceContext, NULL);
+        //wglDeleteContext(window.renderContext);
+        //ReleaseDC(hWnd, window.deviceContext);
+        DestroyWindow(hWnd);
+        /* stop event queue thread */
+        PostQuitMessage(0);
+        break;
+    default:
+        result = DefWindowProc(hWnd, message, wParam, lParam);
+    }
+    return result;
+}
+
+static WNDCLASS glClass;
+static bool registered = false;
+
+static HWND glCreateWindow(const GLPixelFormatPtr& format, int width, int height) {
+    if (!registered) {        
+        memset(&glClass, 0, sizeof(WNDCLASS));
+        glClass.style = CS_OWNDC | CS_VREDRAW | CS_HREDRAW;
+        glClass.hInstance = GetModuleHandle(NULL);
+        glClass.lpfnWndProc = glWndProc;
+        glClass.lpszClassName = "boxedwineGL";
+        RegisterClass(&glClass);
+    }
+
+    HWND hwnd = CreateWindow(glClass.lpszClassName, "boxedwine", WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN | WS_CLIPSIBLINGS, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, glClass.hInstance, 0);
+
+    if (!hwnd) {
+        kpanic("glCreateWindow failed to create opengl window");
+    }
+
+    HDC hdc = GetDC(hwnd);
+
+    if (format->nativeId & PIXEL_FORMAT_NATIVE_INDEX_MASK) {
+        PIXELFORMATDESCRIPTOR pfd;
+        memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
+        SetPixelFormat(hdc, (format->nativeId & ~PIXEL_FORMAT_NATIVE_INDEX_MASK), &pfd);
+    } else {
+        PIXELFORMATDESCRIPTOR pfd;
+        memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
+        pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+        pfd.nVersion = 1;
+        // format->pf has same flag flags
+        pfd.dwFlags = format->pf.dwFlags;
+        pfd.iPixelType = format->pf.iPixelType;
+        pfd.cColorBits = format->pf.cColorBits;
+        pfd.cRedBits = format->pf.cRedBits;
+        pfd.cRedShift = format->pf.cRedShift;
+        pfd.cGreenBits = format->pf.cGreenBits;
+        pfd.cGreenShift = format->pf.cGreenShift;
+        pfd.cBlueBits = format->pf.cBlueBits;
+        pfd.cBlueShift = format->pf.cBlueShift;
+        pfd.cAlphaBits = format->pf.cAlphaBits;
+        pfd.cAlphaShift = format->pf.cAlphaShift;
+        pfd.cAccumBits = format->pf.cAccumBits;
+        pfd.cAccumRedBits = format->pf.cAccumRedBits;
+        pfd.cAccumGreenBits = format->pf.cAccumGreenBits;
+        pfd.cAccumBlueBits = format->pf.cAccumBlueBits;
+        pfd.cAccumAlphaBits = format->pf.cAccumAlphaBits;
+        pfd.cDepthBits = format->pf.cDepthBits;
+        pfd.cStencilBits = format->pf.cStencilBits;
+        pfd.cAuxBuffers = format->pf.cAuxBuffers;
+
+        int pfIndex = ChoosePixelFormat(hdc, &pfd);
+        if (format != 0) {
+            SetPixelFormat(hdc, pfIndex, &pfd);
+        }
+    }
+    return hwnd;
+}
+
+static void platform_glFinish(CPU* cpu) {
+    glFinish();
+}
+
+// GLAPI void APIENTRY glFlush( void ) {
+static void platform_glFlush(CPU* cpu) {
+    glFlush();
+}
+
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = gl##func;
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = gl##func;
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS)
+
+#include "../tools/opengl/gldef.h"
+
+static bool started = false;
+static void initGL() {
+    if (!started) {
+#include "../source/opengl/glfunctions.h"
+        int99Callback[Finish] = platform_glFinish;
+        int99Callback[Flush] = platform_glFlush;
+        started = true;
+    }
+}
+
+#define WGL_CONTEXT_MAJOR_VERSION_ARB   0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB   0x2092
+#define WGL_CONTEXT_LAYER_PLANE_ARB     0x2093
+#define WGL_CONTEXT_FLAGS_ARB           0x2094
+#define WGL_CONTEXT_PROFILE_MASK_ARB              0x9126
+
+U32 PlatformOpenGL::createContext(const GLPixelFormatPtr& format, U32 shareContext, U32 major, U32 minor, U32 profile, U32 flags) {
+    HWND hwnd = glCreateWindow(format, 32, 32);
+    HGLRC result;
+    HGLRC share = nullptr;
+    int attribs[10];
+    int index = 0;
+
+    if (major) {
+        attribs[index++] = WGL_CONTEXT_MAJOR_VERSION_ARB;
+        attribs[index++] = major;
+    }
+    if (minor) {
+        attribs[index++] = WGL_CONTEXT_MINOR_VERSION_ARB;
+        attribs[index++] = minor;
+    }
+    if (profile) {
+        attribs[index++] = WGL_CONTEXT_PROFILE_MASK_ARB;
+        attribs[index++] = profile; // glx and wgl use the same values
+    }
+    if (flags) {
+        attribs[index++] = WGL_CONTEXT_FLAGS_ARB;
+        attribs[index++] = flags; // glx and wgl use the same values
+    }
+    if (index) {
+        attribs[index++] = 0;
+    }
+
+    initGL();
+    if (shareContext) {
+        share = (HGLRC)getNativeContext(shareContext);
+    }
+    HDC hdc = GetDC(hwnd);
+    if (pfnWglCreateContextAttribsARB) {
+        result = pfnWglCreateContextAttribsARB(hdc, share, index ? attribs : 0);
+    } else {
+        if (index) {
+            klog("PlatformOpenGL::createContext wglCreateContextAttribsARB not found, falling back to wglCreateContext. attributes was supplied but not supported in wglCreateContext, this might not work as expected");
+        }
+        result = wglCreateContext(hdc);
+        if (share) {
+            wglShareLists(share, result);
+        }
+    }
+    DestroyWindow(hwnd);
+    if (result) {
+        U32 id = nextContextId++;
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+        contexts.set(id, result);
+        return id;
+    }
+    return 0;
+}
+
+#undef GL_FUNCTION
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
+
+#undef GL_FUNCTION_CUSTOM
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
+
+#undef GL_EXT_FUNCTION
+#define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)wglGetProcAddress("gl" #func);
+
+void glExtensionsLoaded();
+static bool loaded = false;
+static void loadExtensions() {
+    if (!loaded) {
+        loaded = true;
+#include "../source/opengl/glfunctions.h"
+        glExtensionsLoaded();
+    }
+}
+
+void PlatformOpenGL::makeCurrent(const XWindowPtr& wnd, U32 contextId) {    
+    if (!contextId) {
+        wglMakeCurrent(0, 0);
+    } else {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+        HWND hwnd = nullptr;
+        HGLRC context = (HGLRC)getNativeContext(contextId);
+
+        if (!nativeWindowHandles.get(wnd->id, hwnd)) {
+            PlatformOpenGL::createWindow(wnd);
+            if (!nativeWindowHandles.get(wnd->id, hwnd)) {
+                kwarn("PlatformOpenGL::makeCurrent failed to create window");
+                return;
+            }
+        }
+        wglMakeCurrent(GetDC(hwnd), context);
+        if (context) {
+            loadExtensions();
+        }
+    }
+}
+
+void PlatformOpenGL::show(const std::shared_ptr<XWindow>& wnd, bool bShow) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+    HWND hwnd;
+    if (nativeWindowHandles.get(wnd->id, hwnd)) {
+        return;
+    }
+    if (bShow) {
+        SetWindowPos(hwnd, 0, 0, 0, wnd->width(), wnd->height(), SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_SHOWWINDOW);
+    }
+    ShowWindow(hwnd, bShow ? SW_SHOW : SW_HIDE);
+}
+
+void PlatformOpenGL::resize(const std::shared_ptr<XWindow>& wnd) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+    HWND hwnd;
+    if (nativeWindowHandles.get(wnd->id, hwnd)) {
+        return;
+    }
+    SetWindowPos(hwnd, 0, 0, 0, wnd->width(), wnd->height(), SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOREDRAW);
+}
+
+void PlatformOpenGL::createWindow(const XWindowPtr& wnd) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+    HWND hwnd;
+    if (nativeWindowHandles.get(wnd->id, hwnd)) {
+        return;
+    }
+    GLPixelFormatPtr format = getFormat(wnd->getVisual()->ext_data);
+    hwnd = glCreateWindow(format, wnd->width(), wnd->height());
+    if (!hwnd) {
+        return;
+    }
+    nativeWindowHandles.set(wnd->id, hwnd);
+    if (wnd->isThisAndAncestorsMapped()) {
+        ShowWindow(hwnd, SW_SHOW);
+    }
+}
+
+void PlatformOpenGL::destroyContext(U32 id) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+    HGLRC context = 0;
+    if (contexts.get(id, context)) {
+        wglDeleteContext(context);
+        contexts.remove(id);
+    }
+}
+
+void PlatformOpenGL::swapBuffer(const std::shared_ptr<XWindow>& wnd) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+    HWND hwnd = nullptr;
+
+    if (nativeWindowHandles.get(wnd->id, hwnd)) {
+        wglSwapLayerBuffers(GetDC(hwnd), WGL_SWAP_MAIN_PLANE);
+    }
+    //pump();
+}
+
+void* PlatformOpenGL::getNativeContext(U32 id) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+    HGLRC context = 0;
+    if (contexts.get(id, context)) {
+        return context;
+    }
+    return nullptr;
+}
+
 void PlatformOpenGL::init() {
 	if (!initialized) {
 		BOXEDWINE_CRITICAL_SECTION;
@@ -294,3 +591,4 @@ void PlatformOpenGL::iterateFormats(std::function<void(const GLPixelFormatPtr& f
 GLPixelFormatPtr PlatformOpenGL::getFormat(U32 pixelFormatId) {
 	return formatsById.get(pixelFormatId);
 }
+#endif

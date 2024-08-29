@@ -45,7 +45,7 @@ void mainloop() {
             timeout = nextTimer;
         }
 
-        bool timedout = KNativeWindow::getNativeWindow()->waitForEvent(timeout) == false;
+        bool timedout = KNativeSystem::getCurrentWindow()->waitForEvent(timeout) == false;
            
         if (lastTitleUpdate + 5000 < t) {
             lastTitleUpdate = t;
@@ -64,12 +64,11 @@ void mainloop() {
                 document.title = title;
                 );
         }
-        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+        if (!KNativeSystem::getCurrentWindow()->processEvents()) {
             KNativeSystem::cleanup();
             return;
         }
-        if (KNativeWindow::windowUpdated) {
-            KNativeWindow::windowUpdated = false;
+        if (KNativeSystem::getScreen()->presentedSinceLastCheck()) {
             break;
         }
         if (timedout) {
@@ -96,7 +95,7 @@ void mainloop() {
     while (1) {
         bool ran = runSlice();
         
-        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+        if (!KNativeSystem::getCurrentWindow()->processEvents()) {
             KNativeSystem::cleanup();
             return;
         }
@@ -110,8 +109,7 @@ void mainloop() {
         if (!ran) {
             break;
         }
-        if ((KNativeSystem::getTicks()-startTime)>250 || KNativeWindow::windowUpdated) {
-            KNativeWindow::windowUpdated = false;
+        if ((KNativeSystem::getTicks()-startTime)>250 || KNativeSystem::getScreen()->presentedSinceLastCheck()) {
             break;
         }
     };

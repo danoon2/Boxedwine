@@ -1,7 +1,7 @@
 #include "boxedwine.h"
 #include "x11.h"
 
-XDrawable::XDrawable(U32 width, U32 height, U32 depth) : id(XServer::getNextId()), w(width), h(height), depth(depth) {
+XDrawable::XDrawable(U32 width, U32 height, U32 depth, const VisualPtr& visual, bool isWindow) : id(XServer::getNextId()), isWindow(isWindow), depth(depth), visual(visual), w(width), h(height) {
 	data = nullptr;
 	setSize(width, height);
 }
@@ -18,19 +18,19 @@ U32 XDrawable::getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U3
 	if (format != ZPixmap) {
 		kpanic("XDrawable::createXImage wasn't expecting format = %x", format);
 	}
-	U32 bytesPerLine = calculateBytesPerLine(width, bits_per_pixel);
+	U32 bytesPerLine = calculateBytesPerLine(width, visual->bits_per_rgb);
 	U32 len = bytesPerLine * height;
 	U32 data = thread->process->alloc(thread, len);
 
 	U32 dst = data;
-	U8* src = this->data + this->bytes_per_line * y + (bits_per_pixel * x + 7) / 8;
+	U8* src = this->data + this->bytes_per_line * y + (visual->bits_per_rgb * x + 7) / 8;
 	for (U32 y = 0; y < height; y++) {
 		thread->memory->memcpy(dst, src, bytesPerLine);
 		src += this->bytes_per_line;
 		dst += bytesPerLine;
 	}
 
-	XImage::set(thread->memory, image, width, height, 0, format, data, 32, depth, bytesPerLine, bits_per_pixel, redMask, greenMask, blueMask);
+	XImage::set(thread->memory, image, width, height, 0, format, data, 32, depth, bytesPerLine, visual->bits_per_rgb, redMask, greenMask, blueMask);
 	return image;
 }
 
@@ -46,12 +46,7 @@ void XDrawable::setSize(U32 width, U32 height) {
 	}
 	w = width;
 	h = height;
-	if (depth == 24) {
-		bits_per_pixel = 32;
-	} else {
-		bits_per_pixel = depth;
-	}
-	bytes_per_line = calculateBytesPerLine(bits_per_pixel, width);
+	bytes_per_line = calculateBytesPerLine(visual->bits_per_rgb, width);
 	size = height * bytes_per_line;
 	if (data) {
 		delete[] data;
@@ -68,11 +63,11 @@ int XDrawable::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage*
 }
 
 int XDrawable::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
-	if (bits_per_pixel != this->bits_per_pixel) {
+	if (bits_per_pixel != this->visual->bits_per_rgb) {
 		return BadMatch;
 	}
 	if (gc && (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin)) {
-		klog("XDrawable::copyImageData clipping not implemented");
+		//klog("XDrawable::copyImageData clipping not implemented");
 	}
 	U32 src = data + bytes_per_line * src_y + (bits_per_pixel * src_x + 7) / 8;
 	U8* dst = this->data + this->bytes_per_line * dst_y + (bits_per_pixel * dst_x + 7) / 8;
@@ -108,7 +103,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 		if (x1 >= (S32)w) {
 			return Success;
 		}
-		if (bits_per_pixel == 32) {
+		if (visual->bits_per_rgb == 32) {
 			U32* p = (U32*)data;
 			U32 color = gc->values.foreground;
 			p += bytes_per_line / 4 * y1;
@@ -118,13 +113,13 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 				p += bytes_per_line / 4;
 			}
 		} else {
-			kpanic("XDrawable::drawLine depth %d not supported", bits_per_pixel);
+			kpanic("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
 		}
 	} else if (y1 == y2) {
 		if (y1 >= (S32)h) {
 			return Success;
 		}
-		if (bits_per_pixel == 32) {
+		if (visual->bits_per_rgb == 32) {
 			U32* p = (U32*)data;
 			U32 color = 0xff00;
 			p += bytes_per_line / 4 * y1;
@@ -133,7 +128,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 				p++;
 			}
 		} else {
-			kpanic("XDrawable::drawLine depth %d not supported", bits_per_pixel);
+			kpanic("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
 		}
 	} else {
 		klog("XDrawable::drawLine diag line not supported");
@@ -143,7 +138,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 
 int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height) {
 	if (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin) {
-		klog("XDrawable::fillRectangle clipping not implemented");
+		//klog("XDrawable::fillRectangle clipping not implemented");
 	}
 	if (gc->values.tile) {
 		kpanic("XDrawable::fillRectangle tile not supported");
@@ -155,7 +150,7 @@ int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S3
 		height = h - y;
 	}
 
-	if (bits_per_pixel == 32) {
+	if (visual->bits_per_rgb == 32) {
 		U32* p = (U32*)data;
 		U32 color = gc->values.foreground;
 		p += bytes_per_line / 4 * y;

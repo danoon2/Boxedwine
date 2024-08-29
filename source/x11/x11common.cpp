@@ -18,7 +18,7 @@
 #include "boxedwine.h"
 #include "../../../tools/x11/X11_def.h"
 #include "x11.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 
 Int99Callback int9BCallback[X11_COUNT];
 U32 int9BCallbackSize = X11_COUNT;
@@ -98,6 +98,15 @@ static void x11_CreateWindow(CPU* cpu) {
     U32 border_width = ARG7;
     U32 depth = ARG8;
     U32 c_class = ARG9;
+    U32 visualAddress = ARG10;
+
+    VisualPtr visual;
+    if (visualAddress == CopyFromParent) {
+        visual = parent->getVisual();
+    } else {
+        U32 visualId = X11_READD(Visual, visualAddress, visualid);
+        visual = server->getVisual(visualId);
+    }
 
     // Visual visual;
     // visual.read(memory, ARG10);
@@ -108,7 +117,7 @@ static void x11_CreateWindow(CPU* cpu) {
     if (c_class == CopyFromParent) {
         c_class = parent->c_class;
     }
-    XWindowPtr result = server->createNewWindow(data->displayId, parent, width, height, depth, x, y, c_class, border_width);
+    XWindowPtr result = server->createNewWindow(data->displayId, parent, width, height, depth, x, y, c_class, border_width, visual);
 
     if (server->trace) {
         BString log;
@@ -135,18 +144,7 @@ static void x11_CreateWindow(CPU* cpu) {
 
     if (attributes) {
         result->setAttributes(data, attributes, valuemask);
-    }
-    wRECT windowRect;
-    windowRect.left = x;
-    windowRect.top = y;
-    windowRect.right = x + width;
-    windowRect.bottom = y + height;
-    wRECT clientRect;
-    clientRect.left = 0;
-    clientRect.top = 0;
-    clientRect.right = width;
-    clientRect.bottom = height;
-    KNativeWindow::getNativeWindow()->createWnd(thread, thread->process->id, result->id, windowRect, clientRect);    
+    } 
     EAX = result->id;
 }
 
@@ -183,11 +181,8 @@ static void x11_DestroyWindow(CPU* cpu) {
         EAX = BadWindow;
         return;
     }
+    KNativeSystem::windowDestroyed(w->id);
     EAX = server->destroyWindow(w->id);
-    WndPtr nativeWindow = KNativeWindow::getNativeWindow()->getWnd(w->id);
-    if (nativeWindow) {
-        nativeWindow->destroy();
-    }
 }
 
 // int XReparentWindow(Display* display, Window w, Window parent, int x, int y)
@@ -531,7 +526,7 @@ static void x11_UngrabPointer(CPU* cpu) {
 
 // int XWarpPointer(Display* display, Window src_w, Window dest_w, int src_x, int src_y, unsigned int src_width, unsigned int src_height, int dest_x, int dest_y)
 static void x11_WarpPointer(CPU* cpu) {
-    KNativeWindow::getNativeWindow()->setMousePos(ARG8, ARG9);
+    KNativeSystem::getCurrentInput()->setMousePos(ARG8, ARG9);
     EAX = Success;
 }
 
@@ -548,8 +543,7 @@ static void x11_QueryPointer(CPU* cpu) {
     }
     S32 x = 0;
     S32 y = 0;
-    KNativeWindow::getNativeWindow()->getMousePos(&x, &y);
-
+    KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
     memory->writed(ARG3, root->id);
 
     XWindowPtr child = root->getWindowFromPoint(x, y);
@@ -1459,8 +1453,9 @@ static void x11_GetImage(CPU* cpu) {
     KThread* thread = cpu->thread;
     XServer* server = XServer::getServer();
     XDrawablePtr d = server->getDrawable(ARG2);
+    VisualPtr visual = d->getVisual();
 
-    EAX = d->getImage(thread, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, server->visual.red_mask, server->visual.green_mask, server->visual.blue_mask);
+    EAX = d->getImage(thread, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, visual->red_mask, visual->green_mask, visual->blue_mask);
 }
 
 // int XPutImage(Display* display, Drawable d, GC gc, XImage* image, int src_x, int src_y, int dest_x, int dest_y, unsigned int width, unsigned int height)
@@ -1536,8 +1531,12 @@ static void x11_CreatePixmap(CPU* cpu) {
     U32 width = ARG3;
     U32 height = ARG4;
     U32 depth = ARG5;
-
-    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(ARG3, ARG4, ARG5);
+    XDrawablePtr d = server->getDrawable(ARG2);
+    if (!d) {
+        EAX = BadDrawable;
+        return;
+    }
+    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(ARG3, ARG4, ARG5, d->getVisual());
     EAX = pixmap->id;
 }
 
@@ -1549,8 +1548,13 @@ static void x11_CreateBitmapFromData(CPU* cpu) {
     U32 data = ARG3;
     U32 width = ARG4;
     U32 height = ARG5;
+    XDrawablePtr d = server->getDrawable(ARG2);
+    if (!d) {
+        EAX = BadDrawable;
+        return;
+    }
 
-    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(width, height, window->getDepth());
+    std::shared_ptr<XPixmap> pixmap = server->createNewPixmap(width, height, window->getDepth(), d->getVisual());
     pixmap->copyImageData(thread, nullptr, data, pixmap->getBytesPerLine(), pixmap->getBitsPerPixel() , 0, 0, 0, 0, width, height);
     EAX = pixmap->id;
 }
@@ -2425,8 +2429,9 @@ static void x11_XineramaQueryScreens(CPU* cpu) {
     info->screen_number = 1;
     info->x_org = 0;
     info->y_org = 0;
-    info->width = KNativeWindow::defaultScreenWidth;
-    info->height = KNativeWindow::defaultScreenHeight;
+    KNativeScreenPtr screen = KNativeSystem::getScreen();
+    info->width = screen->screenWidth();
+    info->height = screen->screenHeight();
     memory->writed(ARG2, 1);
     EAX = resultAddress;
 }
@@ -2497,7 +2502,7 @@ static void x11_XRRSetScreenConfigAndRate(CPU* cpu) {
         return;        
     }
     EAX = RRSetConfigSuccess;
-    server->changeScreen(cx, cy, KNativeWindow::getNativeWindow()->screenBpp());    
+    server->changeScreen(cx, cy);    
 }
 
 // XRRScreenSize* XRRSizes(Display* dpy, int screen, int* nsizes)

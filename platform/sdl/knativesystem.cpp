@@ -1,7 +1,12 @@
 #include "boxedwine.h"
 #include "knativesystem.h"
 #include <SDL.h>
+#include "knativescreenSDL.h"
 #include UNISTD
+
+#ifdef BOXEDWINE_OPENGL_OSMESA
+#include "../../source/opengl/osmesa/osmesa.h"
+#endif
 
 #ifndef __TEST
 int boxedmain(int argc, const char** argv);
@@ -10,6 +15,8 @@ int main(int argc, char** argv) {
     return boxedmain(argc, (const char**)argv);
 }
 #endif
+
+static KNativeScreenSDLPtr screen;
 
 bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
@@ -25,6 +32,54 @@ bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
         return false;
     }
     return true;
+}
+
+void KNativeSystem::initWindow(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync) {
+    screen = std::make_shared<KNativeScreenSDL>(cx, cy, bpp, scaleX, scaleY, scaleQuality, fullScreen, vsync);
+    //PlatformOpenGL::init();
+}
+
+KNativeInputPtr KNativeSystem::getCurrentInput() {
+    return screen->getInput();
+}
+
+KNativeScreenPtr KNativeSystem::getScreen() {
+    return screen;
+}
+
+static KOpenGLPtr opengl;
+
+KOpenGLPtr KNativeSystem::getOpenGL() {
+    if (!opengl) {
+#ifdef BOXEDWINE_OPENGL_OSMESA
+        if (1 /*KSystem::openglType == OPENGL_TYPE_OSMESA*/) {
+            opengl = OsMesaGL::create();
+            return opengl;
+        }
+#endif
+        klog("Failed to load OpenGL, will probably crash");
+    }
+    return opengl;
+}
+
+void KNativeSystem::changeScreenSize(U32 cx, U32 cy) {
+    screen->setScreenSize(cx, cy);
+}
+
+void KNativeSystem::windowDestroyed(U32 id) {
+}
+
+void KNativeSystem::moveWindow(U32 id, S32 x, S32 y, U32 w, U32 h) {
+}
+
+void KNativeSystem::showWindow(U32 id, bool bShow) {
+}
+
+void KNativeSystem::shutdown() {
+}
+
+void KNativeSystem::scheduledNewThread(KThread* thread) {
+    // glUpdateContextForThread(currentThread);
 }
 
 void KNativeSystem::exit(const char* msg, U32 code) {
