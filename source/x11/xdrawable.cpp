@@ -40,10 +40,16 @@ U32 XDrawable::calculateBytesPerLine(U32 bitsPerPixel, U32 width) {
 	return result;
 }
 
+void XDrawable::lockData() {
+	BOXEDWINE_MUTEX_LOCK(mutex);
+}
+
+void XDrawable::unlockData() {
+	BOXEDWINE_MUTEX_UNLOCK(mutex);
+}
+
 void XDrawable::setSize(U32 width, U32 height) {
-	if (width == 0 && height != 0) {
-		int ii = 0;
-	}
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
 	w = width;
 	h = height;
 	bytes_per_line = calculateBytesPerLine(visual->bits_per_rgb, width);
@@ -57,7 +63,7 @@ void XDrawable::setSize(U32 width, U32 height) {
 
 int XDrawable::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, S32 src_x, S32 src_y, S32 dest_x, S32 dest_y, U32 width, U32 height) {
 	if (gc->values.function != GXcopy) {
-		kpanic("XPixmap::putImage function not supported %d", gc->values.function);
+		kwarn("XPixmap::putImage function not supported %d", gc->values.function);
 	}
 	return copyImageData(thread, gc, image->data, image->bytes_per_line, image->bits_per_pixel, src_x, src_y, dest_x, dest_y, width, height);
 }
@@ -86,12 +92,59 @@ int XDrawable::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U3
 	}
 	U32 copyPerLine = (bits_per_pixel * width + 7) / 8;
 
-	for (U32 y = 0; y < height; y++) {
-		if (!memory->canRead(src, copyPerLine)) {
-			return BadValue;
+	if (!gc || gc->values.function == GXcopy) {
+		for (U32 y = 0; y < height; y++) {
+			if (!memory->canRead(src, copyPerLine)) {
+				return BadValue;
+			}
+			memory->memcpy(dst, src, copyPerLine);
+			src += bytes_per_line;
+			dst += this->bytes_per_line;
 		}
-		memory->memcpy(dst, src, copyPerLine);
-		src += bytes_per_line;
+	} else if (gc->values.function == GXxor && bits_per_pixel == 32) {
+		for (U32 y = 0; y < height; y++) {
+			if (!memory->canRead(src, copyPerLine)) {
+				return BadValue;
+			}
+			U32* dstPixel = (U32*)dst;
+			for (U32 x = 0; x < width; x++) {
+				dstPixel[x] ^= memory->readd(src + x * 4);
+			}			
+			src += bytes_per_line;
+			dst += this->bytes_per_line;
+		}
+	}
+	setDirty();
+	return Success;
+}
+
+int XDrawable::copy(KThread* thread, const std::shared_ptr<XGC>& gc, const std::shared_ptr<XDrawable>& srcDrawable, S32 srcX, S32 srcY, U32 width, U32 height, S32 dstX, S32 dstY) {
+	if (srcDrawable->visual->bits_per_rgb != this->visual->bits_per_rgb) {
+		return BadMatch;
+	}
+	if (gc && (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin)) {
+		//klog("XDrawable::copyImageData clipping not implemented");
+	}
+	U8* src = srcDrawable->data + srcDrawable->bytes_per_line * srcY + (srcDrawable->visual->bits_per_rgb * srcX + 7) / 8;
+	U8* dst = this->data + this->bytes_per_line * dstY + (this->visual->bits_per_rgb * dstX + 7) / 8;
+
+	if (dstX + width > w) {
+		if ((S32)w < dstX) {
+			return Success;
+		}
+		width = w - dstX;
+	}
+	if (dstY + (S32)height > (S32)h) {
+		if ((S32)h < dstY) {
+			return Success;
+		}
+		height = h - dstY;
+	}
+	U32 copyPerLine = (this->visual->bits_per_rgb * width + 7) / 8;
+
+	for (U32 y = 0; y < height; y++) {
+		memcpy(dst, src, copyPerLine);
+		src += srcDrawable->bytes_per_line;
 		dst += this->bytes_per_line;
 	}
 	setDirty();

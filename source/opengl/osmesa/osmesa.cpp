@@ -182,7 +182,11 @@ void KOpenGLMesa::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable
         context = gl->contextsById.get(thread->currentContext);
     }
     if (context) {
-        memcpy(d->getData(), context->buffer, context->bufferSize);
+        d->lockData();
+        if (d->getDataSize() >= context->bufferSize) {
+            memcpy(d->getData(), context->buffer, context->bufferSize);
+        }
+        d->unlockData();
         d->setDirty();
     }    
 }

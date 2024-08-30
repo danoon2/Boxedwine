@@ -798,7 +798,7 @@ void gl_common_XQueryExtensionsString(CPU* cpu) {
     if (thread->process->glxStringExtensions) {
         EAX = thread->process->glxStringExtensions;
     }
-    const char* s = "GLX_SGIX_fbconfig GLX_ARB_create_context WGL_ARB_create_context_profile GLX_ARB_create_context_no_error";
+    const char* s = "GLX_ARB_multisample GLX_SGIX_fbconfig GLX_ARB_create_context WGL_ARB_create_context_profile GLX_ARB_create_context_no_error";
     thread->process->glxStringExtensions = thread->process->alloc(thread, (U32)strlen(s) + 1);
     thread->memory->memcpy(thread->process->glxStringExtensions, s, (U32)strlen(s) + 1);
     EAX = thread->process->glxStringExtensions;
@@ -997,20 +997,33 @@ void gl_common_XCreateNewContext(CPU* cpu) {
 
 // Bool glXMakeContextCurrent(Display* dpy, GLXDrawable draw, GLXDrawable read, GLXContext ctx)
 void gl_common_XMakeContextCurrent(CPU* cpu) {
-    kpanic("glXMakeContextCurrent");
+    U32 draw = ARG2;
+    U32 read = ARG3;
+    U32 ctx = ARG4;
+    if (read && read != draw) {
+        kpanic("glXMakeContextCurrent");
+    }
+
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr d = server->getDrawable(draw);
+
+    if (ctx && !d) {
+        EAX = False;
+        return;
+    }
+    thread->currentContext = ctx;
+    EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? True : False;
 }
 
 // GLXPixmap glXCreatePixmap(Display* dpy, GLXFBConfig config, Pixmap pixmap, const int* attrib_list)
 void gl_common_XCreatePixmap(CPU* cpu) {
-    U32 resultAddress = cpu->thread->process->alloc(cpu->thread, 8);
-    cpu->memory->writed(resultAddress, ARG3);
-    cpu->memory->writed(resultAddress + 4, ARG2);
-    EAX = resultAddress;
+    EAX = ARG3; // the return must be a drawable, if we need config, maybe store on the actual pixmap
 }
 
 // void glXDestroyPixmap(Display* dpy, GLXPixmap pixmap)
 void gl_common_XDestroyPixmap(CPU* cpu) {
-    cpu->thread->process->free(ARG2);
+    // no memory was allocated in gl_common_XCreatePixmap
 }
 
 // GLXWindow glXCreateWindow(Display* dpy, GLXFBConfig config, Window win, const int* attrib_list)

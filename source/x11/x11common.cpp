@@ -1444,8 +1444,23 @@ static void x11_UnlockDisplay(CPU* cpu) {
     BOXEDWINE_MUTEX_UNLOCK(data->mutex);
 }
 
+// int XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, int src_y, unsigned int width, unsigned int height, int dest_x, int dest_y)
 static void x11_CopyArea(CPU* cpu) {
-    kpanic("x11_CopyArea");
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    KMemory* memory = cpu->memory;
+    XDrawablePtr src = server->getDrawable(ARG2);
+    XDrawablePtr dest = server->getDrawable(ARG3);
+    if (!src || !dest) {
+        EAX = BadDrawable;
+        return;
+    }
+    XGCPtr gc = server->getGC(ARG4);
+    if (!gc) {
+        EAX = BadGC;
+        return;
+    }
+    EAX = dest->copy(thread, gc, src, ARG5, ARG6, ARG7, ARG8, ARG9, ARG10);
 }
 
 // XImage* XGetImage(Display* display, Drawable d, int x, int y, unsigned int width, unsigned int height, unsigned long plane_mask, int format)

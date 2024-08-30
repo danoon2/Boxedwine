@@ -171,6 +171,8 @@ public:
 	XWindowPtr getParent() {return parent;}
 	bool mapped() {return this->isMapped;}
 	bool isThisAndAncestorsMapped();
+	XWindowPtr getTopMappedChild();
+
 	const U32 displayId;
 	const U32 c_class;
 

@@ -196,9 +196,12 @@ U32 XServer::getNextQuark() {
 }
 
 XWindowPtr XServer::createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
-	XWindowPtr result = std::make_shared<XWindow>(displayId, parent, width, height, depth, x, y, c_class, border_width, visual);
-	windows.set(result->id, result);
+	XWindowPtr result;
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowsMutex);
+		result = std::make_shared<XWindow>(displayId, parent, width, height, depth, x, y, c_class, border_width, visual);
+		windows.set(result->id, result);
+	}
 	result->onCreate();
 	return result;
 }

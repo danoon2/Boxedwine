@@ -15,6 +15,7 @@ public:
 	int fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height);
 	int drawRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x, S32 y, U32 width, U32 height);
 	int drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2);
+	int copy(KThread* thread, const std::shared_ptr<XGC>& gc, const std::shared_ptr<XDrawable>& src, S32 srcX, S32 srcY, U32 width, U32 height, S32 dstX, S32 dstY);
 
 	int copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height);
 
@@ -27,7 +28,11 @@ public:
 	U32 getBitsPerPixel() { return visual->bits_per_rgb; }
 
 	void setSize(U32 width, U32 height);
+	
+	void lockData();
 	U8* getData() {return data;}
+	U32 getDataSize() {return size;}
+	void unlockData();
 
 	virtual void setDirty() {};
 	bool isDirty = false;
@@ -44,6 +49,7 @@ protected:
 	U32 bytes_per_line;
 
 private:
+	BOXEDWINE_MUTEX mutex;
 	U32 w;
 	U32 h;
 };

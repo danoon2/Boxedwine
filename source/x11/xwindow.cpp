@@ -1195,6 +1195,16 @@ XWindowPtr XWindow::getLeastCommonAncestor(const XWindowPtr& wnd) {
 	return result;
 }
 
+XWindowPtr XWindow::getTopMappedChild() {
+	XWindowPtr result;
+
+	iterateMappedChildrenFrontToBack([&result](const XWindowPtr& child) {
+		result = child;
+		return false;
+		});
+	return result;
+}
+
 bool XWindow::isThisAndAncestorsMapped() {
 	XWindowPtr w = shared_from_this();
 
