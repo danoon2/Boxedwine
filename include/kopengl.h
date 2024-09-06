@@ -15,6 +15,8 @@ public:
     virtual void glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) = 0;
     virtual void glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) = 0;
     virtual void glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) = 0;
+    virtual void glResizeWindow(const std::shared_ptr<XWindow>& wnd) = 0;
+    virtual bool isActive() = 0;
     virtual GLPixelFormatPtr getFormat(U32 pixelFormatId) = 0;
 };
 

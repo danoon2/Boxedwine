@@ -6,6 +6,9 @@
 #ifdef BOXEDWINE_OPENGL_OSMESA
 #include "../../source/opengl/osmesa/osmesa.h"
 #endif
+#ifdef BOXEDWINE_OPENGL_SDL
+#include "../../source/opengl/sdl/sdlgl.h"
+#endif
 
 std::atomic_int XServer::nextId = 0x10000;
 XServer* XServer::server;
@@ -773,49 +776,60 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 }
 
 void XServer::mouseMove(S32 x, S32 y, bool relative) {
-	if (grabbed) {
-		if (!(grabbedMask & PointerMotionMask)) {
+	if (isGrabbed) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+		if (grabbed) {
+			if (!(grabbedMask & PointerMotionMask)) {
+				return;
+			}
+			grabbed->motionNotify(grabbedDisplay, x, y);
 			return;
 		}
-		grabbed->motionNotify(grabbedDisplay, x, y);
-		return;
 	}
-	XWindowPtr wnd = root->getWindowFromPoint(x, y);
-	if (wnd) {
-		if (wnd != pointerWindow) {
-			pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
-			pointerWindow = wnd;
-		}
-		while (wnd && !wnd->mouseMoveScreenCoords(x, y)) {
-			wnd = wnd->parent;
+	if (root) { // might not be set at the very start
+		XWindowPtr wnd = root->getWindowFromPoint(x, y);
+		if (wnd) {
+			if (wnd != pointerWindow) {
+				pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
+				pointerWindow = wnd;
+			}
+			while (wnd && !wnd->mouseMoveScreenCoords(x, y)) {
+				wnd = wnd->parent;
+			}
 		}
 	}
 }
 
 void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
-	if (grabbed) {
-		U32 mask = pressed ? ButtonPressMask : ButtonReleaseMask;
-		if (!(grabbedMask & mask)) {
+	if (isGrabbed) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+		if (grabbed) {
+			U32 mask = pressed ? ButtonPressMask : ButtonReleaseMask;
+			if (!(grabbedMask & mask)) {
+				return;
+			}
+			if (grabbedConfined) {
+				int ii = 0;
+			}
+			grabbed->buttonNotify(grabbedDisplay, button, x, y, pressed);
 			return;
 		}
-		if (grabbedConfined) {
-			int ii = 0;
-		}
-		grabbed->buttonNotify(grabbedDisplay, button, x, y, pressed);
-		return;
 	}
-
-	XWindowPtr wnd = root->getWindowFromPoint(x, y);
-	while (wnd && !wnd->mouseButtonScreenCoords(button, x, y, pressed)) {
-		wnd = wnd->parent;
+	if (root) { // might not be set at the very start
+		XWindowPtr wnd = root->getWindowFromPoint(x, y);
+		while (wnd && !wnd->mouseButtonScreenCoords(button, x, y, pressed)) {
+			wnd = wnd->parent;
+		}
 	}
 }
 
 void XServer::key(U32 key, bool pressed) {
-	S32 x = 0;
-	S32 y = 0;
-	KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
-	inputFocus->keyScreenCoords(key, x, y, pressed);
+	if (inputFocus) {
+		S32 x = 0;
+		S32 y = 0;
+		KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
+		inputFocus->keyScreenCoords(key, x, y, pressed);
+	}
 }
 
 U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbed, XWindowPtr confined, U32 mask, U32 time) {
@@ -831,7 +845,7 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 	this->grabbedMask = mask;
 	this->grabbedTime = time;
 	this->grabbedDisplay = display;	
-
+	this->isGrabbed = true;
 	if (pointerWindow->id != grabbed->id) {
 		S32 x = 0;
 		S32 y = 0;
@@ -853,6 +867,7 @@ U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
 		this->grabbed = nullptr;
 		this->grabbedDisplay = nullptr;
 		this->grabbedConfined = nullptr;
+		this->isGrabbed = false;
 	}
 	S32 x = 0;
 	S32 y = 0;
@@ -883,7 +898,7 @@ void XServer::initVisuals() {
 	VisualPtr vis8 = addVisual(0, 0, 0, 8, 8, 0);
 	
 #ifdef BOXEDWINE_OPENGL_OSMESA
-	if (1 /*KSystem::openglType == OPENGL_TYPE_OSMESA*/) {
+	if (KSystem::openglType == OPENGL_TYPE_OSMESA) {
 		OsMesaGL::iterateFormats([this, &vis32, &vis16, &vis8](const GLPixelFormatPtr& format) {
 			PixelFormat* pf = &format->pf;
 
@@ -908,7 +923,7 @@ void XServer::initVisuals() {
 				cfg->visualId = vis8->visualid;
 				vis8 = nullptr;
 			} else {
-				cfg->visualId = addVisual(format->pf.cRedBits << format->pf.cRedShift, format->pf.cGreenBits << format->pf.cGreenShift, format->pf.cBlueBits << format->pf.cBlueShift, format->depth, format->bitsPerPixel, format->id)->visualid;
+				cfg->visualId = addVisual(rMask, gMask, bMask, format->depth, format->bitsPerPixel, format->id)->visualid;
 			}			
 			cfg->fbId = getNextId();
 			cfg->glPixelFormat = format;
@@ -916,8 +931,45 @@ void XServer::initVisuals() {
 			fbConfigById.set(cfg->fbId, cfg);
 		});
 		return;
-	}
+	} else
 #endif
+#ifdef BOXEDWINE_OPENGL_SDL
+		if (KSystem::openglType == OPENGL_TYPE_SDL) {
+			SDLGL::iterateFormats([this, &vis32, &vis16, &vis8](const GLPixelFormatPtr& format) {
+				PixelFormat* pf = &format->pf;
+
+				U32 rMask = ((1 << pf->cRedBits) - 1) << pf->cRedShift;
+				U32 gMask = ((1 << pf->cGreenBits) - 1) << pf->cGreenShift;
+				U32 bMask = ((1 << pf->cBlueBits) - 1) << pf->cBlueShift;
+				U32 depth = pf->cColorBits;
+
+				CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
+
+				// try to match a real format with a default
+				if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+					vis32->ext_data = format->id;
+					cfg->visualId = vis32->visualid;
+					vis32 = nullptr;
+				} else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+					vis16->ext_data = format->id;
+					cfg->visualId = vis16->visualid;
+					vis16 = nullptr;
+				} else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+					vis8->ext_data = format->id;
+					cfg->visualId = vis8->visualid;
+					vis8 = nullptr;
+				} else {
+					cfg->visualId = addVisual(rMask, gMask, bMask, format->depth, format->bitsPerPixel, format->id)->visualid;
+				}
+				cfg->fbId = getNextId();
+				cfg->glPixelFormat = format;
+				cfg->depth = format->pf.cColorBits;
+				fbConfigById.set(cfg->fbId, cfg);
+				});
+			return;
+		} else
+#endif
+	{}
 	U32 count = KSystem::getPixelFormatCount();
 	for (U32 i = 1; i < count; i++) {
 		PixelFormat* pf = KSystem::getPixelFormat(i);

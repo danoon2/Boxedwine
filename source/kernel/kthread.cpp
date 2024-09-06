@@ -200,7 +200,7 @@ U32 KThread::signal(U32 signal, bool wait) {
                     BOXEDWINE_CONDITION_SIGNAL_ALL(c);
                 }
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
-                BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
+                BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->waitingForSignalToEndCond, 1000);
             }
             return 0;
         }
@@ -208,7 +208,7 @@ U32 KThread::signal(U32 signal, bool wait) {
         this->runSignal(signal, -1, 0);
         if (wait && KThread::currentThread()!=this) {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
-            BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
+            BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->waitingForSignalToEndCond, 1000);
         }        
     } else {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);

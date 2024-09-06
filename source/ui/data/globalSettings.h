@@ -42,16 +42,18 @@ class BoxedContainer;
 
 class FileSystemZip {
 public:
-    FileSystemZip(BString name, BString wineName, BString fsVersion, BString filePath, BString filePathBackup, BString depend, U32 size=0):name(name), wineName(wineName), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size)  {}
+    FileSystemZip(BString name, BString wineName, BString fsVersion, BString filePath, BString filePathBackup, BString depend, U32 size = 0);
     std::shared_ptr<FileSystemZip> getMissingDependency() const;
     BString getLocalFilePath() const;
     BString getDependFilePath() const;
 
-    bool hasWine() {return wineName.length() > 0;}
+    bool hasWine() {return wineMajorVersion > 0;}
     bool hasWineTricks() {return wineTrickFonts.length() > 0 || wineTrickDlls.length() > 0;}
 
     BString name;
-    BString wineName;
+    int wineVersion = 0; // 6.0 will equal 600, 6.1 will equal 601
+    int wineMajorVersion = 0;
+    int wineMinorVersion = 0;
     BString filePath;
     BString filePathBackup;
     BString fsVersion;
@@ -64,11 +66,14 @@ public:
     BString dist;
     U32 size;
     bool operator<(const FileSystemZip& rhs) const { 
-        if (wineName.length() && rhs.wineName.length()) {
-            return wineName < rhs.wineName;
-        } else if (wineName.length()) {
+        if (wineMajorVersion && rhs.wineMajorVersion) {
+            if (wineMajorVersion != rhs.wineMajorVersion) {
+                return wineMajorVersion < rhs.wineMajorVersion;
+            }
+            return wineMinorVersion < rhs.wineMinorVersion;
+        } else if (wineMajorVersion) {
             return false;
-        } else if (rhs.wineName.length()) {
+        } else if (rhs.wineMajorVersion) {
             return true;
         }
         return name < rhs.name; 
@@ -83,7 +88,7 @@ public:
     
     static void reloadWineVersions();
     static BString getFileFromFileSystemName(BString name);
-    static BString getFileFromWineVersion(BString name);
+    static BString getFileFromWineVersion(int wineVersion);
     static std::shared_ptr<FileSystemZip> getAvailableFileSystemFromName(BString name, bool mustHaveWine = false);
     static std::shared_ptr<FileSystemZip> getInstalledFileSystemFromName(BString name, bool mustHaveWine = false);
     static BString getContainerFolder();

@@ -15,14 +15,14 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     };
 
     containerFileSystemControl = createFileSystemVersionCombobox(section);
-    containerFileSystemControl->setReadOnly(true);
     containerFileSystemControl->onChange = [this]() {
         this->currentContainerChanged = true;
-        bool renderer = this->currentContainer->getWineVersionAsNumber(this->containerFileSystemControl->getSelectionStringValue()) > 500;
-        containerGdiControl->setRowHidden(renderer);
-        containerRendererControl->setRowHidden(!renderer);
         std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
+        bool renderer = fileSystem->wineVersion > 500;
+        containerGdiControl->setRowHidden(renderer);
+        containerRendererControl->setRowHidden(!renderer);        
         appDirectDrawAutoRefreshControl->setReadOnly(atoi(fileSystem->fsVersion.c_str()) < 7 || !fileSystem->hasWine());
+        Fs::deleteNativeDirAndAllFilesInDir(this->currentContainer->getDir() + Fs::nativePathSeperator + "root" + Fs::nativePathSeperator + "opt" + Fs::nativePathSeperator + "wine");
     };
 
     std::shared_ptr<LayoutRow> row = section->addRow(Msg::CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, Msg::NONE);
@@ -523,7 +523,7 @@ bool ContainersView::saveChanges() {
             std::shared_ptr<FileSystemZip> fs = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
             this->currentContainer->setFileSystem(fs);
             this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
-            if (this->currentContainer->getWineVersionAsNumber(fs->wineName) > 500) {
+            if (fs->wineVersion > 500) {
                 this->currentContainer->setGDI(containerRendererControl->getSelectionStringValue() == "gdi");
                 this->currentContainer->setRenderer(containerRendererControl->getSelectionStringValue());
             } else {
@@ -665,7 +665,8 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
             containerMountPathControl->setText(mount.nativePath);
         }
 
-        if (this->currentContainer->getWineVersionAsNumber(this->containerFileSystemControl->getSelectionStringValue()) > 500) {
+        std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
+        if (fileSystem->wineVersion > 500) {
             containerGdiControl->setCheck(false);
             containerRendererControl->setSelectionStringValue(container->getRenderer());
 

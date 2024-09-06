@@ -44,6 +44,8 @@ public:
     }
     XDrawablePtr drawable;
     U32 pitch = 0;
+    U32 width = 0;
+    U32 height = 0;
     OSMesaContext context;
     U8* buffer = nullptr;
     U32 bufferSize = 0;
@@ -59,6 +61,9 @@ public:
     void glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>& d) override;
     void glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) override;
     void glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) override;
+    void glResizeWindow(const std::shared_ptr<XWindow>& wnd) override;
+    bool isActive() override;
+
     GLPixelFormatPtr getFormat(U32 pixelFormatId) override;
 
     static BOXEDWINE_MUTEX contextMutex;
@@ -113,7 +118,9 @@ bool KOpenGLMesa::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable
         context->buffer = new U8[len];
         context->bufferSize = len;
     }
-    if (pOSMesaMakeCurrent(context->context, context->buffer, GL_UNSIGNED_BYTE, d->width(), d->height())) {
+    context->width = d->width();
+    context->height = d->height();
+    if (pOSMesaMakeCurrent(context->context, context->buffer, d->getBitsPerPixel()==16 ? GL_UNSIGNED_SHORT_5_6_5 : GL_UNSIGNED_BYTE, d->width(), d->height())) {
         pOSMesaPixelStore(OSMESA_Y_UP, 0);
 
         return true;
@@ -130,6 +137,15 @@ void KOpenGLMesa::glDestroyContext(KThread* thread, U32 contextId) {
         pOSMesaDestroyContext(context->context);
     }
     contextsById.remove(contextId);
+}
+
+bool KOpenGLMesa::isActive() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
+    return contextsById.size() > 0;
+}
+
+void KOpenGLMesa::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
+    // makeCurrent handle buffer size    
 }
 
 U32 KOpenGLMesa::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFormat>& pixelFormat, int major, int minor, int profile, int flags, U32 sharedContext) {
@@ -182,12 +198,16 @@ void KOpenGLMesa::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable
         context = gl->contextsById.get(thread->currentContext);
     }
     if (context) {
-        d->lockData();
-        if (d->getDataSize() >= context->bufferSize) {
-            memcpy(d->getData(), context->buffer, context->bufferSize);
+        if (context->width != d->width() || context->height != d->height()) {
+            glMakeCurrent(thread, d, thread->currentContext);
+        } else {
+            d->lockData();
+            if (d->getDataSize() >= context->bufferSize) {
+                memcpy(d->getData(), context->buffer, context->bufferSize);
+            }
+            d->unlockData();
+            d->setDirty();
         }
-        d->unlockData();
-        d->setDirty();
     }    
 }
 
@@ -324,12 +344,12 @@ bool OsMesaGL::isAvailable() {
 }
 
 // GLAPI void APIENTRY glFinish( void ) {
-void osmesa_glFinish(CPU* cpu) {
+static void osmesa_glFinish(CPU* cpu) {
     pglFinish();
 }
 
 // GLAPI void APIENTRY glFlush( void ) {
-void osmesa_glFlush(CPU* cpu) {
+static void osmesa_glFlush(CPU* cpu) {
     KThread* thread = cpu->thread;
     KOpenGLMesaPtr gl = std::dynamic_pointer_cast<KOpenGLMesa>(KNativeSystem::getOpenGL());
     if (gl) {
@@ -356,7 +376,7 @@ static void* pDLL;
 #undef GL_EXT_FUNCTION
 #define GL_EXT_FUNCTION(func, RET, PARAMS) ext_gl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
 
-void initMesaOpenGL() {    
+static void initMesaOpenGL() {    
     if (!pDLL) {
         BString libPath = KSystem::exePath + LIBRARY_NAME;
         pDLL = SDL_LoadObject(libPath.c_str());

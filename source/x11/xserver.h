@@ -90,7 +90,7 @@ private:
 	XWindowPtr grabbedConfined;
 	DisplayDataPtr grabbedDisplay;
 	BOXEDWINE_MUTEX grabbedMutex;
-
+	bool isGrabbed = false;
 	U32 grabbedMask;
 	U32 grabbedTime;
 

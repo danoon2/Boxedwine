@@ -181,7 +181,6 @@ static void x11_DestroyWindow(CPU* cpu) {
         EAX = BadWindow;
         return;
     }
-    KNativeSystem::windowDestroyed(w->id);
     EAX = server->destroyWindow(w->id);
 }
 
@@ -518,8 +517,6 @@ static void x11_UngrabPointer(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
-
-    klog("XUngrabPointer thread=%x process=%x", cpu->thread->id, cpu->thread->process->id);
 
     EAX = server->ungrabPointer(data, ARG2);
 }

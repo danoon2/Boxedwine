@@ -699,7 +699,7 @@ int XWindow::mapWindow() {
 			exposeNofity(data, 0, 0, width(), height(), 0);
 			});		
 	}
-	KNativeSystem::showWindow(id, isThisAndAncestorsMapped());
+	KNativeSystem::showWindow(shared_from_this(), isThisAndAncestorsMapped());
 	return Success;
 }
 
@@ -761,7 +761,7 @@ int XWindow::unmapWindow() {
 			exposeNofity(data, 0, 0, parent->width(), parent->height(), 0);
 			});
 	}
-	KNativeSystem::showWindow(id, false);
+	KNativeSystem::showWindow(shared_from_this(), false);
 	return Success;
 }
 
@@ -960,7 +960,7 @@ int XWindow::moveResize(S32 x, S32 y, U32 width, U32 height) {
 		setSize(width, height);
 	}
 
-	KNativeSystem::moveWindow(id, x, y, width, height);
+	KNativeSystem::moveWindow(shared_from_this());
 	
 	configureNotify();
 	// :TODO:
@@ -1009,7 +1009,7 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 		if (width != this->width() || height != this->height()) {
 			setSize(width, height);
 		}
-		KNativeSystem::moveWindow(id, left, top, width, height);
+		KNativeSystem::moveWindow(shared_from_this());
 	}
 	configureNotify();
 	// :TODO:

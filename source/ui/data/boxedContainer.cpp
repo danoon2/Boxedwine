@@ -63,6 +63,7 @@ BoxedContainer* BoxedContainer::createContainer(BString dirPath, BString name, s
     container->name = name;
     container->fileSystem = fileSystem;
     container->dirPath = dirPath;
+    container->fileSystemZipName = fileSystem->name;
     if (!Fs::doesNativePathExist(dirPath)) {
         Fs::makeNativeDirs(dirPath);
     }
@@ -123,19 +124,6 @@ void BoxedContainer::deleteApp(BoxedApp* app) {
 
 BString BoxedContainer::getFileSystemName() {
     return this->fileSystemZipName;
-}
-
-int BoxedContainer::getWineVersionAsNumber(BString wineVersion) {
-    BString ver = wineVersion;
-    ver = ver.substr(5);
-    std::vector<BString> parts;
-    ver.split('.', parts);
-    if (parts.size() > 1) {
-        BString major = parts[0];
-        BString minor = parts[1];
-        return atoi(major.c_str()) * 100 + atoi(minor.c_str());
-    }
-    return 0;
 }
 
 bool BoxedContainer::doesFileSystemExist() {

@@ -178,9 +178,9 @@ void GlobalSettings::saveConfig() {
     config.saveChanges();
 }
 
-BString GlobalSettings::getFileFromWineVersion(BString name) {
+BString GlobalSettings::getFileFromWineVersion(int wineVersion) {
     for (auto& ver : GlobalSettings::fileSystemVersions) {
-        if (ver->wineName.compareTo(name, true) == 0 && ver->hasWine()) {
+        if (ver->wineVersion == wineVersion) {
             return ver->filePath;
         }
     }
@@ -810,6 +810,18 @@ BString GlobalSettings::createUniqueContainerPath(BString name) {
         BString result = GlobalSettings::getContainerFolder().stringByApppendingPath(containerName) + "-"+tmp;
         if (!Fs::doesNativePathExist(result)) {
             return result;
+        }
+    }
+}
+
+FileSystemZip::FileSystemZip(BString name, BString wineName, BString fsVersion, BString filePath, BString filePathBackup, BString depend, U32 size) :name(name), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size) {
+    if (wineName.length()) {
+        std::vector<BString> parts;
+        wineName.split('.', parts);
+        if (parts.size() == 2) {
+            wineMajorVersion = parts[0].toInt();
+            wineMinorVersion = parts[1].toInt();
+            wineVersion = wineMajorVersion * 100 + wineMinorVersion;
         }
     }
 }

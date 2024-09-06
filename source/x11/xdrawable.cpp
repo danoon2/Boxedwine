@@ -181,7 +181,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 				p++;
 			}
 		} else {
-			kpanic("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
+			kwarn("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
 		}
 	} else {
 		klog("XDrawable::drawLine diag line not supported");

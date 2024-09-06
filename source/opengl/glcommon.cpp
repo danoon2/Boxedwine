@@ -654,6 +654,8 @@ void glcommon_glGetError(CPU* cpu) {
 #define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
 #define GLX_CONTEXT_FLAGS_ARB 0x2094
 #define GLX_CONTEXT_PROFILE_MASK_ARB 0x9126
+#define GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT  0x20B2
+#define GLX_FLOAT_COMPONENTS_NV           0x20B0
 
     /*
      * GLX 1.4 and later:
@@ -762,9 +764,9 @@ void gl_common_XMakeCurrent(CPU* cpu) {
     if (ctx && !d) {
         EAX = False;
         return;
-    }
-    thread->currentContext = ctx;
+    }    
     EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? True : False;
+    thread->currentContext = ctx;
 }
 
 // void pglXCopyContext(Display* dpy, GLXContext src, GLXContext dst, unsigned long mask)
@@ -918,6 +920,15 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
     case GLX_SAMPLES:
         memory->writed(ARG4, cfg->glPixelFormat->samples);
         break;
+    case GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT:
+    case GLX_TRANSPARENT_INDEX_VALUE:
+    case GLX_TRANSPARENT_RED_VALUE:
+    case GLX_TRANSPARENT_GREEN_VALUE:
+    case GLX_TRANSPARENT_BLUE_VALUE:
+    case GLX_TRANSPARENT_ALPHA_VALUE:
+    case GLX_FLOAT_COMPONENTS_NV:
+        EAX = 1;
+        return;
     default:
         kpanic("gl_common_XGetFBConfigAttrib attribute not handled: %x", attribute);
     }

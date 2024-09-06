@@ -29,7 +29,6 @@ public:
     std::weak_ptr<FileSystemZip> getFileSystem() {return this->fileSystem;}
     void setFileSystem(std::shared_ptr<FileSystemZip> fileSystem) { this->fileSystem = fileSystem; }
     BString getFileSystemName();
-    int getWineVersionAsNumber(BString wineVersion);
     BString getSize() {return this->cachedSize;}
 
     void setName(BString name);
