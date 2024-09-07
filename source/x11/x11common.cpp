@@ -737,7 +737,6 @@ static void x11_MbLookupString(CPU* cpu) {
 
 // char* XKeysymToString(KeySym keysym)
 static void x11_KeysymToString(CPU* cpu) {
-    char buffer[16];
     U32 keysym = ARG1;
     KProcessPtr process = cpu->thread->process;
     U32 result = 0;
@@ -747,13 +746,14 @@ static void x11_KeysymToString(CPU* cpu) {
         EAX = result;
         return;
     }
-    U32 len = XKeyboard::translate(keysym, 0, buffer, 16);
-    if (!len || !buffer[0]) {
+    const char* name = XKeyboard::getKeysymName(keysym);
+    if (!name) {
         EAX = 0;
         return;
     }
+    U32 len = (U32)strlen(name);
     result = process->alloc(cpu->thread, len + 1);
-    cpu->memory->memcpy(result, buffer, len);
+    cpu->memory->memcpy(result, name, len);
     cpu->memory->writeb(result + len, 0);
     process->keySymToName.set(keysym, result);
     EAX = result;

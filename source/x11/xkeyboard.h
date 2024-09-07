@@ -303,6 +303,7 @@ public:
 	static U32 keysymToKeycode(U32 keysym);
 	static U32 translate(U32& keysym, U32 modifiers, char* buffer, U32 bufferLen);
 	static U32 sdl2x11(U32 sdlScanCode);
+	static const char* getKeysymName(U32 keysym);
 };
 
 #endif
