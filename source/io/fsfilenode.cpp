@@ -222,7 +222,15 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         openFlags|=O_APPEND;
     }
-    U32 f = ::open(this->nativePath.c_str(), openFlags, 0666);	
+    U32 f;
+
+#ifdef BOXEDWINE_MSVC
+    if (this->nativePath.length() > 255) {
+        BString path = "\\\\?\\" + nativePath;
+        f = ::open(path.c_str(), openFlags, 0666);
+    } else
+#endif
+    f = ::open(this->nativePath.c_str(), openFlags, 0666);	
     if (!f || f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
