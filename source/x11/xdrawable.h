@@ -37,6 +37,7 @@ public:
 	virtual void setDirty() {};
 	bool isDirty = false;
 	const bool isWindow;
+	bool isOpenGL = false;
 
 protected:	
 

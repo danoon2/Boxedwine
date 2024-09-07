@@ -5,6 +5,7 @@
 
 class KNativeScreen {
 public:
+	virtual ~KNativeScreen() {}
 	virtual KNativeInputPtr getInput() = 0;
 
 	virtual void setScreenSize(U32 cx, U32 cy) = 0;
@@ -15,6 +16,9 @@ public:
 	virtual U32 screenHeight() = 0;
 
 	virtual void setTitle(const BString& title) = 0;
+	virtual void showWindow(bool show) = 0;
+	virtual void getPos(S32& x, S32& y) = 0;
+	virtual U32 getLastUpdateTime() = 0;
 
 	virtual void clear() = 0;
 	// id is used for texture caching
@@ -40,9 +44,8 @@ public:
 	virtual bool setCursor(const char* moduleName, const char* resourceName, int resource) = 0;
 	virtual void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) = 0;
 
-private:
-	friend class KNativeInputSDL;
 	virtual void warpMouse(int x, int y) = 0;
+	virtual bool isVisible() = 0;
 };
 
 typedef std::shared_ptr<KNativeScreen> KNativeScreenPtr;

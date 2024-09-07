@@ -300,12 +300,16 @@ void glcommon_glGetString(CPU* cpu) {
             return;
         }
     }
-    U32 len = (U32)strlen(result) + 1;
-    U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
-    cpu->memory->memcpy(address, (void*)result, len);
+    if (!result) {
+        EAX = 0;
+    } else {
+        U32 len = (U32)strlen(result) + 1;
+        U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE | K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+        cpu->memory->memcpy(address, (void*)result, len);
 
-    process->glStrings.set(name, address);
-    EAX = address;
+        process->glStrings.set(name, address);
+        EAX = address;
+    }
 }
 
 // GLAPI void APIENTRY glGetTexImage( GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels ) {
@@ -1029,12 +1033,29 @@ void gl_common_XMakeContextCurrent(CPU* cpu) {
 
 // GLXPixmap glXCreatePixmap(Display* dpy, GLXFBConfig config, Pixmap pixmap, const int* attrib_list)
 void gl_common_XCreatePixmap(CPU* cpu) {
+    XServer* server = XServer::getServer();
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    XPixmapPtr pixmap = server->getPixmap(ARG3);
+    if (!cfg || !pixmap) {
+        EAX = 0;
+        return;
+    }
+    if (ARG4) {
+        // not set by wine
+        kpanic("gl_common_XCreatePixmap attrib_list not implemented");
+    }
+    pixmap->isOpenGL = true;
     EAX = ARG3; // the return must be a drawable, if we need config, maybe store on the actual pixmap
 }
 
 // void glXDestroyPixmap(Display* dpy, GLXPixmap pixmap)
 void gl_common_XDestroyPixmap(CPU* cpu) {
     // no memory was allocated in gl_common_XCreatePixmap
+    XServer* server = XServer::getServer();
+    XPixmapPtr pixmap = server->getPixmap(ARG2);
+    if (pixmap) {
+        pixmap->isOpenGL = false;
+    }
 }
 
 // GLXWindow glXCreateWindow(Display* dpy, GLXFBConfig config, Window win, const int* attrib_list)

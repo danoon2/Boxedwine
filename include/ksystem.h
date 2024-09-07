@@ -95,7 +95,6 @@ public:
     static U32 cpuAffinityCountForApp;
 #endif
     static U32 pollRate;
-    static bool showWindowImmediately;
     static U32 skipFrameFPS;
     static BWriteFile logFile;
     static std::function<void(BString line)> watchTTY;

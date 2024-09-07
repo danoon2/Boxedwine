@@ -1449,6 +1449,9 @@
     <ClInclude Include="..\..\..\..\source\opengl\osmesa\osmesa.h">
       <Filter>opengl\osmesa</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlgl.h">
+      <Filter>opengl\sdl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

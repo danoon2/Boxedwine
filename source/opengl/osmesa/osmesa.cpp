@@ -65,6 +65,11 @@ public:
     bool isActive() override;
 
     GLPixelFormatPtr getFormat(U32 pixelFormatId) override;
+    void warpMouse(int x, int y) override;
+    U32 getLastUpdateTime() override;
+    void hideCurrentWindow() override {} // os mesa doesn't have a native window
+
+    U32 lastUpdateTime = 0;
 
     static BOXEDWINE_MUTEX contextMutex;
     static U32 nextId;
@@ -209,6 +214,7 @@ void KOpenGLMesa::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable
             d->setDirty();
         }
     }    
+    lastUpdateTime = KSystem::getMilliesSinceStart();
 }
 
 void KOpenGLMesa::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) {
@@ -325,6 +331,14 @@ void OsMesaGL::iterateFormats(std::function<void(const GLPixelFormatPtr& format)
 
 GLPixelFormatPtr KOpenGLMesa::getFormat(U32 pixelFormatId) {
     return formatsById.get(pixelFormatId);
+}
+
+void KOpenGLMesa::warpMouse(int x, int y) {
+    KNativeSystem::getScreen()->warpMouse(x, y);
+}
+
+U32 KOpenGLMesa::getLastUpdateTime() {
+    return lastUpdateTime;
 }
 
 static bool found = false;

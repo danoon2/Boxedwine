@@ -45,6 +45,8 @@ typedef std::shared_ptr<WndCache> WndCachePtr;
 
 class KNativeScreenSDL : public KNativeScreen {
 public:
+    ~KNativeScreenSDL() override;
+
     KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync);
     
     KNativeInputPtr getInput() override;
@@ -57,6 +59,9 @@ public:
     U32 screenRate() override;
 
     void setTitle(const BString& title) override;
+    void showWindow(bool show) override;
+    void getPos(S32& x, S32& y) override;
+    U32 getLastUpdateTime() override;
 
     void clear() override;
     void putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) override;
@@ -65,6 +70,7 @@ public:
     void clearTextureCache(U32 id) override;
 
     void warpMouse(int x, int y) override;
+    bool isVisible() override;
 
 #ifdef BOXEDWINE_RECORDER
     // return true to continue processing for custom handlers
@@ -88,6 +94,7 @@ private:
     BString getCursorName(const char* moduleName, const char* resourceName, int resource);
 
     bool visible = false;
+    bool showOnDraw = true;
     bool presented = false;
     U32 bpp = 0;
     BString scaleQuality;
@@ -96,7 +103,7 @@ private:
     U32 defaultScreenWidth;
     U32 defaultScreenHeight;
     U32 defaultScreenBpp;
-
+    U32 lastUpdateTime = 0;
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
 

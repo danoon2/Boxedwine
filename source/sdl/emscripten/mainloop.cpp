@@ -94,7 +94,8 @@ void mainloop() {
     U32 count=0;
     while (1) {
         bool ran = runSlice();
-        
+
+        KNativeSystem::tick();
         if (!KNativeSystem::getCurrentWindow()->processEvents()) {
             KNativeSystem::cleanup();
             return;

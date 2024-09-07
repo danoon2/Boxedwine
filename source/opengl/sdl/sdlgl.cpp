@@ -26,8 +26,11 @@
 #include "knativesystem.h"
 #include "../../x11/x11.h"
 #include "../source/ui/mainui.h"
+#include "../../platform/sdl/sdlcallback.h"
 
-class SDLGlWindow {
+static std::atomic_int shownGlWindows;
+
+class SDLGlWindow : public std::enable_shared_from_this<SDLGlWindow> {
 public:
     SDLGlWindow(SDL_Window* window, const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags) : window(window), pixelFormat(pixelFormat), major(major), minor(minor), profile(profile), flags(flags) {}
     ~SDLGlWindow() {
@@ -41,30 +44,29 @@ public:
     const U32 profile;
     const U32 flags;
     bool visible = false;
+    XDrawablePtr drawable;
 
     void destroy();
-    void show();
+    void showWindow(bool show);
     static std::shared_ptr<SDLGlWindow> createWindow(const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags, U32 cx, U32 cy);
 };
 
 typedef std::shared_ptr<SDLGlWindow> SDLGlWindowPtr;
 
-void SDLGlWindow::show() {
-    if (KSystem::videoEnabled && !visible) {
-        SDL_ShowWindow(window);
-        SDL_RaiseWindow(window);
-        visible = true;
-#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)
-        if (uiIsRunning()) {
-            uiShutdown();
-        }
-#endif
-    }
-}
 void SDLGlWindow::destroy() {
     if (window) {
-        SDL_DestroyWindow(window);
-        window = nullptr;
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+            if (window) {
+                if (visible) {
+                    shownGlWindows--;
+                    if (shownGlWindows == 0) {
+                        KNativeSystem::showScreen(true);
+                    }
+                }
+                SDL_DestroyWindow(window);
+                window = nullptr;
+            }
+        DISPATCH_MAIN_THREAD_BLOCK_END
     }
 }
 
@@ -108,7 +110,10 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
             sdlFlags |= SDL_WINDOW_BORDERLESS;
         }
     }
-    SDL_Window* window = SDL_CreateWindow("OpenGL Window", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, sdlFlags);
+    S32 x = 0;
+    S32 y = 0;
+    KNativeSystem::getScreen()->getPos(x, y);
+    SDL_Window* window = SDL_CreateWindow("OpenGL Window", x, y, cx, cy, sdlFlags);
 
     if (!window) {
         kwarn("Couldn't create window: %s", SDL_GetError());
@@ -136,6 +141,8 @@ typedef std::shared_ptr<SDLGlContext> SDLGlContextPtr;
 
 class KOpenGLSdl : public KOpenGL {
 public:
+    ~KOpenGLSdl() override;
+
     U32 glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFormat>& pixelFormat, int major, int minor, int profile, int flags, U32 sharedContext) override;
     void glDestroyContext(KThread* thread, U32 contextId) override;
     bool glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>& d, U32 contextId) override;
@@ -146,15 +153,23 @@ public:
     bool isActive() override;
 
     GLPixelFormatPtr getFormat(U32 pixelFormatId) override;
-    
+    void warpMouse(int x, int y) override;
+    U32 getLastUpdateTime() override;
+    void hideCurrentWindow() override;
+
+    std::weak_ptr<SDLGlWindow> currentWindow;
+    U32 lastUpdateTime = 0;
+
     static U32 nextId;
 
     static BOXEDWINE_MUTEX contextMutex;
     static BHashTable<U32, SDLGlContextPtr> contextsById;    
 
     static BOXEDWINE_MUTEX windowMutex;
-    static BHashTable<U32, SDLGlWindowPtr> sdlWindowById;
+    static BHashTable<U32, SDLGlWindowPtr> sdlWindowById;    
 };
+
+typedef std::shared_ptr<KOpenGLSdl> KOpenGLSdlPtr;
 
 U32 KOpenGLSdl::nextId = 1;
 
@@ -164,8 +179,69 @@ BHashTable<U32, SDLGlContextPtr> KOpenGLSdl::contextsById;
 BOXEDWINE_MUTEX KOpenGLSdl::windowMutex;
 BHashTable<U32, SDLGlWindowPtr> KOpenGLSdl::sdlWindowById;
 
+KOpenGLSdl::~KOpenGLSdl() {
+    sdlWindowById.clear();
+    contextsById.clear();
+    shownGlWindows = 0;
+}
+
+void SDLGlWindow::showWindow(bool show) {        
+    if (show) {        
+        KOpenGLSdlPtr gl = std::dynamic_pointer_cast<KOpenGLSdl>(KNativeSystem::getOpenGL());
+        if (gl) {
+            gl->currentWindow = shared_from_this();
+            gl->lastUpdateTime = KSystem::getMilliesSinceStart();
+        }
+    }
+    if (show == visible) {
+        return;
+    }
+    if (KSystem::videoEnabled) {
+        KNativeSystem::getCurrentInput()->runOnUiThread([this, show]() {
+            if (!show) {
+                shownGlWindows--;
+                SDL_HideWindow(window);
+                if (shownGlWindows == 0) {
+                    KNativeSystem::showScreen(true);
+                }
+            } else {
+                // This is a hack
+                //
+                // When wine mixes GDI and DirectDraw while using OpenGL, it will create pixmaps to hold the opengl and then mix it somehow with the GDI code. 
+                // This code below will show the OpenGL pixmap with some artifacts from the missing GDI stuff, for example, Age of Empires 1, when creating a
+                // new player, the player entry box is a GDI text box
+                shownGlWindows++;
+                if (shownGlWindows > 1) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KOpenGLSdl::windowMutex);
+                    for (auto& w : KOpenGLSdl::sdlWindowById) {
+                        if (w.value->visible) {
+                            w.value->showWindow(false);
+                        }
+                    }
+                }
+                SDL_ShowWindow(window);
+                SDL_RaiseWindow(window);                
+                if (shownGlWindows == 1) {
+                    KNativeSystem::showScreen(false);
+                }
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)
+                if (uiIsRunning()) {
+                    uiShutdown();
+                }
+#endif
+            }
+            });
+        visible = show;
+    }
+}
+
 U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFormat>& pixelFormat, int major, int minor, int profile, int flags, U32 sharedContextId) {
-    SDLGlWindowPtr window = SDLGlWindow::createWindow(pixelFormat, major, minor, profile, flags, 100, 100);
+    SDLGlWindowPtr window;
+    
+    KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+        window = SDLGlWindow::createWindow(pixelFormat, major, minor, profile, flags, 100, 100);
+        });
+
     SDLGlContextPtr restoreContext;
     bool needToRestore = false;
 
@@ -199,6 +275,8 @@ U32 KOpenGLSdl::glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFo
             SDL_GL_MakeCurrent(window->window, nullptr);
         }
     }
+    window->destroy(); // will run on main thread (thus block this thread for a bit)
+
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
     U32 result = nextId++;
     SDLGlContextPtr sdlContext = std::make_shared<SDLGlContext>(result, context, pixelFormat, major, minor, profile, flags);
@@ -229,7 +307,9 @@ void KOpenGLSdl::glResizeWindow(const std::shared_ptr<XWindow>& wnd) {
         window = sdlWindowById.get(wnd->id);
     }
     if (window) {
-        SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+        KNativeSystem::getCurrentInput()->runOnUiThread([&window, &wnd]() {
+            SDL_SetWindowSize(window->window, wnd->width(), wnd->height());
+            });
     }
 }
 
@@ -240,14 +320,24 @@ void KOpenGLSdl::glSwapBuffers(KThread* thread, const std::shared_ptr<XDrawable>
         window = sdlWindowById.get(d->id);
     }
     if (window) {
-        if (!window->visible) {
-            window->show();
-        }
+        window->showWindow(true);
         SDL_GL_SwapWindow(window->window);
     }
 }
 
 void KOpenGLSdl::glCreateWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd, const CLXFBConfigPtr& cfg) {
+    SDLGlWindowPtr window;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(windowMutex);
+        window = sdlWindowById.get(wnd->id);
+    }
+    if (!window) {
+        KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+            window = SDLGlWindow::createWindow(cfg->glPixelFormat, 0, 0, 0, 0, wnd->width(), wnd->height());
+            });
+        window->drawable = wnd;
+        sdlWindowById.set(wnd->id, window);
+    }
 }
 
 void KOpenGLSdl::glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>& wnd) {
@@ -257,6 +347,29 @@ void KOpenGLSdl::glDestroyWindow(KThread* thread, const std::shared_ptr<XWindow>
 
 GLPixelFormatPtr KOpenGLSdl::getFormat(U32 pixelFormatId) {
     return PlatformOpenGL::getFormat(pixelFormatId);
+}
+
+void KOpenGLSdl::warpMouse(int x, int y) {
+    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+        SDLGlWindowPtr wnd = currentWindow.lock();
+        if (wnd) {
+            SDL_WarpMouseInWindow(wnd->window, x, y);
+        }
+    DISPATCH_MAIN_THREAD_BLOCK_END
+}
+
+U32 KOpenGLSdl::getLastUpdateTime() {
+    return lastUpdateTime;
+}
+
+void KOpenGLSdl::hideCurrentWindow() {
+    SDLGlWindowPtr wnd = currentWindow.lock();
+    if (wnd) {
+        currentWindow.reset();
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN    
+        wnd->showWindow(false);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    }    
 }
 
 void SDLGL::iterateFormats(std::function<void(const GLPixelFormatPtr& format)> callback) {
@@ -296,6 +409,9 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
         context = contextsById.get(thread->currentContext);
         if (context) {            
+            if (context->currentWindow) {
+                context->currentWindow->drawable = nullptr;
+            }
             context->currentWindow = nullptr;
         }
         SDL_GL_MakeCurrent(nullptr, 0);
@@ -311,7 +427,10 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
                 window = nullptr;
             }
             if (!window) {
-                window = SDLGlWindow::createWindow(context->pixelFormat, context->major, context->minor, context->profile, context->flags, d->width(), d->height());
+                KNativeSystem::getCurrentInput()->runOnUiThread([&]() {
+                    window = SDLGlWindow::createWindow(context->pixelFormat, context->major, context->minor, context->profile, context->flags, d->width(), d->height());
+                    });
+                window->drawable = d;
                 sdlWindowById.set(d->id, window);
             }
         }
@@ -341,8 +460,8 @@ static void sdl_glFlush(CPU* cpu) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KOpenGLSdl::contextMutex);
             context = KOpenGLSdl::contextsById.get(thread->currentContext);
         }
-        if (context && context->currentWindow && !context->currentWindow->visible) {
-            context->currentWindow->show();
+        if (context && context->currentWindow) {
+            context->currentWindow->showWindow(true);
         }
     }
     glFlush();	

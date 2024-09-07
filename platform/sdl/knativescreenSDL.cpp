@@ -21,6 +21,12 @@ KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scal
     recreateMainWindow();
 }
 
+KNativeScreenSDL::~KNativeScreenSDL() {
+    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+        destroyMainWindow();
+    DISPATCH_MAIN_THREAD_BLOCK_END
+}
+
 KNativeInputPtr KNativeScreenSDL::getInput() {
     return input;
 }
@@ -80,6 +86,40 @@ void KNativeScreenSDL::setTitle(const BString& title) {
     SDL_SetWindowTitle(window, title.c_str());
 }
 
+void KNativeScreenSDL::getPos(S32& x, S32& y) {
+    SDL_GetWindowPosition(window, &x, &y);
+}
+
+U32 KNativeScreenSDL::getLastUpdateTime() {
+    return lastUpdateTime;
+}
+
+void KNativeScreenSDL::showWindow(bool show) {
+    if (show == visible) {
+        return;
+    }
+    if (!isMainthread()) {
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+            showWindow(show);
+        DISPATCH_MAIN_THREAD_BLOCK_END
+    } else {
+        showOnDraw = false;
+        if (!show) {
+            SDL_HideWindow(window);
+            visible = false;            
+        } else {
+            SDL_ShowWindow(window);
+            SDL_RaiseWindow(window);
+            visible = true;
+#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)
+            if (uiIsRunning()) {
+                uiShutdown();
+            }
+#endif
+        }
+    }
+}
+
 void KNativeScreenSDL::clear() {
     if (KSystem::videoEnabled && renderer) {
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
@@ -88,7 +128,9 @@ void KNativeScreenSDL::clear() {
 }
 
 void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcPitch, S32 dstX, S32 dstY, U32 width, U32 height, U32* palette, bool isDirty) {
-
+    if (!bitsPerPixel || !srcPitch) {
+        return;
+    }
     WndCachePtr wnd;
     
     {
@@ -103,12 +145,14 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     U32 bpp = 32;
     U32 dstPitch = (width * ((bpp + 7) / 8) + 3) & ~3;
 
-    if (wnd->sdlTexture && (wnd->sdlTextureHeight != width || wnd->sdlTextureWidth != height)) {
+    if (wnd->sdlTexture && (wnd->sdlTextureHeight != height || wnd->sdlTextureWidth != width)) {
         SDL_DestroyTexture(wnd->sdlTexture);
         wnd->sdlTexture = nullptr;
         isDirty = true;
     }
-
+    if (isDirty) {
+        lastUpdateTime = KSystem::getMilliesSinceStart();
+    }
     if (!wnd->sdlTexture) {
         if (KSystem::videoEnabled && renderer) {
             wnd->sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
@@ -168,15 +212,8 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
 
 void KNativeScreenSDL::present() {
     if (KSystem::videoEnabled) {
-        if (!visible) {
-            SDL_ShowWindow(window);
-            SDL_RaiseWindow(window);
-            visible = true;
-#if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)
-            if (uiIsRunning()) {
-                uiShutdown();
-            }
-#endif
+        if (showOnDraw) {
+            showWindow(true);
         }
         SDL_RenderPresent(renderer);
     }
@@ -200,6 +237,10 @@ void KNativeScreenSDL::warpMouse(int x, int y) {
             SDL_WarpMouseInWindow(window, x, y);
         }
     DISPATCH_MAIN_THREAD_BLOCK_END
+}
+
+bool KNativeScreenSDL::isVisible() {
+    return visible;
 }
 
 #ifdef BOXEDWINE_RECORDER

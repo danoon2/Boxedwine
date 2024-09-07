@@ -4936,18 +4936,20 @@ void glcommon_glGetBufferPointerv(CPU* cpu) {
     if (!ext_glGetBufferPointerv)
         kpanic("ext_glGetBufferPointerv is NULL");
     {
-    GLint size=0;void* p;GL_FUNC(ext_glGetBufferPointerv)(ARG1, ARG2, &p);
-    ext_glGetBufferParameteriv(ARG1, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, marshalBackp(cpu, p, size));
-    GL_LOG ("glGetBufferPointerv GLenum target=%d, GLenum pname=%d, void** params=%.08x",ARG1,ARG2,ARG3);
+    GLenum target = ARG1;
+    GLint size=0;void* p;GL_FUNC(ext_glGetBufferPointerv)(target, ARG2, &p);
+    ext_glGetBufferParameteriv(target, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, getMappedBufferAddress(cpu, target, p, size));
+    GL_LOG ("glGetBufferPointerv GLenum target=%d, GLenum pname=%d, void** params=%.08x", target,ARG2,ARG3);
     }
 }
 void glcommon_glGetBufferPointervARB(CPU* cpu) {
     if (!ext_glGetBufferPointervARB)
         kpanic("ext_glGetBufferPointervARB is NULL");
     {
-    GLint size=0;void* p=nullptr;GL_FUNC(ext_glGetBufferPointervARB)(ARG1, ARG2, &p);
-    ext_glGetBufferParameterivARB(ARG1, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, marshalBackp(cpu, p, size));
-    GL_LOG ("glGetBufferPointervARB GLenum target=%d, GLenum pname=%d, void** params=%.08x",ARG1,ARG2,ARG3);
+    GLenum target = ARG1;
+    GLint size=0;void* p=nullptr;GL_FUNC(ext_glGetBufferPointervARB)(target, ARG2, &p);
+    ext_glGetBufferParameterivARB(target, GL_BUFFER_SIZE, &size); cpu->memory->writed(ARG3, getMappedBufferAddress(cpu, target, p, size));
+    GL_LOG ("glGetBufferPointervARB GLenum target=%d, GLenum pname=%d, void** params=%.08x", target,ARG2,ARG3);
     }
 }
 void glcommon_glGetBufferSubData(CPU* cpu) {

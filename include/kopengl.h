@@ -9,6 +9,7 @@ class XDrawable;
 
 class KOpenGL {
 public:
+    virtual ~KOpenGL() {}
     virtual U32 glCreateContext(KThread* thread, const std::shared_ptr<GLPixelFormat>& pixelFormat, int major, int minor, int profile, int flags, U32 sharedContext) = 0;
     virtual void glDestroyContext(KThread* thread, U32 contextId) = 0;
     virtual bool glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>& d, U32 contextId) = 0;
@@ -18,6 +19,9 @@ public:
     virtual void glResizeWindow(const std::shared_ptr<XWindow>& wnd) = 0;
     virtual bool isActive() = 0;
     virtual GLPixelFormatPtr getFormat(U32 pixelFormatId) = 0;
+    virtual void warpMouse(int x, int y) = 0;
+    virtual U32 getLastUpdateTime() = 0;
+    virtual void hideCurrentWindow() = 0;
 };
 
 typedef std::shared_ptr<KOpenGL> KOpenGLPtr;

@@ -389,8 +389,25 @@ public:
     S8* originalBufferedAddress = nullptr;
     U32 size = 0;
 };
+typedef std::shared_ptr<BufferedTarget> BufferedTargetPtr;
 
-static BHashTable<U32, std::shared_ptr<BufferedTarget>> bufferedTargets;
+static BHashTable<U32, BufferedTargetPtr> bufferedTargets;
+
+U32 getMappedBufferAddress(CPU* cpu, GLenum target, GLvoid* buffer, U32 size) {
+    BufferedTargetPtr t = bufferedTargets[target];
+    if (t) {
+        if (t->originalBufferedAddress != buffer) {
+            kwarn("glGetBufferPointerv cached buffer address does not match what was returned by the driver");
+        }
+        if (t->size != size) {
+            kwarn("glGetBufferPointerv cached buffer size does not match what was returned by the driver");
+        }
+        return t->bufferedAddress;
+    } else {
+        kwarn("glGetBufferPointerv failed to return mapped buffer");
+    }
+    return 0;
+}
 
 U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size) {
     if (bufferedTargets.contains(target)) {
@@ -402,7 +419,7 @@ U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size
 }
 
 void unmapBuffer(CPU* cpu, GLenum target) {
-    std::shared_ptr<BufferedTarget> t = bufferedTargets[target];
+    BufferedTargetPtr t = bufferedTargets[target];
     if (t) {
         cpu->memory->unmapNativeMemory(t->bufferedAddress, t->size);
         bufferedTargets.remove(target);

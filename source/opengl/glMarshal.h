@@ -269,6 +269,7 @@ U32 marshalBackp(CPU* cpu, GLvoid* buffer, U32 size);
 U32 mapBufferRange(CPU* cpu, GLenum target, GLvoid* buffer, U32 offset, U32 size);
 void flushBufferRange(CPU* cpu, GLenum target, U32 offset, U32 size);
 void unmapBuffer(CPU* cpu, GLenum target);
+U32 getMappedBufferAddress(CPU* cpu, GLenum target, GLvoid* buffer, U32 size);
 
 GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount, U32 autoCharWidth);
 

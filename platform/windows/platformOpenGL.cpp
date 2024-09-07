@@ -194,6 +194,7 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
             int results[22];
             static const int openGlAttributes[] = {
                 WGL_SUPPORT_OPENGL_ARB, true,
+                WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
                 0
             };
             if (pfnWglChoosePixelFormat(hdc, openGlAttributes, 0, 1024, formats, &count)) {
@@ -204,6 +205,7 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
 
                     GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();
                     format->id = i | PIXEL_FORMAT_NATIVE_INDEX_MASK;
+                    format->depth = results[4];
                     format->nativeId = formats[i];
                     format->pf.nSize = sizeof(PIXELFORMATDESCRIPTOR);
                     format->pf.nVersion = 1;
@@ -568,9 +570,12 @@ void PlatformOpenGL::init() {
 
 			U32 count = KSystem::getPixelFormatCount();
 			for (U32 i = 1; i < count; i++) {
-				GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();
+				GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();                
 				format->id = i;
 				format->pf = *KSystem::getPixelFormat(i);
+                format->nativeId = i;
+                format->depth = format->pf.cColorBits;
+                format->bitsPerPixel = format->pf.cColorBits;
 				formatsById.set(format->id, format);
                 formats.push_back(format);
 			}

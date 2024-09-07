@@ -189,8 +189,7 @@ public:
 	void getAncestorTree(std::vector<XWindowPtr>& ancestors);
 
 	XCursorPtr cursor;
-	XColorMapPtr colorMap;
-	bool isOpenGL = false;
+	XColorMapPtr colorMap;	
 private:
 	friend class XServer;
 

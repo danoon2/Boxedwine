@@ -127,7 +127,7 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
 void KNativeInputSDL::setMousePos(int x, int y) {
     x = xToScreen(x);
     y = yToScreen(y);
-    KNativeSystem::getScreen()->warpMouse(x, y);
+    KNativeSystem::warpMouse(x, y);
 }
 
 int KNativeInputSDL::xToScreen(int x) {

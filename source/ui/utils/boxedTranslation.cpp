@@ -308,10 +308,6 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "DPI Aware:";
     case Msg::CONTAINER_VIEW_DPI_AWARE_HELP:
         return "DPI (dots per inch) Aware means the app will be responsible for itself when it comes to scaling to large resolutions.  If this is checked and the app can not handle it, then the app might appear to run in a window that is too small.";
-    case Msg::CONTAINER_VIEW_SHOW_WINDOW_LABEL:
-        return "Show Window Immediatly:";
-    case Msg::CONTAINER_VIEW_SHOW_WINDOW_HELP:
-        return "By default Boxedwine will hide new Windows until it looks like they will be used.  This is done to prevent a lot of Window flashing (create and destroy) when games test the system for what resolution and capabilities they will use.  Some simple OpenGL apps seem to have a problem with this feature of Boxedwine so this flag will disable it by showing the windows as soon as it is created.";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL:
         return "Direct Draw Auto Refresh:";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP:

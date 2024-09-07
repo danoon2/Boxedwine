@@ -2,10 +2,15 @@
 #include "knativesystem.h"
 #include <SDL.h>
 #include "knativescreenSDL.h"
+#include "../../source/x11/x11.h"
+
 #include UNISTD
 
 #ifdef BOXEDWINE_OPENGL_OSMESA
 #include "../../source/opengl/osmesa/osmesa.h"
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+#include "../../source/opengl/sdl/sdlgl.h"
 #endif
 
 #ifndef __TEST
@@ -17,6 +22,7 @@ int main(int argc, char** argv) {
 #endif
 
 static KNativeScreenSDLPtr screen;
+static KOpenGLPtr opengl;
 
 bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
@@ -31,12 +37,12 @@ bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return false;
     }
+    PlatformOpenGL::init();
     return true;
 }
 
 void KNativeSystem::initWindow(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync) {
     screen = std::make_shared<KNativeScreenSDL>(cx, cy, bpp, scaleX, scaleY, scaleQuality, fullScreen, vsync);
-    //PlatformOpenGL::init();
 }
 
 KNativeInputPtr KNativeSystem::getCurrentInput() {
@@ -47,15 +53,35 @@ KNativeScreenPtr KNativeSystem::getScreen() {
     return screen;
 }
 
-static KOpenGLPtr opengl;
+void KNativeSystem::tick() {
+    if (opengl && opengl->getLastUpdateTime() + 100 < screen->getLastUpdateTime()) {
+        opengl->hideCurrentWindow();
+    }
+}
+
+void KNativeSystem::showScreen(bool show) {
+    screen->showWindow(show);
+}
+
+void KNativeSystem::warpMouse(S32 x, S32 y) {
+    if (!opengl || screen->isVisible()) {
+        screen->warpMouse(x, y);
+    } else {
+        opengl->warpMouse(x, y);
+    }    
+}
 
 KOpenGLPtr KNativeSystem::getOpenGL() {
     if (!opengl) {
 #ifdef BOXEDWINE_OPENGL_OSMESA
-        if (1 /*KSystem::openglType == OPENGL_TYPE_OSMESA*/) {
+        if (KSystem::openglType == OPENGL_TYPE_OSMESA) {
             opengl = OsMesaGL::create();
             return opengl;
         }
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+        opengl = SDLGL::create();
+        return opengl;
 #endif
         klog("Failed to load OpenGL, will probably crash");
     }
@@ -66,16 +92,18 @@ void KNativeSystem::changeScreenSize(U32 cx, U32 cy) {
     screen->setScreenSize(cx, cy);
 }
 
-void KNativeSystem::windowDestroyed(U32 id) {
+void KNativeSystem::moveWindow(const XWindowPtr& wnd) {
+    if (opengl && opengl->isActive()) {
+        opengl->glResizeWindow(wnd);
+    }
 }
 
-void KNativeSystem::moveWindow(U32 id, S32 x, S32 y, U32 w, U32 h) {
-}
-
-void KNativeSystem::showWindow(U32 id, bool bShow) {
+void KNativeSystem::showWindow(const XWindowPtr & wnd, bool bShow) {
 }
 
 void KNativeSystem::shutdown() {
+    screen = nullptr;
+    opengl = nullptr;
 }
 
 void KNativeSystem::scheduledNewThread(KThread* thread) {

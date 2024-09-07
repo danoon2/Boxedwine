@@ -53,9 +53,6 @@ U32 KSystem::startTimeTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
 BString KSystem::title;
-// some simple opengl apps seem to have a hard time starting if this is false
-// Not sure if this is a Boxedwine issue or if its normal for Windows to behave different for OpenGL if the window is hidden
-bool KSystem::showWindowImmediately = false;
 #ifdef BOXEDWINE_MULTI_THREADED
 U32 KSystem::cpuAffinityCountForApp = 0;
 #endif

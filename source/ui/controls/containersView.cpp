@@ -390,11 +390,6 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         this->currentAppChanged = true;
     };    
 
-    appShowWindowImmediatelyControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_SHOW_WINDOW_LABEL, Msg::CONTAINER_VIEW_SHOW_WINDOW_HELP, false);
-    appShowWindowImmediatelyControl->onChange = [this]() {
-        this->currentAppChanged = true;
-    };
-
     appDirectDrawAutoRefreshControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL, Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP, false);
     appDirectDrawAutoRefreshControl->onChange = [this]() {
         this->currentAppChanged = true;
@@ -559,7 +554,6 @@ bool ContainersView::saveChanges() {
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
-            this->currentApp->showWindowImmediately = this->appShowWindowImmediatelyControl->isChecked();
             this->currentApp->autoRefresh = appDirectDrawAutoRefreshControl->isChecked();
 #ifdef BOXEDWINE_MULTI_THREADED
             this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
@@ -610,7 +604,6 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appDpiAwareControl->setCheck(app->dpiAware);
     appPollRateControl->setText(BString::valueOf(app->pollRate));
     appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));
-    appShowWindowImmediatelyControl->setCheck(app->showWindowImmediately);
     appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);
     std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
     bool hasAutoRefresh = fileSystem && atoi(fileSystem->fsVersion.c_str()) >= 7 && fileSystem->hasWine();

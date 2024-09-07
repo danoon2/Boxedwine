@@ -699,7 +699,9 @@ int XWindow::mapWindow() {
 			exposeNofity(data, 0, 0, width(), height(), 0);
 			});		
 	}
-	KNativeSystem::showWindow(shared_from_this(), isThisAndAncestorsMapped());
+	if (isThisAndAncestorsMapped()) {
+		KNativeSystem::showWindow(shared_from_this(), isThisAndAncestorsMapped());
+	}
 	return Success;
 }
 
@@ -761,7 +763,9 @@ int XWindow::unmapWindow() {
 			exposeNofity(data, 0, 0, parent->width(), parent->height(), 0);
 			});
 	}
-	KNativeSystem::showWindow(shared_from_this(), false);
+	if (isThisAndAncestorsMapped()) {
+		KNativeSystem::showWindow(shared_from_this(), false);
+	}
 	return Success;
 }
 

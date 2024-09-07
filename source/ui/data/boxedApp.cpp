@@ -17,7 +17,6 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->fullScreen = config.readInt(B("Fullscreen"),FULLSCREEN_NOTSET);
     this->vsync = config.readInt(B("VSync"), VSYNC_NOT_SET);
     this->dpiAware = config.readBool(B("DpiAware"), false);
-    this->showWindowImmediately = config.readBool(B("ShowWindowImmediately"), false);
     this->autoRefresh = config.readBool(B("AutoRefresh"), false);
     this->glExt = config.readString(B("AllowedGlExt"),B(""));
     this->scale = config.readInt(B("Scale"),100);
@@ -72,7 +71,6 @@ bool BoxedApp::saveApp() {
     config.writeInt(B("Fullscreen"),this->fullScreen);
     config.writeInt(B("VSync"), this->vsync);
     config.writeBool(B("DpiAware"), this->dpiAware);
-    config.writeBool(B("ShowWindowImmediately"), this->showWindowImmediately);
     config.writeBool(B("AutoRefresh"), this->autoRefresh);
     config.writeString(B("AllowedGlExt"),this->glExt);
     config.writeInt(B("Scale"),this->scale);
@@ -140,9 +138,6 @@ void BoxedApp::launch() {
     }
     if (GlobalSettings::isDpiAware() && this->dpiAware) {
         GlobalSettings::startUpArgs.dpiAware = true;
-    }
-    if (this->showWindowImmediately) {
-        GlobalSettings::startUpArgs.showWindowImmediately = true;
     }
     if (this->autoRefresh) {
         GlobalSettings::startUpArgs.envValues.push_back(B("BOXED_DD_AUTOREFRESH=1"));

@@ -7,6 +7,8 @@
 #include "knativescreen.h"
 #include "kopengl.h"
 
+class XWindow;
+
 class KNativeSystem {
 public:
 	static bool init(bool allowVideo, bool allowAudio);
@@ -28,13 +30,15 @@ public:
 	static KNativeInputPtr getCurrentInput();
 	static KNativeScreenPtr getScreen();
 	static KOpenGLPtr getOpenGL();
+	static void showScreen(bool show);
+	static void tick();
+	static void warpMouse(S32 x, S32 y);
 
 	static void scheduledNewThread(KThread* thread);
 	static void changeScreenSize(U32 cx, U32 cy);
-	static void windowDestroyed(U32 id);
 
-	static void moveWindow(U32 id, S32 x, S32 y, U32 w, U32 h);
-	static void showWindow(U32 id, bool bShow);
+	static void moveWindow(const std::shared_ptr<XWindow>& wnd);
+	static void showWindow(const std::shared_ptr<XWindow>& wnd, bool bShow);
 
 	static void shutdown();
 };

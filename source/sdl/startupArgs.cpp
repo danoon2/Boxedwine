@@ -207,9 +207,6 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-automation"));
         args.push_back(runAutomation);
     }
-    if (showWindowImmediately) {
-        args.push_back(B("-showWindowImmediately"));
-    }
     if (skipFrameFPS) {
         args.push_back(B("-skipFrameFPS"));
         args.push_back(BString::valueOf(skipFrameFPS));
@@ -258,9 +255,10 @@ bool StartUpArgs::apply() {
     if (KSystem::pollRate < 0) {
         KSystem::pollRate = 0;
     }
-    KSystem::openglType = this->openGlType;
+    if (this->openGlType) {
+        KSystem::openglType = this->openGlType;
+    }
     KSystem::ttyPrepend = this->ttyPrepend;
-    KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
     if (!KSystem::logFile.isOpen() && this->logPath.length()) {
         KSystem::logFile.createNew(this->logPath);
@@ -360,7 +358,7 @@ bool StartUpArgs::apply() {
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
     //envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
-    // envValues.push_back(B("WINEDEBUG=+wgl"));
+    //envValues.push_back(B("WINEDEBUG=+d3d"));
 
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
@@ -682,8 +680,6 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
         } else if (!strcmp(argv[i], "-dpiAware")) {
             dpiAware = true;
-        } else if (!strcmp(argv[i], "-showWindowImmediately")) {
-            showWindowImmediately = true;
         } else if (!strcmp(argv[i], "-pollRate")) {
             this->pollRate = atoi(argv[i + 1]);
             i++;
