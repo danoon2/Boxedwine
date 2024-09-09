@@ -1593,3 +1593,24 @@ FsOpenNode* openHostname(const std::shared_ptr<FsNode>& node, U32 flags, U32 dat
     }
     return new BufferAccess(node, flags, BString::copy(buf));
 }
+
+U32 ipAddress() {
+    char hostbuffer[256];
+    struct hostent* host_entry;
+    int hostname;
+    struct in_addr* addr_list;
+
+    // retrieve hostname
+    hostname = gethostname(hostbuffer, sizeof(hostbuffer));
+    if (hostname == -1) {
+        return 0;
+    }
+
+    // Retrieve IP addresses
+    host_entry = gethostbyname(hostbuffer);
+    if (host_entry == NULL) {
+        return 0;
+    }
+    addr_list = *(struct in_addr**)host_entry->h_addr_list;
+    return addr_list->S_un.S_addr;
+}

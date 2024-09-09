@@ -442,6 +442,8 @@ void KNetLinkObject::append(const char* s) {
     recvBuffer.insert(recvBuffer.end(), (U8*)s, ((U8*)s) + (U32)(strlen(s)+1));
 }
 
+U32 ipAddress();
+
 U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 sendtoFlags, U32 dest_addr, U32 dest_len) {
     if (0) {
         thread->cpu->logFile.createNew(B("link.txt"));
@@ -473,7 +475,7 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             hdr.nlmsg_type = 16; // RTM_NEWLINK
             hdr.nlmsg_flags = 0x301; // NLM_F_REQUEST | NLM_F_DUMP
             hdr.nlmsg_seq = seq;
-            hdr.nlmsg_pid = 0;
+            hdr.nlmsg_pid = afBound->nl_pid;
             msg.ifi_family = 0;
             msg.ifi_type = 1;
             msg.ifi_index = 1;
@@ -485,7 +487,7 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
 
             append((U16)8);
             append((U16)1); // IFLA_ADDRESS
-            append((U32)0x7f000001);
+            append((U32)0x0100007f);
 
             append((U16)7);
             append((U16)3); // IFLA_IFNAME
@@ -508,13 +510,14 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             recvBuffer.insert(recvBuffer.end(), (U8*)&hdr2, ((U8*)&hdr2) + sizeof(hdr2));
             recvBuffer.insert(recvBuffer.end(), (U8*)&msg2, ((U8*)&msg2) + sizeof(msg2));
       
+            U32 ip = ipAddress();
             append((U16)8);
             append((U16)1); // IFLA_ADDRESS
-            append((U32)0xC0A83057);
+            append(ip);
 
             append((U16)8);
             append((U16)2); // IFLA_BROADCAST
-            append((U32)0xC0A830FF);
+            append(ip);
 
             append((U16)9);
             append((U16)3); // IFLA_IFNAME
@@ -544,7 +547,7 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             hdr.nlmsg_type = 20; // RTM_NEWADDR
             hdr.nlmsg_flags = 2; // NLM_F_MULTI
             hdr.nlmsg_seq = seq;
-            hdr.nlmsg_pid = 0;
+            hdr.nlmsg_pid = afBound->nl_pid;
             msg.ifa_family = K_AF_INET;
             msg.ifa_prefixlen = 8;
             msg.ifa_flags = 0x80; // IFA_F_PERMANENT
@@ -557,11 +560,11 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
                         
             append((U16)8);
             append((U16)1); // IFA_ADDRESS
-            append((U32)0x7f000001);
+            append((U32)0x0100007f);
             
             append((U16)8);
             append((U16)2); // IFA_LOCAL
-            append((U32)0x7f000001);
+            append((U32)0x0100007f);
             
             append((U16)8);
             append((U16)8); // IFA_FLAGS
@@ -573,15 +576,17 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             append((U8)0); // pad
 
             // eth0
+            // :TODO: not sure why this causes a hang
+            /*
             boxed_nlmsghdr hdr2;
             boxed_ifaddrmsg msg2;
-            hdr2.nlmsg_len = 68; // sizeof(hdr) + sizeof(msg) + data + aligned 4 (24 + 44)
+            hdr2.nlmsg_len = 60; // sizeof(hdr) + sizeof(msg) + data + aligned 4 (24 + 36)
             hdr2.nlmsg_type = 20; // RTM_NEWADDR
             hdr2.nlmsg_flags = 2; // NLM_F_MULTI
             hdr2.nlmsg_seq = seq;
             hdr2.nlmsg_pid = afBound->nl_pid;
             msg2.ifa_family = K_AF_INET;
-            msg2.ifa_prefixlen = 24;
+            msg2.ifa_prefixlen = 24; // :TODO: get real value
             msg2.ifa_flags = 0;
             msg2.ifa_scope = 0; // RT_SCOPE_UNIVERSE
             msg2.ifa_index = 2;
@@ -589,17 +594,15 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             recvBuffer.insert(recvBuffer.end(), (U8*)&hdr2, ((U8*)&hdr2) + sizeof(hdr2));
             recvBuffer.insert(recvBuffer.end(), (U8*)&msg2, ((U8*)&msg2) + sizeof(msg2));
 
-            append((U16)8);
-            append((U16)1); // IFA_ADDRESS
-            append((U32)0xC0A83057);
+            U32 ip = ipAddress();
 
             append((U16)8);
-            append((U16)2); // IFA_LOCAL
-            append((U32)0xC0A83057);
+            append((U16)1); // IFA_ADDRESS
+            append((U32)ip);
 
             append((U16)8);
             append((U16)4); // IFA_BROADCAST
-            append((U32)0xC0A830FF);
+            append((U32)(0xFF000000 | ip)); // :TODO: get real value
 
             append((U16)8);
             append((U16)8); // IFA_FLAGS
@@ -610,6 +613,7 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
             append("eth0");
             append((U8)0); // pad
             append((U16)0); // pad
+            */
 
             hdr.nlmsg_len = sizeof(hdr);
             hdr.nlmsg_type = 3; // NLMSG_DONE
