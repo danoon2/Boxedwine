@@ -865,7 +865,7 @@ void XWindow::draw() {
 	S32 screenX = left;
 	S32 screenY = top;
 	//windowToScreen(screenX, screenY);
-	KNativeSystem::getScreen()->putBitsOnWnd(id, data, visual->bits_per_rgb, bytes_per_line, screenX, screenY, width(), height(), palette, isDirty);
+	KNativeSystem::getScreen()->putBitsOnWnd(id, data, visual?visual->bits_per_rgb:32, bytes_per_line, screenX, screenY, width(), height(), palette, isDirty);
 	isDirty = false;
 
 	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {
@@ -1071,8 +1071,9 @@ XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY) {
 		child->parent->screenToWindow(x, y);
 		
 		bool inChild = x >= child->left && x < child->left + (S32)child->width() && y >= child->top && y < child->top + (S32)child->height();
-		result = child->getWindowFromPoint(screenX, screenY);
-		if (result && (inChild || result->isTransient())) {
+		XWindowPtr found = child->getWindowFromPoint(screenX, screenY);
+		if (found && (inChild || found->isTransient())) {
+			result = found;
 			return false;
 		}
 		if ((inChild || child->isTransient())) {
@@ -1197,6 +1198,13 @@ XWindowPtr XWindow::getLeastCommonAncestor(const XWindowPtr& wnd) {
 		}
 	}
 	return result;
+}
+
+XCursorPtr XWindow::getCursor() {
+	if (cursor) {
+		return cursor;
+	}
+	return parent->getCursor();
 }
 
 XWindowPtr XWindow::getTopMappedChild() {

@@ -172,6 +172,7 @@ public:
 	bool mapped() {return this->isMapped;}
 	bool isThisAndAncestorsMapped();
 	XWindowPtr getTopMappedChild();
+	XCursorPtr getCursor();
 
 	const U32 displayId;
 	const U32 c_class;

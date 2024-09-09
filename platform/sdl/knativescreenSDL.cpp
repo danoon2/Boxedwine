@@ -6,6 +6,7 @@
 #include "sdlcallback.h"
 #include "knativeinputSDL.h"
 #include "knativescreenSDL.h"
+#include "../../source/x11/x11.h"
 
 KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync) {
     input = std::make_shared<KNativeInputSDL>(cx, cy, scaleX, scaleY);
@@ -271,48 +272,64 @@ bool KNativeScreenSDL::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32
     return true;
 }
 
-BString KNativeScreenSDL::getCursorName(const char* moduleName, const char* resourceName, int resource) {
-    BString result;
-    if (moduleName) {
-        result += moduleName;
-    }
-    result += ";";
-    if (resourceName && strlen(resourceName)) {
-        result += resourceName;
-    } else {
-        result += BString::valueOf(resource, 16);
-    }
-    return result;
-}
+void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
+    SDL_Cursor* sdlCursor;
 
-bool KNativeScreenSDL::setCursor(const char* moduleName, const char* resourceName, int resource) {
-    if (!moduleName && !resourceName && !resource) {
-        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-            SDL_ShowCursor(0);
-        DISPATCH_MAIN_THREAD_BLOCK_END
-            return 1;
-    } else {
-        BString name = getCursorName(moduleName, resourceName, resource);
-        SDL_Cursor* cursor;
-
-        {
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
-            cursor = cursors.get(name);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
+        sdlCursor = cursors.get(cursor->id);
+    }
+    if (!sdlCursor) {
+        switch (cursor->shape) {
+        case 0:
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+            break;
+        case 52: // XC_fleur
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+            break;
+        case 60: // XC_hand2
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+            break;
+        case 68: // XC_left_ptr
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+            break;
+        case 88: // XC_pirate
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
+            break;
+        case 108: // XC_sb_h_double_arrow
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+            break;
+        case 116: // XC_sb_v_double_arrow
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+            break;
+        case 130: // XC_tcross
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR);
+            break;
+        case 132: // XC_top_left_arrow
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+            break;
+        case 134: // XC_top_left_corner
+        case 136: // XC_top_right_corner
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+            break;
+        case 150: // XC_watch
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAITARROW);
+            break;
+        case 152: // XC_xterm
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+            break;        
+        default:
+            klog("KNativeScreenSDL::setCursor cursor shape not defined for %d", cursor->shape);
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+            break;
         }
-        if (!cursor) {
-            return false;
-        }
-        DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-            SDL_ShowCursor(1);
-            SDL_SetCursor(cursor);
-        DISPATCH_MAIN_THREAD_BLOCK_END
-        return true;
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
+        cursors.set(cursor->id, sdlCursor);
     }
-    return false;
-}
-
-void KNativeScreenSDL::createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) {
-
+    DISPATCH_MAIN_THREAD_BLOCK_BEGIN
+        SDL_ShowCursor(1);
+        SDL_SetCursor(sdlCursor);
+    DISPATCH_MAIN_THREAD_BLOCK_END
 }
 
 void KNativeScreenSDL::destroyTextureCache() {

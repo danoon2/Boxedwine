@@ -3,6 +3,8 @@
 
 #include "knativeinput.h"
 
+class XCursor;
+
 class KNativeScreen {
 public:
 	virtual ~KNativeScreen() {}
@@ -41,8 +43,7 @@ public:
 	virtual bool screenShot(const BString& filepath, U8* buffer, U32 bufferlen) = 0;
 	virtual bool saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) = 0;
 
-	virtual bool setCursor(const char* moduleName, const char* resourceName, int resource) = 0;
-	virtual void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) = 0;
+	virtual void setCursor(const std::shared_ptr<XCursor>& cursor) = 0;
 
 	virtual void warpMouse(int x, int y) = 0;
 	virtual bool isVisible() = 0;

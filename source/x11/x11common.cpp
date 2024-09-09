@@ -1579,7 +1579,6 @@ static void x11_FreePixmap(CPU* cpu) {
 
 // Cursor XCreatePixmapCursor(Display* display, Pixmap source, Pixmap mask, XColor* foreground_color, XColor* background_color, unsigned int x, unsigned int y)
 static void x11_CreatePixmapCursor(CPU* cpu) {
-    KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     XColor fg;
@@ -1593,7 +1592,10 @@ static void x11_CreatePixmapCursor(CPU* cpu) {
 
 // Cursor XCreateFontCursor(Display* display, unsigned int shape)
 static void x11_CreateFontCursor(CPU* cpu) {
-    EAX = ARG2;
+    XServer* server = XServer::getServer();
+    XCursorPtr cursor = std::make_shared<XCursor>(ARG2);
+    server->addCursor(cursor);
+    EAX = cursor->id;
 }
 
 // int XDefineCursor(Display* display, Window w, Cursor cursor)
@@ -1606,6 +1608,7 @@ static void x11_DefineCursor(CPU* cpu) {
         return;
     }
     window->cursor = server->getCursor(ARG3);
+    server->updateCursor(window);
     EAX = Success;
 }
 

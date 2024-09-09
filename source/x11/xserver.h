@@ -39,6 +39,7 @@ public:
 	
 	void addCursor(const XCursorPtr& cursor);
 	XCursorPtr getCursor(U32 id);
+	void updateCursor(const XWindowPtr& wnd);
 
 	void iterateEventMask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& data)> callback);
 	void iterateInput2Mask(U32 wndId, U32 mask, std::function<void(const DisplayDataPtr& data)> callback);

@@ -85,14 +85,11 @@ public:
     bool screenShot(const BString& filepath, U8* buffer, U32 bufferlen) override;
     bool saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) override;
 
-    bool setCursor(const char* moduleName, const char* resourceName, int resource) override;
-    void createAndSetCursor(const char* moduleName, const char* resourceName, int resource, U8* and_bits, U8* xor_bits, int width, int height, int hotX, int hotY) override;    
+    void setCursor(const std::shared_ptr<XCursor>& cursor) override;
     
     KNativeInputSDLPtr input;
 
 private:
-    BString getCursorName(const char* moduleName, const char* resourceName, int resource);
-
     bool visible = false;
     bool showOnDraw = true;
     bool presented = false;
@@ -116,7 +113,7 @@ private:
     BHashTable<U32, WndCachePtr> wndCache;
 
     BOXEDWINE_MUTEX cursorsMutex;
-    BHashTable<BString, SDL_Cursor*> cursors;
+    BHashTable<U32, SDL_Cursor*> cursors;
 };
 
 typedef std::shared_ptr<KNativeScreenSDL> KNativeScreenSDLPtr;

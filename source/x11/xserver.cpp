@@ -247,6 +247,8 @@ const XWindowPtr& XServer::getRoot() {
 		root->isMapped = true; // so that grab works
 		root->colorMap = getDefaultColorMap();
 		root->attributes.colormap = root->colorMap->id;
+		root->cursor = std::make_shared<XCursor>(132); // XC_top_left_arrow
+		addCursor(root->cursor);
 		pointerWindow = root;
 	}
 	return root;
@@ -341,6 +343,12 @@ void XServer::addCursor(const XCursorPtr& cursor) {
 XCursorPtr XServer::getCursor(U32 id) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
 	return cursors.get(id);
+}
+
+void XServer::updateCursor(const XWindowPtr& wnd) {
+	if (pointerWindow == wnd) {
+		KNativeSystem::getScreen()->setCursor(wnd->getCursor());
+	}
 }
 
 XGCPtr XServer::createGC(XDrawablePtr drawable) {
@@ -792,6 +800,7 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 			if (wnd != pointerWindow) {
 				pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
 				pointerWindow = wnd;
+				KNativeSystem::getScreen()->setCursor(wnd->getCursor());
 			}
 			while (wnd && !wnd->mouseMoveScreenCoords(x, y)) {
 				wnd = wnd->parent;
@@ -852,6 +861,7 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 		KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
 		pointerMoved(pointerWindow, grabbed, x, y, NotifyGrab);
 		pointerWindow = grabbed;
+		KNativeSystem::getScreen()->setCursor(pointerWindow->getCursor());
 	}
 	return GrabSuccess;
 }
@@ -875,6 +885,7 @@ U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
 
 	pointerWindow = root->getWindowFromPoint(x, y);
 	pointerMoved(prev, pointerWindow, x, y, NotifyUngrab);
+	KNativeSystem::getScreen()->setCursor(pointerWindow->getCursor());
 	return GrabSuccess;
 }
 

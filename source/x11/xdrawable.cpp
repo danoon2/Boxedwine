@@ -52,7 +52,7 @@ void XDrawable::setSize(U32 width, U32 height) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
 	w = width;
 	h = height;
-	bytes_per_line = calculateBytesPerLine(visual->bits_per_rgb, width);
+	bytes_per_line = calculateBytesPerLine(visual?visual->bits_per_rgb:32, width);
 	size = height * bytes_per_line;
 	if (data) {
 		delete[] data;
