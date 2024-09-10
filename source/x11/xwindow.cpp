@@ -1404,7 +1404,7 @@ bool XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {
 		buttonNotify(data, button, x, y, pressed);
 		found = true;
 		});
-	return false;
+	return found;
 }
 
 void XWindow::keyScreenCoords(U32 key, S32 x, S32 y, bool pressed) {

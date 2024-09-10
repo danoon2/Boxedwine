@@ -272,6 +272,22 @@ bool KNativeScreenSDL::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32
     return true;
 }
 
+void KNativeScreenSDL::buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) {
+    U8* buffer = thread->memory->lockReadOnlyMemory(pixelsAddress, width * height * 4);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(buffer, width, height, 32, width * 4, 0xff0000, 0xff00, 0xff, 0xff000000);
+    SDL_Cursor* sdlCursor = SDL_CreateColorCursor(surface, xHot, yHot);
+
+    thread->memory->unlockMemory(buffer);
+    SDL_FreeSurface(surface);
+
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cursorsMutex);
+    SDL_Cursor* prev = cursors.get(cursor->id);
+    if (prev) {
+        SDL_FreeCursor(prev);
+    }
+    cursors.set(cursor->id, sdlCursor);
+}
+
 void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
     SDL_Cursor* sdlCursor;
 
@@ -282,6 +298,14 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
     if (!sdlCursor) {
         switch (cursor->shape) {
         case 0:
+            if (cursor->fg.red == 0 && cursor->fg.blue == 0 && cursor->fg.green == 0 && cursor->bg.red == 0 && cursor->bg.green == 0 && cursor->bg.blue == 0) {
+                sdlCursor = nullptr;
+            } else {
+                sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+            }
+            break;
+        case 22: // XC_center_ptr
+            // :TODO:
             sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
             break;
         case 52: // XC_fleur
@@ -289,6 +313,10 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
             break;
         case 60: // XC_hand2
             sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+            break;
+        case 64: // XC_icon
+            // :TODO:
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAIT);
             break;
         case 68: // XC_left_ptr
             sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -317,7 +345,14 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
             break;
         case 152: // XC_xterm
             sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-            break;        
+            break;    
+        case 1000: // left_ptr_watch
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAITARROW);
+            break;
+        case 92: // XC_question_arrow
+            // :TODO:
+            sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+            break;
         default:
             klog("KNativeScreenSDL::setCursor cursor shape not defined for %d", cursor->shape);
             sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -327,8 +362,12 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
         cursors.set(cursor->id, sdlCursor);
     }
     DISPATCH_MAIN_THREAD_BLOCK_BEGIN
-        SDL_ShowCursor(1);
-        SDL_SetCursor(sdlCursor);
+        if (sdlCursor) {
+            SDL_ShowCursor(1);
+            SDL_SetCursor(sdlCursor);
+        } else {
+            SDL_ShowCursor(0);
+        }
     DISPATCH_MAIN_THREAD_BLOCK_END
 }
 

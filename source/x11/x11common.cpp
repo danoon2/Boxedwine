@@ -2743,6 +2743,126 @@ void x11_FreeEventData(CPU* cpu) {
     }
 }
 
+// XcursorImage* XcursorImageCreate(int width, int height)
+void x11_CursorImageCreate(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    U32 width = ARG1;
+    U32 height = ARG2;
+    U32 result = thread->process->alloc(thread, sizeof(XcursorImage) + width * height * 4);
+    XcursorImage::write(memory, result, width, height, result + sizeof(XcursorImage));
+    EAX = result;
+}
+
+// void XcursorImageDestroy(XcursorImage* image)
+void x11_CursorImageDestroy(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    thread->process->free(ARG1);
+}
+
+// Cursor XcursorImageLoadCursor(Display* dpy, const XcursorImage* image)
+void x11_CursorImageLoadCursor(CPU* cpu) {
+    // not actually used in wine even though it gets the function pointer
+    kpanic("x11_CursorImageLoadCursor");
+}
+
+// XcursorImages* XcursorImagesCreate(int size) 
+void x11_CursorImagesCreate(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    U32 size = ARG1;
+    U32 result = thread->process->alloc(thread, sizeof(XcursorImages) + size * 4);
+    XcursorImages::write(memory, result, size, result + sizeof(XcursorImages));
+    EAX = result;
+}
+
+// void XcursorImagesDestroy(XcursorImages* images)
+void x11_CursorImagesDestroy(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    U32 address = ARG1;
+    XcursorImages images;
+
+    images.read(memory, address);
+    for (U32 i = 0; i < images.nimage; i++) {
+        U32 frameAddress = memory->readd(images.imagesAddress + i * sizeof(U32));
+        thread->process->free(frameAddress);
+    }
+    thread->process->free(ARG1);
+}
+
+// Cursor XcursorImagesLoadCursor(Display* dpy, const XcursorImages* images)
+void x11_CursorImagesLoadCursor(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 address = ARG2;
+    XcursorImages images;
+
+    images.read(memory, address);
+    if (images.nimage == 0) {
+        EAX = 0;
+        return;
+    }
+    if (images.nimage > 1) {
+        klog("x11_CursorImagesLoadCursor animated cursors not supported, will use first frame");
+    }
+    XCursorPtr cursor = std::make_shared<XCursor>(0);
+    server->addCursor(cursor);
+    EAX = cursor->id;
+
+    XcursorImage frame;
+    frame.read(memory, memory->readd(images.imagesAddress));
+    KNativeSystem::getScreen()->buildCursor(thread, cursor, frame.pixelsAddress, frame.width, frame.height, frame.xhot, frame.yhot);
+}
+
+// Cursor XcursorLibraryLoadCursor(Display* dpy, const char* file)
+void x11_CursorLibraryLoadCursor(CPU* cpu) {
+    KMemory* memory = cpu->memory;
+    BString fileName = memory->readString(ARG2);
+    U32 shape = 0;
+
+    if (fileName == "xterm") {
+        shape = 152; // XC_xterm
+    } else if (fileName == "left_ptr") {
+        shape = 68; // XC_left_ptr
+    } else if (fileName == "watch") {
+        shape = 150; // XC_watch
+    } else if (fileName == "cross") {
+        shape = 130; // XC_tcross
+    } else if (fileName == "center_ptr") {
+        shape = 22; // XC_center_ptr
+    } else if (fileName == "fleur") {
+        shape = 52; // XC_fleur
+    } else if (fileName == "fleur") {
+        shape = 52; // XC_fleur
+    } else if (fileName == "top_left_corner") {
+        shape = 134; // XC_top_left_corner
+    } else if (fileName == "top_right_corner") {
+        shape = 136; // XC_top_right_corner
+    } else if (fileName == "h_double_arrow") {
+        shape = 108; // XC_sb_h_double_arrow
+    } else if (fileName == "v_double_arrow") {
+        shape = 116; // XC_sb_v_double_arrow
+    } else if (fileName == "not-allowed") {
+        shape = 88; // XC_pirate
+    } else if (fileName == "hand2") {
+        shape = 60; // XC_hand2
+    } else if (fileName == "left_ptr_watch") {
+        shape = 1000;
+    } else if (fileName == "question_arrow") {
+        shape = 92; // XC_question_arrow
+    } else {
+        klog("x11_CursorLibraryLoadCursor failed to find system cursor: %s", fileName.c_str());
+        EAX = 0;
+        return;
+    }
+    XServer* server = XServer::getServer();
+    XCursorPtr cursor = std::make_shared<XCursor>(shape);
+    server->addCursor(cursor);
+    EAX = cursor->id;    
+}
+
 void x11_init() {
     XKeyboard::init();
 
@@ -2946,6 +3066,14 @@ void x11_init() {
 
     int9BCallback[X11_GET_EVENT_DATA] = x11_GetEventData;
     int9BCallback[X11_FREE_EVENT_DATA] = x11_FreeEventData;
+
+    int9BCallback[X11_CURSOR_IMAGE_CREATE] = x11_CursorImageCreate;
+    int9BCallback[X11_CURSOR_IMAGE_DESTROY] = x11_CursorImageDestroy;
+    int9BCallback[X11_CURSOR_IMAGE_LOAD_CURSOR] = x11_CursorImageLoadCursor;
+    int9BCallback[X11_CURSOR_IMAGES_CREATE] = x11_CursorImagesCreate;
+    int9BCallback[X11_CURSOR_IMAGES_DESTROY] = x11_CursorImagesDestroy;
+    int9BCallback[X11_CURSOR_IMAGES_LOAD_CURSOR] = x11_CursorImagesLoadCursor;
+    int9BCallback[X11_CURSOR_LIBRARY_LOAD_CURSOR] = x11_CursorLibraryLoadCursor;
 }
 
 void callX11(CPU* cpu, U32 index) {

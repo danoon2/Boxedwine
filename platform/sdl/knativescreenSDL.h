@@ -86,7 +86,8 @@ public:
     bool saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) override;
 
     void setCursor(const std::shared_ptr<XCursor>& cursor) override;
-    
+    void buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) override;
+
     KNativeInputSDLPtr input;
 
 private:
