@@ -1121,22 +1121,34 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 le
         U32 v = 0;
         switch (name) {
         case K_TCP_NODELAY:
-            if (len != 4)
+            if (len != 4) {
                 kpanic("KNativeSocketObject::setsockopt TCP_NODELAY expecting len of 4");
+            }
             v = memory->readd(value);
             ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_NODELAY, (const char*)&v, 4);
             break;
         case K_TCP_KEEPIDLE:
-            if (len != 4)
+            if (len != 4) {
                 kpanic("KNativeSocketObject::setsockopt TCP_KEEPIDLE expecting len of 4");
+            }
             v = memory->readd(value);
             ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_KEEPIDLE, (const char*)&v, 4);
             break;
         case K_TCP_KEEPINTVL:
-            if (len != 4)
+            if (len != 4) {
                 kpanic("KNativeSocketObject::setsockopt TCP_KEEPINTVL expecting len of 4");
+            }
             v = memory->readd(value);
             ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_KEEPINTVL, (const char*)&v, 4);
+            break;
+        case K_TCP_SYNCNT:
+#ifdef TCP_SYNCNT
+            if (len != 4) {
+                kpanic("KNativeSocketObject::setsockopt TCP_SYNCNT expecting len of 4");
+            }
+            v = memory->readd(value);
+            ::setsockopt(this->nativeSocket, IPPROTO_TCP, TCP_SYNCNT, (const char*)&v, 4);
+#endif
             break;
         default:
             kwarn("KNativeSocketObject::setsockopt IPPROTO_TCP name %d not implemented", name);
@@ -1333,6 +1345,18 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 le
             result = ::getsockopt(this->nativeSocket, SOL_SOCKET, SO_ACCEPTCONN, (char*)&retrievedValue, &len);
             if (!result) {
                 memory->writed(value, retrievedValue);
+            }
+        } else if (name == K_SO_PROTOCOL) {
+            if (len != 4)
+                kpanic("KNativeSocketObject::getsockopt SO_PROTOCOL expecting len of 4");
+            if (!result) {
+                memory->writed(value, protocol);
+            }
+        } else if (name == K_SO_TYPE) {
+            if (len != 4)
+                kpanic("KNativeSocketObject::getsockopt SO_TYPE expecting len of 4");
+            if (!result) {
+                memory->writed(value, type);
             }
         } else {
             kwarn("KNativeSocketObject::getsockopt name %d not implemented", name);

@@ -14,6 +14,9 @@
 #define SLOW_FRAME_DELAY 1000
 #define FAST_FRAME_DELAY 1
 
+#define FILE_SYSTEMS_FOLDER "FileSystems2"
+#define CONTAINERS_FOLDER "Containers2"
+
 BString GlobalSettings::dataFolderLocation;
 std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::fileSystemVersions;
 std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::availableFileSystemVersions;
@@ -88,7 +91,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::defaultScale = config.readInt(B("DefaultScale"), 100);
     GlobalSettings::defaultVsync = config.readInt(B("DefaultVsync"), VSYNC_DEFAULT);
     GlobalSettings::fontScale = (float)config.readInt(B("FontScale"), 100) / 100.0f;
-    GlobalSettings::fileUrls.push_back(config.readString(B("FilesURL"), B("http://www.boxedwine.org/v/" BOXEDWINE_VERSION_STR "/files.xml")));
+    GlobalSettings::fileUrls.push_back(config.readString(B("FilesURL"), B("http://www.boxedwine.org/v2/" BOXEDWINE_VERSION_STR "/filesV2.xml")));
     for (int i = 1; i < 10; i++) {
         BString name = "FilesURL" + BString::valueOf(i + 1);
         BString url = config.readString(name, B(""));
@@ -132,7 +135,8 @@ void GlobalSettings::init(int argc, const char **argv) {
 
 void GlobalSettings::startUp() {
     GlobalSettings::initWineVersions();
-    BString containersPath = GlobalSettings::dataFolderLocation.stringByApppendingPath("Containers");
+    BString containersPath = GlobalSettings::getContainerFolder();
+    /*
     if (!Fs::doesNativePathExist(containersPath) && GlobalSettings::fileSystemVersions.size() > 0) {
         std::shared_ptr<FileSystemZip> fs = GlobalSettings::fileSystemVersions[0];
         if (fs->hasWine()) {
@@ -146,6 +150,7 @@ void GlobalSettings::startUp() {
             app.saveApp();
         }
     }
+    */
     GlobalSettings::loadFileLists();
     GlobalSettings::checkFileListForUpdate();
 }
@@ -300,8 +305,8 @@ void GlobalSettings::lookForFileSystems(BString path) {
 void GlobalSettings::initWineVersions() {
     GlobalSettings::lookForFileSystems(GlobalSettings::getFileSystemFolder());
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("FileSystems"));
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("..").stringByApppendingPath("FileSystems"));
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath(FILE_SYSTEMS_FOLDER));
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("..").stringByApppendingPath(FILE_SYSTEMS_FOLDER));
     std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend(), [](auto& l, auto& r) {
         return *l < *r;
         });
@@ -311,19 +316,19 @@ void GlobalSettings::reloadWineVersions() {
     GlobalSettings::fileSystemVersions.clear();
     GlobalSettings::lookForFileSystems(GlobalSettings::getFileSystemFolder());
     GlobalSettings::lookForFileSystems(GlobalSettings::exePath);
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("FileSystems"));
-    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("..").stringByApppendingPath("FileSystems"));
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath(FILE_SYSTEMS_FOLDER));
+    GlobalSettings::lookForFileSystems(GlobalSettings::exePath.stringByApppendingPath("..").stringByApppendingPath(FILE_SYSTEMS_FOLDER));
     std::sort(GlobalSettings::fileSystemVersions.rbegin(), GlobalSettings::fileSystemVersions.rend(), [](auto& l, auto& r) {
         return *l < *r;
         });
 }
 
 BString GlobalSettings::getContainerFolder() {
-    return GlobalSettings::dataFolderLocation.stringByApppendingPath("Containers");
+    return GlobalSettings::dataFolderLocation.stringByApppendingPath(CONTAINERS_FOLDER);
 }
 
 BString GlobalSettings::getFileSystemFolder() {
-    return GlobalSettings::dataFolderLocation.stringByApppendingPath("FileSystems");
+    return GlobalSettings::dataFolderLocation.stringByApppendingPath(FILE_SYSTEMS_FOLDER);
 }
 
 BString GlobalSettings::getDemoFolder() {

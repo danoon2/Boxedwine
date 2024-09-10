@@ -19,7 +19,7 @@ static BOXEDWINE_MUTEX contextMutex;
 static BHashTable<U32, HWND> nativeWindowHandles;
 static BOXEDWINE_MUTEX windowMutex;
 
-LRESULT dummyWndProc(HWND hwnd, UINT umsg, WPARAM wp, LPARAM lp)
+LRESULT CALLBACK dummyWndProc(HWND hwnd, UINT umsg, WPARAM wp, LPARAM lp)
 {
     return DefWindowProc(hwnd, umsg, wp, lp);
 }
@@ -227,7 +227,7 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
                     } else if (results[3] == WGL_TYPE_COLORINDEX_ARB) {
                         format->pf.iPixelType = PFD_TYPE_COLORINDEX;
                     } else {
-                        kpanic("queryOpenGL unexpected WGL_PIXEL_TYPE_ARB value %x", results[3]);
+                        continue;
                     }
                     format->pf.cColorBits = results[4];
                     format->pf.cRedBits = results[5];
@@ -278,7 +278,7 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
     return formatsById.size() > 0;
 }
 
-LRESULT glWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK glWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     LRESULT result = 0;
     switch (message) {
