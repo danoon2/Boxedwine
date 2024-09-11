@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <assert.h>
 
 #include <errno.h>
 

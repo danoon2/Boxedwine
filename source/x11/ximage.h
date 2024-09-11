@@ -31,4 +31,6 @@ struct XImage {
 	} f;
 };
 
+static_assert(sizeof(XImage) == 88, "emulation expects sizeof(XImage) to be 88");
+
 #endif

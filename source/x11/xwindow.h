@@ -50,6 +50,8 @@ struct XWMHints {
 	/* this structure may be extended in the future */
 };
 
+static_assert(sizeof(XWMHints) == 36, "emulation expects sizeof(XWMHints) to be 36");
+
 /* definition for flags of XWMHints */
 
 #define InputHint 		(1L << 0)
@@ -106,6 +108,8 @@ typedef struct {
 	S32 win_gravity;			/* added by ICCCM version 1 */
 } XSizeHints;
 
+static_assert(sizeof(XSizeHints) == 72, "emulation expects sizeof(XSizeHints) to be 72");
+
 struct XSetWindowAttributes {
 	Pixmap background_pixmap = 0;	/* background or None or ParentRelative */
 	U32 background_pixel = 0;	/* background pixel */
@@ -127,6 +131,8 @@ struct XSetWindowAttributes {
 	void copyWithMask(XSetWindowAttributes* attributes, U32 valueMask);
 	static XSetWindowAttributes* get(KMemory* memory, U32 address, XSetWindowAttributes* tmp);
 };
+
+static_assert(sizeof(XSetWindowAttributes) == 60, "emulation expects sizeof(XSetWindowAttributes) to be 60");
 
 #define XWindowPtr std::shared_ptr<XWindow>
 class XWindow : public XDrawable, public std::enable_shared_from_this<XWindow> {

@@ -10,6 +10,8 @@ struct XcursorImages {
 	static void write(KMemory* memory, U32 address, U32 nimage, U32 imageAddress);
 };
 
+static_assert(sizeof(XcursorImages) == 12, "emulation expects sizeof(XcursorImages) to be 12");
+
 struct XcursorImage {
 	U32	    version;	/* version of the image data */
 	U32	    size;	/* nominal size for matching */
@@ -23,6 +25,8 @@ struct XcursorImage {
 	void read(KMemory* memory, U32 address);
 	static void write(KMemory* memory, U32 address, U32 width, U32 height, U32 pixels);
 };
+
+static_assert(sizeof(XcursorImage) == 32, "emulation expects sizeof(XcursorImage) to be 32");
 
 class XCursor {
 public:

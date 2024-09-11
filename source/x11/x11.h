@@ -774,6 +774,8 @@ union XEvent {
 	U32 pad[24];
 };
 
+static_assert(sizeof(XEvent) == 96, "emulation expects sizeof(XEvent) to be 96");
+
 /* Property notification */
 
 #define PropertyNewValue	0
@@ -786,6 +788,8 @@ struct XPixmapFormatValues {
 
 	static U32 write(KMemory* memory, U32 address, U32 depth, U32 bits_per_pixel, U32 scanline_pad);
 };
+
+static_assert(sizeof(XPixmapFormatValues) == 12, "emulation expects sizeof(XPixmapFormatValues) to be 12");
 
 struct XExtData {
 	S32 number;		/* number returned by XRegisterExtension */
@@ -807,6 +811,8 @@ struct XModifierKeymap  {
 	U32 /* KeyCode* */ modifiermap;	/* An 8 by max_keypermod array of the modifiers */
 };
 
+static_assert(sizeof(XModifierKeymap) == 8, "emulation expects sizeof(XModifierKeymap) to be 8");
+
 struct XPoint {
 	S16 x, y;
 };
@@ -820,6 +826,8 @@ struct XRectangle {
 
 	void read(KMemory* memory, U32 address);
 };
+
+static_assert(sizeof(XRectangle) == 8, "emulation expects sizeof(XRectangle) to be 8");
 
 class DisplayData;
 class XrrData;

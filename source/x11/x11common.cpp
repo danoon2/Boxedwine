@@ -2386,12 +2386,14 @@ static void x11_RmUniqueQuark(CPU* cpu) {
 }
 
 struct XineramaScreenInfo {
-    S32   screen_number;
+    S32 screen_number;
     S16 x_org;
     S16 y_org;
     S16 width;
     S16 height;
 };
+
+static_assert(sizeof(XineramaScreenInfo) == 12, "emulation expects sizeof(XineramaScreenInfo) to be 12");
 
 // XineramaScreenInfo* XineramaQueryScreens(Display* dpy, int* number)
 static void x11_XineramaQueryScreens(CPU* cpu) {

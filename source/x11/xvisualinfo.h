@@ -19,4 +19,6 @@ struct XVisualInfo {
 	bool match(U32 mask, S32 screenIndex, const Depth* depth, const Visual* visual);
 };
 
+static_assert(sizeof(XVisualInfo) == 40, "emulation expects sizeof(XVisualInfo) to be 40");
+
 #endif

@@ -292,6 +292,8 @@ struct XIValuatorClassInfo {
     static void write(KMemory* memory, U32 address, S32 type, S32 sourceid, S32 number, Atom label, double min, double max, double value, S32 resolution, S32 mode);
 };
 
+static_assert(sizeof(XIValuatorClassInfo) == 48, "emulation expects sizeof(XIValuatorClassInfo) to be 48");
+
 /* new in XI 2.1 */
 struct XIScrollClassInfo
 {
@@ -328,6 +330,8 @@ struct XIDeviceInfo {
 
     static void write(KMemory* memory, U32 address, S32 deviceid, U32 name, S32 use, S32 attachment, Bool enabled, S32 num_classes, U32 classes);
 };
+
+static_assert(sizeof(XIDeviceInfo) == 28, "emulation expects sizeof(XIDeviceInfo) to be 28");
 
 struct XIRawEvent {
     S32           type;         /* GenericEvent */

@@ -43,6 +43,8 @@ struct XRRScreenSize {
     S32	mwidth, mheight;
 };
 
+static_assert(sizeof(XRRScreenSize) == 16, "emulation expects sizeof(XRRScreenSize) to be 16");
+
 typedef U32 XRRModeFlags;
 
 struct XRRModeInfo {
