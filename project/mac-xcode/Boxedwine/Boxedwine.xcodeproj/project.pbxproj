@@ -7,6 +7,168 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A0F94CE2C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
+		1A0F94CF2C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
+		1A0F94D02C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
+		1A0F94D12C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
+		1A0F94D22C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
+		1A0F94D32C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
+		1A0F94D42C912B6B00E5A9BF /* xdrawable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */; };
+		1A0F94D52C912B6B00E5A9BF /* xdrawable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */; };
+		1A0F94D62C912B6B00E5A9BF /* xdrawable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */; };
+		1A0F94D72C912B6B00E5A9BF /* xdrawable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */; };
+		1A0F94D82C912B6B00E5A9BF /* xdrawable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */; };
+		1A0F94D92C912B6B00E5A9BF /* xdrawable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */; };
+		1A0F94DA2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */; };
+		1A0F94DB2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */; };
+		1A0F94DC2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */; };
+		1A0F94DD2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */; };
+		1A0F94DE2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */; };
+		1A0F94DF2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */; };
+		1A0F94E02C912B6B00E5A9BF /* ximage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A82C912B6900E5A9BF /* ximage.cpp */; };
+		1A0F94E12C912B6B00E5A9BF /* ximage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A82C912B6900E5A9BF /* ximage.cpp */; };
+		1A0F94E22C912B6B00E5A9BF /* ximage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A82C912B6900E5A9BF /* ximage.cpp */; };
+		1A0F94E32C912B6B00E5A9BF /* ximage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A82C912B6900E5A9BF /* ximage.cpp */; };
+		1A0F94E42C912B6B00E5A9BF /* ximage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A82C912B6900E5A9BF /* ximage.cpp */; };
+		1A0F94E52C912B6B00E5A9BF /* ximage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A82C912B6900E5A9BF /* ximage.cpp */; };
+		1A0F94E62C912B6B00E5A9BF /* xcursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A92C912B6900E5A9BF /* xcursor.cpp */; };
+		1A0F94E72C912B6B00E5A9BF /* xcursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A92C912B6900E5A9BF /* xcursor.cpp */; };
+		1A0F94E82C912B6B00E5A9BF /* xcursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A92C912B6900E5A9BF /* xcursor.cpp */; };
+		1A0F94E92C912B6B00E5A9BF /* xcursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A92C912B6900E5A9BF /* xcursor.cpp */; };
+		1A0F94EA2C912B6B00E5A9BF /* xcursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A92C912B6900E5A9BF /* xcursor.cpp */; };
+		1A0F94EB2C912B6B00E5A9BF /* xcursor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A92C912B6900E5A9BF /* xcursor.cpp */; };
+		1A0F94EC2C912B6B00E5A9BF /* x11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AE2C912B6900E5A9BF /* x11.cpp */; };
+		1A0F94ED2C912B6B00E5A9BF /* x11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AE2C912B6900E5A9BF /* x11.cpp */; };
+		1A0F94EE2C912B6B00E5A9BF /* x11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AE2C912B6900E5A9BF /* x11.cpp */; };
+		1A0F94EF2C912B6B00E5A9BF /* x11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AE2C912B6900E5A9BF /* x11.cpp */; };
+		1A0F94F02C912B6B00E5A9BF /* x11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AE2C912B6900E5A9BF /* x11.cpp */; };
+		1A0F94F12C912B6B00E5A9BF /* x11.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AE2C912B6900E5A9BF /* x11.cpp */; };
+		1A0F94F22C912B6B00E5A9BF /* xcolor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */; };
+		1A0F94F32C912B6B00E5A9BF /* xcolor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */; };
+		1A0F94F42C912B6B00E5A9BF /* xcolor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */; };
+		1A0F94F52C912B6B00E5A9BF /* xcolor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */; };
+		1A0F94F62C912B6B00E5A9BF /* xcolor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */; };
+		1A0F94F72C912B6B00E5A9BF /* xcolor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */; };
+		1A0F94F82C912B6B00E5A9BF /* xdisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */; };
+		1A0F94F92C912B6B00E5A9BF /* xdisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */; };
+		1A0F94FA2C912B6B00E5A9BF /* xdisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */; };
+		1A0F94FB2C912B6B00E5A9BF /* xdisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */; };
+		1A0F94FC2C912B6B00E5A9BF /* xdisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */; };
+		1A0F94FD2C912B6B00E5A9BF /* xdisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */; };
+		1A0F94FE2C912B6B00E5A9BF /* xgc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B22C912B6A00E5A9BF /* xgc.cpp */; };
+		1A0F94FF2C912B6B00E5A9BF /* xgc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B22C912B6A00E5A9BF /* xgc.cpp */; };
+		1A0F95002C912B6B00E5A9BF /* xgc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B22C912B6A00E5A9BF /* xgc.cpp */; };
+		1A0F95012C912B6B00E5A9BF /* xgc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B22C912B6A00E5A9BF /* xgc.cpp */; };
+		1A0F95022C912B6B00E5A9BF /* xgc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B22C912B6A00E5A9BF /* xgc.cpp */; };
+		1A0F95032C912B6B00E5A9BF /* xgc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B22C912B6A00E5A9BF /* xgc.cpp */; };
+		1A0F95042C912B6B00E5A9BF /* displaydata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */; };
+		1A0F95052C912B6B00E5A9BF /* displaydata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */; };
+		1A0F95062C912B6B00E5A9BF /* displaydata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */; };
+		1A0F95072C912B6B00E5A9BF /* displaydata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */; };
+		1A0F95082C912B6B00E5A9BF /* displaydata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */; };
+		1A0F95092C912B6B00E5A9BF /* displaydata.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */; };
+		1A0F950A2C912B6B00E5A9BF /* xpixmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */; };
+		1A0F950B2C912B6B00E5A9BF /* xpixmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */; };
+		1A0F950C2C912B6B00E5A9BF /* xpixmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */; };
+		1A0F950D2C912B6B00E5A9BF /* xpixmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */; };
+		1A0F950E2C912B6B00E5A9BF /* xpixmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */; };
+		1A0F950F2C912B6B00E5A9BF /* xpixmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */; };
+		1A0F95102C912B6B00E5A9BF /* x11common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B82C912B6A00E5A9BF /* x11common.cpp */; };
+		1A0F95112C912B6B00E5A9BF /* x11common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B82C912B6A00E5A9BF /* x11common.cpp */; };
+		1A0F95122C912B6B00E5A9BF /* x11common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B82C912B6A00E5A9BF /* x11common.cpp */; };
+		1A0F95132C912B6B00E5A9BF /* x11common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B82C912B6A00E5A9BF /* x11common.cpp */; };
+		1A0F95142C912B6B00E5A9BF /* x11common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B82C912B6A00E5A9BF /* x11common.cpp */; };
+		1A0F95152C912B6B00E5A9BF /* x11common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B82C912B6A00E5A9BF /* x11common.cpp */; };
+		1A0F95162C912B6B00E5A9BF /* xkeyboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */; };
+		1A0F95172C912B6B00E5A9BF /* xkeyboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */; };
+		1A0F95182C912B6B00E5A9BF /* xkeyboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */; };
+		1A0F95192C912B6B00E5A9BF /* xkeyboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */; };
+		1A0F951A2C912B6B00E5A9BF /* xkeyboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */; };
+		1A0F951B2C912B6B00E5A9BF /* xkeyboard.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */; };
+		1A0F951C2C912B6B00E5A9BF /* xproperties.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */; };
+		1A0F951D2C912B6B00E5A9BF /* xproperties.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */; };
+		1A0F951E2C912B6B00E5A9BF /* xproperties.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */; };
+		1A0F951F2C912B6B00E5A9BF /* xproperties.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */; };
+		1A0F95202C912B6B00E5A9BF /* xproperties.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */; };
+		1A0F95212C912B6B00E5A9BF /* xproperties.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */; };
+		1A0F95222C912B6B00E5A9BF /* xvisual.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */; };
+		1A0F95232C912B6B00E5A9BF /* xvisual.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */; };
+		1A0F95242C912B6B00E5A9BF /* xvisual.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */; };
+		1A0F95252C912B6B00E5A9BF /* xvisual.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */; };
+		1A0F95262C912B6B00E5A9BF /* xvisual.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */; };
+		1A0F95272C912B6B00E5A9BF /* xvisual.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */; };
+		1A0F95282C912B6B00E5A9BF /* xrandr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */; };
+		1A0F95292C912B6B00E5A9BF /* xrandr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */; };
+		1A0F952A2C912B6B00E5A9BF /* xrandr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */; };
+		1A0F952B2C912B6B00E5A9BF /* xrandr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */; };
+		1A0F952C2C912B6B00E5A9BF /* xrandr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */; };
+		1A0F952D2C912B6B00E5A9BF /* xrandr.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */; };
+		1A0F952E2C912B6B00E5A9BF /* xwindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */; };
+		1A0F952F2C912B6B00E5A9BF /* xwindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */; };
+		1A0F95302C912B6B00E5A9BF /* xwindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */; };
+		1A0F95312C912B6B00E5A9BF /* xwindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */; };
+		1A0F95322C912B6B00E5A9BF /* xwindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */; };
+		1A0F95332C912B6B00E5A9BF /* xwindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */; };
+		1A0F95342C912B6B00E5A9BF /* xserver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C12C912B6A00E5A9BF /* xserver.cpp */; };
+		1A0F95352C912B6B00E5A9BF /* xserver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C12C912B6A00E5A9BF /* xserver.cpp */; };
+		1A0F95362C912B6B00E5A9BF /* xserver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C12C912B6A00E5A9BF /* xserver.cpp */; };
+		1A0F95372C912B6B00E5A9BF /* xserver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C12C912B6A00E5A9BF /* xserver.cpp */; };
+		1A0F95382C912B6B00E5A9BF /* xserver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C12C912B6A00E5A9BF /* xserver.cpp */; };
+		1A0F95392C912B6B00E5A9BF /* xserver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C12C912B6A00E5A9BF /* xserver.cpp */; };
+		1A0F953A2C912B6B00E5A9BF /* xdepth.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */; };
+		1A0F953B2C912B6B00E5A9BF /* xdepth.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */; };
+		1A0F953C2C912B6B00E5A9BF /* xdepth.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */; };
+		1A0F953D2C912B6B00E5A9BF /* xdepth.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */; };
+		1A0F953E2C912B6B00E5A9BF /* xdepth.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */; };
+		1A0F953F2C912B6B00E5A9BF /* xdepth.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */; };
+		1A0F95402C912B6B00E5A9BF /* xcolormap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */; };
+		1A0F95412C912B6B00E5A9BF /* xcolormap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */; };
+		1A0F95422C912B6B00E5A9BF /* xcolormap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */; };
+		1A0F95432C912B6B00E5A9BF /* xcolormap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */; };
+		1A0F95442C912B6B00E5A9BF /* xcolormap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */; };
+		1A0F95452C912B6B00E5A9BF /* xcolormap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */; };
+		1A0F95462C912B6B00E5A9BF /* xfbconfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */; };
+		1A0F95472C912B6B00E5A9BF /* xfbconfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */; };
+		1A0F95482C912B6B00E5A9BF /* xfbconfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */; };
+		1A0F95492C912B6B00E5A9BF /* xfbconfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */; };
+		1A0F954A2C912B6B00E5A9BF /* xfbconfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */; };
+		1A0F954B2C912B6B00E5A9BF /* xfbconfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */; };
+		1A0F954C2C912B6B00E5A9BF /* xinput2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */; };
+		1A0F954D2C912B6B00E5A9BF /* xinput2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */; };
+		1A0F954E2C912B6B00E5A9BF /* xinput2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */; };
+		1A0F954F2C912B6B00E5A9BF /* xinput2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */; };
+		1A0F95502C912B6B00E5A9BF /* xinput2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */; };
+		1A0F95512C912B6B00E5A9BF /* xinput2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */; };
+		1A0F95582C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
+		1A0F95592C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
+		1A0F955A2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
+		1A0F955B2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
+		1A0F955C2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
+		1A0F955D2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */; };
+		1A0F955E2C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
+		1A0F955F2C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
+		1A0F95602C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
+		1A0F95612C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
+		1A0F95622C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
+		1A0F95632C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */; };
+		1A0F95642C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
+		1A0F95652C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
+		1A0F95662C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
+		1A0F95672C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
+		1A0F95682C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
+		1A0F95692C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */; };
+		1A0F956F2C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
+		1A0F95702C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
+		1A0F95712C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
+		1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
+		1A0F95732C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
+		1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */; };
+		1A0F95772C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
+		1A0F95782C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
+		1A0F95792C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
+		1A0F957A2C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
+		1A0F957B2C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
+		1A0F957C2C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
 		1A1550F5263261B1006E0C8A /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550F4263261B1006E0C8A /* glew.cpp */; };
 		1A155103263261DF006E0C8A /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550FF263261DF006E0C8A /* mztools.c */; };
 		1A155104263261DF006E0C8A /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A155100263261DF006E0C8A /* ioapi.c */; };
@@ -171,7 +333,6 @@
 		1A80EF1E276EBCC70032A70A /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
 		1A80EF22276EBCC70032A70A /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
 		1A80EF28276EBCC70032A70A /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
-		1A80EF2D276EBCC70032A70A /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
 		1A80EF2F276EBCC70032A70A /* glMarshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4D2433BBBE003F17F1 /* glMarshal.cpp */; };
 		1A80EF30276EBCC70032A70A /* cpuonline.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE322433BBBE003F17F1 /* cpuonline.cpp */; };
 		1A80EF31276EBCC70032A70A /* x64Asm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD762433BBBE003F17F1 /* x64Asm.cpp */; };
@@ -210,7 +371,6 @@
 		1A80EF79276EBCC70032A70A /* uiSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2E2433BBBE003F17F1 /* uiSettings.cpp */; };
 		1A80EF80276EBCC70032A70A /* devtty.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE262433BBBE003F17F1 /* devtty.cpp */; };
 		1A80EF81276EBCC70032A70A /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */; };
-		1A80EF82276EBCC70032A70A /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
 		1A80EF87276EBCC70032A70A /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
 		1A80EF8D276EBCC70032A70A /* fsopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFA2433BBBE003F17F1 /* fsopennode.cpp */; };
 		1A80EF8F276EBCC70032A70A /* x64Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD7C2433BBBE003F17F1 /* x64Data.cpp */; };
@@ -246,7 +406,6 @@
 		1A80F00A276EBCC70032A70A /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
 		1A80F00D276EBCC70032A70A /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		1A80F00E276EBCC70032A70A /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
-		1A80F011276EBCC70032A70A /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1A80F013276EBCC70032A70A /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		1A80F014276EBCC70032A70A /* esopengl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE552433BBBE003F17F1 /* esopengl.c */; };
 		1A80F015276EBCC70032A70A /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
@@ -254,7 +413,6 @@
 		1A80F018276EBCC70032A70A /* readIcons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD142433BBBE003F17F1 /* readIcons.cpp */; };
 		1A80F01A276EBCC70032A70A /* uihelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD132433BBBE003F17F1 /* uihelper.cpp */; };
 		1A80F01D276EBCC70032A70A /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
-		1A80F01F276EBCC70032A70A /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		1A80F022276EBCC70032A70A /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
 		1A80F023276EBCC70032A70A /* globalSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD372433BBBE003F17F1 /* globalSettings.cpp */; };
 		1A80F027276EBCC70032A70A /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
@@ -311,7 +469,6 @@
 		1A80F0D1276EBF170032A70A /* ksocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3A2433BBBE003F17F1 /* ksocket.cpp */; };
 		1A80F0D4276EBF170032A70A /* cpuinfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE182433BBBE003F17F1 /* cpuinfo.cpp */; };
 		1A80F0DC276EBF170032A70A /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
-		1A80F0DF276EBF170032A70A /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
 		1A80F0E4276EBF170032A70A /* fszip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE92433BBBE003F17F1 /* fszip.cpp */; };
 		1A80F0E7276EBF170032A70A /* devzero.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE272433BBBE003F17F1 /* devzero.cpp */; };
 		1A80F0E8276EBF170032A70A /* common_xchg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9F2433BBBE003F17F1 /* common_xchg.cpp */; };
@@ -353,7 +510,6 @@
 		1A80F159276EBF170032A70A /* sdlgl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4C2433BBBE003F17F1 /* sdlgl.cpp */; };
 		1A80F15B276EBF170032A70A /* ktimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3B2433BBBE003F17F1 /* ktimer.cpp */; };
 		1A80F161276EBF170032A70A /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
-		1A80F163276EBF170032A70A /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1A80F164276EBF170032A70A /* self.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1A2433BBBE003F17F1 /* self.cpp */; };
 		1A80F166276EBF170032A70A /* threadutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F348C2440D7FB0038F5A4 /* threadutils.cpp */; };
 		1A80F168276EBF170032A70A /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
@@ -422,7 +578,6 @@
 		1A80F205276EBF170032A70A /* baseView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F347F2440D7D10038F5A4 /* baseView.cpp */; };
 		1A80F20E276EBF170032A70A /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
 		1A80F213276EBF170032A70A /* instructions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBE2433BBBE003F17F1 /* instructions.cpp */; };
-		1A80F214276EBF170032A70A /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
 		1A80F217276EBF170032A70A /* fpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9B2433BBBE003F17F1 /* fpu.cpp */; };
 		1A80F21F276EBF170032A70A /* appbar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD2F2433BBBE003F17F1 /* appbar.cpp */; };
 		1A80F220276EBF170032A70A /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
@@ -444,7 +599,6 @@
 		1A80F264276EBF170032A70A /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
 		1A80F266276EBF170032A70A /* uihelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD132433BBBE003F17F1 /* uihelper.cpp */; };
 		1A80F26A276EBF170032A70A /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
-		1A80F26C276EBF170032A70A /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		1A80F26F276EBF170032A70A /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
 		1A80F270276EBF170032A70A /* globalSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD372433BBBE003F17F1 /* globalSettings.cpp */; };
 		1A80F274276EBF170032A70A /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
@@ -515,9 +669,6 @@
 		1AAC184C2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
 		1AAC184D2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
 		1AAC184E2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */; };
-		1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
-		1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
-		1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		1AB0D6DC26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
 		1AB0D6DD26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
 		1AB0D6DE26CB4AAE00E18A08 /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
@@ -734,13 +885,6 @@
 		1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
 		1AFC480C2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
 		1AFC480D2663FFC000EE5FCC /* pixelformat.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC48092663FFC000EE5FCC /* pixelformat.cpp */; };
-		1AFC4810266570FD00EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
-		1AFC48112665728500EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
-		1AFC48122665728600EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
-		1AFC48132665728700EE5FCC /* boxedwineGL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */; };
-		7100913F2644D42C003413C3 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
-		710091402644D42C003413C3 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
-		710091412644D42C003413C3 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
 		710091422644D42C003413C3 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
 		710091432644D42C003413C3 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
 		710091442644D42C003413C3 /* kdspaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091362644D42B003413C3 /* kdspaudio.cpp */; };
@@ -848,7 +992,6 @@
 		71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
 		71222B8F2435169100CDBABD /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
 		71222B902435169100CDBABD /* threadedMainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */; };
-		71222B932435169100CDBABD /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		71222B942435169100CDBABD /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
 		71222B952435169100CDBABD /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
 		71222B962435169100CDBABD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
@@ -1015,7 +1158,6 @@
 		71222C5624351CBA00CDBABD /* readIcons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD142433BBBE003F17F1 /* readIcons.cpp */; };
 		71222C5724351CBA00CDBABD /* uihelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD132433BBBE003F17F1 /* uihelper.cpp */; };
 		71222C5824351CBA00CDBABD /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
-		71222C5924351CBA00CDBABD /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		71222C5A24351CBA00CDBABD /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
 		71222C5B24351CBA00CDBABD /* globalSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD372433BBBE003F17F1 /* globalSettings.cpp */; };
 		71222C5C24351CBA00CDBABD /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
@@ -1115,7 +1257,6 @@
 		7135DC59264EBCD0005D6AA6 /* recorder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD5A2433BBBE003F17F1 /* recorder.cpp */; };
 		7135DC5A264EBCD0005D6AA6 /* fsdiropennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF52433BBBE003F17F1 /* fsdiropennode.cpp */; };
 		7135DC5B264EBCD0005D6AA6 /* common_sse.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9A2433BBBE003F17F1 /* common_sse.cpp */; };
-		7135DC5C264EBCD0005D6AA6 /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */; };
 		7135DC5D264EBCD0005D6AA6 /* common_sse2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD972433BBBE003F17F1 /* common_sse2.cpp */; };
 		7135DC5E264EBCD0005D6AA6 /* common_pushpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD852433BBBE003F17F1 /* common_pushpop.cpp */; };
 		7135DC5F264EBCD0005D6AA6 /* fileutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD552433BBBE003F17F1 /* fileutils.cpp */; };
@@ -1157,11 +1298,9 @@
 		7135DC86264EBCD0005D6AA6 /* cpuscalingmaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE352433BBBE003F17F1 /* cpuscalingmaxfreq.cpp */; };
 		7135DC88264EBCD0005D6AA6 /* devsequencer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE242433BBBE003F17F1 /* devsequencer.cpp */; };
 		7135DC89264EBCD0005D6AA6 /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
-		7135DC8A264EBCD0005D6AA6 /* knativewindow.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091352644D42B003413C3 /* knativewindow.cpp */; };
 		7135DC8B264EBCD0005D6AA6 /* cpumaxfreq.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE342433BBBE003F17F1 /* cpumaxfreq.cpp */; };
 		7135DC8C264EBCD0005D6AA6 /* kprocess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1F2433BBBE003F17F1 /* kprocess.cpp */; };
 		7135DC8D264EBCD0005D6AA6 /* fszipnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEC2433BBBE003F17F1 /* fszipnode.cpp */; };
-		7135DC8E264EBCD0005D6AA6 /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		7135DC8F264EBCD0005D6AA6 /* devmixer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE252433BBBE003F17F1 /* devmixer.cpp */; };
 		7135DC90264EBCD0005D6AA6 /* glcommon.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE482433BBBE003F17F1 /* glcommon.cpp */; };
 		7135DC91264EBCD0005D6AA6 /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
@@ -1287,7 +1426,6 @@
 		71FBFEAC2433BBBE003F17F1 /* fszipopennode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFE2433BBBE003F17F1 /* fszipopennode.cpp */; };
 		71FBFEAD2433BBBE003F17F1 /* fsvirtualnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFF2433BBBE003F17F1 /* fsvirtualnode.cpp */; };
 		71FBFEAE2433BBBE003F17F1 /* threadedMainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */; };
-		71FBFEB12433BBBE003F17F1 /* winedrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */; };
 		71FBFEB32433BBBE003F17F1 /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
 		71FBFEB42433BBBE003F17F1 /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
 		71FBFEB52433BBBE003F17F1 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
@@ -1468,6 +1606,62 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1A0F94A32C912B6900E5A9BF /* xscreen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xscreen.cpp; path = x11/xscreen.cpp; sourceTree = "<group>"; };
+		1A0F94A42C912B6900E5A9BF /* xvisual.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xvisual.h; path = x11/xvisual.h; sourceTree = "<group>"; };
+		1A0F94A52C912B6900E5A9BF /* ximage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ximage.h; path = x11/ximage.h; sourceTree = "<group>"; };
+		1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xdrawable.cpp; path = x11/xdrawable.cpp; sourceTree = "<group>"; };
+		1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xvisualinfo.cpp; path = x11/xvisualinfo.cpp; sourceTree = "<group>"; };
+		1A0F94A82C912B6900E5A9BF /* ximage.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ximage.cpp; path = x11/ximage.cpp; sourceTree = "<group>"; };
+		1A0F94A92C912B6900E5A9BF /* xcursor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xcursor.cpp; path = x11/xcursor.cpp; sourceTree = "<group>"; };
+		1A0F94AA2C912B6900E5A9BF /* xfbconfig.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xfbconfig.h; path = x11/xfbconfig.h; sourceTree = "<group>"; };
+		1A0F94AB2C912B6900E5A9BF /* xcolormap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xcolormap.h; path = x11/xcolormap.h; sourceTree = "<group>"; };
+		1A0F94AC2C912B6900E5A9BF /* xcursor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xcursor.h; path = x11/xcursor.h; sourceTree = "<group>"; };
+		1A0F94AD2C912B6900E5A9BF /* displaydata.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = displaydata.h; path = x11/displaydata.h; sourceTree = "<group>"; };
+		1A0F94AE2C912B6900E5A9BF /* x11.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = x11.cpp; path = x11/x11.cpp; sourceTree = "<group>"; };
+		1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xcolor.cpp; path = x11/xcolor.cpp; sourceTree = "<group>"; };
+		1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xdisplay.cpp; path = x11/xdisplay.cpp; sourceTree = "<group>"; };
+		1A0F94B12C912B6A00E5A9BF /* x11.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = x11.h; path = x11/x11.h; sourceTree = "<group>"; };
+		1A0F94B22C912B6A00E5A9BF /* xgc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xgc.cpp; path = x11/xgc.cpp; sourceTree = "<group>"; };
+		1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = displaydata.cpp; path = x11/displaydata.cpp; sourceTree = "<group>"; };
+		1A0F94B42C912B6A00E5A9BF /* xcolor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xcolor.h; path = x11/xcolor.h; sourceTree = "<group>"; };
+		1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xpixmap.cpp; path = x11/xpixmap.cpp; sourceTree = "<group>"; };
+		1A0F94B62C912B6A00E5A9BF /* xdisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xdisplay.h; path = x11/xdisplay.h; sourceTree = "<group>"; };
+		1A0F94B72C912B6A00E5A9BF /* xpixmap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xpixmap.h; path = x11/xpixmap.h; sourceTree = "<group>"; };
+		1A0F94B82C912B6A00E5A9BF /* x11common.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = x11common.cpp; path = x11/x11common.cpp; sourceTree = "<group>"; };
+		1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xkeyboard.cpp; path = x11/xkeyboard.cpp; sourceTree = "<group>"; };
+		1A0F94BA2C912B6A00E5A9BF /* xdrawable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xdrawable.h; path = x11/xdrawable.h; sourceTree = "<group>"; };
+		1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xproperties.cpp; path = x11/xproperties.cpp; sourceTree = "<group>"; };
+		1A0F94BC2C912B6A00E5A9BF /* xserver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xserver.h; path = x11/xserver.h; sourceTree = "<group>"; };
+		1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xvisual.cpp; path = x11/xvisual.cpp; sourceTree = "<group>"; };
+		1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xrandr.cpp; path = x11/xrandr.cpp; sourceTree = "<group>"; };
+		1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xwindow.cpp; path = x11/xwindow.cpp; sourceTree = "<group>"; };
+		1A0F94C02C912B6A00E5A9BF /* xwindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xwindow.h; path = x11/xwindow.h; sourceTree = "<group>"; };
+		1A0F94C12C912B6A00E5A9BF /* xserver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xserver.cpp; path = x11/xserver.cpp; sourceTree = "<group>"; };
+		1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xdepth.cpp; path = x11/xdepth.cpp; sourceTree = "<group>"; };
+		1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xcolormap.cpp; path = x11/xcolormap.cpp; sourceTree = "<group>"; };
+		1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xfbconfig.cpp; path = x11/xfbconfig.cpp; sourceTree = "<group>"; };
+		1A0F94C52C912B6B00E5A9BF /* xgc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xgc.h; path = x11/xgc.h; sourceTree = "<group>"; };
+		1A0F94C62C912B6B00E5A9BF /* xproperties.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xproperties.h; path = x11/xproperties.h; sourceTree = "<group>"; };
+		1A0F94C72C912B6B00E5A9BF /* xscreen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xscreen.h; path = x11/xscreen.h; sourceTree = "<group>"; };
+		1A0F94C82C912B6B00E5A9BF /* xrandr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xrandr.h; path = x11/xrandr.h; sourceTree = "<group>"; };
+		1A0F94C92C912B6B00E5A9BF /* xinput2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xinput2.h; path = x11/xinput2.h; sourceTree = "<group>"; };
+		1A0F94CA2C912B6B00E5A9BF /* xdepth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xdepth.h; path = x11/xdepth.h; sourceTree = "<group>"; };
+		1A0F94CB2C912B6B00E5A9BF /* xkeyboard.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xkeyboard.h; path = x11/xkeyboard.h; sourceTree = "<group>"; };
+		1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xinput2.cpp; path = x11/xinput2.cpp; sourceTree = "<group>"; };
+		1A0F94CD2C912B6B00E5A9BF /* xvisualinfo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xvisualinfo.h; path = x11/xvisualinfo.h; sourceTree = "<group>"; };
+		1A0F95522C912B8300E5A9BF /* sdlgl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = sdlgl.h; sourceTree = "<group>"; };
+		1A0F95532C912BD000E5A9BF /* knativeinputSDL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = knativeinputSDL.h; path = ../../../platform/sdl/knativeinputSDL.h; sourceTree = "<group>"; };
+		1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativescreenGL.cpp; path = ../../../platform/sdl/knativescreenGL.cpp; sourceTree = "<group>"; };
+		1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativescreenSDL.cpp; path = ../../../platform/sdl/knativescreenSDL.cpp; sourceTree = "<group>"; };
+		1A0F95562C912BD100E5A9BF /* knativescreenSDL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = knativescreenSDL.h; path = ../../../platform/sdl/knativescreenSDL.h; sourceTree = "<group>"; };
+		1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativeinputSDL.cpp; path = ../../../platform/sdl/knativeinputSDL.cpp; sourceTree = "<group>"; };
+		1A0F956A2C912C3C00E5A9BF /* knativescreen.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativescreen.h; sourceTree = "<group>"; };
+		1A0F956B2C912C3C00E5A9BF /* kopengl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kopengl.h; sourceTree = "<group>"; };
+		1A0F956C2C912C3C00E5A9BF /* knativeinput.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativeinput.h; sourceTree = "<group>"; };
+		1A0F956D2C912C3C00E5A9BF /* platformOpenGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = platformOpenGL.h; sourceTree = "<group>"; };
+		1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformOpenGL.cpp; path = ../../../platform/linux/platformOpenGL.cpp; sourceTree = "<group>"; };
+		1A0F95752C9132DC00E5A9BF /* bheap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bheap.h; sourceTree = "<group>"; };
+		1A0F95762C9132DC00E5A9BF /* bheap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bheap.cpp; sourceTree = "<group>"; };
 		1A1550F32632619F006E0C8A /* glew.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = glew.h; path = ../../../../../../../lib/glew/include/GL/glew.h; sourceTree = "<group>"; };
 		1A1550F4263261B1006E0C8A /* glew.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = glew.cpp; path = ../../../../../../lib/glew/src/glew.cpp; sourceTree = "<group>"; };
 		1A1550FF263261DF006E0C8A /* mztools.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mztools.c; path = ../../../../../lib/zlib/contrib/minizip/mztools.c; sourceTree = "<group>"; };
@@ -1522,7 +1716,6 @@
 		1AAC18412C1E9A220089C40D /* stb_image.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stb_image.h; sourceTree = "<group>"; };
 		1AAC18482C1F59A60089C40D /* normalPlatformMultiThreaded.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = normalPlatformMultiThreaded.cpp; sourceTree = "<group>"; };
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
-		1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = wineaudiodrv.cpp; sourceTree = "<group>"; };
 		1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsdynamiclinknode.cpp; sourceTree = "<group>"; };
 		1AB0D6DB26CB4AA800E18A08 /* fsdynamiclinknode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsdynamiclinknode.h; sourceTree = "<group>"; };
 		1AC5F2892772D952001D0FCA /* armv8btOps_string.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_string.cpp; path = armv8bt/armv8btOps_string.cpp; sourceTree = "<group>"; };
@@ -1598,9 +1791,6 @@
 		1AFC479C2648471000EE5FCC /* audiounit.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = audiounit.cpp; path = ../../../platform/mac/audiounit.cpp; sourceTree = "<group>"; };
 		1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMIDI.framework; path = System/Library/Frameworks/CoreMIDI.framework; sourceTree = SDKROOT; };
 		1AFC48092663FFC000EE5FCC /* pixelformat.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = pixelformat.cpp; path = ../../../platform/mac/pixelformat.cpp; sourceTree = "<group>"; };
-		1AFC480E266570FD00EE5FCC /* boxedwineGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = boxedwineGL.h; sourceTree = "<group>"; };
-		1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = boxedwineGL.cpp; sourceTree = "<group>"; };
-		710091352644D42B003413C3 /* knativewindow.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativewindow.cpp; path = ../../../platform/sdl/knativewindow.cpp; sourceTree = "<group>"; };
 		710091362644D42B003413C3 /* kdspaudio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = kdspaudio.cpp; path = ../../../platform/sdl/kdspaudio.cpp; sourceTree = "<group>"; };
 		710091372644D42B003413C3 /* knativesystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativesystem.cpp; path = ../../../platform/sdl/knativesystem.cpp; sourceTree = "<group>"; };
 		710091382644D42B003413C3 /* knativethread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = knativethread.cpp; path = ../../../platform/sdl/knativethread.cpp; sourceTree = "<group>"; };
@@ -1686,7 +1876,6 @@
 		71DF8E1B248F29C300EE1E08 /* knativeaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativeaudio.h; sourceTree = "<group>"; };
 		71DF8E1C248F29C300EE1E08 /* knativesystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativesystem.h; sourceTree = "<group>"; };
 		71DF8E1D248F29C300EE1E08 /* knativethread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativethread.h; sourceTree = "<group>"; };
-		71DF8E1F248F29C300EE1E08 /* knativewindow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = knativewindow.h; sourceTree = "<group>"; };
 		71FBFCAD2433B815003F17F1 /* BoxedwineSlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BoxedwineSlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		71FBFCB02433B815003F17F1 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		71FBFCB12433B815003F17F1 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -1737,7 +1926,6 @@
 		71FBFD012433BBAD003F17F1 /* kpoll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kpoll.h; sourceTree = "<group>"; };
 		71FBFD032433BBAD003F17F1 /* devtty.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = devtty.h; sourceTree = "<group>"; };
 		71FBFD042433BBAD003F17F1 /* devnull.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = devnull.h; sourceTree = "<group>"; };
-		71FBFD052433BBAD003F17F1 /* memory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = memory.h; sourceTree = "<group>"; };
 		71FBFD062433BBAD003F17F1 /* kepoll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kepoll.h; sourceTree = "<group>"; };
 		71FBFD072433BBAD003F17F1 /* platform.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = platform.h; sourceTree = "<group>"; };
 		71FBFD082433BBAD003F17F1 /* devsequencer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = devsequencer.h; sourceTree = "<group>"; };
@@ -1959,7 +2147,6 @@
 		71FBFE062433BBBE003F17F1 /* threadedMainloop.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = threadedMainloop.cpp; sourceTree = "<group>"; };
 		71FBFE082433BBBE003F17F1 /* mainloop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mainloop.h; sourceTree = "<group>"; };
 		71FBFE0A2433BBBE003F17F1 /* startupArgs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = startupArgs.h; sourceTree = "<group>"; };
-		71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = winedrv.cpp; sourceTree = "<group>"; };
 		71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = startupArgs.cpp; sourceTree = "<group>"; };
 		71FBFE112433BBBE003F17F1 /* mainloop.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = mainloop.cpp; sourceTree = "<group>"; };
 		71FBFE132433BBBE003F17F1 /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
@@ -2130,6 +2317,56 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1A0F94A22C912B4100E5A9BF /* x11 */ = {
+			isa = PBXGroup;
+			children = (
+				1A0F94B32C912B6A00E5A9BF /* displaydata.cpp */,
+				1A0F94AD2C912B6900E5A9BF /* displaydata.h */,
+				1A0F94AE2C912B6900E5A9BF /* x11.cpp */,
+				1A0F94B12C912B6A00E5A9BF /* x11.h */,
+				1A0F94B82C912B6A00E5A9BF /* x11common.cpp */,
+				1A0F94AF2C912B6900E5A9BF /* xcolor.cpp */,
+				1A0F94B42C912B6A00E5A9BF /* xcolor.h */,
+				1A0F94C32C912B6A00E5A9BF /* xcolormap.cpp */,
+				1A0F94AB2C912B6900E5A9BF /* xcolormap.h */,
+				1A0F94A92C912B6900E5A9BF /* xcursor.cpp */,
+				1A0F94AC2C912B6900E5A9BF /* xcursor.h */,
+				1A0F94C22C912B6A00E5A9BF /* xdepth.cpp */,
+				1A0F94CA2C912B6B00E5A9BF /* xdepth.h */,
+				1A0F94B02C912B6900E5A9BF /* xdisplay.cpp */,
+				1A0F94B62C912B6A00E5A9BF /* xdisplay.h */,
+				1A0F94A62C912B6900E5A9BF /* xdrawable.cpp */,
+				1A0F94BA2C912B6A00E5A9BF /* xdrawable.h */,
+				1A0F94C42C912B6B00E5A9BF /* xfbconfig.cpp */,
+				1A0F94AA2C912B6900E5A9BF /* xfbconfig.h */,
+				1A0F94B22C912B6A00E5A9BF /* xgc.cpp */,
+				1A0F94C52C912B6B00E5A9BF /* xgc.h */,
+				1A0F94A82C912B6900E5A9BF /* ximage.cpp */,
+				1A0F94A52C912B6900E5A9BF /* ximage.h */,
+				1A0F94CC2C912B6B00E5A9BF /* xinput2.cpp */,
+				1A0F94C92C912B6B00E5A9BF /* xinput2.h */,
+				1A0F94B92C912B6A00E5A9BF /* xkeyboard.cpp */,
+				1A0F94CB2C912B6B00E5A9BF /* xkeyboard.h */,
+				1A0F94B52C912B6A00E5A9BF /* xpixmap.cpp */,
+				1A0F94B72C912B6A00E5A9BF /* xpixmap.h */,
+				1A0F94BB2C912B6A00E5A9BF /* xproperties.cpp */,
+				1A0F94C62C912B6B00E5A9BF /* xproperties.h */,
+				1A0F94BE2C912B6A00E5A9BF /* xrandr.cpp */,
+				1A0F94C82C912B6B00E5A9BF /* xrandr.h */,
+				1A0F94A32C912B6900E5A9BF /* xscreen.cpp */,
+				1A0F94C72C912B6B00E5A9BF /* xscreen.h */,
+				1A0F94C12C912B6A00E5A9BF /* xserver.cpp */,
+				1A0F94BC2C912B6A00E5A9BF /* xserver.h */,
+				1A0F94BD2C912B6A00E5A9BF /* xvisual.cpp */,
+				1A0F94A42C912B6900E5A9BF /* xvisual.h */,
+				1A0F94A72C912B6900E5A9BF /* xvisualinfo.cpp */,
+				1A0F94CD2C912B6B00E5A9BF /* xvisualinfo.h */,
+				1A0F94BF2C912B6A00E5A9BF /* xwindow.cpp */,
+				1A0F94C02C912B6A00E5A9BF /* xwindow.h */,
+			);
+			name = x11;
+			sourceTree = "<group>";
+		};
 		1A1550EA2632615F006E0C8A /* lib */ = {
 			isa = PBXGroup;
 			children = (
@@ -2328,11 +2565,15 @@
 		710091332644D416003413C3 /* sdl */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */,
+				1A0F95532C912BD000E5A9BF /* knativeinputSDL.h */,
+				1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */,
+				1A0F95552C912BD000E5A9BF /* knativescreenSDL.cpp */,
+				1A0F95562C912BD100E5A9BF /* knativescreenSDL.h */,
 				710091362644D42B003413C3 /* kdspaudio.cpp */,
 				710091392644D42C003413C3 /* knativeaudio.cpp */,
 				710091372644D42B003413C3 /* knativesystem.cpp */,
 				710091382644D42B003413C3 /* knativethread.cpp */,
-				710091352644D42B003413C3 /* knativewindow.cpp */,
 				7100913A2644D42C003413C3 /* sdlcallback.cpp */,
 				7100913B2644D42C003413C3 /* sdlcallback.h */,
 			);
@@ -2342,6 +2583,7 @@
 		710091512644D431003413C3 /* linux */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */,
 				1AC5F2F92772D9D6001D0FCA /* platformThreads-armv8.cpp */,
 				710091542644D44E003413C3 /* platform.cpp */,
 				710091562644D44E003413C3 /* platformThreads-x64.cpp */,
@@ -2492,6 +2734,10 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F956C2C912C3C00E5A9BF /* knativeinput.h */,
+				1A0F956A2C912C3C00E5A9BF /* knativescreen.h */,
+				1A0F956B2C912C3C00E5A9BF /* kopengl.h */,
+				1A0F956D2C912C3C00E5A9BF /* platformOpenGL.h */,
 				1A6821772BF44BB1001AA732 /* kevent.h */,
 				1ADBD87E2B9E25CC0074867C /* knetlink.h */,
 				1ADBD87D2B94253F0074867C /* procstat.h */,
@@ -2503,7 +2749,6 @@
 				71DF8E1B248F29C300EE1E08 /* knativeaudio.h */,
 				71DF8E1C248F29C300EE1E08 /* knativesystem.h */,
 				71DF8E1D248F29C300EE1E08 /* knativethread.h */,
-				71DF8E1F248F29C300EE1E08 /* knativewindow.h */,
 				71FBFCD82433BBAD003F17F1 /* devinput.h */,
 				71FBFCD92433BBAD003F17F1 /* syscpuscalingcurfreq.h */,
 				71FBFCDA2433BBAD003F17F1 /* boxedwine.h */,
@@ -2548,7 +2793,6 @@
 				71FBFD012433BBAD003F17F1 /* kpoll.h */,
 				71FBFD032433BBAD003F17F1 /* devtty.h */,
 				71FBFD042433BBAD003F17F1 /* devnull.h */,
-				71FBFD052433BBAD003F17F1 /* memory.h */,
 				71FBFD062433BBAD003F17F1 /* kepoll.h */,
 				71FBFD072433BBAD003F17F1 /* platform.h */,
 				71FBFD082433BBAD003F17F1 /* devsequencer.h */,
@@ -2563,6 +2807,7 @@
 		71FBFD0C2433BBBE003F17F1 /* source */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F94A22C912B4100E5A9BF /* x11 */,
 				1AC96011278FB67800107ED0 /* vulkan */,
 				71FBFD0D2433BBBE003F17F1 /* ui */,
 				71FBFD442433BBBE003F17F1 /* test */,
@@ -2699,6 +2944,8 @@
 		71FBFD4D2433BBBE003F17F1 /* util */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F95762C9132DC00E5A9BF /* bheap.cpp */,
+				1A0F95752C9132DC00E5A9BF /* bheap.h */,
 				1AAC18402C1E9A220089C40D /* stb_image.cpp */,
 				1AAC18412C1E9A220089C40D /* stb_image.h */,
 				1AAC18392C1E96430089C40D /* pixelMatch.cpp */,
@@ -2961,11 +3208,9 @@
 		71FBFE022433BBBE003F17F1 /* sdl */ = {
 			isa = PBXGroup;
 			children = (
-				1AB0CAFD263BA8AC003AF407 /* wineaudiodrv.cpp */,
 				71FBFE042433BBBE003F17F1 /* multiThreaded */,
 				71FBFE082433BBBE003F17F1 /* mainloop.h */,
 				71FBFE0A2433BBBE003F17F1 /* startupArgs.h */,
-				71FBFE0B2433BBBE003F17F1 /* winedrv.cpp */,
 				71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */,
 				71FBFE102433BBBE003F17F1 /* singleThreaded */,
 				71FBFE132433BBBE003F17F1 /* main.cpp */,
@@ -3081,8 +3326,6 @@
 			isa = PBXGroup;
 			children = (
 				71B2D2FB2668177300010AB6 /* osmesa */,
-				1AFC480F266570FD00EE5FCC /* boxedwineGL.cpp */,
-				1AFC480E266570FD00EE5FCC /* boxedwineGL.h */,
 				71FBFE412433BBBE003F17F1 /* mesa */,
 				71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */,
 				71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */,
@@ -3114,6 +3357,7 @@
 		71FBFE4B2433BBBE003F17F1 /* sdl */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F95522C912B8300E5A9BF /* sdlgl.h */,
 				71FBFE4C2433BBBE003F17F1 /* sdlgl.cpp */,
 			);
 			path = sdl;
@@ -3426,9 +3670,11 @@
 				1A80EE62276EBCC70032A70A /* waitDlg.cpp in Sources */,
 				1A80EE65276EBCC70032A70A /* kpoll.cpp in Sources */,
 				1A55D65D2A08428F002B7021 /* compress.c in Sources */,
+				1A0F94DC2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */,
 				1A80EE6B276EBCC70032A70A /* mainui.cpp in Sources */,
 				1A80EE6D276EBCC70032A70A /* common_other.cpp in Sources */,
 				1A80EE6E276EBCC70032A70A /* networkutils.cpp in Sources */,
+				1A0F95062C912B6B00E5A9BF /* displaydata.cpp in Sources */,
 				1A80EE70276EBCC70032A70A /* esdisplaylist.c in Sources */,
 				1A80EE7A276EBCC70032A70A /* decoder.cpp in Sources */,
 				1A80EE7C276EBCC70032A70A /* kdspaudio.cpp in Sources */,
@@ -3446,9 +3692,11 @@
 				1A80EEA1276EBCC70032A70A /* fsmemopennode.cpp in Sources */,
 				1A80EEA5276EBCC70032A70A /* fsfileopennode.cpp in Sources */,
 				1A80EEA7276EBCC70032A70A /* kepoll.cpp in Sources */,
+				1A0F95302C912B6B00E5A9BF /* xwindow.cpp in Sources */,
 				1A80EEAA276EBCC70032A70A /* soft_file_map.cpp in Sources */,
 				1A80EEAB276EBCC70032A70A /* imgui_draw.cpp in Sources */,
 				1A80EEAD276EBCC70032A70A /* stringutil.cpp in Sources */,
+				1A0F95792C9132DC00E5A9BF /* bheap.cpp in Sources */,
 				1A80EEB3276EBCC70032A70A /* common_arith.cpp in Sources */,
 				1ADBD86C2B92E7B60074867C /* sysfs.cpp in Sources */,
 				1A55D6512A08428F002B7021 /* crc32.c in Sources */,
@@ -3470,6 +3718,7 @@
 				1A80EEDE276EBCC70032A70A /* boxedContainer.cpp in Sources */,
 				1ADBD8542B92E7B60074867C /* sysfb.cpp in Sources */,
 				1A80EEE1276EBCC70032A70A /* listViewItem.cpp in Sources */,
+				1A0F95362C912B6B00E5A9BF /* xserver.cpp in Sources */,
 				1A80EEE2276EBCC70032A70A /* kscheduler.cpp in Sources */,
 				1A80EEE4276EBCC70032A70A /* common_sse2.cpp in Sources */,
 				1A80EEE6276EBCC70032A70A /* x64CodeChunk.cpp in Sources */,
@@ -3477,14 +3726,18 @@
 				1A80EEF2276EBCC70032A70A /* kfile.cpp in Sources */,
 				1A80EEF5276EBCC70032A70A /* downloadDlg.cpp in Sources */,
 				1A80EEF6276EBCC70032A70A /* knativethread.cpp in Sources */,
+				1A0F953C2C912B6B00E5A9BF /* xdepth.cpp in Sources */,
+				1A0F95122C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				1A80EEF7276EBCC70032A70A /* imgui_widgets.cpp in Sources */,
 				1A80EEF9276EBCC70032A70A /* ImGuiLayout.cpp in Sources */,
 				1A80EEFF276EBCC70032A70A /* glfunctions_ext2.cpp in Sources */,
+				1A0F95002C912B6B00E5A9BF /* xgc.cpp in Sources */,
 				1A80EF00276EBCC70032A70A /* glcommon.cpp in Sources */,
 				1A80EF01276EBCC70032A70A /* platformThreads.cpp in Sources */,
 				1A80EF06276EBCC70032A70A /* kmemory.cpp in Sources */,
 				1AC5F2AD2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				1A80EF0D276EBCC70032A70A /* devnull.cpp in Sources */,
+				1A0F950C2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 				1A80EF0E276EBCC70032A70A /* testSSE2.cpp in Sources */,
 				1A80EF0F276EBCC70032A70A /* devmixer.cpp in Sources */,
 				1A80EF10276EBCC70032A70A /* sdlgl.cpp in Sources */,
@@ -3493,12 +3746,12 @@
 				1A80EF1A276EBCC70032A70A /* self.cpp in Sources */,
 				1A80EF1C276EBCC70032A70A /* threadutils.cpp in Sources */,
 				1A80EF1E276EBCC70032A70A /* testSSE.cpp in Sources */,
+				1A0F95422C912B6B00E5A9BF /* xcolormap.cpp in Sources */,
 				1A80EF22276EBCC70032A70A /* soft_ro_page.cpp in Sources */,
 				1A80EF28276EBCC70032A70A /* MacPlatform.m in Sources */,
 				1AC5F2E32772D957001D0FCA /* armv8btOps.cpp in Sources */,
 				1AC5F2E92772D957001D0FCA /* armv8btAsm.cpp in Sources */,
 				1AC5F2F52772D957001D0FCA /* armv8btCPU.cpp in Sources */,
-				1A80EF2D276EBCC70032A70A /* knativewindow.cpp in Sources */,
 				1A80EF2F276EBCC70032A70A /* glMarshal.cpp in Sources */,
 				1A80EF30276EBCC70032A70A /* cpuonline.cpp in Sources */,
 				1A80EF31276EBCC70032A70A /* x64Asm.cpp in Sources */,
@@ -3509,6 +3762,7 @@
 				1A55D6592A08428F002B7021 /* zutil.c in Sources */,
 				1A80EF36276EBCC70032A70A /* ksystem.cpp in Sources */,
 				1A55D62F2A0841E2002B7021 /* inflate.c in Sources */,
+				1A0F94E82C912B6B00E5A9BF /* xcursor.cpp in Sources */,
 				1A80EF39276EBCC70032A70A /* soft_native_page.cpp in Sources */,
 				1AE7E5DA2B5A1C7D00D29E4A /* btData.cpp in Sources */,
 				1A80EF3A276EBCC70032A70A /* audiounit.cpp in Sources */,
@@ -3526,9 +3780,12 @@
 				1A80EF53276EBCC70032A70A /* glMarshalSize.cpp in Sources */,
 				1A80EF54276EBCC70032A70A /* optionsView.cpp in Sources */,
 				1A80EF55276EBCC70032A70A /* platformThreads-x64.cpp in Sources */,
+				1A0F94D62C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
 				1A80EF56276EBCC70032A70A /* knativesocket.cpp in Sources */,
 				1A80EF57276EBCC70032A70A /* soft_code_page.cpp in Sources */,
 				1A55D64D2A08428F002B7021 /* deflate.c in Sources */,
+				1A0F94EE2C912B6B00E5A9BF /* x11.cpp in Sources */,
+				1A0F95242C912B6B00E5A9BF /* xvisual.cpp in Sources */,
 				1A80EF58276EBCC70032A70A /* osmesa.cpp in Sources */,
 				1A80EF59276EBCC70032A70A /* boxedTexture.cpp in Sources */,
 				1A55D63F2A0841E2002B7021 /* infback.c in Sources */,
@@ -3541,11 +3798,15 @@
 				1A80EF64276EBCC70032A70A /* kthread.cpp in Sources */,
 				1A80EF66276EBCC70032A70A /* kunixsocket.cpp in Sources */,
 				1A80EF68276EBCC70032A70A /* common_mmx.cpp in Sources */,
+				1A0F94F42C912B6B00E5A9BF /* xcolor.cpp in Sources */,
 				1A80EF6B276EBCC70032A70A /* recorder.cpp in Sources */,
+				1A0F94FA2C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				1A80EF6D276EBCC70032A70A /* testMMX.cpp in Sources */,
+				1A0F952A2C912B6B00E5A9BF /* xrandr.cpp in Sources */,
 				1A80EF70276EBCC70032A70A /* pugixml.cpp in Sources */,
 				1AC5F2D12772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				1AC5F2BF2772D957001D0FCA /* armv8btData.cpp in Sources */,
+				1A0F94D02C912B6B00E5A9BF /* xscreen.cpp in Sources */,
 				1AE7E5D52B5A1C7700D29E4A /* btCpu.cpp in Sources */,
 				1AE7E5CA2B5A1C6700D29E4A /* btCodeChunk.cpp in Sources */,
 				1A80EF75276EBCC70032A70A /* threadedMainloop.cpp in Sources */,
@@ -3555,7 +3816,6 @@
 				1AA711B22B492273008704E2 /* bstring.cpp in Sources */,
 				1AC5F2B92772D957001D0FCA /* armv8btOps_sse_minmax.cpp in Sources */,
 				1A80EF81276EBCC70032A70A /* knativecoreaudio.cpp in Sources */,
-				1A80EF82276EBCC70032A70A /* boxedwineGL.cpp in Sources */,
 				1A55D6552A08428F002B7021 /* gzclose.c in Sources */,
 				1A80EF87276EBCC70032A70A /* fszipopennode.cpp in Sources */,
 				1A55D6612A08428F002B7021 /* uncompr.c in Sources */,
@@ -3563,6 +3823,7 @@
 				1ADBD8602B92E7B60074867C /* sysmouse.cpp in Sources */,
 				1A80EF8F276EBCC70032A70A /* x64Data.cpp in Sources */,
 				1AC5F2CB2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
+				1A0F94E22C912B6B00E5A9BF /* ximage.cpp in Sources */,
 				1A80EF90276EBCC70032A70A /* yesNoDlg.cpp in Sources */,
 				1ADBD8722B92E7B60074867C /* sysbususb.cpp in Sources */,
 				1A80EF93276EBCC70032A70A /* fsfilenode.cpp in Sources */,
@@ -3576,6 +3837,7 @@
 				1A80EFA7276EBCC70032A70A /* soft_no_page.cpp in Sources */,
 				1A80EFAA276EBCC70032A70A /* installView.cpp in Sources */,
 				1A80EFAB276EBCC70032A70A /* llvm_helper.cpp in Sources */,
+				1A0F95602C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
 				1A80EFAE276EBCC70032A70A /* fszipnode.cpp in Sources */,
 				1A80EFAF276EBCC70032A70A /* imgui.cpp in Sources */,
 				1A80EFB7276EBCC70032A70A /* soft_rw_page.cpp in Sources */,
@@ -3591,7 +3853,10 @@
 				1A80EFD8276EBCC70032A70A /* common_fpu.cpp in Sources */,
 				1AC5F2FC2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				1A80EFE8276EBCC70032A70A /* glext.cpp in Sources */,
+				1A0F95482C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
+				1A0F951E2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				1A80EFEB276EBCC70032A70A /* spinnerControl.cpp in Sources */,
+				1A0F95712C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1A80EFF2276EBCC70032A70A /* log.cpp in Sources */,
 				1A80EFF8276EBCC70032A70A /* common_sse.cpp in Sources */,
 				1A80EFFE276EBCC70032A70A /* soft_copy_on_write_page.cpp in Sources */,
@@ -3601,18 +3866,18 @@
 				1A80F00D276EBCC70032A70A /* coremidi.cpp in Sources */,
 				1A80F00E276EBCC70032A70A /* kfiledescriptor.cpp in Sources */,
 				1A55D6372A0841E2002B7021 /* inffast.c in Sources */,
-				1A80F011276EBCC70032A70A /* wineaudiodrv.cpp in Sources */,
 				1A80F013276EBCC70032A70A /* soft_wo_page.cpp in Sources */,
 				1A80F014276EBCC70032A70A /* esopengl.c in Sources */,
+				1A0F955A2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				1A80F015276EBCC70032A70A /* fsdynamiclinknode.cpp in Sources */,
 				1A80F016276EBCC70032A70A /* configFile.cpp in Sources */,
 				1AC5F2D72772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1A80F018276EBCC70032A70A /* readIcons.cpp in Sources */,
 				1A80F01A276EBCC70032A70A /* uihelper.cpp in Sources */,
+				1A0F95662C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
 				1AC5F2B32772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				1A80F01D276EBCC70032A70A /* imguitinyfiledialogs.cpp in Sources */,
 				1AA711C22B505C99008704E2 /* kmemory_soft.cpp in Sources */,
-				1A80F01F276EBCC70032A70A /* winedrv.cpp in Sources */,
 				1A80F022276EBCC70032A70A /* devdsp.cpp in Sources */,
 				1AC9601F278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				1A80F023276EBCC70032A70A /* globalSettings.cpp in Sources */,
@@ -3624,6 +3889,7 @@
 				1A80F034276EBCC70032A70A /* loader.cpp in Sources */,
 				1A80F039276EBCC70032A70A /* glMarshalVertex.cpp in Sources */,
 				1A55D66A2A0842E8002B7021 /* trees.c in Sources */,
+				1A0F95182C912B6B00E5A9BF /* xkeyboard.cpp in Sources */,
 				1A80F041276EBCC70032A70A /* boxedApp.cpp in Sources */,
 				1AC96019278FB69600107ED0 /* vk_host.cpp in Sources */,
 				1A80F048276EBCC70032A70A /* soft_invalid_page.cpp in Sources */,
@@ -3643,6 +3909,7 @@
 				1A80F073276EBCC70032A70A /* soft_ram.cpp in Sources */,
 				1A80F074276EBCC70032A70A /* srcgen.cpp in Sources */,
 				1A80F075276EBCC70032A70A /* helpView.cpp in Sources */,
+				1A0F954E2C912B6B00E5A9BF /* xinput2.cpp in Sources */,
 				1A80F076276EBCC70032A70A /* fsvirtualnode.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3663,9 +3930,11 @@
 				1A80F0AB276EBF170032A70A /* waitDlg.cpp in Sources */,
 				1AC5F2F62772D957001D0FCA /* armv8btCPU.cpp in Sources */,
 				1A80F0AE276EBF170032A70A /* kpoll.cpp in Sources */,
+				1A0F94DD2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */,
 				1A80F0B4276EBF170032A70A /* mainui.cpp in Sources */,
 				1A80F0B6276EBF170032A70A /* common_other.cpp in Sources */,
 				1A80F0B7276EBF170032A70A /* networkutils.cpp in Sources */,
+				1A0F95072C912B6B00E5A9BF /* displaydata.cpp in Sources */,
 				1A80F0B9276EBF170032A70A /* esdisplaylist.c in Sources */,
 				1A80F0BF276EBF170032A70A /* armv8CPU.cpp in Sources */,
 				1A80F0C2276EBF170032A70A /* pugixml.cpp in Sources */,
@@ -3679,14 +3948,15 @@
 				1A80F0D4276EBF170032A70A /* cpuinfo.cpp in Sources */,
 				1AC5F2EA2772D957001D0FCA /* armv8btAsm.cpp in Sources */,
 				1A80F0DC276EBF170032A70A /* kdspaudio.cpp in Sources */,
-				1A80F0DF276EBF170032A70A /* boxedwineGL.cpp in Sources */,
 				1A80F0E4276EBF170032A70A /* fszip.cpp in Sources */,
 				1A55D64E2A08428F002B7021 /* deflate.c in Sources */,
 				1A80F0E7276EBF170032A70A /* devzero.cpp in Sources */,
+				1A0F95312C912B6B00E5A9BF /* xwindow.cpp in Sources */,
 				1A80F0E8276EBF170032A70A /* common_xchg.cpp in Sources */,
 				1A80F0E9276EBF170032A70A /* x64CPU.cpp in Sources */,
 				1A80F0EB276EBF170032A70A /* devinput.cpp in Sources */,
 				1A80F0EC276EBF170032A70A /* fsmemopennode.cpp in Sources */,
+				1A0F957A2C9132DC00E5A9BF /* bheap.cpp in Sources */,
 				1ADBD86D2B92E7B60074867C /* sysfs.cpp in Sources */,
 				1AC5F2F02772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				1A80F0F0276EBF170032A70A /* fsfileopennode.cpp in Sources */,
@@ -3707,6 +3977,7 @@
 				1A80F117276EBF170032A70A /* fsmemnode.cpp in Sources */,
 				1ADBD8552B92E7B60074867C /* sysfb.cpp in Sources */,
 				1A80F11D276EBF170032A70A /* devurandom.cpp in Sources */,
+				1A0F95372C912B6B00E5A9BF /* xserver.cpp in Sources */,
 				1A80F124276EBF170032A70A /* x64Ops.cpp in Sources */,
 				1A80F126276EBF170032A70A /* zip.c in Sources */,
 				1A80F129276EBF170032A70A /* boxedContainer.cpp in Sources */,
@@ -3714,14 +3985,18 @@
 				1A80F12D276EBF170032A70A /* kscheduler.cpp in Sources */,
 				1A80F12F276EBF170032A70A /* common_sse2.cpp in Sources */,
 				1AC9601A278FB69600107ED0 /* vk_host.cpp in Sources */,
+				1A0F953D2C912B6B00E5A9BF /* xdepth.cpp in Sources */,
+				1A0F95132C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				1A80F131276EBF170032A70A /* x64CodeChunk.cpp in Sources */,
 				1A80F136276EBF170032A70A /* kobject.cpp in Sources */,
 				1A22363A2820A85200E74D88 /* uptime.cpp in Sources */,
+				1A0F95012C912B6B00E5A9BF /* xgc.cpp in Sources */,
 				1A80F13D276EBF170032A70A /* kfile.cpp in Sources */,
 				1A80F140276EBF170032A70A /* downloadDlg.cpp in Sources */,
 				1A80F141276EBF170032A70A /* imgui_widgets.cpp in Sources */,
 				1A80F143276EBF170032A70A /* ImGuiLayout.cpp in Sources */,
 				1A80F149276EBF170032A70A /* glfunctions_ext2.cpp in Sources */,
+				1A0F950D2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 				1A80F14A276EBF170032A70A /* glcommon.cpp in Sources */,
 				1A80F14F276EBF170032A70A /* kmemory.cpp in Sources */,
 				1A80F156276EBF170032A70A /* devnull.cpp in Sources */,
@@ -3730,7 +4005,7 @@
 				1A80F159276EBF170032A70A /* sdlgl.cpp in Sources */,
 				1A80F15B276EBF170032A70A /* ktimer.cpp in Sources */,
 				1A80F161276EBF170032A70A /* main.cpp in Sources */,
-				1A80F163276EBF170032A70A /* wineaudiodrv.cpp in Sources */,
+				1A0F95432C912B6B00E5A9BF /* xcolormap.cpp in Sources */,
 				1A80F164276EBF170032A70A /* self.cpp in Sources */,
 				1A80F166276EBF170032A70A /* threadutils.cpp in Sources */,
 				1A80F168276EBF170032A70A /* testSSE.cpp in Sources */,
@@ -3746,6 +4021,7 @@
 				1A80F17C276EBF170032A70A /* sdlcallback.cpp in Sources */,
 				1A80F17D276EBF170032A70A /* boxedwineData.cpp in Sources */,
 				1AE7E5DB2B5A1C7D00D29E4A /* btData.cpp in Sources */,
+				1A0F94E92C912B6B00E5A9BF /* xcursor.cpp in Sources */,
 				1A80F17E276EBF170032A70A /* boxedTranslation.cpp in Sources */,
 				1A80F180276EBF170032A70A /* ksystem.cpp in Sources */,
 				1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */,
@@ -3763,9 +4039,12 @@
 				1A80F191276EBF170032A70A /* startupArgs.cpp in Sources */,
 				1A80F197276EBF170032A70A /* fsdiropennode.cpp in Sources */,
 				1A80F19B276EBF170032A70A /* AppDelegate.m in Sources */,
+				1A0F94D72C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
 				1A80F19D276EBF170032A70A /* ioapi.c in Sources */,
 				1A80F19F276EBF170032A70A /* glMarshalSize.cpp in Sources */,
 				1A80F1A0276EBF170032A70A /* optionsView.cpp in Sources */,
+				1A0F94EF2C912B6B00E5A9BF /* x11.cpp in Sources */,
+				1A0F95252C912B6B00E5A9BF /* xvisual.cpp in Sources */,
 				1AC5F2C02772D957001D0FCA /* armv8btData.cpp in Sources */,
 				1A80F1A1276EBF170032A70A /* knativesocket.cpp in Sources */,
 				1A80F1A2276EBF170032A70A /* pixelformat.cpp in Sources */,
@@ -3778,11 +4057,15 @@
 				1A80F1AC276EBF170032A70A /* imgui_impl_opengl3.cpp in Sources */,
 				1AC5F2B42772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				1A80F1AF276EBF170032A70A /* kthread.cpp in Sources */,
+				1A0F94F52C912B6B00E5A9BF /* xcolor.cpp in Sources */,
 				1A80F1B1276EBF170032A70A /* kunixsocket.cpp in Sources */,
+				1A0F94FB2C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				1A80F1B3276EBF170032A70A /* common_mmx.cpp in Sources */,
+				1A0F952B2C912B6B00E5A9BF /* xrandr.cpp in Sources */,
 				1A80F1B6276EBF170032A70A /* recorder.cpp in Sources */,
 				1A80F1B8276EBF170032A70A /* testMMX.cpp in Sources */,
 				1A55D6302A0841E2002B7021 /* inflate.c in Sources */,
+				1A0F94D12C912B6B00E5A9BF /* xscreen.cpp in Sources */,
 				1AE7E5D62B5A1C7700D29E4A /* btCpu.cpp in Sources */,
 				1AE7E5CB2B5A1C6800D29E4A /* btCodeChunk.cpp in Sources */,
 				1A80F1BF276EBF170032A70A /* threadedMainloop.cpp in Sources */,
@@ -3800,6 +4083,7 @@
 				1ADBD8612B92E7B60074867C /* sysmouse.cpp in Sources */,
 				1A80F1DC276EBF170032A70A /* fsfilenode.cpp in Sources */,
 				1A80F1DD276EBF170032A70A /* player.cpp in Sources */,
+				1A0F94E32C912B6B00E5A9BF /* ximage.cpp in Sources */,
 				1A80F1E0276EBF170032A70A /* normal_strings.cpp in Sources */,
 				1ADBD8732B92E7B60074867C /* sysbususb.cpp in Sources */,
 				1A80F1E1276EBF170032A70A /* ksignal.cpp in Sources */,
@@ -3813,6 +4097,7 @@
 				1A80F1E9276EBF170032A70A /* knativeaudio.cpp in Sources */,
 				1AA711B32B492273008704E2 /* bstring.cpp in Sources */,
 				1A80F1F0276EBF170032A70A /* meminfo.cpp in Sources */,
+				1A0F95612C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
 				1A80F1F2276EBF170032A70A /* soft_no_page.cpp in Sources */,
 				1A80F1F3276EBF170032A70A /* knativethread.cpp in Sources */,
 				1A80F1F6276EBF170032A70A /* installView.cpp in Sources */,
@@ -3824,12 +4109,14 @@
 				1ADBD87A2B94249B0074867C /* procstat.cpp in Sources */,
 				1A80F20E276EBF170032A70A /* mainloop.cpp in Sources */,
 				1A80F213276EBF170032A70A /* instructions.cpp in Sources */,
-				1A80F214276EBF170032A70A /* knativewindow.cpp in Sources */,
 				1A80F217276EBF170032A70A /* fpu.cpp in Sources */,
 				1A80F21F276EBF170032A70A /* appbar.cpp in Sources */,
 				1A80F220276EBF170032A70A /* coremidi.cpp in Sources */,
+				1A0F95492C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
+				1A0F951F2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				1AC5F2D22772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				1A80F224276EBF170032A70A /* appFile.cpp in Sources */,
+				1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1AC5F2D82772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1A80F225276EBF170032A70A /* common_fpu.cpp in Sources */,
 				1A80F235276EBF170032A70A /* glext.cpp in Sources */,
@@ -3841,15 +4128,16 @@
 				1A80F24E276EBF170032A70A /* fs.cpp in Sources */,
 				1A80F250276EBF170032A70A /* unzip.c in Sources */,
 				1A80F258276EBF170032A70A /* appChooserDlg.cpp in Sources */,
+				1A0F955B2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				1A80F25B276EBF170032A70A /* kfiledescriptor.cpp in Sources */,
 				1A80F25F276EBF170032A70A /* soft_wo_page.cpp in Sources */,
 				1A80F260276EBF170032A70A /* esopengl.c in Sources */,
 				1A80F261276EBF170032A70A /* configFile.cpp in Sources */,
 				1A80F263276EBF170032A70A /* readIcons.cpp in Sources */,
+				1A0F95672C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
 				1A80F264276EBF170032A70A /* osmesa.cpp in Sources */,
 				1A80F266276EBF170032A70A /* uihelper.cpp in Sources */,
 				1A80F26A276EBF170032A70A /* imguitinyfiledialogs.cpp in Sources */,
-				1A80F26C276EBF170032A70A /* winedrv.cpp in Sources */,
 				1A80F26F276EBF170032A70A /* devdsp.cpp in Sources */,
 				1A80F270276EBF170032A70A /* globalSettings.cpp in Sources */,
 				1A80F274276EBF170032A70A /* mesagl.c in Sources */,
@@ -3861,6 +4149,7 @@
 				1A80F282276EBF170032A70A /* loader.cpp in Sources */,
 				1AC5F2CC2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
 				1A80F287276EBF170032A70A /* glMarshalVertex.cpp in Sources */,
+				1A0F95192C912B6B00E5A9BF /* xkeyboard.cpp in Sources */,
 				1A80F28F276EBF170032A70A /* platformThreads-x64.cpp in Sources */,
 				1A80F290276EBF170032A70A /* boxedApp.cpp in Sources */,
 				1A80F297276EBF170032A70A /* soft_invalid_page.cpp in Sources */,
@@ -3880,6 +4169,7 @@
 				1A80F2C2276EBF170032A70A /* helpView.cpp in Sources */,
 				1A55D6662A08428F002B7021 /* adler32.c in Sources */,
 				1A80F2C3276EBF170032A70A /* fsvirtualnode.cpp in Sources */,
+				1A0F954F2C912B6B00E5A9BF /* xinput2.cpp in Sources */,
 				1AC5F2DE2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -3904,14 +4194,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A0F95322C912B6B00E5A9BF /* xwindow.cpp in Sources */,
 				711F834B24534A06008E6A0C /* MacPlatform.m in Sources */,
 				710091622644D44E003413C3 /* platformThreads.cpp in Sources */,
 				1AC5F2FE2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				71222B452435163F00CDBABD /* stringutil.cpp in Sources */,
 				71222BA82435169100CDBABD /* devdsp.cpp in Sources */,
 				71222B402435163F00CDBABD /* crc.cpp in Sources */,
+				1A0F95202C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				71222BB02435169100CDBABD /* cpuonline.cpp in Sources */,
 				71222B632435169100CDBABD /* x64Data.cpp in Sources */,
+				1A0F94DE2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */,
 				71222B3F2435163100CDBABD /* testMMX.cpp in Sources */,
 				1AAC18462C1E9A220089C40D /* stb_image.cpp in Sources */,
 				1AFC476E26409EB600EE5FCC /* armv8CPU.cpp in Sources */,
@@ -3927,7 +4220,6 @@
 				1AC5F2C72772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				71222B422435163F00CDBABD /* player.cpp in Sources */,
 				1AEBC3A42AABC1AC007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
-				1AFC48122665728600EE5FCC /* boxedwineGL.cpp in Sources */,
 				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
 				1AC5F2AF2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				71222B412435163F00CDBABD /* log.cpp in Sources */,
@@ -3937,11 +4229,13 @@
 				710091502644D42C003413C3 /* sdlcallback.cpp in Sources */,
 				7100914A2644D42C003413C3 /* knativethread.cpp in Sources */,
 				71222BBB2435169100CDBABD /* kepoll.cpp in Sources */,
+				1A0F94F62C912B6B00E5A9BF /* xcolor.cpp in Sources */,
 				1A15512B263261EA006E0C8A /* glew.cpp in Sources */,
 				71222B732435169100CDBABD /* normalCPU.cpp in Sources */,
 				71222BC02435169100CDBABD /* glMarshalVertex.cpp in Sources */,
 				71222BAF2435169100CDBABD /* kmemory.cpp in Sources */,
 				71222B742435169100CDBABD /* instructions.cpp in Sources */,
+				1A0F95502C912B6B00E5A9BF /* xinput2.cpp in Sources */,
 				71222BB62435169100CDBABD /* ksocket.cpp in Sources */,
 				71222B6E2435169100CDBABD /* fpu.cpp in Sources */,
 				1AC5F2F72772D957001D0FCA /* armv8btCPU.cpp in Sources */,
@@ -3965,6 +4259,7 @@
 				71222B892435169100CDBABD /* fs.cpp in Sources */,
 				71222BAC2435169100CDBABD /* syscall.cpp in Sources */,
 				71222B8C2435169100CDBABD /* fsnode.cpp in Sources */,
+				1A0F94EA2C912B6B00E5A9BF /* xcursor.cpp in Sources */,
 				71222BA22435169100CDBABD /* devinput.cpp in Sources */,
 				71222BA12435169100CDBABD /* ksocketobject.cpp in Sources */,
 				1ADBD84A2B92E7A50074867C /* sysbus.cpp in Sources */,
@@ -3983,8 +4278,10 @@
 				71222B962435169100CDBABD /* main.cpp in Sources */,
 				71B2D2FF2668178700010AB6 /* osmesa.cpp in Sources */,
 				1AC5F2C12772D957001D0FCA /* armv8btData.cpp in Sources */,
+				1A0F94E42C912B6B00E5A9BF /* ximage.cpp in Sources */,
 				71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */,
 				71222B6A2435169100CDBABD /* common_other.cpp in Sources */,
+				1A0F95142C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */,
 				71222BB52435169100CDBABD /* loader.cpp in Sources */,
 				71222B802435169100CDBABD /* soft_native_page.cpp in Sources */,
@@ -3996,25 +4293,30 @@
 				71222B462435163F00CDBABD /* recorder.cpp in Sources */,
 				71222B882435169100CDBABD /* fsdiropennode.cpp in Sources */,
 				71222B6D2435169100CDBABD /* common_sse.cpp in Sources */,
-				1AB0CB00263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
 				71222B6B2435169100CDBABD /* common_sse2.cpp in Sources */,
 				71222B652435169100CDBABD /* common_pushpop.cpp in Sources */,
 				71222B442435163F00CDBABD /* fileutils.cpp in Sources */,
 				71222B7B2435169100CDBABD /* soft_wo_page.cpp in Sources */,
 				1AE7E5D72B5A1C7800D29E4A /* btCpu.cpp in Sources */,
 				71222B942435169100CDBABD /* startupArgs.cpp in Sources */,
+				1A0F94FC2C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				71222BBC2435169100CDBABD /* glfunctions_ext1.cpp in Sources */,
+				1A0F95732C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				71222B952435169100CDBABD /* mainloop.cpp in Sources */,
 				710091472644D42C003413C3 /* knativesystem.cpp in Sources */,
 				1ADBD86E2B92E7B60074867C /* sysfs.cpp in Sources */,
 				71222B992435169100CDBABD /* cpuinfo.cpp in Sources */,
 				1ADBD8622B92E7B60074867C /* sysmouse.cpp in Sources */,
+				1A0F94F02C912B6B00E5A9BF /* x11.cpp in Sources */,
 				1ADBD8742B92E7B60074867C /* sysbususb.cpp in Sources */,
 				71222BAB2435169100CDBABD /* kfile.cpp in Sources */,
+				1A0F94D82C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
+				1A0F951A2C912B6B00E5A9BF /* xkeyboard.cpp in Sources */,
 				71222B6C2435169100CDBABD /* common_bit.cpp in Sources */,
 				71222BB72435169100CDBABD /* ktimer.cpp in Sources */,
 				1ADBD8682B92E7B60074867C /* sysdev.cpp in Sources */,
 				71222B7F2435169100CDBABD /* soft_ro_page.cpp in Sources */,
+				1A0F955C2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				1ADBD87B2B94249B0074867C /* procstat.cpp in Sources */,
 				71222B702435169100CDBABD /* common_xchg.cpp in Sources */,
 				71222B982435169100CDBABD /* bufferaccess.cpp in Sources */,
@@ -4030,6 +4332,7 @@
 				7100915F2644D44E003413C3 /* platform.cpp in Sources */,
 				71222B872435169100CDBABD /* fsmemopennode.cpp in Sources */,
 				71222B5F2435169100CDBABD /* x64CodeChunk.cpp in Sources */,
+				1A0F952C2C912B6B00E5A9BF /* xrandr.cpp in Sources */,
 				71222B902435169100CDBABD /* threadedMainloop.cpp in Sources */,
 				710091442644D42C003413C3 /* kdspaudio.cpp in Sources */,
 				71222BC32435169100CDBABD /* glMarshal.cpp in Sources */,
@@ -4048,31 +4351,41 @@
 				71222B8E2435169100CDBABD /* fszipopennode.cpp in Sources */,
 				71222B842435169100CDBABD /* fszip.cpp in Sources */,
 				71222B682435169100CDBABD /* common_mmx.cpp in Sources */,
+				1A0F954A2C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
 				71222B9A2435169100CDBABD /* meminfo.cpp in Sources */,
 				1ADBD85C2B92E7B60074867C /* sysdevices.cpp in Sources */,
 				71222B9C2435169100CDBABD /* kfilelock.cpp in Sources */,
+				1A0F95022C912B6B00E5A9BF /* xgc.cpp in Sources */,
+				1A0F95622C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
 				71222BB32435169100CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
+				1A0F94D22C912B6B00E5A9BF /* xscreen.cpp in Sources */,
+				1A0F95262C912B6B00E5A9BF /* xvisual.cpp in Sources */,
 				1AC5F2EB2772D957001D0FCA /* armv8btAsm.cpp in Sources */,
 				71222BA32435169100CDBABD /* devsequencer.cpp in Sources */,
 				1AFC477026409EBC00EE5FCC /* llvm_helper.cpp in Sources */,
 				1AA711B42B492273008704E2 /* bstring.cpp in Sources */,
-				710091412644D42C003413C3 /* knativewindow.cpp in Sources */,
+				1A0F95382C912B6B00E5A9BF /* xserver.cpp in Sources */,
 				71222BB22435169100CDBABD /* cpumaxfreq.cpp in Sources */,
+				1A0F95442C912B6B00E5A9BF /* xcolormap.cpp in Sources */,
 				71222BA02435169100CDBABD /* kprocess.cpp in Sources */,
 				71222B862435169100CDBABD /* fszipnode.cpp in Sources */,
-				71222B932435169100CDBABD /* winedrv.cpp in Sources */,
 				1AC5F2F12772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				1AB0D6DE26CB4AAE00E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				71222BA42435169100CDBABD /* devmixer.cpp in Sources */,
 				71222BBF2435169100CDBABD /* glcommon.cpp in Sources */,
 				1AE7E5CC2B5A1C6900D29E4A /* btCodeChunk.cpp in Sources */,
+				1A0F95682C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
+				1A0F95082C912B6B00E5A9BF /* displaydata.cpp in Sources */,
 				71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */,
+				1A0F953E2C912B6B00E5A9BF /* xdepth.cpp in Sources */,
 				71222B9D2435169100CDBABD /* ksignal.cpp in Sources */,
 				1A1ADF942B6C989F00D9D5DE /* bfile.cpp in Sources */,
+				1A0F957B2C9132DC00E5A9BF /* bheap.cpp in Sources */,
 				71222B642435169100CDBABD /* srcgen.cpp in Sources */,
 				1ADBD8842B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
 				71222B3C2435163100CDBABD /* testSSE.cpp in Sources */,
+				1A0F950E2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4085,6 +4398,7 @@
 				71222BCF24351CBA00CDBABD /* glfunctions_ext1.cpp in Sources */,
 				715F348B2440D7D20038F5A4 /* okDlg.cpp in Sources */,
 				71222BD024351CBA00CDBABD /* glshim.c in Sources */,
+				1A0F953B2C912B6B00E5A9BF /* xdepth.cpp in Sources */,
 				71222BD124351CBA00CDBABD /* kfilelock.cpp in Sources */,
 				71222BD224351CBA00CDBABD /* waitDlg.cpp in Sources */,
 				71222BD324351CBA00CDBABD /* kpoll.cpp in Sources */,
@@ -4101,7 +4415,6 @@
 				71222BDC24351CBA00CDBABD /* ksocket.cpp in Sources */,
 				71222BDD24351CBA00CDBABD /* cpuinfo.cpp in Sources */,
 				710091432644D42C003413C3 /* kdspaudio.cpp in Sources */,
-				1AFC48112665728500EE5FCC /* boxedwineGL.cpp in Sources */,
 				71222BDF24351CBA00CDBABD /* fszip.cpp in Sources */,
 				71222BE024351CBA00CDBABD /* devzero.cpp in Sources */,
 				71222BE124351CBA00CDBABD /* common_xchg.cpp in Sources */,
@@ -4114,6 +4427,7 @@
 				71222BE724351CBA00CDBABD /* soft_file_map.cpp in Sources */,
 				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
 				71222BE924351CBA00CDBABD /* stringutil.cpp in Sources */,
+				1A0F95052C912B6B00E5A9BF /* displaydata.cpp in Sources */,
 				71222BEA24351CBA00CDBABD /* common_arith.cpp in Sources */,
 				1A55D6502A08428F002B7021 /* crc32.c in Sources */,
 				71222BEB24351CBA00CDBABD /* cpuscalingmaxfreq.cpp in Sources */,
@@ -4135,12 +4449,14 @@
 				71222BF724351CBA00CDBABD /* common_sse2.cpp in Sources */,
 				71222BF924351CBA00CDBABD /* x64CodeChunk.cpp in Sources */,
 				71222BFC24351CBA00CDBABD /* kobject.cpp in Sources */,
+				1A0F952F2C912B6B00E5A9BF /* xwindow.cpp in Sources */,
 				71222BFD24351CBA00CDBABD /* kfile.cpp in Sources */,
 				715F34852440D7D20038F5A4 /* downloadDlg.cpp in Sources */,
 				71222BFF24351CBA00CDBABD /* imgui_widgets.cpp in Sources */,
 				71205457244D01B300C3CB1B /* ImGuiLayout.cpp in Sources */,
 				71222C0024351CBA00CDBABD /* glfunctions_ext2.cpp in Sources */,
 				71222C0124351CBA00CDBABD /* glcommon.cpp in Sources */,
+				1A0F95702C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				71222C0224351CBA00CDBABD /* kmemory.cpp in Sources */,
 				1AC5F2AC2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				71222C0324351CBA00CDBABD /* devnull.cpp in Sources */,
@@ -4149,7 +4465,6 @@
 				71222C0724351CBA00CDBABD /* sdlgl.cpp in Sources */,
 				71222C0824351CBA00CDBABD /* ktimer.cpp in Sources */,
 				71222C0924351CBA00CDBABD /* main.cpp in Sources */,
-				1AB0CAFF263BA8AD003AF407 /* wineaudiodrv.cpp in Sources */,
 				71222C0A24351CBA00CDBABD /* self.cpp in Sources */,
 				715F34912440D7FC0038F5A4 /* threadutils.cpp in Sources */,
 				1A68217A2BF44BC0001AA732 /* kevent.cpp in Sources */,
@@ -4165,6 +4480,7 @@
 				71222C0F24351CBA00CDBABD /* cpuonline.cpp in Sources */,
 				71222C1024351CBA00CDBABD /* x64Asm.cpp in Sources */,
 				7100914F2644D42C003413C3 /* sdlcallback.cpp in Sources */,
+				1A0F950B2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 				71222C1124351CBA00CDBABD /* boxedwineData.cpp in Sources */,
 				71222C1324351CBA00CDBABD /* boxedTranslation.cpp in Sources */,
 				71222C1424351CBA00CDBABD /* ksystem.cpp in Sources */,
@@ -4173,20 +4489,27 @@
 				71222C1524351CBA00CDBABD /* soft_native_page.cpp in Sources */,
 				1A55D62E2A0841E2002B7021 /* inflate.c in Sources */,
 				71222C1624351CBA00CDBABD /* synchronization.cpp in Sources */,
+				1A0F94DB2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */,
 				1AFC479E2648471000EE5FCC /* audiounit.cpp in Sources */,
+				1A0F95172C912B6B00E5A9BF /* xkeyboard.cpp in Sources */,
 				71222C1724351CBA00CDBABD /* menubar.cpp in Sources */,
+				1A0F94ED2C912B6B00E5A9BF /* x11.cpp in Sources */,
 				71222C1824351CBA00CDBABD /* common_pushpop.cpp in Sources */,
 				1A155130263261EB006E0C8A /* glew.cpp in Sources */,
 				71222C1924351CBA00CDBABD /* syscall.cpp in Sources */,
+				1A0F94E72C912B6B00E5A9BF /* xcursor.cpp in Sources */,
 				7120545B244D01DA00C3CB1B /* boxedReg.cpp in Sources */,
 				71222C1A24351CBA00CDBABD /* startupArgs.cpp in Sources */,
+				1A0F94F92C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				1AC5F2DC2772D957001D0FCA /* arm8btFlags.cpp in Sources */,
 				71222C1B24351CBA00CDBABD /* fsdiropennode.cpp in Sources */,
 				71222C1C24351CBA00CDBABD /* AppDelegate.m in Sources */,
 				1ADBD8782B94249B0074867C /* procstat.cpp in Sources */,
 				1A155115263261E7006E0C8A /* ioapi.c in Sources */,
 				71222C1D24351CBA00CDBABD /* glMarshalSize.cpp in Sources */,
+				1A0F95412C912B6B00E5A9BF /* xcolormap.cpp in Sources */,
 				1ADBD8402B91944B0074867C /* devfb.cpp in Sources */,
+				1A0F94FF2C912B6B00E5A9BF /* xgc.cpp in Sources */,
 				715F34872440D7D20038F5A4 /* optionsView.cpp in Sources */,
 				71222C1E24351CBA00CDBABD /* knativesocket.cpp in Sources */,
 				1AFC480B2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
@@ -4225,43 +4548,52 @@
 				1AC5F2CA2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
 				71222C3324351CBA00CDBABD /* fsfilenode.cpp in Sources */,
 				71222C3424351CBA00CDBABD /* player.cpp in Sources */,
+				1A0F95232C912B6B00E5A9BF /* xvisual.cpp in Sources */,
 				71222C3624351CBA00CDBABD /* normal_strings.cpp in Sources */,
 				71222C3824351CBA00CDBABD /* ksignal.cpp in Sources */,
 				710091462644D42C003413C3 /* knativesystem.cpp in Sources */,
 				71222C3924351CBA00CDBABD /* common_bit.cpp in Sources */,
+				1A0F95352C912B6B00E5A9BF /* xserver.cpp in Sources */,
 				715EABBB2460C839001B4730 /* unzipDlg.cpp in Sources */,
 				1AE7E5DE2B5A1C8200D29E4A /* btMemory.cpp in Sources */,
 				1AFC479A26483DDF00EE5FCC /* knativecoreaudio.cpp in Sources */,
 				1AE7E5C92B5A1C6600D29E4A /* btCodeChunk.cpp in Sources */,
 				7100914C2644D42C003413C3 /* knativeaudio.cpp in Sources */,
 				71222C3A24351CBA00CDBABD /* meminfo.cpp in Sources */,
+				1A0F95782C9132DC00E5A9BF /* bheap.cpp in Sources */,
 				71222C3B24351CBA00CDBABD /* soft_no_page.cpp in Sources */,
 				710091492644D42C003413C3 /* knativethread.cpp in Sources */,
 				715F842D24464C080038F5A4 /* installView.cpp in Sources */,
 				71222C3C24351CBA00CDBABD /* fszipnode.cpp in Sources */,
 				71222C3D24351CBA00CDBABD /* imgui.cpp in Sources */,
+				1A0F94CF2C912B6B00E5A9BF /* xscreen.cpp in Sources */,
 				1ADBD8812B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71222C3E24351CBA00CDBABD /* soft_rw_page.cpp in Sources */,
 				1AC5F2C42772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				715F34892440D7D20038F5A4 /* baseView.cpp in Sources */,
+				1A0F954D2C912B6B00E5A9BF /* xinput2.cpp in Sources */,
 				1ADBD85F2B92E7B60074867C /* sysmouse.cpp in Sources */,
 				71222C4124351CBA00CDBABD /* mainloop.cpp in Sources */,
+				1A0F94F32C912B6B00E5A9BF /* xcolor.cpp in Sources */,
 				1A55D6642A08428F002B7021 /* adler32.c in Sources */,
 				71222C4224351CBA00CDBABD /* instructions.cpp in Sources */,
-				710091402644D42C003413C3 /* knativewindow.cpp in Sources */,
 				71222C4324351CBA00CDBABD /* fpu.cpp in Sources */,
 				71222C4524351CBA00CDBABD /* appbar.cpp in Sources */,
 				1AFC47A826489FB200EE5FCC /* coremidi.cpp in Sources */,
 				71205463244FDA2400C3CB1B /* appFile.cpp in Sources */,
+				1A0F955F2C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
 				71222C4624351CBA00CDBABD /* common_fpu.cpp in Sources */,
 				1AC5F2FB2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				71222C4724351CBA00CDBABD /* glext.cpp in Sources */,
 				71222C4824351CBA00CDBABD /* spinnerControl.cpp in Sources */,
 				71222C4924351CBA00CDBABD /* log.cpp in Sources */,
 				71222C4A24351CBA00CDBABD /* common_sse.cpp in Sources */,
+				1A0F95472C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
+				1A0F94D52C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
 				71222C4B24351CBA00CDBABD /* soft_copy_on_write_page.cpp in Sources */,
 				71222C4E24351CBA00CDBABD /* fs.cpp in Sources */,
 				1ADBD86B2B92E7B60074867C /* sysfs.cpp in Sources */,
+				1A0F95292C912B6B00E5A9BF /* xrandr.cpp in Sources */,
 				1AE7E5D92B5A1C7C00D29E4A /* btData.cpp in Sources */,
 				1A155113263261E7006E0C8A /* unzip.c in Sources */,
 				71222C5124351CBA00CDBABD /* appChooserDlg.cpp in Sources */,
@@ -4277,14 +4609,16 @@
 				71222C5724351CBA00CDBABD /* uihelper.cpp in Sources */,
 				1AC5F2B22772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				1AA711C12B505C99008704E2 /* kmemory_soft.cpp in Sources */,
+				1A0F95652C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
 				71222C5824351CBA00CDBABD /* imguitinyfiledialogs.cpp in Sources */,
-				71222C5924351CBA00CDBABD /* winedrv.cpp in Sources */,
+				1A0F95112C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				1AC9601E278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				71222C5A24351CBA00CDBABD /* devdsp.cpp in Sources */,
 				71222C5B24351CBA00CDBABD /* globalSettings.cpp in Sources */,
 				71222C5C24351CBA00CDBABD /* mesagl.c in Sources */,
 				71222C5D24351CBA00CDBABD /* baseDlg.cpp in Sources */,
 				1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */,
+				1A0F951D2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				71222C5E24351CBA00CDBABD /* fsnode.cpp in Sources */,
 				71222C6024351CBA00CDBABD /* fileutils.cpp in Sources */,
 				1A55D6692A0842E8002B7021 /* trees.c in Sources */,
@@ -4301,12 +4635,14 @@
 				71222C6A24351CBA00CDBABD /* crc.cpp in Sources */,
 				71222C6B24351CBA00CDBABD /* devsequencer.cpp in Sources */,
 				71222C6C24351CBA00CDBABD /* kprocess.cpp in Sources */,
+				1A0F95592C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				71222C6D24351CBA00CDBABD /* normalCPU.cpp in Sources */,
 				71222C6E24351CBA00CDBABD /* glfunctions_ext3.cpp in Sources */,
 				71222C6F24351CBA00CDBABD /* listView.cpp in Sources */,
 				71222C7024351CBA00CDBABD /* soft_ram.cpp in Sources */,
 				71222C7124351CBA00CDBABD /* srcgen.cpp in Sources */,
 				1A4F8E1E24F740CD0046703D /* helpView.cpp in Sources */,
+				1A0F94E12C912B6B00E5A9BF /* ximage.cpp in Sources */,
 				71222C7224351CBA00CDBABD /* fsvirtualnode.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4315,14 +4651,17 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1A0F95332C912B6B00E5A9BF /* xwindow.cpp in Sources */,
 				7135DC12264EBCD0005D6AA6 /* MacPlatform.m in Sources */,
 				7135DC13264EBCD0005D6AA6 /* platformThreads.cpp in Sources */,
 				7135DC14264EBCD0005D6AA6 /* stringutil.cpp in Sources */,
 				1AC5F2B02772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				7135DC15264EBCD0005D6AA6 /* devdsp.cpp in Sources */,
 				7135DC16264EBCD0005D6AA6 /* crc.cpp in Sources */,
+				1A0F95212C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				7135DC17264EBCD0005D6AA6 /* cpuonline.cpp in Sources */,
 				7135DC18264EBCD0005D6AA6 /* x64Data.cpp in Sources */,
+				1A0F94DF2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */,
 				7135DC19264EBCD0005D6AA6 /* testMMX.cpp in Sources */,
 				1AAC18472C1E9A220089C40D /* stb_image.cpp in Sources */,
 				1AC96022278FB69600107ED0 /* vulkancommon.cpp in Sources */,
@@ -4348,11 +4687,13 @@
 				7135DC2B264EBCD0005D6AA6 /* glew.cpp in Sources */,
 				7135DC2C264EBCD0005D6AA6 /* normalCPU.cpp in Sources */,
 				7135DC2D264EBCD0005D6AA6 /* glMarshalVertex.cpp in Sources */,
+				1A0F94F72C912B6B00E5A9BF /* xcolor.cpp in Sources */,
 				7135DC2E264EBCD0005D6AA6 /* kmemory.cpp in Sources */,
 				1AC5F2DA2772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1AC5F2BC2772D957001D0FCA /* armv8btOps_sse_minmax.cpp in Sources */,
 				7135DC2F264EBCD0005D6AA6 /* instructions.cpp in Sources */,
 				7135DC30264EBCD0005D6AA6 /* ksocket.cpp in Sources */,
+				1A0F95512C912B6B00E5A9BF /* xinput2.cpp in Sources */,
 				7135DC31264EBCD0005D6AA6 /* fpu.cpp in Sources */,
 				1AA711B52B492273008704E2 /* bstring.cpp in Sources */,
 				7135DC32264EBCD0005D6AA6 /* testSSE2.cpp in Sources */,
@@ -4363,7 +4704,6 @@
 				7135DC36264EBCD0005D6AA6 /* kscheduler.cpp in Sources */,
 				7135DC37264EBCD0005D6AA6 /* synchronization.cpp in Sources */,
 				7135DC38264EBCD0005D6AA6 /* fsfilenode.cpp in Sources */,
-				1AFC48132665728700EE5FCC /* boxedwineGL.cpp in Sources */,
 				7135DC39264EBCD0005D6AA6 /* x64Ops.cpp in Sources */,
 				1AAC184E2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1ADBD8442B9196760074867C /* devfb.cpp in Sources */,
@@ -4376,6 +4716,7 @@
 				7135DC3E264EBCD0005D6AA6 /* fs.cpp in Sources */,
 				7135DC3F264EBCD0005D6AA6 /* syscall.cpp in Sources */,
 				7135DC40264EBCD0005D6AA6 /* fsnode.cpp in Sources */,
+				1A0F94EB2C912B6B00E5A9BF /* xcursor.cpp in Sources */,
 				7135DC41264EBCD0005D6AA6 /* devinput.cpp in Sources */,
 				7135DC42264EBCD0005D6AA6 /* ksocketobject.cpp in Sources */,
 				1ADBD84B2B92E7A50074867C /* sysbus.cpp in Sources */,
@@ -4394,8 +4735,10 @@
 				1AB0D6DF26CB4AAF00E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				7135DC4E264EBCD0005D6AA6 /* soft_file_map.cpp in Sources */,
 				7135DC4F264EBCD0005D6AA6 /* common_other.cpp in Sources */,
+				1A0F94E52C912B6B00E5A9BF /* ximage.cpp in Sources */,
 				7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */,
 				7135DC51264EBCD0005D6AA6 /* loader.cpp in Sources */,
+				1A0F95152C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */,
 				1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AC5F2C82772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
@@ -4410,22 +4753,27 @@
 				1AC5F2E62772D957001D0FCA /* armv8btOps.cpp in Sources */,
 				7135DC5A264EBCD0005D6AA6 /* fsdiropennode.cpp in Sources */,
 				7135DC5B264EBCD0005D6AA6 /* common_sse.cpp in Sources */,
-				7135DC5C264EBCD0005D6AA6 /* wineaudiodrv.cpp in Sources */,
 				7135DC5D264EBCD0005D6AA6 /* common_sse2.cpp in Sources */,
 				7135DC5E264EBCD0005D6AA6 /* common_pushpop.cpp in Sources */,
 				1AE7E5D82B5A1C7900D29E4A /* btCpu.cpp in Sources */,
+				1A0F94FD2C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				7135DC5F264EBCD0005D6AA6 /* fileutils.cpp in Sources */,
+				1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				7135DC60264EBCD0005D6AA6 /* soft_wo_page.cpp in Sources */,
 				7135DC61264EBCD0005D6AA6 /* startupArgs.cpp in Sources */,
 				1ADBD86F2B92E7B60074867C /* sysfs.cpp in Sources */,
 				7135DC62264EBCD0005D6AA6 /* glfunctions_ext1.cpp in Sources */,
 				1ADBD8632B92E7B60074867C /* sysmouse.cpp in Sources */,
+				1A0F94F12C912B6B00E5A9BF /* x11.cpp in Sources */,
 				1ADBD8752B92E7B60074867C /* sysbususb.cpp in Sources */,
 				7135DC64264EBCD0005D6AA6 /* mainloop.cpp in Sources */,
+				1A0F94D92C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
+				1A0F951B2C912B6B00E5A9BF /* xkeyboard.cpp in Sources */,
 				7135DC65264EBCD0005D6AA6 /* knativesystem.cpp in Sources */,
 				7135DC66264EBCD0005D6AA6 /* cpuinfo.cpp in Sources */,
 				1ADBD8692B92E7B60074867C /* sysdev.cpp in Sources */,
 				7135DC67264EBCD0005D6AA6 /* kfile.cpp in Sources */,
+				1A0F955D2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				1ADBD87C2B94249B0074867C /* procstat.cpp in Sources */,
 				7135DC68264EBCD0005D6AA6 /* common_bit.cpp in Sources */,
 				7135DC69264EBCD0005D6AA6 /* ktimer.cpp in Sources */,
@@ -4441,6 +4789,7 @@
 				7135DC70264EBCD0005D6AA6 /* x64Asm.cpp in Sources */,
 				1AC5F2F22772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				7135DC71264EBCD0005D6AA6 /* soft_invalid_page.cpp in Sources */,
+				1A0F952D2C912B6B00E5A9BF /* xrandr.cpp in Sources */,
 				7135DC73264EBCD0005D6AA6 /* self.cpp in Sources */,
 				7135DC74264EBCD0005D6AA6 /* knativeaudio.cpp in Sources */,
 				7135DC75264EBCD0005D6AA6 /* kobject.cpp in Sources */,
@@ -4459,31 +4808,41 @@
 				7135DC7F264EBCD0005D6AA6 /* audiounit.cpp in Sources */,
 				7135DC80264EBCD0005D6AA6 /* knativecoreaudio.cpp in Sources */,
 				7135DC81264EBCD0005D6AA6 /* fszipopennode.cpp in Sources */,
+				1A0F954B2C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
 				7135DC82264EBCD0005D6AA6 /* fszip.cpp in Sources */,
 				1ADBD85D2B92E7B60074867C /* sysdevices.cpp in Sources */,
 				7135DC83264EBCD0005D6AA6 /* common_mmx.cpp in Sources */,
+				1A0F95032C912B6B00E5A9BF /* xgc.cpp in Sources */,
+				1A0F95632C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
 				7135DC84264EBCD0005D6AA6 /* meminfo.cpp in Sources */,
+				1A0F94D32C912B6B00E5A9BF /* xscreen.cpp in Sources */,
+				1A0F95272C912B6B00E5A9BF /* xvisual.cpp in Sources */,
 				71B2D3002668178700010AB6 /* osmesa.cpp in Sources */,
 				7135DC85264EBCD0005D6AA6 /* kfilelock.cpp in Sources */,
 				7135DC86264EBCD0005D6AA6 /* cpuscalingmaxfreq.cpp in Sources */,
 				7135DC88264EBCD0005D6AA6 /* devsequencer.cpp in Sources */,
+				1A0F95392C912B6B00E5A9BF /* xserver.cpp in Sources */,
 				7135DC89264EBCD0005D6AA6 /* llvm_helper.cpp in Sources */,
-				7135DC8A264EBCD0005D6AA6 /* knativewindow.cpp in Sources */,
+				1A0F95452C912B6B00E5A9BF /* xcolormap.cpp in Sources */,
 				7135DC8B264EBCD0005D6AA6 /* cpumaxfreq.cpp in Sources */,
 				7135DC8C264EBCD0005D6AA6 /* kprocess.cpp in Sources */,
 				7135DC8D264EBCD0005D6AA6 /* fszipnode.cpp in Sources */,
-				7135DC8E264EBCD0005D6AA6 /* winedrv.cpp in Sources */,
 				7135DC8F264EBCD0005D6AA6 /* devmixer.cpp in Sources */,
 				7135DC90264EBCD0005D6AA6 /* glcommon.cpp in Sources */,
 				7135DC91264EBCD0005D6AA6 /* soft_ram.cpp in Sources */,
 				1AE7E5CD2B5A1C6A00D29E4A /* btCodeChunk.cpp in Sources */,
+				1A0F95692C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
+				1A0F95092C912B6B00E5A9BF /* displaydata.cpp in Sources */,
 				7135DC92264EBCD0005D6AA6 /* ksignal.cpp in Sources */,
+				1A0F953F2C912B6B00E5A9BF /* xdepth.cpp in Sources */,
 				7135DC93264EBCD0005D6AA6 /* srcgen.cpp in Sources */,
 				1A1ADF952B6C989F00D9D5DE /* bfile.cpp in Sources */,
+				1A0F957C2C9132DC00E5A9BF /* bheap.cpp in Sources */,
 				7135DC94264EBCD0005D6AA6 /* kpoll.cpp in Sources */,
 				1ADBD8852B9E25DA0074867C /* knetlink.cpp in Sources */,
 				7135DC95264EBCD0005D6AA6 /* testSSE.cpp in Sources */,
 				1AC5F2E02772D957001D0FCA /* arm8btFlags.cpp in Sources */,
+				1A0F950F2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4496,6 +4855,7 @@
 				71FBFEDC2433BBBE003F17F1 /* glfunctions_ext1.cpp in Sources */,
 				715F348A2440D7D20038F5A4 /* okDlg.cpp in Sources */,
 				1A155105263261DF006E0C8A /* zip.c in Sources */,
+				1A0F953A2C912B6B00E5A9BF /* xdepth.cpp in Sources */,
 				71FBFEE62433BBBE003F17F1 /* glshim.c in Sources */,
 				1AE7E5C52B5A1BD200D29E4A /* btCodeChunk.cpp in Sources */,
 				71FBFEBB2433BBBE003F17F1 /* kfilelock.cpp in Sources */,
@@ -4525,6 +4885,7 @@
 				1AC5F2C92772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
 				71FBFEA52433BBBE003F17F1 /* fsmemopennode.cpp in Sources */,
 				71FBFEA32433BBBE003F17F1 /* fsfileopennode.cpp in Sources */,
+				1A0F95042C912B6B00E5A9BF /* displaydata.cpp in Sources */,
 				71FBFEDA2433BBBE003F17F1 /* kepoll.cpp in Sources */,
 				71FBFE9A2433BBBE003F17F1 /* soft_file_map.cpp in Sources */,
 				712228F82433EE5400CDBABD /* imgui_draw.cpp in Sources */,
@@ -4546,11 +4907,13 @@
 				1AC5F2A52772D957001D0FCA /* armv8btOps_string.cpp in Sources */,
 				71FBFEC92433BBBE003F17F1 /* devurandom.cpp in Sources */,
 				71FBFE802433BBBE003F17F1 /* x64Ops.cpp in Sources */,
+				1A0F952E2C912B6B00E5A9BF /* xwindow.cpp in Sources */,
 				71FBFE6E2433BBBE003F17F1 /* boxedContainer.cpp in Sources */,
 				71FBFE5E2433BBBE003F17F1 /* listViewItem.cpp in Sources */,
 				71FBFED92433BBBE003F17F1 /* kscheduler.cpp in Sources */,
 				71FBFE892433BBBE003F17F1 /* common_sse2.cpp in Sources */,
 				71FBFE7D2433BBBE003F17F1 /* x64CodeChunk.cpp in Sources */,
+				1A0F956F2C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1A55D65F2A08428F002B7021 /* uncompr.c in Sources */,
 				1AC5F2C32772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				71FBFED72433BBBE003F17F1 /* kobject.cpp in Sources */,
@@ -4576,6 +4939,7 @@
 				1AC5F2FA2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				71FBFEB52433BBBE003F17F1 /* main.cpp in Sources */,
 				71FBFEBA2433BBBE003F17F1 /* self.cpp in Sources */,
+				1A0F950A2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 				715F34902440D7FC0038F5A4 /* threadutils.cpp in Sources */,
 				71FBFE722433BBBE003F17F1 /* testSSE.cpp in Sources */,
 				71FBFE9D2433BBBE003F17F1 /* soft_ro_page.cpp in Sources */,
@@ -4583,21 +4947,27 @@
 				1ADBD8462B92E7A50074867C /* sysbus.cpp in Sources */,
 				1AC5F2BD2772D957001D0FCA /* armv8btData.cpp in Sources */,
 				1AC5F2F32772D957001D0FCA /* armv8btCPU.cpp in Sources */,
-				7100913F2644D42C003413C3 /* knativewindow.cpp in Sources */,
+				1A0F94DA2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */,
 				71FBFEE32433BBBE003F17F1 /* glMarshal.cpp in Sources */,
+				1A0F95162C912B6B00E5A9BF /* xkeyboard.cpp in Sources */,
 				1A55D64F2A08428F002B7021 /* crc32.c in Sources */,
+				1A0F94EC2C912B6B00E5A9BF /* x11.cpp in Sources */,
 				1A55D65B2A08428F002B7021 /* compress.c in Sources */,
 				71FBFECF2433BBBE003F17F1 /* cpuonline.cpp in Sources */,
 				71FBFE7F2433BBBE003F17F1 /* x64Asm.cpp in Sources */,
+				1A0F94E62C912B6B00E5A9BF /* xcursor.cpp in Sources */,
 				71FBFE6D2433BBBE003F17F1 /* boxedwineData.cpp in Sources */,
 				710091452644D42C003413C3 /* knativesystem.cpp in Sources */,
+				1A0F94F82C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				71FBFE5A2433BBBE003F17F1 /* boxedTranslation.cpp in Sources */,
 				71FBFEBE2433BBBE003F17F1 /* ksystem.cpp in Sources */,
 				71FBFE9E2433BBBE003F17F1 /* soft_native_page.cpp in Sources */,
 				1ADBD8772B94249B0074867C /* procstat.cpp in Sources */,
 				1AFC479D2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */,
+				1A0F95402C912B6B00E5A9BF /* xcolormap.cpp in Sources */,
 				1ADBD83F2B91944B0074867C /* devfb.cpp in Sources */,
+				1A0F94FE2C912B6B00E5A9BF /* xgc.cpp in Sources */,
 				71FBFE792433BBBE003F17F1 /* synchronization.cpp in Sources */,
 				1A55D6682A0842E8002B7021 /* trees.c in Sources */,
 				71FBFE642433BBBE003F17F1 /* menubar.cpp in Sources */,
@@ -4635,34 +5005,40 @@
 				1A2236372820A85200E74D88 /* uptime.cpp in Sources */,
 				71FBFEC42433BBBE003F17F1 /* devtty.cpp in Sources */,
 				1AFC4794264826FD00EE5FCC /* knativecoreaudio.cpp in Sources */,
-				1AFC4810266570FD00EE5FCC /* boxedwineGL.cpp in Sources */,
+				1A0F95222C912B6B00E5A9BF /* xvisual.cpp in Sources */,
 				71FBFEAC2433BBBE003F17F1 /* fszipopennode.cpp in Sources */,
 				71FBFEA92433BBBE003F17F1 /* fsopennode.cpp in Sources */,
 				71FBFE812433BBBE003F17F1 /* x64Data.cpp in Sources */,
 				1AC5F2E12772D957001D0FCA /* armv8btOps.cpp in Sources */,
+				1A0F95342C912B6B00E5A9BF /* xserver.cpp in Sources */,
 				715F34822440D7D10038F5A4 /* yesNoDlg.cpp in Sources */,
 				1AE7E5C82B5A1BD200D29E4A /* btMemory.cpp in Sources */,
 				71FBFEA82433BBBE003F17F1 /* fsfilenode.cpp in Sources */,
 				1A55D63D2A0841E2002B7021 /* infback.c in Sources */,
 				71FBFE782433BBBE003F17F1 /* player.cpp in Sources */,
 				71FBFE932433BBBE003F17F1 /* normal_strings.cpp in Sources */,
+				1A0F95772C9132DC00E5A9BF /* bheap.cpp in Sources */,
 				71FBFEBC2433BBBE003F17F1 /* ksignal.cpp in Sources */,
 				71FBFE8A2433BBBE003F17F1 /* common_bit.cpp in Sources */,
 				715EABBA2460C839001B4730 /* unzipDlg.cpp in Sources */,
 				1A155106263261DF006E0C8A /* unzip.c in Sources */,
 				1AC96017278FB69600107ED0 /* vk_host.cpp in Sources */,
+				1A0F94CE2C912B6B00E5A9BF /* xscreen.cpp in Sources */,
 				1ADBD8802B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71FBFEB92433BBBE003F17F1 /* meminfo.cpp in Sources */,
 				71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */,
 				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
+				1A0F954C2C912B6B00E5A9BF /* xinput2.cpp in Sources */,
 				1ADBD85E2B92E7B60074867C /* sysmouse.cpp in Sources */,
 				1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */,
+				1A0F94F22C912B6B00E5A9BF /* xcolor.cpp in Sources */,
 				71FBFEA42433BBBE003F17F1 /* fszipnode.cpp in Sources */,
 				712228842433EE5300CDBABD /* imgui.cpp in Sources */,
 				71FBFEA02433BBBE003F17F1 /* soft_rw_page.cpp in Sources */,
 				715F34882440D7D20038F5A4 /* baseView.cpp in Sources */,
 				1A55D64B2A08428F002B7021 /* deflate.c in Sources */,
 				71FBFEB42433BBBE003F17F1 /* mainloop.cpp in Sources */,
+				1A0F955E2C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
 				71FBFE922433BBBE003F17F1 /* instructions.cpp in Sources */,
 				71FBFE8C2433BBBE003F17F1 /* fpu.cpp in Sources */,
 				71FBFE682433BBBE003F17F1 /* appbar.cpp in Sources */,
@@ -4670,9 +5046,12 @@
 				71FBFE872433BBBE003F17F1 /* common_fpu.cpp in Sources */,
 				71FBFEE12433BBBE003F17F1 /* glext.cpp in Sources */,
 				71FBFE612433BBBE003F17F1 /* spinnerControl.cpp in Sources */,
+				1A0F95462C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
+				1A0F94D42C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
 				71FBFE772433BBBE003F17F1 /* log.cpp in Sources */,
 				1AC5F2D52772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1ADBD86A2B92E7B60074867C /* sysfs.cpp in Sources */,
+				1A0F95282C912B6B00E5A9BF /* xrandr.cpp in Sources */,
 				1AE7E5C72B5A1BD200D29E4A /* btData.cpp in Sources */,
 				1AC5F2ED2772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				71FBFE8B2433BBBE003F17F1 /* common_sse.cpp in Sources */,
@@ -4683,19 +5062,20 @@
 				1AFC4798264827A600EE5FCC /* coremidi.cpp in Sources */,
 				1AAC18492C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				71FBFECD2433BBBE003F17F1 /* kfiledescriptor.cpp in Sources */,
-				1AB0CAFE263BA8AC003AF407 /* wineaudiodrv.cpp in Sources */,
 				71FBFE992433BBBE003F17F1 /* soft_wo_page.cpp in Sources */,
 				71FBFEE52433BBBE003F17F1 /* esopengl.c in Sources */,
 				1AB0D6DC26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				71FBFE702433BBBE003F17F1 /* configFile.cpp in Sources */,
+				1A0F95642C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
 				71FBFE5C2433BBBE003F17F1 /* readIcons.cpp in Sources */,
 				71FBFE5B2433BBBE003F17F1 /* uihelper.cpp in Sources */,
+				1A0F95102C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				712228F52433EE5400CDBABD /* imguitinyfiledialogs.cpp in Sources */,
-				71FBFEB12433BBBE003F17F1 /* winedrv.cpp in Sources */,
 				71FBFEC72433BBBE003F17F1 /* devdsp.cpp in Sources */,
 				71FBFE6C2433BBBE003F17F1 /* globalSettings.cpp in Sources */,
 				71FBFEDB2433BBBE003F17F1 /* mesagl.c in Sources */,
 				71FBFE632433BBBE003F17F1 /* baseDlg.cpp in Sources */,
+				1A0F951C2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				71FBFEAA2433BBBE003F17F1 /* fsnode.cpp in Sources */,
 				71FBFE7A2433BBBE003F17F1 /* fileutils.cpp in Sources */,
 				71FBFED42433BBBE003F17F1 /* loader.cpp in Sources */,
@@ -4712,12 +5092,14 @@
 				71FBFEBF2433BBBE003F17F1 /* kprocess.cpp in Sources */,
 				7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */,
 				1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
+				1A0F95582C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				71FBFE912433BBBE003F17F1 /* normalCPU.cpp in Sources */,
 				71FBFEDD2433BBBE003F17F1 /* glfunctions_ext3.cpp in Sources */,
 				71FBFE5F2433BBBE003F17F1 /* listView.cpp in Sources */,
 				71FBFE9B2433BBBE003F17F1 /* soft_ram.cpp in Sources */,
 				71FBFE822433BBBE003F17F1 /* srcgen.cpp in Sources */,
 				1A4F8E1D24F740CD0046703D /* helpView.cpp in Sources */,
+				1A0F94E02C912B6B00E5A9BF /* ximage.cpp in Sources */,
 				71FBFEAD2433BBBE003F17F1 /* fsvirtualnode.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

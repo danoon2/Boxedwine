@@ -25,6 +25,10 @@ static int winsock_intialized;
 #include <fcntl.h>
 #include <net/if.h>
 #include <netdb.h>
+#ifdef __MACH__
+#include <ifaddrs.h>
+#include <net/if_dl.h>
+#endif
 
 void closesocket(int socket) { close(socket); }
 
@@ -629,10 +633,25 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
             free(addresses);
             return -1;
         }
-        thread->memory->writew(address, emulatedFamilyFromHostFamily(ua->Address.lpSockaddr->sa_family));
+        thread->memory->writew(address, domain);
         thread->memory->memcpy(address + 2, addresses->PhysicalAddress, std::min((U32)14, (U32)addresses->PhysicalAddressLength));
         free(addresses);
         return 0;
+#elif defined(__MACH__)
+        struct ifaddrs *ifap, *ifaptr;
+        unsigned char *ptr;
+
+        if (getifaddrs(&ifap) == 0) {
+            for(ifaptr = ifap; ifaptr != NULL; ifaptr = (ifaptr)->ifa_next) {
+                if (((ifaptr)->ifa_addr)->sa_family == AF_LINK && !strcmp(ifaptr->ifa_name, "en0")) {
+                    ptr = (unsigned char *)LLADDR((struct sockaddr_dl *)(ifaptr)->ifa_addr);
+                    thread->memory->writew(address, domain);
+                    thread->memory->memcpy(address + 2, ptr, 6);
+                    return 0;
+                }
+            }
+        }
+        return -1;
 #else
         struct ifreq ifr = { 0 };
         thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
@@ -642,7 +661,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
             return handleNativeSocketError(t, true);
         }
         thread->memory->writew(address, emulatedFamilyFromHostFamily(ifr.ifr_hwaddr.sa_family));
-        thread->memory->memcpy(address + 2, ifr.ifr_hwaddr.sa_data, 14);
+        thread->memory->memcpy(address + 2, ifr.ifr_hwaddr.sa_data, 6);
         return 0;
 #endif
     } else if (request == K_SIOCGIFFLAGS) {

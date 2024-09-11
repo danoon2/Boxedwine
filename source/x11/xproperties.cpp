@@ -163,13 +163,6 @@ BString XProperty::description() {
 	return log;
 }
 
-typedef struct {
-	unsigned long flags;
-	unsigned long functions;
-	unsigned long decorations;
-	long input_mode;
-	unsigned long status;
-} MotifWmHints, MwmHints;
 XPropertyPtr XProperties::getProperty(U32 atom) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	return properties.get(atom);

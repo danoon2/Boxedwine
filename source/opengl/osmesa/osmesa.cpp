@@ -236,22 +236,22 @@ static std::vector<GLPixelFormatPtr> formats;
 
 void addDoubleBuffer(U32 nativeId, U32 rBits, U32 rShift, U32 gBits, U32 gShift, U32 bBits, U32 bShift, U32 aBits, U32 aShift, U32 depth, U32 bitsPerPixel, U32 depthBuffers, U32 stencil, U32 accum, bool doubleBuffer) {
     GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();
-    format->id = formats.size() | PIXEL_FORMAT_NATIVE_INDEX_MASK;
+    format->id = (U32)(formats.size()) | PIXEL_FORMAT_NATIVE_INDEX_MASK;
     format->nativeId = nativeId;
     format->depth = depth;
     format->bitsPerPixel = bitsPerPixel;
-    format->pf.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+    format->pf.nSize = sizeof(PixelFormat);
     format->pf.nVersion = 1;
-    format->pf.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DRAW_TO_BITMAP;
+    format->pf.dwFlags = K_PFD_SUPPORT_OPENGL | K_PFD_DRAW_TO_WINDOW | K_PFD_DRAW_TO_BITMAP;
 
     if (doubleBuffer) {
-        format->pf.dwFlags |= PFD_DOUBLEBUFFER;
+        format->pf.dwFlags |= K_PFD_DOUBLEBUFFER;
     }
 
     if (bitsPerPixel > 8) {
-        format->pf.iPixelType = PFD_TYPE_RGBA;
+        format->pf.iPixelType = K_PFD_TYPE_RGBA;
     } else  {
-        format->pf.iPixelType = PFD_TYPE_COLORINDEX;
+        format->pf.iPixelType = K_PFD_TYPE_COLORINDEX;
     }
     format->pf.cColorBits = bitsPerPixel;
     format->pf.cRedBits = rBits;
@@ -270,7 +270,7 @@ void addDoubleBuffer(U32 nativeId, U32 rBits, U32 rShift, U32 gBits, U32 gShift,
     format->pf.cDepthBits = depthBuffers;
     format->pf.cStencilBits = stencil;
     format->pf.cAuxBuffers = 0;
-    format->pf.iLayerType = PFD_MAIN_PLANE;
+    format->pf.iLayerType = K_PFD_MAIN_PLANE;
     format->pf.bReserved = 0;
     format->pf.dwLayerMask = 0;
     format->pf.dwVisibleMask = 0;

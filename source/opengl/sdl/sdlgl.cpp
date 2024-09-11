@@ -25,7 +25,7 @@
 #include <SDL.h>
 #include "knativesystem.h"
 #include "../../x11/x11.h"
-#include "../source/ui/mainui.h"
+#include "../../source/ui/mainui.h"
 #include "../../platform/sdl/sdlcallback.h"
 
 static std::atomic_int shownGlWindows;

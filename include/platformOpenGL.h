@@ -1,6 +1,8 @@
 #ifndef __PLATFORM_OPENGL_H__
 #define __PLATFORM_OPENGL_H__
 
+#include "pixelformat.h"
+
 class GLPixelFormat {
 public:
 	U32 id = 0;

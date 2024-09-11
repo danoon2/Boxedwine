@@ -3,8 +3,8 @@
 #ifdef BOXEDWINE_OPENGL
 #include "platformOpenGL.h"
 #include GLH
-#include "../source/x11/x11.h"
-#include "../source/opengl/glcommon.h"
+#include "../../source/x11/x11.h"
+#include "../../source/opengl/glcommon.h"
 
 BHashTable<U32, GLPixelFormatPtr> PlatformOpenGL::formatsById;
 std::vector<GLPixelFormatPtr> PlatformOpenGL::formats;

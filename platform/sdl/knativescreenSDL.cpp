@@ -1,6 +1,6 @@
 #include "boxedwine.h"
-#include "../source/ui/mainui.h"
-#include "../source/sdl/startupArgs.h"
+#include "../../source/ui/mainui.h"
+#include "../../source/sdl/startupArgs.h"
 
 #include <SDL.h>
 #include "sdlcallback.h"
@@ -61,7 +61,9 @@ void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {
             cx = cx * input->scaleX / 100;
             cy = cy * input->scaleY / 100;
         }
+        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
         SDL_SetWindowSize(window, cx, cy);
+        DISPATCH_MAIN_THREAD_BLOCK_END
     }
 }
 

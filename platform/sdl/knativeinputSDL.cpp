@@ -18,7 +18,7 @@
 
 #include "boxedwine.h"
 #include <SDL.h>
-#include "../source/x11/x11.h"
+#include "../../source/x11/x11.h"
 #include "sdlcallback.h"
 #include "devinput.h"
 #include "knativeinputSDL.h"

@@ -771,7 +771,7 @@ union XEvent {
 	XKeymapEvent xkeymap;
 	XGenericEvent xgeneric;
 	XGenericEventCookie xcookie;
-	long pad[24];
+	U32 pad[24];
 };
 
 /* Property notification */
