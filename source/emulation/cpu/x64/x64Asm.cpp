@@ -3301,7 +3301,7 @@ void X64Asm::int9A(U32 opLen) {
 }
 
 void X64Asm::int9B(U32 opLen) {
-    callHost(common_int9B);
+    callHost((void*)common_int9B);
 }
 
 void X64Asm::writeXchgEspEax() {

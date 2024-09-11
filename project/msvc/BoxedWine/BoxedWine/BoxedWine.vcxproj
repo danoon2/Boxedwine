@@ -954,7 +954,6 @@
     <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\startupArgs.cpp" />
-    <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp" />
     <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
     </ClCompile>

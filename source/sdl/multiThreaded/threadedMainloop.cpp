@@ -78,7 +78,7 @@ bool doMainLoop() {
             KNativeSystem::getCurrentInput()->waitForEvent(timeout);
         }
 #else
-        KNativeSystem::getCurrentWindow()->waitForEvent(timeout);
+        KNativeSystem::getCurrentInput()->waitForEvent(timeout);
 #endif    
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {

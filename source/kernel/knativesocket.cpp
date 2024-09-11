@@ -24,6 +24,7 @@ static int winsock_intialized;
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <net/if.h>
+#include <netdb.h>
 
 void closesocket(int socket) { close(socket); }
 
@@ -634,8 +635,8 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         return 0;
 #else
         struct ifreq ifr = { 0 };
-        memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
-        U32 result = ::ioctl(fd, SIOCGIFHWADDR, &ifr);
+        thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
+        U32 result = ::ioctl(this->nativeSocket, SIOCGIFHWADDR, &ifr);
         if (result) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
             return handleNativeSocketError(t, true);
@@ -656,7 +657,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         return 0;
 #else
         struct ifreq ifr = { 0 };
-        memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
+        thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
         U32 result = ::ioctl(this->nativeSocket, SIOCGIFFLAGS, &ifr);
         if (result) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
@@ -678,7 +679,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         return 0;
 #else
         struct ifreq ifr = { 0 };
-        memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
+        thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
         U32 result = ::ioctl(this->nativeSocket, SIOCGIFMTU, &ifr);
         if (result) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
@@ -1636,5 +1637,9 @@ U32 ipAddress() {
         return 0;
     }
     addr_list = *(struct in_addr**)host_entry->h_addr_list;
+#ifdef WIN32
     return addr_list->S_un.S_addr;
+#else
+    return addr_list->s_addr;
+#endif
 }

@@ -2,7 +2,6 @@
 
 #ifdef BOXEDWINE_OPENGL
 #include "platformOpenGL.h"
-#include <Windows.h>
 #include GLH
 #include "../source/x11/x11.h"
 #include "../source/opengl/glcommon.h"
@@ -11,7 +10,7 @@ BHashTable<U32, GLPixelFormatPtr> PlatformOpenGL::formatsById;
 std::vector<GLPixelFormatPtr> PlatformOpenGL::formats;
 bool PlatformOpenGL::initialized;
 bool PlatformOpenGL::hardwareListLoaded;
-
+/*
 static BHashTable<U32, HGLRC> contexts;
 static std::atomic_int nextContextId = 1;
 static BOXEDWINE_MUTEX contextMutex;
@@ -297,7 +296,7 @@ LRESULT CALLBACK glWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
         //wglDeleteContext(window.renderContext);
         //ReleaseDC(hWnd, window.deviceContext);
         DestroyWindow(hWnd);
-        /* stop event queue thread */
+        // stop event queue thread 
         PostQuitMessage(0);
         break;
     default:
@@ -365,6 +364,7 @@ static HWND glCreateWindow(const GLPixelFormatPtr& format, int width, int height
     return hwnd;
 }
 
+*/
 void PlatformOpenGL::init() {
 	if (!initialized) {
 		BOXEDWINE_CRITICAL_SECTION;
@@ -384,7 +384,7 @@ void PlatformOpenGL::init() {
                 formats.push_back(format);
 			}
             if (KSystem::videoEnabled) {
-                hardwareListLoaded = queryOpenGL(formatsById, formats);
+                //hardwareListLoaded = queryOpenGL(formatsById, formats);
             }
 
 		}

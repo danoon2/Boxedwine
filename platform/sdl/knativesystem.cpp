@@ -37,7 +37,9 @@ bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return false;
     }
+#ifdef BOXEDWINE_OPENGL
     PlatformOpenGL::init();
+#endif
     return true;
 }
 

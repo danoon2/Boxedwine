@@ -487,9 +487,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\platform\sdl\kdspaudio.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
