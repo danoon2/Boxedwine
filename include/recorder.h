@@ -23,6 +23,9 @@ private:
     int screenShotCount = 0;
     void fullScrennShot();
     void partialScreenShot(U32 x, U32 y, U32 w, U32 h);
+    void checkInputModifiers();
+
+    U32 currentInputModifiers = 0;
 };
 
 void BOXEDWINE_RECORDER_HANDLE_MOUSE_MOVE(int x, int y);

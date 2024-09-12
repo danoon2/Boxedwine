@@ -21,7 +21,8 @@ public:
 
     virtual bool waitForEvent(U32 ms) = 0; // if return is true, then event is available
     virtual bool processEvents() = 0; // if return is false, then shutdown    
-    
+    virtual void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) = 0;
+
     virtual bool mouseMove(int x, int y, bool relative) = 0;
     virtual bool mouseWheel(int amount, int x, int y) = 0;
     virtual bool mouseButton(U32 down, U32 button, int x, int y) = 0;

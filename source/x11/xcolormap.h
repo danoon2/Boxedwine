@@ -5,7 +5,7 @@
 #define COLOR_WRITE 2
 #define MAX_COLORMAP_SIZE 256
 
-#define RGB(r, g, b) ((((U32)(r)) << 16) | (((U32)(g)) << 8) | (U32)(b))
+#define K_RGB(r, g, b) ((((U32)(r)) << 16) | (((U32)(g)) << 8) | (U32)(b))
 
 class XColorMapColor {
 public:

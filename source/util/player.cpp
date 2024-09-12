@@ -137,6 +137,10 @@ void bitmapCompareThread(Player* player) {
 
 void Player::runSlice() {  
     // at least 10 ms between mouse moves
+    if (this->nextCommand == "MODIFIERS") {
+        currentInputModifiers = atoi(nextValue.c_str());
+        instance->readCommand();
+    }
     if (KSystem::getMicroCounter()<this->lastCommandTime+10000)
         return;
 
@@ -173,7 +177,7 @@ void Player::runSlice() {
             runSlice();
         }
     } else if (this->nextCommand=="KEYDOWN" || this->nextCommand=="KEYUP") {
-        input->key(0, atoi(this->nextValue.c_str()), (this->nextCommand=="KEYDOWN")?1:0);
+        input->key(atoi(this->nextValue.c_str()), 0, (this->nextCommand=="KEYDOWN")?1:0);
         instance->readCommand();
         if (this->nextCommand=="KEYUP") {
             runSlice();
@@ -228,6 +232,7 @@ void Player::runSlice() {
                 this->instance->readCommand();
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
+                comparingPixels = COMPARING_PIXELS_WAITING;
             } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->partialScreenShot(B(""), x, y, w, h, buffer, bufferlen)) {
                 if (comparingThread.native_handle() == 0) {
                     comparingThread = std::thread(bitmapCompareThread, this);
@@ -260,6 +265,8 @@ void Player::runSlice() {
                 this->instance->readCommand();
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
+                comparingPixels = COMPARING_PIXELS_WAITING;
+                screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
             } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->screenShot(B(""), buffer, bufferlen)) {
                 if (comparingThread.native_handle() == 0) {
                     comparingThread = std::thread(bitmapCompareThread, this);

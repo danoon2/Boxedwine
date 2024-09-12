@@ -17,6 +17,7 @@ public:
     U64 lastCommandTime = 0;
     U64 lastScreenRead = 0;
     BString nextCommand;
+    U32 currentInputModifiers = 0;
 private:    
     BString nextValue;
     std::thread comparingThread;

@@ -13,6 +13,7 @@ public:
 
     bool waitForEvent(U32 ms) override; // if return is true, then event is available
     bool processEvents() override; // if return is false, then shutdown    
+    void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) override;
 
     void runOnUiThread(std::function<void()> callback) override;
     bool mouseMove(int x, int y, bool relative) override;

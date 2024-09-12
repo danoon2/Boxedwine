@@ -1161,7 +1161,7 @@ static U32 intIb(X64Asm* data) {
     } else if (i == 0x9A) {
         data->int9A(data->ip - data->startOfOpIp);
     } else if (i == 0x9B) {
-        data->int9A(data->ip - data->startOfOpIp);
+        data->int9B(data->ip - data->startOfOpIp);
     }
 #ifdef __TEST
     else if (i==0x97) {

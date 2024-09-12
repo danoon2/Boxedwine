@@ -88,15 +88,15 @@ void Recorder::takeScreenShot() {
     int w = 0;
     int h = 0;
     KNativeScreenPtr screen = KNativeSystem::getScreen();
-    screen->pushWindowSurface();
-    screen->processCustomEvents([this, &x, &y, &w, &h, screen](bool isKeyDown, int key, bool isF11) {
+    screen->startRecorderScreenShot();
+    screen->getInput()->processCustomEvents([this, &x, &y, &w, &h, screen](bool isKeyDown, int key, bool isF11) {
             if (isF11) {
                 if (w == 0 || h == 0) {
                     fullScrennShot();
-                } else {
-                    screen->popWindowSurface();
+                } else {                    
                     partialScreenShot(x, y, w, h);
                 }
+                screen->finishRecorderScreenShot();
                 return false;
             }
             return true;
@@ -125,7 +125,18 @@ void Recorder::takeScreenShot() {
         });     
 }
 
+void Recorder::checkInputModifiers() {
+    U32 inputModifers = KNativeSystem::getCurrentInput()->getInputModifiers();
+    if (inputModifers != currentInputModifiers) {
+        currentInputModifiers = inputModifers;
+        out("MODIFIERS=");
+        out(BString::valueOf(currentInputModifiers).c_str());
+        out("\r\n");
+    }
+}
+
 void Recorder::onMouseMove(U32 x, U32 y) {
+    checkInputModifiers();
     out("MOVETO=");
     out(BString::valueOf(x).c_str());
     out(",");
@@ -134,6 +145,7 @@ void Recorder::onMouseMove(U32 x, U32 y) {
 }
 
 void Recorder::onMouseButton(U32 down, U32 button, U32 x, U32 y) {
+    checkInputModifiers();
     if (down) {
         out("MOUSEDOWN=");
     } else {
@@ -148,6 +160,7 @@ void Recorder::onMouseButton(U32 down, U32 button, U32 x, U32 y) {
 }
 
 void Recorder::onKey(U32 key, U32 down) {
+    checkInputModifiers();
     if (down) {
         out("KEYDOWN=");
     } else {

@@ -2979,6 +2979,10 @@ void opInt9A(Armv8btAsm* data) {
     data->emulateSingleOp(data->currentOp);
     data->done = true;
 }
+void opInt9B(Armv8btAsm* data) {
+    data->emulateSingleOp(data->currentOp);
+    data->done = true;
+}
 void opIntO(Armv8btAsm* data) {
     data->invalidOp(data->currentOp->originalOp);
     data->done = true;
@@ -6573,6 +6577,7 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opInt98,
     opInt99,
     opInt9A,
+    opInt9B,
     opIntIb,
     opIntO,
     opIret,

@@ -31,11 +31,8 @@ public:
 	virtual void clearTextureCache(U32 id) = 0;	
 
 #ifdef BOXEDWINE_RECORDER
-	// return true to continue processing for custom handlers
-	virtual void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) = 0;
-
-	virtual void pushWindowSurface() = 0;
-	virtual void popWindowSurface() = 0;
+	virtual void startRecorderScreenShot() = 0;
+	virtual void finishRecorderScreenShot() = 0;
 	virtual void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) = 0;
 #endif
 

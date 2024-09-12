@@ -118,12 +118,34 @@ void KNativeScreenSDL::showWindow(bool show) {
             if (uiIsRunning()) {
                 uiShutdown();
             }
+#else
+            klog("Showing Window");
 #endif
         }
     }
 }
 
 void KNativeScreenSDL::clear() {
+#ifdef BOXEDWINE_RECORDER
+    BOXEDWINE_MUTEX_LOCK(drawingMutex);
+    if (Recorder::instance || Player::instance) {
+        U32 size = screenWidth() * screenHeight() * 4;
+        if (recordBufferSize < size) {
+            delete[] recordBuffer;
+            recordBuffer = new U8[size];
+            recordBufferSize = size;
+        }
+        if (bpp == 32) {
+            U32* pixel = (U32*)recordBuffer;
+            U32 len = screenWidth() * screenHeight();
+            for (U32 i = 0; i < len; i++, pixel++) {
+                *pixel = 165 | (110 << 8) | (58 << 16) | (255 << 24);
+            }
+        } else {
+            memset(recordBuffer, 0, recordBufferSize);
+        }
+    }
+#endif
     if (KSystem::videoEnabled && renderer) {
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
         SDL_RenderClear(renderer);
@@ -192,11 +214,47 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         bits = wnd->bits;
     }
 #ifdef BOXEDWINE_RECORDER
-    else if ((Recorder::instance || Player::instance) && isDirty) {
-        U32 toCopy = dstPitch * height;
-        wnd->ensureSize(toCopy);
-        memcpy(wnd->bits, bits, toCopy);
-    }
+    if ((Recorder::instance || Player::instance) && screenBpp() > 8) {
+        int wndWidth = width;
+        int wndHeight = height;
+        S32 top = dstY;
+        S32 left = dstX;
+        S32 srcTopAdjust = 0;
+        S32 srcLeftAdjust = 0;
+        S32 bytesPerPixel = (bpp + 7) / 8;        
+        S32 recorderPitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
+
+        if (top < 0) {
+            wndHeight += top;
+            top = 0;
+        }
+        if (top >= (S32)screenHeight()) {
+            return;
+        }
+        if (left >= (S32)screenWidth()) {
+            return;
+        }
+        if (left < 0) {
+            srcLeftAdjust = -left;
+            left = 0;
+        }
+        if (top + wndHeight > (S32)screenHeight()) {
+            wndHeight = screenHeight() - top;
+        }
+
+        int pitch = (wndWidth * ((bpp + 7) / 8) + 3) & ~3;
+        if (dstX + wndWidth > (S32)screenWidth()) {
+            wndWidth = screenWidth() - left;
+        }
+        int copyPitch = (wndWidth * ((bpp + 7) / 8) + 3) & ~3;
+        for (int y = 0; y < wndHeight; y++) {
+            S32 offset = recorderPitch * (y + top) + (left * bytesPerPixel);
+            if (offset<0 || offset + copyPitch>(S32)recordBufferSize || copyPitch < 0) {
+                kpanic("script recorder overwrote memory when copying screen");
+            }
+            memcpy(recordBuffer + offset, bits + pitch * (y + srcTopAdjust) + (srcLeftAdjust * bytesPerPixel), copyPitch);
+        }
+    }    
 #endif     
 
     if (KSystem::videoEnabled && renderer) {
@@ -221,6 +279,9 @@ void KNativeScreenSDL::present() {
         SDL_RenderPresent(renderer);
     }
     presented = true;
+#ifdef BOXEDWINE_RECORDER
+    BOXEDWINE_MUTEX_UNLOCK(drawingMutex);
+#endif
 }
 
 bool KNativeScreenSDL::presentedSinceLastCheck() {
@@ -247,30 +308,189 @@ bool KNativeScreenSDL::isVisible() {
 }
 
 #ifdef BOXEDWINE_RECORDER
-// return true to continue processing for custom handlers
-void KNativeScreenSDL::processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) {
+
+void KNativeScreenSDL::startRecorderScreenShot() {
+    BOXEDWINE_MUTEX_LOCK(drawingMutex);
+    SDL_Surface* src = SDL_GetWindowSurface(window);
+    SDL_Rect r = {};
+
+    r.x = 0;
+    r.y = 0;
+    r.w = src->w;
+    r.h = src->h;
+
+    screenCopyTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, src->w, src->h);
+    U32 len = src->w * src->h * src->format->BytesPerPixel;
+    U8* pixels = new unsigned char[len];
+
+    if (!SDL_RenderReadPixels(renderer, &src->clip_rect, src->format->format, pixels, src->w * src->format->BytesPerPixel)) {
+        SDL_UpdateTexture(screenCopyTexture, nullptr, pixels, src->w * src->format->BytesPerPixel);
+    }
+    delete[] pixels;
 }
 
-void KNativeScreenSDL::pushWindowSurface() {
-}
+void KNativeScreenSDL::finishRecorderScreenShot() {
+    SDL_Surface* dst = SDL_GetWindowSurface(window);
+    SDL_Rect rect;
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = dst->w;
+    rect.h = dst->h;
 
-void KNativeScreenSDL::popWindowSurface() {
+    SDL_RenderCopy(renderer, screenCopyTexture, nullptr, &rect);
+    SDL_RenderPresent(renderer);
+
+    SDL_DestroyTexture(screenCopyTexture);
+    screenCopyTexture = nullptr;
+    BOXEDWINE_MUTEX_UNLOCK(drawingMutex);
 }
 
 void KNativeScreenSDL::drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) {
+    SDL_Surface* dst = SDL_GetWindowSurface(window);
+    SDL_Rect rect;
+    rect.x = 0;
+    rect.y = 0;
+    rect.w = dst->w;
+    rect.h = dst->h;
+
+    SDL_RenderCopy(renderer, screenCopyTexture, nullptr, &rect);
+
+    rect.x = x;
+    rect.y = y;
+    rect.w = w;
+    rect.h = h;
+
+    SDL_SetRenderDrawColor(renderer, r, g, b, a);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    SDL_RenderFillRect(renderer, &rect);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+    SDL_RenderPresent(renderer);
 }
 
 #endif
 
-bool KNativeScreenSDL::partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) {
+bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rect, U8* buffer, U32 bufferlen) {
+#ifdef BOXEDWINE_RECORDER
+    if (!recordBuffer) {
+        if (filepath.length()) {
+            klog("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
+        }
+        return false;
+    }
+    if (bpp == 8) {
+        klog("KNativeScreenSDL::internalScreenShot 8 bit screen shots not supported");
+        return false;
+    }
+    U8* pixels = nullptr;
+    SDL_Surface* s = nullptr;
+    U32 rMask = 0;
+    U32 gMask = 0;
+    U32 bMask = 0;
+
+    if (bpp == 32) {
+        rMask = 0x00FF0000;
+        gMask = 0x0000FF00;
+        bMask = 0x000000FF;
+    } else if (bpp == 16) {
+        rMask = 0xF800;
+        gMask = 0x07E0;
+        bMask = 0x001F;
+    } else {
+        kpanic("Unhandled bpp for screen shot: %d", bpp);
+    }
+    if (rect) {
+        int inPitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
+        int outPitch = (rect->w * ((bpp + 7) / 8) + 3) & ~3;
+        U32 bytesPerPixel = (bpp + 7) / 8;
+        U32 len = outPitch * rect->h;
+
+        if (!buffer) {
+            pixels = new unsigned char[len];
+            buffer = pixels;
+        } else if (bufferlen < len) {
+            return false;
+        }
+
+        for (int y = 0; y < rect->h; y++) {
+            memcpy(buffer + y * outPitch, recordBuffer + (y + rect->y) * inPitch + (rect->x * bytesPerPixel), outPitch);
+        }
+        s = SDL_CreateRGBSurfaceFrom(buffer, rect->w, rect->h, bpp, outPitch, rMask, gMask, bMask, 0);
+    } else {
+        int pitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
+        U32 len = pitch * screenHeight();
+
+        s = SDL_CreateRGBSurfaceFrom(recordBuffer, screenWidth(), screenHeight(), bpp, pitch, rMask, gMask, bMask, 0);
+        if (buffer) {
+            if (bufferlen < len) {
+                return false;
+            }
+            memcpy(buffer, recordBuffer, len);
+        }
+    }
+
+    if (!s) {
+        klog("sdlScreenshot: %s", SDL_GetError());
+        if (pixels) {
+            delete[] pixels;
+        }
+        return false;
+    }
+    if (filepath.length()) {
+        SDL_SaveBMP(s, filepath.c_str());
+    }
+    if (s) {
+        SDL_FreeSurface(s);
+    }
+    if (pixels) {
+        delete[] pixels;
+    }
     return true;
+#else
+    return false;
+#endif
+}
+
+bool KNativeScreenSDL::partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) {
+    SDL_Rect r;
+    r.x = x;
+    r.y = y;
+    r.w = w;
+    r.h = h;
+    return internalScreenShot(filepath, &r, buffer, bufferlen);
 }
 
 bool KNativeScreenSDL::screenShot(const BString& filepath, U8* buffer, U32 bufferlen) {
-    return true;
+    return internalScreenShot(filepath, nullptr, buffer, bufferlen);
 }
 
 bool KNativeScreenSDL::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) {
+    U32 rMask = 0;
+    U32 gMask = 0;
+    U32 bMask = 0;
+
+    if (bpp == 32) {
+        rMask = 0x00FF0000;
+        gMask = 0x0000FF00;
+        bMask = 0x000000FF;
+    } else if (bpp == 16) {
+        rMask = 0xF800;
+        gMask = 0x07E0;
+        bMask = 0x001F;
+    } else {
+        kpanic("Unhandled bpp for screen shot: %d", bpp);
+    }
+    int pitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
+    U32 len = pitch * screenHeight();
+
+    SDL_Surface* s = SDL_CreateRGBSurfaceFrom(buffer, w, h, bpp, w * 4, rMask, gMask, bMask, 0);
+    if (!s) {
+        return false;
+    }
+    if (filepath.length()) {
+        SDL_SaveBMP(s, filepath.c_str());
+    }
+    SDL_FreeSurface(s);
     return true;
 }
 

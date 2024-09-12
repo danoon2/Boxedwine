@@ -61,6 +61,17 @@ U32 KNativeInputSDL::screenHeight() {
 
 bool KNativeInputSDL::mouseMove(int x, int y, bool relative) {
     XServer* server = XServer::getServer(true);
+
+    x = xFromScreen(x);
+    y = yFromScreen(y);
+
+#ifdef BOXEDWINE_RECORDER
+    if (Player::instance) {
+        lastX = x;
+        lastY = y;
+    }
+#endif
+
     if (server) {
         server->mouseMove(x, y, relative);
         return true;
@@ -125,8 +136,16 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
 }
 
 void KNativeInputSDL::setMousePos(int x, int y) {
+#ifdef BOXEDWINE_RECORDER
+    if (Player::instance) {
+        lastX = x;
+        lastY = y;
+    }
+#endif
+
     x = xToScreen(x);
     y = yToScreen(y);
+
     KNativeSystem::warpMouse(x, y);
 }
 
@@ -177,6 +196,11 @@ bool KNativeInputSDL::checkMousePos(int& x, int& y, bool allowWarp) {
 #endif
 
 U32 KNativeInputSDL::getInputModifiers() {
+#ifdef BOXEDWINE_RECORDER
+    if (Player::instance) {
+        return Player::instance->currentInputModifiers;
+    }
+#endif
     int x, y;
     unsigned int result = SDL_GetMouseState(&x, &y);
     U32 modifiers = 0;
@@ -449,6 +473,57 @@ static U32 translate(U32 key) {
     }
 }
 
+static int getMouseButtonFromEvent(SDL_Event* e) {
+    if (e->button.button == SDL_BUTTON_LEFT) {
+        return 0;
+    } else if (e->button.button == SDL_BUTTON_MIDDLE) {
+        return 2;
+    } else if (e->button.button == SDL_BUTTON_RIGHT) {
+        return 1;
+    }
+    return 0;
+}
+
+// return true to continue processing for custom handlers
+//
+// should only call on main thread
+void KNativeInputSDL::processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) {
+    SDL_Event e = {};
+
+#ifdef _DEBUG
+    if (!isMainthread()) {
+        kpanic("KNativeInputSDL::processCustomEvents should only be called on main thread");
+    }
+#endif
+    while (SDL_WaitEvent(&e)) {
+        if (e.type == SDL_KEYUP) {
+            if (!onKey(false, e.key.keysym.sym, e.key.keysym.sym == SDLK_F11)) {
+                return;
+            }
+        } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+            if (!onMouseButton(true, getMouseButtonFromEvent(&e), e.motion.x, e.motion.y)) {
+                return;
+            }
+        } else if (e.type == SDL_MOUSEBUTTONUP) {
+            if (!onMouseButton(false, getMouseButtonFromEvent(&e), e.motion.x, e.motion.y)) {
+                return;
+            }
+        } else if (e.type == SDL_MOUSEMOTION) {
+            if (!onMouseMove(e.motion.x, e.motion.y)) {
+                return;
+            }
+        }
+#ifdef BOXEDWINE_MULTI_THREADED
+        else if (e.type == sdlCustomEvent) {
+            SdlCallback* callback = (SdlCallback*)e.user.data1;
+            callback->result = (U32)callback->pfn();
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
+            BOXEDWINE_CONDITION_SIGNAL(callback->cond);
+        }
+#endif
+    }
+}
+
 bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
 #ifdef BOXEDWINE_RECORDER
     if (Player::instance) {
@@ -472,49 +547,17 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
         if (!mouseMove(e->motion.x, e->motion.y, false)) {
             onMouseMove(e->motion.x, e->motion.y, false);
         }
-    } else if (e->type == SDL_MOUSEBUTTONDOWN) {     
-        if (e->button.button == SDL_BUTTON_LEFT) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(0, e->motion.x, e->motion.y);
-            if (!mouseButton(1, 0, e->motion.x, e->motion.y))
-                onMouseButtonDown(0);
-        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(2, e->motion.x, e->motion.y);
-            if (!mouseButton(1, 2, e->motion.x, e->motion.y))
-                onMouseButtonDown(2);
-        } else if (e->button.button == SDL_BUTTON_RIGHT) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(1, e->motion.x, e->motion.y);
-            if (!mouseButton(1, 1, e->motion.x, e->motion.y))
-                onMouseButtonDown(1);
-        } else if (e->button.button == SDL_BUTTON_X1) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(1, e->motion.x, e->motion.y);
-            if (!mouseButton(1, 3, e->motion.x, e->motion.y))
-                onMouseButtonDown(1);
-        } else if (e->button.button == SDL_BUTTON_X2) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(1, e->motion.x, e->motion.y);
-            if (!mouseButton(1, 4, e->motion.x, e->motion.y))
-                onMouseButtonDown(1);
+    } else if (e->type == SDL_MOUSEBUTTONDOWN) {    
+        U32 button = getMouseButtonFromEvent(e);
+        BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_DOWN(button, e->motion.x, e->motion.y);
+        if (!mouseButton(1, button, e->motion.x, e->motion.y)) {
+            onMouseButtonDown(button);
         }
     } else if (e->type == SDL_MOUSEBUTTONUP) {      
-        if (e->button.button == SDL_BUTTON_LEFT) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(0, e->motion.x, e->motion.y);
-            if (!mouseButton(0, 0, e->motion.x, e->motion.y))
-                onMouseButtonUp(0);
-        } else if (e->button.button == SDL_BUTTON_MIDDLE) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(2, e->motion.x, e->motion.y);
-            if (!mouseButton(0, 2, e->motion.x, e->motion.y))
-                onMouseButtonUp(2);
-        } else if (e->button.button == SDL_BUTTON_RIGHT) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(1, e->motion.x, e->motion.y);
-            if (!mouseButton(0, 1, e->motion.x, e->motion.y))
-                onMouseButtonUp(1);
-        } else if (e->button.button == SDL_BUTTON_X1) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(2, e->motion.x, e->motion.y);
-            if (!mouseButton(0, 3, e->motion.x, e->motion.y))
-                onMouseButtonUp(2);
-        } else if (e->button.button == SDL_BUTTON_X2) {
-            BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(1, e->motion.x, e->motion.y);
-            if (!mouseButton(0, 4, e->motion.x, e->motion.y))
-                onMouseButtonUp(1);
+        U32 button = getMouseButtonFromEvent(e);
+        BOXEDWINE_RECORDER_HANDLE_MOUSE_BUTTON_UP(button, e->motion.x, e->motion.y);
+        if (!mouseButton(0, button, e->motion.x, e->motion.y)) {
+            onMouseButtonUp(button);
         }
     } else if (e->type == SDL_MOUSEWHEEL) {
         // Handle up/down mouse wheel movements
@@ -524,7 +567,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
             onMouseWheel(e->wheel.y);
         }
     } else if (e->type == SDL_KEYDOWN) {       
-        if (!BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(e->key.keysym.sym, e->key.keysym.sym == SDLK_F11)) {
+        if (!BOXEDWINE_RECORDER_HANDLE_KEY_DOWN(e->key.keysym.scancode, e->key.keysym.sym == SDLK_F11)) {
             if (e->key.keysym.sym == SDLK_SCROLLOCK) {
                 KSystem::printStacks();
             } else if (!key(e->key.keysym.scancode, e->key.keysym.sym, 1)) {
@@ -532,7 +575,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
             }
         }
     } else if (e->type == SDL_KEYUP) {
-        if (!BOXEDWINE_RECORDER_HANDLE_KEY_UP(e->key.keysym.sym, e->key.keysym.sym == SDLK_F11)) {
+        if (!BOXEDWINE_RECORDER_HANDLE_KEY_UP(e->key.keysym.scancode, e->key.keysym.sym == SDLK_F11)) {
             if (!key(e->key.keysym.scancode, e->key.keysym.sym, 0)) {
                 onKeyUp(translate(e->key.keysym.sym));
             }

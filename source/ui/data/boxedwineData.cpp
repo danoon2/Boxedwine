@@ -73,7 +73,7 @@ void BoxedwineData::startApp() {
             if (bytes[i] != '\n') {
                 continue;
             }
-            if (out.contains("Creating Window")) {
+            if (out.contains("Showing Window")) {
                 windowCreated = true;
             }
             if (KSystem::watchTTY && out.startsWith("TTY:")) {

@@ -73,17 +73,15 @@ public:
     bool isVisible() override;
 
 #ifdef BOXEDWINE_RECORDER
-    // return true to continue processing for custom handlers
-    void processCustomEvents(std::function<bool(bool isKeyDown, int key, bool isF11)> onKey, std::function<bool(bool isButtonDown, int button, int x, int y)> onMouseButton, std::function<bool(int x, int y)> onMouseMove) override;
-
-    void pushWindowSurface() override;
-    void popWindowSurface() override;
+    void startRecorderScreenShot() override;
+    void finishRecorderScreenShot() override;
     void drawRectOnPushedSurfaceAndDisplay(U32 x, U32 y, U32 w, U32 h, U8 r, U8 g, U8 b, U8 a) override;
 #endif
 
     bool partialScreenShot(const BString& filepath, U32 x, U32 y, U32 w, U32 h, U8* buffer, U32 bufferlen) override;
     bool screenShot(const BString& filepath, U8* buffer, U32 bufferlen) override;
     bool saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32 w, U32 h) override;
+    bool internalScreenShot(const BString& filepath, SDL_Rect* r, U8* buffer, U32 bufferlen);
 
     void setCursor(const std::shared_ptr<XCursor>& cursor) override;
     void buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) override;
@@ -115,6 +113,14 @@ private:
 
     BOXEDWINE_MUTEX cursorsMutex;
     BHashTable<U32, SDL_Cursor*> cursors;
+
+#ifdef BOXEDWINE_RECORDER
+    SDL_Texture* screenCopyTexture = nullptr;
+    U8* recordBuffer = nullptr;
+    U32 recordBufferSize = 0;
+#endif
+
+    BOXEDWINE_MUTEX drawingMutex;
 };
 
 typedef std::shared_ptr<KNativeScreenSDL> KNativeScreenSDLPtr;
