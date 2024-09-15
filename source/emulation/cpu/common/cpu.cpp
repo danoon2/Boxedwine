@@ -302,8 +302,9 @@ BString getFunctionName(BString name, U32 moduleEip) {
     args.push_back(B("-f"));
     args.push_back(BString::valueOf(moduleEip, 16));
     KThread* thread = process->startProcess(B("/usr/bin"), args, env, 0, 0, 0, 0);
-    if (!thread)
+    if (!thread) {
         return B("");
+    }
 
     tty9Buffer="";
     std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);

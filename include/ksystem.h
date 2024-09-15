@@ -51,11 +51,9 @@ class KThread;
 class MappedFileCache {
 public:
     MappedFileCache(BString name) : name(name) {}
-    virtual ~MappedFileCache();
     const BString name;
     std::shared_ptr<KFile> file;
-    KRamPtr* data = nullptr;
-    U32 dataSize = 0;
+    std::vector<RamPage> ramPages;
 };
 
 class SHM {
@@ -66,7 +64,7 @@ public:
     void incAttach() {this->nattch++;}
     void decAttach() {this->nattch--;}
 
-    std::vector<KRamPtr> pages;
+    std::vector<RamPage> ramPages;
     const U32 id;
     U32 len = 0;
     const U32 key;

@@ -7,6 +7,7 @@ std::atomic<int> platformThreadCount = 0;
 
 static void platformThread(CPU* cpu) {
     KThread::setCurrentThread(cpu->thread);
+    std::shared_ptr<KProcess> process = KSystem::getProcess(cpu->thread->process->id);
 
     while (true) {
         try {
@@ -18,7 +19,7 @@ static void platformThread(CPU* cpu) {
 #ifdef __TEST
         return;
 #else
-        if (cpu->thread->process->terminated) {
+        if (process->terminated) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
             cpu->memory->cleanup();
         }
@@ -27,8 +28,7 @@ static void platformThread(CPU* cpu) {
         }
 #endif
     }
-
-    std::shared_ptr<KProcess> process = cpu->thread->process;
+    
     cpu->thread->cleanup();    
 
     platformThreadCount--;

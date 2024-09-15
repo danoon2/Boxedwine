@@ -28,8 +28,8 @@
 // popseg assumes these won't overlap with params
 #define HOST_ESP          3
 
-#define HOST_MEM_READ 4
-#define HOST_MEM_WRITE 6
+#define HOST_RAM 4
+#define HOST_MMU 6
 
 // R13 is good for this one, because R13 can not be used in sib memory encoding, it will translate to 0 instead of the reg, and HOST_CPU will never be used to encode memory
 #define HOST_CPU          5

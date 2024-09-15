@@ -4,86 +4,47 @@
 #include "soft_ram.h"
 #include "kmemory_soft.h"
 
-CopyOnWritePage* CopyOnWritePage::alloc(const KRamPtr& page, U32 address) {
-    return new CopyOnWritePage(page, address);
-}
-
-void CopyOnWritePage::copyOnWrite(U32 address) {	
-    KRamPtr ram;
+void CopyOnWritePage::copyOnWrite(MemInfo& info, U32 address) {
     KMemory* memory = KThread::currentThread()->memory;
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
 
-    if (mem->getPage(page) != this) {
+    if (info.type != (U32)PageType::Copy_On_Write_Page) {
         return;
     }
 
-    if (!memory->mapShared(page) && this->page.use_count()>1) {
-        ram = ramPageAlloc();
-        memcpy(ram.get(), this->page.get(), K_PAGE_SIZE);
-    } else {
-        ram = this->page;
+    if (!(info.flags & PAGE_SHARED) && ramPageUseCount(info.ramPageIndex)>1) {
+        RamPage ram = ramPageAlloc();
+        memcpy(ramPageGet(ram), ramPageGet(info.ramPageIndex), K_PAGE_SIZE);
+        ramPageRelease(info.ramPageIndex);
+        info.ramPageIndex = ram;
     }    
-
-    mem->setPageRam(ram, address >> K_PAGE_SHIFT, false);
+    info.type = (U32)PageType::RAM_Page;
+    info.updatePermissionCache();
 }
 
-void CopyOnWritePage::writeb(U32 address, U8 value) {
-    KMemoryData* data = getMemData(KThread::currentThread()->memory);
-    copyOnWrite(address);
-    data->memory->writeb(address, value);
+void CopyOnWritePage::writeb(MemInfo& info, U32 address, U8 value) {
+    copyOnWrite(info, address);
+    KThread::currentThread()->memory->writeb(address, value);
 }
 
-void CopyOnWritePage::writew(U32 address, U16 value) {
-    KMemoryData* data = getMemData(KThread::currentThread()->memory);
-    copyOnWrite(address);
-    data->memory->writew(address, value);
+void CopyOnWritePage::writew(MemInfo& info, U32 address, U16 value) {
+    copyOnWrite(info, address);
+    KThread::currentThread()->memory->writew(address, value);
 }
 
-void CopyOnWritePage::writed(U32 address, U32 value) {
-    KMemoryData* data = getMemData(KThread::currentThread()->memory);
-    copyOnWrite(address);
-    data->memory->writed(address, value);
+void CopyOnWritePage::writed(MemInfo& info, U32 address, U32 value) {
+    copyOnWrite(info, address);
+    KThread::currentThread()->memory->writed(address, value);
 }
 
-U8 CopyOnWritePage::readb(U32 address) {
-    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::readb(address);
-    }
-    KThread::currentThread()->seg_access(address, true, false);
-    return 0;
-}
-
-U16 CopyOnWritePage::readw(U32 address) {
-    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::readw(address);
-    }
-    KThread::currentThread()->seg_access(address, true, false);
-    return 0;
-}
-
-U32 CopyOnWritePage::readd(U32 address) {
-    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::readd(address);
-    }
-    KThread::currentThread()->seg_access(address, true, false);
-    return 0;
-}
-
-U8* CopyOnWritePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    if (memory->canRead(address >> K_PAGE_SHIFT)) {
-        return RWPage::getReadPtr(memory, address, makeReady);
-    }
-    return nullptr;
-}
-
-U8* CopyOnWritePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+U8* CopyOnWritePage::getWritePtr(KMemory* memory, MemInfo& info, U32 address, U32 len, bool makeReady) {
     U32 page = address >> K_PAGE_SHIFT;
     if (memory->canWrite(page) && makeReady) {
         KMemoryData* data = getMemData(memory);
-        copyOnWrite(address);
-        return data->getPage(page)->getWritePtr(memory, address, len, true);
+        copyOnWrite(info, address);
+        return data->getPage(page)->getWritePtr(memory, info, address, len, true);
     }
     return nullptr;
 }

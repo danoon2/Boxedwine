@@ -22,29 +22,17 @@
 #include "soft_page.h"
 
 class FilePage : public Page {
-protected:
-    FilePage(const std::shared_ptr<MappedFile>& mapped, U32 index) : mapped(mapped), index(index) {}
-
 public:
-    static FilePage* alloc(const std::shared_ptr<MappedFile>& mapped, U32 index);
+    U8 readb(MemInfo& info, U32 address) override;
+    void writeb(MemInfo& info, U32 address, U8 value) override;
+    U16 readw(MemInfo& info, U32 address) override;
+    void writew(MemInfo& info, U32 address, U16 value) override;
+    U32 readd(MemInfo& info, U32 address) override;
+    void writed(MemInfo& info, U32 address, U32 value) override;
 
-    // from Page
-    U8 readb(U32 address) override;
-    void writeb(U32 address, U8 value) override;
-    U16 readw(U32 address) override;
-    void writew(U32 address, U16 value) override;
-    U32 readd(U32 address) override;
-    void writed(U32 address, U32 value) override;
-    U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false) override;
-    U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false) override;
-    Type getType() override { return Type::File_Page; }
-    bool inRam() override {return false;}
-    void close() override {delete this;}
-
-    void ondemmandFile(U32 address);
-
-    std::shared_ptr<MappedFile> mapped;
-    U32 index;
+    void onDemand(KMemory* memory, MemInfo& info, U32 address) override;
+    U8* getReadPtr(KMemory* memory, MemInfo& info, U32 address, bool makeReady = false) override;
+    U8* getWritePtr(KMemory* memory, MemInfo& info, U32 address, U32 len, bool makeReady = false) override;
 };
 
 #endif

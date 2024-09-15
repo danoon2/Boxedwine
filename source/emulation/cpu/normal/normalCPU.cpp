@@ -142,8 +142,32 @@ void NormalBlock::run(CPU* cpu) {
     if (this->op== nullptr || this->op->pfn== nullptr) {
         kpanic("NormalBlock::run is about to crash");
     }
-#endif  
-    this->op->pfn(cpu, this->op);
+#endif
+    U32 expectedAddress = cpu->eip.u32 + cpu->seg[CS].address;
+    if (expectedAddress < this->address) {
+        cpu->nextBlock = cpu->getNextBlock();
+        cpu->nextBlock->run(cpu);
+        return;
+    }
+    if (expectedAddress != this->address) {
+        DecodedOp* op = this->op;
+        U32 blockAddress = address;
+        while (true) {            
+            if (expectedAddress == blockAddress) {
+                break;
+            } else if (expectedAddress == blockAddress + 1 && op->lock) {
+                // weird case where code was trying to be clever and skip the lock prefix
+                cpu->eip.u32--;
+                break;
+            }
+            blockAddress += op->len;
+            op = op->next;            
+            cpu->blockInstructionCount--;
+        }
+        op->pfn(cpu, op);
+    } else {
+        this->op->pfn(cpu, this->op);
+    }
     this->runCount++;
     cpu->blockInstructionCount+=this->opCount;
 }
@@ -168,6 +192,11 @@ NormalBlock* NormalBlock::alloc() {
     return freeBlocks.get();
 }
 
+static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
+    cpu->nextBlock = nullptr;
+    cpu->yield = true;
+}
+
 void NormalBlock::dealloc(bool delayed) {
     KThread* thread = KThread::currentThread();
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->normalBlockMutex);
@@ -181,6 +210,14 @@ void NormalBlock::dealloc(bool delayed) {
         }
         if (cpu && ((delayed && !cpu->delayedFreeBlock) || this == DecodedBlock::currentBlock)) {
             cpu->delayedFreeBlock = this;
+            if (this == DecodedBlock::currentBlock) {
+                // we don't have a pointer to the current op, so just set them all
+                DecodedOp* op = DecodedBlock::currentBlock->op;
+                while (op) {
+                    op->pfn = emptyOp; // This will cause the current block to return
+                    op = op->next;
+                }
+            }
         } else {
             if (op) {
                 this->op->dealloc(true);
@@ -272,6 +309,8 @@ DecodedBlock* NormalCPU::getNextBlock() {
 
             DecodedOp* op = block->op;
             bool hasLock = true;
+            U32 blockAddress = block->address;
+
             while (op) {
 #ifdef BOXEDWINE_MULTI_THREADED
                 if (op->lock) {
@@ -282,6 +321,24 @@ DecodedBlock* NormalCPU::getNextBlock() {
                 if (!op->pfn) { // callback will be set by decoder
                     op->pfn = normalOps[op->inst];
                 }
+                // This happens when the subblock is created by jumping to the middle of a larger block then later jumping to the section before
+                // for example, a simple if statement can cause this
+                // if (b) {
+                //   a = 1;
+                // }
+                // b = 0;
+                // 
+                // In the above if statement, if b is false, it will skip over "a = 1", so that block will start at "b = 0"
+                // If the next time b is true, then the code will execute "a = 1", that code block doesn't exist yet and will
+                // be created.  In that case the "a = 1" block will continue onto the next instruction "b = 0" since there is no
+                // branching instruction between them, this causes the overlap in blocks which will be handled here.  The code
+                // expects no overlapping blocks, so the new longer block will replace the old shorter block.
+                DecodedBlock* subBlock = this->thread->memory->getCodeBlock(blockAddress);
+                if (subBlock) {
+                    // :TODO: what about running code
+                    this->thread->memory->removeCodeBlock(subBlock->address, subBlock->bytes);
+                }
+                blockAddress += op->len;
                 op = op->next;
             }
             this->thread->memory->addCodeBlock(startIp, block);

@@ -17,6 +17,8 @@
 
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
+extern U8* ramPages[K_NUMBER_OF_PAGES];
+
 // DynReg is a required type, but the values inside are local to this file
 // Used only these 4 because it is possible to use 8-bit calls with them, like add al, cl
 enum DynReg {
@@ -612,20 +614,32 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     outb(0xe8);
     outb(0x0c);
 
-    // mov eax, [currentMMUReadPtr+sizeof(U8*)*index];
+    // mov eax, [memInfo+sizeof(U8*)*index];
     outb(0x8b);
     outb(0x04);
     outb(0x85);
-    outd((U32)getMemData(KThread::currentThread()->memory)->mmuReadPtr);
+    outd((U32)getMemData(KThread::currentThread()->memory)->memInfo);
 
-    // test eax, eax
-    outb(0x85);
-    outb(0xc0);
+    // test eax, 0x80000000 (memInfo[index].read)
+    outb(0xa9);
+    outd(0x80000000);
 
     // jz
     outb(0x74);
     U32 jzPos = outBufferPos;
     outb(0); // skip over cached read
+
+    // get ram address and put it eax
+    
+    // and eax, 0xfffff (bottom 20 bits of meminfo contains ram page index)
+    outb(0x25);
+    outd(0xfffff);
+
+    // mov eax, [eax*4 + ramPages]
+    outb(0x8b);
+    outb(0x04);
+    outb(0x85);
+    outd((U32)ramPages);
 
     // mov eax, [eax+(address & 0xFFF)]
     U32 reg;
@@ -971,16 +985,30 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     outb(0x8b);
     outb(0x04|(reg1<<3));
     outb(0x85|(reg1<<3));
-    outd((U32)getMemData(KThread::currentThread()->memory)->mmuWritePtr);
+    outd((U32)getMemData(KThread::currentThread()->memory)->memInfo);
 
-    // test reg1, reg1
-    outb(0x85);
-    outb(0xc0 | reg1 | (reg1 << 3));
+    // test reg1, 0x40000000 (memInfo[index].write)
+    outb(0xf7);
+    outb(0xc0 | reg1);
+    outd(0x40000000);
 
     // jz
     outb(0x74);
     U32 jzPos = outBufferPos;
     outb(0); // skip over cached read
+
+    // get ram address and put it eax
+
+    // and reg1, 0xfffff (bottom 20 bits of meminfo contains ram page index)
+    outb(0x81);
+    outb(0xe0 | reg1);
+    outd(0xfffff);
+
+    // mov reg1, [reg1*4 + ramPages]
+    outb(0x8b);
+    outb(0x04 | (reg1 << 3));
+    outb(0x85 | (reg1 << 3));
+    outd((U32)ramPages);
 
     // mov eax, [eax+(address & 0xFFF)]
     U32 reg2;

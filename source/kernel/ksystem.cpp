@@ -569,7 +569,7 @@ U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
     result->len = size;
     U32 pageCount = (size+K_PAGE_SIZE-1) / K_PAGE_SIZE;
     for (U32 i=0;i<pageCount;i++) {
-        result->pages.push_back(ramPageAlloc());
+        result->ramPages.push_back(ramPageAlloc());
     }
     return result->id;
 }
@@ -606,7 +606,7 @@ U32 KSystem::shmat(KThread* thread, U32 shmid, U32 shmaddr, U32 shmflg, U32 rtnA
     } else {
         permissions = K_PROT_READ | K_PROT_WRITE;
     }
-    U32 result = thread->process->memory->mapPages(thread, shmaddr >> K_PAGE_SHIFT, shm->pages, permissions);
+    U32 result = thread->process->memory->mapPages(thread, shmaddr >> K_PAGE_SHIFT, shm->ramPages, permissions);
     if (result == 0) {
         return -K_EINVAL;
     }

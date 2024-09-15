@@ -70,6 +70,8 @@ std::shared_ptr<KProcess> KProcess::create() {
     return process;
 }
 
+std::atomic_int KProcess::nextMappedFileIndex = 1;
+
 KProcess::KProcess(U32 id) : id(id), exitOrExecCond(std::make_shared<BoxedWineCondition>(B("KProcess::exitOrExecCond"))), threadRemovedCondition(std::make_shared<BoxedWineCondition>(B("KProcess::threadRemovedCondition"))) {
     for (int i=0;i<LDT_ENTRIES;i++) {
         this->ldt[i].seg_not_present = 1;
@@ -578,6 +580,9 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     this->initStdio();
     FsOpenNode* openNode=ElfLoader::inspectNode(currentDirectory, node, loader, interpreter, interpreterArgs);
     if (!openNode) {
+        KThread::setCurrentThread(nullptr);
+        this->removeThread(thread);
+        delete thread;
         return nullptr;
     }    
     if (ElfLoader::loadProgram(thread, openNode, &thread->cpu->eip.u32)) {
@@ -649,7 +654,7 @@ bool KProcess::isTerminated() {
 BString KProcess::getModuleName(U32 eip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
-        std::shared_ptr<MappedFile> mappedFile = n.value;
+        MappedFilePtr mappedFile = n.value;
         if (eip >= mappedFile->address && eip < mappedFile->address + mappedFile->len) {
             return mappedFile->file->openFile->node->name;
         }
@@ -660,7 +665,7 @@ BString KProcess::getModuleName(U32 eip) {
 U32 KProcess::getModuleEip(U32 eip) {    
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
-        std::shared_ptr<MappedFile> mappedFile = n.value;
+        MappedFilePtr mappedFile = n.value;
         if (eip>=mappedFile->address && eip<mappedFile->address+mappedFile->len)
             return (U32)(eip-mappedFile->address+mappedFile->offset);
     }
@@ -1791,7 +1796,7 @@ U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
 U32 KProcess::msync(KThread* thread, U32 addr, U32 len, U32 flags) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
-        std::shared_ptr<MappedFile> m = n.value;
+        MappedFilePtr m = n.value;
         if (m->address<=addr && addr+len<m->address+m->len) {
             return m->file->pwrite(thread, addr, addr - m->address + m->offset, len);
         }
@@ -2631,7 +2636,7 @@ U32 KProcess::shmdt(U32 shmaddr) {
 
     std::shared_ptr<AttachedSHM> attached = this->attachedShm[shmaddr];
     if (attached) {
-        memory->unmap(shmaddr, (U32)attached->shm->pages.size());
+        memory->unmap(shmaddr, (U32)attached->shm->ramPages.size());
         this->attachedShm.remove(shmaddr);
         return 0;
     }
@@ -2753,10 +2758,15 @@ void KProcess::signalFd(KThread* thread, U32 signal) {
     }
 }
 
+MappedFilePtr KProcess::getMappedFile(U32 key) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+    return mappedFiles.get(key);
+}
+
 void KProcess::printMappedFiles() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
-        const std::shared_ptr<MappedFile>& mappedFile = n.value;
+        const MappedFilePtr& mappedFile = n.value;
         klog("    %.8X - %.8X (offset=%x) %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, (U32)mappedFile->offset, mappedFile->file->openFile->node->path.c_str());
     }
 }

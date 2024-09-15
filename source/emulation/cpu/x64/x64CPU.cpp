@@ -8,6 +8,8 @@
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 
+extern U8* ramPages[K_NUMBER_OF_PAGES];
+
 CPU* CPU::allocCPU(KMemory* memory) {
     return new x64CPU(memory);
 }
@@ -54,8 +56,8 @@ void* x64CPU::init() {
 
     //data.writeToRegFromValue(HOST_CPU, true, (U64)this, 8);
     KMemoryData* memData = getMemData(memory);
-    data.writeToRegFromValue(HOST_MEM_READ, true, (U64)memData->mmuReadPtrAdjusted, 8);
-    data.writeToRegFromValue(HOST_MEM_WRITE, true, (U64)memData->mmuWritePtrAdjusted, 8);
+    data.writeToRegFromValue(HOST_RAM, true, (U64)ramPages, 8);
+    data.writeToRegFromValue(HOST_MMU, true, (U64)memData->memInfo, 8);
     data.setNativeFlags(this->flags, FMASK_TEST|DF);
 
     data.writeToRegFromValue(0, false, EAX, 4);

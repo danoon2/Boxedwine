@@ -3,103 +3,117 @@
 #include "soft_invalid_page.h"
 #include "kmemory_soft.h"
 
-void InvalidPage::ondemmand(KMemory* memory, U32 page) {
+void InvalidPage::onDemand(KMemory* memory, MemInfo& info, U32 address) {
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
-    if (mem->getPage(page) != this) {
+    if (info.type != (U32)PageType::Invalid_Page) {
         return;
     }
-    getMemData(memory)->setPageRam(nullptr, page, false);
+    info.type = (U32)PageType::RAM_Page;
+    info.ramPageIndex = ramPageAlloc();
+    info.updatePermissionCache();
 }
 
-U8 InvalidPage::readb(U32 address) {
+U8 InvalidPage::readb(MemInfo& info, U32 address) {
     KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (thread->memory->canRead(page)) {
-        ondemmand(thread->memory, page);
-        return data->memory->readb(address);
+
+    if (info.flags & PAGE_READ) {
+        onDemand(thread->memory, info, address);
+        return thread->memory->readb(address);
     }
-    thread->seg_mapper(address, true, false);
+    if (info.flags) {
+        thread->seg_access(address, true, false);
+    } else {
+        thread->seg_mapper(address, true, false);
+    }
     return 0;
 }
 
-void InvalidPage::writeb(U32 address, U8 value) {
+void InvalidPage::writeb(MemInfo& info, U32 address, U8 value) {
     KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (thread->memory->canWrite(page)) {
-        ondemmand(thread->memory, page);
-        data->memory->writeb(address, value);
+
+    if (info.flags & PAGE_WRITE) {
+        onDemand(thread->memory, info, address);
+        thread->memory->writeb(address, value);
+    } else if (info.flags) {
+        thread->seg_access(address, true, false);
     } else {
-        thread->seg_mapper(address, false, true);
+        thread->seg_mapper(address, true, false);
     }
 }
 
-U16 InvalidPage::readw(U32 address) {
+U16 InvalidPage::readw(MemInfo& info, U32 address) {
     KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (thread->memory->canRead(page)) {
-        ondemmand(thread->memory, page);
-        return data->memory->readw(address);
+
+    if (info.flags & PAGE_READ) {
+        onDemand(thread->memory, info, address);
+        return thread->memory->readw(address);
     }
-    thread->seg_mapper(address, true, false);
+    if (info.flags) {
+        thread->seg_access(address, true, false);
+    } else {
+        thread->seg_mapper(address, true, false);
+    }
     return 0;
 }
 
-void InvalidPage::writew(U32 address, U16 value) {
+void InvalidPage::writew(MemInfo& info, U32 address, U16 value) {
     KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (thread->memory->canWrite(page)) {
-        ondemmand(thread->memory, page);
-        data->memory->writew(address, value);
+
+    if (info.flags & PAGE_WRITE) {
+        onDemand(thread->memory, info, address);
+        thread->memory->writew(address, value);
+    } else if (info.flags) {
+        thread->seg_access(address, true, false);
     } else {
-        thread->seg_mapper(address, false, true);
+        thread->seg_mapper(address, true, false);
     }
 }
 
-U32 InvalidPage::readd(U32 address) {
+U32 InvalidPage::readd(MemInfo& info, U32 address) {
     KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (thread->memory->canRead(page)) {
-        ondemmand(thread->memory, page);
-        return data->memory->readd(address);
+
+    if (info.flags & PAGE_READ) {
+        onDemand(thread->memory, info, address);
+        return thread->memory->readd(address);
     }
-    thread->seg_mapper(address, true, false);
+    if (info.flags) {
+        thread->seg_access(address, true, false);
+    } else {
+        thread->seg_mapper(address, true, false);
+    }
     return 0;
 }
 
-void InvalidPage::writed(U32 address, U32 value) {
+void InvalidPage::writed(MemInfo& info, U32 address, U32 value) {
     KThread* thread = KThread::currentThread();
-    KMemoryData* data = getMemData(thread->memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (thread->memory->canWrite(page)) {
-        ondemmand(thread->memory, page);
-        data->memory->writed(address, value);
+
+    if (info.flags & PAGE_WRITE) {
+        onDemand(thread->memory, info, address);
+        thread->memory->writed(address, value);
+    } else if (info.flags) {
+        thread->seg_access(address, true, false);
     } else {
-        thread->seg_mapper(address, false, true);
+        thread->seg_mapper(address, true, false);
     }
 }
 
-U8* InvalidPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    KMemoryData* data = getMemData(memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (makeReady && memory->canRead(page)) {
-        ondemmand(memory, page);
-        return data->getPage(page)->getReadPtr(memory, address, true);
+U8* InvalidPage::getReadPtr(KMemory* memory, MemInfo& info, U32 address, bool makeReady) {
+    if (makeReady && (info.flags & PAGE_READ)) {
+        U32 page = address >> K_PAGE_SHIFT;
+        KMemoryData* data = getMemData(memory);
+        onDemand(memory, info, address);
+        return data->getPage(page)->getReadPtr(memory, info, address, true);
     }
     return nullptr;
 }
 
-U8* InvalidPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    U32 page = address >> K_PAGE_SHIFT;
-    if (makeReady && memory->canWrite(page)) {
+U8* InvalidPage::getWritePtr(KMemory* memory, MemInfo& info, U32 address, U32 len, bool makeReady) {    
+    if (makeReady && (info.flags & PAGE_WRITE)) {
+        U32 page = address >> K_PAGE_SHIFT;
         KMemoryData* data = getMemData(memory);
-        ondemmand(memory, page);
-        return data->getPage(page)->getWritePtr(memory, address, len, true);
+        onDemand(memory, info, address);
+        return data->getPage(page)->getWritePtr(memory, info, address, len, true);
     }
     return nullptr;
 }

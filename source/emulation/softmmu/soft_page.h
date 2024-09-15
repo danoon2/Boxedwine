@@ -21,40 +21,26 @@
 
 #include "platform.h"
 #include "soft_ram.h"
+#include "pageType.h"
 
-class KThread;
 class KMemory;
 
-class Page {
-public:
-    enum class Type {
-        Invalid_Page,
-        RW_Page,
-        RO_Page,
-        WO_Page,
-        NO_Page,
-        File_Page,
-        Code_Page,
-        Copy_On_Write_Page,
-        Native_Page,
-        Frame_Buffer_Page
-    };
-    virtual ~Page() {};
+#include "meminfo.h"
 
-    virtual U8 readb(U32 address)=0;
-    virtual void writeb(U32 address, U8 value)=0;
-    virtual U16 readw(U32 address)=0;
-    virtual void writew(U32 address, U16 value)=0;
-    virtual U32 readd(U32 address)=0;
-    virtual void writed(U32 address, U32 value)=0;
+class Page {
+public:    
+    virtual U8 readb(MemInfo& info, U32 address)=0;
+    virtual void writeb(MemInfo& info, U32 address, U8 value)=0;
+    virtual U16 readw(MemInfo& info, U32 address)=0;
+    virtual void writew(MemInfo& info, U32 address, U16 value)=0;
+    virtual U32 readd(MemInfo& info, U32 address)=0;
+    virtual void writed(MemInfo& info, U32 address, U32 value)=0;
+
+    virtual void onDemand(KMemory* memory, MemInfo& info, U32 address) = 0;
 
     // these two take memory argument so that they won't call KThread::current thread, this makes them safe to call from the audio thread
-    virtual U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false)=0; // might have permission, but may not ready
-    virtual U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false)=0; // might have permission, but may not be ready
-
-    virtual bool inRam()=0;
-    virtual void close() = 0;    
-    virtual Type getType() = 0;    
+    virtual U8* getReadPtr(KMemory* memory, MemInfo& info, U32 address, bool makeReady = false)=0; // might have permission, but may not ready
+    virtual U8* getWritePtr(KMemory* memory, MemInfo& info, U32 address, U32 len, bool makeReady = false)=0; // might have permission, but may not be ready   
 };
 
 #endif

@@ -1524,6 +1524,9 @@ public:
     void addReferenceFrom(DecodedBlock* block);
     void removeReferenceFrom(DecodedBlock* block);
     
+    U32 getEipLen() {return bytes;}
+    U32 getEip() {return address;}
+
     DecodedOp* getOp(U32 eip);
 protected:
     DecodedBlockFromNode* referencedFrom = nullptr;    

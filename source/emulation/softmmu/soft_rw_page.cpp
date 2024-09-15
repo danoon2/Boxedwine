@@ -3,71 +3,91 @@
 #include "soft_rw_page.h"
 #include "soft_ram.h"
 
-RWPage* RWPage::alloc(const KRamPtr& page, U32 address) {
-    return new RWPage(page, address);
-}
-
-RWPage::RWPage(const KRamPtr& page, U32 address) : address(address) {
-    if (page) {
-        this->page = page;
-    } else {
-        this->page = ramPageAlloc();
+U8 RWPage::readb(MemInfo& info, U32 address) {
+    if (info.read) {
+        return ramPageGet(info.ramPageIndex)[address & K_PAGE_MASK];
     }
-    this->ram = this->page.get();
+    KThread::currentThread()->seg_access(address, true, false);
+    return 0;
 }
 
-RWPage::~RWPage() {
-    
+void RWPage::writeb(MemInfo& info, U32 address, U8 value) {
+    if (!info.write) {
+        KThread::currentThread()->seg_access(address, false, true);
+    }
+    ramPageGet(info.ramPageIndex)[address & K_PAGE_MASK] = value;
 }
 
-U8 RWPage::readb(U32 address) {
-    return this->ram[address-this->address];
-}
-
-void RWPage::writeb(U32 address, U8 value) {
-    this->ram[address-this->address]=value;
-}
-
-U16 RWPage::readw(U32 address) {
+U16 RWPage::readw(MemInfo& info, U32 address) {
+    if (!info.read) {
+        KThread::currentThread()->seg_access(address, true, false);
+    }
+    // bounds have already been checked in KMemory::readw(U32 address)
 #ifdef UNALIGNED_MEMORY
-        return this->ram[address-this->address] | ((U16)this->ram[address-this->address+1] << 8);
+    U8* ram = getRamPageAtIndex(info.ramPageIndex);
+    U32 offset = address & K_PAGE_MASK;
+    return ram[offset] | ((U16)ram[offset+1] << 8);
 #else
-        return *(U16*)(&this->ram[address-this->address]);
+    return *(U16*)(&ramPageGet(info.ramPageIndex)[address & K_PAGE_MASK]);
 #endif
 }
 
-void RWPage::writew(U32 address, U16 value) {
+void RWPage::writew(MemInfo& info, U32 address, U16 value) {
+    if (!info.write) {
+        KThread::currentThread()->seg_access(address, false, true);
+    }
 #ifdef UNALIGNED_MEMORY
-        this->ram[address-this->address] = (U8)value;
-        this->ram[address-this->address+1] = (U8)(value >> 8);
+    U8* ram = getRamPageAtIndex(info.ramPageIndex);
+    U32 offset = address & K_PAGE_MASK;
+    ram[offset] = (U8)value;
+    ram[offset+1] = (U8)(value >> 8);
 #else
-        *(U16*)(&this->ram[address-this->address]) = value;
+    *(U16*)(&ramPageGet(info.ramPageIndex)[address & K_PAGE_MASK]) = value;
 #endif
 }
 
-U32 RWPage::readd(U32 address) {
+U32 RWPage::readd(MemInfo& info, U32 address) {
+    if (!info.read) {
+        KThread::currentThread()->seg_access(address, true, false);
+}
 #ifdef UNALIGNED_MEMORY
-        return this->ram[address-this->address] | ((U32)this->ram[address-this->address+1] << 8) | ((U32)this->ram[address-this->address+2] << 16) | ((U32)this->ram[address-this->address+3] << 24);
+    U8* ram = getRamPageAtIndex(info.ramPageIndex);
+    U32 offset = address & K_PAGE_MASK;
+    return ram[offset] | ((U32)this->ram[offset +1] << 8) | ((U32)this->ram[offset +2] << 16) | ((U32)this->ram[offset +3] << 24);
 #else
-        return *(U32*)(&this->ram[address-this->address]);
+    return *(U32*)(&ramPageGet(info.ramPageIndex)[address & K_PAGE_MASK]);
 #endif
 }
 
-void RWPage::writed(U32 address, U32 value) {
+void RWPage::writed(MemInfo & info, U32 address, U32 value) {
+    if (!info.write) {
+        KThread::currentThread()->seg_access(address, false, true);
+    }
 #ifdef UNALIGNED_MEMORY
-        this->ram[address++ - this->address] = (U8)value;
-        this->ram[address++ - this->address] = (U8)(value >> 8);
-        this->ram[address++ - this->address] = (U8)(value >> 16);
-        this->ram[address - this->address] = (U8)(value >> 24);
+    U8* ram = getRamPageAtIndex(info.ramPageIndex);
+    U32 offset = address & K_PAGE_MASK;
+    this->ram[offset] = (U8)value;
+    this->ram[offset + 1] = (U8)(value >> 8);
+    this->ram[offset + 2] = (U8)(value >> 16);
+    this->ram[offset + 3] = (U8)(value >> 24);
 #else
-        *(U32*)(&this->ram[address - this->address]) = value;
+    *(U32*)(&ramPageGet(info.ramPageIndex)[address & K_PAGE_MASK]) = value;
 #endif
 }
 
-U8* RWPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    return this->ram;
+U8* RWPage::getReadPtr(KMemory* memory, MemInfo& info, U32 address, bool makeReady) {
+    if (info.read) {
+        return ramPageGet(info.ramPageIndex);
+    }
+    return nullptr;
 }
 
-U8* RWPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    return this->ram;
+U8* RWPage::getWritePtr(KMemory* memory, MemInfo& info, U32 address, U32 len, bool makeReady) {
+    if (info.write) {
+        return ramPageGet(info.ramPageIndex);
+    }
+    return nullptr;
+}
+
+void RWPage::onDemand(KMemory* memory, MemInfo& info, U32 address) {
 }

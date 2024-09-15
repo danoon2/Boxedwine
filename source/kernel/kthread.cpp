@@ -76,8 +76,8 @@ void KThread::reset() {
 }
 
 void KThread::setupStack() {  
-    U32 stack = memory->mmap(this, 0, MAX_STACK_SIZE, K_PROT_NONE, K_MAP_ANONYMOUS|K_MAP_PRIVATE, -1, 0);
-    // will all by on demand
+    U32 stack = memory->mmap(this, 0, MAX_STACK_SIZE, K_PROT_NONE, K_MAP_ANONYMOUS|K_MAP_PRIVATE|K_MAP_BOXEDWINE, -1, 0);
+    // will all be on demand
     memory->mprotect(this, stack + K_PAGE_SIZE, MAX_STACK_SIZE - 2 * K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE);    
     U32 stackPageCount = MAX_STACK_SIZE >> K_PAGE_SHIFT;
     U32 stackPageStart = stack >> K_PAGE_SHIFT;
@@ -121,8 +121,8 @@ KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) :
     }
     //BString tmp = BString::valueOf(id);
     //tmp += ".txt";
-    //if (id==0x1c)
-    //this->cpu->logFile = fopen(tmp.c_str(), "w");
+    //if (id==0xd)
+    //this->cpu->logFile.createNew(tmp);
 }
 
 bool KThread::isLdtEmpty(struct user_desc* desc) {

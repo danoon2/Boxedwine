@@ -166,3 +166,21 @@ U32 KFile::pwrite(KThread* thread, U32 buffer, S64 offset, U32 len) {
     this->openFile->seek(previousOffset);
     return result;
 }
+
+U32 KFile::preadNative(U8* buffer, S64 offset, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    S64 previousOffset = this->openFile->getFilePointer();
+    this->openFile->seek(offset);
+    U32 result = this->openFile->readNative(buffer, len);
+    this->openFile->seek(previousOffset);
+    return result;
+}
+
+U32 KFile::pwriteNative(U8* buffer, S64 offset, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(filePosMutex);
+    S64 previousOffset = this->openFile->getFilePointer();
+    this->openFile->seek(offset);
+    U32 result = this->openFile->writeNative(buffer, len);
+    this->openFile->seek(previousOffset);
+    return result;
+}

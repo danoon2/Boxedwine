@@ -3,9 +3,15 @@
 
 #include "platform.h"
 
-typedef std::shared_ptr<U8[]> KRamPtr;
+typedef U32 RamPage;
 
-KRamPtr ramPageAlloc();
+RamPage ramPageAlloc();
+RamPage ramPageAllocNative(U8* native);
+U8* ramPageGet(RamPage page);
+void ramPageRelease(RamPage page);
+void ramPageRetain(RamPage page);
+U32 ramPageUseCount(RamPage page);
+
 void shutdownRam();
 
 #endif

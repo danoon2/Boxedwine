@@ -12,6 +12,7 @@ class DynamicMemory;
 #define K_NUMBER_OF_PAGES 0x100000
 #define K_ROUND_UP_TO_PAGE(x) ((x + 0xFFF) & 0xFFFFF000)
 
+// can only use 7 bits, see struct MemInfo
 #define PAGE_READ 0x01
 #define PAGE_WRITE 0x02
 #define PAGE_EXEC 0x04
@@ -19,10 +20,11 @@ class DynamicMemory;
 #define PAGE_FUTEX 0x10
 #define PAGE_MAPPED 0x20
 #define PAGE_ALLOCATED 0x40
-#define PAGE_MAPPED_HOST 0x80
 #define PAGE_PERMISSION_MASK 0x07
 
 #define GET_PAGE_PERMISSIONS(flags) (flags & PAGE_PERMISSION_MASK)
+
+class DecodedBlock;
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
@@ -31,7 +33,8 @@ class DynamicMemory;
 #define CodeBlock DecodedBlock*
 #endif
 
-class DecodedBlock;
+#include "../source/emulation/softmmu/codePageData.h"
+
 class Page;
 class KMemoryData;
 class KProcess;
@@ -53,7 +56,7 @@ public:
     U32 mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U32 flags);
     U32 unmap(U32 address, U32 len);
 
-    U32 mapPages(KThread* thread, U32 startPage, const std::vector<KRamPtr>& pages, U32 permissions);
+    U32 mapPages(KThread* thread, U32 startPage, const std::vector<RamPage>& pages, U32 permissions);
     U32 mapNativeMemory(void* hostAddress, U32 size);
     void unmapNativeMemory(U32 address, U32 size);
 
@@ -95,6 +98,7 @@ public:
 
     // caller is responsible for making sure the address+len is valid
     void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);
+    void iterateAddressByPage(U32 address, U32 len, std::function<void(U32 address, U32 len)> callback);
 
     // caller is responsible for making sure the address+len is valid
     void performOnMemory(U32 address, U32 len, bool readOnly, std::function<bool(U8* ram, U32 len)> callback);
@@ -109,12 +113,13 @@ public:
     bool mapShared(U32 page) { return (getPageFlags(page) & PAGE_SHARED) != 0; }
     bool isPageMapped(U32 page) { return (getPageFlags(page) & PAGE_MAPPED) != 0; }
 
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
-    CodeBlock getCodeBlock(U32 address);
-#endif
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     CodeBlock findCodeBlockContaining(U32 address, U32 len);
+#else
+    CodeBlock getCodeBlock(U32 address);
+#endif    
     void addCodeBlock(U32 address, CodeBlock block);
-    void removeCodeBlock(U32 address, U32 len);
+    void removeCodeBlock(U32 address, U32 len, bool becauseOfWrite = false);
 
 #ifdef BOXEDWINE_DYNAMIC
     DynamicMemory* dynamicMemory;
@@ -125,6 +130,7 @@ private:
     friend KMemoryData;
     friend BtMemory;        
 
+    CodePageData code;
     KMemoryData* data;
     KProcess* process;
     BHashTable< U8*, std::shared_ptr<U8[]>> lockedMemory;
