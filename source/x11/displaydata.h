@@ -53,7 +53,8 @@ public:
 	U32 root;
 	U32 clientFd;
 	U32 serverFd;
-	KProcessPtr process;
+	KProcessWeakPtr process;
+	U32 processId;
 	XrrData* xrrData = nullptr;
 
 	BOXEDWINE_MUTEX mutex;

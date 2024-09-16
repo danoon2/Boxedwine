@@ -49,6 +49,7 @@ public:
 	DisplayDataPtr getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address);
 	DisplayDataPtr getDisplayDataById(U32 id);
 	void changeScreen(U32 width, U32 height);
+	void processExit(U32 pid);
 
 	void draw(bool drawNow = false);
 	const XWindowPtr& getRoot();

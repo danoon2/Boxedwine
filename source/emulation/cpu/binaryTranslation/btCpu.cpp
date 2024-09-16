@@ -187,7 +187,7 @@ void BtCPU::startThread() {
     } catch (...) {
         int ii = 0;
     }
-    std::shared_ptr<KProcess> process = thread->process;
+    KProcessPtr process = thread->process;
     process->deleteThread(thread);
     KThread::setCurrentThread(nullptr);
     platformThreadCount--;

@@ -68,7 +68,7 @@ void BtCodeChunk::makeLive() {
 void BtCodeChunk::detachFromHost(KMemory* memory) {
     U32 eip = this->emulatedAddress;
     KThread* thread = KThread::currentThread();
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     KMemoryData* mem = getMemData(thread->memory);
 
     if (thread) {

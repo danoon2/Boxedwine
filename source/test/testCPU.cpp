@@ -57,7 +57,7 @@ __m128i floatTo128(float f1, float f2, float f3, float f4) {
 
 KMemory* memory;
 CPU* cpu;
-static std::shared_ptr<KProcess> process;
+static KProcessPtr process;
 static int didFail;
 static int totalFails;
 

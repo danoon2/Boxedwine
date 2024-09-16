@@ -94,7 +94,7 @@ public:
     bool run() override;
 private:
     friend class KProcess;
-    std::weak_ptr<KProcess> process;
+    KProcessWeakPtr process;
 };
 
 class AttachedSHM {
@@ -118,7 +118,7 @@ public:
 
 class KProcess : public std::enable_shared_from_this<KProcess> {
 public:
-    static std::shared_ptr<KProcess> create();    
+    static KProcessPtr create();    
     KProcess(U32 id);
     ~KProcess();
 
@@ -129,7 +129,7 @@ public:
 	void deleteThread(KThread* thread);
     void killAllThreads(KThread* exceptThisOne = nullptr);
     BString getAbsoluteExePath();
-    void clone(const std::shared_ptr<KProcess>& from);
+    void clone(const KProcessPtr& from);
     U32 getNextFileDescriptorHandle(int after);
     U32 alloc(KThread* thread, U32 len);
     void free(U32 address);

@@ -27,7 +27,7 @@ static void closeSdlAudio() {
 
 static void audioCallback(void* userdata, U8* stream, S32 len) {
 	KNativeSDLAudioData* data = (KNativeSDLAudioData*)userdata;
-	std::shared_ptr<KProcess> process = data->process.lock();	
+	KProcessPtr process = data->process.lock();	
 
 	if (!data->isPlaying || !process || process->terminated) {
 		memset(stream, data->got.silence, len);
@@ -192,7 +192,7 @@ U32 KNativeAudioSDL::getSdlFormat(BoxedWaveFormatExtensible* pFmt) {
 	}
 }
 
-U32 KNativeAudioSDL::init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
+U32 KNativeAudioSDL::init(KProcessPtr process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
 	KNativeSDLAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return E_FAIL;

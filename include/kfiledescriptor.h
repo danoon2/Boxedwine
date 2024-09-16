@@ -46,7 +46,7 @@ class KProcess;
 
 class KFileDescriptor {
 public:
-    KFileDescriptor(const std::shared_ptr<KProcess>& process, const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle);
+    KFileDescriptor(const KProcessPtr& process, const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle);
     ~KFileDescriptor();
 
     bool canRead();
@@ -58,7 +58,7 @@ public:
     U32 handle;
     std::shared_ptr<KObject> kobject;
     U32 refCount;
-    std::weak_ptr<KProcess> process;
+    KProcessWeakPtr process;
 };
 
 #endif

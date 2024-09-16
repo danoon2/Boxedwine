@@ -23,7 +23,7 @@
 #include <string.h>
 
 KFileDescriptor::~KFileDescriptor() {
-    std::shared_ptr<KProcess> p = this->process.lock();
+    KProcessPtr p = this->process.lock();
     if (p) {
         p->clearFdHandle(this->handle);
         /*  As well as being removed by an explicit F_UNLCK, record locks are
@@ -43,7 +43,7 @@ bool KFileDescriptor::canWrite() {
 }
 
 
-KFileDescriptor::KFileDescriptor(const std::shared_ptr<KProcess>& process, const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle) {
+KFileDescriptor::KFileDescriptor(const KProcessPtr& process, const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle) {
     this->process = process;
     this->refCount = 1;
     this->handle = handle;

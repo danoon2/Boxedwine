@@ -88,7 +88,7 @@ void KThread::setupStack() {
     }
 }
 
-KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) : 
+KThread::KThread(U32 id, const KProcessPtr& process) : 
     id(id),   
     process(process),
     memory(process->memory),    
@@ -586,7 +586,7 @@ void KThread::exitRobustList()
     struct k_robust_list_head pending;
     unsigned int limit = ROBUST_LIST_LIMIT, pi, pip;
     unsigned int next_pi;
-    U32 futex_offset;
+    U32 futex_offset = 0;
     int rc;
 
     if (!this->robustList || !memory->canRead(this->robustList, 12)) {

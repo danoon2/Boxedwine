@@ -108,7 +108,7 @@ void unscheduleThread(KThread* thread) {
     thread->cpu->yield = true;
 }
 
-void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
+void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
     KThread* thread = process->getThreadById(threadId);
     if (thread) {
         unscheduleThread(thread);
@@ -234,7 +234,7 @@ U32 getMIPS() {
     return result;
 }
 
-void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread) {
+void waitForProcessToFinish(const KProcessPtr& process, KThread* thread) {
     while (!process->terminated) {
         runThreadSlice(thread);
     }

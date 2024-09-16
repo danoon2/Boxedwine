@@ -495,7 +495,7 @@ bool StartUpArgs::apply() {
         klog_nonewline("\n");
         bool result = false;
         {
-            std::shared_ptr<KProcess> process = KProcess::create();// keep in this small scope so we don't hold onto it for the life of the program
+            KProcessPtr process = KProcess::create();// keep in this small scope so we don't hold onto it for the life of the program
             result = process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
         }
         if (result) {
