@@ -344,24 +344,24 @@ U8 X64Asm::getHostMem(U8 regEmulatedAddress, bool isRex) {
     if (isTmpRegAvailable()) {
         tmpReg = getTmpReg();
     } else {
-        tmpReg = HOST_ESP;
+        tmpReg = (instructionInfo[this->currentOp->inst].writeMemWidth ? HOST_MEM_READ : HOST_MEM_WRITE);
         pushNativeReg(tmpReg, true);            
     }
     if (regEmulatedAddress == 4 && !isRex) {
         regEmulatedAddress = HOST_ESP;
         isRex = true;
     }
-    
-    pushFlagsToReg(tmpReg, true, true); // since shiftRightReg will change flags  
-
-    // get page by shift address >> 12
-    writeToRegFromReg(resultReg, true, regEmulatedAddress, isRex, 4);
-    shiftRightReg(resultReg, true, K_PAGE_SHIFT);
-
-    getRamAddressIntoPageReg(resultReg, regEmulatedAddress, isRex, instructionInfo[this->currentOp->inst].writeMemWidth!=0);
-
-    popFlagsFromReg(tmpReg, true, true);
-
+    if (x64CPU::hasBMI2) {
+        writeToRegFromValue(tmpReg, true, K_PAGE_SHIFT, 4);
+        bmi2ShiftRightReg(resultReg, regEmulatedAddress, isRex, tmpReg);
+    } else {            
+        pushFlagsToReg(tmpReg, true, true); // since shiftRightReg will change flags
+        writeToRegFromReg(resultReg, true, regEmulatedAddress, isRex, 4);
+        shiftRightReg(resultReg, true, K_PAGE_SHIFT); // get page
+        popFlagsFromReg(tmpReg, true, true);            
+    }
+    writeToRegFromMem(resultReg, true, (instructionInfo[this->currentOp->inst].writeMemWidth ? HOST_MEM_WRITE : HOST_MEM_READ), true, resultReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]
+        
     if (isTmpReg(tmpReg)) {
         releaseTmpReg(tmpReg);            
     } else {
@@ -845,7 +845,7 @@ void X64Asm::calculateMemory(U8 reg, bool isRex, U32 rm) {
                 } else { // [base + index << shift]
                     U8 seg = base == 4 ? this->ss : this->ds;
 
-                    if (seg == SEG_ZERO || !this->cpu->thread->process->hasSetSeg[seg]) {
+                    if (base == SEG_ZERO || !this->cpu->thread->process->hasSetSeg[seg]) {
                         addWithLea(reg, isRex, base, false, (index == 4 ? -1 : index), false, sib >> 6, 0, 4);
                     } else {                        
                         U32 tmpReg = getTmpReg();                        
@@ -939,102 +939,6 @@ void X64Asm::setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit) 
 
 void common_runSingleOp(x64CPU* cpu);
 
-// psudo c code
-//
-//char* checkMemory(U32 address, U32 width) {
-//    U32 page = address >> 12;
-//    U32 offset = address & 0xfff;
-//    char* ram = nullptr;
-//    if (memInfo[page].wrte && offset < 0x1000 - width) {
-//        ram = ramPage[memInfo[page].ramPageIndex] - address;
-//    }
-//    return ram;
-//}
-
-// gcc with godbolt
-//checkMemory(unsigned int, unsigned int) :
-//    mov     ecx, edi
-//    xor eax, eax
-//    shr     ecx, 12
-//    test    BYTE PTR memInfo[3+rcx*4], 64
-//    jns.L1
-//    mov     edx, 4096
-//    sub     edx, esi
-//    mov     esi, edi
-//    and esi, 4095
-//    cmp     esi, edx
-//    jnb.L1
-//    mov     eax, DWORD PTR memInfo[0 + rcx * 4]
-//    mov     edi, edi
-//    and eax, 1048575
-//    mov     rax, QWORD PTR ramPage[0 + rax * 8]
-//    sub     rax, rdi
-//    .L1:
-//    ret
-
-void X64Asm::getRamAddress(U8 resultReg, U32 directAddress, bool isWrite) {
-    // test byte ptr[HOST_MMU + memReg * 4 + 3], 0x80
-    U32 page = directAddress >> K_PAGE_SHIFT;
-    // test byte ptr[HOST_MMU + page], 0x80
-    write8(0x41);
-    write8(0xf6);
-    write8(0x80 | HOST_MMU);
-    write32(page * 4 + 3);
-    if (isWrite) {
-        write8(0x40);
-    } else {
-        write8(0x80);
-    }
-    zeroReg(resultReg, true, false);
-    doIf(0, false, 0, nullptr, [this, resultReg, directAddress, page] {
-        // from ram[ramPageIndex] into pageReg
-        writeToRegFromMem(resultReg, true, HOST_RAM, true, -1, false, 0, page * 8, 8, false);
-        addWithLea(resultReg, true, resultReg, true, -1, false, 0, -((S32)(directAddress & 0xFFFFF000)), 8);
-        }, false, false, false);
-}
-
-
-void X64Asm::getRamAddressIntoPageReg(U8 pageReg, U8 addressReg, bool isRex, bool isWrite) {
-    // test byte ptr[HOST_MMU + memReg * 4 + 3], 0x80
-    write8(0x43);
-    write8(0xf6);
-    write8(0x44);
-    write8(0x80 | HOST_MMU | (pageReg << 3));
-    write8(0x03);
-    if (isWrite) {
-        write8(0x40);
-    } else {
-        write8(0x80);
-    }
-    U8 tmpReg = 0xff;
-    
-    if (isTmpRegAvailable()) {
-        tmpReg = getTmpReg();
-    } else {
-        pushNativeReg(HOST_CPU, true);
-        tmpReg = HOST_CPU;
-    }
-    doIf(0, false, 0, [this, pageReg] {
-        zeroReg(pageReg, true, false);
-    }, [this, pageReg, addressReg, isRex, tmpReg] {
-        // move memInfo[page].ramPageIndex into pageReg
-        writeToRegFromMem(pageReg, true, HOST_MMU, true, pageReg, true, 2, 0, 4, false);
-        andReg(pageReg, true, 0xfffff); // mask of the 20 bits of ramPageIndex
-
-        // from ram[ramPageIndex] into pageReg
-        writeToRegFromMem(pageReg, true, HOST_RAM, true, pageReg, true, 3, 0, 8, false);        
-        writeToRegFromReg(tmpReg, true, addressReg, isRex, 4);
-        andReg(tmpReg, true, 0xfffff000);
-        subRegs(pageReg, true, tmpReg, true, true);
-    }, false, false, false);
-    if (tmpReg == HOST_CPU) {
-        popNativeReg(HOST_CPU, true);
-    } else {
-        releaseTmpReg(tmpReg);
-    }
-}
-
-
 void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg, bool writeHostMemToReg, bool skipAlignmentCheck, bool releaseReg) {
     bool memRegNeedsRelease = false;
     //bool fpuMustBeNative = currentOp->inst == FNSAVE || currentOp->inst == FRSTOR || currentOp->inst == FLDENV || currentOp->inst == FNSTENV || currentOp->inst == Fxrstor || currentOp->inst == Fxsave;
@@ -1063,10 +967,9 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
     // get page
     writeToRegFromReg(memReg, true, reg, isRex, 4);
     shiftRightReg(memReg, true, K_PAGE_SHIFT);
-    // cmp     BYTE PTR memInfo[3 + memReg * 4], 0
 
-    // memReg will be 0 if we don't have permission for direct access
-    getRamAddressIntoPageReg(memReg, reg, isRex, isWrite);
+    // if hostMemReg is 0, then we don't have permission            
+    writeToRegFromMem(memReg, true, (isWrite ? HOST_MEM_WRITE : HOST_MEM_READ), true, memReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]            
 
     U8 testReg = memReg;
     U8 testRegReleaseAfterCmp = memRegNeedsRelease;
@@ -1428,11 +1331,13 @@ void X64Asm::writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U
     // custom check memory (hard coded page, no alignment checks)
     if (this->cpu->thread->process->hasSetSeg[seg]) {
         addWithLea(addressReg, true, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, 4);
-        writeToRegFromReg(tmpReg, true, addressReg, true, 4);
-        shiftRightReg(tmpReg, true, K_PAGE_SHIFT);
-        getRamAddressIntoPageReg(tmpReg, addressReg, true, false);
+        U8 pageReg = getTmpReg();
+        writeToRegFromReg(pageReg, true, addressReg, true, 4);
+        shiftRightReg(pageReg, true, K_PAGE_SHIFT);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_READ, true, pageReg, true, 3, 0, 8, false);
+        releaseTmpReg(pageReg);
     } else {
-        getRamAddress(tmpReg, disp, false);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_READ, true, -1, false, 0, (disp >> K_PAGE_SHIFT) << 3, 8, false);
     }
 
     doIf(tmpReg, true, 0, [=, this] {
@@ -1475,11 +1380,13 @@ void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U
     // custom check memory (hard coded page, no alignment checks)
     if (this->cpu->thread->process->hasSetSeg[seg]) {
         addWithLea(addressReg, true, getRegForSeg(seg, tmpReg), true, -1, false, 0, disp, 4);
-        writeToRegFromReg(tmpReg, true, addressReg, true, 4);
-        shiftRightReg(tmpReg, true, K_PAGE_SHIFT);
-        getRamAddressIntoPageReg(tmpReg, addressReg, true, true);
+        U8 pageReg = getTmpReg();
+        writeToRegFromReg(pageReg, true, addressReg, true, 4);
+        shiftRightReg(pageReg, true, K_PAGE_SHIFT);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_WRITE, true, pageReg, true, 3, 0, 8, false);
+        releaseTmpReg(pageReg);
     } else {
-        getRamAddress(tmpReg, disp, true);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_WRITE, true, -1, false, 0, (disp >> K_PAGE_SHIFT) << 3, 8, false);
     }
 
     doIf(tmpReg, true, 0, [=, this] {

@@ -97,8 +97,8 @@ public:
     U8* getPtrForFutex(U32 address);
 
     // caller is responsible for making sure the address+len is valid
-    static void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);
-    static void iterateAddressByPage(U32 address, U32 len, std::function<void(U32 address, U32 len)> callback);
+    void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);
+    void iterateAddressByPage(U32 address, U32 len, std::function<void(U32 address, U32 len)> callback);
 
     // caller is responsible for making sure the address+len is valid
     void performOnMemory(U32 address, U32 len, bool readOnly, std::function<bool(U8* ram, U32 len)> callback);

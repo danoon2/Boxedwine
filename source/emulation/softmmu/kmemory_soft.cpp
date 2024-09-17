@@ -420,7 +420,7 @@ void KMemory::clone(KMemory* from, bool vfork) {
 CodeBlock KMemory::findCodeBlockContaining(U32 address, U32 len) {
     U32 page = address >> K_PAGE_SHIFT;
     if (data->memInfo[page].type == (U32)PageType::Code_Page) {
-        return code.getFirstBlock(address, len);
+        return code.getBlock(address, len);
     }
     return nullptr;
 }
@@ -439,7 +439,7 @@ void KMemory::removeCodeBlock(U32 address, U32 len, bool becauseOfWrite) {
     iterateAddressByPage(address, len, [this, becauseOfWrite](U32 address, U32 len) {
         U32 page = address >> K_PAGE_SHIFT;
         if (data->memInfo[page].type == (U32)PageType::Code_Page) {
-            this->code.removeCode(address, len, true);
+            this->code.removeCode(this, address, len, true);
         }
     });
 }
@@ -460,7 +460,7 @@ void KMemory::addCodeBlock(U32 address, CodeBlock block) {
 }
 
 void KMemoryData::markAddressDynamic(U32 address, U32 len) {
-    KMemory::iterateAddressByPage(address, len, [this](U32 address, U32 len) {
+    memory->iterateAddressByPage(address, len, [this](U32 address, U32 len) {
         U32 page = address >> K_PAGE_SHIFT;
         if (memInfo[page].type == (U32)PageType::Code_Page) {
             CodePerPageData* codePage = this->memory->code.getCodePage(page, false);
@@ -474,7 +474,7 @@ void KMemoryData::markAddressDynamic(U32 address, U32 len) {
 bool KMemoryData::isAddressDynamic(U32 address, U32 len) {    
     bool result = false;
 
-    KMemory::iterateAddressByPage(address, len, [this, &result](U32 address, U32 len) {
+    memory->iterateAddressByPage(address, len, [this, &result](U32 address, U32 len) {
         U32 page = address >> K_PAGE_SHIFT;
         if (memInfo[page].type == (U32)PageType::Code_Page) {
             CodePerPageData* codePage = this->memory->code.getCodePage(page, false);
