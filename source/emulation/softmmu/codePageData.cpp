@@ -25,6 +25,28 @@ CodePageData::~CodePageData() {
 	klog("CodePageData count=%d", count);
 }
 
+CodeBlock CodePageData::getFirstBlock(U32 address, U32 len) {
+	CodeBlock result;
+
+	KMemory::iterateAddressByPage(address, len, [&result, this](U32 address, U32 len) {
+		if (result) {
+			return;
+		}
+		CodePerPageData* codePage = getCodePage(address >> K_PAGE_SHIFT, false);
+		if (codePage) {
+			U32 start = address & K_PAGE_MASK;
+			U32 end = start + len;
+			for (U32 i = start; i < end; i++) {
+				if (codePage->blocks[(address + i) & 0xfff]) {
+					result = codePage->blocks[(address + i) & 0xfff];
+					break;
+				}
+			}
+		}
+	});
+	return result;
+}
+
 CodeBlock CodePageData::getBlock(U32 address) {
 	CodePerPageData* codePage = getCodePage(address >> K_PAGE_SHIFT, false);
 	if (codePage) {
@@ -34,10 +56,10 @@ CodeBlock CodePageData::getBlock(U32 address) {
 }
 
 #include <unordered_set>
-void CodePageData::removeCode(KMemory* memory, U32 address, U32 len, bool becauseOfWrite) {
+void CodePageData::removeCode(U32 address, U32 len, bool becauseOfWrite) {
 	std::unordered_set<CodeBlock> blocks;
 
-	memory->iterateAddressByPage(address, len, [&blocks, this, becauseOfWrite](U32 address, U32 len) {
+	KMemory::iterateAddressByPage(address, len, [&blocks, this, becauseOfWrite](U32 address, U32 len) {
 		U32 page = address >> K_PAGE_SHIFT;
 		CodePerPageData* codePage = getCodePage(page, false);
 		U32 offset = address & K_PAGE_MASK;
@@ -54,7 +76,7 @@ void CodePageData::removeCode(KMemory* memory, U32 address, U32 len, bool becaus
 		}
 	});
 	for (CodeBlock block : blocks) {
-		memory->iterateAddressByPage(block->getEip(), block->getEipLen(), [&blocks, this, becauseOfWrite](U32 address, U32 len) {
+		KMemory::iterateAddressByPage(block->getEip(), block->getEipLen(), [&blocks, this, becauseOfWrite](U32 address, U32 len) {
 			U32 page = address >> K_PAGE_SHIFT;
 			U32 offset = address & K_PAGE_MASK;
 			CodePerPageData* codePage = getCodePage(page, false);
@@ -64,7 +86,9 @@ void CodePageData::removeCode(KMemory* memory, U32 address, U32 len, bool becaus
 				}
 			}
 		});
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+		block->release(KThread::currentThread()->memory);
+#else
 		block->dealloc(false);
 #endif
 	}

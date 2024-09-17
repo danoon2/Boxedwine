@@ -254,6 +254,8 @@ private:
     void calculateMemory(U8 reg, bool isRex, U32 rm);
 
     void shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg);    
+    void getRamAddressIntoPageReg(U8 pageReg, U8 addressReg, bool isRex, bool isWrite);
+    void getRamAddress(U8 resultReg, U32 directAddress, bool isWrite);
 
     void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false);
 public:
