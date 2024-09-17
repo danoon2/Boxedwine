@@ -1425,7 +1425,9 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool ski
         readMem64RegOffset(resultReg, xMemRam, resultReg, 3);
         andValue32(tmpReg, regEmulatedAddress, 0xfffff000);
         subRegs64(resultReg, resultReg, tmpReg);
-    }, nullptr, nullptr, false, false);
+    }, [=] {
+        zeroReg(resultReg);
+    }, nullptr, false, false);
     
     if (!skipAlignmentCheck && width > 1) {
         andValue32(tmpReg, regEmulatedAddress, 0xFFF);

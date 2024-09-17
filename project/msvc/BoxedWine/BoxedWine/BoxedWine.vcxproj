@@ -599,7 +599,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\meminfo.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\meminfostruct.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_file_map.h" />

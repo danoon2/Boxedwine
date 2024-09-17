@@ -1431,10 +1431,10 @@
     <ClInclude Include="..\..\..\..\include\pageType.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\meminfo.h">
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h">
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\meminfostruct.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
   </ItemGroup>
