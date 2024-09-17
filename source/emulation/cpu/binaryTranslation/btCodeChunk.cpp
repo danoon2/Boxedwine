@@ -88,8 +88,10 @@ void BtCodeChunk::detachFromHost(KMemory* memory) {
 }
 
 void BtCodeChunk::release(KMemory* memory) {
-    this->detachFromHost(memory);
-    this->internalDealloc();
+    if (!locked) {
+        this->detachFromHost(memory);
+        this->internalDealloc();
+    }
 }
 
 void BtCodeChunk::internalDealloc() {

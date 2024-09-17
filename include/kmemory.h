@@ -29,8 +29,10 @@ class DecodedBlock;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
 #define CodeBlock std::shared_ptr<BtCodeChunk>
+#define CodeBlockParam const std::shared_ptr<BtCodeChunk>&
 #else
 #define CodeBlock DecodedBlock*
+#define CodeBlockParam DecodedBlock*
 #endif
 
 #include "../source/emulation/softmmu/codePageData.h"
@@ -113,12 +115,10 @@ public:
     bool mapShared(U32 page) { return (getPageFlags(page) & PAGE_SHARED) != 0; }
     bool isPageMapped(U32 page) { return (getPageFlags(page) & PAGE_MAPPED) != 0; }
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
     CodeBlock findCodeBlockContaining(U32 address, U32 len);
-#else
     CodeBlock getCodeBlock(U32 address);
-#endif    
-    void addCodeBlock(U32 address, CodeBlock block);
+
+    void addCodeBlock(U32 address, CodeBlockParam block);
     void removeCodeBlock(U32 address, U32 len, bool becauseOfWrite = false);
 
 #ifdef BOXEDWINE_DYNAMIC

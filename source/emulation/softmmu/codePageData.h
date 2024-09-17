@@ -27,7 +27,7 @@ public:
 	CodeBlock getBlock(U32 address, U32 len);
 	void removeCode(KMemory* memory, U32 address, U32 len, bool becauseOfWrite);
 	void removeAll();
-	void addCodeToPage(CodeBlock block, U32 page, U32 address, U32 len);
+	void addCodeToPage(CodeBlockParam block, U32 page, U32 address, U32 len);
 
 private:
 	CodePerPageData** pageData2[0x400];

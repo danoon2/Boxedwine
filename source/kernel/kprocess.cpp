@@ -781,8 +781,9 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
             envs[i].substr(5).split(':', this->path);
         }
     }
-
+    
     // reset memory must come after we grab the args and env
+    thread->cpu->execvAboutToResetMemory();
     this->memory->execvReset(cloneVM);
     cloneVM = false;
 
@@ -814,6 +815,10 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
 
     //klog("%d/%d exec %s (cwd=%s)", KThread::currentThread()->id, this->id, this->commandLine.c_str(), this->currentDirectory.c_str());
 
+    // for BOXEDWINE_BINARY_TRANSLATOR, 
+    // when this function exits, we will return to the current running block, from there it will check the flag set in cpu->restart which
+    // will cause the block to exit to BtCPU::run.  BtCPU will loop and call cpu->init and that will setup the memory for the cpu functions
+    // like process->syncFromHostAddress
     thread->cpu->restart();
     
     return -K_CONTINUE;

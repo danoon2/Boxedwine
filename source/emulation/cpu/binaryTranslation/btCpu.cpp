@@ -15,6 +15,10 @@ typedef void (*StartCPU)();
 void BtCPU::run() {
     while (true) {
         this->exitToStartThreadLoop = 0;
+        if (this->exitingBlock) {
+            this->exitingBlock->locked = false;
+            this->exitingBlock = nullptr;
+        }
         StartCPU start = (StartCPU)this->init();
         start();
 #ifdef __TEST
@@ -206,6 +210,16 @@ void BtCPU::wakeThreadIfWaiting() {
         cond->lock();
         cond->signal();
         cond->unlock();
+    }
+}
+
+void BtCPU::execvAboutToResetMemory() {
+    exitingBlock = memory->getCodeBlock(this->eip.u32 + this->seg[CS].address);
+    if (exitingBlock) {
+        // if this block of code is in the parent, then this memory has a copy of write code page ram index to it, but no code block
+        // this seems like a bug in KProcess::clone, but since wine only clones a memory then does an exec soon after, I think it 
+        // might be fine to leave it this way
+        exitingBlock->locked = true;
     }
 }
 

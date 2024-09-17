@@ -70,7 +70,7 @@ void CodePageData::removeCode(KMemory* memory, U32 address, U32 len, bool becaus
 			}
 		}
 	});
-	for (CodeBlock block : blocks) {
+	for (auto& block : blocks) {
 		memory->iterateAddressByPage(block->getEip(), block->getEipLen(), [&blocks, this, becauseOfWrite](U32 address, U32 len) {
 			U32 page = address >> K_PAGE_SHIFT;
 			U32 offset = address & K_PAGE_MASK;
@@ -100,7 +100,7 @@ void CodePageData::removeAll() {
 	}
 }
 
-void CodePageData::addCodeToPage(CodeBlock block, U32 page, U32 address, U32 len) {
+void CodePageData::addCodeToPage(CodeBlockParam block, U32 page, U32 address, U32 len) {
 	CodePerPageData* data = getCodePage(page, true);
 	U32 offset = address & K_PAGE_MASK;
 	for (U32 i = 0; i < len ; i++) {

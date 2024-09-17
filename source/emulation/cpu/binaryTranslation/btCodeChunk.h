@@ -47,6 +47,7 @@ public:
     U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
     
     DecodedBlock* block;
+    bool locked = false; // just a way to prevent release while transitioning to new memory setup during execv
 protected:
     void detachFromHost(KMemory* memory);
     void internalDealloc();

@@ -334,6 +334,7 @@ public:
     virtual DecodedBlock* getNextBlock() = 0;
     virtual void restart() {}
     virtual void setSeg(U32 index, U32 address, U32 value);
+    virtual void execvAboutToResetMemory() {}
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);

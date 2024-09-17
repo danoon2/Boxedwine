@@ -416,7 +416,6 @@ void KMemory::clone(KMemory* from, bool vfork) {
     }
 }
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
 CodeBlock KMemory::findCodeBlockContaining(U32 address, U32 len) {
     U32 page = address >> K_PAGE_SHIFT;
     if (data->memInfo[page].type == (U32)PageType::Code_Page) {
@@ -424,8 +423,7 @@ CodeBlock KMemory::findCodeBlockContaining(U32 address, U32 len) {
     }
     return nullptr;
 }
-#else
-// normal core
+
 CodeBlock KMemory::getCodeBlock(U32 address) {
     U32 page = address >> K_PAGE_SHIFT;
     if (data->memInfo[page].type == (U32)PageType::Code_Page) {
@@ -433,7 +431,6 @@ CodeBlock KMemory::getCodeBlock(U32 address) {
     }
     return nullptr;
 }
-#endif
 
 void KMemory::removeCodeBlock(U32 address, U32 len, bool becauseOfWrite) {    
     iterateAddressByPage(address, len, [this, becauseOfWrite](U32 address, U32 len) {
@@ -444,7 +441,7 @@ void KMemory::removeCodeBlock(U32 address, U32 len, bool becauseOfWrite) {
     });
 }
 
-void KMemory::addCodeBlock(U32 address, CodeBlock block) {
+void KMemory::addCodeBlock(U32 address, CodeBlockParam block) {
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
         iterateAddressByPage(address, block->getEipLen(), [block, this](U32 address, U32 len) {

@@ -14,6 +14,7 @@ public:
     // from CPU
     void run() override;
     DecodedBlock* getNextBlock() override;
+    void execvAboutToResetMemory() override;
 
     virtual void* init() = 0; // called from run
     
@@ -59,6 +60,9 @@ protected:
     U64 getIpFromEip();
     virtual BtData* getData1() = 0;
     virtual BtData* getData2() = 0;
+
+    // keep a reference to the current block so that it doesn't deallocate the executable memory we need after returning from execv
+    CodeBlock exitingBlock;
 };
 #endif
 
