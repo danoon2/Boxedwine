@@ -1414,7 +1414,19 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool ski
         kpanic("Armv8btAsm::getHostMem bad width=%d %s", width, currentOp->name());
     }
     width = width / 8;
-    readMem64RegOffset(resultReg, (write ? xMemWrite : xMemRead), tmpReg, 3);
+    readMem32RegOffset(resultReg, xMemMMU, tmpReg, 2);
+    if (write) {
+        testValue32(resultReg, 0x40000000);
+    } else {
+        testValue32(resultReg, 0x80000000);
+    }
+    doIf(0, 0, DO_IF_NOT_EQUAL, [=] {
+        andValue32(resultReg, resultReg, 0xfffff);
+        readMem64RegOffset(resultReg, xMemRam, resultReg, 3);
+        andValue32(tmpReg, regEmulatedAddress, 0xfffff000);
+        subRegs64(resultReg, resultReg, tmpReg);
+    }, nullptr, nullptr, false, false);
+    
     if (!skipAlignmentCheck && width > 1) {
         andValue32(tmpReg, regEmulatedAddress, 0xFFF);
         doIf(tmpReg, K_PAGE_SIZE - width, DO_IF_GREATER_THAN, [=] {

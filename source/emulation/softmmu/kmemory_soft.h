@@ -2,7 +2,7 @@
 #define __KMEMORY_SOFT_H__
 
 #include "pageType.h"
-#include "meminfo.h"
+#include "meminfostruct.h"
 
 class CodePage;
 

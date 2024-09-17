@@ -53,8 +53,8 @@ typedef enum {
 // x19 to x29 callee saved
 // These should be one that won't need to be reloaded after a function call
 #define xCPU 19
-#define xMemRead 20
-#define xMemWrite 21
+#define xMemMMU 20
+#define xMemRam 21
 
 // addresses, not values
 #define xES 22

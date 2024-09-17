@@ -25,7 +25,7 @@
 
 class KMemory;
 
-#include "meminfo.h"
+#include "meminfostruct.h"
 
 class Page {
 public:    

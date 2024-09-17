@@ -10,6 +10,7 @@
 #include "armv8btCodeChunk.h"
 
 #undef u8
+extern U8* ramPages[K_NUMBER_OF_PAGES];
 
 CPU* CPU::allocCPU(KMemory* memory) {
     return new Armv8btCPU(memory);
@@ -95,10 +96,10 @@ void* Armv8btCPU::init() {
     data.writeToRegFromValue(xESI, ESI);
     data.writeToRegFromValue(xEDI, EDI);        
     
-#ifdef xMemRead
+#ifdef xMemMMU
     KMemoryData* memData = getMemData(memory);
-    data.writeToRegFromValue(xMemRead, (U64)memData->mmuReadPtrAdjusted);
-    data.writeToRegFromValue(xMemWrite, (U64)memData->mmuWritePtrAdjusted);
+    data.writeToRegFromValue(xMemMMU, (U64)memData->memInfo);
+    data.writeToRegFromValue(xMemRam, (U64)ramPages);
 #endif
 
     data.calculatedEipLen = 1; // will force the long x64 chunk jump

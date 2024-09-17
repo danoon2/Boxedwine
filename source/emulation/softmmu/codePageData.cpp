@@ -25,6 +25,23 @@ CodePageData::~CodePageData() {
 	klog("CodePageData count=%d", count);
 }
 
+CodeBlock CodePageData::getBlock(U32 address, U32 len) {
+    U32 pageStart = address >> K_PAGE_SHIFT;
+    U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
+    for (U32 page = pageStart; page <= pageStop; page++) {
+        CodePerPageData* codePage = getCodePage(page, false);
+        if (codePage) {
+            U32 startAddress = std::max(page << K_PAGE_SHIFT, address) & K_PAGE_MASK;
+            U32 endAddress = std::min(address + len, startAddress + K_PAGE_SIZE) & K_PAGE_MASK;
+            for (U32 i=startAddress;i<endAddress;i++) {
+                if (codePage->blocks[i]) {
+                    return codePage->blocks[i];
+                }
+            }
+        }
+    }
+    return nullptr;
+}
 CodeBlock CodePageData::getBlock(U32 address) {
 	CodePerPageData* codePage = getCodePage(address >> K_PAGE_SHIFT, false);
 	if (codePage) {
@@ -64,7 +81,9 @@ void CodePageData::removeCode(KMemory* memory, U32 address, U32 len, bool becaus
 				}
 			}
 		});
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        block->release(memory);
+#else
 		block->dealloc(false);
 #endif
 	}
