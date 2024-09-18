@@ -17,6 +17,7 @@ void BtCPU::run() {
         this->exitToStartThreadLoop = 0;
         if (this->exitingBlock) {
             this->exitingBlock->locked = false;
+            this->exitingBlock->release(memory);
             this->exitingBlock = nullptr;
         }
         StartCPU start = (StartCPU)this->init();
@@ -39,7 +40,7 @@ void BtCPU::run() {
     }
 }
 
-std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
+BtCodeChunk* BtCPU::translateChunk(U32 ip) {
     BtData* firstPass = getData1();
     firstPass->ip = ip;
     firstPass->startOfDataIp = ip;
@@ -53,7 +54,7 @@ std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
     S32 failedJumpOpIndex = this->preLinkCheck(secondPass);
 
     if (failedJumpOpIndex == -1) {
-        std::shared_ptr<BtCodeChunk> chunk = secondPass->commit(false);
+        BtCodeChunk* chunk = secondPass->commit(false);
         link(secondPass, chunk);
         return chunk;
     }
@@ -71,7 +72,7 @@ std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
         secondPass->stopAfterInstruction = failedJumpOpIndex;
         translateData(secondPass, firstPass);
 
-        std::shared_ptr<BtCodeChunk> chunk = secondPass->commit(false);
+        BtCodeChunk* chunk = secondPass->commit(false);
         link(secondPass, chunk);
         return chunk;
     }
@@ -83,7 +84,7 @@ U64 BtCPU::reTranslateChunk() {
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
 #endif
-    std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
+    BtCodeChunk* chunk = mem->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
     if (chunk) {
         chunk->releaseAndRetranslate();
     }
@@ -129,9 +130,9 @@ void* BtCPU::translateEipInternal(U32 ip) {
     void* result = mem->getExistingHostAddress(address);
 
     if (!result) {
-        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
+        BtCodeChunk* chunk = this->translateChunk(ip);
         result = chunk->getHostAddress();
-        chunk->makeLive();
+        //chunk->makeLive();
     }
     return result;
 }

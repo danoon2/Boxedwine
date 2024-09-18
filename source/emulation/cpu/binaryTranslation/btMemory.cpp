@@ -104,17 +104,17 @@ void BtMemory::executableMemoryReleased() {
     }
 }
 
-std::shared_ptr<BtCodeChunk> BtMemory::getCodeChunkContainingEip(U32 eip) {
+BtCodeChunk* BtMemory::getCodeChunkContainingEip(U32 eip) {
     return memory->findCodeBlockContaining(eip, 1);
 }
 
 // called when BtCodeChunk is being dealloc'd
-void BtMemory::removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
+void BtMemory::removeCodeChunk(BtCodeChunk* chunk) {
     
 }
 
 // called when BtCodeChunk is being alloc'd
-void BtMemory::addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
+void BtMemory::addCodeChunk(BtCodeChunk* chunk) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     memory->addCodeBlock(chunk->getEip(), chunk);
 }

@@ -28,8 +28,8 @@ class DecodedBlock;
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
-#define CodeBlock std::shared_ptr<BtCodeChunk>
-#define CodeBlockParam const std::shared_ptr<BtCodeChunk>&
+#define CodeBlock BtCodeChunk*
+#define CodeBlockParam BtCodeChunk*
 #else
 #define CodeBlock DecodedBlock*
 #define CodeBlockParam DecodedBlock*

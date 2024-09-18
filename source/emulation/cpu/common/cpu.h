@@ -232,9 +232,7 @@ public:
     U32 flags = 0;
     Reg eip;
     U8* reg8[9];
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    DecodedOp* currentSingleOp = nullptr;
-#endif
+
     MMX_reg reg_mmx[8];
     ALIGN(SSE xmm[8], 16);
 

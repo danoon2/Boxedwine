@@ -135,12 +135,9 @@ void BtData::mapAddress(U32 ip, U32 bufferPos) {
     this->ipAddressBufferPos[this->ipAddressCount++] = bufferPos;
 }
 
-std::shared_ptr<BtCodeChunk> BtData::commit(bool makeLive) {
-    std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, false);
-    chunk->block = this->currentBlock;
-    if (makeLive) {
-        chunk->makeLive();
-    }
+BtCodeChunk* BtData::commit(bool makeLive) {
+    BtCodeChunk* chunk = new BtCodeChunk(this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, false);
+    chunk->makeLive(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos);
     return chunk;
 }
 

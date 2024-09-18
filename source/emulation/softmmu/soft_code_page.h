@@ -25,13 +25,6 @@
 #define CODE_ENTRIES_SHIFT 5
 #define CODE_ENTRIES_MASK 31
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../cpu/binaryTranslation/btCodeChunk.h"
-#define InternalCodeBlock std::shared_ptr<BtCodeChunk>
-#else
-#define InternalCodeBlock std::shared_ptr<DecodedBlock>
-#endif
-
 class CodePage : public RWPage {
 public:
     void writeb(MemInfo& info, U32 address, U8 value) override;

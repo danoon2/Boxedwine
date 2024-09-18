@@ -64,7 +64,7 @@ public:
 
     // from BtCPU
     void* init() override;
-    void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) override;
+    void link(BtData* data, BtCodeChunk* fromChunk, U32 offsetIntoChunk = 0) override;
     void translateData(BtData* data, BtData* firstPass = nullptr) override;
 protected:
     BtData* getData1() override { data1.reset(); return &data1; }

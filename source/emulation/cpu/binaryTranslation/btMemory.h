@@ -20,10 +20,10 @@ public:
 	bool isEipPageCommitted(U32 page);
 	void setEipPageCommitted(U32 page) { this->committedEipPages[page] = true; }		
 
-	std::shared_ptr<BtCodeChunk> getCodeChunkContainingEip(U32 eip);
+	BtCodeChunk* getCodeChunkContainingEip(U32 eip);
 
-	void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
-	void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
+	void addCodeChunk(BtCodeChunk* chunk);
+	void removeCodeChunk(BtCodeChunk* chunk);
 
 	BOXEDWINE_MUTEX executableMemoryMutex;
 

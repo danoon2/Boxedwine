@@ -168,7 +168,7 @@ public:
     void fpu7(U8 rm);
 
     void DsEdiMmxOrSSE(U8 rm);
-    void emulateSingleOp(DecodedOp* op, bool isDynamic = false);
+    void emulateSingleOp(bool isDynamic = false);
 #ifdef __TEST
     void addReturnFromTest();
 #endif
@@ -236,6 +236,7 @@ private:
     void andReg(U8 reg, bool isRegRex, U32 mask);
     void orReg(U8 reg, bool isRegRex, U32 mask);
     void subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64);
+    void subValue32(U8 dst, bool isDstRex, U32 value, bool is64);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
     void getAddressInRegFromE(U8 reg, bool isRegRex, U8 rm, bool calculateHostAddress = false); // will trash current op data    
@@ -254,6 +255,8 @@ private:
     void calculateMemory(U8 reg, bool isRex, U32 rm);
 
     void shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg);    
+    void getRamAddressIntoPageReg(U8 pageReg, U8 addressReg, bool isRex, bool isWrite);
+    void getRamAddress(U8 resultReg, U32 directAddress, bool isWrite);
 
     void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false);
 public:

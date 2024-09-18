@@ -5,8 +5,6 @@
 class BtData;
 class BtCodeChunk;
 
-#define CPU_OFFSET_CURRENT_OP (U32)(offsetof(BtCPU, currentSingleOp))
-
 class BtCPU : public CPU {
 public:
     BtCPU(KMemory* memory) : CPU(memory) {}
@@ -34,9 +32,9 @@ public:
 
     std::vector<U32> pendingCodePages;
 
-    std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
+    BtCodeChunk* translateChunk(U32 ip);
     virtual void translateData(BtData* data, BtData* firstPass = nullptr) = 0;
-    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) = 0;
+    virtual void link(BtData* data, BtCodeChunk* fromChunk, U32 offsetIntoChunk = 0) = 0;
     void* translateEipInternal(U32 ip);
 #ifdef __TEST
     virtual void postTestRun() = 0;
@@ -62,7 +60,7 @@ protected:
     virtual BtData* getData2() = 0;
 
     // keep a reference to the current block so that it doesn't deallocate the executable memory we need after returning from execv
-    CodeBlock exitingBlock;
+    CodeBlock exitingBlock = nullptr;
 };
 #endif
 

@@ -75,9 +75,4 @@ void X64Data::resetForNewOp() {
     this->isG8bitWritten = false;
     this->flagsWrittenToStringFlags = false;
 }
-
-std::shared_ptr<BtCodeChunk> X64Data::createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
-    return std::make_shared<X64CodeChunk>(instructionCount, eipInstructionAddress, hostInstructionIndex, hostInstructionBuffer, hostInstructionBufferLen, eip, eipLen, dynamic);
-}
-
 #endif

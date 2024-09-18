@@ -71,7 +71,7 @@ void* x64CPU::init() {
     
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
     data.doJmp(false);
-    std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
+    BtCodeChunk* chunk = data.commit(true);
     void* result = chunk->getHostAddress();
     //link(&data, chunk);
     this->pendingCodePages.clear();    
@@ -82,7 +82,7 @@ void* x64CPU::init() {
         returnData.restoreNativeState();
         returnData.write8(0xfc); // cld
         returnData.write8(0xc3); // retn
-        std::shared_ptr<BtCodeChunk> chunk2 = returnData.commit(true);
+        BtCodeChunk* chunk2 = returnData.commit(true);
         this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
@@ -90,35 +90,35 @@ void* x64CPU::init() {
     if (!this->thread->process->reTranslateChunkAddress) {
         X64Asm translateData(this);
         translateData.createCodeForRetranslateChunk();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        BtCodeChunk* chunk3 = translateData.commit(true);
         this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
     }
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
     if (!this->thread->process->syncToHostAddress) {
         X64Asm translateData(this);
         translateData.createCodeForSyncToHost();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        BtCodeChunk* chunk3 = translateData.commit(true);
         this->thread->process->syncToHostAddress = chunk3->getHostAddress();
     }
     this->syncToHostAddress = this->thread->process->syncToHostAddress;
     if (!this->thread->process->syncFromHostAddress) {
         X64Asm translateData(this);
         translateData.createCodeForSyncFromHost();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        BtCodeChunk* chunk3 = translateData.commit(true);
         this->thread->process->syncFromHostAddress = chunk3->getHostAddress();
     }
     this->syncFromHostAddress = this->thread->process->syncFromHostAddress;    
     if (!this->thread->process->doSingleOpAddress) {
         X64Asm translateData(this);
         translateData.createCodeForDoSingleOp();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        BtCodeChunk* chunk3 = translateData.commit(true);
         this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
     }
     this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         X64Asm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary(true);
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
+        BtCodeChunk* chunk3 = translateData.commit(true);
         this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
     }
     this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
@@ -151,15 +151,16 @@ void x64CPU::addReturnFromTest() {
 }
 #endif
 
-void x64CPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
+void x64CPU::link(BtData* data, BtCodeChunk* fromChunk, U32 offsetIntoChunk) {
     if (!fromChunk) {
         kpanic("x64CPU::link fromChunk missing");
     }
+    KMemoryData* mem = getMemData(memory);
     for (auto& todoJump : data->todoJump) {
         U32 eip = seg[CS].address + todoJump.eip;
         U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+todoJump.bufferPos;
 
-        U8* host = (U8*)fromChunk->getHostFromEip(eip);
+        U8* host = (U8*)mem->getExistingHostAddress(eip);
         if (!host) {
             kpanic("x64CPU::link can not link into the middle of an instruction");
         }
@@ -184,7 +185,8 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
             if (prev) {
                 data->currentBlock = nullptr; // don't chain to an existing block
             } else {
-                std::shared_ptr<BtCodeChunk> chunk = memory->findCodeBlockContaining(address, 1);
+                /*
+                BtCodeChunk* chunk = memory->findCodeBlockContaining(address, 1);
                 if (chunk) {
                     data->currentBlock = chunk->block;
                     if (data->currentBlock) {
@@ -197,6 +199,7 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
                         int ii = 0;
                     }
                 }
+                */
             }
             if (!data->currentBlock) {
                 data->currentBlock = NormalCPU::getBlockForInspectionButNotUsed(this, address, big);
@@ -221,7 +224,7 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
 #ifndef __TEST
         KMemoryData* mem = getMemData(memory);
         if (mem->isAddressDynamic(address, data->currentOp->len)) {
-            ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
+            ((X64Asm*)data)->emulateSingleOp(true);
             break;
         }
 #endif
@@ -237,6 +240,9 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
         prevOp = data->currentOp;
         data->currentOp = data->currentOp->next;
     }  
+    data->currentBlock->dealloc(false);
+    data->currentBlock = nullptr;
+    data->currentOp = nullptr;
 }
 
 void common_runSingleOp(x64CPU* cpu) {
@@ -247,15 +253,8 @@ void common_runSingleOp(x64CPU* cpu) {
     } else {
         address = cpu->seg[CS].address + (address & 0xFFFF);
     }
-    DecodedOp* op = cpu->currentSingleOp;
-    bool deallocOp = false;
+    DecodedOp* op = NormalCPU::decodeSingleOp(cpu, address);
     bool dynamic = cpu->arg5 != 0;
-    if (dynamic) {
-        op = NormalCPU::decodeSingleOp(cpu, address);
-        deallocOp = true;
-    } else if (!op) {
-        kpanic("common_runSingleOp oops");
-    }
     if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
         for (U32 i = 0; i < 8; i++) {
             cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
@@ -332,9 +331,7 @@ void common_runSingleOp(x64CPU* cpu) {
         }
     }
     cpu->fillFlags();
-    if (deallocOp) {
-        op->dealloc(true);
-    }
+    op->dealloc(true);
     DecodedBlock::currentBlock = nullptr;
 }
 #endif
