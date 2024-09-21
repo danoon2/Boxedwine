@@ -21,7 +21,7 @@
 
 void scheduleThread(KThread* thread);
 void unscheduleThread(KThread* thread);
-void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId);
+void terminateOtherThread(const KProcessPtr& process, U32 threadId);
 void terminateCurrentThread(KThread* thread);
 
 void addTimer(KTimerCallback* timer);
@@ -29,7 +29,7 @@ void removeTimer(KTimerCallback* timer);
 
 bool runSlice();
 void runThreadSlice(KThread* thread);
-void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread);
+void waitForProcessToFinish(const KProcessPtr& process, KThread* thread);
 U32 getMIPS();
 
 #endif

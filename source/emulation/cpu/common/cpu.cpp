@@ -205,7 +205,7 @@ void CPU::jmp(U32 big, U32 selector, U32 offset, U32 oldEip) {
 }
 
 void CPU::prepareFpuException(int code, int error) {
-    const std::shared_ptr<KProcess>& process = this->thread->process;
+    const KProcessPtr& process = this->thread->process;
 
     // blocking signals, signalfd can't handle these
     if (process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction != K_SIG_DFL) {
@@ -223,7 +223,7 @@ void CPU::prepareFpuException(int code, int error) {
 }
 
 void CPU::prepareException(int code, int error) {
-    const std::shared_ptr<KProcess>& process = this->thread->process;
+    const KProcessPtr& process = this->thread->process;
 
      // blocking signals, signalfd can't handle these
     if (code==EXCEPTION_GP && (process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_IGN && process->sigActions[K_SIGSEGV].handlerAndSigAction!=K_SIG_DFL)) {
@@ -289,7 +289,7 @@ FsOpenNode* openTTY9(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
 }
 
 BString getFunctionName(BString name, U32 moduleEip) {    
-    std::shared_ptr<KProcess> process = KProcess::create();
+    KProcessPtr process = KProcess::create();
     std::vector<BString> args;
     std::vector<BString> env;
     KFileDescriptor* fd = nullptr;

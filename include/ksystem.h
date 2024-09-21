@@ -107,12 +107,12 @@ public:
 
     // helpers
     static void writeStat(KProcess* process, BString path, U32 buf, bool is64, U64 st_dev, U64 st_ino, U32 st_mode, U64 st_rdev, U64 st_size, U32 st_blksize, U64 st_blocks, U64 mtime, U32 linkCount);
-    static std::shared_ptr<KProcess> getProcess(U32 id);
+    static KProcessPtr getProcess(U32 id);
     static void eraseFileCache(BString name);
     static std::shared_ptr<MappedFileCache> getFileCache(BString name);
     static void setFileCache(BString name, const std::shared_ptr<MappedFileCache>& fileCache);
     static void eraseProcess(U32 id);
-    static std::shared_ptr<FsNode> addProcess(U32 id, const std::shared_ptr<KProcess>& process);
+    static std::shared_ptr<FsNode> addProcess(U32 id, const KProcessPtr& process);
     static KThread* getThreadById(U32 threadId);
     static U32 getRunningProcessCount();
     static U32 getProcessCount();
@@ -165,7 +165,7 @@ private:
     static U64 startTimeSystemTime;    
     static bool modesInitialized;
     
-    static BHashTable<U32, std::shared_ptr<KProcess> > processes;
+    static BHashTable<U32, KProcessPtr > processes;
     static BHashTable<BString, std::shared_ptr<MappedFileCache> > fileCache;
     static BOXEDWINE_MUTEX fileCacheMutex;
 };

@@ -55,7 +55,7 @@ typedef std::shared_ptr<KThreadGlContext> KThreadGlContextPtr;
 
 class KThread {
 public:
-    KThread(U32 id, const std::shared_ptr<KProcess>& process);
+    KThread(U32 id, const KProcessPtr& process);
     ~KThread();
 
     static void runOnMainThread(std::function<void()> callback);
@@ -101,7 +101,7 @@ public:
     U32 alternateStack = 0;
     U32 alternateStackSize = 0;
     CPU* cpu = nullptr;
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     KMemory* const memory;
     bool interrupted = false;
     U32 inSignal = 0;    

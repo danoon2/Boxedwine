@@ -27,6 +27,7 @@
 #include "../io/fsmemnode.h"
 #include "../io/fsmemopennode.h"
 #include "../io/fsfilenode.h"
+#include "../x11/x11.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -43,20 +44,20 @@ bool KProcessTimer::run() {
     } else {
         this->millies = this->resetMillies + KSystem::getMilliesSinceStart();
     }
-    std::shared_ptr<KProcess> p = this->process.lock();
+    KProcessPtr p = this->process.lock();
     if (p) {
         p->signalALRM();
     }
     return result;
 }
 
-std::shared_ptr<KProcess> KProcess::create() {
-    std::shared_ptr<KProcess> process = std::make_shared<KProcess>(KSystem::getNextThreadId());
+KProcessPtr KProcess::create() {
+    KProcessPtr process = std::make_shared<KProcess>(KSystem::getNextThreadId());
     process->processNode = KSystem::addProcess(process->id, process);
     if (process->processNode) {
-        std::weak_ptr<KProcess> weak_process = process;
+        KProcessWeakPtr weak_process = process;
         Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [weak_process]() {
-            std::shared_ptr<KProcess> p = weak_process.lock();
+            KProcessPtr p = weak_process.lock();
             if (p) {
                 return p->exe;
             }
@@ -191,6 +192,10 @@ void KProcess::cleanupProcess() {
         memory->cleanup();
     }
 #endif
+    XServer* server = XServer::getServer(true);
+    if (server) {
+        server->processExit(id);
+    }
 }
 
 KThread* KProcess::createThread() {	
@@ -230,7 +235,7 @@ void KProcess::deleteThread(KThread* thread) {
     delete thread;
     // don't call into getProcess while holding threadsCondition
     if (!this->terminated && this->getThreadCount() == 0) {
-        std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
+        KProcessPtr parent = KSystem::getProcess(this->parentId);
         if (!parent || parent->getThreadCount() == 0) {
             KSystem::eraseProcess(this->id);
         }
@@ -249,7 +254,7 @@ BString KProcess::getAbsoluteExePath() {
     BString path = Fs::getNodeFromLocalPath(B(""), this->exe, true)->path;
     return Fs::getParentPath(path);
 }
-void KProcess::clone(const std::shared_ptr<KProcess>& from) {
+void KProcess::clone(const KProcessPtr& from) {
     this->parentId = from->id;;
     this->groupId = from->groupId;
     this->userId = from->userId;
@@ -332,7 +337,7 @@ static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
 #define HWCAP_I386_AMD3D 1 << 31
 
 static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int envc, U32* e) {
-    std::shared_ptr<KProcess> process = cpu->thread->process;
+    KProcessPtr process = cpu->thread->process;
 
     cpu->push32(rand());
     cpu->push32(rand());
@@ -1080,6 +1085,9 @@ U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen)
     if (!fd->canRead()) {
         return -K_EINVAL;
     }
+    if (!memory->canWrite(bufferAddress, bufferLen)) {
+        return -K_EFAULT;
+    }
     return fd->kobject->read(thread, bufferAddress, bufferLen);
 }
 
@@ -1128,6 +1136,9 @@ U32 KProcess::write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen
     }
     if (!fd->canWrite()) {
         return -K_EINVAL;
+    }
+    if (!memory->canRead(bufferAddress, bufferLen)) {
+        return -K_EFAULT;
     }
     return fd->kobject->write(thread, bufferAddress, bufferLen);
 }
@@ -1531,7 +1542,7 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         if (flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)) {
             kpanic("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
         }
-        std::shared_ptr<KProcess> newProcess = KProcess::create();
+        KProcessPtr newProcess = KProcess::create();
         newProcess->memory = KMemory::create(newProcess.get());
         newProcess->memory->clone(this->memory, vm);
 
@@ -1629,7 +1640,7 @@ void KProcess::killAllThreads(KThread* exceptThisThread) {
 }
 
 U32 KProcess::exitgroup(KThread* thread, U32 code) {
-    std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
+    KProcessPtr parent = KSystem::getProcess(this->parentId);
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
             parent->signalCHLD(K_CLD_EXITED, this->id, this->userId, code);

@@ -535,7 +535,7 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
 #endif    
     if (e->type == SDL_QUIT) {
         KThread::setCurrentThread(nullptr);
-        std::shared_ptr<KProcess> p = KSystem::getProcess(10);
+        KProcessPtr p = KSystem::getProcess(10);
         if (p && !KSystem::shutingDown) {
             p->killAllThreads();
             KSystem::eraseProcess(p->id);

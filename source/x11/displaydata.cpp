@@ -7,8 +7,12 @@ void DisplayData::putEvent(const XEvent& event) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMutex);
 		eventQueue.push_back(event);
 
-		KFileDescriptor* server = this->process->getFileDescriptor(this->serverFd);
-		KFileDescriptor* client = this->process->getFileDescriptor(this->clientFd);
+		KProcessPtr process = this->process.lock();
+		if (!process) {
+			return;
+		}
+		KFileDescriptor* server = process->getFileDescriptor(this->serverFd);
+		KFileDescriptor* client = process->getFileDescriptor(this->clientFd);
 		if (server && server->kobject->type == KTYPE_UNIX_SOCKET) {
 			std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(server->kobject);
 			std::shared_ptr<KUnixSocketObject> c = std::dynamic_pointer_cast<KUnixSocketObject>(client->kobject);
@@ -37,7 +41,11 @@ void DisplayData::removeEvent(U32 index) {
 	}
 	eventQueue.erase(eventQueue.begin()+index);
 	if (eventQueue.empty()) {
-		KFileDescriptor* fd = this->process->getFileDescriptor(this->clientFd);
+		KProcessPtr process = this->process.lock();
+		if (!process) {
+			return;
+		}
+		KFileDescriptor* fd = process->getFileDescriptor(this->clientFd);
 		if (fd && fd->kobject->type == KTYPE_UNIX_SOCKET) {
 			std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
 			while (s->isReadReady()) {

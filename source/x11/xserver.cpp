@@ -533,6 +533,7 @@ U32 XServer::openDisplay(KThread* thread) {
 	data->clientFd = fd1;
 	data->serverFd = fd2;
 	data->process = thread->process;
+	data->processId = thread->process->id;
 
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
 	displays.set(displayId, data);
@@ -547,6 +548,20 @@ void XServer::changeScreen(U32 width, U32 height) {
 	U32 rect[] = { 0, 0, width, height };
 	U32 atom = server->internAtom(B("_GTK_WORKAREAS_D0"), false);
 	root->setProperty(atom, XA_CARDINAL, 32, sizeof(U32) * 4, (U8*)&rect, false);
+}
+
+void XServer::processExit(U32 pid) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
+	std::vector<DisplayDataPtr> processDisplays;
+
+	for (auto& display : displays) {
+		if (display.value->processId == pid) {
+			processDisplays.push_back(display.value);
+		}
+	}
+	for (auto& display : processDisplays) {
+		displays.remove(display->displayId);
+	}
 }
 
 DisplayDataPtr XServer::getDisplayDataByAddressOfDisplay(KMemory* memory, U32 address) {

@@ -41,7 +41,7 @@ U32 KSystem::openglType = OPENGL_TYPE_UNAVAILABLE;
 #endif
 bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
-BHashTable<U32, std::shared_ptr<KProcess> > KSystem::processes;
+BHashTable<U32, KProcessPtr > KSystem::processes;
 BHashTable<BString, std::shared_ptr<MappedFileCache> > KSystem::fileCache;
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 U32 KSystem::pentiumLevel = 4;
@@ -83,7 +83,7 @@ void KSystem::destroy() {
 	KThread::setCurrentThread(nullptr);
 	KSystem::shutingDown = true;
     while (true) {
-        std::shared_ptr<KProcess> p;
+        KProcessPtr p;
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
             if (KSystem::processes.size()) {
@@ -239,7 +239,7 @@ KThread* KSystem::getThreadById(U32 threadId) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
     for (auto& p : processes) {
-        const std::shared_ptr<KProcess>& process = p.value;
+        const KProcessPtr& process = p.value;
         if (process) {
             result = process->getThreadById(threadId);
         }
@@ -306,7 +306,7 @@ U32 syscall_ioperm(U32 from, U32 num, U32 turn_on) {
 
 void KSystem::printStacks() {
     for (auto& n : KSystem::processes) {
-        const std::shared_ptr<KProcess>& process = n.value;
+        const KProcessPtr& process = n.value;
 
         klog("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine.c_str());
         process->printStack();
@@ -314,7 +314,7 @@ void KSystem::printStacks() {
 }
 
 U32 KSystem::kill(S32 pid, U32 signal) {
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
@@ -340,7 +340,7 @@ void KSystem::wakeThreadsWaitingOnProcessStateChanged() {
 }
 
 U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     U32 result = 0;
     KMemory* memory = thread->memory;
 
@@ -359,7 +359,7 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
             if (pid==0)
                 pid = thread->process->groupId;
             for (auto& n : KSystem::processes) {
-                std::shared_ptr<KProcess> p = n.value;
+                KProcessPtr p = n.value;
                 if (p && (p->isStopped() || p->isTerminated())) {
                     if (pid == -1) {
                         if (p->parentId == thread->process->id) {
@@ -421,7 +421,7 @@ U32 KSystem::times(KThread* thread, U32 buf) {
 }
 
 U32 KSystem::setpgid(U32 pid, U32 gpid) {	
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
 
     if (pid==0) {
         process = KThread::currentThread()->process;
@@ -442,7 +442,7 @@ U32 KSystem::setpgid(U32 pid, U32 gpid) {
 }
 
 U32 KSystem::getpgid(U32 pid) {	
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     if (pid==0)
         process = KThread::currentThread()->process;
     else {
@@ -693,7 +693,7 @@ U32 KSystem::shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf) {
 #define K_RLIM_INFINITY 0xFFFFFFFF
 
 U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     KMemory* memory = thread->memory;
 
     if (pid==0) {
@@ -821,7 +821,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
     return 0;
 }
 
-std::shared_ptr<KProcess> KSystem::getProcess(U32 id) {
+KProcessPtr KSystem::getProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     return KSystem::processes[id];
 }
@@ -851,7 +851,7 @@ void KSystem::eraseProcess(U32 id) {
     KSystem::internalEraseProcess(id);    
 }
 
-std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {
+std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const KProcessPtr& process) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::processes.set(id, process);
     if (KSystem::procNode) {
@@ -866,7 +866,7 @@ U32 KSystem::getRunningProcessCount() {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     U32 count = 0;
     for (auto& n : KSystem::processes) {
-        const std::shared_ptr<KProcess>& openProcess = n.value;
+        const KProcessPtr& openProcess = n.value;
         if (openProcess && !openProcess->isStopped() && !openProcess->isTerminated()) {
             count++;
         }

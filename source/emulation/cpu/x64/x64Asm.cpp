@@ -845,7 +845,7 @@ void X64Asm::calculateMemory(U8 reg, bool isRex, U32 rm) {
                 } else { // [base + index << shift]
                     U8 seg = base == 4 ? this->ss : this->ds;
 
-                    if (base == SEG_ZERO || !this->cpu->thread->process->hasSetSeg[seg]) {
+                    if (seg == SEG_ZERO || !this->cpu->thread->process->hasSetSeg[seg]) {
                         addWithLea(reg, isRex, base, false, (index == 4 ? -1 : index), false, sib >> 6, 0, 4);
                     } else {                        
                         U32 tmpReg = getTmpReg();                        

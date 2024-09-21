@@ -65,6 +65,10 @@ struct long2Double {
 
 #include "log.h"
 
+class KProcess;
+typedef std::shared_ptr<KProcess> KProcessPtr;
+typedef std::weak_ptr<KProcess> KProcessWeakPtr;
+
 #include "../source/emulation/softmmu/soft_ram.h"
 #include "../source/util/bfile.h"
 #include "../source/util/klist.h"

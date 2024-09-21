@@ -7,6 +7,7 @@ std::atomic<int> platformThreadCount = 0;
 
 static void platformThread(CPU* cpu) {
     KThread::setCurrentThread(cpu->thread);
+    KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
 
     while (true) {
         try {
@@ -53,7 +54,7 @@ void scheduleThread(KThread* thread) {
     }
 }
 
-void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
+void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
     KThread* thread = process->getThreadById(threadId);
     if (thread) {
         thread->terminating = true;
