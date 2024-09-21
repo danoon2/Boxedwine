@@ -257,7 +257,7 @@ const XWindowPtr& XServer::getRoot() {
 void XServer::draw(bool drawNow) {
 	static U32 lastDraw;
 
-	if (!isDisplayDirty) {
+	if (!isDisplayDirty || !root) {
 		return;
 	}
 	{
@@ -860,22 +860,30 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 	if (!time) {
 		time = KSystem::getMilliesSinceStart();
 	}
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
-	if (grabbedDisplay && grabbedDisplay->displayId != display->displayId) {
-		return AlreadyGrabbed;
+	bool updateCursor = false;
+	{
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
+		if (grabbedDisplay && grabbedDisplay->displayId != display->displayId) {
+			return AlreadyGrabbed;
+		}
+		this->grabbed = grabbed;
+		this->grabbedConfined = confined;
+		this->grabbedMask = mask;
+		this->grabbedTime = time;
+		this->grabbedDisplay = display;
+		this->isGrabbed = true;
+
+		if (pointerWindow->id != grabbed->id) {
+			S32 x = 0;
+			S32 y = 0;
+			KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
+			pointerMoved(pointerWindow, grabbed, x, y, NotifyGrab);
+			pointerWindow = grabbed;
+			updateCursor = true;
+		}
 	}
-	this->grabbed = grabbed;
-	this->grabbedConfined = confined;
-	this->grabbedMask = mask;
-	this->grabbedTime = time;
-	this->grabbedDisplay = display;	
-	this->isGrabbed = true;
-	if (pointerWindow->id != grabbed->id) {
-		S32 x = 0;
-		S32 y = 0;
-		KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
-		pointerMoved(pointerWindow, grabbed, x, y, NotifyGrab);
-		pointerWindow = grabbed;
+	if (updateCursor) {
+		// don't call this with grabbedMutex locked
 		KNativeSystem::getScreen()->setCursor(pointerWindow->getCursor());
 	}
 	return GrabSuccess;
