@@ -137,7 +137,7 @@ void XWindow::removeFromParent() {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
 	parent->children.remove(id);
 	int index = vectorIndexOf(parent->zchildren, shared_from_this());
-	if (index >= 0 && index < parent->zchildren.size()) {
+	if (index >= 0 && index < (int)parent->zchildren.size()) {
 		parent->zchildren.erase(parent->zchildren.begin() + index);
 	}
 }
@@ -155,7 +155,7 @@ void XWindow::onDestroy() {
 		if (transientForWindow) {
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(transientForWindow->childrenMutex);
 			int index = vectorIndexOf(transientForWindow->transientChildren, shared_from_this());
-			if (index >= 0 && index < transientForWindow->transientChildren.size()) {
+			if (index >= 0 && index < (int)transientForWindow->transientChildren.size()) {
 				transientForWindow->transientChildren.erase(transientForWindow->transientChildren.begin() + index);
 			}
 		}
@@ -253,7 +253,7 @@ void XWindow::setTransient(U32 w) {
 		if (previousTransientForWindow) {
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(previousTransientForWindow->childrenMutex);
 			int  index = vectorIndexOf(previousTransientForWindow->transientChildren, shared_from_this());
-			if (index >= 0 && index < previousTransientForWindow->transientChildren.size()) {
+			if (index >= 0 && index < (int)previousTransientForWindow->transientChildren.size()) {
 				previousTransientForWindow->transientChildren.erase(previousTransientForWindow->transientChildren.begin() + index);
 			}
 		}
@@ -1003,7 +1003,7 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 		if (parent) {
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(parent->childrenMutex);
 			int index = vectorIndexOf(parent->zchildren, shared_from_this());
-			if (index >= 0 && index < parent->zchildren.size() - 1) {
+			if (index >= 0 && index < (int)parent->zchildren.size() - 1) {
 				parent->zchildren.erase(parent->zchildren.begin() + index);
 				parent->zchildren.push_back(shared_from_this());
 			}
@@ -1192,7 +1192,7 @@ XWindowPtr XWindow::getLeastCommonAncestor(const XWindowPtr& wnd) {
 
 	
 	XWindowPtr result = XServer::getServer()->getRoot();
-	for (int i = 0; i < tree1.size() && i < tree2.size(); i++) {
+	for (int i = 0; i < (int)tree1.size() && i < (int)tree2.size(); i++) {
 		if (tree1.at(i)->id == tree2.at(i)->id) {
 			result = tree1.at(i);
 		}

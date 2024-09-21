@@ -1556,7 +1556,9 @@ static void x11_CreatePixmapCursor(CPU* cpu) {
     XColor bg;
     fg.read(memory, ARG4);
     bg.read(memory, ARG5);
-    XCursorPtr cursor = std::make_shared<XCursor>(ARG2, ARG3, fg, bg, ARG6, ARG7);
+    XPixmapPtr pixmap = server->getPixmap(ARG2);
+    XPixmapPtr mask = server->getPixmap(ARG3);
+    XCursorPtr cursor = std::make_shared<XCursor>(pixmap, mask, fg, bg, ARG6, ARG7);
     server->addCursor(cursor);
     EAX = cursor->id;
 }

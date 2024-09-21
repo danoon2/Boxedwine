@@ -75,6 +75,7 @@ int XDrawable::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U3
 	if (gc && (gc->clip_rects.size() || gc->values.clip_mask || gc->values.clip_x_origin || gc->values.clip_y_origin)) {
 		//klog("XDrawable::copyImageData clipping not implemented");
 	}
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
 	U32 src = data + bytes_per_line * src_y + (bits_per_pixel * src_x + 7) / 8;
 	U8* dst = this->data + this->bytes_per_line * dst_y + (bits_per_pixel * dst_x + 7) / 8;
 	KMemory* memory = thread->memory;

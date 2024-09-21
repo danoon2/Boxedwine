@@ -52,6 +52,7 @@ bool doMainLoop() {
         }
         XServer* server = XServer::getServer(true);
         if (server) {
+            server->isDisplayDirty = true; // a bit of a hack, sometimes popups in Basstour get missed and don't draw
             server->draw();
             timeout = 17;
         } 

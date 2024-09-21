@@ -31,7 +31,7 @@ void XcursorImages::write(KMemory* memory, U32 address, U32 nimage, U32 imageAdd
 	memory->writed(address + 4, imageAddress);
 }
 
-XCursor::XCursor(U32 pixmap, U32 mask, const XColor& fg, const XColor& bg, U32 x, U32 y) : id(XServer::getNextId()), pixmap(pixmap), mask(mask), fg(fg), bg(bg), x(x), y(y) {
+XCursor::XCursor(const XPixmapPtr& pixmap, const XPixmapPtr& mask, const XColor& fg, const XColor& bg, U32 x, U32 y) : id(XServer::getNextId()), pixmap(pixmap), mask(mask), fg(fg), bg(bg), x(x), y(y) {
 }
 
 XCursor::XCursor(U32 shape) : id(XServer::getNextId()), shape(shape) {
