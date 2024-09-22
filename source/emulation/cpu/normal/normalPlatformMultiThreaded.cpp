@@ -29,7 +29,6 @@ static void platformThread(CPU* cpu) {
 #endif
     }
 
-    std::shared_ptr<KProcess> process = cpu->thread->process;
     cpu->thread->cleanup();    
 
     platformThreadCount--;

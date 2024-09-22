@@ -162,7 +162,7 @@ void XWindow::onDestroy() {
 	}
 	if (parent) {
 		removeFromParent();
-		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [this](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.type = DestroyNotify;
 			event.xdestroywindow.event = parent->id;
@@ -184,7 +184,7 @@ void XWindow::onDestroy() {
 			}
 			});
 		// unlike CreateNotify, this can generate StructureNotify
-		XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [this](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.type = DestroyNotify;
 			event.xdestroywindow.event = id;
@@ -213,7 +213,7 @@ void XWindow::onCreate() {
 		{
 			addToParent();
 		}
-		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [this](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.type = CreateNotify;
 			event.xcreatewindow.parent = parent->id;
@@ -394,7 +394,7 @@ void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value,
 		}
 	}
 
-	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [this, atom](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
 		event.xproperty.atom = atom;
@@ -442,7 +442,7 @@ void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value,
 		}
 	}
 
-	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [this, atom](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xproperty.type = PropertyNotify;
 		event.xproperty.atom = atom;
@@ -479,7 +479,7 @@ void XWindow::deleteProperty(U32 atom, bool trace) {
 	XPropertyPtr prop = properties.getProperty(atom);
 	properties.deleteProperty(atom);
 	if (prop) {
-		XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(id, PropertyChangeMask, [this, atom](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.xproperty.type = PropertyNotify;
 			event.xproperty.atom = atom;
@@ -645,7 +645,7 @@ int XWindow::mapWindow() {
 	setDirty();
 	setWmState(NormalState, 0);
 	if (parent) {
-		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [this](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.xmap.type = MapNotify;
 			event.xmap.display = data->displayAddress;
@@ -669,7 +669,7 @@ int XWindow::mapWindow() {
 			}
 			});
 	}
-	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [this](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xmap.type = MapNotify;
 		event.xmap.display = data->displayAddress;
@@ -695,7 +695,7 @@ int XWindow::mapWindow() {
 		kwarn("XWindow::mapWindow backing_store was expected to be NotUseful");
 	}
 	if (c_class == InputOutput) {
-		XServer::getServer()->iterateEventMask(id, ExposureMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(id, ExposureMask, [this](const DisplayDataPtr& data) {
 			exposeNofity(data, 0, 0, width(), height(), 0);
 			});		
 	}
@@ -713,7 +713,7 @@ int XWindow::unmapWindow() {
 	setWmState(WithdrawnState, 0);
 	if (parent) {
 		setDirty();
-		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [this](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.xmap.type = UnmapNotify;
 			event.xmap.display = data->displayAddress;
@@ -736,7 +736,7 @@ int XWindow::unmapWindow() {
 			}
 			});
 	}
-	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [this](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xmap.type = UnmapNotify;
 		event.xmap.display = data->displayAddress;
@@ -759,7 +759,7 @@ int XWindow::unmapWindow() {
 		}
 		});
 	if (c_class == InputOutput && parent) {
-		XServer::getServer()->iterateEventMask(parent->id, ExposureMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(parent->id, ExposureMask, [this](const DisplayDataPtr& data) {
 			exposeNofity(data, 0, 0, parent->width(), parent->height(), 0);
 			});
 	}
@@ -785,7 +785,7 @@ int XWindow::reparentWindow(const XWindowPtr& parent, S32 x, S32 y) {
 	this->top = y;
 	addToParent();
 
-	XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(parent->id, SubstructureNotifyMask, [this, parent, x, y](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xreparent.type = ReparentNotify;
 		event.xreparent.display = data->displayAddress;
@@ -813,7 +813,7 @@ int XWindow::reparentWindow(const XWindowPtr& parent, S32 x, S32 y) {
 		}
 	});
 
-	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [this, parent, x, y](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.xreparent.type = ReparentNotify;
 		event.xreparent.display = data->displayAddress;
@@ -897,7 +897,7 @@ void XWindow::configureNotify() {
 	}
 
 	if (parent) {
-		XServer::getServer()->iterateEventMask(parent->id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(parent->id, StructureNotifyMask, [this, above](const DisplayDataPtr& data) {
 			XEvent event = {};
 			event.type = ConfigureNotify;
 			event.xconfigure.event = parent->id;
@@ -926,7 +926,7 @@ void XWindow::configureNotify() {
 			}
 			});
 	}
-	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, StructureNotifyMask, [this, above](const DisplayDataPtr& data) {
 		XEvent event = {};
 		event.type = ConfigureNotify;
 		event.xconfigure.event = id;
@@ -1018,7 +1018,7 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 	configureNotify();
 	// :TODO:
 	if (c_class == InputOutput && isMapped) {
-		XServer::getServer()->iterateEventMask(id, ExposureMask, [=](const DisplayDataPtr& data) {
+		XServer::getServer()->iterateEventMask(id, ExposureMask, [this](const DisplayDataPtr& data) {
 			exposeNofity(data, 0, 0, this->width(), this->height(), 0);
 			});
 	}
@@ -1281,13 +1281,13 @@ void XWindow::crossingNotify(const DisplayDataPtr& data, bool in, S32 x, S32 y, 
 }
 
 void XWindow::focusOut() {
-	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [this](const DisplayDataPtr& data) {
 		focusNotify(data, false, NotifyNormal, NotifyDetailNone);
 		});
 }
 
 void XWindow::focusIn() {
-	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, FocusChangeMask, [this](const DisplayDataPtr& data) {
 		focusNotify(data, true, NotifyNormal, NotifyDetailNone);
 		});
 }
@@ -1409,7 +1409,7 @@ bool XWindow::mouseButtonScreenCoords(U32 button, S32 x, S32 y, bool pressed) {
 
 void XWindow::keyScreenCoords(U32 key, S32 x, S32 y, bool pressed) {
 
-	XServer::getServer()->iterateEventMask(id, pressed ? KeyPressMask : KeyReleaseMask, [=](const DisplayDataPtr& data) {
+	XServer::getServer()->iterateEventMask(id, pressed ? KeyPressMask : KeyReleaseMask, [this, key, x, y, pressed](const DisplayDataPtr& data) {
 		keyNotify(data, key, x, y, pressed);
 		});
 }

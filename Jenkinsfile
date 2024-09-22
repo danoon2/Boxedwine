@@ -338,9 +338,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -348,12 +348,12 @@ pipeline {
                             unstash "linux"
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
                                 '''
                             }
                         }
@@ -369,9 +369,9 @@ pipeline {
                         }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation2.zip http://boxedwine.org/v/automation2.zip --output automation2.zip
+                                curl -z automation3.zip http://boxedwine.org/v2/automation3.zip --output automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -386,7 +386,7 @@ pipeline {
                         dir("project/mac-xcode/automation") {
                             retry(3) {
                                 sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -402,9 +402,9 @@ pipeline {
                         }                      
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation2.zip http://boxedwine.org/v/automation2.zip --output automation2.zip
+                                curl -z automation3.zip http://boxedwine.org/v2/automation3.zip --output automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -419,7 +419,7 @@ pipeline {
                         dir("project/mac-xcode/automation") {
                             retry(3) {
                                 sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -435,16 +435,16 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
                             '''
                         }
                         dir("project/linux/automation") {
                             unstash "raspberry"
                             retry(3) {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -461,16 +461,16 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
                             '''
                         }
                         dir("project/linux/automation") {
                             unstash "raspberry64"
                             retry(3) {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -483,20 +483,20 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation2.zip
+                            unzip automation3.zip
                         '''
                         dir("automation") {
                             unstash "windows"
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\TinyCore15Wine9.18.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\TinyCore15Wine9.18.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                         }

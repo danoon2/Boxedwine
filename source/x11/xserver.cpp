@@ -273,7 +273,7 @@ void XServer::draw(bool drawNow) {
 		isDisplayDirty = false;
 	}
 	KNativeScreenPtr screen = KNativeSystem::getScreen();
-	screen->getInput()->runOnUiThread([=]() {
+	screen->getInput()->runOnUiThread([screen, this]() {
 		bool childWasDrawn = false;
 
 		screen->clear();

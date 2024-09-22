@@ -23,9 +23,7 @@ KNativeScreenSDL::KNativeScreenSDL(U32 cx, U32 cy, U32 bpp, int scaleX, int scal
 }
 
 KNativeScreenSDL::~KNativeScreenSDL() {
-    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
-        destroyMainWindow();
-    DISPATCH_MAIN_THREAD_BLOCK_END
+    destroyMainWindow();
 }
 
 KNativeInputPtr KNativeScreenSDL::getInput() {
