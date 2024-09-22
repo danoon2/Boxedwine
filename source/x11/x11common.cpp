@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
-#include "../../../tools/x11/X11_def.h"
+#include "../../tools/x11/X11_def.h"
 #include "x11.h"
 #include "knativesystem.h"
 

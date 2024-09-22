@@ -1061,7 +1061,7 @@ U32 XWindow::WM_TRANSIENT_FOR() {
 XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY) {
 	XWindowPtr result;
 
-	iterateMappedChildrenFrontToBack([screenX, screenY, &result, this](const XWindowPtr& child) {
+	iterateMappedChildrenFrontToBack([screenX, screenY, &result](const XWindowPtr& child) {
 		if (!child->isMapped) {
 			return true;
 		}

@@ -1,3 +1,10 @@
+25.0.0
+* Updated Wine to latest version
+* Internal change to emulate x11 rather than replace winex11 driver.
+* Linux file system is now based on Tiny Core Linux 15 instead of Debian 10.  This makes it easier to install packages from the Boxedwine UI.
+* Normal (slow) CPU core for 32-bit systems can now use multiple threads.
+* Mac ARMv8 systems are a lot more stable.
+
 21.0.1
 
 * Added command line option: -fullscreenAspect  This will enable full screen with letter boxing in order to preserve the aspect ratio.
