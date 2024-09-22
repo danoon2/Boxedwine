@@ -131,7 +131,7 @@ public class Main {
                 throw new IOException(path+File.separator+"Install.txt needs to have 2 lines");
             }
             runBoxedWine(path, "install", installLines, results);
-            if (results.exitCode!=1) {
+            if (results.exitCode!=111) {
                 return;
             }
         }
@@ -140,7 +140,7 @@ public class Main {
                 throw new IOException(path+File.separator+"Install2.txt needs to have 2 lines");
             }
             runBoxedWine(path, "install2", installLines2, results);
-            if (results.exitCode!=1) {
+            if (results.exitCode!=111) {
                 return;
             }
         }
@@ -151,7 +151,7 @@ public class Main {
             runBoxedWine(path, "play", playLines, results);
         }
         results.timeToComplete = (int)((System.currentTimeMillis()-startTime)/1000);
-        if (results.exitCode==1) {
+        if (results.exitCode==111) {
             deleteDir(rootPath);
         }
     }

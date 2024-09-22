@@ -29,8 +29,8 @@ void Player::readCommand() {
     if (!file.readLine(line)) {
         klog("script finished: success");
         quit();
-        exit(0);
-    }    
+        exit(111);
+    }
     std::vector<BString> results;
     line.split("=", results);
     if (results.size() == 2) {

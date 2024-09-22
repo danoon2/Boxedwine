@@ -7,6 +7,7 @@ Recorder* Recorder::instance;
 void Recorder::start(BString directory) {
     Recorder::instance = new Recorder();
     instance->directory = directory;
+    Fs::makeNativeDirs(directory);
     instance->file.createNew(BString(directory+"/"+RECORDER_SCRIPT));
     instance->screenShotCount = 0;
     instance->out("VERSION=2\r\n");
