@@ -2148,7 +2148,7 @@ static void emulateRM(X64Asm* data, U8 rm) {
     // advance eip correctly
     U32 pos = data->bufferPos;
     data->translateRM(rm, false, false, false, false, 0);
-    data->bufferPos;
+    data->bufferPos = pos;
     data->emulateSingleOp(data->currentOp);
 }
 

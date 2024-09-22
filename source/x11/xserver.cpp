@@ -274,15 +274,20 @@ void XServer::draw(bool drawNow) {
 	}
 	KNativeScreenPtr screen = KNativeSystem::getScreen();
 	screen->getInput()->runOnUiThread([=]() {
+		bool childWasDrawn = false;
+
 		screen->clear();
-		root->iterateMappedChildrenBackToFront([](XWindowPtr child) {
+		root->iterateMappedChildrenBackToFront([&childWasDrawn](XWindowPtr child) {
 			if (child->c_class == InputOutput) {
 				child->draw();
+				childWasDrawn = true;
 			}
 			return true;
-			}, true);
-		screen->present();
-		});
+			}, true);		
+		if (childWasDrawn) {
+			screen->present();
+		}
+	});	
 }
 
 XWindowPtr XServer::getWindow(U32 window) {
