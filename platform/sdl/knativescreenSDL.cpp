@@ -84,7 +84,9 @@ U32 KNativeScreenSDL::screenRate() {
 }
 
 void KNativeScreenSDL::setTitle(const BString& title) {
-    SDL_SetWindowTitle(window, title.c_str());
+    if (window) {
+        SDL_SetWindowTitle(window, title.c_str());
+    }
 }
 
 void KNativeScreenSDL::getPos(S32& x, S32& y) {
