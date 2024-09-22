@@ -2,7 +2,7 @@
 #ifndef BOXEDWINE_MULTI_THREADED
 #include "recorder.h"
 #include "knativesocket.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 #include "knativethread.h"
 
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
@@ -34,7 +34,7 @@ bool doMainLoop() {
         U32 t;
 
         BOXEDWINE_RECORDER_RUN_SLICE();
-        if (!KNativeSystem::getCurrentWindow()->processEvents()) {
+        if (!KNativeSystem::getCurrentInput()->processEvents()) {
             shouldQuit = true;
             break;
         }
@@ -52,14 +52,14 @@ bool doMainLoop() {
         if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;
             if (KSystem::title.length()) {
-                KNativeSystem::getCurrentWindow()->setTitle(KSystem::title);
+                KNativeSystem::getScreen()->setTitle(KSystem::title);
             } else {
                 BString title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY );
                 title.append(" MIPS");
                 title.append(getMIPS());
                 title.append(" : ");
                 title.append(getSize(allocatedRamPages));
-                KNativeSystem::getCurrentWindow()->setTitle(title);
+                KNativeSystem::getScreen()->setTitle(title);
             }            
         }
         if (ran) {

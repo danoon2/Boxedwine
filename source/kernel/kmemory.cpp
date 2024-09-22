@@ -16,20 +16,12 @@ void KMemory::shutdown() {
 
 KMemory::KMemory(KProcess* process) : process(process) {
     data = new KMemoryData(this);    
-#ifdef BOXEDWINE_DYNAMIC
-    dynamicMemory = nullptr;
-#endif
 }
 
 KMemory::~KMemory() {
     if (data) {
         delete data;
     }
-#ifdef BOXEDWINE_DYNAMIC
-    if (dynamicMemory) {
-        delete dynamicMemory;
-    }
-#endif
 }
 
 void KMemory::cleanup() {
@@ -322,7 +314,6 @@ void KMemory::execvReset(bool cloneVM) {
     if (!cloneVM) {
         data->execvReset();
     } else {
-        std::shared_ptr<KProcess> parent = KSystem::getProcess(process->parentId);
         // data no longer shared with parent
         data = new KMemoryData(this);
     }

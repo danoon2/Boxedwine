@@ -116,9 +116,6 @@ public:
     void addCodeBlock(U32 address, CodeBlock block);
     void removeCodeBlock(U32 address, U32 len);
 
-#ifdef BOXEDWINE_DYNAMIC
-    DynamicMemory* dynamicMemory;
-#endif
     BOXEDWINE_MUTEX mutex;
 private:
     friend KMemoryData* getMemData(KMemory* memory);

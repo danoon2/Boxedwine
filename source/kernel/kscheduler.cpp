@@ -70,7 +70,7 @@ void removeTimer(KTimerCallback* timer) {
 }
 #else
 #include "kscheduler.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 
 #include <stdio.h>
 
