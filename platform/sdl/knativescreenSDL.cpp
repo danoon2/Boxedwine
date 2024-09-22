@@ -127,7 +127,9 @@ void KNativeScreenSDL::showWindow(bool show) {
 
 void KNativeScreenSDL::clear() {
 #ifdef BOXEDWINE_RECORDER
-    BOXEDWINE_MUTEX_LOCK(drawingMutex);
+    if (Recorder::instance) {
+        BOXEDWINE_MUTEX_LOCK(drawingMutex);
+    }
     if (Recorder::instance || Player::instance) {
         U32 size = screenWidth() * screenHeight() * 4;
         if (recordBufferSize < size) {
@@ -280,7 +282,9 @@ void KNativeScreenSDL::present() {
     }
     presented = true;
 #ifdef BOXEDWINE_RECORDER
-    BOXEDWINE_MUTEX_UNLOCK(drawingMutex);
+    if (Recorder::instance) {
+        BOXEDWINE_MUTEX_UNLOCK(drawingMutex);
+    }
 #endif
 }
 
