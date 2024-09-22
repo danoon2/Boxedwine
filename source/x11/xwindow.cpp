@@ -865,7 +865,9 @@ void XWindow::draw() {
 	S32 screenX = left;
 	S32 screenY = top;
 	//windowToScreen(screenX, screenY);
+	lockData();
 	KNativeSystem::getScreen()->putBitsOnWnd(id, data, visual?visual->bits_per_rgb:32, bytes_per_line, screenX, screenY, width(), height(), palette, isDirty);
+	unlockData();
 	isDirty = false;
 
 	iterateMappedChildrenBackToFront([](const XWindowPtr& child) {
