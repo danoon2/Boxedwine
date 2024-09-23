@@ -141,6 +141,10 @@ void Player::runSlice() {
     if (this->nextCommand == "MODIFIERS") {
         currentInputModifiers = atoi(nextValue.c_str());
         instance->readCommand();
+    } else if (this->nextCommand == "CLICKWHILEWAITING") {
+        mouseClickTimerWhileWaiting = atoi(nextValue.c_str());
+        nextMouseClickTime = KSystem::getMilliesSinceStart() + mouseClickTimerWhileWaiting * 1000;
+        instance->readCommand();
     }
     if (KSystem::getMicroCounter()<this->lastCommandTime+10000)
         return;
@@ -190,6 +194,8 @@ void Player::runSlice() {
         }
     } else if (this->nextCommand=="DONE") {
         //exit(1);, let it exit gracefully
+    } else if (this->nextCommand == "DONE") {
+        //exit(1);, let it exit gracefully
     } else if (this->nextCommand=="SCREENSHOT") {
         if (KSystem::getMicroCounter()<this->lastScreenRead+1000000) {
             return;
@@ -229,8 +235,9 @@ void Player::runSlice() {
             }            
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
-                klog("script: screen shot matched");
+                klog("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
+                this->mouseClickTimerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
@@ -262,8 +269,9 @@ void Player::runSlice() {
             }
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
-                klog("script: screen shot matched");
+                klog("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
+                this->mouseClickTimerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
@@ -274,6 +282,11 @@ void Player::runSlice() {
                 }
                 comparingCond.notify_one();
             }
+        }
+        if (this->nextCommand == "SCREENSHOT" && mouseClickTimerWhileWaiting && nextMouseClickTime < KSystem::getMilliesSinceStart()) {
+            nextMouseClickTime = KSystem::getMilliesSinceStart() + mouseClickTimerWhileWaiting * 1000;
+            input->mouseButton(1, 0, 1, 1);
+            input->mouseButton(0, 0, 1, 1);
         }
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {

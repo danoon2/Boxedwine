@@ -3,7 +3,6 @@
 #include <SDL.h>
 #include "../../source/kernel/devs/oss.h"
 
-// Perhaps in the future, this class and devdsp.cpp will go away and instead I will replace the oss interface Wine uses in wineoss.drv with a custom one, like what I did with winex11.drv
 #define DSP_BUFFER_SIZE (1024*256)
 
 static bool sdlAudioOpen;
@@ -104,7 +103,7 @@ public:
 // not really a voice, currently they are not mixed
 std::list<std::shared_ptr<KDspAudioSdl>> voices;
 
-void audioCallback(void* userdata, U8* stream, S32 len) {	
+void audioCallback(void* userdata, U8* stream, S32 len) {
 	if (!voices.size()) {
 		memset(stream, sdlSilence, len);
 		return;
@@ -123,7 +122,12 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 			S32 todo = data->cvt.len_cvt - data->cvtBufPos;
 			if (todo > len)
 				todo = len;
-			memcpy(stream, data->cvt.buf + data->cvtBufPos, todo);
+			if (!KSystem::soundEnabled) {
+				// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
+				memset(stream, data->got.silence, todo);
+			} else {
+				memcpy(stream, data->cvt.buf + data->cvtBufPos, todo);
+			}
 			data->cvtBufPos += todo;
 			stream += todo;
 			len -= todo;
@@ -148,7 +152,12 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 			S32 todo = data->cvt.len_cvt;
 			if (todo > len)
 				todo = len;
-			memcpy(stream, data->cvt.buf, todo);
+			if (!KSystem::soundEnabled) {
+				// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
+				memset(stream, data->got.silence, todo);
+			} else {
+				memcpy(stream, data->cvt.buf, todo);
+			}
 			stream += todo;
 			len -= todo;
 			data->cvtBufPos = todo;
@@ -157,7 +166,12 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 		if (available > len)
 			available = len;
 		if (available) {
-			std::copy(data->audioBuffer.begin(), data->audioBuffer.begin() + available, stream);
+			if (!KSystem::soundEnabled) {
+				// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
+				memset(stream, data->got.silence, available);
+			} else {
+				std::copy(data->audioBuffer.begin(), data->audioBuffer.begin() + available, stream);
+			}
 			data->audioBuffer.erase(data->audioBuffer.begin(), data->audioBuffer.begin() + available);
 			len -= available;
 			stream += available;
@@ -178,28 +192,23 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	this->want.freq = freq;
 	this->want.channels = channels;
 
-	if (!KSystem::soundEnabled) {
-		this->sameFormat = true;
-	} else {
-		// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
-		closeSdlAudio();
-		if (SDL_OpenAudio(&this->want, &this->got) < 0) {
-			klog("Failed to open audio: %s", SDL_GetError());
-		}
-		sdlSilence = this->got.silence;
-		sdlAudioOpen = true;
-		if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
-			this->sameFormat = false;
-			SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
-		} else {
-			this->sameFormat = true;
-		}
+	// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
+	closeSdlAudio();
+	if (SDL_OpenAudio(&this->want, &this->got) < 0) {
+		klog("Failed to open audio: %s", SDL_GetError());
 	}
+	sdlSilence = this->got.silence;
+	sdlAudioOpen = true;
+	if (this->want.freq != this->got.freq || this->want.channels != this->got.channels || this->want.format != this->got.format) {
+		this->sameFormat = false;
+		SDL_BuildAudioCVT(&this->cvt, this->want.format, this->want.channels, this->want.freq, this->got.format, this->got.channels, this->got.freq);
+	} else {
+		this->sameFormat = true;
+	}
+
 	this->open = true;
 	voices.push_back(shared_from_this());
-	if (KSystem::soundEnabled) {
-		SDL_PauseAudio(0);
-	}
+	SDL_PauseAudio(0);
 	if (this->got.size) {
 		this->dspFragSize = this->got.size;
 	}
@@ -215,20 +224,14 @@ void KDspAudioSdl::closeAudioFromAudioThread() {
 void KDspAudioSdl::closeAudio() {
 	if (this->open) {
 		bool needClose = true;
-		if (KSystem::soundEnabled) {
-			SDL_LockAudio();
-		}
+		SDL_LockAudio();
 		if (audioBuffer.size() || (this->cvtBufPos != 0 && this->cvtBufPos < this->cvt.len_cvt)) {
 			closeWhenDone = true;
 			needClose = false;
 		}
-		if (KSystem::soundEnabled) {
-			SDL_UnlockAudio();
-		}
+		SDL_UnlockAudio();
 		if (needClose) {
-			if (KSystem::soundEnabled) {
-				closeSdlAudio();
-			}
+			closeSdlAudio();
 			this->onClose();
 		}				
 	}

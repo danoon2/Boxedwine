@@ -21,6 +21,8 @@ public:
 private:    
     BString nextValue;
     std::thread comparingThread;
+    U32 nextMouseClickTime = 0;
+    U32 mouseClickTimerWhileWaiting = 0;
 
     void readCommand();        
 };
