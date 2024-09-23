@@ -228,9 +228,10 @@ U32 KProcess::getThreadCount() {
 
 void KProcess::deleteThread(KThread* thread) {
     thread->cleanup();  
-    if (this->threads.size() == 1 && this->threads.get(thread->id)==thread) {
+    if (this->threads.size() == 0) {
+        cleanupProcess();
         delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
-        this->memory = nullptr;
+        this->memory = nullptr;        
     }
     delete thread;
     // don't call into getProcess while holding threadsCondition

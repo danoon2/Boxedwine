@@ -89,6 +89,7 @@ public:
     static U32 pentiumLevel;
 	static bool shutingDown;
     static U32 killTime;
+    static U32 killTime2;
     static BString title;
     static U32 wineMajorVersion;
 #ifdef BOXEDWINE_MULTI_THREADED

@@ -264,9 +264,13 @@ void XWindow::setTransient(U32 w) {
 		if (transientForWindow) {
 			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(transientForWindow->childrenMutex);
 			transientForWindow->transientChildren.push_back(shared_from_this());	
+			transientCached = transientForWindow;
+		} else {
+			transientCached.reset();
 		}
+	} else {
+		transientCached.reset();
 	}
-	transientForCache = w;
 }
 
 int XWindow::setAttributes(const DisplayDataPtr& data, XSetWindowAttributes* attributes, U32 valueMask) {	
@@ -1029,9 +1033,9 @@ int XWindow::configure(U32 mask, XWindowChanges* changes) {
 
 
 bool XWindow::isTransient() {
-	if (transientForCache) {
-		XWindowPtr w = XServer::getServer()->getWindow(transientForCache);
-		return w && w->isThisAndAncestorsMapped();
+	XWindowPtr transient = transientCached.lock();
+	if (transient) {
+		return transient->isThisAndAncestorsMapped();
 	}
 	return false;
 }

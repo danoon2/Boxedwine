@@ -46,8 +46,17 @@ bool doMainLoop() {
 #endif
         t = KSystem::getMilliesSinceStart();
 
-        if (KSystem::killTime && KSystem::killTime <= t) {
-            return true;
+        if (KSystem::killTime) {
+            if (KSystem::killTime <= t) {
+                KSystem::killTime = 0;
+                KSystem::killTime2 = KSystem::getMilliesSinceStart() + 30000;
+                KNativeSystem::forceShutdown();
+            }
+        }
+        if (KSystem::killTime2) {
+            if (KSystem::killTime2 <= t) {
+                return true;
+            }
         }
         if (lastTitleUpdate+5000 < t) {            
             lastTitleUpdate = t;

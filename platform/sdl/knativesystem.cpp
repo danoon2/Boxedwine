@@ -3,6 +3,7 @@
 #include <SDL.h>
 #include "knativescreenSDL.h"
 #include "../../source/x11/x11.h"
+#include "../../source/util/threadutils.h"
 
 #include UNISTD
 
@@ -115,6 +116,22 @@ void KNativeSystem::scheduledNewThread(KThread* thread) {
 void KNativeSystem::exit(const char* msg, U32 code) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", msg, nullptr);
     _exit(code);
+}
+
+void KNativeSystem::forceShutdown() {
+    std::shared_ptr<KProcess> p = KSystem::getProcess(10);
+    if (!p) {
+        return;
+    }
+#if defined (BOXEDWINE_MULTI_THREADED) && !defined (__TEST)
+    runInBackgroundThread([p]() {
+        p->killAllThreads();
+        KSystem::eraseProcess(p->id);
+        });
+#else
+    p->killAllThreads();
+    KSystem::eraseProcess(p->id);
+#endif
 }
 
 void KNativeSystem::cleanup() {

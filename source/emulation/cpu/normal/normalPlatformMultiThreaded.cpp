@@ -32,11 +32,8 @@ static void platformThread(CPU* cpu) {
     cpu->thread->cleanup();    
 
     platformThreadCount--;
-    if (platformThreadCount != 0) {
-        process->deleteThread(cpu->thread);
-    } else {
-        process->cleanupProcess();
-        process->deleteThread(cpu->thread);
+    process->deleteThread(cpu->thread);
+    if (platformThreadCount == 0) {
         KSystem::shutingDown = true;
         KNativeSystem::postQuit();
     }

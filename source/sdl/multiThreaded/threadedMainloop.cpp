@@ -42,12 +42,20 @@ bool doMainLoop() {
 
         if (KSystem::killTime) {
             if (KSystem::killTime <= t) {
-                KNativeSystem::cleanup();
-                exit(9);
-                return true;
+                KSystem::killTime = 0;
+                KSystem::killTime2 = KSystem::getMilliesSinceStart() + 30000;
+                KNativeSystem::forceShutdown();
             }
             if (t - KSystem::killTime < timeout) {
                 timeout = t - KSystem::killTime;
+            }
+        }
+        if (KSystem::killTime2) {
+            if (KSystem::killTime2 <= t) {
+                return true;
+            }
+            if (t - KSystem::killTime2 < timeout) {
+                timeout = t - KSystem::killTime2;
             }
         }
         XServer* server = XServer::getServer(true);

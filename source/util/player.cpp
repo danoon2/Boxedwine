@@ -28,8 +28,9 @@ void Player::readCommand() {
     BString line;
     if (!file.readLine(line)) {
         klog("script finished: success");
-        quit();
-        exit(111);
+        this->nextCommand = B("DONE"); // will cause success exit code to be returned
+        KSystem::killTime = KSystem::getMilliesSinceStart() + 30000;
+        return;
     }
     std::vector<BString> results;
     line.split("=", results);

@@ -207,7 +207,7 @@ private:
 	XSetWindowAttributes attributes;
 	bool isMapped = false;	
 	bool isFullScreen = false;
-	U32 transientForCache = 0;
+	std::weak_ptr<XWindow> transientCached;
 	XRectangle restoreRect;
 
 	BOXEDWINE_MUTEX propertiesMutex;

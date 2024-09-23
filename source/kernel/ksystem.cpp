@@ -47,6 +47,7 @@ BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
 U32 KSystem::killTime;
+U32 KSystem::killTime2;
 bool KSystem::adjustClock;
 U32 KSystem::adjustClockFactor=100;
 U32 KSystem::startTimeTicks;
@@ -77,6 +78,7 @@ void KSystem::init() {
     KSystem::startTimeMicroCounter = Platform::getMicroCounter();
     KSystem::startTimeSystemTime = Platform::getSystemTimeAsMicroSeconds();
     KSystem::killTime = 0;
+    KSystem::killTime2 = 0;
 }
 
 void KSystem::destroy() {
