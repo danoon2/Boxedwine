@@ -4,11 +4,8 @@
 class KNativeSDLAudioData {
 public:
 	KNativeSDLAudioData() = default;
-	~KNativeSDLAudioData() {
-		if (cvtBuf) {
-			delete[] cvtBuf;
-		}
-	}
+    ~KNativeSDLAudioData();
+    
 	U32 id;
 
 	SDL_AudioSpec want = { 0 };

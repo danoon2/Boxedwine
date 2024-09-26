@@ -169,6 +169,12 @@
 		1A0F957A2C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
 		1A0F957B2C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
 		1A0F957C2C9132DC00E5A9BF /* bheap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95762C9132DC00E5A9BF /* bheap.cpp */; };
+		1A0F95912CA5AE1000E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
+		1A0F95932CA5AE1A00E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
+		1A0F95942CA5AE1B00E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
+		1A0F95952CA5AE1E00E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
+		1A0F95962CA5AE1F00E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
+		1A0F95972CA5AE2000E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
 		1A1550F5263261B1006E0C8A /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550F4263261B1006E0C8A /* glew.cpp */; };
 		1A155103263261DF006E0C8A /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550FF263261DF006E0C8A /* mztools.c */; };
 		1A155104263261DF006E0C8A /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A155100263261DF006E0C8A /* ioapi.c */; };
@@ -1662,6 +1668,8 @@
 		1A0F956E2C91326600E5A9BF /* platformOpenGL.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = platformOpenGL.cpp; path = ../../../platform/linux/platformOpenGL.cpp; sourceTree = "<group>"; };
 		1A0F95752C9132DC00E5A9BF /* bheap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bheap.h; sourceTree = "<group>"; };
 		1A0F95762C9132DC00E5A9BF /* bheap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bheap.cpp; sourceTree = "<group>"; };
+		1A0F958F2CA5101A00E5A9BF /* knativeaudiosdl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = knativeaudiosdl.h; path = ../platform/sdl/knativeaudiosdl.h; sourceTree = "<group>"; };
+		1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = wineaudiodrv.cpp; path = ../../../source/sdl/wineaudiodrv.cpp; sourceTree = "<group>"; };
 		1A1550F32632619F006E0C8A /* glew.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = glew.h; path = ../../../../../../../lib/glew/include/GL/glew.h; sourceTree = "<group>"; };
 		1A1550F4263261B1006E0C8A /* glew.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = glew.cpp; path = ../../../../../../lib/glew/src/glew.cpp; sourceTree = "<group>"; };
 		1A1550FF263261DF006E0C8A /* mztools.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mztools.c; path = ../../../../../lib/zlib/contrib/minizip/mztools.c; sourceTree = "<group>"; };
@@ -2565,6 +2573,7 @@
 		710091332644D416003413C3 /* sdl */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */,
 				1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */,
 				1A0F95532C912BD000E5A9BF /* knativeinputSDL.h */,
 				1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */,
@@ -2734,6 +2743,7 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F958F2CA5101A00E5A9BF /* knativeaudiosdl.h */,
 				1A0F956C2C912C3C00E5A9BF /* knativeinput.h */,
 				1A0F956A2C912C3C00E5A9BF /* knativescreen.h */,
 				1A0F956B2C912C3C00E5A9BF /* kopengl.h */,
@@ -3858,6 +3868,7 @@
 				1A80EFEB276EBCC70032A70A /* spinnerControl.cpp in Sources */,
 				1A0F95712C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1A80EFF2276EBCC70032A70A /* log.cpp in Sources */,
+				1A0F95962CA5AE1F00E5A9BF /* wineaudiodrv.cpp in Sources */,
 				1A80EFF8276EBCC70032A70A /* common_sse.cpp in Sources */,
 				1A80EFFE276EBCC70032A70A /* soft_copy_on_write_page.cpp in Sources */,
 				1A80F000276EBCC70032A70A /* fs.cpp in Sources */,
@@ -4118,6 +4129,7 @@
 				1A80F224276EBF170032A70A /* appFile.cpp in Sources */,
 				1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1AC5F2D82772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
+				1A0F95952CA5AE1E00E5A9BF /* wineaudiodrv.cpp in Sources */,
 				1A80F225276EBF170032A70A /* common_fpu.cpp in Sources */,
 				1A80F235276EBF170032A70A /* glext.cpp in Sources */,
 				1A80F239276EBF170032A70A /* spinnerControl.cpp in Sources */,
@@ -4247,6 +4259,7 @@
 				71222BBA2435169100CDBABD /* kscheduler.cpp in Sources */,
 				71222B432435163F00CDBABD /* synchronization.cpp in Sources */,
 				71222B8A2435169100CDBABD /* fsfilenode.cpp in Sources */,
+				1A0F95942CA5AE1B00E5A9BF /* wineaudiodrv.cpp in Sources */,
 				71222B622435169100CDBABD /* x64Ops.cpp in Sources */,
 				1AAC184D2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1ADBD8432B9196760074867C /* devfb.cpp in Sources */,
@@ -4591,6 +4604,7 @@
 				1A0F95472C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
 				1A0F94D52C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
 				71222C4B24351CBA00CDBABD /* soft_copy_on_write_page.cpp in Sources */,
+				1A0F95972CA5AE2000E5A9BF /* wineaudiodrv.cpp in Sources */,
 				71222C4E24351CBA00CDBABD /* fs.cpp in Sources */,
 				1ADBD86B2B92E7B60074867C /* sysfs.cpp in Sources */,
 				1A0F95292C912B6B00E5A9BF /* xrandr.cpp in Sources */,
@@ -4704,6 +4718,7 @@
 				7135DC36264EBCD0005D6AA6 /* kscheduler.cpp in Sources */,
 				7135DC37264EBCD0005D6AA6 /* synchronization.cpp in Sources */,
 				7135DC38264EBCD0005D6AA6 /* fsfilenode.cpp in Sources */,
+				1A0F95932CA5AE1A00E5A9BF /* wineaudiodrv.cpp in Sources */,
 				7135DC39264EBCD0005D6AA6 /* x64Ops.cpp in Sources */,
 				1AAC184E2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1ADBD8442B9196760074867C /* devfb.cpp in Sources */,
@@ -5048,6 +5063,7 @@
 				71FBFE612433BBBE003F17F1 /* spinnerControl.cpp in Sources */,
 				1A0F95462C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
 				1A0F94D42C912B6B00E5A9BF /* xdrawable.cpp in Sources */,
+				1A0F95912CA5AE1000E5A9BF /* wineaudiodrv.cpp in Sources */,
 				71FBFE772433BBBE003F17F1 /* log.cpp in Sources */,
 				1AC5F2D52772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1ADBD86A2B92E7B60074867C /* sysfs.cpp in Sources */,
