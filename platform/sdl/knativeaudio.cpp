@@ -42,7 +42,7 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 	// we don't actually care which thread we use, hopefully the thread won't go away in the middle.
 	// perhaps in the future this could be a shared_ptr or something else to guarantee the thread will be there
 	ChangeThread changeThread(thread);
-	KMemory* memory = process->memory;
+
 	KFileDescriptor* fd = process->getFileDescriptor(data->callbackFD);
 	if (!fd) {
 		memset(stream, data->got.silence, len);
@@ -110,6 +110,18 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 }
 
 U32 KNativeSDLAudioData::nextId;
+
+KNativeSDLAudioData::~KNativeSDLAudioData() {
+    if (cvtBuf) {
+        delete[] cvtBuf;
+    }
+    if (emulatedAddress && emulatedAddressSize) {
+        KProcessPtr p = process.lock();
+        if (p) {
+            p->memory->unmapNativeMemory(emulatedAddress, emulatedAddressSize);
+        }
+    }
+}
 
 bool KNativeAudioSDL::load() {
 	// if (CoreAudio_MIDIInit() != DRV_SUCCESS)

@@ -128,14 +128,20 @@ struct WineMidiHdr {
 
 class KNativeAudioCoreAudioData {
 public:
-	KNativeAudioCoreAudioData() : lock(OS_UNFAIR_LOCK_INIT), isRender(false), isPlaying(false), eventFd(0), cap_held_frames(0), resamp_bufsize_frames(0), resamp_buffer(0), cap_offs_frames(0), bufsize_frames(0), address_local_buffer(0), address_wri_offs_frames(0), address_held_frames(0), period_frames(0) {
+	KNativeAudioCoreAudioData() : isRender(false), isPlaying(false) {
     }
 	~KNativeAudioCoreAudioData() {
 		if (resamp_buffer) {
 			delete[] resamp_buffer;
 		}
+        if (emulatedAddress && emulatedAddressSize) {
+            KProcessPtr p = process.lock();
+            if (p) {
+                p->memory->unmapNativeMemory(emulatedAddress, emulatedAddressSize);
+            }
+        }
 	}
-	os_unfair_lock lock;
+    U32 id = 0;
 
 	AudioComponentInstance unit;
 	AudioObjectPropertyScope scope;
@@ -148,10 +154,21 @@ public:
     bool isRender;
     bool isPlaying;
     
+    U8* resamp_buffer = nullptr;
+    
     U32 callbackFD = 0;
     U32 callbackAddress = 0;
+    U32 emulatedAddress = 0;
+    U32 emulatedAddressSize = 0;
+    U8* nativeAddress = nullptr;
     BoxedWaveFormatEx fmt; // read only, doesn't change
+    
+    static U32 nextId;
 };
+
+typedef std::shared_ptr<KNativeAudioCoreAudioData> KNativeAudioCoreAudioDataPtr;
+
+U32 KNativeAudioCoreAudioData::nextId;
 
 class KNativeAudioCoreAudio : public KNativeAudio, public std::enable_shared_from_this<KNativeAudioCoreAudio> {
 public:
@@ -195,23 +212,11 @@ public:
     U32 midiInStop(U32 wDevID) override;
     U32 midiInReset(U32 wDevID) override;
 
-	KNativeAudioCoreAudioData data[2];
-
-	KNativeAudioCoreAudioData& getData(bool isRender) {
-		if (isRender) {
-			return data[0];
-		}
-		return data[1];
-	}
-
-	KNativeAudioCoreAudioData* getDataFromId(U32 boxedAudioId) {
-		if (boxedAudioId == 1) {
-			return &data[0];
-		} else if (boxedAudioId == 2) {
-			return &data[1];
-		}
-		return NULL;
-	}
+    KNativeAudioCoreAudioDataPtr getDataFromId(U32 boxedAudioId);
+    KNativeAudioCoreAudioDataPtr playing;
+    
+	BHashTable<U32, KNativeAudioCoreAudioDataPtr> data;
+    BOXEDWINE_MUTEX dataMutex;
 };
 
 static bool CoreAudio_MIDIInit();
@@ -399,27 +404,36 @@ static HRESULT getDefaultAudioId(bool isRender, U32* audioId) {
 }
 
 U32 KNativeAudioCoreAudio::getEndPoint(bool isRender) {
-	KNativeAudioCoreAudioData& data = getData(isRender);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(dataMutex);
+	KNativeAudioCoreAudioDataPtr data = std::make_shared<KNativeAudioCoreAudioData>();
+    data->isRender = isRender;
+    data->id = ++KNativeAudioCoreAudioData::nextId;
+    
 	if (isRender) {
-		data.scope = kAudioDevicePropertyScopeOutput;
+		data->scope = kAudioDevicePropertyScopeOutput;
 	} else {
-		data.scope = kAudioDevicePropertyScopeInput;
+		data->scope = kAudioDevicePropertyScopeInput;
 	}
-	getDefaultAudioId(isRender, &data.adevid);
-	if (!(getData(isRender).unit = get_audiounit(isRender, data.adevid))) {
+	getDefaultAudioId(isRender, &data->adevid);
+	if (!(data->unit = get_audiounit(isRender, data->adevid))) {
 		return 0;
 	}
-	return isRender ? 1 : 2;
+    this->data.set(data->id, data);
+	return data->id;
 }
 
 void KNativeAudioCoreAudio::release(U32 boxedAudioId) {
-	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+	KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
 	if (data) {
 		AudioOutputUnitStop(data->unit);
 		AudioComponentInstanceDispose(data->unit);
 		if (data->converter)
 			AudioConverterDispose(data->converter);
 	}
+    this->data.remove(boxedAudioId);
+    if (playing && playing->id == boxedAudioId) {
+        playing = nullptr;
+    }
 }
 
 /*
@@ -540,37 +554,37 @@ void KNativeAudioCoreAudio::captureResample(U32 boxedAudioId) {
     */
 }
 
-static HRESULT ca_get_audiodesc(AudioStreamBasicDescription *desc, const BoxedWaveFormatExtensible* fmt)
+static HRESULT ca_get_audiodesc(AudioStreamBasicDescription *desc, const BoxedWaveFormatEx* fmt)
 {
     desc->mFormatFlags = 0;
 
-    if (fmt->ex.wFormatTag == WAVE_FORMAT_PCM || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat ==  CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) {
+    if (fmt->wFormatTag == WAVE_FORMAT_PCM) {
         desc->mFormatID = kAudioFormatLinearPCM;
-        if(fmt->ex.wBitsPerSample > 8) {
+        if(fmt->wBitsPerSample > 8) {
             desc->mFormatFlags = kAudioFormatFlagIsSignedInteger;
         }
-    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_IEEE_FLOAT || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT)){
+    } else if (fmt->wFormatTag == WAVE_FORMAT_IEEE_FLOAT){
         desc->mFormatID = kAudioFormatLinearPCM;
         desc->mFormatFlags = kAudioFormatFlagIsFloat;
-    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_MULAW || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_MULAW)) {
+    } else if (fmt->wFormatTag == WAVE_FORMAT_MULAW) {
         desc->mFormatID = kAudioFormatULaw;
-    } else if (fmt->ex.wFormatTag == WAVE_FORMAT_ALAW || (fmt->ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && fmt->SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_ALAW)) {
+    } else if (fmt->wFormatTag == WAVE_FORMAT_ALAW) {
         desc->mFormatID = kAudioFormatALaw;
     } else {
         return AUDCLNT_E_UNSUPPORTED_FORMAT;
     }
-    desc->mSampleRate = fmt->ex.nSamplesPerSec;
-    desc->mBytesPerPacket = fmt->ex.nBlockAlign;
+    desc->mSampleRate = fmt->nSamplesPerSec;
+    desc->mBytesPerPacket = fmt->nBlockAlign;
     desc->mFramesPerPacket = 1;
-    desc->mBytesPerFrame = fmt->ex.nBlockAlign;
-    desc->mChannelsPerFrame = fmt->ex.nChannels;
-    desc->mBitsPerChannel = fmt->ex.wBitsPerSample;
+    desc->mBytesPerFrame = fmt->nBlockAlign;
+    desc->mChannelsPerFrame = fmt->nChannels;
+    desc->mBitsPerChannel = fmt->wBitsPerSample;
     desc->mReserved = 0;
 
     return S_OK;
 }
 
-static HRESULT ca_setup_audiounit(bool isRender, AudioComponentInstance unit, const BoxedWaveFormatExtensible* fmt, AudioStreamBasicDescription* dev_desc, AudioConverterRef* converter)
+static HRESULT ca_setup_audiounit(bool isRender, AudioComponentInstance unit, const BoxedWaveFormatEx* fmt, AudioStreamBasicDescription* dev_desc, AudioConverterRef* converter)
 {
     OSStatus sc;
     HRESULT hr;
@@ -644,10 +658,10 @@ static HRESULT ca_setup_audiounit(bool isRender, AudioComponentInstance unit, co
 
 static void silence_buffer(KNativeAudioCoreAudioData *This, U8 *buffer, U32 frames)
 {
-    if((This->fmt.ex.wFormatTag == WAVE_FORMAT_PCM || (This->fmt.ex.wFormatTag == WAVE_FORMAT_EXTENSIBLE && This->fmt.SubFormat == CORE_AUDIO_KSDATAFORMAT_SUBTYPE_PCM)) && This->fmt.ex.wBitsPerSample == 8) {
-        memset(buffer, 128, frames * This->fmt.ex.nBlockAlign);
+    if(This->fmt.wFormatTag == WAVE_FORMAT_PCM && This->fmt.wBitsPerSample == 8) {
+        memset(buffer, 128, frames * This->fmt.nBlockAlign);
     } else {
-        memset(buffer, 0, frames * This->fmt.ex.nBlockAlign);
+        memset(buffer, 0, frames * This->fmt.nBlockAlign);
     }
 }
 
@@ -655,7 +669,6 @@ static void silence_buffer(KNativeAudioCoreAudioData *This, U8 *buffer, U32 fram
 static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, const AudioTimeStamp *ts, UInt32 bus, UInt32 nframes, AudioBufferList *data)
 {
     KNativeAudioCoreAudioData* This = (KNativeAudioCoreAudioData*)user;
-    U32 to_copy_bytes, to_copy_frames, chunk_bytes, lcl_offs_bytes;
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
     std::shared_ptr<KProcess> process = This->process.lock();
     if (!process || process->terminated) {
@@ -664,84 +677,67 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     }
     KThread* thread = process->getThread();
     ChangeThread change(thread);
-    os_unfair_lock_lock(&This->lock);
 
-    if(This->isPlaying){
-        U32 held_frames = process->memory->readd(This->address_held_frames);
-        U32 lcl_offs_frames = process->memory->readd(This->address_lcl_offs_frames);
-        
-        lcl_offs_bytes = lcl_offs_frames * This->fmt.ex.nBlockAlign;
-        to_copy_frames = std::min(nframes, held_frames);
-        to_copy_bytes = to_copy_frames * This->fmt.ex.nBlockAlign;
-
-        chunk_bytes = (This->bufsize_frames - lcl_offs_frames) * This->fmt.ex.nBlockAlign;
-
-        if (to_copy_bytes > chunk_bytes) {
-            process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, chunk_bytes);
-            process->memory->memcpy((U8*)data->mBuffers[0].mData + chunk_bytes, This->address_local_buffer, to_copy_bytes - chunk_bytes);
-        }
-        else {
-            process->memory->memcpy(data->mBuffers[0].mData, This->address_local_buffer + lcl_offs_bytes, to_copy_bytes);
-        }
-        
-        lcl_offs_frames += to_copy_frames;
-        lcl_offs_frames %= This->bufsize_frames;
-        process->memory->writed(This->address_lcl_offs_frames, lcl_offs_frames);
-        held_frames -= to_copy_frames;
-        process->memory->writed(This->address_held_frames, held_frames);
+    KFileDescriptor* fd = process->getFileDescriptor(This->callbackFD);
+    if (!fd || !This->isPlaying) {
+        silence_buffer(This, (U8 *)data->mBuffers[0].mData, nframes);
     } else {
-        to_copy_bytes = to_copy_frames = 0;
-    }
-    
-    if(nframes > to_copy_frames) {
-        silence_buffer(This, ((U8 *)data->mBuffers[0].mData) + to_copy_bytes, nframes - to_copy_frames);
-    }
-    if (This->eventFd) {
-        KFileDescriptor* fd = process->getFileDescriptor(This->eventFd);
-        if (fd) {
-            U8 c = EVENT_MSG_DATA_READ;
-            fd->kobject->writeNative(&c, 1);
+        U8 b = 1;
+        U8* stream = (U8*)data->mBuffers[0].mData;
+        
+        U32 frames = nframes;
+        U32 len = nframes * This->fmt.nBlockAlign;
+        if (This->emulatedAddressSize && (len > This->emulatedAddressSize || This->nativeAddress != stream)) {
+            process->memory->unmapNativeMemory(This->emulatedAddress, This->emulatedAddressSize);
+            This->emulatedAddressSize = 0;
+            This->emulatedAddress = 0;
+            This->nativeAddress = nullptr;
+        }
+        if (!This->emulatedAddressSize) {
+            This->emulatedAddress = process->memory->mapNativeMemory(stream, len);
+            This->emulatedAddressSize = len;
+            This->nativeAddress = stream;
+            klog("audio buffer mapped to %x len=%x", This->emulatedAddress, This->emulatedAddressSize);
+        }
+        fd->kobject->writeNative(&b, 1);
+        fd->kobject->writeNative((U8*)&This->callbackAddress, 4);
+        fd->kobject->writeNative((U8*)&frames, 4);
+        fd->kobject->writeNative((U8*)&This->emulatedAddress, 4);
+        fd->kobject->readNative(&b, 1); // this will signal that the data is ready
+        
+        if (!KSystem::soundEnabled) {
+            silence_buffer(This, (U8 *)data->mBuffers[0].mData, nframes);
         }
     }
-    os_unfair_lock_unlock(&This->lock);
     return noErr;
 }
 
 U32 KNativeAudioCoreAudio::init(KProcessPtr process, U32 boxedAudioId) {
-    KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+    KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
     OSStatus sc;
     
     if (!data) {
         return E_FAIL;
     }
     data->process = process;
-
-    data->bufsize_frames = bufsizeFrames;
-    data->period_frames = process->memory->readd(addressPeriodFrames);
-    data->address_local_buffer = addressLocalBuffer;
-    data->address_wri_offs_frames = addressWriOffsFrames;
-    data->address_held_frames = addressHeldFrames;
-    data->address_lcl_offs_frames = addressLclOffsFrames;
-    data->fmt.read(process->memory, addressFmt);
-    
-	HRESULT hr = ca_setup_audiounit(isRender, data->unit, &data->fmt, &data->dev_desc, &data->converter);
+   
+	HRESULT hr = ca_setup_audiounit(data->isRender, data->unit, &data->fmt, &data->dev_desc, &data->converter);
 	if (FAILED(hr)) {
 		return hr;
 	}
 
-	if (!isRender) {
+	if (!data->isRender) {
 		AURenderCallbackStruct input;
 
 		memset(&input, 0, sizeof(input));
 		//input.inputProc = &ca_capture_cb;
-		input.inputProcRefCon = data;
+		input.inputProcRefCon = data.get();
 
         sc = AudioUnitSetProperty(data->unit, kAudioOutputUnitProperty_SetInputCallback, kAudioUnitScope_Output, 1, &input, sizeof(input));
 		if (sc != noErr) {
 			kwarn("Couldn't set callback: %x\n", (int)sc);
 			AudioConverterDispose(data->converter);
 			data->converter = NULL;
-			os_unfair_lock_unlock(&data->lock);
 			return osstatus_to_hresult(sc);
 		}
 	}
@@ -750,12 +746,11 @@ U32 KNativeAudioCoreAudio::init(KProcessPtr process, U32 boxedAudioId) {
 
 		memset(&input, 0, sizeof(input));
 		input.inputProc = &ca_render_cb;
-		input.inputProcRefCon = data;
+		input.inputProcRefCon = data.get();
 
         sc = AudioUnitSetProperty(data->unit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, 0, &input, sizeof(input));
 		if (sc != noErr) {
 			kwarn("Couldn't set callback: %x\n", (int)sc);
-            os_unfair_lock_unlock(&data->lock);
 			return osstatus_to_hresult(sc);
 		}
 	}
@@ -781,10 +776,11 @@ U32 KNativeAudioCoreAudio::init(KProcessPtr process, U32 boxedAudioId) {
 		}
 		return osstatus_to_hresult(sc);
 	}
+    playing = data;
     return S_OK;
 }
 
-static HRESULT ca_get_max_stream_latency(KNativeAudioCoreAudioData* This, UInt32* max)
+static HRESULT ca_get_max_stream_latency(const KNativeAudioCoreAudioDataPtr& This, UInt32* max)
 {
 	AudioObjectPropertyAddress addr;
 	AudioStreamID* ids;
@@ -836,7 +832,7 @@ static HRESULT ca_get_max_stream_latency(KNativeAudioCoreAudioData* This, UInt32
 }
 
 void KNativeAudioCoreAudio::setCallback(U32 boxedAudioId, U32 callbackFD, U32 callbackAddress) {
-    KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+    KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
     if (data) {
         data->callbackFD = callbackFD;
         data->callbackAddress = callbackAddress;
@@ -844,14 +840,14 @@ void KNativeAudioCoreAudio::setCallback(U32 boxedAudioId, U32 callbackFD, U32 ca
 }
 
 void KNativeAudioCoreAudio::setFormat(U32 boxedAudioId, BoxedWaveFormatEx* format) {
-    KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+    KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
     if (data) {
         data->fmt = *format;
     }
 }
 
 U32 KNativeAudioCoreAudio::getLatency(U32 boxedAudioId, U32* pLatency) {
-	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+	KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return E_FAIL;
 	}
@@ -920,7 +916,7 @@ static U32 ca_channel_layout_to_channel_mask(const AudioChannelLayout *layout)
  * GetMixFormat! Some applications behave badly if given an odd number of
  * channels (e.g. 2.1).  Here, we find the nearest configuration that Windows
  * would report for a given channel layout. */
-static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWaveFormatExtensible *fmt)
+static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWaveFormatEx *fmt)
 {
     U32 ca_mask = ca_channel_layout_to_channel_mask(ca_layout);
 
@@ -928,8 +924,7 @@ static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWav
 
     if (ca_layout->mNumberChannelDescriptions == 1)
     {
-        fmt->ex.nChannels = 1;
-        fmt->dwChannelMask = ca_mask;
+        fmt->nChannels = 1;
         return;
     }
 
@@ -938,56 +933,48 @@ static void convert_channel_layout(const AudioChannelLayout *ca_layout, BoxedWav
 
     if (ca_layout->mNumberChannelDescriptions <= 2 && (ca_mask & ~KSAUDIO_SPEAKER_STEREO) == 0)
     {
-        fmt->ex.nChannels = 2;
-        fmt->dwChannelMask = KSAUDIO_SPEAKER_STEREO;
+        fmt->nChannels = 2;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 4 && (ca_mask & ~KSAUDIO_SPEAKER_QUAD) == 0)
     {
-        fmt->ex.nChannels = 4;
-        fmt->dwChannelMask = KSAUDIO_SPEAKER_QUAD;
+        fmt->nChannels = 4;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 4 && (ca_mask & ~KSAUDIO_SPEAKER_SURROUND) == 0)
     {
-        fmt->ex.nChannels = 4;
-        fmt->dwChannelMask = KSAUDIO_SPEAKER_SURROUND;
+        fmt->nChannels = 4;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 6 && (ca_mask & ~KSAUDIO_SPEAKER_5POINT1) == 0)
     {
-        fmt->ex.nChannels = 6;
-        fmt->dwChannelMask = KSAUDIO_SPEAKER_5POINT1;
+        fmt->nChannels = 6;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 6 && (ca_mask & ~KSAUDIO_SPEAKER_5POINT1_SURROUND) == 0)
     {
-        fmt->ex.nChannels = 6;
-        fmt->dwChannelMask = KSAUDIO_SPEAKER_5POINT1_SURROUND;
+        fmt->nChannels = 6;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 8 && (ca_mask & ~KSAUDIO_SPEAKER_7POINT1) == 0)
     {
-        fmt->ex.nChannels = 8;
-        fmt->dwChannelMask = KSAUDIO_SPEAKER_7POINT1;
+        fmt->nChannels = 8;
         return;
     }
 
     if (ca_layout->mNumberChannelDescriptions <= 8 && (ca_mask & ~KSAUDIO_SPEAKER_7POINT1_SURROUND) == 0)
     {
-        fmt->ex.nChannels = 8;
-        fmt->dwChannelMask = KSAUDIO_SPEAKER_7POINT1_SURROUND;
+        fmt->nChannels = 8;
         return;
     }
 
     /* oddball format, report truthfully */
-    fmt->ex.nChannels = ca_layout->mNumberChannelDescriptions;
-    fmt->dwChannelMask = ca_mask;
+    fmt->nChannels = ca_layout->mNumberChannelDescriptions;
 }
 
 static U32 get_channel_mask(unsigned int channels)
@@ -1016,113 +1003,9 @@ static U32 get_channel_mask(unsigned int channels)
     return 0;
 }
 
-U32 KNativeAudioCoreAudio::getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) {
-	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
-	if (!data) {
-		return E_FAIL;
-	}
-    BoxedWaveFormatExtensible fmt;
-	OSStatus sc;
-	UInt32 size;
-	Float64 rate;
-	AudioBufferList* buffers;
-	AudioChannelLayout* layout;
-	AudioObjectPropertyAddress addr;
-
-	fmt.ex.wFormatTag = WAVE_FORMAT_EXTENSIBLE;
-
-	addr.mScope = data->scope;
-	addr.mElement = 0;
-	addr.mSelector = kAudioDevicePropertyPreferredChannelLayout;
-
-    if (data->adevid == 0) {
-        getDefaultAudioId(data->isRender, &data->adevid);
-    }
-	sc = AudioObjectGetPropertyDataSize(data->adevid, &addr, 0, NULL, &size);
-	if (sc == noErr) {
-		layout = (AudioChannelLayout*)malloc(size);
-
-		sc = AudioObjectGetPropertyData(data->adevid, &addr, 0, NULL, &size, layout);
-		if (sc == noErr) {
-			klog("Got channel layout: {tag: 0x%x, bitmap: 0x%x, num_descs: %u}\n", layout->mChannelLayoutTag, layout->mChannelBitmap, layout->mNumberChannelDescriptions);
-
-			if (layout->mChannelLayoutTag == kAudioChannelLayoutTag_UseChannelDescriptions) {
-				convert_channel_layout(layout, &fmt);
-			}
-			else {
-				kwarn("Haven't implemented support for this layout tag: 0x%x, guessing at layout\n", layout->mChannelLayoutTag);
-				fmt.ex.nChannels = 0;
-			}
-		}
-		else {
-			klog("Unable to get _PreferredChannelLayout property: %x, guessing at layout\n", (int)sc);
-			fmt.ex.nChannels = 0;
-		}
-
-        ::free(layout);
-	}
-	else {
-		kwarn("Unable to get size for _PreferredChannelLayout property: %x, guessing at layout\n", (int)sc);
-		fmt.ex.nChannels = 0;
-	}
-
-	if (fmt.ex.nChannels == 0) {
-		addr.mScope = data->scope;
-		addr.mElement = 0;
-		addr.mSelector = kAudioDevicePropertyStreamConfiguration;
-
-		sc = AudioObjectGetPropertyDataSize(data->adevid, &addr, 0, NULL, &size);
-		if (sc != noErr) {
-			kwarn("Unable to get size for _StreamConfiguration property: %x\n", (int)sc);
-			return osstatus_to_hresult(sc);
-		}
-
-        buffers = (AudioBufferList*)malloc(size);
-		if (!buffers) {
-			return E_OUTOFMEMORY;
-		}
-
-		sc = AudioObjectGetPropertyData(data->adevid, &addr, 0, NULL, &size, buffers);
-		if (sc != noErr) {
-            ::free(buffers);
-			kwarn("Unable to get _StreamConfiguration property: %x\n", (int)sc);
-			return osstatus_to_hresult(sc);
-		}
-
-		fmt.ex.nChannels = 0;
-		for (int i = 0; i < buffers->mNumberBuffers; ++i)
-			fmt.ex.nChannels += buffers->mBuffers[i].mNumberChannels;
-
-        ::free(buffers);
-
-		fmt.dwChannelMask = get_channel_mask(fmt.ex.nChannels);
-	}
-
-	addr.mSelector = kAudioDevicePropertyNominalSampleRate;
-	size = sizeof(Float64);
-	sc = AudioObjectGetPropertyData(data->adevid, &addr, 0, NULL, &size, &rate);
-	if (sc != noErr) {
-		kwarn("Unable to get _NominalSampleRate property: %x\n", (int)sc);
-		return osstatus_to_hresult(sc);
-	}
-	fmt.ex.nSamplesPerSec = rate;
-
-	fmt.ex.wBitsPerSample = 32;
-	fmt.SubFormat = CORE_AUDIO_KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;
-
-	fmt.ex.nBlockAlign = (fmt.ex.wBitsPerSample * fmt.ex.nChannels) / 8;
-	fmt.ex.nAvgBytesPerSec = fmt.ex.nSamplesPerSec * fmt.ex.nBlockAlign;
-
-	fmt.wValidBitsPerSample = fmt.ex.wBitsPerSample;
-	fmt.ex.cbSize = 22;
-
-    fmt.write(thread->memory, addressWaveFormat);
-	return S_OK;
-}
-
 void KNativeAudioCoreAudio::setVolume(U32 boxedAudioId, float level, U32 channel) {
 	OSStatus sc;
-	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+	KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
 	if (!data) {
 		return;
 	}
@@ -1131,8 +1014,13 @@ void KNativeAudioCoreAudio::setVolume(U32 boxedAudioId, float level, U32 channel
 		kwarn("Couldn't set volume: %x\n", (int)sc);
 }
 
+KNativeAudioCoreAudioDataPtr KNativeAudioCoreAudio::getDataFromId(U32 boxedAudioId) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(dataMutex);
+    return data.get(boxedAudioId);
+}
+
 void KNativeAudioCoreAudio::start(U32 boxedAudioId) {
-    KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+    KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
     if (!data) {
         return;
     }
@@ -1140,7 +1028,7 @@ void KNativeAudioCoreAudio::start(U32 boxedAudioId) {
 }
 
 void KNativeAudioCoreAudio::stop(U32 boxedAudioId) {
-    KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+    KNativeAudioCoreAudioDataPtr data = getDataFromId(boxedAudioId);
     if (!data) {
         return;
     }
