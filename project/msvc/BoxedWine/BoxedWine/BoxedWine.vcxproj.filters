@@ -655,6 +655,9 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativescreenSDL.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
+      <Filter>source\sdl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">

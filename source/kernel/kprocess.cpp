@@ -174,7 +174,8 @@ KProcess::~KProcess() {
     }
 }
 
-void KProcess::cleanupProcess() {    
+void KProcess::cleanupProcess() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     removeTimer(&this->timer);
 
     BHashTable<U32, KFileDescriptor*> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating

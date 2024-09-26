@@ -38,6 +38,7 @@ void gl_init(BString allowExtensions);
 void vulkan_init();
 void x11_init();
 void createSysfs(const std::shared_ptr<FsNode> rootNode);
+void initWineAudio();
 
 U32 StartUpArgs::uiType;
 
@@ -478,6 +479,7 @@ bool StartUpArgs::apply() {
     KSystem::videoEnabled = this->videoEnabled;
     KSystem::soundEnabled = this->soundEnabled;
     KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
+    initWineAudio();
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
     gl_init(this->glExt);        

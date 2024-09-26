@@ -147,70 +147,53 @@ public:
 
     bool isRender;
     bool isPlaying;
-    U32 eventFd;
     
-    U32 cap_held_frames;
-    U32 resamp_bufsize_frames;
-    U8* resamp_buffer;
-    U32 cap_offs_frames;
-    U32 bufsize_frames;
-
-    // points to memory in the emulator, must be locked before read/write
-    U32 address_local_buffer;
-    U32 address_wri_offs_frames;
-    U32 address_held_frames;
-    U32 address_lcl_offs_frames;
-
-    // mirrored in emulator side
-    U32 period_frames; // read only, doesn't change
-    BoxedWaveFormatExtensible fmt; // read only, doesn't change
+    U32 callbackFD = 0;
+    U32 callbackAddress = 0;
+    BoxedWaveFormatEx fmt; // read only, doesn't change
 };
 
 class KNativeAudioCoreAudio : public KNativeAudio, public std::enable_shared_from_this<KNativeAudioCoreAudio> {
 public:
     virtual ~KNativeAudioCoreAudio() {}
-    virtual bool load() override;
-    virtual void free() override;
-    virtual bool open() override;
-    virtual bool close() override;
-    virtual void start(U32 boxedAudioId, U32 eventFd) override;
-    virtual void stop(U32 boxedAudioId) override;
-    virtual bool configure() override;
-    virtual U32 hasDevice(bool isRender) override;
-    virtual U32 getEndPoint(bool isRender, U32 adevid) override;
-    virtual void release(U32 boxedAudioId) override;
-    virtual void captureResample(U32 boxedAudioId) override;
-    virtual U32 init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) override;
-    virtual U32 getLatency(U32 boxedAudioId, U32* latency) override;
-    virtual void lock(U32 boxedAudioId) override;
-    virtual void unlock(U32 boxedAudioId) override;
-    virtual U32 isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
-    virtual U32 getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) override;
-    virtual void setVolume(U32 boxedAudioId, float level, U32 channel) override;
-    virtual void cleanup() override;
+    bool load() override;
+    void free() override;
+    bool open() override;
+    bool close() override;
+    void start(U32 boxedAudioId) override;
+    void stop(U32 boxedAudioId) override;
+    U32 getEndPoint(bool isRender) override;
+    void release(U32 boxedAudioId) override;
+    void captureResample(U32 boxedAudioId) override;
+    U32 init(KProcessPtr process, U32 boxedAudioId) override;
+    void setCallback(U32 boxedAudioId, U32 callbackFD, U32 callbackAddress) override;
+    void setFormat(U32 boxedAudioId, BoxedWaveFormatEx* format) override;
+    U32 getLatency(U32 boxedAudioId, U32* latency) override;
+    void setVolume(U32 boxedAudioId, float level, U32 channel) override;
+    void cleanup() override;
     
-    virtual U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) override;
-    virtual U32 midiOutClose(U32 wDevID) override;
-    virtual U32 midiOutData(U32 wDevID, U32 dwParam) override;
-    virtual U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-    virtual U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-    virtual U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-    virtual U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) override;
-    virtual U32 midiOutGetNumDevs() override;
-    virtual U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) override;
-    virtual U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) override;
-    virtual U32 midiOutReset(U32 wDevID) override;
+    U32 midiOutOpen(KProcess* process, U32 wDevID, U32 lpDesc, U32 dwFlags, U32 fd) override;
+    U32 midiOutClose(U32 wDevID) override;
+    U32 midiOutData(U32 wDevID, U32 dwParam) override;
+    U32 midiOutLongData(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    U32 midiOutPrepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    U32 midiOutUnprepare(KThread* thread, U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    U32 midiOutGetDevCaps(KThread* thread, U32 wDevID, U32 lpCaps, U32 dwSize) override;
+    U32 midiOutGetNumDevs() override;
+    U32 midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) override;
+    U32 midiOutSetVolume(U32 wDevID, U32 dwVolume) override;
+    U32 midiOutReset(U32 wDevID) override;
 
-    virtual U32 midiInOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) override;
-    virtual U32 midiInClose(U32 wDevID) override;
-    virtual U32 midiInAddBuffer(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-    virtual U32 midiInPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-    virtual U32 midiInUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
-    virtual U32 midiInGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) override;
-    virtual U32 midiInGetNumDevs() override;
-    virtual U32 midiInStart(U32 wDevID) override;
-    virtual U32 midiInStop(U32 wDevID) override;
-    virtual U32 midiInReset(U32 wDevID) override;
+    U32 midiInOpen(U32 wDevID, U32 lpDesc, U32 dwFlags) override;
+    U32 midiInClose(U32 wDevID) override;
+    U32 midiInAddBuffer(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    U32 midiInPrepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    U32 midiInUnprepare(U32 wDevID, U32 lpMidiHdr, U32 dwSize) override;
+    U32 midiInGetDevCaps(U32 wDevID, U32 lpCaps, U32 dwSize) override;
+    U32 midiInGetNumDevs() override;
+    U32 midiInStart(U32 wDevID) override;
+    U32 midiInStop(U32 wDevID) override;
+    U32 midiInReset(U32 wDevID) override;
 
 	KNativeAudioCoreAudioData data[2];
 
@@ -249,11 +232,6 @@ bool KNativeAudioCoreAudio::close() {
 	return true;
 }
 
-bool KNativeAudioCoreAudio::configure() {
-	// MessageBoxA(0, "CoreAudio driver!", "CoreAudio driver", MB_OK);
-	return true;
-}
-
 static HRESULT osstatus_to_hresult(OSStatus sc)
 {
 	switch (sc) {
@@ -265,37 +243,6 @@ static HRESULT osstatus_to_hresult(OSStatus sc)
 		return AUDCLNT_E_DEVICE_INVALIDATED;
 	}
 	return E_FAIL;
-}
-
-U32 KNativeAudioCoreAudio::hasDevice(bool isRender) {
-	UInt32 devsize, size;
-	AudioDeviceID default_id;
-	AudioObjectPropertyAddress addr;
-	OSStatus sc;
-
-	addr.mScope = kAudioObjectPropertyScopeGlobal;
-	addr.mElement = kAudioObjectPropertyElementMaster;
-    if (isRender) {
-		addr.mSelector = kAudioHardwarePropertyDefaultOutputDevice;
-    } else {
-		addr.mSelector = kAudioHardwarePropertyDefaultInputDevice;
-    }
-    
-	size = sizeof(default_id);
-	sc = AudioObjectGetPropertyData(kAudioObjectSystemObject, &addr, 0, NULL, &size, &default_id);
-	if (sc != noErr) {
-		kwarn("Getting _DefaultInputDevice property failed: %x\n", (int)sc);
-		default_id = -1;
-	}
-
-	addr.mSelector = kAudioHardwarePropertyDevices;
-	sc = AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &addr, 0, NULL, &devsize);
-	if (sc != noErr) {
-		kwarn("Getting _Devices property size failed: %x\n", (int)sc);
-		return osstatus_to_hresult(sc);
-	}
-
-	return 0;
 }
 
 static AudioComponentInstance get_audiounit(bool isRender, AudioDeviceID adevid)
@@ -451,7 +398,7 @@ static HRESULT getDefaultAudioId(bool isRender, U32* audioId) {
     return S_OK;
 }
 
-U32 KNativeAudioCoreAudio::getEndPoint(bool isRender, U32 adevid) {
+U32 KNativeAudioCoreAudio::getEndPoint(bool isRender) {
 	KNativeAudioCoreAudioData& data = getData(isRender);
 	if (isRender) {
 		data.scope = kAudioDevicePropertyScopeOutput;
@@ -760,7 +707,7 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags, cons
     return noErr;
 }
 
-U32 KNativeAudioCoreAudio::init(std::shared_ptr<KProcess> process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) {
+U32 KNativeAudioCoreAudio::init(KProcessPtr process, U32 boxedAudioId) {
     KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
     OSStatus sc;
     
@@ -888,6 +835,21 @@ static HRESULT ca_get_max_stream_latency(KNativeAudioCoreAudioData* This, UInt32
 	return S_OK;
 }
 
+void KNativeAudioCoreAudio::setCallback(U32 boxedAudioId, U32 callbackFD, U32 callbackAddress) {
+    KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+    if (data) {
+        data->callbackFD = callbackFD;
+        data->callbackAddress = callbackAddress;
+    }
+}
+
+void KNativeAudioCoreAudio::setFormat(U32 boxedAudioId, BoxedWaveFormatEx* format) {
+    KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
+    if (data) {
+        data->fmt = *format;
+    }
+}
+
 U32 KNativeAudioCoreAudio::getLatency(U32 boxedAudioId, U32* pLatency) {
 	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
 	if (!data) {
@@ -917,46 +879,6 @@ U32 KNativeAudioCoreAudio::getLatency(U32 boxedAudioId, U32* pLatency) {
 	latency += stream_latency;
 	*pLatency = latency;
 	return S_OK;
-}
-
-void KNativeAudioCoreAudio::lock(U32 boxedAudioId) {
-	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
-	if (!data) {
-		return;
-	}
-	os_unfair_lock_lock(&data->lock);
-}
-
-void KNativeAudioCoreAudio::unlock(U32 boxedAudioId) {
-	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
-	if (!data) {
-		return;
-	}
-	os_unfair_lock_unlock(&data->lock);
-}
-
-U32 KNativeAudioCoreAudio::isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) {
-	KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
-	if (!data) {
-		return E_FAIL;
-	}
-	AudioStreamBasicDescription dev_desc;
-	AudioConverterRef converter;
-	AudioComponentInstance unit;
-    BoxedWaveFormatExtensible fmt;
-    HRESULT hr;
-    
-    fmt.read(thread->memory, addressWaveFormat);
-    
-	unit = get_audiounit(data->isRender, data->adevid);
-
-	converter = NULL;
-	hr = ca_setup_audiounit(data->isRender, unit, &fmt, &dev_desc, &converter);
-	AudioComponentInstanceDispose(unit);
-
-	if (converter)
-		AudioConverterDispose(converter);
-	return hr;
 }
 
 static U32 ca_channel_layout_to_channel_mask(const AudioChannelLayout *layout)
@@ -1209,12 +1131,11 @@ void KNativeAudioCoreAudio::setVolume(U32 boxedAudioId, float level, U32 channel
 		kwarn("Couldn't set volume: %x\n", (int)sc);
 }
 
-void KNativeAudioCoreAudio::start(U32 boxedAudioId, U32 eventFd) {
+void KNativeAudioCoreAudio::start(U32 boxedAudioId) {
     KNativeAudioCoreAudioData* data = getDataFromId(boxedAudioId);
     if (!data) {
         return;
     }
-    data->eventFd = eventFd;
     data->isPlaying = true;
 }
 

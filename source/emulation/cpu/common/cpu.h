@@ -24,6 +24,8 @@ void callVulkan(CPU* cpu, U32 index);
 void callX11(CPU* cpu, U32 index);
 extern U32 lastGlCallTime;
 extern U32 int99CallbackSize;
+extern Int99Callback* wine_audio_callback;
+extern U32 wine_audio_callback_size;
 
 #define EXCEPTION_DIVIDE 0
 #define EXCEPTION_BOUND 5

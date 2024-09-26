@@ -118,30 +118,6 @@ public:
 	U16	cbSize;
 };
 
-class BoxedWaveFormatExtensible {
-public:
-	void read(KMemory* memory, U32 address) {
-		address = ex.read(memory, address);
-		if (ex.cbSize == 0 || ex.cbSize >= 22) {
-			wValidBitsPerSample = memory->readw(address); address += 2;
-			dwChannelMask = memory->readd(address); address += 4;
-			SubFormat.read(memory, address);
-		}
-	}
-	void write(KMemory* memory, U32 address) {
-		address = ex.write(memory, address);
-		if (ex.cbSize == 0 || ex.cbSize >= 22) {
-			memory->writew(address, wValidBitsPerSample); address += 2;
-			memory->writed(address, dwChannelMask); address += 4;
-			SubFormat.write(memory, address);
-		}
-	}
-	BoxedWaveFormatEx ex;
-	U16 wValidBitsPerSample = 0; // union with wSamplesPerBlock
-	U32 dwChannelMask = 0;
-	BoxedGUID SubFormat;
-};
-
 class KNativeAudio {
 public:
 	static std::shared_ptr<KNativeAudio> createNativeAudio();
@@ -156,19 +132,15 @@ public:
 	virtual void free() = 0;
 	virtual bool open() = 0;
 	virtual bool close() = 0;
-	virtual void start(U32 boxedAudioId, U32 eventFd) = 0;
+	virtual void start(U32 boxedAudioId) = 0;
 	virtual void stop(U32 boxedAudioId) = 0;
-	virtual bool configure() = 0;
-	virtual U32 hasDevice(bool isRender) = 0;
-	virtual U32 getEndPoint(bool isRender, U32 adevid) = 0;
+	virtual U32 getEndPoint(bool isRender) = 0;
 	virtual void release(U32 boxedAudioId) = 0;
 	virtual void captureResample(U32 boxedAudioId) = 0;
-	virtual U32 init(KProcessPtr process, bool isRender, U32 boxedAudioId, U32 addressFmt, U32 addressPeriodFrames, U32 addressLocalBuffer, U32 addressWriOffsFrames, U32 addressHeldFrames, U32 addressLclOffsFrames, U32 bufsizeFrames) = 0;
+	virtual U32 init(KProcessPtr process, U32 boxedAudioId) = 0;
+	virtual void setCallback(U32 boxedAudioId, U32 callbackFD, U32 callbackAddress) = 0;
+	virtual void setFormat(U32 boxedAudioId, BoxedWaveFormatEx* format) = 0;
 	virtual U32 getLatency(U32 boxedAudioId, U32* latency) = 0;
-	virtual void lock(U32 boxedAudioId) = 0;
-	virtual void unlock(U32 boxedAudioId) = 0;
-	virtual U32 isFormatSupported(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) = 0;
-	virtual U32 getMixFormat(KThread* thread, U32 boxedAudioId, U32 addressWaveFormat) = 0;
 	virtual void setVolume(U32 boxedAudioId, float level, U32 channel) = 0;
     virtual void cleanup() = 0;
     
