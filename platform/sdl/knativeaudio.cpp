@@ -102,6 +102,10 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 			SDL_ConvertAudio(&data->cvt);
 			memcpy(stream, data->cvt.buf, data->cvt.len_cvt);
 		}
+		if (!KSystem::soundEnabled) {
+			// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
+			memset(stream, data->got.silence, len);
+		}
 	}
 }
 
@@ -203,27 +207,23 @@ U32 KNativeAudioSDL::init(KProcessPtr process, U32 boxedAudioId) {
 		// wine will call this to probe supported formats
 		return E_FAIL;
 	}
-	if (!KSystem::soundEnabled) {
+
+	// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
+	closeSdlAudio();
+	if (SDL_OpenAudio(&data->want, &data->got) < 0) {
+		klog("Failed to open audio: %s", SDL_GetError());
+	}		
+	sdlAudioOpen = true;
+	if (data->want.freq != data->got.freq || data->want.channels != data->got.channels || data->want.format != data->got.format) {
+		data->sameFormat = false;
+		SDL_BuildAudioCVT(&data->cvt, data->want.format, data->want.channels, data->want.freq, data->got.format, data->got.channels, data->got.freq);
+	}
+	else {
 		data->sameFormat = true;
-	} else {
-		// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
-		closeSdlAudio();
-		if (SDL_OpenAudio(&data->want, &data->got) < 0) {
-			klog("Failed to open audio: %s", SDL_GetError());
-		}		
-		sdlAudioOpen = true;
-		if (data->want.freq != data->got.freq || data->want.channels != data->got.channels || data->want.format != data->got.format) {
-			data->sameFormat = false;
-			SDL_BuildAudioCVT(&data->cvt, data->want.format, data->want.channels, data->want.freq, data->got.format, data->got.channels, data->got.freq);
-		}
-		else {
-			data->sameFormat = true;
-		}
 	}
+
 	data->open = true;
-	if (KSystem::soundEnabled) {
-		SDL_PauseAudio(0);
-	}
+	SDL_PauseAudio(0);
 	playing = data;
 	klog("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", data->got.freq, data->got.freq, data->want.format, data->got.format, data->want.channels, data->got.channels);
 	return S_OK;
