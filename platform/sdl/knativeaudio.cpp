@@ -96,6 +96,12 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 			fd->kobject->writeNative((U8*)&data->callbackAddress, 4);
 			fd->kobject->writeNative((U8*)&frames, 4);
 			fd->kobject->writeNative((U8*)&data->emulatedAddress, 4);
+#ifndef BOXEDWINE_MULTI_THREADED
+			// the single thread version of Boxedwine can't handle a blocking read from this audio thread
+			while (!fd->kobject->isReadReady()) {
+				Platform::nanoSleep(1000000l); // 1ms spin
+			}			
+#endif
 			fd->kobject->readNative(&b, 1); // this will signal that the data is ready
 
 			data->cvt.buf = data->cvtBuf;
