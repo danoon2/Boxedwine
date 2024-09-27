@@ -296,6 +296,7 @@ U32 KSystem::sysinfo(KThread* thread, U32 address) {
     memory->writed(address, 0); address+=4;
     memory->writed(address, 0); address+=4;
     memory->writew(address, (U16)KSystem::processes.size()); address+=2;
+    memory->writew(address, 0); address += 2;
     memory->writed(address, 0); address+=4;
     memory->writed(address, 0); address+=4;
     memory->writed(address, K_PAGE_SIZE);
