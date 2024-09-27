@@ -663,15 +663,15 @@ void GlobalSettings::loadFonts() {
     }
     BString sansBoldFontsPath = fontsPath.stringByApppendingPath("LiberationSans-Bold.ttf");
     if (!Fs::doesNativePathExist(sansBoldFontsPath) && zipFilePath.length()) {
-        FsZip::extractFileFromZip(zipFilePath, B("usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"), fontsPath);
+        FsZip::extractFileFromZip(zipFilePath, B("usr/local/share/fonts/liberation/LiberationSans-Bold.ttf"), fontsPath);
     }
     BString sansFontsPath = fontsPath.stringByApppendingPath("LiberationSans-Regular.ttf");
     if (!Fs::doesNativePathExist(sansFontsPath) && zipFilePath.length()) {
-        FsZip::extractFileFromZip(zipFilePath, B("usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"), fontsPath);
+        FsZip::extractFileFromZip(zipFilePath, B("usr/local/share/fonts/liberation/LiberationSans-Regular.ttf"), fontsPath);
     }
     BString awesomeFontPath = fontsPath.stringByApppendingPath("fontawesome-webfont.ttf");
     if (!Fs::doesNativePathExist(awesomeFontPath) && zipFilePath.length()) {
-        FsZip::extractFileFromZip(zipFilePath, B("usr/share/fonts/truetype/fontawesome-webfont.ttf"), fontsPath);
+        FsZip::extractFileFromZip(zipFilePath, B("usr/local/share/fonts/fontawesome-webfont.ttf"), fontsPath);
     }
 
     ImGuiIO& io = ImGui::GetIO();

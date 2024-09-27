@@ -52,6 +52,7 @@ bool doMainLoop() {
         }
         if (KSystem::killTime2) {
             if (KSystem::killTime2 <= t) {
+                klog("Forced Shutdown failed, now doing a hard exit");
                 return true;
             }
             if (t - KSystem::killTime2 < timeout) {

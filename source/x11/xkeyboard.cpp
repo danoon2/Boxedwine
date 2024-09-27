@@ -417,9 +417,6 @@ U32 XKeyboard::translate(U32& keysym, U32 modifiers, char* buffer, U32 bufferLen
 		keysym = info->keySymWithShift;
 		return len;
 	}
-	if (modifiers & 0xFC) {
-		kwarn("XKeyboard::translate modifier = %x not handled", modifiers);
-	}
 	if (info->ch) {
 		len = (U32)strlen(info->ch);
 		if (bufferLen) {

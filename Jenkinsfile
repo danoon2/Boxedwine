@@ -82,9 +82,9 @@ pipeline {
                         }
                     }
                 }
-                stage ('Test Raspberry Pi (ARMv8)') {
+                stage ('Test Linux (ARMv8)') {
                     agent {
-                        label "raspberry64"
+                        label "linuxArm64"
                     }
                     steps {
                         script { 
@@ -271,9 +271,9 @@ pipeline {
                         }
                     }
                 }
-                stage ('Build Raspberry Pi (ARMv8)') {
+                stage ('Build Linux (ARMv8)') {
                     agent {
-                        label "raspberry64"
+                        label "linuxArm64"
                     }
                     steps {
                         script { 
@@ -282,19 +282,19 @@ pipeline {
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 rm Build/MultiThreaded/boxedwine
-                                rm Deploy/RaspberryPi64/boxedwine
-                                mkdir -p Deploy/RaspberryPi64
+                                rm Deploy/LinuxArm64/boxedwine
+                                mkdir -p Deploy/LinuxArm64
                                 make multiThreaded
                                 if [ ! -f "Build/MultiThreaded/boxedwine" ] 
                                 then
                                     echo "Build/MultiThreaded/boxedwine DOES NOT exists."
                                     exit 999
                                 fi
-                                mv Build/MultiThreaded/boxedwine Deploy/RaspberryPi64/
+                                mv Build/MultiThreaded/boxedwine Deploy/LinuxArm64/
                             '''
                         }
                         dir("project/linux") {
-                            stash includes: 'Deploy/RaspberryPi64/boxedwine', name: 'raspberry64'
+                            stash includes: 'Deploy/LinuxArm64/boxedwine', name: 'linuxArm64'
                         }
                     }
                 }
@@ -425,9 +425,9 @@ pipeline {
                         }
                     }
                 }
-                stage ('Raspberry Pi (ARMv7) Automation') {
+                stage ('Linux (ARMv8) Automation') {
                     agent {
-                        label "raspberry"
+                        label "linuxArm64"
                     }
                     options {
                         timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
@@ -441,36 +441,10 @@ pipeline {
                             '''
                         }
                         dir("project/linux/automation") {
-                            unstash "raspberry"
+                            unstash "linuxArm64"
                             retry(3) {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi/boxedwine\" -nosound -novideo || exit 1
-                                '''
-                            }
-                        }
-
-                    }
-                }
-                stage ('Raspberry Pi (ARMv8) Automation') {
-                    agent {
-                        label "raspberry64"
-                    }
-                    options {
-                        timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
-                    }
-                    steps {
-                        dir("project/linux") {
-                            sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
-                                rm -rf automation
-                                unzip automation3.zip
-                            '''
-                        }
-                        dir("project/linux/automation") {
-                            unstash "raspberry64"
-                            retry(3) {
-                                sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -517,11 +491,11 @@ pipeline {
                     unstash "linux64"
                     unstash "macArmv8"
                     unstash "raspberry"
-                    unstash "raspberry64"
+                    unstash "linuxArm64"
                     unstash "windows"
                     dir('Deploy') {
                         sh '''
-                        echo "Linux64, Raspberry64 (experimental and buggy) and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
+                        echo "Linux64, LinuxArm64 and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
                         zip -r build-$BUILD_NUMBER.zip *
                         '''
                         archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip", fingerprint: true, allowEmptyArchive: true

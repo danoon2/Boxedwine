@@ -59,9 +59,11 @@ void KNativeScreenSDL::setScreenSize(U32 cx, U32 cy) {
             cx = cx * input->scaleX / 100;
             cy = cy * input->scaleY / 100;
         }
-        DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
-        SDL_SetWindowSize(window, cx, cy);
-        DISPATCH_MAIN_THREAD_BLOCK_END
+        if (window) {
+            DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+                SDL_SetWindowSize(window, cx, cy);
+            DISPATCH_MAIN_THREAD_BLOCK_END
+        }
     }
 }
 
@@ -78,6 +80,9 @@ U32 KNativeScreenSDL::screenBpp() {
 }
 
 U32 KNativeScreenSDL::screenRate() {
+    if (!KSystem::videoEnabled) {
+        return 60;
+    }
     SDL_DisplayMode DM;
     SDL_GetCurrentDisplayMode(0, &DM);
     return DM.refresh_rate;
@@ -90,7 +95,12 @@ void KNativeScreenSDL::setTitle(const BString& title) {
 }
 
 void KNativeScreenSDL::getPos(S32& x, S32& y) {
-    SDL_GetWindowPosition(window, &x, &y);
+    if (!window) {
+        x = 0;
+        y = 0;
+    } else {
+        SDL_GetWindowPosition(window, &x, &y);
+    }
 }
 
 U32 KNativeScreenSDL::getLastUpdateTime() {
@@ -499,6 +509,9 @@ bool KNativeScreenSDL::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32
 }
 
 void KNativeScreenSDL::buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) {
+    if (!KSystem::videoEnabled) {
+        return;
+    }
     U8* buffer = thread->memory->lockReadOnlyMemory(pixelsAddress, width * height * 4);
     SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(buffer, width, height, 32, width * 4, 0xff0000, 0xff00, 0xff, 0xff000000);
     SDL_Cursor* sdlCursor = SDL_CreateColorCursor(surface, xHot, yHot);
@@ -515,6 +528,9 @@ void KNativeScreenSDL::buildCursor(KThread* thread, const std::shared_ptr<XCurso
 }
 
 void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
+    if (!KSystem::videoEnabled) {
+        return;
+    }
     SDL_Cursor* sdlCursor;
 
     {

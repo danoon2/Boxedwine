@@ -123,6 +123,7 @@ void KNativeSystem::forceShutdown() {
     if (!p) {
         return;
     }
+    klog("Forcing Shutdown");
 #if defined (BOXEDWINE_MULTI_THREADED) && !defined (__TEST)
     runInBackgroundThread([p]() {
         p->killAllThreads();
