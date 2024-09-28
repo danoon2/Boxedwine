@@ -658,7 +658,7 @@
     <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\util\ring_buffer.cc">
+    <ClCompile Include="..\..\..\..\source\util\ring_buffer.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
   </ItemGroup>

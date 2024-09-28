@@ -510,6 +510,7 @@
     <ClCompile Include="..\..\..\..\..\source\util\pixelMatch.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\recorder.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\util\ring_buffer.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\stb_image.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\stringutil.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\synchronization.cpp" />
@@ -1085,6 +1086,8 @@
     <ClInclude Include="..\..\..\..\..\source\util\networkutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\pixelMatch.h" />
     <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.tcc.h" />
     <ClInclude Include="..\..\..\..\..\source\util\stb_image.h" />
     <ClInclude Include="..\..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\..\source\util\synchronization.h" />
