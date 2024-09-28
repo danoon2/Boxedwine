@@ -17,6 +17,7 @@
  */
 #include "boxedwine.h"
 #include "../x11/x11.h"
+#include "knativeaudio.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static KList<KTimerCallback*> timers;
@@ -163,6 +164,7 @@ U64 elapsedInstructionsMIPS;
 
 bool runSlice() {    
     runTimers();
+    KNativeAudio::runSlice();
 
     if (scheduledThreads.isEmpty())
         return false;

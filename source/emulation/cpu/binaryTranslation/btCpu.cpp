@@ -251,15 +251,14 @@ U64 BtCPU::handleMissingCode(U32 page, U32 offset) {
     return (U64)this->translateEip(this->eip.u32);
 }
 
-void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
-    KThread* thread = process->getThreadById(threadId);        
-    if (thread) {
-        thread->terminating = true;
-        ((BtCPU*)thread->cpu)->exitToStartThreadLoop = true;
-        ((BtCPU*)thread->cpu)->wakeThreadIfWaiting();
-    }
-
+void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {    
     while (true) {
+        KThread* thread = process->getThreadById(threadId);
+        if (thread) {
+            thread->terminating = true;
+            ((BtCPU*)thread->cpu)->exitToStartThreadLoop = true;
+            ((BtCPU*)thread->cpu)->wakeThreadIfWaiting();
+        }
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadRemovedCondition);
         if (!process->getThreadById(threadId)) {
             break;

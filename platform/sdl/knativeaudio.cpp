@@ -3,6 +3,7 @@
 
 #include <SDL.h>
 #include "knativeaudiosdl.h"
+#include "knativesystem.h"
 
 #define S_OK 0
 #define E_FAIL 0x80004005
@@ -25,7 +26,14 @@ static void closeSdlAudio() {
 	}
 }
 
-static void audioCallback(void* userdata, U8* stream, S32 len) {
+#ifndef BOXEDWINE_MULTI_THREADED
+static std::function<void()> runAudio;
+static bool runAudioDone;
+static std::mutex audioMutex;
+static std::condition_variable audioContinional;
+#endif
+
+static void internalAudioCallback(void* userdata, U8* stream, S32 len) {
 	KNativeSDLAudioData* data = (KNativeSDLAudioData*)userdata;
 	KProcessPtr process = data->process.lock();	
 
@@ -33,21 +41,12 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 		memset(stream, data->got.silence, len);
 		return;
 	}
-	KThread* thread = nullptr;
-	process->iterateThreads([&thread](KThread* t) {
-		thread = t;
-		return false;
-		});
-	// some memory pages that might be writen to could be copy on write, in that case KThread::currentThread() will be used to get the current KMemory that should be used.
-	// we don't actually care which thread we use, hopefully the thread won't go away in the middle.
-	// perhaps in the future this could be a shared_ptr or something else to guarantee the thread will be there
-	ChangeThread changeThread(thread);
 
 	KFileDescriptor* fd = process->getFileDescriptor(data->callbackFD);
 	if (!fd) {
 		memset(stream, data->got.silence, len);
 	} else {
-		U8 b = 1;		
+		U8 b = 1;
 
 		if (data->sameFormat) {
 			U32 frames = len / data->fmt.nBlockAlign;
@@ -67,6 +66,39 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 			fd->kobject->writeNative((U8*)&data->callbackAddress, 4);
 			fd->kobject->writeNative((U8*)&frames, 4);
 			fd->kobject->writeNative((U8*)&data->emulatedAddress, 4);
+
+#ifndef BOXEDWINE_MULTI_THREADED
+			runAudio = [data, stream, len]() {
+				KProcessPtr process = data->process.lock();
+
+				if (!data->isPlaying || !process || process->terminated) {
+					memset(stream, data->got.silence, len);
+					audioContinional.notify_all();
+					runAudioDone = true;
+					return;
+				}
+				KFileDescriptor* fd = process->getFileDescriptor(data->callbackFD);
+				if (!fd) {
+					memset(stream, data->got.silence, len);
+					audioContinional.notify_all();
+					runAudioDone = true;
+					return;
+				}
+				if (!fd->kobject->isReadReady()) {
+					return; // leave runAudio set so that it will be called again
+				}
+				U8 b = 0;
+				fd->kobject->readNative(&b, 1); // this will signal that the data is ready
+
+				if (!KSystem::soundEnabled) {
+					// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
+					memset(stream, data->got.silence, len);
+				}
+				audioContinional.notify_all();
+				runAudioDone = true;
+				};
+			return;
+#endif
 			fd->kobject->readNative(&b, 1); // this will signal that the data is ready
 		} else {
 			data->cvt.len = len / data->cvt.len_mult; // amount to request
@@ -97,12 +129,53 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 			fd->kobject->writeNative((U8*)&frames, 4);
 			fd->kobject->writeNative((U8*)&data->emulatedAddress, 4);
 #ifndef BOXEDWINE_MULTI_THREADED
-			// the single thread version of Boxedwine can't handle a blocking read from this audio thread
+
+			runAudio = [data, stream, len]() {
+				KProcessPtr process = data->process.lock();
+
+				if (!data->isPlaying || !process || process->terminated) {
+					memset(stream, data->got.silence, len);					
+					audioContinional.notify_all();
+					runAudioDone = true;
+					return;
+				}
+				KFileDescriptor* fd = process->getFileDescriptor(data->callbackFD);
+				if (!fd) {
+					memset(stream, data->got.silence, len);
+					audioContinional.notify_all();
+					runAudioDone = true;
+					return;
+				}
+				if (!fd->kobject->isReadReady()) {
+					return; // leave runAudio set so that it will be called again
+				}
+				U8 b = 0;
+				fd->kobject->readNative(&b, 1); // this will signal that the data is ready
+
+				data->cvt.buf = data->cvtBuf;
+				SDL_ConvertAudio(&data->cvt);
+				memcpy(stream, data->cvt.buf, data->cvt.len_cvt);				
+
+				if (!KSystem::soundEnabled) {
+					// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
+					memset(stream, data->got.silence, len);
+				}
+				audioContinional.notify_all();
+				runAudioDone = true;
+				};
+			return;
+#endif			
+			bool ready = false;
+			U32 startTime = KSystem::getMilliesSinceStart();
 			while (!fd->kobject->isReadReady()) {
-				Platform::nanoSleep(1000000l); // 1ms spin
-			}			
-#endif
-			fd->kobject->readNative(&b, 1); // this will signal that the data is ready
+				Platform::nanoSleep(1000000); // 1ms spin
+				if (startTime + 1000 < KSystem::getMilliesSinceStart()) {
+					memset(stream, data->got.silence, len);
+					return;
+				}
+			}
+			// we don't want to block here in case that thread died
+			fd->kobject->readNative(&b, 1);
 
 			data->cvt.buf = data->cvtBuf;
 			SDL_ConvertAudio(&data->cvt);
@@ -114,6 +187,33 @@ static void audioCallback(void* userdata, U8* stream, S32 len) {
 		}
 	}
 }
+
+static void audioCallback(void* userdata, U8* stream, S32 len) {
+#ifdef BOXEDWINE_MULTI_THREADED
+	internalAudioCallback(userdata, stream, len);
+#else
+	std::unique_lock<std::mutex> lock(audioMutex);
+	runAudioDone = false;
+	runAudio = [userdata, stream, len]() {		
+		internalAudioCallback(userdata, stream, len);
+		};
+	audioContinional.wait_for(lock, std::chrono::milliseconds(1000));
+#endif
+}
+
+#ifndef BOXEDWINE_MULTI_THREADED
+void KNativeAudio::runSlice() {
+	if (runAudio) {
+		std::unique_lock<std::mutex> lock(audioMutex);
+		if (runAudio) {
+			runAudio();
+			if (runAudioDone) {
+				runAudio = nullptr;
+			}
+		}
+	}
+}
+#endif
 
 U32 KNativeSDLAudioData::nextId;
 
@@ -178,6 +278,17 @@ void KNativeAudioSDL::release(U32 boxedAudioId) {
 	data.remove(boxedAudioId);
 
 	if (playing && playing->id == boxedAudioId) {
+#ifndef BOXEDWINE_MULTI_THREADED
+		{
+			std::unique_lock<std::mutex> lock(audioMutex);
+			if (!runAudioDone) {
+				// audio thread is waiting
+				runAudioDone = true;
+				runAudio = nullptr;
+				audioContinional.notify_all();
+			}
+		}
+#endif
 		SDL_PauseAudio(1);
 		SDL_CloseAudio();
 		playing = nullptr;
@@ -360,6 +471,17 @@ U32 KNativeAudioSDL::midiInReset(U32 wDevID) {
 }
 
 void KNativeAudioSDL::cleanup() {
+#ifndef BOXEDWINE_MULTI_THREADED
+	{
+		std::unique_lock<std::mutex> lock(audioMutex);
+		if (!runAudioDone) {
+			// audio thread is waiting
+			runAudioDone = true;
+			runAudio = nullptr;
+			audioContinional.notify_all();
+		}
+	}
+#endif
     SDL_PauseAudio(1);
     SDL_CloseAudio();
 }

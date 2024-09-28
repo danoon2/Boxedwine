@@ -658,6 +658,9 @@
     <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\ring_buffer.cc">
+      <Filter>source\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1452,6 +1455,9 @@
     <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlgl.h">
       <Filter>opengl\sdl</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\ring_buffer.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1582,6 +1588,9 @@
     <None Include="ClassDiagram.cd" />
     <None Include="BoxedWine.ruleset" />
     <None Include="BoxedWine1.ruleset" />
+    <None Include="..\..\..\..\source\util\ring_buffer.tcc.h">
+      <Filter>source\util</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\Boxedwine.rc" />

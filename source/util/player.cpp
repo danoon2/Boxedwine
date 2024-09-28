@@ -133,6 +133,7 @@ void bitmapCompareThread(Player* player) {
             }
             comparingPixels = COMPARING_PIXELS_WAITING;            
         }
+        Platform::nanoSleep(500000l);
     }
 }
 
@@ -193,8 +194,6 @@ void Player::runSlice() {
             instance->readCommand();            
         }
     } else if (this->nextCommand=="DONE") {
-        //exit(1);, let it exit gracefully
-    } else if (this->nextCommand == "DONE") {
         //exit(1);, let it exit gracefully
     } else if (this->nextCommand=="SCREENSHOT") {
         if (KSystem::getMicroCounter()<this->lastScreenRead+1000000) {

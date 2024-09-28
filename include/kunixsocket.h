@@ -3,6 +3,7 @@
 
 #include "ksocketmsg.h"
 #include "ksocketobject.h"
+#include "../source/util/ring_buffer.h"
 
 class KUnixSocketObject : public KSocketObject {
 public:
@@ -62,7 +63,7 @@ private:
 
     BOXEDWINE_CONDITION lockCond;
 
-    std::deque<S8> recvBuffer;
+    Soft_Ring_Buffer recvBuffer;
     std::queue<std::shared_ptr<KSocketMsg> > msgs;
     U32 pid = 0;
 

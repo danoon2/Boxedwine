@@ -96,8 +96,8 @@ void KNativeScreenSDL::setTitle(const BString& title) {
 
 void KNativeScreenSDL::getPos(S32& x, S32& y) {
     if (!window) {
-        x = 0;
-        y = 0;
+        x = input->lastX;
+        y = input->lastY;
     } else {
         SDL_GetWindowPosition(window, &x, &y);
     }

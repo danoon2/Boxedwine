@@ -123,6 +123,9 @@ public:
 	static std::shared_ptr<KNativeAudio> createNativeAudio();
     static std::vector< std::shared_ptr<KNativeAudio> > availableAudio;
     static void init();
+#ifndef BOXEDWINE_MULTI_THREADED
+	static void runSlice();
+#endif
 	static void shutdown();
 
 	KNativeAudio() : memory(nullptr) {}

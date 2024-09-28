@@ -106,7 +106,9 @@ public:
 private:
     KList<KThread*> waitingThreads;    
 
-    std::set<std::shared_ptr<BoxedWineCondition>> parents;
+#define MAX_PARENTS 2
+    U32 parentCount = 0;
+    std::weak_ptr<BoxedWineCondition> parents[MAX_PARENTS];
 
     friend BoxedWineConditionTimer;
     void signalThread(bool all);

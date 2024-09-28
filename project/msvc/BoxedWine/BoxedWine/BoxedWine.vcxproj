@@ -681,6 +681,7 @@
     <ClInclude Include="..\..\..\..\source\util\networkutils.h" />
     <ClInclude Include="..\..\..\..\source\util\pixelMatch.h" />
     <ClInclude Include="..\..\..\..\source\util\ptrpool.h" />
+    <ClInclude Include="..\..\..\..\source\util\ring_buffer.h" />
     <ClInclude Include="..\..\..\..\source\util\stb_image.h" />
     <ClInclude Include="..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\source\util\synchronization.h" />
@@ -1146,6 +1147,12 @@
     <ClCompile Include="..\..\..\..\source\util\pixelMatch.cpp" />
     <ClCompile Include="..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\source\util\recorder.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\ring_buffer.cc">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\stb_image.cpp" />
     <ClCompile Include="..\..\..\..\source\util\stringutil.cpp" />
     <ClCompile Include="..\..\..\..\source\util\synchronization.cpp" />
@@ -1182,6 +1189,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\..\..\source\util\ring_buffer.tcc.h" />
     <None Include="BoxedWine.ruleset" />
     <None Include="BoxedWine1.ruleset" />
     <None Include="ClassDiagram.cd" />

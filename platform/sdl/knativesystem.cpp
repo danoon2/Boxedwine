@@ -130,6 +130,8 @@ void KNativeSystem::forceShutdown() {
         KSystem::eraseProcess(p->id);
         });
 #else
+    KThread::setCurrentThread(nullptr);
+    DecodedBlock::currentBlock = nullptr; // so CodePage::removeEntry won't use a bad thread pointer
     p->killAllThreads();
     KSystem::eraseProcess(p->id);
 #endif

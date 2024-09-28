@@ -54,14 +54,14 @@ void NativePage::writed(U32 address, U32 value) {
 }
 
 U8* NativePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
+    if (memory->canRead(address >> K_PAGE_SHIFT)) {
         return this->nativeAddress + (address - this->address);
     }
     return nullptr;
 }
 
 U8* NativePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    if (KThread::currentThread()->memory->canWrite(address >> K_PAGE_SHIFT)) {
+    if (memory->canWrite(address >> K_PAGE_SHIFT)) {
         return this->nativeAddress + (address - this->address);
     }
     return nullptr;
