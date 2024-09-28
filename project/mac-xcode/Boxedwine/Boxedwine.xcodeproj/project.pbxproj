@@ -175,6 +175,12 @@
 		1A0F95952CA5AE1E00E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
 		1A0F95962CA5AE1F00E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
 		1A0F95972CA5AE2000E5A9BF /* wineaudiodrv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */; };
+		1A0F95A32CA783E900E5A9BF /* ring_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */; };
+		1A0F95A42CA783E900E5A9BF /* ring_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */; };
+		1A0F95A52CA783E900E5A9BF /* ring_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */; };
+		1A0F95A62CA783E900E5A9BF /* ring_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */; };
+		1A0F95A72CA783E900E5A9BF /* ring_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */; };
+		1A0F95A82CA783E900E5A9BF /* ring_buffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */; };
 		1A1550F5263261B1006E0C8A /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550F4263261B1006E0C8A /* glew.cpp */; };
 		1A155103263261DF006E0C8A /* mztools.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A1550FF263261DF006E0C8A /* mztools.c */; };
 		1A155104263261DF006E0C8A /* ioapi.c in Sources */ = {isa = PBXBuildFile; fileRef = 1A155100263261DF006E0C8A /* ioapi.c */; };
@@ -1670,6 +1676,10 @@
 		1A0F95762C9132DC00E5A9BF /* bheap.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bheap.cpp; sourceTree = "<group>"; };
 		1A0F958F2CA5101A00E5A9BF /* knativeaudiosdl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = knativeaudiosdl.h; path = ../platform/sdl/knativeaudiosdl.h; sourceTree = "<group>"; };
 		1A0F95902CA5AE1000E5A9BF /* wineaudiodrv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = wineaudiodrv.cpp; path = ../../../source/sdl/wineaudiodrv.cpp; sourceTree = "<group>"; };
+		1A0F95982CA7838400E5A9BF /* ring_buffer.tcc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ring_buffer.tcc.h; sourceTree = "<group>"; };
+		1A0F959A2CA7838400E5A9BF /* ring_buffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ring_buffer.h; sourceTree = "<group>"; };
+		1A0F95A12CA7838E00E5A9BF /* bhashtable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bhashtable.h; sourceTree = "<group>"; };
+		1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ring_buffer.cpp; sourceTree = "<group>"; };
 		1A1550F32632619F006E0C8A /* glew.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = glew.h; path = ../../../../../../../lib/glew/include/GL/glew.h; sourceTree = "<group>"; };
 		1A1550F4263261B1006E0C8A /* glew.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = glew.cpp; path = ../../../../../../lib/glew/src/glew.cpp; sourceTree = "<group>"; };
 		1A1550FF263261DF006E0C8A /* mztools.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mztools.c; path = ../../../../../lib/zlib/contrib/minizip/mztools.c; sourceTree = "<group>"; };
@@ -2954,6 +2964,10 @@
 		71FBFD4D2433BBBE003F17F1 /* util */ = {
 			isa = PBXGroup;
 			children = (
+				1A0F95A22CA783E900E5A9BF /* ring_buffer.cpp */,
+				1A0F95A12CA7838E00E5A9BF /* bhashtable.h */,
+				1A0F959A2CA7838400E5A9BF /* ring_buffer.h */,
+				1A0F95982CA7838400E5A9BF /* ring_buffer.tcc.h */,
 				1A0F95762C9132DC00E5A9BF /* bheap.cpp */,
 				1A0F95752C9132DC00E5A9BF /* bheap.h */,
 				1AAC18402C1E9A220089C40D /* stb_image.cpp */,
@@ -3740,6 +3754,7 @@
 				1A0F95122C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				1A80EEF7276EBCC70032A70A /* imgui_widgets.cpp in Sources */,
 				1A80EEF9276EBCC70032A70A /* ImGuiLayout.cpp in Sources */,
+				1A0F95A52CA783E900E5A9BF /* ring_buffer.cpp in Sources */,
 				1A80EEFF276EBCC70032A70A /* glfunctions_ext2.cpp in Sources */,
 				1A0F95002C912B6B00E5A9BF /* xgc.cpp in Sources */,
 				1A80EF00276EBCC70032A70A /* glcommon.cpp in Sources */,
@@ -4001,6 +4016,7 @@
 				1A80F131276EBF170032A70A /* x64CodeChunk.cpp in Sources */,
 				1A80F136276EBF170032A70A /* kobject.cpp in Sources */,
 				1A22363A2820A85200E74D88 /* uptime.cpp in Sources */,
+				1A0F95A62CA783E900E5A9BF /* ring_buffer.cpp in Sources */,
 				1A0F95012C912B6B00E5A9BF /* xgc.cpp in Sources */,
 				1A80F13D276EBF170032A70A /* kfile.cpp in Sources */,
 				1A80F140276EBF170032A70A /* downloadDlg.cpp in Sources */,
@@ -4357,6 +4373,7 @@
 				71222B752435169100CDBABD /* normal_strings.cpp in Sources */,
 				1A22363B2820A85200E74D88 /* uptime.cpp in Sources */,
 				1AC5F2CD2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
+				1A0F95A72CA783E900E5A9BF /* ring_buffer.cpp in Sources */,
 				1AFC479F2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AFC479B26483DE000EE5FCC /* knativecoreaudio.cpp in Sources */,
 				1A68217D2BF44BC0001AA732 /* kevent.cpp in Sources */,
@@ -4453,6 +4470,7 @@
 				1ADBD8652B92E7B60074867C /* sysdev.cpp in Sources */,
 				71222BF024351CBA00CDBABD /* fsmemnode.cpp in Sources */,
 				71222BF124351CBA00CDBABD /* devurandom.cpp in Sources */,
+				1A0F95A42CA783E900E5A9BF /* ring_buffer.cpp in Sources */,
 				1AC5F2A62772D957001D0FCA /* armv8btOps_string.cpp in Sources */,
 				71222BF324351CBA00CDBABD /* x64Ops.cpp in Sources */,
 				1A155116263261E7006E0C8A /* zip.c in Sources */,
@@ -4816,6 +4834,7 @@
 				7135DC79264EBCD0005D6AA6 /* threadedMainloop.cpp in Sources */,
 				7135DC7A264EBCD0005D6AA6 /* kdspaudio.cpp in Sources */,
 				1AC5F2C22772D957001D0FCA /* armv8btData.cpp in Sources */,
+				1A0F95A82CA783E900E5A9BF /* ring_buffer.cpp in Sources */,
 				7135DC7B264EBCD0005D6AA6 /* glMarshal.cpp in Sources */,
 				7135DC7C264EBCD0005D6AA6 /* pugixml.cpp in Sources */,
 				1A68217E2BF44BC0001AA732 /* kevent.cpp in Sources */,
@@ -4912,6 +4931,7 @@
 				1A55D6392A0841E2002B7021 /* inftrees.c in Sources */,
 				1ADBD8642B92E7B60074867C /* sysdev.cpp in Sources */,
 				71FBFED12433BBBE003F17F1 /* cpumaxfreq.cpp in Sources */,
+				1A0F95A32CA783E900E5A9BF /* ring_buffer.cpp in Sources */,
 				1A155103263261DF006E0C8A /* mztools.c in Sources */,
 				712228F42433EE5400CDBABD /* imgui_impl_sdl.cpp in Sources */,
 				7100914B2644D42C003413C3 /* knativeaudio.cpp in Sources */,
