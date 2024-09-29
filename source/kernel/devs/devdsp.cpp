@@ -65,8 +65,7 @@ U32 DevDsp::writeNative(U8* buffer, U32 len) {
     if (!this->audio->isOpen()) {
         this->audio->openAudio(this->format, this->freq, this->channels);
     }
-    this->audio->writeAudio(buffer, len);
-    return len;
+    return this->audio->writeAudio(buffer, len);
 }
 
 U32 DevDsp::ioctl(KThread* thread, U32 request) {
@@ -185,13 +184,11 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
 
     case 0x500C: // SNDCTL_DSP_GETOSPACE
     {
-        S32 osLen = ((S32)this->audio->getBufferSize()-(S32)this->audio->getFragmentSize());
-        if (osLen<0)
-            osLen = 0;
-        memory->writed(IOCTL_ARG1, ((this->audio->getBufferCapacity() - this->audio->getBufferSize()) / this->audio->getFragmentSize())); // fragments
+        // I'm not sure why bytes works better as getBufferCapacity instead of getBufferCapacity - getBufferSize, but mac stutters a lot otherwise
+        memory->writed(IOCTL_ARG1, this->audio->getBufferCapacity() / this->audio->getFragmentSize()); // fragments
         memory->writed(IOCTL_ARG1 + 4, this->audio->getBufferCapacity() / this->audio->getFragmentSize());
         memory->writed(IOCTL_ARG1 + 8, this->audio->getFragmentSize());
-        memory->writed(IOCTL_ARG1 + 12, this->audio->getBufferCapacity() - osLen);
+        memory->writed(IOCTL_ARG1 + 12, this->audio->getBufferCapacity());
         return 0;
     }
     case 0x500F: // SNDCTL_DSP_GETCAPS

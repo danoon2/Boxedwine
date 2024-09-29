@@ -3,7 +3,7 @@
 #include <SDL.h>
 #include "../../source/kernel/devs/oss.h"
 
-#define DSP_BUFFER_SIZE (1024*256)
+#define DSP_BUFFER_SIZE (1024*32)
 
 static bool sdlAudioOpen;
 static U8 sdlSilence;
@@ -45,9 +45,9 @@ public:
 	void openAudio(U32 format, U32 freq, U32 channels) override;
 	bool isOpen() override { return this->open; }
 	void closeAudio() override;
-	void writeAudio(U8* data, U32 len) override;
-	U32 getFragmentSize() override {return this->got.samples;}
-	U32 getBufferSize() override {return (U32)this->audioBuffer.size();}
+	U32 writeAudio(U8* data, U32 len) override;
+	U32 getFragmentSize() override {return this->dspFragSize;}
+	U32 getBufferSize() override {return (U32)0;}
 	U32 getBufferCapacity() override { return DSP_BUFFER_SIZE;}
 
 	void onClose();
@@ -93,7 +93,7 @@ public:
 	int cvtBufPos = 0;
 	unsigned char* cvtBuf = nullptr;
 	bool sameFormat = false;
-	U32 dspFragSize = 0;
+	U32 dspFragSize = 4096;
 	bool open = false;
 	std::deque<U8> audioBuffer;
 	BOXEDWINE_CONDITION bufferCond;
@@ -210,7 +210,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	voices.push_back(shared_from_this());
 	SDL_PauseAudio(0);
 	if (this->got.size) {
-		this->dspFragSize = this->got.size;
+		//this->dspFragSize = this->got.size;
 	}
 	klog("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
 }
@@ -251,13 +251,28 @@ void KDspAudioSdl::onClose() {
 	this->open = false;
 }
 
-void KDspAudioSdl::writeAudio(U8* data, U32 len) {
+U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
+	U32 bytesPerSecond = want.freq * want.channels * bytesPerSampleWant();
+	U32 delay = bytesPerSecond / 8;
+
+#ifndef BOXEDWINE_MULTI_THREADED	
+	if (this->audioBuffer.size() > delay) {
+		return -K_EWOULDBLOCK;
+	}
+#endif
 	SDL_LockAudio();
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->bufferCond);
 		audioBuffer.insert(this->audioBuffer.end(), data, data + len);
 	}
 	SDL_UnlockAudio();
+
+#ifdef BOXEDWINE_MULTI_THREADED	
+	while (this->audioBuffer.size() > delay) {
+		Platform::nanoSleep(1000000l);
+	}
+#endif
+	return len;	
 }
 
 std::shared_ptr<KDspAudio> KDspAudio::createDspAudio() {
