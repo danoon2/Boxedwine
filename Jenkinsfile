@@ -429,9 +429,6 @@ pipeline {
                     agent {
                         label "linuxArm64"
                     }
-                    options {
-                        timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
-                    }
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
