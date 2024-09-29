@@ -74,6 +74,6 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 - [Upcoming Features](docs/Roadmap-Features.md)
 - [Troubleshooting Games/Apps](docs/Troubleshooting-Games-Apps.md)
 - [Developer Debugging](docs/Developer-Debugging.md)
-- [How To Build Wine](docs/How-To-Build-Wine.md)
+- [How To Build Wine](docs/How-To-Build-Boxedwine.md)
 - [How To Build OSMesa on MacOSX](docs/How-To-Build-OSMesa-on-Mac.md)
 - [CPU Emulation](docs/CPUemulation.md)
