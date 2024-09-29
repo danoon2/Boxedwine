@@ -18,7 +18,7 @@ void closeSdlAudio() {
 
 class KDspAudioSdl : public KDspAudio, public std::enable_shared_from_this<KDspAudioSdl> {
 public:
-	KDspAudioSdl() : bufferCond(std::make_shared<BoxedWineCondition>(B("KDspAudioSdl::bufferCond"))) {
+	KDspAudioSdl() {
 		this->want.format = AUDIO_U8;
 		this->want.channels = 1;
 		this->want.freq = 11025;
@@ -96,7 +96,6 @@ public:
 	U32 dspFragSize = 4096;
 	bool open = false;
 	std::deque<U8> audioBuffer;
-	BOXEDWINE_CONDITION bufferCond;
 	bool closeWhenDone = false;
 };
 
@@ -180,9 +179,6 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 	if (len) {
 		memset(stream, data->got.silence, len);
 	}
-
-	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(data->bufferCond);
-	BOXEDWINE_CONDITION_SIGNAL_ALL(data->bufferCond);
 }
 
 void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
@@ -255,23 +251,17 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	U32 bytesPerSecond = want.freq * want.channels * bytesPerSampleWant();
 	U32 delay = bytesPerSecond / 8;
 
-#ifndef BOXEDWINE_MULTI_THREADED	
-	if (this->audioBuffer.size() > delay) {
-		return -K_EWOULDBLOCK;
-	}
-#endif
 	SDL_LockAudio();
 	{
-		BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->bufferCond);
+		if (this->audioBuffer.size() > delay) {
+			return -K_EWOULDBLOCK;
+		}
+		U32 blockSize = bytesPerSampleWant() * want.channels;
+		len = std::min(len, ((delay - (U32)this->audioBuffer.size()) & ~(blockSize - 1)));
 		audioBuffer.insert(this->audioBuffer.end(), data, data + len);
 	}
 	SDL_UnlockAudio();
 
-#ifdef BOXEDWINE_MULTI_THREADED	
-	while (this->audioBuffer.size() > delay) {
-		Platform::nanoSleep(1000000l);
-	}
-#endif
 	return len;	
 }
 

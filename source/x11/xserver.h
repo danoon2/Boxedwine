@@ -10,7 +10,8 @@
 class XServer {
 public:	
 	static XServer* getServer(bool existingOnly = false);
-	
+	static void shutdown();
+
 	XServer();
 	
 	void mouseMove(S32 x, S32 y, bool relative);
@@ -56,7 +57,7 @@ public:
 	U32 getEventTime();
 	U32 getInputModifiers();
 	U32 grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbed, XWindowPtr confined, U32 mask, U32 time);
-	U32 ungrabPointer(const DisplayDataPtr& display, U32 time);
+	U32 ungrabPointer(U32 time);
 	U32 setInputFocus(const DisplayDataPtr& data, U32 window, U32 revertTo, U32 time, bool trace = false);
 	int mapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
 	int unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window);
@@ -88,9 +89,9 @@ private:
 
 	XWindowPtr root;
 
-	XWindowPtr grabbed;
-	XWindowPtr grabbedConfined;
-	DisplayDataPtr grabbedDisplay;
+	U32 grabbedId;
+	U32 grabbedConfinedId;
+	U32 grabbedDisplayId;
 	BOXEDWINE_MUTEX grabbedMutex;
 	bool isGrabbed = false;
 	U32 grabbedMask;

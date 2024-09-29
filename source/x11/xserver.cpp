@@ -27,6 +27,11 @@ XServer* XServer::getServer(bool existingOnly) {
 	return server;
 }
 
+void XServer::shutdown() {
+	delete server;
+	server = nullptr;
+}
+
 U32 XServer::getNextId() {
 	return ++nextId;
 }
@@ -303,8 +308,8 @@ int XServer::destroyWindow(U32 window) {
 	}
 	w->onDestroy();
 	windows.remove(window);
-	if (w == grabbed) {
-		grabbed = nullptr;
+	if (w->id == grabbedId) {
+		ungrabPointer(0);
 	}
 
 	return Success;
@@ -483,6 +488,10 @@ U32 XServer::createScreen(KThread* thread, U32 displayAddress) {
 }
 
 int XServer::closeDisplay(KThread* thread, const DisplayDataPtr& data) {
+	if (grabbedDisplayId == data->displayId) {
+		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->grabbedMutex);
+		ungrabPointer(0);
+	}
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(displayMutex);
 	
 	KMemory* memory = thread->memory;
@@ -492,7 +501,7 @@ int XServer::closeDisplay(KThread* thread, const DisplayDataPtr& data) {
 	U32 screen = X11_READD(Display, data->displayAddress, screens);
 	thread->process->free(screen);
 	thread->process->free(data->displayAddress);
-	displays.remove(data->displayId);
+	displays.remove(data->displayId);	
 	return Success;
 }
 
@@ -781,8 +790,8 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 		log.append(window->id, 16);
 		klog(log.c_str());
 	}
-	if (grabbed == window) {
-		grabbed = nullptr;
+	if (grabbedId == window->id) {
+		ungrabPointer(0);
 	}
 	int result = window->unmapWindow();
 
@@ -806,12 +815,17 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 void XServer::mouseMove(S32 x, S32 y, bool relative) {
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
-		if (grabbed) {
+		XWindowPtr grabbed = getWindow(grabbedId);
+		DisplayDataPtr grabbedDisplay = getDisplayDataById(grabbedDisplayId);
+
+		if (grabbed && grabbedDisplay) {
 			if (!(grabbedMask & PointerMotionMask)) {
 				return;
 			}
 			grabbed->motionNotify(grabbedDisplay, x, y);
 			return;
+		} else {
+			ungrabPointer(0);
 		}
 	}
 	if (root) { // might not be set at the very start
@@ -832,16 +846,21 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
-		if (grabbed) {
+		XWindowPtr grabbed = getWindow(grabbedId);
+		DisplayDataPtr grabbedDisplay = getDisplayDataById(grabbedDisplayId);
+
+		if (grabbed && grabbedDisplay) {
 			U32 mask = pressed ? ButtonPressMask : ButtonReleaseMask;
 			if (!(grabbedMask & mask)) {
 				return;
 			}
-			if (grabbedConfined) {
+			if (grabbedConfinedId) {
 				int ii = 0;
 			}
 			grabbed->buttonNotify(grabbedDisplay, button, x, y, pressed);
 			return;
+		} else {
+			ungrabPointer(0);
 		}
 	}
 	if (root) { // might not be set at the very start
@@ -868,14 +887,14 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 	bool updateCursor = false;
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
-		if (grabbedDisplay && grabbedDisplay->displayId != display->displayId) {
-			return AlreadyGrabbed;
+
+		this->grabbedId = grabbed->id;
+		if (confined) {
+			this->grabbedConfinedId = confined->id;
 		}
-		this->grabbed = grabbed;
-		this->grabbedConfined = confined;
 		this->grabbedMask = mask;
 		this->grabbedTime = time;
-		this->grabbedDisplay = display;
+		this->grabbedDisplayId = display->displayId;
 		this->isGrabbed = true;
 
 		if (pointerWindow->id != grabbed->id) {
@@ -895,16 +914,16 @@ U32 XServer::grabPointer(const DisplayDataPtr& display, const XWindowPtr& grabbe
 }
 
 // https://www.x.org/releases/X11R7.6/doc/xproto/x11protocol.html#requests:UngrabPointer
-U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
-	if (!grabbed) {
+U32 XServer::ungrabPointer(U32 time) {
+	if (!grabbedId) {
 		return GrabSuccess; // :TODO: couldn't find this use case in the x11 spec
 	}
-	XWindowPtr prev = grabbed;
+	XWindowPtr prev = getWindow(grabbedId);
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->grabbedMutex);
-		this->grabbed = nullptr;
-		this->grabbedDisplay = nullptr;
-		this->grabbedConfined = nullptr;
+		this->grabbedId = 0;
+		this->grabbedDisplayId = 0;
+		this->grabbedConfinedId = 0;
 		this->isGrabbed = false;
 	}
 	S32 x = 0;
@@ -912,8 +931,10 @@ U32 XServer::ungrabPointer(const DisplayDataPtr& display, U32 time) {
 	KNativeSystem::getCurrentInput()->getMousePos(&x, &y);
 
 	pointerWindow = root->getWindowFromPoint(x, y);
-	pointerMoved(prev, pointerWindow, x, y, NotifyUngrab);
-	KNativeSystem::getScreen()->setCursor(pointerWindow->getCursor());
+	if (pointerWindow && prev) {
+		pointerMoved(prev, pointerWindow, x, y, NotifyUngrab);
+		KNativeSystem::getScreen()->setCursor(pointerWindow->getCursor());
+	}
 	return GrabSuccess;
 }
 

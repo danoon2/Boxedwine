@@ -26,6 +26,7 @@
 #include "knativesystem.h"
 #include "pixelformat.h"
 #include "../io/fsfilenode.h"
+#include "../x11/x11.h"
 
 #include <time.h>
 
@@ -110,6 +111,7 @@ void KSystem::destroy() {
     DecodedOp::clearCache();
     NormalCPU::clearCache();
     KMemory::shutdown();
+    XServer::shutdown();
     shutdownRam();
 }
 
