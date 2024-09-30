@@ -348,12 +348,12 @@ pipeline {
                             unstash "linux"
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
                                 '''
                             }
                         }
@@ -386,7 +386,7 @@ pipeline {
                         dir("project/mac-xcode/automation") {
                             retry(3) {
                                 sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -419,7 +419,7 @@ pipeline {
                         dir("project/mac-xcode/automation") {
                             retry(3) {
                                 sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -441,7 +441,7 @@ pipeline {
                             unstash "linuxArm64"
                             retry(3) {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/TinyCore15Wine9.18.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -462,12 +462,12 @@ pipeline {
                             unstash "windows"
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\TinyCore15Wine9.18.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\TinyCore15Wine9.18.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                         }
