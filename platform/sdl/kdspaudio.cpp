@@ -119,14 +119,10 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 	if (!data->sameFormat) {
 		if (data->cvtBufPos < data->cvt.len_cvt) {
 			S32 todo = data->cvt.len_cvt - data->cvtBufPos;
-			if (todo > len)
+			if (todo > len) {
 				todo = len;
-			if (!KSystem::soundEnabled) {
-				// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
-				memset(stream, data->got.silence, todo);
-			} else {
-				memcpy(stream, data->cvt.buf + data->cvtBufPos, todo);
 			}
+			memcpy(stream, data->cvt.buf + data->cvtBufPos, todo);
 			data->cvtBufPos += todo;
 			stream += todo;
 			len -= todo;
@@ -149,14 +145,10 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 
 			SDL_ConvertAudio(&data->cvt);
 			S32 todo = data->cvt.len_cvt;
-			if (todo > len)
+			if (todo > len) {
 				todo = len;
-			if (!KSystem::soundEnabled) {
-				// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
-				memset(stream, data->got.silence, todo);
-			} else {
-				memcpy(stream, data->cvt.buf, todo);
 			}
+			memcpy(stream, data->cvt.buf, todo);
 			stream += todo;
 			len -= todo;
 			data->cvtBufPos = todo;
@@ -165,12 +157,7 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 		if (available > len)
 			available = len;
 		if (available) {
-			if (!KSystem::soundEnabled) {
-				// let the above process, since it will properly remove data from audioBuffer, the app can request the status of that buffer
-				memset(stream, data->got.silence, available);
-			} else {
-				std::copy(data->audioBuffer.begin(), data->audioBuffer.begin() + available, stream);
-			}
+			std::copy(data->audioBuffer.begin(), data->audioBuffer.begin() + available, stream);
 			data->audioBuffer.erase(data->audioBuffer.begin(), data->audioBuffer.begin() + available);
 			len -= available;
 			stream += available;
@@ -188,6 +175,11 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	this->want.freq = freq;
 	this->want.channels = channels;
 
+	if (!KSystem::soundEnabled) {
+		sdlAudioOpen = true;
+		this->open = true;
+		return;
+	}
 	// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
 	closeSdlAudio();
 	if (SDL_OpenAudio(&this->want, &this->got) < 0) {
@@ -218,6 +210,10 @@ void KDspAudioSdl::closeAudioFromAudioThread() {
 }
 
 void KDspAudioSdl::closeAudio() {
+	if (!KSystem::soundEnabled) {
+		this->open = false;
+		return;
+	}
 	if (this->open) {
 		bool needClose = true;
 		SDL_LockAudio();
@@ -234,6 +230,10 @@ void KDspAudioSdl::closeAudio() {
 }
 
 void KDspAudioSdl::onClose() {
+	if (!KSystem::soundEnabled) {
+		this->open = false;
+		return;
+	}
 	auto it = voices.begin();
 	while (it != voices.end()) {
 		std::shared_ptr<KDspAudioSdl> p = *it;
@@ -251,6 +251,24 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	U32 bytesPerSecond = want.freq * want.channels * bytesPerSampleWant();
 	U32 delay = bytesPerSecond / 8;
 
+	if (!KSystem::soundEnabled) {
+		static U32 timeSinceLastWrite;
+
+		U32 elapsedTime = KSystem::getMilliesSinceStart() - timeSinceLastWrite;
+		U32 bytesToRemove = bytesPerSecond * elapsedTime / 1000;
+		
+		bytesToRemove = std::min((U32)this->audioBuffer.size(), bytesToRemove);
+		this->audioBuffer.erase(this->audioBuffer.begin(), this->audioBuffer.begin() + bytesToRemove);
+
+		if (this->audioBuffer.size() > delay) {
+			return -K_EWOULDBLOCK;
+		}
+		U32 blockSize = bytesPerSampleWant() * want.channels;
+		len = std::min(len, ((delay - (U32)this->audioBuffer.size()) & ~(blockSize - 1)));
+		audioBuffer.insert(this->audioBuffer.end(), data, data + len);
+		timeSinceLastWrite = KSystem::getMilliesSinceStart();
+		return len;
+	}
 	SDL_LockAudio();
 	{
 		if (this->audioBuffer.size() > delay) {
@@ -270,6 +288,9 @@ std::shared_ptr<KDspAudio> KDspAudio::createDspAudio() {
 }
 
 void KDspAudio::shutdown() {
+	if (!KSystem::soundEnabled) {
+		return;
+	}
 	SDL_PauseAudio(1);
 	SDL_CloseAudio();
 }
