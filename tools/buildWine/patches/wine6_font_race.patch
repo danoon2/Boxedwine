@@ -1,0 +1,22 @@
+diff --git a/dlls/gdi32/font.c b/dlls/gdi32/font.c
+index 7f243192cc3..44147fb8806 100644
+--- a/dlls/gdi32/font.c
++++ b/dlls/gdi32/font.c
+@@ -2278,12 +2278,15 @@ static struct gdi_font *find_cached_gdi_font( const LOGFONTW *lf, const FMAT2 *m
+ static void release_gdi_font( struct gdi_font *font )
+ {
+     if (!font) return;
+-    if (--font->refcount) return;
+-
++    
+     TRACE( "font %p\n", font );
+ 
+     /* add it to the unused list */
+     EnterCriticalSection( &font_cs );
++    if (--font->refcount) {
++        LeaveCriticalSection( &font_cs );
++        return;
++    }
+     list_add_head( &unused_gdi_font_list, &font->unused_entry );
+     if (unused_font_count > UNUSED_CACHE_SIZE)
+     {
