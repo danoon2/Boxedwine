@@ -517,6 +517,7 @@
     <ClInclude Include="..\..\..\..\lib\imgui\imstb_truetype.h" />
     <ClInclude Include="..\..\..\..\lib\pugixml\src\pugiconfig.hpp" />
     <ClInclude Include="..\..\..\..\lib\pugixml\src\pugixml.hpp" />
+    <ClInclude Include="..\..\..\..\lib\rtmidi\RtMidi.h" />
     <ClInclude Include="..\..\..\..\lib\tiny-process\process.hpp" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h" />
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
@@ -779,6 +780,12 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\pugixml\src\pugixml.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\rtmidi\RtMidi.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
