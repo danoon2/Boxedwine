@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1A0EE2222CAB9A06001C7DE5 /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */; };
+		1A0EE2232CAB9A06001C7DE5 /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */; };
+		1A0EE2242CAB9A06001C7DE5 /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */; };
+		1A0EE2252CAB9A06001C7DE5 /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */; };
+		1A0EE2262CAB9A06001C7DE5 /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */; };
+		1A0EE2272CAB9A06001C7DE5 /* RtMidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */; };
 		1A0F94CE2C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
 		1A0F94CF2C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
 		1A0F94D02C912B6B00E5A9BF /* xscreen.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0F94A32C912B6900E5A9BF /* xscreen.cpp */; };
@@ -1618,6 +1624,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		1A0EE2202CAB9A06001C7DE5 /* RtMidi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RtMidi.h; path = ../../../../lib/rtmidi/RtMidi.h; sourceTree = "<group>"; };
+		1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RtMidi.cpp; path = ../../../../lib/rtmidi/RtMidi.cpp; sourceTree = "<group>"; };
 		1A0F94A32C912B6900E5A9BF /* xscreen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xscreen.cpp; path = x11/xscreen.cpp; sourceTree = "<group>"; };
 		1A0F94A42C912B6900E5A9BF /* xvisual.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = xvisual.h; path = x11/xvisual.h; sourceTree = "<group>"; };
 		1A0F94A52C912B6900E5A9BF /* ximage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ximage.h; path = x11/ximage.h; sourceTree = "<group>"; };
@@ -2335,6 +2343,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		1A0EE21F2CAB99E0001C7DE5 /* rtmidi */ = {
+			isa = PBXGroup;
+			children = (
+				1A0EE2212CAB9A06001C7DE5 /* RtMidi.cpp */,
+				1A0EE2202CAB9A06001C7DE5 /* RtMidi.h */,
+			);
+			path = rtmidi;
+			sourceTree = "<group>";
+		};
 		1A0F94A22C912B4100E5A9BF /* x11 */ = {
 			isa = PBXGroup;
 			children = (
@@ -2699,6 +2716,7 @@
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
+				1A0EE21F2CAB99E0001C7DE5 /* rtmidi */,
 				718B7144267F883900CDBC74 /* libglapi.0.dylib */,
 				718B7143267F883900CDBC74 /* libOSMesa.8.dylib */,
 				718B713B267EB86500CDBC74 /* libc++.1.dylib */,
@@ -3878,6 +3896,7 @@
 				1A80EFD8276EBCC70032A70A /* common_fpu.cpp in Sources */,
 				1AC5F2FC2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				1A80EFE8276EBCC70032A70A /* glext.cpp in Sources */,
+				1A0EE2242CAB9A06001C7DE5 /* RtMidi.cpp in Sources */,
 				1A0F95482C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
 				1A0F951E2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				1A80EFEB276EBCC70032A70A /* spinnerControl.cpp in Sources */,
@@ -4140,6 +4159,7 @@
 				1A80F21F276EBF170032A70A /* appbar.cpp in Sources */,
 				1A80F220276EBF170032A70A /* coremidi.cpp in Sources */,
 				1A0F95492C912B6B00E5A9BF /* xfbconfig.cpp in Sources */,
+				1A0EE2252CAB9A06001C7DE5 /* RtMidi.cpp in Sources */,
 				1A0F951F2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				1AC5F2D22772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				1A80F224276EBF170032A70A /* appFile.cpp in Sources */,
@@ -4296,6 +4316,7 @@
 				71222BC22435169100CDBABD /* sdlgl.cpp in Sources */,
 				71222BBD2435169100CDBABD /* glfunctions_ext3.cpp in Sources */,
 				71222B3E2435163100CDBABD /* testCPU.cpp in Sources */,
+				1A0EE2262CAB9A06001C7DE5 /* RtMidi.cpp in Sources */,
 				71222B722435169100CDBABD /* normal_shift.cpp in Sources */,
 				1ADBD8562B92E7B60074867C /* sysfb.cpp in Sources */,
 				1AC5F2D32772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
@@ -4667,6 +4688,7 @@
 				71222C6A24351CBA00CDBABD /* crc.cpp in Sources */,
 				71222C6B24351CBA00CDBABD /* devsequencer.cpp in Sources */,
 				71222C6C24351CBA00CDBABD /* kprocess.cpp in Sources */,
+				1A0EE2232CAB9A06001C7DE5 /* RtMidi.cpp in Sources */,
 				1A0F95592C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				71222C6D24351CBA00CDBABD /* normalCPU.cpp in Sources */,
 				71222C6E24351CBA00CDBABD /* glfunctions_ext3.cpp in Sources */,
@@ -4757,6 +4779,7 @@
 				7135DC44264EBCD0005D6AA6 /* sdlgl.cpp in Sources */,
 				1AC5F2F82772D957001D0FCA /* armv8btCPU.cpp in Sources */,
 				7135DC45264EBCD0005D6AA6 /* glfunctions_ext3.cpp in Sources */,
+				1A0EE2272CAB9A06001C7DE5 /* RtMidi.cpp in Sources */,
 				7135DC46264EBCD0005D6AA6 /* testCPU.cpp in Sources */,
 				1ADBD8572B92E7B60074867C /* sysfb.cpp in Sources */,
 				7135DC47264EBCD0005D6AA6 /* normal_shift.cpp in Sources */,
@@ -5128,6 +5151,7 @@
 				71FBFEBF2433BBBE003F17F1 /* kprocess.cpp in Sources */,
 				7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */,
 				1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
+				1A0EE2222CAB9A06001C7DE5 /* RtMidi.cpp in Sources */,
 				1A0F95582C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				71FBFE912433BBBE003F17F1 /* normalCPU.cpp in Sources */,
 				71FBFEDD2433BBBE003F17F1 /* glfunctions_ext3.cpp in Sources */,
@@ -5202,6 +5226,7 @@
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -5250,6 +5275,7 @@
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -5300,6 +5326,7 @@
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_OPENGL_OSMESA,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5349,6 +5376,7 @@
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_OPENGL_OSMESA,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5543,6 +5571,7 @@
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_OPENGL_OSMESA,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5592,6 +5621,7 @@
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_OPENGL_OSMESA,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5823,6 +5853,7 @@
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -5871,6 +5902,7 @@
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
+					__MACOSX_CORE__,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
