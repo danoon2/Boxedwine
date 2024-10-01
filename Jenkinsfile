@@ -345,15 +345,9 @@ pipeline {
                         }
                         dir("project/linux/automation") {
                             unstash "linux64"
-                            unstash "linux"
                             retry(3) {
                                 sh '''
                                     java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
-                                '''
-                            }
-                            retry(3) {
-                                sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
                                 '''
                             }
                         }
