@@ -655,14 +655,8 @@
     <ClCompile Include="..\..\..\..\platform\sdl\knativescreenSDL.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\sdl\wineaudiodrv.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\ring_buffer.cpp">
       <Filter>source\util</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\lib\rtmidi\RtMidi.cpp">
-      <Filter>rtmidi</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1461,9 +1455,6 @@
     <ClInclude Include="..\..\..\..\source\util\ring_buffer.h">
       <Filter>source\util</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\lib\rtmidi\RtMidi.h">
-      <Filter>rtmidi</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1588,9 +1579,6 @@
     </Filter>
     <Filter Include="source\x11">
       <UniqueIdentifier>{69091852-62d4-4cf9-ac9e-8e2cf901e390}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="rtmidi">
-      <UniqueIdentifier>{365c821a-a027-406a-ba90-c903ff9a5086}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

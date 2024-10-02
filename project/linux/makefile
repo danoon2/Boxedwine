@@ -63,7 +63,6 @@ SOURCES = $(shell find $(PROJDIR)/source -type f -name '*.cpp')
 SOURCES += $(wildcard $(PROJDIR)/platform/linux/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/platform/sdl/*.cpp)
 SOURCES += $(wildcard $(PROJDIR)/lib/pugixml/src/*.cpp)
-SOURCES += $(wildcard $(PROJDIR)/lib/rtmidi/RtMidi.cpp)
 SOURCES += $(PROJDIR)/lib/glew/src/glew.cpp
 SOURCES += $(PROJDIR)/lib/imgui/addon/imguitinyfiledialogs.cpp
 SOURCES += $(PROJDIR)/lib/imgui/examples/imgui_impl_sdl.cpp
@@ -88,7 +87,6 @@ TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/opengl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/vulkan/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/x11/*.cpp)
-TEST_SOURCES += $(wildcard $(PROJDIR)/lib/rtmidi/RtMidi.cpp)
 
 ifeq ($(BUILD_DIR), Build/Test)
 SRCS := $(TEST_SOURCES)

@@ -164,7 +164,6 @@ U64 elapsedInstructionsMIPS;
 
 bool runSlice() {    
     runTimers();
-    KNativeAudio::runSlice();
 
     if (scheduledThreads.isEmpty())
         return false;

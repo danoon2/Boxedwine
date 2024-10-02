@@ -16,41 +16,30 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
-#include "../../../lib/rtmidi/RtMidi.h"
+#include "knativeaudio.h"
 
 #include "../../io/fsvirtualopennode.h"
 
 class DevSequencer : public FsVirtualOpenNode {
 public:
     DevSequencer(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {
-		out = nullptr;
-		try {
-			out = new RtMidiOut();
-			out->openPort();
-		} catch (RtMidiError& error) {
-		}
+        audio = KNativeAudio::createNativeAudio();
+        audio->load();
 	}
-	~DevSequencer() {
-		if (out) {
-			if (out->isPortOpen()) {
-				out->closePort();
-			}
-			delete out;
-		}
-	}
+
 	// From FsOpenNode
     U32 ioctl(KThread* thread, U32 request) override;
     U32 readNative(U8* buffer, U32 len) override;
     U32 writeNative(U8* buffer, U32 len) override;
 
-	void MIDI_RawOutByte(U8 data);
+	void MIDI_RawOutByte(U32 devId, U8 data);
 
-	RtMidiOut* out;
+    KNativeAudioPtr audio;
 };
 
 FsOpenNode* openDevSequencer(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
 	DevSequencer* result = new DevSequencer(node, flags);
-	if (!result->out) {
+	if (!result->audio) {
 		delete result;
 		return nullptr;
 	}
@@ -113,17 +102,17 @@ U32 DevSequencer::ioctl(KThread* thread, U32 request) {
         return 0;
     case 0x510b: // LINUX_SNDCTL_SEQ_NRMIDIS
         if (write)
-			memory->writed(IOCTL_ARG1, out->getPortCount());
+			memory->writed(IOCTL_ARG1, audio->midiOutGetNumDevs());
         return 0;
     case 0x510c: // LINUX_SNDCTL_MIDI_INFO	
 		U32 index = memory->readd(IOCTL_ARG1 + 32);
-		std::string name = out->getPortName(index);
-		U32 len = (U32)name.size();
-		if (len > 29) {
-			len = 29;
+        BString name = audio->midiOutGetName(index);
+		U32 len = (U32)name.length();
+		if (len > 31) {
+			len = 31;
 		}
 		memory->memcpy(IOCTL_ARG1, name.c_str(), len);
-		memory->writeb(IOCTL_ARG1 + 29, 0);
+		memory->writeb(IOCTL_ARG1 + 31, 0);
 		memory->writed(IOCTL_ARG1+36, 0); // capabilities
 		memory->writed(IOCTL_ARG1+40, 0); // dev_type
         return 0;
@@ -170,19 +159,16 @@ static struct {
 	U8 rt_buf[8];
 	struct {
 		U8 buf[SYSEX_SIZE];
-		U8 used;
+		U32 used;
 	} sysex;
 	bool available;
 } midi;
 
-void DevSequencer::MIDI_RawOutByte(U8 data) {
+void DevSequencer::MIDI_RawOutByte(U32 devId, U8 data) {
     if (KSystem::soundEnabled) {
 	    /* Test for a realtime MIDI message */
 	    if (data>=0xf8) {
-			try {
-				out->sendMessage(&data, 1);
-			} catch (RtMidiError& error) {
-			}
+            audio->midiOutData(devId, &data, 1);
 		    return;
 	    }	 
 	    /* Test for a active sysex tranfer */
@@ -192,10 +178,7 @@ void DevSequencer::MIDI_RawOutByte(U8 data) {
 			    return;
 		    } else {
 			    midi.sysex.buf[midi.sysex.used++]=0xf7;
-				try {
-					out->sendMessage(midi.sysex.buf, midi.sysex.used);
-				} catch (RtMidiError& error) {
-				}
+                audio->midiOutLongData(devId, midi.sysex.buf, midi.sysex.used);
 		    }
 	    }
 	    if (data&0x80) {
@@ -210,7 +193,7 @@ void DevSequencer::MIDI_RawOutByte(U8 data) {
 	    if (midi.cmd_len) {
 		    midi.cmd_buf[midi.cmd_pos++]=data;
 		    if (midi.cmd_pos >= midi.cmd_len) {
-				out->sendMessage(midi.cmd_buf, midi.cmd_len);
+				audio->midiOutData(devId, midi.cmd_buf, midi.cmd_len);
 			    midi.cmd_pos=1;		//Use Running status
 		    }
 	    }
@@ -220,7 +203,10 @@ void DevSequencer::MIDI_RawOutByte(U8 data) {
 U32 DevSequencer::writeNative(U8* buffer, U32 len) {
     for (U32 i=0;i<len;i+=4) {
         if (buffer[i]==5) {
-            MIDI_RawOutByte(buffer[i+1]);
+            if (!audio->midiOutIsOpen(buffer[i+2])) {
+                audio->midiOutOpen(buffer[i+2]);
+            }
+            MIDI_RawOutByte(buffer[i+2], buffer[i+1]);
         } else {
             klog("Unhandled midi msg: %X", buffer[i]);
         }

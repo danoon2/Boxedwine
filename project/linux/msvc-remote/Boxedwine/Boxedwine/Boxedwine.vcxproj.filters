@@ -686,9 +686,6 @@
     <ClCompile Include="..\..\..\..\..\platform\linux\platformOpenGL.cpp">
       <Filter>platform</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\sdl\wineaudiodrv.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\ring_buffer.cpp">
       <Filter>source\util</Filter>
     </ClCompile>

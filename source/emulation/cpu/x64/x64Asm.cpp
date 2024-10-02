@@ -3285,11 +3285,6 @@ void X64Asm::syscall(U32 opLen) {
     doJmp(true);
 }
 
-void X64Asm::int98(U32 opLen) {
-    emulateSingleOp(currentOp);
-    done = true;
-}
-
 void X64Asm::int99(U32 opLen) {
     emulateSingleOp(currentOp);
     done = true;

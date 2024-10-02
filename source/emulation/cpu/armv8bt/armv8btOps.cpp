@@ -2954,11 +2954,6 @@ void opInt80(Armv8btAsm* data) {
     data->releaseTmpReg(tmpReg);
     data->doJmp(false);
 }
-
-void opInt98(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
-    data->done = true;
-}
 void opInt99(Armv8btAsm* data) {
     data->emulateSingleOp(data->currentOp);
     data->done = true;
@@ -6574,7 +6569,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opInvalid,
     opInt3,
     opInt80,
-    opInt98,
     opInt99,
     opInt9A,
     opInt9B,

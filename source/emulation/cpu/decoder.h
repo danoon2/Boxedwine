@@ -461,7 +461,6 @@ enum Instruction {
     Invalid, 
     Int3,
     Int80,
-    Int98,
     Int99,
     Int9A,
     Int9B,

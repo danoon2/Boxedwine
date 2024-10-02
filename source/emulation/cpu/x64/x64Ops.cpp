@@ -1154,8 +1154,6 @@ static U32 intIb(X64Asm* data) {
     U8 i = data->fetch8();
     if (i==0x80) {
         data->syscall(data->ip-data->startOfOpIp);
-    } else if (i==0x98) {
-        data->int98(data->ip-data->startOfOpIp);
     } else if (i==0x99) {
         data->int99(data->ip-data->startOfOpIp);
     } else if (i == 0x9A) {

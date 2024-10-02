@@ -22,14 +22,6 @@ U32 common_bound32(CPU* cpu, U32 reg, U32 address){
         return 1;
     }
 }
-void common_int98(CPU* cpu){
-    U32 index = cpu->peek32(0);
-    if (index < wine_audio_callback_size) {
-        wine_audio_callback[index](cpu);
-    } else {
-        kpanic("Uknown int 98 call: %d", index);
-    }
-}
 void common_int99(CPU* cpu){
     U32 index = cpu->peek32(0);
     callOpenGL(cpu, index);    

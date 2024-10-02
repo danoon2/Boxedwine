@@ -303,7 +303,6 @@
     <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\sdl\wineaudiodrv.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testCPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testMMX.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testSSE.cpp" />
