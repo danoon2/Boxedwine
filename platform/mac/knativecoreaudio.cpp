@@ -80,6 +80,7 @@ public:
 static bool CoreAudio_MIDIInit();
 static bool initialized;
 static bool isLoaded;
+static U32 MIDIOut_NumDevs = 0;
 
 bool KNativeAudioCoreAudio::load() {
     if (!initialized) {
@@ -390,14 +391,10 @@ bool KNativeAudioCoreAudio::midiOutIsOpen(U32 wDevID) {
     return true;
 }
 
-U32 KNativeAudioCoreAudio::midiInReset(U32 wDevID) {
-	// return MIDIIn_Reset(wDevID);
-    return E_FAIL;
+U32 KNativeAudioCoreAudio::midiOutReset(U32 wDevID) {
+    return 0;
 }
 
-void KNativeAudioCoreAudio::cleanup() {
-    
-}
 void initCoreAudio() {
     KNativeAudio::availableAudio.push_back(std::make_shared<KNativeAudioCoreAudio>());
 }
