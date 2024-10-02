@@ -51,21 +51,6 @@ pipeline {
                         '''
                     }
                 }
-                stage ('Test Mac (x86)') {
-                    agent {
-                        label "mac"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        sh '''#!/bin/bash
-                            cd project/mac-xcode
-                            /bin/bash buildTest.sh || exit
-                            bin/BoxedwineTest.app/Contents/MacOS/BoxedwineTest
-                        '''
-                    }
-                }
                 stage ('Test Raspberry Pi (ARMv7)') {
                     agent {
                         label "raspberry"
@@ -217,33 +202,6 @@ pipeline {
                         }
                     }
                 }
-                stage ('Build Mac (x86)') {
-                    agent {
-                        label "mac"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        dir("project/mac-xcode") {
-                            sh '''#!/bin/bash
-                                rm -rf bin/Boxedwine.app
-                                rm -rf Deploy/MacIntel/Boxedwine.app
-                                mkdir -p Deploy/MacIntel
-                                /bin/bash buildRelease.sh
-                                if [ ! -d "bin/Boxedwine.app" ] 
-                                then
-                                    echo "bin/Boxedwine.app DOES NOT exists."
-                                    exit 999
-                                fi
-                                mv bin/Boxedwine.app/ Deploy/MacIntel/
-                            '''
-                        }
-                        dir("project/mac-xcode") {
-                            stash includes: 'Deploy/MacIntel/**', name: 'mac'                            
-                        }
-                    }
-                }
                 stage ('Build Raspberry Pi (ARMv7)') {
                     agent {
                         label "raspberry"
@@ -361,39 +319,6 @@ pipeline {
                         script { 
                             gitCheckout() 
                         }
-                        dir("project/mac-xcode") {
-                            sh '''#!/bin/bash
-                                curl -z automation3.zip http://boxedwine.org/v2/automation3.zip --output automation3.zip
-                                rm -rf automation
-                                unzip automation3.zip
-
-                                rm -rf bin/BoxedwineAutomation.app
-                                /bin/bash buildAutomation.sh
-                                if [ ! -d "bin/BoxedwineAutomation.app" ] 
-                                then
-                                    echo "bin/BoxedwineAutomation.app DOES NOT exists."
-                                    exit 999
-                                fi
-                            '''
-                        }
-                        
-                        dir("project/mac-xcode/automation") {
-                            retry(3) {
-                                sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
-                                '''
-                            }
-                        }
-                    }
-                }
-                stage ('Mac Automation (x86)') {
-                    agent {
-                        label "mac"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }                      
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
                                 curl -z automation3.zip http://boxedwine.org/v2/automation3.zip --output automation3.zip

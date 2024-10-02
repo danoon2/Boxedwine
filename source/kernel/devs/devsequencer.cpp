@@ -201,6 +201,9 @@ void DevSequencer::MIDI_RawOutByte(U32 devId, U8 data) {
 }
 
 U32 DevSequencer::writeNative(U8* buffer, U32 len) {
+	if (!KSystem::soundEnabled) {
+		return len;
+	}
     for (U32 i=0;i<len;i+=4) {
         if (buffer[i]==5) {
             if (!audio->midiOutIsOpen(buffer[i+2])) {

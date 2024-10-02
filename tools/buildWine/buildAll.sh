@@ -69,11 +69,11 @@ do_build()
     done
     if ((BVERSION >= 5210))
     then
-      if ((BVERSION <= 61800))
+      if ((BVERSION <= 6180))
       then
         echo "git apply ../patches/wine6_font_race.patch" >> ../tmp_install/build.txt
         git apply ../patches/wine6_font_race.patch
-      elif ((BVERSION <= 62100))
+      elif ((BVERSION <= 6210))
       then
         echo "git cherry-pick 39fea6cd1eb175cddf3cbccc1fd09fec48da881e --no-commit" >> ../tmp_install/build.txt
         git cherry-pick 39fea6cd1eb175cddf3cbccc1fd09fec48da881e --no-commit
