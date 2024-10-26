@@ -143,7 +143,16 @@ void Player::runSlice() {
         currentInputModifiers = atoi(nextValue.c_str());
         instance->readCommand();
     } else if (this->nextCommand == "CLICKWHILEWAITING") {
-        mouseClickTimerWhileWaiting = atoi(nextValue.c_str());
+        std::vector<BString> items;
+        this->nextValue.split(',', items);
+        mouseClickTimerWhileWaiting = atoi(items[0].c_str());
+        if (items.size() > 2) {
+            nextMouseX = atoi(items[1].c_str());
+            nextMouseY = atoi(items[2].c_str());
+        } else {
+            nextMouseX = 1;
+            nextMouseY = 1;
+        }
         nextMouseClickTime = KSystem::getMilliesSinceStart() + mouseClickTimerWhileWaiting * 1000;
         instance->readCommand();
     }
@@ -284,8 +293,9 @@ void Player::runSlice() {
         }
         if (this->nextCommand == "SCREENSHOT" && mouseClickTimerWhileWaiting && nextMouseClickTime < KSystem::getMilliesSinceStart()) {
             nextMouseClickTime = KSystem::getMilliesSinceStart() + mouseClickTimerWhileWaiting * 1000;
-            input->mouseButton(1, 0, 1, 1);
-            input->mouseButton(0, 0, 1, 1);
+            input->mouseButton(1, 0, nextMouseX, nextMouseY);
+            input->mouseButton(0, 0, nextMouseX, nextMouseY);
+            klog("script CLICKWHILEWAITING");
         }
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {

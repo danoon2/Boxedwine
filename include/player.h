@@ -23,6 +23,8 @@ private:
     std::thread comparingThread;
     U32 nextMouseClickTime = 0;
     U32 mouseClickTimerWhileWaiting = 0;
+    U32 nextMouseX = 0;
+    U32 nextMouseY = 0;
 
     void readCommand();        
 };

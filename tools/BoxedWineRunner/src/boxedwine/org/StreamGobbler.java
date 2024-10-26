@@ -9,12 +9,14 @@ import java.util.Vector;
 public class StreamGobbler implements Runnable
 {
     private final InputStream _inputStream;
+    private final String name;
     public boolean scriptFinished = false;
     public Vector<String> lines;
 
-    StreamGobbler(InputStream is)
+    StreamGobbler(InputStream is, String name)
     {
         _inputStream = is;
+        this.name = name;
     }
 
     public void run()
@@ -33,7 +35,7 @@ public class StreamGobbler implements Runnable
                 }
                 lines.addElement(line);
                 if (Main.verbose) {
-                    System.out.println(line);
+                    System.out.println("  " + name + ": " +line);
                 }
             }
         }
