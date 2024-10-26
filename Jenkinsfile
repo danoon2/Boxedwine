@@ -51,22 +51,6 @@ pipeline {
                         '''
                     }
                 }
-                stage ('Test Raspberry Pi (ARMv7)') {
-                    agent {
-                        label "raspberry"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        dir("project/linux") {
-                            sh '''#!/bin/bash
-                                make testJit || exit
-                                ./Build/TestJit/boxedwine
-                            '''
-                        }
-                    }
-                }
                 stage ('Test Linux (ARMv8)') {
                     agent {
                         label "linuxArm64"
@@ -199,33 +183,6 @@ pipeline {
                         }
                         dir("project/mac-xcode") {
                             stash includes: 'Deploy/Mac/**', name: 'macArmv8'                            
-                        }
-                    }
-                }
-                stage ('Build Raspberry Pi (ARMv7)') {
-                    agent {
-                        label "raspberry"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        dir("project/linux") {
-                            sh '''#!/bin/bash
-                                rm Build/Jit/boxedwine
-                                rm Deploy/RaspberryPi/boxedwine
-                                mkdir -p Deploy/RaspberryPi
-                                make jit
-                                if [ ! -f "Build/Jit/boxedwine" ] 
-                                then
-                                    echo "Build/Jit/boxedwine DOES NOT exists."
-                                    exit 999
-                                fi
-                                mv Build/Jit/boxedwine Deploy/RaspberryPi/
-                            '''
-                        }
-                        dir("project/linux") {
-                            stash includes: 'Deploy/RaspberryPi/boxedwine', name: 'raspberry'
                         }
                     }
                 }
@@ -406,7 +363,6 @@ pipeline {
                     unstash "web"
                     unstash "linux64"
                     unstash "macArmv8"
-                    unstash "raspberry"
                     unstash "linuxArm64"
                     unstash "windows"
                     dir('Deploy') {

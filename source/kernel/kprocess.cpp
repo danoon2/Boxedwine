@@ -28,6 +28,7 @@
 #include "../io/fsmemopennode.h"
 #include "../io/fsfilenode.h"
 #include "../x11/x11.h"
+#include "kunixsocket.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -2286,6 +2287,46 @@ struct statx {
 #define STATX_DIOALIGN		0x00002000U	// Want/got direct I/O alignment info 
 
 */
+
+void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U32 len, U32 seconds, U32 nano) {
+    // 0x00
+    memory->writed(buf, 0xfff); buf += 4; // stx_mask
+    memory->writed(buf, 512); buf += 4; // stx_blksize
+    memory->writeq(buf, 0); buf += 8; // stx_attributes
+    // 0x10
+    memory->writed(buf, hardLinkCount); buf += 4; // stx_nlink
+    memory->writed(buf, userId); buf += 4; // stx_uid
+    memory->writed(buf, groupId); buf += 4; // stx_gid
+    memory->writew(buf, mode); buf += 2; // stx_mode
+    memory->writew(buf, 0); buf += 2; // 
+    // 0x20
+    memory->writeq(buf, id); buf += 8; // stx_ino
+    memory->writeq(buf, len); buf += 8; // stx_size
+    memory->writeq(buf, (len + 511) / 512); buf += 8; // stx_blocks
+    memory->writeq(buf, 0); buf += 8; // stx_attributes_mask
+    // 0x40
+    memory->writeq(buf, seconds); buf += 8; // stx_atime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_btime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_ctime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_mtime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    // 0x80
+    memory->writed(buf, rdev); buf += 4; // stx_rdev_major
+    memory->writed(buf, 0); buf += 4; // stx_rdev_minor
+    memory->writed(buf, 1); buf += 4; // stx_dev_major
+    memory->writed(buf, 0); buf += 4; // stx_dev_minor
+    // 0x90
+    memory->writeq(buf, 1); buf += 8; // stx_mnt_id
+    memory->writed(buf, 0); buf += 4; // stx_dio_mem_align
+    memory->writed(buf, 0);           // stx_dio_offset_align
+}
 U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     BString dir;
     U32 result = 0;
@@ -2296,9 +2337,23 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
             path = dir;
             dir = BString::empty;
         }
+    } else if (!path.startsWith("/")) {
+        result = getCurrentDirectoryFromDirFD(dirfd, dir);
     }
-    if (result)
+    if (result) {
+        if (result == -K_ENOTDIR) {
+            KFileDescriptor* fd = this->getFileDescriptor(dirfd);
+            if (fd->kobject->type == KTYPE_UNIX_SOCKET) {
+                std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
+                U64 t = s->lastModifiedTime;
+                U64 seconds = t / 1000;
+                U32 n = (U32)(t % 1000) * 1000000;
+                writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n);
+                return 0;
+            }
+        }
         return result;
+    }        
     bool isLink = false;
 
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0, &isLink);
@@ -2314,44 +2369,9 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     U64 t = node->lastModified();
     U64 seconds = t / 1000;
     U32 n = (U32)(t % 1000) * 1000000;
+    U32 hardLinkCount = node->getHardLinkCount();
 
-    // 0x00
-    memory->writed(buf, 0xfff); buf += 4; // stx_mask
-    memory->writed(buf, 512); buf += 4; // stx_blksize
-    memory->writeq(buf, 0); buf += 8; // stx_attributes
-    // 0x10
-    memory->writed(buf, node->getHardLinkCount()); buf += 4; // stx_nlink
-    memory->writed(buf, userId); buf += 4; // stx_uid
-    memory->writed(buf, groupId); buf += 4; // stx_gid
-    memory->writew(buf, mode); buf += 2; // stx_mode
-    memory->writew(buf, 0); buf += 2; // 
-    // 0x20
-    memory->writeq(buf, node->id); buf += 8; // stx_ino
-    memory->writeq(buf, len); buf += 8; // stx_size
-    memory->writeq(buf, (len+511)/512); buf += 8; // stx_blocks
-    memory->writeq(buf, 0); buf += 8; // stx_attributes_mask
-    // 0x40
-    memory->writeq(buf, seconds); buf += 8; // stx_atime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_btime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_ctime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_mtime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    // 0x80
-    memory->writed(buf, node->rdev); buf += 4; // stx_rdev_major
-    memory->writed(buf, 0); buf += 4; // stx_rdev_minor
-    memory->writed(buf, 1); buf += 4; // stx_dev_major
-    memory->writed(buf, 0); buf += 4; // stx_dev_minor
-    // 0x90
-    memory->writeq(buf, 1); buf += 8; // stx_mnt_id
-    memory->writed(buf, 0); buf += 4; // stx_dio_mem_align
-    memory->writed(buf, 0);           // stx_dio_offset_align
+    writeStatX(memory, buf, node->id, node->rdev, hardLinkCount, userId, groupId, mode, len, seconds, n);
     return 0;
 }
 

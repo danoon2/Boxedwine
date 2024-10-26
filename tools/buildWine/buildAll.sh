@@ -109,7 +109,7 @@ do_build()
     fi
 
     set -x
-    ./configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --prefix=/opt/wine --disable-tests $EXTRA_ARGS
+    ./configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --without-ldap --prefix=/opt/wine --disable-tests $EXTRA_ARGS
     make -j$(getconf _NPROCESSORS_ONLN)
     #todo find another way to achieve what I want without using sudo
     sudo rm -rf /opt/wine
@@ -129,13 +129,16 @@ do_build()
     rm -rf tmp
     if [ -d opt/wine/lib/wine/i386-unix ]
     then
-        rm opt/wine/lib/wine/i386-unix/winemenubuilder.exe.so
+        if [ -f opt/wine/lib/wine/i386-unix/winemenubuilder.exe.so ]
+        then
+          rm opt/wine/lib/wine/i386-unix/winemenubuilder.exe.so
+        fi
         if [ -f opt/wine/lib/wine/i386-unix/libwine.so.1 ]
         then
           rm opt/wine/lib/wine/i386-unix/libwine.so.1
           printf "libwine.so.1.0" > opt/wine/lib/wine/i386-unix/libwine.so.1.link
         fi
-        mv opt/wine/lib/wine/i386-unix/wineoss.drv.so opt/wine/lib/wine/i386-unix/wineoss.drv.dsp.so
+        #mv opt/wine/lib/wine/i386-unix/wineoss.drv.so opt/wine/lib/wine/i386-unix/wineoss.drv.dsp.so
     else
         rm opt/wine/lib/wine/winemenubuilder.exe.so
         rm -f opt/wine/lib/libwine.so 
@@ -158,7 +161,7 @@ do_build()
     then
       echo "Patched: $PATCHES" >> build.txt
     fi
-    echo './configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --prefix=/opt/wine --disable-tests $EXTRA_ARGS' >> build.txt
+    echo './configure LDFLAGS="-s" CFLAGS="-O2 -msse2 -march=pentium4 -mfpmath=sse $EXTRA" --without-cups --without-pulse --without-dbus --without-sane --without-hal --without-udev --without-usb --without-xshape --without-xshm --without-ldap --prefix=/opt/wine --disable-tests $EXTRA_ARGS' >> build.txt
     echo "make " >> build.txt
     cp ../TinyCore15WineBase.zip ../Wine-$VERSION.zip
     zip -ur ../Wine-$VERSION.zip *
