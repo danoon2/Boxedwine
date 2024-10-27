@@ -80,7 +80,7 @@ U32 KNativeScreenSDL::screenBpp() {
 }
 
 U32 KNativeScreenSDL::screenRate() {
-    if (!KSystem::videoEnabled) {
+    if (KSystem::videoOption == VIDEO_NO_WINDOW) {
         return 60;
     }
     SDL_DisplayMode DM;
@@ -121,8 +121,10 @@ void KNativeScreenSDL::showWindow(bool show) {
             SDL_HideWindow(window);
             visible = false;            
         } else {
-            SDL_ShowWindow(window);
-            SDL_RaiseWindow(window);
+            if (KSystem::videoOption == VIDEO_NORMAL) {
+                SDL_ShowWindow(window);
+                SDL_RaiseWindow(window);
+            }
             visible = true;
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST) && defined(BOXEDWINE_UI_LAUNCH_IN_PROCESS)
             if (uiIsRunning()) {
@@ -158,7 +160,7 @@ void KNativeScreenSDL::clear() {
         }
     }
 #endif
-    if (KSystem::videoEnabled && renderer) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer) {
         SDL_SetRenderDrawColor(renderer, 58, 110, 165, 255);
         SDL_RenderClear(renderer);
     }
@@ -191,7 +193,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         lastUpdateTime = KSystem::getMilliesSinceStart();
     }
     if (!wnd->sdlTexture) {
-        if (KSystem::videoEnabled && renderer) {
+        if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer) {
             wnd->sdlTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
         }
         wnd->sdlTextureHeight = height;
@@ -269,7 +271,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
     }    
 #endif     
 
-    if (KSystem::videoEnabled && renderer) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW && renderer) {
         if (isDirty) {
             SDL_UpdateTexture(wnd->sdlTexture, nullptr, bits, dstPitch);
         }
@@ -284,7 +286,7 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
 }
 
 void KNativeScreenSDL::present() {
-    if (KSystem::videoEnabled) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW) {
         if (showOnDraw) {
             showWindow(true);
         }
@@ -509,7 +511,7 @@ bool KNativeScreenSDL::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32
 }
 
 void KNativeScreenSDL::buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) {
-    if (!KSystem::videoEnabled) {
+    if (KSystem::videoOption == VIDEO_NO_WINDOW) {
         return;
     }
     U8* buffer = thread->memory->lockReadOnlyMemory(pixelsAddress, width * height * 4);
@@ -528,7 +530,7 @@ void KNativeScreenSDL::buildCursor(KThread* thread, const std::shared_ptr<XCurso
 }
 
 void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
-    if (!KSystem::videoEnabled) {
+    if (KSystem::videoOption == VIDEO_NO_WINDOW) {
         return;
     }
     SDL_Cursor* sdlCursor;
@@ -630,7 +632,7 @@ void KNativeScreenSDL::destroyMainWindow() {
 }
 
 void KNativeScreenSDL::recreateMainWindow() {
-    if (KSystem::videoEnabled) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW) {
         destroyMainWindow();
         SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, scaleQuality.c_str());
 

@@ -196,7 +196,7 @@ void SDLGlWindow::showWindow(bool show) {
     if (show == visible) {
         return;
     }
-    if (KSystem::videoEnabled) {
+    if (KSystem::videoOption != VIDEO_NO_WINDOW) {
         KNativeSystem::getCurrentInput()->runOnUiThread([this, show]() {
             if (!show) {
                 shownGlWindows--;

@@ -475,7 +475,7 @@ bool StartUpArgs::apply() {
 #endif
         }
     }
-    KSystem::videoEnabled = this->videoEnabled;
+    KSystem::videoOption = this->videoOption;
     KSystem::soundEnabled = this->soundEnabled;
     KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     KNativeAudio::init();
@@ -600,7 +600,11 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-nosound")) {
 			this->soundEnabled = false;
         } else if (!strcmp(argv[i], "-novideo")) {
-			this->videoEnabled = false;
+#ifdef BOXEDWINE_MSVC
+            this->videoOption = VIDEO_HIDE_WINDOW;
+#else
+            this->videoOption = VIDEO_NO_WINDOW;
+#endif
         } else if (!strcmp(argv[i], "-env")) {
 			this->envValues.push_back(BString::copy(argv[i+1]));
             i++;

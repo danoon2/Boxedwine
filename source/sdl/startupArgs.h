@@ -33,7 +33,7 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), vsync(VSYNC_DEFAULT), dpiAware(false), skipFrameFPS(0), readyToLaunch(false), openGlType(OPENGL_TYPE_NOT_SET), ttyPrepend(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality(B("0")), cpuAffinity(0) {
+    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoOption(VIDEO_NORMAL), vsync(VSYNC_DEFAULT), dpiAware(false), skipFrameFPS(0), readyToLaunch(false), openGlType(OPENGL_TYPE_NOT_SET), ttyPrepend(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality(B("0")), cpuAffinity(0) {
         workingDir = B("/home/username");
     }
     bool loadDefaultResource(const char* app);
@@ -75,7 +75,7 @@ public:
     int effectiveGroupId;
 
     bool soundEnabled;
-    bool videoEnabled;
+    VideoOption videoOption;
     U32 vsync;
     bool dpiAware;
     U32 skipFrameFPS;

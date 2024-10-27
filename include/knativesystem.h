@@ -11,7 +11,7 @@ class XWindow;
 
 class KNativeSystem {
 public:
-	static bool init(bool allowVideo, bool allowAudio);
+	static bool init(VideoOption videoOption, bool allowAudio);
 	static void initWindow(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync);
 	static void exit(const char* msg, U32 code);
 	static void forceShutdown();

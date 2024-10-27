@@ -82,7 +82,7 @@ int boxedmain(int argc, const char **argv) {
     Platform::init();
     // currently to fake sound, we really need to play it and just silence it right before it goes to speaker, 
     // this way the timing of the callback to get the audio from wine are correct.  Without this timing, things can hange.
-    if (!KNativeSystem::init(startupArgs.videoEnabled, true/* startupArgs.soundEnabled */)) {
+    if (!KNativeSystem::init(startupArgs.videoOption, true/* startupArgs.soundEnabled */)) {
         return 1;
     }
 #ifndef BOXEDWINE_DISABLE_UI

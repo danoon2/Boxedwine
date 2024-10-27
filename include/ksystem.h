@@ -81,9 +81,15 @@ public:
     U32 cgid = 0;
 };
 
+enum VideoOption {
+    VIDEO_NORMAL,
+    VIDEO_NO_WINDOW,
+    VIDEO_HIDE_WINDOW
+};
+
 class KSystem {
 public:    
-    static bool videoEnabled;
+    static VideoOption videoOption;
     static U32 openglType;
     static bool soundEnabled;
     static U32 pentiumLevel;

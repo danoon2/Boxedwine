@@ -32,7 +32,7 @@
 
 bool KSystem::modesInitialized = false;
 U32 KSystem::skipFrameFPS = 0;
-bool KSystem::videoEnabled = true;
+VideoOption KSystem::videoOption = VIDEO_NORMAL;
 #ifdef BOXEDWINE_OPENGL_SDL
 U32 KSystem::openglType = OPENGL_TYPE_SDL;
 #elif defined (BOXEDWINE_OPENGL_OSMESA) 

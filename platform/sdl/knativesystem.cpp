@@ -25,10 +25,10 @@ int main(int argc, char** argv) {
 static KNativeScreenSDLPtr screen;
 static KOpenGLPtr opengl;
 
-bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
+bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
 
-    if (allowVideo) {
+    if (videoOption != VIDEO_NO_WINDOW) {
         flags |= SDL_INIT_VIDEO;
     }
     if (allowAudio) {
