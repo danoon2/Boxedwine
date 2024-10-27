@@ -383,7 +383,7 @@ void PlatformOpenGL::init() {
 				formatsById.set(format->id, format);
                 formats.push_back(format);
 			}
-            if (KSystem::videoEnabled) {
+            if (KSystem::videoOption == VIDEO_NORMAL) {
                 //hardwareListLoaded = queryOpenGL(formatsById, formats);
             }
 
