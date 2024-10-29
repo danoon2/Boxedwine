@@ -298,7 +298,7 @@ void Player::runSlice() {
             klog("script CLICKWHILEWAITING");
         }
     }
-    if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
+    if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
         klog("script timed out %s", this->directory.c_str());
         screen->screenShot(B("failed.bmp"), nullptr, 0);
         screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
