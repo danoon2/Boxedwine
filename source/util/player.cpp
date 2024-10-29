@@ -283,7 +283,6 @@ void Player::runSlice() {
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
-                screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
             } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->screenShot(B(""), buffer, bufferlen)) {
                 if (comparingThread.native_handle() == 0) {
                     comparingThread = std::thread(bitmapCompareThread, this);
