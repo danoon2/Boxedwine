@@ -91,6 +91,7 @@ public:
     BString recordAutomation;
     BString runAutomation;
 
+    BString ddrawOverridePath;
 private:
     bool workingDirSet;
     bool resolutionSet;    

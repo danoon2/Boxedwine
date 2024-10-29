@@ -63,7 +63,9 @@ void KNativeSystem::tick() {
 }
 
 void KNativeSystem::showScreen(bool show) {
-    screen->showWindow(show);
+    if (screen) {
+        screen->showWindow(show);
+    }
 }
 
 void KNativeSystem::warpMouse(S32 x, S32 y) {

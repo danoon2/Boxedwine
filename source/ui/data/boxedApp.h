@@ -65,6 +65,7 @@ private:
     U32 fullScreen = FULLSCREEN_NOTSET;
     U32 vsync = VSYNC_NOT_SET;
     bool dpiAware = false;
+    bool ddrawOverride = false;
     bool autoRefresh = false;
     BString glExt;
     int scale = 0;

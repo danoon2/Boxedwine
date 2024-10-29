@@ -320,6 +320,12 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
             this->currentAppChanged = true;
         };
     }
+
+    appDdrawOverrideControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_LABEL, Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_HELP, false);
+    appDdrawOverrideControl->onChange = [this]() {
+        this->currentAppChanged = true;
+        };
+
     appPollRateControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_POLL_RATE_LABEL, Msg::CONTAINER_VIEW_POLL_RATE_HELP);
     appPollRateControl->onChange = [this]() {
         this->currentApp->pollRate = atoi(appPollRateControl->getText().c_str());
@@ -554,6 +560,7 @@ bool ContainersView::saveChanges() {
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
+            this->currentApp->ddrawOverride = this->appDdrawOverrideControl->isChecked();
             this->currentApp->autoRefresh = appDirectDrawAutoRefreshControl->isChecked();
 #ifdef BOXEDWINE_MULTI_THREADED
             this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
@@ -602,6 +609,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appFullScreenControl->setSelectionIntValue(app->fullScreen);
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
+    appDdrawOverrideControl->setCheck(app->ddrawOverride);
     appPollRateControl->setText(BString::valueOf(app->pollRate));
     appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));
     appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);

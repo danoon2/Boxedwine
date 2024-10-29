@@ -848,7 +848,9 @@ void KSystem::setFileCache(BString name, const std::shared_ptr<MappedFileCache>&
 
 void KSystem::internalEraseProcess(U32 id) {
     KSystem::processes.remove(id);
-    KSystem::procNode->removeChildByName(BString::valueOf(id));
+    if (KSystem::procNode) {
+        KSystem::procNode->removeChildByName(BString::valueOf(id));
+    }
 }
 
 void KSystem::eraseProcess(U32 id) {

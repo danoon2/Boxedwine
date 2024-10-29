@@ -238,6 +238,10 @@ std::vector<BString> StartUpArgs::buildArgs() {
     for (auto& a : this->args) {
         args.push_back(a);
     }
+    if (!this->ddrawOverridePath.isEmpty()) {
+        args.push_back(B("-ddrawOverride"));
+        args.push_back(this->ddrawOverridePath);
+    }
     return args;
 }
 
@@ -356,7 +360,23 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
-    //envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
+
+    if (!this->ddrawOverridePath.isEmpty()) {
+        envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
+        std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, this->ddrawOverridePath, true);
+        if (!parent) {
+            klog("-ddrawOverride %s not found", this->ddrawOverridePath.c_str());
+        }
+        std::shared_ptr<FsNode> ddrawParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/ddraw"), true);
+        if (!ddrawParent) {
+            klog("-ddrawOverride was specificied but /home/username/.wine/drive_c/ddraw was not found in the file system");
+        }
+        if (parent && ddrawParent) {
+            Fs::addFileNode(this->ddrawOverridePath + "/ddraw.dll", B("/home/username/.wine/drive_c/ddraw/ddraw.dll"), ddrawParent->nativePath.stringByApppendingPath("ddraw.dll"), false, parent);
+            Fs::addFileNode(this->ddrawOverridePath + "/ddraw.ini", B("/home/username/.wine/drive_c/ddraw/ddraw.ini"), ddrawParent->nativePath.stringByApppendingPath("ddraw.ini"), false, parent);
+        }
+    }
+
     //envValues.push_back(B("WINEDEBUG=+d3d"));
 
                             
@@ -724,7 +744,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         }
 #endif
-        else {
+        else if (!strcmp(argv[i], "-ddrawOverride")) {
+            this->ddrawOverridePath = argv[i + 1];
+            i++;
+        } else {
             break;
         }
     } 

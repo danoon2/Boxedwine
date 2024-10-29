@@ -52,6 +52,10 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             container->setGDI(true);
             container->setRenderer(B("gdi"));
             hasContainerOption = true;
+        } else if (option == "DDraw") {
+            if (app) {
+                app->ddrawOverride = true;
+            }
         } else if (option.startsWith("glext=")) {
             if (app) {
                 app->glExt = option.substr(6);
@@ -215,6 +219,11 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
                 GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
                 container->launch();
+                BString path = GlobalSettings::getAutomationFolder(container);
+                if (!Fs::doesNativePathExist(path)) {
+                    Fs::makeNativeDirs(path);
+                }
+                GlobalSettings::startUpArgs.recordAutomation = path;
                 if (mountPath.length()) {
                     GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/mnt/demo"), mountPath, false));
                     GlobalSettings::startUpArgs.setWorkingDir(B("/mnt/demo"));
