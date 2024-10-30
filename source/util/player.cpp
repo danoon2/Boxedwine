@@ -142,20 +142,28 @@ void Player::runSlice() {
     if (this->nextCommand == "MODIFIERS") {
         currentInputModifiers = atoi(nextValue.c_str());
         instance->readCommand();
-    } else if (this->nextCommand == "CLICKWHILEWAITING") {
+    } else if (this->nextCommand == "WHILEWAITING") {
         std::vector<BString> items;
         this->nextValue.split(',', items);
-        mouseClickTimerWhileWaiting = atoi(items[0].c_str());
-        if (items.size() > 2) {
-            nextMouseX = atoi(items[1].c_str());
-            nextMouseY = atoi(items[2].c_str());
-        } else {
-            nextMouseX = 1;
-            nextMouseY = 1;
+        timerWhileWaiting = atoi(items[0].c_str());
+        if (items.size() > 1) {
+            waitCommand = items[1];
         }
-        nextMouseClickTime = KSystem::getMilliesSinceStart() + mouseClickTimerWhileWaiting * 1000;
+        if (waitCommand == "LBUTTON") {
+            if (items.size() > 3) {
+                waitMouseX = atoi(items[2].c_str());
+                waitMouseY = atoi(items[3].c_str());
+            } else {
+                waitMouseX = 1;
+                waitMouseY = 1;
+            }
+        } else if (waitCommand == "KEY") {
+            waitKey = atoi(items[2].c_str());
+        }
+        nextWaitTime = KSystem::getMilliesSinceStart() + timerWhileWaiting * 1000;
         instance->readCommand();
     }
+
     if (KSystem::getMicroCounter()<this->lastCommandTime+10000)
         return;
 
@@ -174,11 +182,29 @@ void Player::runSlice() {
         return;
     } 
     // 1000 ms between all other commands
-    if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand != "SCREENSHOT")
+    if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand != "SCREENSHOT" && !processWaitCommand)
         return;
     // at least 100 ms between mouse or key down/up
     if (KSystem::getMicroCounter()<this->lastCommandTime+100000)
         return;
+
+    // process before any other command so that button up/down and key up/down stays balanced
+    if (processWaitCommand) {
+        if (waitCommand == "LBUTTON") {
+            processWaitCommand = false;
+            this->lastCommandTime = KSystem::getMicroCounter();
+            input->mouseButton(0, 0, waitMouseX, waitMouseY);
+            klog("script WHILEWAITING LBUTTON");
+            return;
+        } else if (waitCommand == "KEY") {
+            processWaitCommand = false;
+            this->lastCommandTime = KSystem::getMicroCounter();
+            input->key(waitKey, 0, 0);
+            klog("script WHILEWAITING KEY");
+            return;
+        }
+    }
+
     if (this->nextCommand=="MOUSEDOWN" || this->nextCommand=="MOUSEUP") {
         std::vector<BString> items;
         this->nextValue.split(',', items);
@@ -188,15 +214,9 @@ void Player::runSlice() {
         }
         input->mouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
         instance->readCommand();
-        if (this->nextCommand=="MOUSEUP") {
-            runSlice();
-        }
     } else if (this->nextCommand=="KEYDOWN" || this->nextCommand=="KEYUP") {
         input->key(atoi(this->nextValue.c_str()), 0, (this->nextCommand=="KEYDOWN")?1:0);
         instance->readCommand();
-        if (this->nextCommand=="KEYUP") {
-            runSlice();
-        }
     } else if (this->nextCommand=="WAIT") {
         if (KSystem::getMicroCounter()>this->lastCommandTime+1000000l*this->nextValue.toInt64()) {
             klog("script: done waiting %s", this->nextValue.c_str());
@@ -245,7 +265,7 @@ void Player::runSlice() {
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
                 klog("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
-                this->mouseClickTimerWhileWaiting = 0;
+                this->timerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
@@ -279,7 +299,7 @@ void Player::runSlice() {
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
                 klog("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
-                this->mouseClickTimerWhileWaiting = 0;
+                this->timerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
                 comparingPixels = COMPARING_PIXELS_WAITING;
@@ -290,11 +310,18 @@ void Player::runSlice() {
                 comparingCond.notify_one();
             }
         }
-        if (this->nextCommand == "SCREENSHOT" && mouseClickTimerWhileWaiting && nextMouseClickTime < KSystem::getMilliesSinceStart()) {
-            nextMouseClickTime = KSystem::getMilliesSinceStart() + mouseClickTimerWhileWaiting * 1000;
-            input->mouseButton(1, 0, nextMouseX, nextMouseY);
-            input->mouseButton(0, 0, nextMouseX, nextMouseY);
-            klog("script CLICKWHILEWAITING");
+
+        if (this->nextCommand == "SCREENSHOT" && timerWhileWaiting && nextWaitTime < KSystem::getMilliesSinceStart()) {
+            nextWaitTime = KSystem::getMilliesSinceStart() + timerWhileWaiting * 1000;
+            if (waitCommand == "LBUTTON") {
+                input->mouseButton(1, 0, waitMouseX, waitMouseY);
+                processWaitCommand = true;
+                this->lastCommandTime = KSystem::getMicroCounter();
+            } else if (waitCommand == "KEY") {
+                input->key(waitKey, 0, 1);
+                processWaitCommand = true;
+                this->lastCommandTime = KSystem::getMicroCounter();
+            }
         }
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*5) {

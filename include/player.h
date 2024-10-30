@@ -21,10 +21,13 @@ public:
 private:    
     BString nextValue;
     std::thread comparingThread;
-    U32 nextMouseClickTime = 0;
-    U32 mouseClickTimerWhileWaiting = 0;
-    U32 nextMouseX = 0;
-    U32 nextMouseY = 0;
+    U32 nextWaitTime = 0;
+    U32 timerWhileWaiting = 0;
+    U32 waitMouseX = 0;
+    U32 waitMouseY = 0;
+    U32 waitKey = 0;
+    bool processWaitCommand = false;
+    BString waitCommand;
 
     void readCommand();        
 };

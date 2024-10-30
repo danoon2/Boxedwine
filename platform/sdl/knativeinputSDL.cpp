@@ -124,7 +124,7 @@ bool KNativeInputSDL::getMousePos(int* x, int* y, bool allowWarp) {
     if (Player::instance) {
         *x = lastX;
         *y = lastY;
-        return 0;
+        return checkMousePos(*x, *y, false);
     }
 #endif
     unsigned int result = SDL_GetMouseState(x, y);
