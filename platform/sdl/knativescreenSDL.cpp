@@ -235,8 +235,8 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
         S32 left = dstX;
         S32 srcTopAdjust = 0;
         S32 srcLeftAdjust = 0;
-        S32 bytesPerPixel = (bpp + 7) / 8;        
-        S32 recorderPitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
+        S32 bytesPerPixel = (this->bpp + 7) / 8;
+        S32 recorderPitch = (screenWidth() * ((this->bpp + 7) / 8) + 3) & ~3;
 
         if (top < 0) {
             wndHeight += top;
@@ -256,11 +256,11 @@ void KNativeScreenSDL::putBitsOnWnd(U32 id, U8* bits, U32 bitsPerPixel, U32 srcP
             wndHeight = screenHeight() - top;
         }
 
-        int pitch = (wndWidth * ((bpp + 7) / 8) + 3) & ~3;
+        int pitch = (wndWidth * ((this->bpp + 7) / 8) + 3) & ~3;
         if (dstX + wndWidth > (S32)screenWidth()) {
             wndWidth = screenWidth() - left;
         }
-        int copyPitch = (wndWidth * ((bpp + 7) / 8) + 3) & ~3;
+        int copyPitch = (wndWidth * ((this->bpp + 7) / 8) + 3) & ~3;
         for (int y = 0; y < wndHeight; y++) {
             S32 offset = recorderPitch * (y + top) + (left * bytesPerPixel);
             if (offset<0 || offset + copyPitch>(S32)recordBufferSize || copyPitch < 0) {
@@ -432,16 +432,38 @@ bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rec
             memcpy(buffer + y * outPitch, recordBuffer + (y + rect->y) * inPitch + (rect->x * bytesPerPixel), outPitch);
         }
         s = SDL_CreateRGBSurfaceFrom(buffer, rect->w, rect->h, bpp, outPitch, rMask, gMask, bMask, 0);
+        if (!pixels && bpp <= 16) { // buffer was passed in and needs to be filled
+            SDL_PixelFormat* format = SDL_AllocFormat(SDL_PIXELFORMAT_ARGB8888);
+
+            SDL_Surface* tmp = SDL_ConvertSurface(s, format, 0);
+            SDL_FreeFormat(format);
+
+            outPitch = (rect->w * ((32 + 7) / 8) + 3) & ~3;
+            int outLen = outPitch * rect->h;
+            memcpy(buffer, tmp->pixels, outLen);
+            SDL_FreeSurface(tmp);
+        }
     } else {
         int pitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
-        U32 len = pitch * screenHeight();
 
         s = SDL_CreateRGBSurfaceFrom(recordBuffer, screenWidth(), screenHeight(), bpp, pitch, rMask, gMask, bMask, 0);
         if (buffer) {
-            if (bufferlen < len) {
+            int outPitch = (screenWidth() * ((32 + 7) / 8) + 3) & ~3;
+            U32 outLen = outPitch * screenHeight();
+
+            if (bufferlen < outLen) {
                 return false;
             }
-            memcpy(buffer, recordBuffer, len);
+            if (bpp > 16) {
+                memcpy(buffer, recordBuffer, outLen);
+            } else {
+                SDL_PixelFormat* format = SDL_AllocFormat(SDL_PIXELFORMAT_ARGB8888);                
+
+                SDL_Surface* tmp = SDL_ConvertSurface(s, format, 0);
+                SDL_FreeFormat(format);
+                memcpy(buffer, tmp->pixels, outLen);
+                SDL_FreeSurface(tmp);
+            }
         }
     }
 

@@ -309,19 +309,18 @@ void Player::runSlice() {
                 }
                 comparingCond.notify_one();
             }
-        }
-
-        if (this->nextCommand == "SCREENSHOT" && timerWhileWaiting && nextWaitTime < KSystem::getMilliesSinceStart()) {
-            nextWaitTime = KSystem::getMilliesSinceStart() + timerWhileWaiting * 1000;
-            if (waitCommand == "LBUTTON") {
-                input->mouseButton(1, 0, waitMouseX, waitMouseY);
-                processWaitCommand = true;
-                this->lastCommandTime = KSystem::getMicroCounter();
-            } else if (waitCommand == "KEY") {
-                input->key(waitKey, 0, 1);
-                processWaitCommand = true;
-                this->lastCommandTime = KSystem::getMicroCounter();
-            }
+        }        
+    }
+    if ((this->nextCommand == "SCREENSHOT" || this->nextCommand == "DONE") && timerWhileWaiting && nextWaitTime < KSystem::getMilliesSinceStart()) {
+        nextWaitTime = KSystem::getMilliesSinceStart() + timerWhileWaiting * 1000;
+        if (waitCommand == "LBUTTON") {
+            input->mouseButton(1, 0, waitMouseX, waitMouseY);
+            processWaitCommand = true;
+            this->lastCommandTime = KSystem::getMicroCounter();
+        } else if (waitCommand == "KEY") {
+            input->key(waitKey, 0, 1);
+            processWaitCommand = true;
+            this->lastCommandTime = KSystem::getMicroCounter();
         }
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
