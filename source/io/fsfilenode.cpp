@@ -379,6 +379,15 @@ U32 FsFileNode::rename(BString path) {
                 ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
             }
             this->removeNodeFromParent();
+#ifdef BOXEDWINE_ZLIB
+            if (zipNode) {
+                std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+                if (fsZip) {
+                    fsZip->remove(this->path);
+                }
+                zipNode = nullptr;
+            }
+#endif
             this->path = path;
             this->nativePath = nativePath;
             this->name = Fs::getFileNameFromPath(path);

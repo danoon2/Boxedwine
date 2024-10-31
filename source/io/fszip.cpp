@@ -138,6 +138,7 @@ FsZip::~FsZip() {
 }
 
 void FsZip::remove(BString localPath) {
+    BOXEDWINE_CRITICAL_SECTION;
     std::vector<BString> lines;
     readLinesFromFile(deleteFilePath, lines);
     if (vectorIndexOf(lines, localPath) == -1) {

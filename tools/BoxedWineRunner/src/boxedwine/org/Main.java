@@ -170,7 +170,7 @@ public class Main {
                     return;
                 }
             }
-            System.out.println("FAILED " + name);
+            System.out.println("FAILED " + name + ".  Error Code " + results.exitCode);
             atleastOneFailed = true;
             if (results.scriptFinished) {
                 System.out.println("    Script succeeded but Boxedwine did not exit cleanly");
