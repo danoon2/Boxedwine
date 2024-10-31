@@ -264,37 +264,44 @@ DecodedBlock* NormalCPU::getNextBlock() {
     DecodedBlock* block = this->thread->memory->getCodeBlock(startIp);
 
     if (!block) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->normalBlockMutex);
-        if (!block) {
-            block = NormalBlock::alloc();
-            decodeBlock(fetchByte, this, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
-            block->address = startIp;
+        bool blockCreated = false;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->normalBlockMutex);
+            block = this->thread->memory->getCodeBlock(startIp);
+            if (!block) {
+                block = NormalBlock::alloc();
+                blockCreated = true;
+                decodeBlock(fetchByte, this, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
+                block->address = startIp;
 
-            DecodedOp* op = block->op;
-            bool hasLock = true;
-            while (op) {
+                DecodedOp* op = block->op;
+                bool hasLock = true;
+                while (op) {
 #ifdef BOXEDWINE_MULTI_THREADED
-                if (op->lock) {
-                    op->pfn = lockOp;
-                    hasLock = true;
-                } else 
+                    if (op->lock) {
+                        op->pfn = lockOp;
+                        hasLock = true;
+                    } else
 #endif
-                if (!op->pfn) { // callback will be set by decoder
-                    op->pfn = normalOps[op->inst];
+                        if (!op->pfn) { // callback will be set by decoder
+                            op->pfn = normalOps[op->inst];
+                        }
+                    op = op->next;
                 }
-                op = op->next;
-            }
-            this->thread->memory->addCodeBlock(startIp, block);
 #ifdef BOXEDWINE_MULTI_THREADED
-            if (!hasLock)
+                if (!hasLock)
 #endif
-            if (this->firstOp) {
-                op = DecodedOp::alloc();
-                op->inst = Custom1;
-                op->pfn = this->firstOp;
-                op->next = block->op;
-                block->op = op;
+                    if (this->firstOp) {
+                        op = DecodedOp::alloc();
+                        op->inst = Custom1;
+                        op->pfn = this->firstOp;
+                        op->next = block->op;
+                        block->op = op;
+                    }
             }
+        }
+        if (blockCreated) {
+            this->thread->memory->addCodeBlock(startIp, block);
         }
     }
     return block;
