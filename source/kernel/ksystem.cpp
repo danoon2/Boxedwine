@@ -417,7 +417,7 @@ U32 KSystem::times(KThread* thread, U32 buf) {
     if (buf) {
         KMemory* memory = thread->memory;
 
-        memory->writed(buf, (U32)thread->userTime * 10); // user time
+        memory->writed(buf, (U32)thread->getThreadUserTime() * 10); // user time
         memory->writed(buf + 4, (U32)thread->kernelTime * 10); // system time
         memory->writed(buf + 8, 0); // user time of children
         memory->writed(buf + 12, 0); // system time of children

@@ -2240,6 +2240,7 @@ extern S32 contextTime; // about the # instruction per 10 ms
 #endif
 void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOSYS;
+    U64 startTime = KSystem::getMicroCounter();
 #ifdef BOXEDWINE_MULTI_THREADED 
     U32 syscallNo = EAX;
 #endif
@@ -2285,5 +2286,6 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         cpu->eip.u32+=eipCount;
     }
     cpu->nextBlock = nullptr;
+    cpu->thread->kernelTime += KSystem::getMicroCounter() - startTime;
 }
 

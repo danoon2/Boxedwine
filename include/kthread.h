@@ -107,11 +107,16 @@ public:
     U32 inSignal = 0;    
 #ifdef BOXEDWINE_MULTI_THREADED
     bool exited = false;	
-    bool startSignal = false;
+    bool startSignal = false;    
+    U64 threadStartTime = 0;
+#else
+    U64 userTime = 0;    
 #endif
     bool terminating = false;
     U32 clear_child_tid = 0;
-    U64 userTime = 0;
+    
+    U64 getThreadUserTime();
+
     U64 kernelTime = 0;
     U32 inSysCall = 0;
     BOXEDWINE_CONDITION waitingForSignalToEndCond;

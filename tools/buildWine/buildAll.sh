@@ -36,9 +36,25 @@ do_build()
     git checkout wine-$VERSION
     mkdir ../tmp_install
     echo "git checkout wine-$VERSION" > ../tmp_install/build.txt
+    if ((BVERSION >= 9000))
+    then
+      if ((BVERSION >= 9030))
+      then
+        echo "Need patch"
+        exit
+      else
+        echo "git revert -n a6e969560b02ca776f987319db37e6550a1ec" >> ../tmp_install/build.txt
+        git revert -n a6e969560b02ca776f987319db37e6550a1ec
+      fi
+    fi
+    if ((BVERSION >= 9130))
+    then
+      echo "git revert -n 54ca1ab607d3ff22a1f57a9561430f64c75f0916" >> ../tmp_install/build.txt
+      git revert -n 54ca1ab607d3ff22a1f57a9561430f64c75f0916
+    fi
     if ((BVERSION >= 6230))
     then
-     echo "git apply ../patches/fixSetupApiFromCrashingDuringDllDetach.patch" >> build.txt
+     echo "git apply ../patches/fixSetupApiFromCrashingDuringDllDetach.patch" >> ../tmp_install/build.txt
      git apply ../patches/fixSetupApiFromCrashingDuringDllDetach.patch
     fi
     while [[ $1 != "" ]]; do

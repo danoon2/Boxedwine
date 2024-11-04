@@ -325,7 +325,23 @@ void Player::runSlice() {
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
         klog("script timed out %s", this->directory.c_str());
-        screen->screenShot(B("failed.bmp"), nullptr, 0);
+        if (this->nextCommand == "SCREENSHOT") {
+            std::vector<BString> items;
+            this->nextValue.split(',', items);
+
+            if (items.size() > 4) {
+                U32 x = atoi(items[0].c_str());
+                U32 y = atoi(items[1].c_str());
+                U32 w = atoi(items[2].c_str());
+                U32 h = atoi(items[3].c_str());
+
+                screen->partialScreenShot(B("failed.bmp"), x, y, w, h, nullptr, 0);
+            } else {
+                screen->screenShot(B("failed.bmp"), nullptr, 0);
+            }
+        } else {
+            screen->screenShot(B("failed.bmp"), nullptr, 0);
+        }
         screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
         quit();
         exit(2);

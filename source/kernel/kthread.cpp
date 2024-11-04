@@ -1465,6 +1465,14 @@ U32 KThread::signalstack(U32 ss, U32 oss) {
     return 0;
 }
 
+U64 KThread::getThreadUserTime() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    return KSystem::getMicroCounter() - threadStartTime - kernelTime;
+#else
+    return userTime;
+#endif
+}
+
 std::shared_ptr<KThreadGlContext> KThread::getGlContextById(U32 id) {
     return this->glContext[id];
 }

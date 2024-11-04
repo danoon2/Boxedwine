@@ -1216,8 +1216,9 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
         for (auto& t : this->threads ) {
             KThread* otherThread = t.value;
-            userSeconds += (U32)(otherThread->userTime / 1000000l);
-            userMicroSeconds += (U32)(otherThread->userTime % 1000000l);
+            U32 userTime = otherThread->getThreadUserTime();
+            userSeconds += (U32)(userTime / 1000000l);
+            userMicroSeconds += (U32)(userTime % 1000000l);
             kernelSeconds += (U32)(otherThread->kernelTime / 1000000l);
             kernelMicroSeconds += (U32)(otherThread->kernelTime % 1000000l);
         }
@@ -1225,8 +1226,9 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
     } else if ((S32)who < 0) { // RUSAGE_CHILDREN
         klog("getrusuage: RUSAGE_CHILDREN not implemented");
     } else { // RUSAGE_THREAD
-        userSeconds = (U32)(thread->userTime / 1000000l);
-        userMicroSeconds = (U32)(thread->userTime % 1000000l);
+        U32 userTime = thread->getThreadUserTime();
+        userSeconds = (U32)(userTime / 1000000l);
+        userMicroSeconds = (U32)(userTime % 1000000l);
         kernelSeconds = (U32)(thread->kernelTime / 1000000l);
         kernelMicroSeconds = (U32)(thread->kernelTime % 1000000l);
     }

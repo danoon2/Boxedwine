@@ -230,7 +230,12 @@ public class Main {
         }
         Arrays.sort(scripts);
         long startTime = System.currentTimeMillis();
-        int cores = Runtime.getRuntime().availableProcessors() / 2 + 1;
+        int cores = Runtime.getRuntime().availableProcessors();
+        if (cores > 4) {
+            cores = cores / 2 + 1;
+        } else if (cores == 4) {
+            cores = 2;
+        }
         System.out.println("Starting automation: using " + cores + " cores.");
         ExecutorService exec = Executors.newFixedThreadPool(cores);
         for (File f : scripts) {
