@@ -73,7 +73,12 @@ public:
 
 	XWindowPtr pointerWindow;
 	VisualPtr visual;
+#ifdef BOXEDWINE_MULTI_THREADED
 	BOXEDWINE_MUTEX mutex;
+#else
+	BOXEDWINE_CONDITION cond;
+#endif
+	bool isLocked = false;
 
 	bool trace = false;
 	bool traceGC = false;

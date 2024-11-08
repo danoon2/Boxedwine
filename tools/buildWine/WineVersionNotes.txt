@@ -2,7 +2,7 @@ Wine 5.21 - Wine 6.21 has a race condition with fonts that can crash
   fixed was back ported in the Boxedwine file system
   https://github.com/wine-mirror/wine/commit/39fea6cd1eb175cddf3cbccc1fd09fec48da881e
 
-Wine 6.7 - Wine 6.19 has severe issues with 16-bit apps
+Wine 6.6 - Wine 6.19 has severe issues with 16-bit apps
   https://bugs.winehq.org/show_bug.cgi?id=51564
 
 Wine 6.20 - Wine 6.22 has a black background for Bang Bang and other 16-bit apps

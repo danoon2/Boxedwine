@@ -57,15 +57,28 @@ static void x11_CloseDisplay(CPU* cpu) {
 
 // int XGrabServer(Display* display)
 static void x11_GrabServer(CPU* cpu) {
-    XServer* server = XServer::getServer();
+    XServer* server = XServer::getServer();    
+#ifdef BOXEDWINE_MULTI_THREADED
     BOXEDWINE_MUTEX_LOCK(server->mutex);
+#else
+    if (server->isLocked) {
+        server->cond->wait();
+        return;
+    }
+#endif
+    server->isLocked = true;
     EAX = Success;
 }
 
 // int XUngrabServer(Display* display)
 static void x11_UnGrabServer(CPU* cpu) {
     XServer* server = XServer::getServer();
+    server->isLocked = false;
+#ifdef BOXEDWINE_MULTI_THREADED
     BOXEDWINE_MUTEX_UNLOCK(server->mutex);
+#else
+    server->cond->signal();
+#endif
     EAX = Success;
 }
 
@@ -626,6 +639,17 @@ static void x11_UnlockEvents(CPU* cpu) {
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
     data->unlockEvents();
+#ifndef BOXEDWINE_MULTI_THREADED
+    // not sure why this yield is necessary, without it other threads that need to talk to x seem to stall
+    // firefight install requires this yield, otherwise the 2nd progress bar window will sit at 0% for more than a minute
+    //
+    // overall, I feel that this is a hack, there must be something wrong with the scheduler
+    static int counter;
+    counter++;
+    if ((counter % 10) == 0) {
+        cpu->yield = true;
+    }
+#endif
 }
 
 // Status XSendEvent(Display* display, Window w, Bool propagate, long event_mask, XEvent* event_send)
@@ -1414,7 +1438,15 @@ static void x11_LockDisplay(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+#ifdef BOXEDWINE_MULTI_THREADED
     BOXEDWINE_MUTEX_LOCK(data->mutex);
+#else
+    if (data->isLocked) {
+        data->cond->wait();
+        return;
+    }
+#endif
+    data->isLocked = true;
 }
 
 // void XUnlockDisplay(Display* display)
@@ -1422,7 +1454,12 @@ static void x11_UnlockDisplay(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    data->isLocked = false;
+#ifdef BOXEDWINE_MULTI_THREADED
     BOXEDWINE_MUTEX_UNLOCK(data->mutex);
+#else
+    data->cond->signal();
+#endif
 }
 
 // int XCopyArea(Display* display, Drawable src, Drawable dest, GC gc, int src_x, int src_y, unsigned int width, unsigned int height, int dest_x, int dest_y)
@@ -2827,7 +2864,7 @@ void x11_CursorLibraryLoadCursor(CPU* cpu) {
         shape = 92; // XC_question_arrow
     } else {
         klog("x11_CursorLibraryLoadCursor failed to find system cursor: %s", fileName.c_str());
-        EAX = 0;
+        EAX = 68;
         return;
     }
     XServer* server = XServer::getServer();

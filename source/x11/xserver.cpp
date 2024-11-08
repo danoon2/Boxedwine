@@ -36,7 +36,11 @@ U32 XServer::getNextId() {
 	return ++nextId;
 }
 
-XServer::XServer() {
+XServer::XServer() 
+#ifndef BOXEDWINE_MULTI_THREADED
+: cond(std::make_shared<BoxedWineCondition>(B("XServer::lockCond")))
+#endif
+{
 	initAtoms();
 	initDepths();
 	initVisuals();

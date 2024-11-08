@@ -296,26 +296,30 @@ BString getFunctionName(BString name, U32 moduleEip) {
 
     if (!name.length())
         return B("Unknown");
-    args.push_back(B("/usr/bin/addr2line"));
+    args.push_back(B("/usr/local/bin/addr2line"));
     args.push_back(B("-e"));
     args.push_back(name);
     args.push_back(B("-f"));
     args.push_back(BString::valueOf(moduleEip, 16));
-    KThread* thread = process->startProcess(B("/usr/bin"), args, env, 0, 0, 0, 0);
+    KThread* thread = process->startProcess(B("/usr/local/bin"), args, env, 0, 0, 0, 0);
     if (!thread)
         return B("");
 
-    tty9Buffer="";
-    std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
-    std::shared_ptr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4<<8) | 9, parent);
-    process = thread->process;
-    process->openFile(B(""), B("/dev/tty9"), K_O_WRONLY, &fd); 
-    if (fd) {
-        thread->log = false;
-        thread->process->dup2(fd->handle, 1); // replace stdout with tty9    
-        waitForProcessToFinish(thread->process, thread);
+    KThread* tmpThread = new KThread(0, process);
+    {
+        ChangeThread c(tmpThread);
+        tty9Buffer = "";
+        std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
+        std::shared_ptr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4 << 8) | 9, parent);
+        process = tmpThread->process;
+        process->openFile(B(""), B("/dev/tty9"), K_O_WRONLY, &fd);
+        if (fd) {
+            tmpThread->log = false;
+            tmpThread->process->dup2(fd->handle, 1); // replace stdout with tty9
+            waitForProcessToFinish(tmpThread->process, tmpThread);
+        }
     }
-    ChangeThread c(thread);
+    delete tmpThread;
     KSystem::eraseProcess(process->id);
     int pos = tty9Buffer.indexOf("\r\n");
     if (pos>=0) {
@@ -327,12 +331,21 @@ BString getFunctionName(BString name, U32 moduleEip) {
 void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
     U32 moduleEip = this->thread->process->getModuleEip(this->seg[CS].address+eip);
     BString name = this->thread->process->getModuleName(this->seg[CS].address+eip);
-    BString functionName = getFunctionName(name, moduleEip);    
-
+    BString functionName;
+    
+    if (name != "Unknown") {
+        //functionName = getFunctionName(name, moduleEip);
+    }
     name = Fs::getFileNameFromPath(name);
 
+    std::vector<BString> parts;
+    functionName.split("\n", parts);
+    if (parts.size()) {
+        functionName = parts[0];
+    }
     klog("%*s %-20s %-40s %08x / %08x", indent, "", name.length()?name.c_str():"Unknown", functionName.c_str(), eip, moduleEip);        
 
+    ChangeThread c(this->thread);
     if (this->memory->canRead(ebp, 8)) {
         U32 prevEbp = memory->readd(ebp); 
         U32 returnEip = memory->readd(ebp+4);

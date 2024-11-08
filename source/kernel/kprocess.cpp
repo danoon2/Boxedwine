@@ -659,7 +659,7 @@ BString KProcess::getModuleName(U32 eip) {
     for (auto& n : this->mappedFiles) {
         std::shared_ptr<MappedFile> mappedFile = n.value;
         if (eip >= mappedFile->address && eip < mappedFile->address + mappedFile->len) {
-            return mappedFile->file->openFile->node->name;
+            return mappedFile->file->openFile->node->path;
         }
     }
     return B("Unknown");
@@ -1216,7 +1216,7 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
         for (auto& t : this->threads ) {
             KThread* otherThread = t.value;
-            U32 userTime = otherThread->getThreadUserTime();
+            U64 userTime = otherThread->getThreadUserTime();
             userSeconds += (U32)(userTime / 1000000l);
             userMicroSeconds += (U32)(userTime % 1000000l);
             kernelSeconds += (U32)(otherThread->kernelTime / 1000000l);
@@ -1226,7 +1226,7 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
     } else if ((S32)who < 0) { // RUSAGE_CHILDREN
         klog("getrusuage: RUSAGE_CHILDREN not implemented");
     } else { // RUSAGE_THREAD
-        U32 userTime = thread->getThreadUserTime();
+        U64 userTime = thread->getThreadUserTime();
         userSeconds = (U32)(userTime / 1000000l);
         userMicroSeconds = (U32)(userTime % 1000000l);
         kernelSeconds = (U32)(thread->kernelTime / 1000000l);
@@ -2290,7 +2290,7 @@ struct statx {
 
 */
 
-void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U32 len, U32 seconds, U32 nano) {
+void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 seconds, U32 nano) {
     // 0x00
     memory->writed(buf, 0xfff); buf += 4; // stx_mask
     memory->writed(buf, 512); buf += 4; // stx_blksize
@@ -2348,7 +2348,7 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
             if (fd->kobject->type == KTYPE_UNIX_SOCKET) {
                 std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
                 U64 t = s->lastModifiedTime;
-                U64 seconds = t / 1000;
+                U32 seconds = (U32)(t / 1000);
                 U32 n = (U32)(t % 1000) * 1000000;
                 writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n);
                 return 0;
@@ -2369,7 +2369,7 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
         mode |= K__S_IFLNK;
     }
     U64 t = node->lastModified();
-    U64 seconds = t / 1000;
+    U32 seconds = (U32)(t / 1000);
     U32 n = (U32)(t % 1000) * 1000000;
     U32 hardLinkCount = node->getHardLinkCount();
 
@@ -2722,6 +2722,7 @@ void KProcess::printStack() {
 
             klog("    0x%08d %s", this->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
         }
+        ChangeThread c(thread);
         cpu->walkStack(cpu->eip.u32, EBP, 6);
     }
 }

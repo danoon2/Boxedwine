@@ -2,6 +2,14 @@
 #include "x11.h"
 #include "kunixsocket.h"
 
+DisplayData::DisplayData()
+#ifndef BOXEDWINE_MULTI_THREADED
+	: cond(std::make_shared<BoxedWineCondition>(B("DisplayData::lockCond"))),
+	eventCond(std::make_shared<BoxedWineCondition>(B("DisplayData::eventCond")))
+#endif
+{
+}
+
 void DisplayData::putEvent(const XEvent& event) {
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMutex);
@@ -24,7 +32,16 @@ void DisplayData::putEvent(const XEvent& event) {
 }
 
 U32 DisplayData::lockEvents() {
+	
+#ifdef BOXEDWINE_MULTI_THREADED
 	BOXEDWINE_MUTEX_LOCK(eventMutex);
+#else
+	if (eventQueueIsLocked) {
+		eventCond->wait();
+		return 0;
+	}
+	eventQueueIsLocked = true;
+#endif
 	return (U32)eventQueue.size();
 }
 
@@ -59,7 +76,12 @@ void DisplayData::removeEvent(U32 index) {
 }
 
 void DisplayData::unlockEvents() {
+#ifdef BOXEDWINE_MULTI_THREADED
 	BOXEDWINE_MUTEX_UNLOCK(eventMutex);
+#else
+	eventQueueIsLocked = false;
+	eventCond->signal();
+#endif
 }
 
 U32 DisplayData::getEventMask(U32 window) {

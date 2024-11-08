@@ -29,6 +29,8 @@ private:
 
 class DisplayData {
 public:
+	DisplayData();
+
 	void close(KThread* thread);
 
 	void putEvent(const XEvent& event);
@@ -57,11 +59,22 @@ public:
 	U32 processId;
 	XrrData* xrrData = nullptr;
 
+#ifdef BOXEDWINE_MULTI_THREADED
 	BOXEDWINE_MUTEX mutex;
+#else
+	BOXEDWINE_CONDITION cond;
+#endif
+	bool isLocked = false;
+
 private:	
 	std::atomic_int nextEventSerial;
 
+#ifdef BOXEDWINE_MULTI_THREADED
 	BOXEDWINE_MUTEX eventMutex;
+#else
+	BOXEDWINE_CONDITION eventCond;
+	bool eventQueueIsLocked = false;
+#endif
 	std::deque<XEvent> eventQueue;
 
 	BOXEDWINE_MUTEX eventMaskMutex;

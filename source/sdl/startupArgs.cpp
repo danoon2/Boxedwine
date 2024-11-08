@@ -516,7 +516,8 @@ bool StartUpArgs::apply() {
         bool result = false;
         {
             KProcessPtr process = KProcess::create();// keep in this small scope so we don't hold onto it for the life of the program
-            result = process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
+            KThread* thread = process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
+            result = thread != nullptr;
         }
         if (result) {
             if (!doMainLoop()) {
