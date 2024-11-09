@@ -21,6 +21,10 @@
 
 #include <errno.h>
 
+#ifdef __MACH__
+#include "../platform/mac/atomic_ref.h"
+#endif
+
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)
 #define BOXEDWINE_OPENGL
 #endif

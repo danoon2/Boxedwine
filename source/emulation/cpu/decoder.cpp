@@ -6213,8 +6213,8 @@ void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBi
             op->inst = Invalid;
         } else {
             decoder[d.inst]->decode(&d, op);
-            // per x86 spec, this has an implicity lock
-            if (d.inst == XchgE8R8 || d.inst == XchgE16R16 || d.inst == XchgE32R32) {
+            // per x86 spec, this has an implicit lock
+            if (op->inst == XchgE8R8 || op->inst == XchgE16R16 || op->inst == XchgE32R32) {
                 op->lock = true;
             }
         }

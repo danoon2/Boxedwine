@@ -1729,6 +1729,8 @@
 		1AB0CAFC263BA83A003AF407 /* kdspaudio.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kdspaudio.h; sourceTree = "<group>"; };
 		1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fsdynamiclinknode.cpp; sourceTree = "<group>"; };
 		1AB0D6DB26CB4AA800E18A08 /* fsdynamiclinknode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fsdynamiclinknode.h; sourceTree = "<group>"; };
+		1AC3F45D2CDF247200EB9C76 /* atomic_ref.gcc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = atomic_ref.gcc.h; path = ../../../../platform/mac/atomic_ref.gcc.h; sourceTree = "<group>"; };
+		1AC3F45E2CDF247200EB9C76 /* atomic_ref.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = atomic_ref.h; path = ../../../../platform/mac/atomic_ref.h; sourceTree = "<group>"; };
 		1AC5F2892772D952001D0FCA /* armv8btOps_string.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_string.cpp; path = armv8bt/armv8btOps_string.cpp; sourceTree = "<group>"; };
 		1AC5F28A2772D952001D0FCA /* arm8btFlags.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = arm8btFlags.h; path = armv8bt/arm8btFlags.h; sourceTree = "<group>"; };
 		1AC5F28B2772D952001D0FCA /* armv8btOps_sse_shuffle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = armv8btOps_sse_shuffle.cpp; path = armv8bt/armv8btOps_sse_shuffle.cpp; sourceTree = "<group>"; };
@@ -2728,6 +2730,8 @@
 		71FBFCAF2433B815003F17F1 /* Boxedwine */ = {
 			isa = PBXGroup;
 			children = (
+				1AC3F45D2CDF247200EB9C76 /* atomic_ref.gcc.h */,
+				1AC3F45E2CDF247200EB9C76 /* atomic_ref.h */,
 				1A80F2F6276EBFF40032A70A /* BoxedwineX64-Automation.entitlements */,
 				1AFC47712640A64D00EE5FCC /* BoxedwineX64.entitlements */,
 				71FBFCB02433B815003F17F1 /* AppDelegate.h */,
