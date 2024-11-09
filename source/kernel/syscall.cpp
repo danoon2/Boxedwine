@@ -1517,6 +1517,9 @@ static U32 syscall_symlinkat(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
+    if (!cpu->memory->canRead(ARG1 >> K_PAGE_SHIFT)) {
+        return -K_EFAULT;
+    }
     BString pathname = cpu->memory->readString(ARG1);    
     SYS_LOG1(SYSCALL_FILE, cpu, "readlinkat: dirfd=%d pathname=%X(%s) ", ARG1, ARG2, pathname.c_str());
     U32 result = cpu->thread->process->readlinkat(ARG1, pathname, ARG3, ARG4);
@@ -2274,7 +2277,10 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     }    
 #ifdef BOXEDWINE_MULTI_THREADED
     if (!cpu->thread->terminating && cpu->thread->startSignal) {
-        kpanic("syscall %d was not interrupted correctly by signal", syscallNo);
+        cpu->thread->startSignal = false;
+        result = -K_CONTINUE;
+        // I saw this once with multi-thread normal cpu core and firefight, it was from syscall 4 (write)
+        klog("syscall %d was not interrupted correctly by signal", syscallNo);
     }
 #endif
     if (result==(U32)(-K_CONTINUE)) {
