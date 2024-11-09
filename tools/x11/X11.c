@@ -347,6 +347,10 @@ Colormap XCreateColormap(Display* display, Window w, Visual* visual, int alloc) 
 	CALL_4_R(X11_CREATE_COLORMAP, display, w, visual, alloc);
 }
 
+int XInstallColormap(Display* display, Colormap colormap) {
+	CALL_2_R(X11_INSTALL_COLORMAP, display, colormap);
+}
+
 int XFreeColormap(Display* display, Colormap colormap) {
 	CALL_2_R(X11_FREE_COLORMAP, display, colormap);
 }

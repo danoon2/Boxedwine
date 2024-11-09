@@ -1135,6 +1135,11 @@ static void x11_GetAtomNames(CPU* cpu) {
     EAX = Success;
 }
 
+// int XInstallColormap(Display* display, Colormap colormap)
+static void x11_InstallColorMap(CPU* cpu) {
+    EAX = Success;
+}
+
 // Colormap XCreateColormap(Display* display, Window w, Visual* visual, int alloc)
 static void x11_CreateColorMap(CPU* cpu) {
     KThread* thread = cpu->thread;
@@ -2932,6 +2937,7 @@ void x11_init() {
     int9BCallback[X11_GET_GEOMETRY] = x11_GetGeometry;
     int9BCallback[X11_INTERN_ATOMS] = x11_InternAtoms;
     int9BCallback[X11_GET_ATOM_NAMES] = x11_GetAtomNames;
+    int9BCallback[X11_INSTALL_COLORMAP] = x11_InstallColorMap;
     int9BCallback[X11_CREATE_COLORMAP] = x11_CreateColorMap;
     int9BCallback[X11_FREE_COLORMAP] = x11_FreeColorMap;
     int9BCallback[X11_FREE_COLORS] = x11_FreeColors;
