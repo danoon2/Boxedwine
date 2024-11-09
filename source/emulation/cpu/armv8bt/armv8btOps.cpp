@@ -1572,7 +1572,7 @@ void opXchgE8R8(Armv8btAsm* data) {
     U8 tmpReg = data->getTmpReg();
     U8 srcReg = data->getReadNativeReg8(data->currentOp->reg);
 
-    data->readWriteMemory(addressReg, tmpReg, srcReg, 8, [] {}, data->currentOp->lock != 0);
+    data->readWriteMemory(addressReg, tmpReg, srcReg, 8, [] {}, data->currentOp->lock != 0 && data->cpu->isBig());
 
     data->movRegToReg8(tmpReg, data->currentOp->reg);
     data->releaseTmpReg(tmpReg);
@@ -1590,7 +1590,8 @@ void opXchgE16R16(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    data->readWriteMemory(addressReg, tmpReg, data->getNativeReg(data->currentOp->reg), 16, [] {}, data->currentOp->lock != 0);
+    // :TODO: why is this isBig check here, it seems like a hack.  Without it firefight installer crashes
+    data->readWriteMemory(addressReg, tmpReg, data->getNativeReg(data->currentOp->reg), 16, [] {}, data->currentOp->lock != 0 && data->cpu->isBig());
 
     data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 16, false);
     data->releaseTmpReg(tmpReg);
@@ -1607,7 +1608,7 @@ void opXchgE32R32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
     U8 tmpReg = data->getTmpReg();
 
-    data->readWriteMemory(addressReg, tmpReg, data->getNativeReg(data->currentOp->reg), 32, [] {}, data->currentOp->lock != 0);
+    data->readWriteMemory(addressReg, tmpReg, data->getNativeReg(data->currentOp->reg), 32, [] {}, data->currentOp->lock != 0 && data->cpu->isBig());
 
     data->movRegToReg(data->getNativeReg(data->currentOp->reg), tmpReg, 32, false);
     data->releaseTmpReg(tmpReg);
