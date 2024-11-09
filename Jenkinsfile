@@ -30,6 +30,7 @@ pipeline {
                             source ~/emsdk/emsdk_env.sh
                             cd project/emscripten
                             sh buildtestjs.sh
+                            killall -9 python3
                             emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwineTest.html
                         '''
                     }
