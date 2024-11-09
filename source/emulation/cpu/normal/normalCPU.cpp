@@ -247,9 +247,170 @@ DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED
-void OPCALL lockOp(CPU* cpu, DecodedOp* op) {
-    BOXEDWINE_CRITICAL_SECTION;
-    normalOps[op->inst](cpu, op);
+void OPCALL emptyInst(CPU* cpu, DecodedOp* op) {
+}
+
+DecodedOp emptyOp;
+
+void OPCALL lockOp8(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    START_OP(cpu, op);
+    if (!cpu->tmpLockAddress) {
+        cpu->tmpLockAddress = cpu->thread->process->alloc(cpu->thread, 4);
+    }
+    U32 address = eaa(cpu, op);
+    DecodedOp lockedOp = *op;
+    lockedOp.base = SEG_ZERO;
+    lockedOp.rm = regZero;
+    lockedOp.sibIndex = regZero;
+    lockedOp.sibScale = 0;
+    lockedOp.disp = cpu->tmpLockAddress;
+    lockedOp.ea16 = 0;
+
+    U8& ram = *(U8*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U8> mem(ram);
+    Reg savedRegs[8];
+    U32 savedEip = cpu->eip.u32;
+
+    for (int i = 0; i < 8; i++) {
+        savedRegs[i] = cpu->reg[i];
+    }
+
+    lockedOp.next = &emptyOp;
+
+    while (true) {
+        U8 oldValue = cpu->memory->readb(address);
+        cpu->memory->writeb(cpu->tmpLockAddress, oldValue);
+
+        normalOps[op->inst](cpu, &lockedOp);
+
+        U8 newValue = cpu->memory->readb(cpu->tmpLockAddress);
+
+        if (mem.compare_exchange_weak(oldValue, newValue)) {
+            break;
+        }
+        for (int i = 0; i < 8; i++) {
+            cpu->reg[i] = savedRegs[i];
+        }
+    }
+    cpu->eip.u32 = savedEip;
+    NEXT();
+}
+
+void OPCALL lockOp16(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    if (!cpu->tmpLockAddress) {
+        cpu->tmpLockAddress = cpu->thread->process->alloc(cpu->thread, 4);
+    }
+    U32 address = eaa(cpu, op);
+    DecodedOp lockedOp = *op;
+    lockedOp.base = SEG_ZERO;
+    lockedOp.rm = regZero;
+    lockedOp.sibIndex = regZero;
+    lockedOp.sibScale = 0;
+    lockedOp.disp = cpu->tmpLockAddress;
+    lockedOp.ea16 = 0;
+
+    U16& ram = *(U16*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U16> mem(ram);
+    Reg savedRegs[8];
+    U32 savedEip = cpu->eip.u32;
+
+    for (int i = 0; i < 8; i++) {
+        savedRegs[i] = cpu->reg[i];
+    }
+
+    lockedOp.next = &emptyOp;
+
+    while (true) {
+        U16 oldValue = cpu->memory->readw(address);
+        cpu->memory->writew(cpu->tmpLockAddress, oldValue);
+
+        normalOps[op->inst](cpu, &lockedOp);
+
+        U16 newValue = cpu->memory->readw(cpu->tmpLockAddress);
+
+        if (mem.compare_exchange_weak(oldValue, newValue)) {
+            break;
+        }
+        for (int i = 0; i < 8; i++) {
+            cpu->reg[i] = savedRegs[i];
+        }
+    }
+    cpu->eip.u32 = savedEip;
+    NEXT();
+}
+
+void OPCALL lockOp32(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    if (!cpu->tmpLockAddress) {
+        cpu->tmpLockAddress = cpu->thread->process->alloc(cpu->thread, 4);
+    }
+    U32 address = eaa(cpu, op);
+    DecodedOp lockedOp = *op;
+    lockedOp.base = SEG_ZERO;
+    lockedOp.rm = regZero;
+    lockedOp.sibIndex = regZero;
+    lockedOp.sibScale = 0;
+    lockedOp.disp = cpu->tmpLockAddress;
+    lockedOp.ea16 = 0;
+
+    U32& ram = *(U32*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U32> mem(ram);
+    Reg savedRegs[8];
+    U32 savedEip = cpu->eip.u32;
+
+    for (int i = 0; i < 8; i++) {
+        savedRegs[i] = cpu->reg[i];
+    }
+
+    lockedOp.next = &emptyOp;
+    
+    while (true) {
+        U32 oldValue = cpu->memory->readd(address);   
+        cpu->memory->writed(cpu->tmpLockAddress, oldValue);
+
+        normalOps[op->inst](cpu, &lockedOp);        
+
+        U32 newValue = cpu->memory->readd(cpu->tmpLockAddress);
+
+        if (mem.compare_exchange_weak(oldValue, newValue)) {
+            break;
+        }
+        for (int i = 0; i < 8; i++) {
+            cpu->reg[i] = savedRegs[i];
+        }        
+    }
+    cpu->eip.u32 = savedEip;
+    NEXT();
+}
+
+void OPCALL lockCmpXchg8b(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 address = eaa(cpu, op);
+    common_cmpxchg8b_lock(cpu, address);
+    NEXT();
+}
+
+void OPCALL lockCmpXchg32(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 address = eaa(cpu, op);
+    common_cmpxchge32r32_lock(cpu, address, op->reg);
+    NEXT();
+}
+
+void OPCALL lockCmpXchg16(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 address = eaa(cpu, op);
+    common_cmpxchge16r16_lock(cpu, address, op->reg);
+    NEXT();
+}
+
+void OPCALL lockCmpXchg8(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U32 address = eaa(cpu, op);
+    common_cmpxchge8r8_lock(cpu, address, op->reg);
+    NEXT();
 }
 #endif
 
@@ -275,12 +436,36 @@ DecodedBlock* NormalCPU::getNextBlock() {
                 block->address = startIp;
 
                 DecodedOp* op = block->op;
-                bool hasLock = true;
+                bool excludeFromJIT = true;
                 while (op) {
 #ifdef BOXEDWINE_MULTI_THREADED
-                    if (op->lock) {
-                        op->pfn = lockOp;
-                        hasLock = true;
+                    // abiword has a lock test reg, value
+                    if (op->lock && instructionInfo[op->inst].writeMemWidth != 0 && instructionInfo[op->inst].readMemWidth != 0) {
+                        emptyOp.next = nullptr;
+                        emptyOp.pfn = emptyInst;
+
+                        excludeFromJIT = true;
+                        if (op->inst == CmpXchgE8R8) {
+                            op->pfn = lockCmpXchg8;
+                            //excludeFromJIT = false;
+                        } else if (op->inst == CmpXchgE16R16) {
+                            op->pfn = lockCmpXchg16;
+                            //excludeFromJIT = false;
+                        } else if (op->inst == CmpXchgE32R32) {
+                            op->pfn = lockCmpXchg32;
+                            //excludeFromJIT = false;
+                        } else if (op->inst == CmpXchg8b) {
+                            op->pfn = lockCmpXchg8b;
+                            //excludeFromJIT = false;
+                        } else if (instructionInfo[op->inst].readMemWidth == 8) {
+                            op->pfn = lockOp8;
+                        } else if (instructionInfo[op->inst].readMemWidth == 16) {
+                            op->pfn = lockOp16;
+                        } else if (instructionInfo[op->inst].readMemWidth == 32) {
+                            op->pfn = lockOp32;
+                        } else {
+                            kpanic("Unexepected memory width for locked instruction: %d", instructionInfo[op->inst].readMemWidth);
+                        }                        
                     } else
 #endif
                         if (!op->pfn) { // callback will be set by decoder
@@ -289,7 +474,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
                     op = op->next;
                 }
 #ifdef BOXEDWINE_MULTI_THREADED
-                if (!hasLock)
+                if (!excludeFromJIT)
 #endif
                     if (this->firstOp) {
                         op = DecodedOp::alloc();

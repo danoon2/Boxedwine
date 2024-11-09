@@ -300,12 +300,7 @@ void common_runSingleOp(BtCPU* cpu) {
     }
 
     try {
-        if (!op->lock) {
-            op->pfn(cpu, op);
-        } else {
-            BOXEDWINE_CRITICAL_SECTION;
-            op->pfn(cpu, op);
-        }
+        op->pfn(cpu, op);
     } catch (...) {
         int ii = 0;
     }

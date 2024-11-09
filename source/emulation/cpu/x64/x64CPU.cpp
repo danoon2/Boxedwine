@@ -288,12 +288,7 @@ void common_runSingleOp(x64CPU* cpu) {
         cpu->flags |= ((cpu->stringFlags >> 8) & 0xff) | ((cpu->stringFlags & 1) << 11);    
     }
     try {
-        if (!op->lock) {
-            op->pfn(cpu, op);
-        } else {
-            BOXEDWINE_CRITICAL_SECTION;
-            op->pfn(cpu, op);
-        }
+        op->pfn(cpu, op);
     } catch (...) {
         int ii = 0;
     }

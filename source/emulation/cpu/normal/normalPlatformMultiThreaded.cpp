@@ -11,10 +11,12 @@ static void platformThread(CPU* cpu) {
 
     while (true) {
         try {
-            cpu->nextBlock = cpu->getNextBlock();
+            if (!cpu->nextBlock) {
+                cpu->nextBlock = cpu->getNextBlock();
+            }
             cpu->run();
         } catch (...) {
-            int ii = 0;
+            cpu->nextBlock = nullptr;
         }
 #ifdef __TEST
         return;

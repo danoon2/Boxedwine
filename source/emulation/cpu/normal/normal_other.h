@@ -649,7 +649,7 @@ NEXT();
 }
 void OPCALL normal_cmpxchgg8b(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    common_cmpxchgg8b(cpu, eaa(cpu, op));
+    common_cmpxchg8b(cpu, eaa(cpu, op));
     NEXT();
 }
 void OPCALL normal_loadSegment16(CPU* cpu, DecodedOp* op) {

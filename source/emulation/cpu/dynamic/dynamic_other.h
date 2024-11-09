@@ -623,7 +623,14 @@ void dynamic_bswap32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmpxchgg8b(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_cmpxchgg8b, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (op->lock) {
+        callHostFunction((void*)common_cmpxchg8b_lock, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    } else
+#endif
+    {
+        callHostFunction((void*)common_cmpxchg8b, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    }
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }

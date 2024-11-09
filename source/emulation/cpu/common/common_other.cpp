@@ -166,7 +166,27 @@ void common_verw(CPU* cpu, U32 selector){
     cpu->verw(selector);
 }
 
-void common_cmpxchgg8b(CPU* cpu, U32 address){
+#ifdef BOXEDWINE_MULTI_THREADED
+void common_cmpxchg8b_lock(CPU* cpu, U32 address) {    
+    U64 expected = ((U64)EDX) << 32 | EAX;
+    U64 value = ((U64)ECX) << 32 | EBX;
+
+    cpu->fillFlags();
+
+    U64& ram = *(U64*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U64> mem(ram);
+
+    if (mem.compare_exchange_strong(expected, value)) {
+        cpu->addZF();
+    } else {
+        cpu->removeZF();
+        EDX = (U32)(expected >> 32);
+        EAX = (U32)expected;
+    }
+}
+#endif
+
+void common_cmpxchg8b(CPU* cpu, U32 address){
     U64 value1 = ((U64)EDX) << 32 | EAX;
     U64 value2 = cpu->memory->readq(address);
     cpu->fillFlags();

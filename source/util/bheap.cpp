@@ -15,6 +15,9 @@ void BHeap::freeAll(KMemory* memory) {
 	for (auto& page : pages) {
 		memory->unmap(page, K_PAGE_SIZE);
 	}
+	for (U32 i = 0; i < BHEAP_NUMBER_OF_BUCKETS; i++) {
+		bucket[i].clear();
+	}
 }
 
 U32 BHeap::alloc(KMemory* memory, KThread* thread, U32 len) {

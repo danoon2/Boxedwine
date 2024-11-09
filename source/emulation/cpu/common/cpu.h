@@ -339,7 +339,8 @@ public:
     virtual void setIsBig(U32 value);
 
 #ifdef BOXEDWINE_MULTI_THREADED
-    U64 nativeHandle = 0;    
+    U64 nativeHandle = 0;
+    U32 tmpLockAddress = 0;
 #endif
 
 #ifdef BOXEDWINE_DYNAMIC

@@ -21,7 +21,7 @@ public class Main {
     static String scriptDir;
     static String boxedWineExe = "boxedwine";
     static Vector<String> extraCommands = new Vector<>();
-    static boolean verbose = true;
+    static boolean verbose = false;
     static boolean atleastOneFailed = false;
 
     static class Results {
@@ -166,9 +166,10 @@ public class Main {
                 results = new Results();
                 runTest(name, scriptDir + File.separator + name + File.separator + "files", scriptDir + name, results);
                 if (results.exitCode == 111) {
-                    System.out.println("OK   " + name + " completed in " + results.timeToComplete + " seconds");
+                    System.out.println("OK     " + name + " completed in " + results.timeToComplete + " seconds");
                     return;
                 }
+                System.out.println("RETRY  " + name);
             }
             System.out.println("FAILED " + name + ".  Error Code " + results.exitCode);
             atleastOneFailed = true;

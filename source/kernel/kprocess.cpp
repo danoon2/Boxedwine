@@ -781,7 +781,8 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
     }
 
     // reset memory must come after we grab the args and env
-    this->memory->execvReset(cloneVM);
+    this->heap.freeAll(this->memory);
+    this->memory->execvReset(cloneVM);    
     cloneVM = false;
 
     thread->reset();

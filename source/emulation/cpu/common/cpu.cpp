@@ -115,6 +115,9 @@ void CPU::reset() {
     this->stackMask = 0xFFFFFFFF;
     this->nextBlock = nullptr;
     this->delayedFreeBlock = nullptr;
+#ifdef BOXEDWINE_MULTI_THREADED
+    this->tmpLockAddress = 0;
+#endif
 }
 
 void CPU::call(U32 big, U32 selector, U32 offset, U32 oldEip) {
