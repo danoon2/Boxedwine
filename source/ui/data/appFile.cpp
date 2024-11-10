@@ -56,6 +56,10 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             if (app) {
                 app->ddrawOverride = true;
             }
+        } else if (option == "DisableHideCursor") {
+            if (app) {
+                app->disableHideCursor = true;
+            }
         } else if (option.startsWith("glext=")) {
             if (app) {
                 app->glExt = option.substr(6);

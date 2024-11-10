@@ -564,7 +564,7 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
     if (!sdlCursor) {
         switch (cursor->shape) {
         case 0:
-            if (cursor->fg.red == 0 && cursor->fg.blue == 0 && cursor->fg.green == 0 && cursor->bg.red == 0 && cursor->bg.green == 0 && cursor->bg.blue == 0) {
+            if (!KSystem::disableHideCursor && cursor->fg.red == 0 && cursor->fg.blue == 0 && cursor->fg.green == 0 && cursor->bg.red == 0 && cursor->bg.green == 0 && cursor->bg.blue == 0) {
                 sdlCursor = nullptr;
             } else {
                 sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);

@@ -19,7 +19,11 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -bpp X : Value must be 16 or 32.  Most games are fine with 32-bit.
 
--showWindowImmediately: By default Boxedwine will hide new Windows until it looks like they will be used.  This is done to prevent a lot of Window flashing (create and destroy) when games test the system for what resolution and capabilities they will use.  Some simple OpenGL apps seem to have a problem with this feature of Boxedwine so this flag will disable it.
+-cpuAffinity X : For multi-threaded builds, this will set the CPU affinity for the app/game.  Normally you should just pass in 1 if this is needed.  Some older games that use multiple threads sometimes require this.
+
+-ddrawOverride path : will enabled CNC DDraw wrapper for the path passed in.  The path needs to be the full emulated file system path, for example, /home/username/.wine/drive_c/mdkperf/PERF_W95.EXE
+
+-disableHideCursor : will prevent the cursor from being hidden
 
 -dpiAware: will prevent Windows from scaling the screen if you are using display scaling.
 
@@ -35,22 +39,29 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -log filePath : Will copy the output sent to the terminal to a file.  For example -log "c:\games\mygame\log.txt"
 
+-mesa : If the build supports it, this option will select the off screen software Mesa OpenGL backend for renderering OpenGL.
+
 -mount : Will mount a host directory or zip file, in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games" or -mount "c:\my games\mygame.zip" "/home/username/my games"
 
 -mount_drive : Will mount a host directory in the emulate file system and set up the Wine links so that it shows up as a drive in Wine. Example: -mount_drive "c:\my games" d
 
 -nosound : Will mute sounds, but the emulated program will still think they are being played
 
--nozip : if -zip command line is not supplied, Boxedwine might try to find a suitable zip file system.  If you don't want a default zip file system, you can specific the -nozip command line option.
+-novideo : Disable showing a window.  This is mainly used for running automated programs.
+
+-nozip : if -zip command line is not supplied, Boxedwine might try to find a suitable zip file system.  If you don't want a default zip file system, you can specify the -nozip command line option.
+
 -p2 : sets the emulated cpu to be a Pentium 2 with MMX
 
--p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default)
+-p3 : sets the emulated cpu to be a Pentium 3 with MMX/SSE (default is Pentium 4)
 
 -pollRate XX: XX is a number starting at 0.  This determines how fast mouse and keyboard events will be given to Wine.  The default is 40.  Setting it to 0 will make cause Boxedwine to give the events as fast as possible to Wine.
 
 -resolution WxH : Initial emulated screen size.  Default is 800x600.  This is usual for apps/games that aren't full screen and won't change the screen size themselves.
 
 -root path : Path to the file system the emulated linux environment will used
+
+-scale X : Will scale the video output by this percentage, a value of 100 is normal.  A value of 200 will scale the screen by 2x, so 640x480 will display at 1280x960.  This option doesn't work with OpenGL, so for DirectDraw games, make sure to use the Wine GDI backend option.  The GDI option can be found in the Boxedwine UI in the container section, near the top, with the label "Renderer".  Or you can use regedit to set this yourself, see the Wine web site.
 
 -title name : Will add name to the Boxedwine window
 

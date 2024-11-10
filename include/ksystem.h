@@ -107,7 +107,8 @@ public:
     static std::function<void(BString line)> watchTTY;
     static bool ttyPrepend;
     static BString exePath;
-    
+    static bool disableHideCursor;
+
     static void init();
 	static void destroy();
     static U32 getNextThreadId();

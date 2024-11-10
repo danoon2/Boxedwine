@@ -18,6 +18,7 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->vsync = config.readInt(B("VSync"), VSYNC_NOT_SET);
     this->dpiAware = config.readBool(B("DpiAware"), false);
     this->ddrawOverride = config.readBool(B("DDrawOverride"), false);
+    this->disableHideCursor = config.readBool(B("DisableHideCursor"), false);
     this->autoRefresh = config.readBool(B("AutoRefresh"), false);
     this->glExt = config.readString(B("AllowedGlExt"),B(""));
     this->scale = config.readInt(B("Scale"),100);
@@ -73,6 +74,7 @@ bool BoxedApp::saveApp() {
     config.writeInt(B("VSync"), this->vsync);
     config.writeBool(B("DpiAware"), this->dpiAware);
     config.writeBool(B("DDrawOverride"), this->ddrawOverride);
+    config.writeBool(B("DisableHideCursor"), this->disableHideCursor);
     config.writeBool(B("AutoRefresh"), this->autoRefresh);
     config.writeString(B("AllowedGlExt"),this->glExt);
     config.writeInt(B("Scale"),this->scale);
@@ -144,6 +146,7 @@ void BoxedApp::launch() {
     if (this->ddrawOverride) {
         GlobalSettings::startUpArgs.ddrawOverridePath = this->path;
     }
+    GlobalSettings::startUpArgs.disableHideCursor = this->disableHideCursor;
     if (this->autoRefresh) {
         GlobalSettings::startUpArgs.envValues.push_back(B("BOXED_DD_AUTOREFRESH=1"));
     }

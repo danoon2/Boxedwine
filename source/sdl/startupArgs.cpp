@@ -242,6 +242,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-ddrawOverride"));
         args.push_back(this->ddrawOverridePath);
     }
+    if (this->disableHideCursor) {
+        args.push_back(B("-disableHideCursor"));
+    }
     return args;
 }
 
@@ -253,6 +256,7 @@ bool StartUpArgs::apply() {
         klog("CPU Affinity set to %d", KSystem::cpuAffinityCountForApp);
     }
 #endif
+    KSystem::disableHideCursor = this->disableHideCursor;
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     if (KSystem::pollRate < 0) {
@@ -748,6 +752,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         else if (!strcmp(argv[i], "-ddrawOverride")) {
             this->ddrawOverridePath = argv[i + 1];
             i++;
+        } else if (!strcmp(argv[i], "-disableHideCursor")) {
+            this->disableHideCursor = true;
         } else {
             break;
         }
