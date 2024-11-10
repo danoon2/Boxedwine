@@ -17,7 +17,8 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->fullScreen = config.readInt(B("Fullscreen"),FULLSCREEN_NOTSET);
     this->vsync = config.readInt(B("VSync"), VSYNC_NOT_SET);
     this->dpiAware = config.readBool(B("DpiAware"), false);
-    this->showWindowImmediately = config.readBool(B("ShowWindowImmediately"), false);
+    this->ddrawOverride = config.readBool(B("DDrawOverride"), false);
+    this->disableHideCursor = config.readBool(B("DisableHideCursor"), false);
     this->autoRefresh = config.readBool(B("AutoRefresh"), false);
     this->glExt = config.readString(B("AllowedGlExt"),B(""));
     this->scale = config.readInt(B("Scale"),100);
@@ -54,7 +55,7 @@ bool BoxedApp::saveApp() {
             }
         }
         for (int i=0;i<10000;i++) {
-            BString iniPath = appDir ^ BString::valueOf(i) + ".ini";
+            BString iniPath = appDir.stringByApppendingPath(BString::valueOf(i) + ".ini");
             if (!Fs::doesNativePathExist(iniPath)) {
                 this->iniFilePath = iniPath;
                 break;
@@ -72,7 +73,8 @@ bool BoxedApp::saveApp() {
     config.writeInt(B("Fullscreen"),this->fullScreen);
     config.writeInt(B("VSync"), this->vsync);
     config.writeBool(B("DpiAware"), this->dpiAware);
-    config.writeBool(B("ShowWindowImmediately"), this->showWindowImmediately);
+    config.writeBool(B("DDrawOverride"), this->ddrawOverride);
+    config.writeBool(B("DisableHideCursor"), this->disableHideCursor);
     config.writeBool(B("AutoRefresh"), this->autoRefresh);
     config.writeString(B("AllowedGlExt"),this->glExt);
     config.writeInt(B("Scale"),this->scale);
@@ -111,7 +113,7 @@ void BoxedApp::runAutomation() {
 
 bool BoxedApp::hasAutomation() {
 #ifdef BOXEDWINE_RECORDER
-    BString path = GlobalSettings::getAutomationFolder(this->container) ^ RECORDER_SCRIPT;
+    BString path = GlobalSettings::getAutomationFolder(this->container).stringByApppendingPath(RECORDER_SCRIPT);
     return Fs::doesNativePathExist(path);
 #else
     return false;
@@ -141,9 +143,10 @@ void BoxedApp::launch() {
     if (GlobalSettings::isDpiAware() && this->dpiAware) {
         GlobalSettings::startUpArgs.dpiAware = true;
     }
-    if (this->showWindowImmediately) {
-        GlobalSettings::startUpArgs.showWindowImmediately = true;
+    if (this->ddrawOverride) {
+        GlobalSettings::startUpArgs.ddrawOverridePath = this->path;
     }
+    GlobalSettings::startUpArgs.disableHideCursor = this->disableHideCursor;
     if (this->autoRefresh) {
         GlobalSettings::startUpArgs.envValues.push_back(B("BOXED_DD_AUTOREFRESH=1"));
     }
@@ -182,6 +185,8 @@ void BoxedApp::launch() {
 
     if (isWine) {
         GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
+        //GlobalSettings::startUpArgs.addArg(B("explorer"));
+        //GlobalSettings::startUpArgs.addArg(B("/desktop=VirtualDesktop,800x600"));
         if (this->link.length() > 0) {
             GlobalSettings::startUpArgs.addArg(B("C:\\windows\\command\\start.exe"));
             GlobalSettings::startUpArgs.addArg(this->link);
@@ -227,11 +232,11 @@ const BoxedAppIcon* BoxedApp::getIconTexture(int iconSize) {
         if (Fs::doesNativePathExist(nativeExePath)) {
             data = extractIconFromExe(this->container->getNativePathForApp(*this), iconSize, &width, &height);
         } else {
-            BString nativeDir = this->container->getDir() ^ "tmp";
+            BString nativeDir = this->container->getDir().stringByApppendingPath("tmp");
             std::shared_ptr<FileSystemZip> fs = container->getFileSystem().lock();
             if (fs) {
                 FsZip::extractFileFromZip(fs->filePath, this->path.substr(1) + "/" + this->cmd, nativeDir);
-                BString nativePath = nativeDir ^ this->cmd;
+                BString nativePath = nativeDir.stringByApppendingPath(this->cmd);
                 data = extractIconFromExe(nativePath, iconSize, &width, &height);
                 Fs::deleteNativeFile(nativePath);
             }

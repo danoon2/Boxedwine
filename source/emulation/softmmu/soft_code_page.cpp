@@ -238,12 +238,13 @@ void CodePage::addCode(U32 eip, CodeBlock block, U32 len) {
     InternalCodeBlock sharedBlock = std::shared_ptr<DecodedBlock>(block, deleter);
 #else
     auto deleter = [](BtCodeChunk* entry) {
-        KMemory* memory = KThread::currentThread()->memory;
-        // check to prevent recursion
-        if (getMemData(memory)->getExistingHostAddress(entry->getEip())) {
-            entry->release(memory);
-        } else {
-            int ii = 0;
+        KThread* thread = KThread::currentThread();
+        if (thread) {
+            KMemory* memory = KThread::currentThread()->memory;
+            // check to prevent recursion
+            if (getMemData(memory)->getExistingHostAddress(entry->getEip())) {
+                entry->release(memory);
+            }
         }
         };
     InternalCodeBlock sharedBlock = std::shared_ptr<BtCodeChunk>(block.get(), deleter);    

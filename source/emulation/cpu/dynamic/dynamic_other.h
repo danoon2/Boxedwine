@@ -164,16 +164,16 @@ void dynamic_int80(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)ksyscall, false, 2, 0, DYN_PARAM_CPU, false, op->len, DYN_PARAM_CONST_32, false);
     blockDone();
 }
-void dynamic_int98(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_int98, false, 1, 0, DYN_PARAM_CPU, false);
-    INCREMENT_EIP(data, op);
-}
 void dynamic_int99(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_int99, false, 1, 0, DYN_PARAM_CPU, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_int9A(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_int9A, false, 1, 0, DYN_PARAM_CPU, false);
+    INCREMENT_EIP(data, op);
+}
+void dynamic_int9B(DynamicData* data, DecodedOp* op) {
+    callHostFunction((void*)common_int9B, false, 1, 0, DYN_PARAM_CPU, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_intIb(DynamicData* data, DecodedOp* op) {
@@ -623,7 +623,14 @@ void dynamic_bswap32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmpxchgg8b(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_cmpxchgg8b, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+#ifdef BOXEDWINE_MULTI_THREADED
+    if (op->lock) {
+        callHostFunction((void*)common_cmpxchg8b_lock, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    } else
+#endif
+    {
+        callHostFunction((void*)common_cmpxchg8b, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    }
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }

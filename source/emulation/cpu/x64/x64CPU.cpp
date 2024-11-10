@@ -216,6 +216,13 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
             data->jumpTo(data->ip);
             break;
         }
+#ifndef __TEST
+        KMemoryData* mem = getMemData(memory);
+        if (mem->isAddressDynamic(address, data->currentOp->len)) {
+            ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
+            break;
+        }
+#endif
         data->mapAddress(address, data->bufferPos);
         data->translateInstruction();
         if (data->done || data->currentOp->inst == Invalid) {
@@ -281,12 +288,7 @@ void common_runSingleOp(x64CPU* cpu) {
         cpu->flags |= ((cpu->stringFlags >> 8) & 0xff) | ((cpu->stringFlags & 1) << 11);    
     }
     try {
-        if (!op->lock) {
-            op->pfn(cpu, op);
-        } else {
-            BOXEDWINE_CRITICAL_SECTION;
-            op->pfn(cpu, op);
-        }
+        op->pfn(cpu, op);
     } catch (...) {
         int ii = 0;
     }

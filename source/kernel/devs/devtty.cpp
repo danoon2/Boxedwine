@@ -114,6 +114,9 @@ U32 DevTTY::writeNative(U8* buffer, U32 len) {
     if (s.contains("WS_getaddrinfo Failed to resolve your host name IP")) {
         return len;
     }
+    if (s.contains("winebus")) {
+        return len;
+    }
     if (KSystem::logFile.isOpen()) {
         KSystem::logFile.write((char*)buffer, len);
     }

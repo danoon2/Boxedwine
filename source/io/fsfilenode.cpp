@@ -45,7 +45,7 @@ void FsFileNode::getTmpPath(BString& nativePath, BString& localPath) {
     for (;nextTmpId<100000000;nextTmpId++) {
         BString name = "del"+BString::valueOf(nextTmpId)+".tmp";
         Fs::localNameToRemote(name);
-        nativePath = delDir->nativePath ^ name;
+        nativePath = delDir->nativePath.stringByApppendingPath(name);
         if (!Fs::doesNativePathExist(nativePath)) {
             localPath = "/tmp/del/"+name;
             break;
@@ -104,7 +104,9 @@ bool FsFileNode::remove() {
         this->openNodes.for_each([&tmpPos,&i](KListNode<FsOpenNode*>* n) {
             FsOpenNode* openNode = n->data;
             openNode->reopen();
-            openNode->seek(tmpPos[i++]);
+            if (openNode->isOpen()) {
+                openNode->seek(tmpPos[i++]);
+            }
         });
         result = true;
     }
@@ -147,7 +149,7 @@ U64 FsFileNode::length() {
 }
 
 BString FsFileNode::getLink() {
-#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
+#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__) && defined(BOXED_MOVE_TOUCHED_ZIP_FILES_TO_HOST)
     ensurePathIsLocal(false);
 #endif
     return this->link; 
@@ -187,7 +189,7 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
         openFlags|=O_RDONLY;
         // make the file local so that it will load faster (no inflate and weird seeking logic)
-#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
+#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__) && defined(BOXED_MOVE_TOUCHED_ZIP_FILES_TO_HOST)
         if (this->zipNode) {
             ensurePathIsLocal(false);
         }
@@ -220,7 +222,15 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if (flags & K_O_APPEND) {
         openFlags|=O_APPEND;
     }
-    U32 f = ::open(this->nativePath.c_str(), openFlags, 0666);	
+    U32 f;
+
+#ifdef BOXEDWINE_MSVC
+    if (this->nativePath.length() > 255) {
+        BString path = "\\\\?\\" + nativePath;
+        f = ::open(path.c_str(), openFlags, 0666);
+    } else
+#endif
+    f = ::open(this->nativePath.c_str(), openFlags, 0666);	
     if (!f || f==0xFFFFFFFF) {
 #ifdef BOXEDWINE_ZLIB
         if (this->zipNode && (flags & K_O_ACCMODE)==K_O_RDONLY)
@@ -329,7 +339,7 @@ U32 FsFileNode::rename(BString path) {
 
     BString fileName = Fs::getFileNameFromPath(path);
     Fs::localNameToRemote(fileName);
-    BString nativePath = parent->nativePath ^ fileName;
+    BString nativePath = parent->nativePath.stringByApppendingPath(fileName);
     BString originalPath;
 
     if (this->isLink()) {
@@ -369,6 +379,15 @@ U32 FsFileNode::rename(BString path) {
                 ::rename(dosAttrib.c_str(), dosAttribDst.c_str());
             }
             this->removeNodeFromParent();
+#ifdef BOXEDWINE_ZLIB
+            if (zipNode) {
+                std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();
+                if (fsZip) {
+                    fsZip->remove(this->path);
+                }
+                zipNode = nullptr;
+            }
+#endif
             this->path = path;
             this->nativePath = nativePath;
             this->name = Fs::getFileNameFromPath(path);

@@ -1,18 +1,21 @@
-SDL2             This will cause SDL2 to be used instead of SDL1.  You will need to link to the correct libraries.
-UNALIGNED_MEMORY This is necessary if the host isn't little endian, necessary for asm.js (but not WASM)
-BOXEDWINE_64BIT_MMU    This will reserve 4GB of memory for each emulated process so that emulated memory can be mapped to host memory with a single offset.  Currently only Win64 build supports this.
-BOXEDWINE_VM     Requires: BOXEDWINE_64BIT_MMU. Translates x86 machine code to x64 on the fly.  Only supported on the Win64 build.
+UNALIGNED_MEMORY This is necessary if the host isn't little endian, necessary for asm.js (but not WASM).  No longer test, probably doesn't work
 BOXEDWINE_ZLIB   Will allow the file system to be in a zip file (-zip command line argument).  This requires that you link against zlib.
-BOXEDWINE_HAS_SETJMP  Will allow memory exception to be caught, this should be used for all builds.  Emscripten doesn't use it because it slows things down, but this also means some games won't work.
 BOXEDWINE_MSVC   Should use this on Windows platform
+BOXEDWINE_MAC_JIT Should use this on the Mac platform for the binary translator builds, it will correctly setup x64 and Armv8
+BOXEDWINE_OPENGL_SDL OpenGL will be enabled via SDL
+BOXEDWINE_OPENGL_OSMESA Will enable selecting software OpenGL via Mesa.  Option will be visible in UI and command line option -mesa will be available
+GLH the header that will be used for OpenGL, currently set to <sdl_opengl.h> in build files
+BOXEDWINE_HIGHDPI On windows this will allow games that doesn't support high dpi settings to be scaled up
+BOXEDWINE_MIDI turns on support for Midi
+BOXEDWINE_64 needs to be enabled on 64-bit platform
 
 To compile, you need one and only one of the follow 2 flags
 
 BOXEDWINE_ES     SDL OpenGL ES code will be used.  OpenGL calls will be translated to ES.
 BOXEDWINE_SDL    SDL OpenGL context will be used
 
-To compile for Windows it is recommended to use Visual Studio 2013 Community Edition
-https://www.visualstudio.com/en-us/news/releasenotes/vs2013-community-vs
+To compile for Windows it is recommended to use Visual Studio 2022 Community Edition
+https://visualstudio.microsoft.com/vs/community/
 
 Javascript
 

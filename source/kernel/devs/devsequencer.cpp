@@ -16,21 +16,34 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
+#include "knativeaudio.h"
 
 #include "../../io/fsvirtualopennode.h"
 
 class DevSequencer : public FsVirtualOpenNode {
 public:
-    DevSequencer(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {}
+    DevSequencer(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags) {
+        audio = KNativeAudio::createNativeAudio();
+        audio->load();
+	}
 
 	// From FsOpenNode
     U32 ioctl(KThread* thread, U32 request) override;
     U32 readNative(U8* buffer, U32 len) override;
     U32 writeNative(U8* buffer, U32 len) override;
+
+	void MIDI_RawOutByte(U32 devId, U8 data);
+
+    KNativeAudioPtr audio;
 };
 
 FsOpenNode* openDevSequencer(const std::shared_ptr<FsNode>& node, U32 flags, U32 data) {
-    return new DevSequencer(node, flags);
+	DevSequencer* result = new DevSequencer(node, flags);
+	if (!result->audio) {
+		delete result;
+		return nullptr;
+	}
+	return result;
 }
 /*
 struct synth_info {
@@ -89,10 +102,17 @@ U32 DevSequencer::ioctl(KThread* thread, U32 request) {
         return 0;
     case 0x510b: // LINUX_SNDCTL_SEQ_NRMIDIS
         if (write)
-			memory->writed(IOCTL_ARG1, 1);
+			memory->writed(IOCTL_ARG1, audio->midiOutGetNumDevs());
         return 0;
     case 0x510c: // LINUX_SNDCTL_MIDI_INFO	
-        memory->strcpy(IOCTL_ARG1, "Boxedwine MIDI");
+		U32 index = memory->readd(IOCTL_ARG1 + 32);
+        BString name = audio->midiOutGetName(index);
+		U32 len = (U32)name.length();
+		if (len > 31) {
+			len = 31;
+		}
+		memory->memcpy(IOCTL_ARG1, name.c_str(), len);
+		memory->writeb(IOCTL_ARG1 + 31, 0);
 		memory->writed(IOCTL_ARG1+36, 0); // capabilities
 		memory->writed(IOCTL_ARG1+40, 0); // dev_type
         return 0;
@@ -104,7 +124,6 @@ U32 DevSequencer::readNative(U8* buffer, U32 len) {
     return 0;
 }
 
-#ifdef BOXEDWINE_MIDI
 
 #define SYSEX_SIZE 1024
 #define RAWBUF	1024
@@ -140,17 +159,16 @@ static struct {
 	U8 rt_buf[8];
 	struct {
 		U8 buf[SYSEX_SIZE];
-		U8 used;
+		U32 used;
 	} sysex;
 	bool available;
 } midi;
 
-void MIDI_RawOutByte(U8 data) {
+void DevSequencer::MIDI_RawOutByte(U32 devId, U8 data) {
     if (KSystem::soundEnabled) {
 	    /* Test for a realtime MIDI message */
 	    if (data>=0xf8) {
-		    midi.rt_buf[0]=data;
-		    PlayMsg(midi.rt_buf);
+            audio->midiOutData(devId, &data, 1);
 		    return;
 	    }	 
 	    /* Test for a active sysex tranfer */
@@ -160,7 +178,7 @@ void MIDI_RawOutByte(U8 data) {
 			    return;
 		    } else {
 			    midi.sysex.buf[midi.sysex.used++]=0xf7;
-			    PlaySysex(midi.sysex.buf,midi.sysex.used);
+                audio->midiOutLongData(devId, midi.sysex.buf, midi.sysex.used);
 		    }
 	    }
 	    if (data&0x80) {
@@ -175,23 +193,26 @@ void MIDI_RawOutByte(U8 data) {
 	    if (midi.cmd_len) {
 		    midi.cmd_buf[midi.cmd_pos++]=data;
 		    if (midi.cmd_pos >= midi.cmd_len) {
-			    PlayMsg(midi.cmd_buf);
+				audio->midiOutData(devId, midi.cmd_buf, midi.cmd_len);
 			    midi.cmd_pos=1;		//Use Running status
 		    }
 	    }
     }
 }
-#endif
 
 U32 DevSequencer::writeNative(U8* buffer, U32 len) {
-#ifdef BOXEDWINE_MIDI
+	if (!KSystem::soundEnabled) {
+		return len;
+	}
     for (U32 i=0;i<len;i+=4) {
         if (buffer[i]==5) {
-            MIDI_RawOutByte(buffer[i+1]);
+            if (!audio->midiOutIsOpen(buffer[i+2])) {
+                audio->midiOutOpen(buffer[i+2]);
+            }
+            MIDI_RawOutByte(buffer[i+2], buffer[i+1]);
         } else {
             klog("Unhandled midi msg: %X", buffer[i]);
         }
     }
-#endif
     return len;
 }

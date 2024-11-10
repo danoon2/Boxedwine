@@ -1,7 +1,6 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include "boxedwine.h"
-#include "knativewindow.h"
 #include "knativesystem.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -45,7 +44,7 @@ void mainloop() {
             timeout = nextTimer;
         }
 
-        bool timedout = KNativeWindow::getNativeWindow()->waitForEvent(timeout) == false;
+        bool timedout = KNativeSystem::getCurrentInput()->waitForEvent(timeout) == false;
            
         if (lastTitleUpdate + 5000 < t) {
             lastTitleUpdate = t;
@@ -64,12 +63,11 @@ void mainloop() {
                 document.title = title;
                 );
         }
-        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+        if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
             return;
         }
-        if (KNativeWindow::windowUpdated) {
-            KNativeWindow::windowUpdated = false;
+        if (KNativeSystem::getScreen()->presentedSinceLastCheck()) {
             break;
         }
         if (timedout) {
@@ -89,14 +87,19 @@ void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* t
 
 static U32 lastTitleUpdate = 0;
 
+bool isMainthread() {
+    return true;
+}
+
 void mainloop() {
     U32 startTime = KNativeSystem::getTicks();
     U32 t;
     U32 count=0;
     while (1) {
         bool ran = runSlice();
-        
-        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+
+        KNativeSystem::tick();
+        if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
             return;
         }
@@ -110,8 +113,7 @@ void mainloop() {
         if (!ran) {
             break;
         }
-        if ((KNativeSystem::getTicks()-startTime)>250 || KNativeWindow::windowUpdated) {
-            KNativeWindow::windowUpdated = false;
+        if ((KNativeSystem::getTicks()-startTime)>250 || KNativeSystem::getScreen()->presentedSinceLastCheck()) {
             break;
         }
     };

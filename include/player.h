@@ -17,9 +17,17 @@ public:
     U64 lastCommandTime = 0;
     U64 lastScreenRead = 0;
     BString nextCommand;
+    U32 currentInputModifiers = 0;
 private:    
     BString nextValue;
     std::thread comparingThread;
+    U32 nextWaitTime = 0;
+    U32 timerWhileWaiting = 0;
+    U32 waitMouseX = 0;
+    U32 waitMouseY = 0;
+    U32 waitKey = 0;
+    bool processWaitCommand = false;
+    BString waitCommand;
 
     void readCommand();        
 };

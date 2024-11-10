@@ -3,6 +3,7 @@
 
 #include "ksocketmsg.h"
 #include "ksocketobject.h"
+#include "../source/util/ring_buffer.h"
 
 class KUnixSocketObject : public KSocketObject {
 public:
@@ -55,13 +56,14 @@ public:
 
     static U32 unixsocket_write_native_nowait(const std::shared_ptr<KObject>& obj, U8* value, int len);
 
+    void signalReadReady();
 private:        
     std::list< std::weak_ptr<KUnixSocketObject> > pendingConnections; // weak, if object is destroyed it should remove itself from this list
     std::weak_ptr<KUnixSocketObject> connecting;
 
     BOXEDWINE_CONDITION lockCond;
 
-    std::deque<S8> recvBuffer;
+    Soft_Ring_Buffer recvBuffer;
     std::queue<std::shared_ptr<KSocketMsg> > msgs;
     U32 pid = 0;
 

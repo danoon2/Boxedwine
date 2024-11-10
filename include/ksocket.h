@@ -69,6 +69,8 @@
 #define K_SO_ACCEPTCONN 30
 #define K_SO_SNDBUFFORCE 32
 #define K_SO_RCVBUFFORCE 33
+#define K_SO_PROTOCOL     38
+#define K_SO_DOMAIN       39
 
 #define K_IPPROTO_IP 0
 #define K_SOL_SOCKET  1
@@ -96,9 +98,30 @@
 #define K_IP_PASSSEC  18
 #define K_IP_TRANSPARENT  19
 
-#define K_TCP_NODELAY 1
-#define K_TCP_KEEPIDLE 4
-#define K_TCP_KEEPINTVL 5
+#define K_TCP_NODELAY		1	/* Turn off Nagle's algorithm. */
+#define K_TCP_MAXSEG		2	/* Limit MSS */
+#define K_TCP_CORK		3	/* Never send partially complete segments */
+#define K_TCP_KEEPIDLE		4	/* Start keeplives after this period */
+#define K_TCP_KEEPINTVL		5	/* Interval between keepalives */
+#define K_TCP_KEEPCNT		6	/* Number of keepalives before death */
+#define K_TCP_SYNCNT		7	/* Number of SYN retransmits */
+#define K_TCP_LINGER2		8	/* Life time of orphaned FIN-WAIT-2 state */
+#define K_TCP_DEFER_ACCEPT	9	/* Wake up listener only when data arrive */
+#define K_TCP_WINDOW_CLAMP	10	/* Bound advertised window */
+#define K_TCP_INFO		11	/* Information about this connection. */
+#define K_TCP_QUICKACK		12	/* Block/reenable quick acks */
+#define K_TCP_CONGESTION		13	/* Congestion control algorithm */
+#define K_TCP_MD5SIG		14	/* TCP MD5 Signature (RFC2385) */
+#define K_TCP_THIN_LINEAR_TIMEOUTS 16      /* Use linear timeouts for thin streams*/
+#define K_TCP_THIN_DUPACK         17      /* Fast retrans. after 1 dupack */
+#define K_TCP_USER_TIMEOUT	18	/* How long for loss retry before timeout */
+#define K_TCP_REPAIR		19	/* TCP sock is under repair right now */
+#define K_TCP_REPAIR_QUEUE	20
+#define K_TCP_QUEUE_SEQ		21
+#define K_TCP_REPAIR_OPTIONS	22
+#define K_TCP_FASTOPEN		23	/* Enable FastOpen on listeners */
+#define K_TCP_TIMESTAMP		24
+#define K_TCP_NOTSENT_LOWAT	25	
 
 U32 ksocket(U32 domain, U32 type, U32 protocol);
 U32 kbind(KThread* thread, U32 socket, U32 address, U32 len);

@@ -11,17 +11,14 @@ public class VkHostMarshalNone extends VkHostMarshal {
         out.append("    ");
         out.append(param.full);
         out.append(" = ");
+        if (param.paramType != null) {
+            out.append("(" + param.paramType.name + ")");
+        }
         if (param.getSize() <= 4) {
-            if (param.paramType != null) {
-                out.append("(" + param.paramType.name + ")");
-            }
             out.append(param.paramArg);
         } else {
-            out.append("*(" + param.paramType.name + "*)");
-            out.append("getPhysicalAddress(");
+            out.append("cpu->memory->readq(");
             out.append(param.paramArg);
-            out.append(", ");
-            out.append(param.getSize());
             out.append(")");
         }
         out.append(";\n");

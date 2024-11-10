@@ -1,3 +1,10 @@
+25.0.0
+* Updated Wine to latest version
+* Internal change to emulate x11 rather than replace winex11 driver.
+* Linux file system is now based on Tiny Core Linux 15 instead of Debian 10.  This makes it easier to install packages from the Boxedwine UI.
+* Normal (slow) CPU core for 32-bit systems can now use multiple threads.
+* Mac ARMv8 is lot more stable.
+
 21.0.1
 
 * Added command line option: -fullscreenAspect  This will enable full screen with letter boxing in order to preserve the aspect ratio.
@@ -20,12 +27,3 @@
 * Launching Boxedwine without any command line arguments will now launch a new UI.  As long as the platform support OpenGL it should work with the UI.
 * Windows UI is DPI aware
 * Fixed an issue where fast keyboard or mouse input can cause major lag in some games like Sacrafice, Powerslide and Quake 3.
-
-Known game fixes
-
-* GOG's Diablo + Hellfire - https://www.gog.com/game/diablo
-  The installer works, the launcher works and Diablo works.  Hellfire does not work (same as Wine).
-* Half-Life Uplink Demo installer and game work with Wine 4 now.  Wine 1.7 has color issue with intro and game is a blank screen.
-* Final Reality Benchmark.  Works with Wine 1.7 and OpenGL (need to delete HKEY_CURRENT_USER\Software\Wine\Direct3D\DirectDrawRenderer key from registry)
-* MechWarrior 3 with Wine 4.0
-* Tomb Raider 3 from GOG.com, need to add -setup to the command line and hit enter at the first black screen

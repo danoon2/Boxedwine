@@ -16,6 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 #include "boxedwine.h"
+#include "../x11/x11.h"
+#include "knativeaudio.h"
 
 #ifdef BOXEDWINE_MULTI_THREADED
 static KList<KTimerCallback*> timers;
@@ -69,7 +71,7 @@ void removeTimer(KTimerCallback* timer) {
 }
 #else
 #include "kscheduler.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 
 #include <stdio.h>
 
@@ -107,7 +109,7 @@ void unscheduleThread(KThread* thread) {
     thread->cpu->yield = true;
 }
 
-void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
+void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
     KThread* thread = process->getThreadById(threadId);
     if (thread) {
         unscheduleThread(thread);
@@ -166,10 +168,12 @@ bool runSlice() {
     if (scheduledThreads.isEmpty())
         return false;
     
-    std::shared_ptr<KNativeWindow> window = KNativeWindow::getNativeWindow();
-    if (window) {
-        window->flipFB();
+    XServer* server = XServer::getServer(true);
+    if (server) {
+        server->isDisplayDirty = true; // a bit of a hack, sometimes popups in Basstour get missed and don't draw
+        server->draw();
     }
+
     U64 elapsedTime = 0;
 
     contextTimeRemaining = contextTime;
@@ -177,7 +181,7 @@ bool runSlice() {
         U64 threadStartTime = KSystem::getMicroCounter();
         KListNode<KThread*>* node = scheduledThreads.front();
         KThread* currentThread = (KThread*)node->data;
-        KNativeWindow::getNativeWindow()->glUpdateContextForThread(currentThread);
+        KNativeSystem::scheduledNewThread(currentThread);
         sysCallTime = 0;    
 
         ChangeThread c(currentThread);
@@ -232,7 +236,7 @@ U32 getMIPS() {
     return result;
 }
 
-void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread) {
+void waitForProcessToFinish(const KProcessPtr& process, KThread* thread) {
     while (!process->terminated) {
         runThreadSlice(thread);
     }

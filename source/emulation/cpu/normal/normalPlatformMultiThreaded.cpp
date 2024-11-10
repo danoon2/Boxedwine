@@ -7,13 +7,16 @@ std::atomic<int> platformThreadCount = 0;
 
 static void platformThread(CPU* cpu) {
     KThread::setCurrentThread(cpu->thread);
+    KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
 
     while (true) {
         try {
-            cpu->nextBlock = cpu->getNextBlock();
+            if (!cpu->nextBlock) {
+                cpu->nextBlock = cpu->getNextBlock();
+            }
             cpu->run();
         } catch (...) {
-            int ii = 0;
+            cpu->nextBlock = nullptr;
         }
 #ifdef __TEST
         return;
@@ -28,10 +31,10 @@ static void platformThread(CPU* cpu) {
 #endif
     }
 
-    std::shared_ptr<KProcess> process = cpu->thread->process;
-    process->deleteThread(cpu->thread);
+    cpu->thread->cleanup();    
 
     platformThreadCount--;
+    process->deleteThread(cpu->thread);
     if (platformThreadCount == 0) {
         KSystem::shutingDown = true;
         KNativeSystem::postQuit();
@@ -49,7 +52,7 @@ void scheduleThread(KThread* thread) {
     }
 }
 
-void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
+void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
     KThread* thread = process->getThreadById(threadId);
     if (thread) {
         thread->terminating = true;

@@ -33,8 +33,9 @@ public:
 
 class StartUpArgs {
 public:
-    StartUpArgs() : euidSet(false), nozip(false), pentiumLevel(4), rel_mouse_sensitivity(0), pollRate(DEFAULT_POLL_RATE), userId(UID), groupId(GID), effectiveUserId(UID), effectiveGroupId(GID), soundEnabled(true), videoEnabled(true), vsync(VSYNC_DEFAULT), dpiAware(false), showWindowImmediately(false), skipFrameFPS(0), readyToLaunch(false), openGlType(OPENGL_TYPE_NOT_SET), ttyPrepend(false), workingDirSet(false), resolutionSet(false), screenCx(800), screenCy(600), screenBpp(32), sdlFullScreen(FULLSCREEN_NOTSET), sdlScaleX(100), sdlScaleY(100), sdlScaleQuality(B("0")), cpuAffinity(0) {
+    StartUpArgs() {
         workingDir = B("/home/username");
+        sdlScaleQuality = B("0");
     }
     bool loadDefaultResource(const char* app);
     bool parseStartupArgs(int argc, const char **argv);
@@ -61,29 +62,28 @@ public:
     std::vector<BString> envValues;
     std::vector<BString> nonExecFileFullPaths;
         
-    bool euidSet;
-    bool nozip;
+    bool euidSet = false;
+    bool nozip = false;
         
-    U32 pentiumLevel;
+    U32 pentiumLevel = 4;
 
-    U32 rel_mouse_sensitivity;        
-    int pollRate;
+    U32 rel_mouse_sensitivity = 0;        
+    int pollRate = DEFAULT_POLL_RATE;
 
-    int userId;
-    int groupId;
-    int effectiveUserId;
-    int effectiveGroupId;
+    int userId = UID;
+    int groupId = GID;
+    int effectiveUserId = UID;
+    int effectiveGroupId = GID;
 
-    bool soundEnabled;
-    bool videoEnabled;
-    U32 vsync;
-    bool dpiAware;
-    bool showWindowImmediately;
-    U32 skipFrameFPS;
+    bool soundEnabled = true;
+    VideoOption videoOption = VIDEO_NORMAL;
+    U32 vsync = VSYNC_DEFAULT;
+    bool dpiAware = false;
+    U32 skipFrameFPS = 0;
     static U32 uiType;
-    bool readyToLaunch;
-    U32 openGlType;
-    bool ttyPrepend;
+    bool readyToLaunch = false;
+    U32 openGlType = OPENGL_TYPE_NOT_SET;
+    bool ttyPrepend = false;
     BString showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;
     BString logPath;
@@ -92,23 +92,26 @@ public:
     BString recordAutomation;
     BString runAutomation;
 
+    BString ddrawOverridePath;
+    bool disableHideCursor = false;
+
 private:
-    bool workingDirSet;
-    bool resolutionSet;    
+    bool workingDirSet = false;
+    bool resolutionSet = false;
 
     BString workingDir;
-    U32 screenCx;
-    U32 screenCy;
-    U32 screenBpp;
-    U32 sdlFullScreen;
+    U32 screenCx = 800;
+    U32 screenCy = 600;
+    U32 screenBpp = 32;
+    U32 sdlFullScreen = FULLSCREEN_NOTSET;
     BString glExt;
-    int sdlScaleX;
-    int sdlScaleY;
+    int sdlScaleX = 100;
+    int sdlScaleY = 100;
     BString sdlScaleQuality;
     std::vector<BString> args;
     BString root;
     std::vector<BString> zips;
-    int cpuAffinity;
+    int cpuAffinity = 0;
 
     void buildVirtualFileSystem();
     int parse_resolution(const char *resolutionString, U32 *width, U32 *height);

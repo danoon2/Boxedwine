@@ -29,7 +29,6 @@ public:
     std::weak_ptr<FileSystemZip> getFileSystem() {return this->fileSystem;}
     void setFileSystem(std::shared_ptr<FileSystemZip> fileSystem) { this->fileSystem = fileSystem; }
     BString getFileSystemName();
-    int getWineVersionAsNumber(BString wineVersion);
     BString getSize() {return this->cachedSize;}
 
     void setName(BString name);
@@ -63,6 +62,9 @@ private:
     void getTinyCorePackages(BString package, std::vector<BString>& todo, std::vector<BString>& needsDownload);
     void installNextTinyCorePackage(WaitDlg* dlg, std::vector<BString> packages);
     void doInstallTinyCorePackage(const std::vector<BString>& todo);
+    void loadInstalledPackageList();
+    void saveInstalledPackageList();
+    BString getCacheFolder();
 
     void loadApps();
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);
@@ -78,6 +80,8 @@ private:
     BString dirPath;
     std::vector<MountInfo> mounts;
     std::weak_ptr<FileSystemZip> fileSystem;
+    std::vector<BString> installedPackages;
+    std::vector<BString> installingPackages;
 };
 
 #endif

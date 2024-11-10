@@ -177,7 +177,7 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
     case Msg::HELPVIEW_HELP_INSTALL_LABEL:
         return "Apps/Games are installed into containers.  A container is a folder that contains all of the files necessary for Boxedwine and Wine to run and a place for them to store changes.  It acts as a virtual file system.  Each app can be installed into its own container.  To install an app or game, just drag the installer, for example, setup.exe, onto Boxedwine.  You can also drag a folder onto Boxedwine and it will be copied into a container.";
     case Msg::HELPVIEW_HELP_TROUBLESHOOTING_LABEL:
-        return "The first place to look for help is the [Wine Application Database (AppDB)](https://appdb.winehq.org/).  If your app or game works on Wine, then there is a good chance it will work on Boxedwine.\n\n## Performance\nSince Boxedwine emulates the CPU, you may have performance issues.  The 64-bit Windows build uses a binary translator for the CPU emulation and is pretty fast, perhaps as much as 25% of the host computer.  The other platforms will be significantly slower.  You will probably not have much luck with demanding games after 1999.\n## Things to try if your app/game doesnt' work\n* If your app/game was made before the year 2000, try setting the Windows version for the container to be Windows 98.";
+        return "The first place to look for help is the [Wine Application Database (AppDB)](https://appdb.winehq.org/).  If your app or game works on Wine, then there is a good chance it will work on Boxedwine.\n\n## Performance\nSince Boxedwine emulates the CPU, you may have performance issues.  The 64-bit Windows build uses a binary translator for the CPU emulation and is pretty fast, perhaps as much as 25% of the host computer.  The other platforms will be significantly slower.  You will probably not have much luck with demanding games after 1999.\n## Things to try if your app/game doesnt' work\n These options can be adjusted in the containers Tab\n\n* If your app/game was made before the year 2000, try setting the Windows version for the container to be Windows 98.\n\n* If your game starts with a black screen you should try to change the resolution in Boxedwine that the game starts at to match watch what the game wants.\n\n* If the colors are wrong, you should try CNC DDraw option.";
     case Msg::APPCHOOSER_DLG_TITLE:
         return "Create Shortcut";
     case Msg::APPCHOOSER_DLG_CHOOSE_APP_LABEL:
@@ -308,10 +308,14 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "DPI Aware:";
     case Msg::CONTAINER_VIEW_DPI_AWARE_HELP:
         return "DPI (dots per inch) Aware means the app will be responsible for itself when it comes to scaling to large resolutions.  If this is checked and the app can not handle it, then the app might appear to run in a window that is too small.";
-    case Msg::CONTAINER_VIEW_SHOW_WINDOW_LABEL:
-        return "Show Window Immediatly:";
-    case Msg::CONTAINER_VIEW_SHOW_WINDOW_HELP:
-        return "By default Boxedwine will hide new Windows until it looks like they will be used.  This is done to prevent a lot of Window flashing (create and destroy) when games test the system for what resolution and capabilities they will use.  Some simple OpenGL apps seem to have a problem with this feature of Boxedwine so this flag will disable it by showing the windows as soon as it is created.";
+    case Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_LABEL:
+        return "CNC DDraw:";
+    case Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_HELP:
+        return "This uses cnc-ddraw (https://github.com/FunkyFr3sh/cnc-ddraw) which can help some direct draw games.";
+    case Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_LABEL:
+        return "Keep Cursor Visible:";
+    case Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_HELP:
+        return "This will prevent the app/game from hiding the cursor.";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL:
         return "Direct Draw Auto Refresh:";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP:

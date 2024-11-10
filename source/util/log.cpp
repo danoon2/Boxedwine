@@ -37,7 +37,7 @@ void internal_kpanic(BString msg) {
 #ifdef BOXEDWINE_MSVC
     OutputDebugStringA(msg.c_str());
 #endif
-    if (KSystem::videoEnabled) {
+    if (KSystem::videoOption == VIDEO_NORMAL) {
 #ifndef _TEST
         KNativeSystem::exit(msg.c_str(), 1);
 #endif

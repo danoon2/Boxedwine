@@ -4800,7 +4800,6 @@ void gen0cb(struct GenData* data, struct Op* op) {
 
 void OPCALL syscall_op(struct CPU* cpu, struct Op* op);
 void OPCALL int99(struct CPU* cpu, struct Op* op);
-void OPCALL int98(struct CPU* cpu, struct Op* op);
 void gen0cd(struct GenData* data, struct Op* op) {
     char tmp[16];
 
@@ -4812,8 +4811,6 @@ void gen0cd(struct GenData* data, struct Op* op) {
         // syscall will set nextBlock
     } else if (op->func == int99) {
         out(data, "int99Callback[peek32(cpu, 0)](cpu);");
-    } else if (op->func == int98) {
-        out(data, "wine_callback[peek32(cpu, 0)](cpu);");
     } else {
         kpanic("gen0cd");
     }

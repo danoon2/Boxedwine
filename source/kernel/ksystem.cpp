@@ -26,12 +26,13 @@
 #include "knativesystem.h"
 #include "pixelformat.h"
 #include "../io/fsfilenode.h"
+#include "../x11/x11.h"
 
 #include <time.h>
 
 bool KSystem::modesInitialized = false;
 U32 KSystem::skipFrameFPS = 0;
-bool KSystem::videoEnabled = true;
+VideoOption KSystem::videoOption = VIDEO_NORMAL;
 #ifdef BOXEDWINE_OPENGL_SDL
 U32 KSystem::openglType = OPENGL_TYPE_SDL;
 #elif defined (BOXEDWINE_OPENGL_OSMESA) 
@@ -41,21 +42,19 @@ U32 KSystem::openglType = OPENGL_TYPE_UNAVAILABLE;
 #endif
 bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
-BHashTable<U32, std::shared_ptr<KProcess> > KSystem::processes;
+BHashTable<U32, KProcessPtr > KSystem::processes;
 BHashTable<BString, std::shared_ptr<MappedFileCache> > KSystem::fileCache;
 BOXEDWINE_MUTEX KSystem::fileCacheMutex;
 U32 KSystem::pentiumLevel = 4;
 bool KSystem::shutingDown;
 U32 KSystem::killTime;
+U32 KSystem::killTime2;
 bool KSystem::adjustClock;
 U32 KSystem::adjustClockFactor=100;
 U32 KSystem::startTimeTicks;
 U64 KSystem::startTimeMicroCounter;
 U64 KSystem::startTimeSystemTime;
 BString KSystem::title;
-// some simple opengl apps seem to have a hard time starting if this is false
-// Not sure if this is a Boxedwine issue or if its normal for Windows to behave different for OpenGL if the window is hidden
-bool KSystem::showWindowImmediately = false;
 #ifdef BOXEDWINE_MULTI_THREADED
 U32 KSystem::cpuAffinityCountForApp = 0;
 #endif
@@ -66,6 +65,7 @@ bool KSystem::ttyPrepend;
 BString KSystem::exePath;
 std::shared_ptr<FsNode> KSystem::procNode;
 U32 KSystem::wineMajorVersion;
+bool KSystem::disableHideCursor = false;
 
 BOXEDWINE_CONDITION KSystem::processesCond(std::make_shared<BoxedWineCondition>(B("KSystem::processesCond")));
 
@@ -80,13 +80,14 @@ void KSystem::init() {
     KSystem::startTimeMicroCounter = Platform::getMicroCounter();
     KSystem::startTimeSystemTime = Platform::getSystemTimeAsMicroSeconds();
     KSystem::killTime = 0;
+    KSystem::killTime2 = 0;
 }
 
 void KSystem::destroy() {
 	KThread::setCurrentThread(nullptr);
 	KSystem::shutingDown = true;
     while (true) {
-        std::shared_ptr<KProcess> p;
+        KProcessPtr p;
         {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
             if (KSystem::processes.size()) {
@@ -111,6 +112,7 @@ void KSystem::destroy() {
     DecodedOp::clearCache();
     NormalCPU::clearCache();
     KMemory::shutdown();
+    XServer::shutdown();
     shutdownRam();
 }
 
@@ -242,7 +244,7 @@ KThread* KSystem::getThreadById(U32 threadId) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
     for (auto& p : processes) {
-        const std::shared_ptr<KProcess>& process = p.value;
+        const KProcessPtr& process = p.value;
         if (process) {
             result = process->getThreadById(threadId);
         }
@@ -259,8 +261,10 @@ U32 KSystem::tgkill(U32 threadGroupId, U32 threadId, U32 signal) {
     if (!result) {
         return -K_ESRCH;;
     }
-
-    return result->signal(signal, false);
+    // these signals should be asychronous, but either there is a bug in boxedwine in the kernel/syscall code or there is a race condition in wine,
+    // either way, blocking on SIGQUIT which is sent by wineserver seems to stop a server protocol error during shutdown.  I saw this frequently 
+    // starting in Wine 6.23 when closing notepad
+    return result->signal(signal, signal == 3);
 }
 
 /*
@@ -295,6 +299,7 @@ U32 KSystem::sysinfo(KThread* thread, U32 address) {
     memory->writed(address, 0); address+=4;
     memory->writed(address, 0); address+=4;
     memory->writew(address, (U16)KSystem::processes.size()); address+=2;
+    memory->writew(address, 0); address += 2;
     memory->writed(address, 0); address+=4;
     memory->writed(address, 0); address+=4;
     memory->writed(address, K_PAGE_SIZE);
@@ -307,7 +312,7 @@ U32 syscall_ioperm(U32 from, U32 num, U32 turn_on) {
 
 void KSystem::printStacks() {
     for (auto& n : KSystem::processes) {
-        const std::shared_ptr<KProcess>& process = n.value;
+        const KProcessPtr& process = n.value;
 
         klog("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine.c_str());
         process->printStack();
@@ -315,7 +320,7 @@ void KSystem::printStacks() {
 }
 
 U32 KSystem::kill(S32 pid, U32 signal) {
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
 
@@ -341,7 +346,7 @@ void KSystem::wakeThreadsWaitingOnProcessStateChanged() {
 }
 
 U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     U32 result = 0;
     KMemory* memory = thread->memory;
 
@@ -360,7 +365,7 @@ U32 KSystem::waitpid(KThread* thread, S32 pid, U32 statusAddress, U32 options) {
             if (pid==0)
                 pid = thread->process->groupId;
             for (auto& n : KSystem::processes) {
-                std::shared_ptr<KProcess> p = n.value;
+                KProcessPtr p = n.value;
                 if (p && (p->isStopped() || p->isTerminated())) {
                     if (pid == -1) {
                         if (p->parentId == thread->process->id) {
@@ -413,7 +418,7 @@ U32 KSystem::times(KThread* thread, U32 buf) {
     if (buf) {
         KMemory* memory = thread->memory;
 
-        memory->writed(buf, (U32)thread->userTime * 10); // user time
+        memory->writed(buf, (U32)thread->getThreadUserTime() * 10); // user time
         memory->writed(buf + 4, (U32)thread->kernelTime * 10); // system time
         memory->writed(buf + 8, 0); // user time of children
         memory->writed(buf + 12, 0); // system time of children
@@ -422,7 +427,7 @@ U32 KSystem::times(KThread* thread, U32 buf) {
 }
 
 U32 KSystem::setpgid(U32 pid, U32 gpid) {	
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
 
     if (pid==0) {
         process = KThread::currentThread()->process;
@@ -443,7 +448,7 @@ U32 KSystem::setpgid(U32 pid, U32 gpid) {
 }
 
 U32 KSystem::getpgid(U32 pid) {	
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     if (pid==0)
         process = KThread::currentThread()->process;
     else {
@@ -694,7 +699,7 @@ U32 KSystem::shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf) {
 #define K_RLIM_INFINITY 0xFFFFFFFF
 
 U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32 oldlimit) {
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     KMemory* memory = thread->memory;
 
     if (pid==0) {
@@ -822,7 +827,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
     return 0;
 }
 
-std::shared_ptr<KProcess> KSystem::getProcess(U32 id) {
+KProcessPtr KSystem::getProcess(U32 id) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     return KSystem::processes[id];
 }
@@ -844,7 +849,9 @@ void KSystem::setFileCache(BString name, const std::shared_ptr<MappedFileCache>&
 
 void KSystem::internalEraseProcess(U32 id) {
     KSystem::processes.remove(id);
-    KSystem::procNode->removeChildByName(BString::valueOf(id));
+    if (KSystem::procNode) {
+        KSystem::procNode->removeChildByName(BString::valueOf(id));
+    }
 }
 
 void KSystem::eraseProcess(U32 id) {
@@ -852,7 +859,7 @@ void KSystem::eraseProcess(U32 id) {
     KSystem::internalEraseProcess(id);    
 }
 
-std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const std::shared_ptr<KProcess>& process) {
+std::shared_ptr<FsNode> KSystem::addProcess(U32 id, const KProcessPtr& process) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     KSystem::processes.set(id, process);
     if (KSystem::procNode) {
@@ -867,7 +874,7 @@ U32 KSystem::getRunningProcessCount() {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(processesCond);
     U32 count = 0;
     for (auto& n : KSystem::processes) {
-        const std::shared_ptr<KProcess>& openProcess = n.value;
+        const KProcessPtr& openProcess = n.value;
         if (openProcess && !openProcess->isStopped() && !openProcess->isTerminated()) {
             count++;
         }
@@ -931,11 +938,49 @@ void KSystem::initDisplayModes() {
     }
 }
 
+U32 KSystem::findPixelFormat(U32 flags, U32 colorType, U32 cRedBits, U32 cGreenBits, U32 cBlueBits, U32 cAlphaBits, U32 cAccumBits, U32 cDepthBits, U32 cStencilBits) {
+    initDisplayModes();
+    for (U32 i = 1; i < numberOfPfs; i++) {
+        if (flags && (pfs[i].dwFlags & flags) != flags) {
+            continue;
+        }
+        if (cRedBits && pfs[i].cRedBits != cRedBits) {
+            continue;
+        }
+        if (cGreenBits && pfs[i].cGreenBits != cGreenBits) {
+            continue;
+        }
+        if (cBlueBits && pfs[i].cBlueBits != cBlueBits) {
+            continue;
+        }
+        if (cAlphaBits && pfs[i].cAlphaBits != cAlphaBits) {
+            continue;
+        }
+        if (cAccumBits && pfs[i].cAccumBits != cAccumBits) {
+            continue;
+        }
+        if (cDepthBits && pfs[i].cDepthBits != cDepthBits) {
+            continue;
+        }
+        if (cStencilBits && pfs[i].cStencilBits != cStencilBits) {
+            continue;
+        }
+        return i;
+    }
+    return 0;
+}
+
 PixelFormat* KSystem::getPixelFormat(U32 index) {
+    initDisplayModes();
     if (index < numberOfPfs) {
         return &pfs[index];
     }
     return nullptr;
+}
+
+U32 KSystem::getPixelFormatCount() {
+    initDisplayModes();
+    return numberOfPfs;
 }
 
 U32 KSystem::describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U32 descr)

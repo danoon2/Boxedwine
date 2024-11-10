@@ -107,7 +107,9 @@ BOOL processEvents(DWORD mask) {
         TRACE("hwnd=%p GetForegroundWindow()=%p\n", hwnd, GetForegroundWindow());
         inEvent = TRUE;
         // Apr 15, 2021 wine-6.7
-#if BOXED_WINE_VERSION >= 6070
+#if BOXED_WINE_VERSION >= 9040
+        NtUserSendHardwareInput(hwnd, 0, &input, NULL);
+#elif BOXED_WINE_VERSION >= 6070
         __wine_send_input(hwnd, &input, NULL);
 #else
         __wine_send_input(hwnd, &input);

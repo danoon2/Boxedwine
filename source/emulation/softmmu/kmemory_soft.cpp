@@ -11,7 +11,9 @@
 #include "soft_file_map.h"
 #include "soft_code_page.h"
 #include "devfb.h"
-
+#ifdef BOXEDWINE_DYNAMIC
+#include "../cpu/dynamic/dynamic_memory.h"
+#endif
 #include "soft_ram.h"
 
 static InvalidPage _invalidPage;
@@ -21,6 +23,7 @@ static U32 callbackRamPos;
 
 void KMemoryData::shutdown() {
     callbackRam = nullptr;
+    callbackRamPos = 0;
 }
 
 KMemoryData* getMemData(KMemory* memory) {
@@ -42,12 +45,20 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmu
         addCallback(onExitSignal);
     }
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
+#ifdef BOXEDWINE_DYNAMIC
+    dynamicMemory = nullptr;
+#endif
 }
 
 KMemoryData::~KMemoryData() {
     for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
         mmu[i]->close();
     }
+#ifdef BOXEDWINE_DYNAMIC
+    if (dynamicMemory) {
+        delete dynamicMemory;
+    }
+#endif
 }
 
 void KMemoryData::onPageChanged(U32 index) {
@@ -374,7 +385,7 @@ U8* KMemory::getIntPtr(U32 address, bool write) {
     U8* result;
 
     if (write) {
-        result = data->mmu[index]->getWritePtr(this, address, true);
+        result = data->mmu[index]->getWritePtr(this, address, 4, true);
     } else {
         result = data->mmu[index]->getReadPtr(this, address, true);
     }

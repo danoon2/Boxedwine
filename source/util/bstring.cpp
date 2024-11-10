@@ -31,29 +31,12 @@ public:
 #define LARGEST_LEVEL 16
 #define TOTAL_LEVEL 13
 
-static PtrPool<BStringData>* freeStringData;
-static PtrPool<char>* freeMemoryBySize[TOTAL_LEVEL];
-
 char* getNewString(int level) {
-    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
-        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
-    }
-    char* result = freeMemoryBySize[level - SMALLEST_LEVEL]->get();
-    if (!result) {
-        U32 size = 1 << level;
-        result = new char[size * 100];
-        for (int i = 1; i < 100; i++, result += size) {
-            freeMemoryBySize[level - SMALLEST_LEVEL]->put(result);
-        }
-    }
-    return result;
+    return new char[(U32)(1 << level)];
 }
 
 void releaseString(int level, char* str) {
-    if (!freeMemoryBySize[level - SMALLEST_LEVEL]) {
-        freeMemoryBySize[level - SMALLEST_LEVEL] = new PtrPool<char>(0);
-    }
-    freeMemoryBySize[level - SMALLEST_LEVEL]->put(str);
+    delete[] str;
 }
 
 int powerOf2(int requestedSize) {
@@ -68,21 +51,15 @@ int powerOf2(int requestedSize) {
 
 void BStringData::decRefCount() {
     if (refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-        if (level != 0) {
+        if (level) {
             releaseString(level, str);
         }
-        if (!freeStringData) {
-            freeStringData = new PtrPool<BStringData>();
-        }
-        freeStringData->put(this);
+        delete this;
     }
 }
 
 static BStringData* allocNewData() {
-    if (!freeStringData) {
-        freeStringData = new PtrPool<BStringData>();
-    }
-    return freeStringData->get();
+    return new BStringData();
 }
 
 template <typename T>
@@ -894,30 +871,37 @@ void BString::makeWritable(int len) {
 }
 
 // guarantees single path separator between
-BString BString::operator^(const BString& s) const {
-    if (!s.data->str) {
-        return *this ^ "";
+BString BString::stringByApppendingPath(const BString& path) const {
+    if (!path.data->str) {
+        return stringByApppendingPath("");
     }
-    return *this ^ s.data->str;
+    return stringByApppendingPath(path.data->str);
 }
 
-BString BString::operator^(const char* s) const {
+BString BString::pathSeparator() {
+    BString result;
+    result += (char)std::filesystem::path::preferred_separator;
+    return result;
+}
+
+
+BString BString::stringByApppendingPath(const char* path) const {
     BStringData* d = allocNewData();
-    int sLen = (int)strlen(s);
+    int sLen = (int)strlen(path);
     char sep = (char)std::filesystem::path::preferred_separator;
     bool needAddSep = false;
     bool needRemoveSep = false;
 
     if (length() == 0) {
-        needAddSep = s[0] != sep;
+        needAddSep = path[0] != sep;
         needRemoveSep = false;
     } else {
-        needAddSep = s[0] != sep && data->str[data->len - 1] != sep;
-        needRemoveSep = s[0] == sep && data->str[data->len - 1] == sep;;
+        needAddSep = path[0] != sep && data->str[data->len - 1] != sep;
+        needRemoveSep = path[0] == sep && data->str[data->len - 1] == sep;;
     }
     if (needRemoveSep) {
         sLen--;
-        s++;
+        path++;
     }
     d->len = length() + sLen;
     if (needAddSep) {
@@ -931,7 +915,7 @@ BString BString::operator^(const char* s) const {
         d->str[data->len] = sep;
         offset = 1;
     }
-    memcpy(d->str + data->len + offset, s, sLen);
+    memcpy(d->str + data->len + offset, path, sLen);
     d->str[d->len] = 0;
     return BString(d);
 }

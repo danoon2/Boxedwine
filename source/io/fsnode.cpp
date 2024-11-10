@@ -51,7 +51,7 @@ void FsNode::loadChildren() {
             Platform::listNodes(nativePath, results);
             for (auto& n : results) {
                 BString localPath = this->path;
-                BString remotePath = this->nativePath ^ n.name;
+                BString remotePath = this->nativePath.stringByApppendingPath(n.name);
                 if (!localPath.endsWith("/")) {
                     localPath += "/";
                 }

@@ -27,6 +27,8 @@
 #include "../io/fsmemnode.h"
 #include "../io/fsmemopennode.h"
 #include "../io/fsfilenode.h"
+#include "../x11/x11.h"
+#include "kunixsocket.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -43,20 +45,20 @@ bool KProcessTimer::run() {
     } else {
         this->millies = this->resetMillies + KSystem::getMilliesSinceStart();
     }
-    std::shared_ptr<KProcess> p = this->process.lock();
+    KProcessPtr p = this->process.lock();
     if (p) {
         p->signalALRM();
     }
     return result;
 }
 
-std::shared_ptr<KProcess> KProcess::create() {
-    std::shared_ptr<KProcess> process = std::make_shared<KProcess>(KSystem::getNextThreadId());
+KProcessPtr KProcess::create() {
+    KProcessPtr process = std::make_shared<KProcess>(KSystem::getNextThreadId());
     process->processNode = KSystem::addProcess(process->id, process);
     if (process->processNode) {
-        std::weak_ptr<KProcess> weak_process = process;
+        KProcessWeakPtr weak_process = process;
         Fs::addDynamicLinkFile(process->processNode->path + "/exe", k_mdev(0, 0), process->processNode, false, [weak_process]() {
-            std::shared_ptr<KProcess> p = weak_process.lock();
+            KProcessPtr p = weak_process.lock();
             if (p) {
                 return p->exe;
             }
@@ -105,7 +107,9 @@ void KProcess::onExec(KThread* thread) {
     this->privateShm.clear();
     this->mappedFiles.clear();
 
-    memset(this->sigActions, 0, sizeof(KSigAction)*MAX_SIG_ACTIONS);
+    for (int i = 0; i < MAX_SIG_ACTIONS; i++) {
+        this->sigActions[i].reset();
+    }
 
     if (this->timer.active) {
         removeTimer(&this->timer);
@@ -171,7 +175,8 @@ KProcess::~KProcess() {
     }
 }
 
-void KProcess::cleanupProcess() {    
+void KProcess::cleanupProcess() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     removeTimer(&this->timer);
 
     BHashTable<U32, KFileDescriptor*> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
@@ -189,6 +194,10 @@ void KProcess::cleanupProcess() {
         memory->cleanup();
     }
 #endif
+    XServer* server = XServer::getServer(true);
+    if (server) {
+        server->processExit(id);
+    }
 }
 
 KThread* KProcess::createThread() {	
@@ -200,8 +209,10 @@ KThread* KProcess::createThread() {
 }
 
 void KProcess::removeThread(KThread* thread) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadRemovedCondition);
-	BOXEDWINE_CONDITION_SIGNAL(threadRemovedCondition);
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(threadRemovedCondition);
+        BOXEDWINE_CONDITION_SIGNAL(threadRemovedCondition);
+    }
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
     this->threads.remove(thread->id);
@@ -218,15 +229,16 @@ U32 KProcess::getThreadCount() {
 }
 
 void KProcess::deleteThread(KThread* thread) {
-    thread->cleanup();        
-    if (this->threads.size() == 1 && this->threads.get(thread->id)==thread) {
+    thread->cleanup();  
+    if (this->threads.size() == 0) {
+        cleanupProcess();
         delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
-        this->memory = nullptr;
+        this->memory = nullptr;        
     }
     delete thread;
     // don't call into getProcess while holding threadsCondition
     if (!this->terminated && this->getThreadCount() == 0) {
-        std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
+        KProcessPtr parent = KSystem::getProcess(this->parentId);
         if (!parent || parent->getThreadCount() == 0) {
             KSystem::eraseProcess(this->id);
         }
@@ -245,7 +257,7 @@ BString KProcess::getAbsoluteExePath() {
     BString path = Fs::getNodeFromLocalPath(B(""), this->exe, true)->path;
     return Fs::getParentPath(path);
 }
-void KProcess::clone(const std::shared_ptr<KProcess>& from) {
+void KProcess::clone(const KProcessPtr& from) {
     this->parentId = from->id;;
     this->groupId = from->groupId;
     this->userId = from->userId;
@@ -328,7 +340,7 @@ static void writeStackString(KThread* thread, CPU * cpu, const char* s) {
 #define HWCAP_I386_AMD3D 1 << 31
 
 static void pushThreadStack(KThread* thread, CPU* cpu, int argc, U32* a, int envc, U32* e) {
-    std::shared_ptr<KProcess> process = cpu->thread->process;
+    KProcessPtr process = cpu->thread->process;
 
     cpu->push32(rand());
     cpu->push32(rand());
@@ -509,7 +521,6 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
     } else {
         FsOpenNode* openNode = node->open(accessFlags);
         if (!openNode) {
-            node->removeNodeFromParent();
             return translateOpenError();
         }
         openNode->openedPath = Fs::getFullPath(currentDirectory, localPath);
@@ -648,7 +659,7 @@ BString KProcess::getModuleName(U32 eip) {
     for (auto& n : this->mappedFiles) {
         std::shared_ptr<MappedFile> mappedFile = n.value;
         if (eip >= mappedFile->address && eip < mappedFile->address + mappedFile->len) {
-            return mappedFile->file->openFile->node->name;
+            return mappedFile->file->openFile->node->path;
         }
     }
     return B("Unknown");
@@ -770,7 +781,8 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
     }
 
     // reset memory must come after we grab the args and env
-    this->memory->execvReset(cloneVM);
+    this->heap.freeAll(this->memory);
+    this->memory->execvReset(cloneVM);    
     cloneVM = false;
 
     thread->reset();
@@ -1077,6 +1089,9 @@ U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen)
     if (!fd->canRead()) {
         return -K_EINVAL;
     }
+    if (!memory->canWrite(bufferAddress, bufferLen)) {
+        return -K_EFAULT;
+    }
     return fd->kobject->read(thread, bufferAddress, bufferLen);
 }
 
@@ -1088,7 +1103,7 @@ U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
     if (!fdOut || !fdIn) {
         return -K_EBADFD;
     }
-    U64 pos;
+    U64 pos = 0;
 
     if (offset) {
         pos = fdIn->kobject->getPos();
@@ -1126,6 +1141,9 @@ U32 KProcess::write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen
     if (!fd->canWrite()) {
         return -K_EINVAL;
     }
+    if (!memory->canRead(bufferAddress, bufferLen)) {
+        return -K_EFAULT;
+    }
     return fd->kobject->write(thread, bufferAddress, bufferLen);
 }
 
@@ -1146,7 +1164,7 @@ U32 KProcess::brk(KThread* thread, U32 address) {
                     return -K_ENOMEM;
                 }
             }
-            if (memory->mmap(thread, aligned, len - alreadyAllocated, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE|K_MAP_ANONYMOUS|K_MAP_FIXED, -1, 0)==aligned) {
+            if (memory->mmap(thread, aligned, len - alreadyAllocated, K_PROT_READ | K_PROT_WRITE | K_PROT_EXEC, K_MAP_PRIVATE | K_MAP_ANONYMOUS | K_MAP_FIXED_NOREPLACE, -1, 0)==aligned) {
                 this->brkEnd+=len;
             }				
         }
@@ -1199,8 +1217,9 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
         for (auto& t : this->threads ) {
             KThread* otherThread = t.value;
-            userSeconds += (U32)(otherThread->userTime / 1000000l);
-            userMicroSeconds += (U32)(otherThread->userTime % 1000000l);
+            U64 userTime = otherThread->getThreadUserTime();
+            userSeconds += (U32)(userTime / 1000000l);
+            userMicroSeconds += (U32)(userTime % 1000000l);
             kernelSeconds += (U32)(otherThread->kernelTime / 1000000l);
             kernelMicroSeconds += (U32)(otherThread->kernelTime % 1000000l);
         }
@@ -1208,8 +1227,9 @@ U32 KProcess::getrusuage(KThread* thread, U32 who, U32 usage) {
     } else if ((S32)who < 0) { // RUSAGE_CHILDREN
         klog("getrusuage: RUSAGE_CHILDREN not implemented");
     } else { // RUSAGE_THREAD
-        userSeconds = (U32)(thread->userTime / 1000000l);
-        userMicroSeconds = (U32)(thread->userTime % 1000000l);
+        U64 userTime = thread->getThreadUserTime();
+        userSeconds = (U32)(userTime / 1000000l);
+        userMicroSeconds = (U32)(userTime % 1000000l);
         kernelSeconds = (U32)(thread->kernelTime / 1000000l);
         kernelMicroSeconds = (U32)(thread->kernelTime % 1000000l);
     }
@@ -1528,7 +1548,7 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         if (flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)) {
             kpanic("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
         }
-        std::shared_ptr<KProcess> newProcess = KProcess::create();
+        KProcessPtr newProcess = KProcess::create();
         newProcess->memory = KMemory::create(newProcess.get());
         newProcess->memory->clone(this->memory, vm);
 
@@ -1626,7 +1646,7 @@ void KProcess::killAllThreads(KThread* exceptThisThread) {
 }
 
 U32 KProcess::exitgroup(KThread* thread, U32 code) {
-    std::shared_ptr<KProcess> parent = KSystem::getProcess(this->parentId);
+    KProcessPtr parent = KSystem::getProcess(this->parentId);
     if (parent && parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_DFL) {
         if (parent->sigActions[K_SIGCHLD].handlerAndSigAction!=K_SIG_IGN) {
             parent->signalCHLD(K_CLD_EXITED, this->id, this->userId, code);
@@ -2270,19 +2290,73 @@ struct statx {
 #define STATX_DIOALIGN		0x00002000U	// Want/got direct I/O alignment info 
 
 */
+
+void KProcess::writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 seconds, U32 nano) {
+    // 0x00
+    memory->writed(buf, 0xfff); buf += 4; // stx_mask
+    memory->writed(buf, 512); buf += 4; // stx_blksize
+    memory->writeq(buf, 0); buf += 8; // stx_attributes
+    // 0x10
+    memory->writed(buf, hardLinkCount); buf += 4; // stx_nlink
+    memory->writed(buf, userId); buf += 4; // stx_uid
+    memory->writed(buf, groupId); buf += 4; // stx_gid
+    memory->writew(buf, mode); buf += 2; // stx_mode
+    memory->writew(buf, 0); buf += 2; // 
+    // 0x20
+    memory->writeq(buf, id); buf += 8; // stx_ino
+    memory->writeq(buf, len); buf += 8; // stx_size
+    memory->writeq(buf, (len + 511) / 512); buf += 8; // stx_blocks
+    memory->writeq(buf, 0); buf += 8; // stx_attributes_mask
+    // 0x40
+    memory->writeq(buf, seconds); buf += 8; // stx_atime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_btime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_ctime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    memory->writeq(buf, seconds); buf += 8; // stx_mtime
+    memory->writed(buf, nano); buf += 4;
+    memory->writed(buf, 0); buf += 4;
+    // 0x80
+    memory->writed(buf, rdev); buf += 4; // stx_rdev_major
+    memory->writed(buf, 0); buf += 4; // stx_rdev_minor
+    memory->writed(buf, 1); buf += 4; // stx_dev_major
+    memory->writed(buf, 0); buf += 4; // stx_dev_minor
+    // 0x90
+    memory->writeq(buf, 1); buf += 8; // stx_mnt_id
+    memory->writed(buf, 0); buf += 4; // stx_dio_mem_align
+    memory->writed(buf, 0);           // stx_dio_offset_align
+}
 U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     BString dir;
     U32 result = 0;
 
-    if (path.endsWith("/") || (flags & K_AT_EMPTY_PATH)) {
+    if (path.startsWith("/") || (flags & K_AT_EMPTY_PATH)) {
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
         if (result == 0 && (flags & K_AT_EMPTY_PATH)) {
             path = dir;
             dir = BString::empty;
         }
+    } else if (!path.startsWith("/")) {
+        result = getCurrentDirectoryFromDirFD(dirfd, dir);
     }
-    if (result)
+    if (result) {
+        if (result == -K_ENOTDIR) {
+            KFileDescriptor* fd = this->getFileDescriptor(dirfd);
+            if (fd->kobject->type == KTYPE_UNIX_SOCKET) {
+                std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
+                U64 t = s->lastModifiedTime;
+                U32 seconds = (U32)(t / 1000);
+                U32 n = (U32)(t % 1000) * 1000000;
+                writeStatX(memory, buf, (s->node ? s->node->id : 0), (s->node ? s->node->rdev : 0), 1, userId, groupId, K_S_IFSOCK | K__S_IWRITE | K__S_IREAD, 0, seconds, n);
+                return 0;
+            }
+        }
         return result;
+    }        
     bool isLink = false;
 
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(dir, path, (flags & 0x100) == 0, &isLink);
@@ -2296,46 +2370,11 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
         mode |= K__S_IFLNK;
     }
     U64 t = node->lastModified();
-    U64 seconds = t / 1000;
+    U32 seconds = (U32)(t / 1000);
     U32 n = (U32)(t % 1000) * 1000000;
+    U32 hardLinkCount = node->getHardLinkCount();
 
-    // 0x00
-    memory->writed(buf, 0xfff); buf += 4; // stx_mask
-    memory->writed(buf, 512); buf += 4; // stx_blksize
-    memory->writeq(buf, 0); buf += 8; // stx_attributes
-    // 0x10
-    memory->writed(buf, node->getHardLinkCount()); buf += 4; // stx_nlink
-    memory->writed(buf, userId); buf += 4; // stx_uid
-    memory->writed(buf, groupId); buf += 4; // stx_gid
-    memory->writew(buf, mode); buf += 2; // stx_mode
-    memory->writew(buf, 0); buf += 2; // 
-    // 0x20
-    memory->writeq(buf, node->id); buf += 8; // stx_ino
-    memory->writeq(buf, len); buf += 8; // stx_size
-    memory->writeq(buf, (len+511)/512); buf += 8; // stx_blocks
-    memory->writeq(buf, 0); buf += 8; // stx_attributes_mask
-    // 0x40
-    memory->writeq(buf, seconds); buf += 8; // stx_atime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_btime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_ctime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    memory->writeq(buf, seconds); buf += 8; // stx_mtime
-    memory->writed(buf, n); buf += 4;
-    memory->writed(buf, 0); buf += 4;
-    // 0x80
-    memory->writed(buf, node->rdev); buf += 4; // stx_rdev_major
-    memory->writed(buf, 0); buf += 4; // stx_rdev_minor
-    memory->writed(buf, 1); buf += 4; // stx_dev_major
-    memory->writed(buf, 0); buf += 4; // stx_dev_minor
-    // 0x90
-    memory->writeq(buf, 1); buf += 8; // stx_mnt_id
-    memory->writed(buf, 0); buf += 4; // stx_dio_mem_align
-    memory->writed(buf, 0);           // stx_dio_offset_align
+    writeStatX(memory, buf, node->id, node->rdev, hardLinkCount, userId, groupId, mode, len, seconds, n);
     return 0;
 }
 
@@ -2684,6 +2723,7 @@ void KProcess::printStack() {
 
             klog("    0x%08d %s", this->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
         }
+        ChangeThread c(thread);
         cpu->walkStack(cpu->eip.u32, EBP, 6);
     }
 }
@@ -2701,22 +2741,29 @@ U32 KProcess::signal(U32 signal) {
         return 0;
     }
     {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
-        for (auto& t : this->threads) {
-            KThread* thread = t.value;
-            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
-            if (thread->sigWaitMask & signal) {
-                thread->foundWaitSignal = signal;
-                BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
-                return 0;
+        KThread* foundThread = nullptr;
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(threadsMutex);
+            for (auto& t : this->threads) {
+                KThread* thread = t.value;
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(thread->sigWaitCond);
+                if (thread->sigWaitMask & signal) {
+                    thread->foundWaitSignal = signal;
+                    BOXEDWINE_CONDITION_SIGNAL(thread->sigWaitCond);
+                    return 0;
+                }
+            }
+            for (auto& t : this->threads) {
+                KThread* thread = t.value;
+
+                if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
+                    foundThread = thread;
+                    break;
+                }
             }
         }
-        for (auto& t : this->threads) {
-            KThread* thread = t.value;
-
-            if (((U64)1 << (signal - 1)) & ~(thread->inSignal ? thread->inSigMask : thread->sigMask)) {
-                return thread->signal(signal, false);
-            }
+        if (foundThread) {
+            return foundThread->signal(signal, false);
         }
     }
     // didn't find a thread that could handle it
@@ -2749,4 +2796,20 @@ void KProcess::printMappedFiles() {
         const std::shared_ptr<MappedFile>& mappedFile = n.value;
         klog("    %.8X - %.8X (offset=%x) %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, (U32)mappedFile->offset, mappedFile->file->openFile->node->path.c_str());
     }
+}
+
+U32 KProcess::alloc(KThread* thread, U32 len) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
+    return heap.alloc(memory, thread, len);
+}
+
+void KProcess::free(U32 address) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(heapMutex);
+    heap.free(memory, address);
+}
+
+U32 KProcess::createString(KThread* thread, const BString& str) {
+    U32 result = thread->process->alloc(thread, str.length() + 1);
+    thread->memory->memcpy(result, str.c_str(), str.length() + 1);
+    return result;
 }

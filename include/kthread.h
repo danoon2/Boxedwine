@@ -39,6 +39,7 @@ public:
 
 class KProcess;
 class Memory;
+class Wnd;
 
 class KThreadGlContext {
 public:
@@ -47,12 +48,17 @@ public:
     void* context = nullptr;
     bool hasBeenMadeCurrent = false;
     bool sharing = false;
+    std::shared_ptr<Wnd> wnd;
 };
+
+typedef std::shared_ptr<KThreadGlContext> KThreadGlContextPtr;
 
 class KThread {
 public:
-    KThread(U32 id, const std::shared_ptr<KProcess>& process);
+    KThread(U32 id, const KProcessPtr& process);
     ~KThread();
+
+    static void runOnMainThread(std::function<void()> callback);
 
     void addCallbackOnExit(std::function<void(U32 id)> callback) {callbacksOnExit.push_back(callback);}
 
@@ -80,6 +86,8 @@ public:
     U32 signalstack(U32 ss, U32 oss);
     U32 sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize);
     U32 sigreturn();
+    U32 set_robust_list(U32 head, U32 len);
+    U32 get_robust_list(U32 pid, U32 head_ptr, U32 len_ptr);
     U32 rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig);
     U32 sigsuspend(U32 mask, U32 sigsetSize);
     U32 sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool time64);
@@ -93,17 +101,22 @@ public:
     U32 alternateStack = 0;
     U32 alternateStackSize = 0;
     CPU* cpu = nullptr;
-    std::shared_ptr<KProcess> process;
+    KProcessPtr process;
     KMemory* const memory;
     bool interrupted = false;
     U32 inSignal = 0;    
 #ifdef BOXEDWINE_MULTI_THREADED
     bool exited = false;	
-    bool startSignal = false;
+    bool startSignal = false;    
+    U64 threadStartTime = 0;
+#else
+    U64 userTime = 0;    
 #endif
     bool terminating = false;
     U32 clear_child_tid = 0;
-    U64 userTime = 0;
+    
+    U64 getThreadUserTime();
+
     U64 kernelTime = 0;
     U32 inSysCall = 0;
     BOXEDWINE_CONDITION waitingForSignalToEndCond;
@@ -114,16 +127,16 @@ public:
     U64 waitingForSignalToEndMaskToRestore = 0;
     U64 pendingSignals = 0;
     BOXEDWINE_MUTEX pendingSignalsMutex;
-    std::shared_ptr<KThreadGlContext> getGlContextById(U32 id);
+    KThreadGlContextPtr getGlContextById(U32 id);
     void removeGlContextById(U32 id);
-    void addGlContext(U32 id, void* context);
+    KThreadGlContextPtr addGlContext(U32 id, void* context);
     void removeAllGlContexts();
     bool hasContextBeenMadeCurrentSinceCreation = false;
 
     BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
     BString name;
 public:
-    void* currentContext = nullptr;
+    U32 currentContext = 0;
     U32 glLastError = 0;
     bool log = false; // syscalls
     OpenGLVetexPointer glVertextPointer;
@@ -156,6 +169,11 @@ public:
 
     U32 condStartWaitTime = 0;
 private:
+    void exitRobustList();
+    U32 handleFutexDeath(U32 uaddr, bool pi, bool pending_op);
+
+    U32 robustList = 0;
+
     std::shared_ptr<FsNode> threadNode; // in /proc/<pid>/task/<tid>
     std::shared_ptr<FsNode> commNode; // in /proc/<pid>/task/<tid>/comm
 

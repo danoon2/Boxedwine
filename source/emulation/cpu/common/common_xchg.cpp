@@ -65,3 +65,58 @@ void common_cmpxchge32r32(CPU* cpu, U32 address, U32 srcReg){
         EAX = cpu->src.u32;
     }
 }
+
+#ifdef BOXEDWINE_MULTI_THREADED
+void common_cmpxchge32r32_lock(CPU* cpu, U32 address, U32 srcReg) {
+    cpu->dst.u32 = EAX;
+    cpu->src.u32 = cpu->memory->readd(address);
+    cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
+    cpu->lazyFlags = FLAGS_CMP32;
+
+    U32& ram = *(U32*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U32> mem(ram);
+    U32 expected = EAX;
+    U32 desired = cpu->reg[srcReg].u32;
+
+    if (!mem.compare_exchange_strong(expected, desired)) {
+        EAX = expected;
+        cpu->src.u32 = expected;
+        cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
+    }
+}
+void common_cmpxchge16r16_lock(CPU* cpu, U32 address, U32 srcReg) {
+    cpu->dst.u16 = AX;
+    cpu->src.u16 = cpu->memory->readw(address);
+    cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
+    cpu->lazyFlags = FLAGS_CMP16;
+
+    U16& ram = *(U16*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U16> mem(ram);
+
+    U16 expected = AX;
+    U16 desired = cpu->reg[srcReg].u16;
+
+    if (!mem.compare_exchange_strong(expected, desired)) {
+        AX = expected;
+        cpu->src.u16 = expected;
+        cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
+    }
+}
+void common_cmpxchge8r8_lock(CPU* cpu, U32 address, U32 srcReg) {
+    cpu->dst.u8 = AL;
+    cpu->src.u8 = cpu->memory->readb(address);
+    cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
+    cpu->lazyFlags = FLAGS_CMP8;
+
+    U8& ram = *(U8*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U8> mem(ram);
+    U8 expected = AL;
+    U8 desired = *cpu->reg8[srcReg];
+
+    if (!mem.compare_exchange_strong(expected, desired)) {
+        AL = expected;
+        cpu->src.u8 = expected;
+        cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
+    }
+}
+#endif

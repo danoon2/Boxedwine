@@ -74,7 +74,7 @@ public:
 	// from LayoutControl
 	void draw(int width) override;
 
-	void setText(BString text) { strncpy(this->text, text.c_str(), sizeof(this->text)); }
+	void setText(BString text) { strncpy(this->text, text.c_str(), sizeof(this->text) - 1); this->text[sizeof(this->text) - 1] = 0; }
 	BString getText() { return BString::copy(this->text); }
 
 	void setBrowseFileButton(const std::vector<BString>& browseFileTypes) {this->browseButtonType = BROWSE_BUTTON_FILE; this->browseFileTypes = browseFileTypes;}

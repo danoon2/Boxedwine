@@ -56,7 +56,7 @@ FsOpenNode* openCpuInfo(const std::shared_ptr<FsNode>& node, U32 flags, U32 data
 			result += "cpuid level	: 22\n"; // :TODO: is this right?
 			result += "wp		: yes\n";
 			// :TODO: probably not right, this is just what my current processor spit out
-			result += "flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss nx pdpe1gb rdtscp lm constant_tsc arch_perfmon xtopology tsc_reliable nonstop_tsc cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault pti ssbd ibrs ibpb stibp fsgsbase tsc_adjust bmi1 avx2 smep bmi2 invpcid mpx rdseed adx smap clflushopt xsaveopt xsavec xsaves arat flush_l1d arch_capabilities\n";
+			result += "flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss nx pdpe1gb rdtscp lm constant_tsc arch_perfmon xtopology tsc_reliable nonstop_tsc cpuid pni pclmulqdq fma cx16 x2apic movbe popcnt tsc_deadline_timer aes f16c hypervisor lahf_lm abm 3dnowprefetch cpuid_fault pti ssbd ibrs ibpb stibp fsgsbase tsc_adjust bmi1 smep bmi2 invpcid mpx adx smap clflushopt xsaveopt arat flush_l1d arch_capabilities\n";
 			result += "bugs		: cpu_meltdown spectre_v1 spectre_v2 spec_store_bypass l1tf mds swapgs itlb_multihit\n";
 			result += "bogomips	: "; result += Platform::getCpuFreqMHz(); result += ".00\n";
 			result += "clflush size	: 64\n";

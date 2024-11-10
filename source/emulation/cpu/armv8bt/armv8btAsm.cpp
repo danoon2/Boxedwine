@@ -1417,11 +1417,11 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool ski
     readMem64RegOffset(resultReg, (write ? xMemWrite : xMemRead), tmpReg, 3);
     if (!skipAlignmentCheck && width > 1) {
         andValue32(tmpReg, regEmulatedAddress, 0xFFF);
-        doIf(tmpReg, K_PAGE_SIZE - width, DO_IF_GREATER_THAN, [=] {
+        doIf(tmpReg, K_PAGE_SIZE - width, DO_IF_GREATER_THAN, [resultReg, this] {
             writeToRegFromValue(resultReg, 0);
             });
     }
-    doIf(resultReg, 0, DO_IF_EQUAL, [=] {
+    doIf(resultReg, 0, DO_IF_EQUAL, [this] {
         emulateSingleOp(currentOp);
         });
 
@@ -2014,7 +2014,7 @@ void Armv8btAsm::jmpRegToxBranchEip(bool mightNeedCS) {
     readMem64RegOffset(xBranch, xBranch, xPage, 3); // get offset table for page
 
     cmpValue64(xBranch, 0);
-    doIf(xBranch, 0, DO_IF_EQUAL, [=] {
+    doIf(xBranch, 0, DO_IF_EQUAL, [this] {
         writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
         readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
         branchNativeRegister(xBranch);
@@ -2023,7 +2023,7 @@ void Armv8btAsm::jmpRegToxBranchEip(bool mightNeedCS) {
     readMem64RegOffset(xBranch, xBranch, xOffset, 3); // read value at offset for page
 
     cmpValue64(xBranch, 0);
-    doIf(xBranch, 0, DO_IF_EQUAL, [=] {
+    doIf(xBranch, 0, DO_IF_EQUAL, [this] {
         writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
         readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
         branchNativeRegister(xBranch);

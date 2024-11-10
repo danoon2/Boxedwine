@@ -110,9 +110,9 @@ public:
     void signalIllegalInstruction(int code);
     void signalTrap(int code);
     void syscall(U32 opLen);
-    void int98(U32 opLen);
     void int99(U32 opLen);
     void int9A(U32 opLen);
+    void int9B(U32 opLen);
     void writeToEFromCpuOffset(U8 rm, U32 offset, U8 fromBytes, U8 toBytes);    
     void writeToRegFromMemAddress(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes);
     void writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U8 bytes);

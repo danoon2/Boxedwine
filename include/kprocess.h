@@ -23,6 +23,8 @@
 #define ADDRESS_PROCESS_LOADER			     0xF0000
 #define ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS 0xF8000000
 
+#include "../source/util/bheap.h"
+
 class MappedFileCache;
 
 class MappedFile {
@@ -40,8 +42,6 @@ public:
 
 class KSigAction {
 public:
-    KSigAction() = default;
-
     U32 handlerAndSigAction = 0;
     U64 mask = 0;
     U32 flags = 0;
@@ -50,6 +50,13 @@ public:
 
     void writeSigAction(KMemory* memory, U32 address, U32 sigsetSize);
     void readSigAction(KMemory* memory, U32 address, U32 sigsetSize);
+    void reset() {
+        handlerAndSigAction = 0;
+        mask = 0;
+        flags = 0;
+        restorer = 0;
+        memset(sigInfo, 0, sizeof(sigInfo));
+    }
 };
 
 #define MAX_SIG_ACTIONS 64
@@ -63,7 +70,19 @@ public:
 #define K_MAP_PRIVATE 0x02
 #define K_MAP_FIXED 0x10
 #define K_MAP_ANONYMOUS 0x20
+#define K_MAP_32BIT 0x40
+
+#define K_MAP_GROWSDOWN       0x00100                /* Stack-like segment.  */
+#define K_MAP_DENYWRITE       0x00800                /* ETXTBSY */
+#define K_MAP_EXECUTABLE      0x01000                /* Mark it as an executable.  */
+#define K_MAP_LOCKED          0x02000                /* Lock the mapping.  */
+#define K_MAP_NORESERVE       0x04000                /* Don't check for reservations.  */
+#define K_MAP_POPULATE        0x08000                /* Populate (prefault) pagetables.  */
+#define K_MAP_NONBLOCK        0x10000                /* Do not block on IO.  */
+#define K_MAP_STACK           0x20000
+
 #define K_MAP_FIXED_NOREPLACE 0x100000
+#define K_MAP_BOXEDWINE 0x80000000
 
 #define K_MADV_DONTNEED 4
 
@@ -72,7 +91,7 @@ public:
     bool run() override;
 private:
     friend class KProcess;
-    std::weak_ptr<KProcess> process;
+    KProcessWeakPtr process;
 };
 
 class AttachedSHM {
@@ -92,9 +111,11 @@ public:
     const U32 pid;
 };
 
+#define KProcessPtr std::shared_ptr<KProcess>
+
 class KProcess : public std::enable_shared_from_this<KProcess> {
 public:
-    static std::shared_ptr<KProcess> create();    
+    static KProcessPtr create();    
     KProcess(U32 id);
     ~KProcess();
 
@@ -105,8 +126,11 @@ public:
 	void deleteThread(KThread* thread);
     void killAllThreads(KThread* exceptThisOne = nullptr);
     BString getAbsoluteExePath();
-    void clone(const std::shared_ptr<KProcess>& from);
+    void clone(const KProcessPtr& from);
     U32 getNextFileDescriptorHandle(int after);
+    U32 alloc(KThread* thread, U32 len);
+    void free(U32 address);
+    U32 createString(KThread* thread, const BString& str);
 
     BString getModuleName(U32 eip);
     U32 getModuleEip(U32 eip);    
@@ -205,6 +229,7 @@ public:
     std::shared_ptr<SHM> getSHM(U32 key);
     void attachSHM(U32 address, const std::shared_ptr<SHM>& shm);
     void printMappedFiles();
+    void cleanupProcess();
 
     U32 id = 0;
     U32 parentId = 0;
@@ -243,6 +268,7 @@ public:
     BHashTable<U32, U32> glStrings;    
     U32 glStringsiExtensions = 0;
     std::vector<U32> glStringsiExtensionsOffset;
+    U32 glxStringExtensions = 0;
     U32 numberOfExtensions = 0;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;
@@ -260,6 +286,10 @@ public:
     BOXEDWINE_MUTEX normalBlockMutex;
 #endif
     BOXEDWINE_MUTEX fdsMutex;
+
+    // x11 stuff
+    BOXEDWINE_MUTEX keySymToNameMutex;
+    BHashTable<U32, U32> keySymToName;
 private:
     BHashTable<U32, KFileDescriptor*> fds;    
 
@@ -278,6 +308,9 @@ private:
 
     BHashTable<U32, KThread*> threads;
     BOXEDWINE_MUTEX threadsMutex;
+
+    BOXEDWINE_MUTEX heapMutex;
+    BHeap heap;
 public:
     KThread* getThread() {return threads.begin()->value;}
     BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed
@@ -286,14 +319,14 @@ private:
     U32 usedTLS[TLS_ENTRIES] = { 0 };
     BOXEDWINE_MUTEX usedTlsMutex;
 
-    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);
-    void cleanupProcess();
+    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);    
     void setupCommandlineNode();
     void initStdio();
     std::shared_ptr<FsNode> findInPath(BString path);
     U32 readlinkInDirectory(BString currentDirectory, BString path, U32 buffer, U32 bufSize);
     void onExec(KThread* thread);
     U32 getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory);
+    void writeStatX(KMemory* memory, U32 buf, U32 id, U32 rdev, U32 hardLinkCount, U32 userId, U32 groupId, U32 mode, U64 len, U32 seconds, U32 nano);
 
     bool systemProcess = false;
     bool cloneVM = false; // if this process was created using CLONE_VM, then we need to be careful with its shared memory with its parent

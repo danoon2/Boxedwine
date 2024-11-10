@@ -2,6 +2,7 @@
 #define __DYNAMIC_GENERIC_BASE_H__
 
 #include "dynamic_memory.h"
+#include "../../softmmu/kmemory_soft.h"
 
 // Functions that need to be implemented in the platform/chip specific file
 /*
@@ -987,11 +988,12 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
         }
         endBlock();
 
-        DynamicMemory* memory = (DynamicMemory*)cpu->memory->dynamicMemory;
+        DynamicMemory* memory = getMemData(cpu->memory)->dynamicMemory;
         if (!memory) {
             memory = new DynamicMemory();
-            cpu->memory->dynamicMemory = memory;
+            getMemData(cpu->memory)->dynamicMemory = memory;
         }
+
         void* mem = NULL;
 
         if (memory->dynamicExecutableMemory.size() == 0) {

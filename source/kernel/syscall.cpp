@@ -659,9 +659,9 @@ static U32 syscall_sigreturn(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_rseq(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_SIGNAL, cpu, "struct rseq *rseq=%X rseq_len=%d flags=%X sig=%X", ARG1, ARG2, ARG3, ARG4);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "rseq: struct rseq *rseq=%X rseq_len=%d flags=%X sig=%X", ARG1, ARG2, ARG3, ARG4);
     U32 result = cpu->thread->rseq(ARG1, ARG2, ARG3, ARG4);
-    SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
@@ -1459,9 +1459,16 @@ static U32 syscall_inotify_init(CPU* cpu, U32 eipCount) {
 static U32 syscall_openat(CPU* cpu, U32 eipCount) {
     BString name = cpu->memory->readString(ARG2);
     SYS_LOG1(SYSCALL_FILE, cpu, "openat: dirfd=%d name=%s flags=%x", ARG1, name.c_str(), ARG3);
+#ifdef _DEBUG    
+    if (name == "c_rehash.sh") {
+        // not sure why installing ca_certificats with TinyCore Linux 15 needs this
+        klog("c_rehash.sh hack");
+        name = "/usr/local/sbin/c_rehash.sh";
+    }
+#endif
     U32 result = cpu->thread->process->openat(ARG1, name, ARG3);
 #ifdef _DEBUG
-    if (result>1000) {
+    if (result>1000 && !name.contains("font") && !name.startsWith("/sys")) {
         printf("openat: dirfd=%d name=%s flags=%x result=%x\n", (int)ARG1, name.c_str(), ARG3, result);
     }
 #endif
@@ -1510,6 +1517,9 @@ static U32 syscall_symlinkat(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_readlinkat(CPU* cpu, U32 eipCount) {
+    if (!cpu->memory->canRead(ARG1 >> K_PAGE_SHIFT)) {
+        return -K_EFAULT;
+    }
     BString pathname = cpu->memory->readString(ARG1);    
     SYS_LOG1(SYSCALL_FILE, cpu, "readlinkat: dirfd=%d pathname=%X(%s) ", ARG1, ARG2, pathname.c_str());
     U32 result = cpu->thread->process->readlinkat(ARG1, pathname, ARG3, ARG4);
@@ -1544,11 +1554,16 @@ static U32 syscall_faccessat2(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {    
-#ifdef _DEBUG
-        //kwarn("syscall __NR_set_robust_list not implemented");
-#endif
-    U32 result = -K_ENOSYS;
-    SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: result=%d(0x%X) IGNORED\n", result, result);
+    SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: head=%X len=%X", ARG1, ARG2);
+    U32 result = cpu->thread->set_robust_list(ARG1, ARG2);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
+    return result;
+}
+
+static U32 syscall_get_robust_list(CPU* cpu, U32 eipCount) {
+    SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: pid=%X head_ptr=%X len_ptr=%X", ARG1, ARG2, ARG3);
+    U32 result = cpu->thread->get_robust_list(ARG1, ARG2, ARG3);
+    SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 
@@ -2105,7 +2120,7 @@ static const SyscallFunc syscallFunc[] = {
     nullptr,                  // 321
     syscall_timerfd_create,   // 322
     nullptr,                  // 323 
-    nullptr,                  // 324 
+    nullptr,                  // 324 __NR_fallocate	
     syscall_timerfd_settime,  // 325
     syscall_timerfd_gettime,  // 326
     syscall_signalfd4,  // 327 __NR_signalfd4
@@ -2228,6 +2243,7 @@ extern S32 contextTime; // about the # instruction per 10 ms
 #endif
 void ksyscall(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOSYS;
+    U64 startTime = KSystem::getMicroCounter();
 #ifdef BOXEDWINE_MULTI_THREADED 
     U32 syscallNo = EAX;
 #endif
@@ -2261,7 +2277,10 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     }    
 #ifdef BOXEDWINE_MULTI_THREADED
     if (!cpu->thread->terminating && cpu->thread->startSignal) {
-        kpanic("syscall %d was not interrupted correctly by signal", syscallNo);
+        cpu->thread->startSignal = false;
+        result = -K_CONTINUE;
+        // I saw this once with multi-thread normal cpu core and firefight, it was from syscall 4 (write)
+        klog("syscall %d was not interrupted correctly by signal", syscallNo);
     }
 #endif
     if (result==(U32)(-K_CONTINUE)) {
@@ -2273,5 +2292,6 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         cpu->eip.u32+=eipCount;
     }
     cpu->nextBlock = nullptr;
+    cpu->thread->kernelTime += KSystem::getMicroCounter() - startTime;
 }
 

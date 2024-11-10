@@ -15,9 +15,9 @@ public class VkHostMarshalOutHandle extends VkHostMarshal {
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-        out.append("    writed(");
+        out.append("    cpu->memory->writed(");
         out.append(param.paramArg);
-        out.append(", createVulkanPtr((U64)");
+        out.append(", createVulkanPtr(cpu->memory, (U64)");
         out.append(param.name);
         out.append(", ");
         if (fn.name.equals("vkCreateInstance")) {

@@ -1,8 +1,8 @@
 U32 common_bound16(CPU* cpu, U32 reg, U32 address);
 U32 common_bound32(CPU* cpu, U32 reg, U32 address);
-void common_int98(CPU* cpu);
 void common_int99(CPU* cpu);
 void common_int9A(CPU* cpu);
+void common_int9B(CPU* cpu);
 void common_int3(CPU* cpu);
 void common_intIb(CPU* cpu);
 void common_cpuid(CPU* cpu);
@@ -26,7 +26,10 @@ void common_verre16(CPU* cpu, U32 address);
 void common_verwe16(CPU* cpu, U32 address);
 void common_verr(CPU* cpu, U32 selector);
 void common_verw(CPU* cpu, U32 selector);
-void common_cmpxchgg8b(CPU* cpu, U32 address);
+void common_cmpxchg8b(CPU* cpu, U32 address);
+#ifdef BOXEDWINE_MULTI_THREADED
+void common_cmpxchg8b_lock(CPU* cpu, U32 address);
+#endif
 void common_fxsave(CPU* cpu, U32 address);
 void common_fxrstor(CPU* cpu, U32 address);
 void common_xsave(CPU* cpu, U32 address);

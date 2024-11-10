@@ -18,6 +18,23 @@ pipeline {
     stages {
         stage ('Test') {
             parallel {
+                stage ('Test Emscripten') {
+                    agent {
+                        label "emscripten"
+                    }
+                    steps {
+                        script { 
+                            gitCheckout() 
+                        }
+                        sh '''#!/bin/bash
+                            source ~/emsdk/emsdk_env.sh
+                            cd project/emscripten
+                            sh buildtestjs.sh
+                            killall -9 python3
+                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwineTest.html
+                        '''
+                    }
+                }
                 stage ('Test Linux (x64)') {
                     agent {
                         label "linux64"
@@ -51,40 +68,9 @@ pipeline {
                         '''
                     }
                 }
-                stage ('Test Mac (x86)') {
+                stage ('Test Linux (ARMv8)') {
                     agent {
-                        label "mac"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        sh '''#!/bin/bash
-                            cd project/mac-xcode
-                            /bin/bash buildTest.sh || exit
-                            bin/BoxedwineTest.app/Contents/MacOS/BoxedwineTest
-                        '''
-                    }
-                }
-                stage ('Test Raspberry Pi (ARMv7)') {
-                    agent {
-                        label "raspberry"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        dir("project/linux") {
-                            sh '''#!/bin/bash
-                                make testJit || exit
-                                ./Build/TestJit/boxedwine
-                            '''
-                        }
-                    }
-                }
-                stage ('Test Raspberry Pi (ARMv8)') {
-                    agent {
-                        label "raspberry64"
+                        label "linuxArm64"
                     }
                     steps {
                         script { 
@@ -217,63 +203,9 @@ pipeline {
                         }
                     }
                 }
-                stage ('Build Mac (x86)') {
+                stage ('Build Linux (ARMv8)') {
                     agent {
-                        label "mac"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        dir("project/mac-xcode") {
-                            sh '''#!/bin/bash
-                                rm -rf bin/Boxedwine.app
-                                rm -rf Deploy/MacIntel/Boxedwine.app
-                                mkdir -p Deploy/MacIntel
-                                /bin/bash buildRelease.sh
-                                if [ ! -d "bin/Boxedwine.app" ] 
-                                then
-                                    echo "bin/Boxedwine.app DOES NOT exists."
-                                    exit 999
-                                fi
-                                mv bin/Boxedwine.app/ Deploy/MacIntel/
-                            '''
-                        }
-                        dir("project/mac-xcode") {
-                            stash includes: 'Deploy/MacIntel/**', name: 'mac'                            
-                        }
-                    }
-                }
-                stage ('Build Raspberry Pi (ARMv7)') {
-                    agent {
-                        label "raspberry"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }
-                        dir("project/linux") {
-                            sh '''#!/bin/bash
-                                rm Build/Jit/boxedwine
-                                rm Deploy/RaspberryPi/boxedwine
-                                mkdir -p Deploy/RaspberryPi
-                                make jit
-                                if [ ! -f "Build/Jit/boxedwine" ] 
-                                then
-                                    echo "Build/Jit/boxedwine DOES NOT exists."
-                                    exit 999
-                                fi
-                                mv Build/Jit/boxedwine Deploy/RaspberryPi/
-                            '''
-                        }
-                        dir("project/linux") {
-                            stash includes: 'Deploy/RaspberryPi/boxedwine', name: 'raspberry'
-                        }
-                    }
-                }
-                stage ('Build Raspberry Pi (ARMv8)') {
-                    agent {
-                        label "raspberry64"
+                        label "linuxArm64"
                     }
                     steps {
                         script { 
@@ -282,19 +214,19 @@ pipeline {
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 rm Build/MultiThreaded/boxedwine
-                                rm Deploy/RaspberryPi64/boxedwine
-                                mkdir -p Deploy/RaspberryPi64
+                                rm Deploy/LinuxArm64/boxedwine
+                                mkdir -p Deploy/LinuxArm64
                                 make multiThreaded
                                 if [ ! -f "Build/MultiThreaded/boxedwine" ] 
                                 then
                                     echo "Build/MultiThreaded/boxedwine DOES NOT exists."
                                     exit 999
                                 fi
-                                mv Build/MultiThreaded/boxedwine Deploy/RaspberryPi64/
+                                mv Build/MultiThreaded/boxedwine Deploy/LinuxArm64/
                             '''
                         }
                         dir("project/linux") {
-                            stash includes: 'Deploy/RaspberryPi64/boxedwine', name: 'raspberry64'
+                            stash includes: 'Deploy/LinuxArm64/boxedwine', name: 'linuxArm64'
                         }
                     }
                 }
@@ -338,9 +270,9 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
                             '''
                         }
                         dir("project/linux/automation") {
@@ -348,12 +280,12 @@ pipeline {
                             unstash "linux"
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 sh '''
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux/boxedwine\" -nosound -novideo
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/Linux64/boxedwine\" -nosound -novideo
                                 '''
                             }
                         }
@@ -369,9 +301,9 @@ pipeline {
                         }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation2.zip http://boxedwine.org/v/automation2.zip --output automation2.zip
+                                curl -z automation3.zip http://boxedwine.org/v2/automation3.zip --output automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
 
                                 rm -rf bin/BoxedwineAutomation.app
                                 /bin/bash buildAutomation.sh
@@ -386,91 +318,29 @@ pipeline {
                         dir("project/mac-xcode/automation") {
                             retry(3) {
                                 sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/fs.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
                     }
                 }
-                stage ('Mac Automation (x86)') {
+                stage ('Linux (ARMv8) Automation') {
                     agent {
-                        label "mac"
-                    }
-                    steps {
-                        script { 
-                            gitCheckout() 
-                        }                      
-                        dir("project/mac-xcode") {
-                            sh '''#!/bin/bash
-                                curl -z automation2.zip http://boxedwine.org/v/automation2.zip --output automation2.zip
-                                rm -rf automation
-                                unzip automation2.zip
-
-                                rm -rf bin/BoxedwineAutomation.app
-                                /bin/bash buildAutomation.sh
-                                if [ ! -d "bin/BoxedwineAutomation.app" ] 
-                                then
-                                    echo "bin/BoxedwineAutomation.app DOES NOT exists."
-                                    exit 999
-                                fi
-                            '''
-                        }
-                        
-                        dir("project/mac-xcode/automation") {
-                            retry(3) {
-                                sh '''#!/bin/bash    
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/mac-xcode/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/mac-xcode/automation/scripts/" \"$WORKSPACE/project/mac-xcode/bin/BoxedwineAutomation.app/Contents/MacOS/BoxedwineAutomation\" -nosound -novideo || exit 1
-                                '''
-                            }
-                        }
-                    }
-                }
-                stage ('Raspberry Pi (ARMv7) Automation') {
-                    agent {
-                        label "raspberry"
-                    }
-                    options {
-                        timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
+                        label "linuxArm64"
                     }
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
                                 rm -rf automation
-                                unzip automation2.zip
+                                unzip automation3.zip
                             '''
                         }
                         dir("project/linux/automation") {
-                            unstash "raspberry"
+                            unstash "linuxArm64"
                             retry(3) {
                                 sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi/boxedwine\" -nosound -novideo || exit 1
-                                '''
-                            }
-                        }
-
-                    }
-                }
-                stage ('Raspberry Pi (ARMv8) Automation') {
-                    agent {
-                        label "raspberry64"
-                    }
-                    options {
-                        timeout(time: 20, unit: 'MINUTES')   // timeout on this stage
-                    }
-                    steps {
-                        dir("project/linux") {
-                            sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
-                                rm -rf automation
-                                unzip automation2.zip
-                            '''
-                        }
-                        dir("project/linux/automation") {
-                            unstash "raspberry64"
-                            retry(3) {
-                                sh '''#!/bin/bash
-                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/Wine-5.0.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/RaspberryPi64/boxedwine\" -nosound -novideo || exit 1
+                                    java -jar bin/BoxedWineRunner.jar \"$WORKSPACE/project/linux/automation/fs/fs.zip\" \"$WORKSPACE/project/linux/automation/scripts/" \"$WORKSPACE/project/linux/automation/Deploy/LinuxArm64/boxedwine\" -nosound -novideo || exit 1
                                 '''
                             }
                         }
@@ -483,20 +353,20 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v/automation2.zip
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
                             IF EXIST "automation" rmdir /q /s "automation"
-                            unzip automation2.zip
+                            unzip automation3.zip
                         '''
                         dir("automation") {
                             unstash "windows"
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win32\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                             retry(3) {
                                 bat '''
-                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\Wine-5.0.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\Win64\\Boxedwine.exe\" -nosound -novideo
                                 '''
                             }
                         }
@@ -516,12 +386,11 @@ pipeline {
                     unstash "web"
                     unstash "linux64"
                     unstash "macArmv8"
-                    unstash "raspberry"
-                    unstash "raspberry64"
+                    unstash "linuxArm64"
                     unstash "windows"
                     dir('Deploy') {
                         sh '''
-                        echo "Linux64, Raspberry64 (experimental and buggy) and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
+                        echo "Linux64, LinuxArm64 and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
                         zip -r build-$BUILD_NUMBER.zip *
                         '''
                         archiveArtifacts artifacts: "build-${env.BUILD_NUMBER}.zip", fingerprint: true, allowEmptyArchive: true

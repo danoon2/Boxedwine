@@ -21,7 +21,7 @@
 
 #include <SDL.h>
 #include "../../io/fsvirtualopennode.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 #include "../../../platform/sdl/sdlcallback.h"
 #include "../../emulation/softmmu/soft_page.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
@@ -432,15 +432,17 @@ public:
 
 DevFB::DevFB(const std::shared_ptr<FsNode>& node, U32 flags) : FsVirtualOpenNode(node, flags), pos(0) {
     if (!fbinit) {		
+        KNativeScreenPtr screen = KNativeSystem::getScreen();
+
         fb_fix_screeninfo.visual = 2; // FB_VISUAL_TRUECOLOR
         fb_fix_screeninfo.type = 0; // FB_TYPE_PACKED_PIXELS
         fb_fix_screeninfo.smem_start = ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS;		
-        fb_var_screeninfo.xres =  KNativeWindow::getNativeWindow()->screenWidth();
-        fb_var_screeninfo.yres = KNativeWindow::getNativeWindow()->screenHeight();
-        fb_var_screeninfo.xres_virtual = KNativeWindow::getNativeWindow()->screenWidth();
-        fb_var_screeninfo.yres_virtual = KNativeWindow::getNativeWindow()->screenHeight();
+        fb_var_screeninfo.xres = screen->screenWidth();
+        fb_var_screeninfo.yres = screen->screenHeight();
+        fb_var_screeninfo.xres_virtual = screen->screenWidth();
+        fb_var_screeninfo.yres_virtual = screen->screenHeight();
 
-        fb_var_screeninfo.bits_per_pixel = KNativeWindow::getNativeWindow()->screenBpp();
+        fb_var_screeninfo.bits_per_pixel = screen->screenBpp();
         fb_var_screeninfo.red.length = 8;			
         fb_var_screeninfo.green.length = 8;		
         fb_var_screeninfo.blue.length = 8;

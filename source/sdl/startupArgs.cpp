@@ -23,7 +23,7 @@
 #include "loader.h"
 #include "kstat.h"
 #include "knativesystem.h"
-#include "knativewindow.h"
+#include "knativeinput.h"
 #include "knativeaudio.h"
 #include "knativesocket.h"
 
@@ -36,8 +36,7 @@
 
 void gl_init(BString allowExtensions);
 void vulkan_init();
-void initWine();
-void initWineAudio();
+void x11_init();
 void createSysfs(const std::shared_ptr<FsNode> rootNode);
 
 U32 StartUpArgs::uiType;
@@ -87,7 +86,7 @@ void StartUpArgs::buildVirtualFileSystem() {
     Fs::makeLocalDirs(B("/etc"));
 
     std::shared_ptr<FsNode> rootNode = Fs::getNodeFromLocalPath(B(""), B("/"), true);
-    std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath ^ "dev", true, rootNode);
+    std::shared_ptr<FsNode> devNode = Fs::addFileNode(B("/dev"), B(""), rootNode->nativePath.stringByApppendingPath("dev"), true, rootNode);
     std::shared_ptr<FsNode> inputNode = Fs::addFileNode(B("/dev/input"), B(""), B(""), true, devNode);
     KSystem::procNode = Fs::addFileNode(B("/proc"), B(""), B(""), true, rootNode);
     std::shared_ptr<FsNode> procSysNode = Fs::addFileNode(B("/proc/sys"), B(""), B(""), true, KSystem::procNode);
@@ -207,9 +206,6 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-automation"));
         args.push_back(runAutomation);
     }
-    if (showWindowImmediately) {
-        args.push_back(B("-showWindowImmediately"));
-    }
     if (skipFrameFPS) {
         args.push_back(B("-skipFrameFPS"));
         args.push_back(BString::valueOf(skipFrameFPS));
@@ -242,6 +238,13 @@ std::vector<BString> StartUpArgs::buildArgs() {
     for (auto& a : this->args) {
         args.push_back(a);
     }
+    if (!this->ddrawOverridePath.isEmpty()) {
+        args.push_back(B("-ddrawOverride"));
+        args.push_back(this->ddrawOverridePath);
+    }
+    if (this->disableHideCursor) {
+        args.push_back(B("-disableHideCursor"));
+    }
     return args;
 }
 
@@ -253,14 +256,16 @@ bool StartUpArgs::apply() {
         klog("CPU Affinity set to %d", KSystem::cpuAffinityCountForApp);
     }
 #endif
+    KSystem::disableHideCursor = this->disableHideCursor;
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     if (KSystem::pollRate < 0) {
         KSystem::pollRate = 0;
     }
-    KSystem::openglType = this->openGlType;
+    if (this->openGlType) {
+        KSystem::openglType = this->openGlType;
+    }
     KSystem::ttyPrepend = this->ttyPrepend;
-    KSystem::showWindowImmediately = this->showWindowImmediately;
     KSystem::skipFrameFPS = this->skipFrameFPS;
     if (!KSystem::logFile.isOpen() && this->logPath.length()) {
         KSystem::logFile.createNew(this->logPath);
@@ -297,7 +302,7 @@ bool StartUpArgs::apply() {
             BString originalDepend = depend;
             if (!Fs::doesNativePathExist(depend)) {
                 BString parentPath = Fs::getNativeParentPath(zip);
-                depend = parentPath ^ depend;
+                depend = parentPath.stringByApppendingPath(depend);
             }
             if (!Fs::doesNativePathExist(depend)) {
                 klog("%s depends on %s, and %s could not be found", zip.c_str(), originalDepend.c_str(), originalDepend.c_str());
@@ -335,9 +340,9 @@ bool StartUpArgs::apply() {
         FsOpenNode* openNode = wineVersionNode->open(K_O_RDONLY);
         if (openNode) {
             U8 tmp[64];
-            if (openNode->readNative(tmp, 64) > 5) {
-                KSystem::wineMajorVersion = tmp[5] - '0';
-                if (tmp[5] == '2' || tmp[5] == '1') {
+            if (openNode->readNative(tmp, 64) > 2) {
+                KSystem::wineMajorVersion = tmp[0] - '0';
+                if (tmp[0] == '2' || tmp[0] == '1') {
                     std::shared_ptr<FsNode> freeTypeNode = Fs::getNodeFromLocalPath(B(""), B("/usr/lib/i386-linux-gnu/libfreetype.so.6"), false);
                     if (freeTypeNode) {
                         freeTypeNode->link = B("libfreetype.so.6.12.3");
@@ -359,8 +364,25 @@ bool StartUpArgs::apply() {
     envValues.push_back("PWD="+this->workingDir);
     envValues.push_back(B("DISPLAY=:0"));
     envValues.push_back(B("WINE_FAKE_WAIT_VBLANK=60"));
-    //envValues.push_back(B("WINEDLLOVERRIDES=mscoree,mshtml="));
-    //envValues.push_back("WINEDEBUG=+ddraw");
+
+    if (!this->ddrawOverridePath.isEmpty()) {
+        envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
+        std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, this->ddrawOverridePath, true);
+        if (!parent) {
+            klog("-ddrawOverride %s not found", this->ddrawOverridePath.c_str());
+        }
+        std::shared_ptr<FsNode> ddrawParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/ddraw"), true);
+        if (!ddrawParent) {
+            klog("-ddrawOverride was specificied but /home/username/.wine/drive_c/ddraw was not found in the file system");
+        }
+        if (parent && ddrawParent) {
+            Fs::addFileNode(this->ddrawOverridePath + "/ddraw.dll", B("/home/username/.wine/drive_c/ddraw/ddraw.dll"), ddrawParent->nativePath.stringByApppendingPath("ddraw.dll"), false, parent);
+            Fs::addFileNode(this->ddrawOverridePath + "/ddraw.ini", B("/home/username/.wine/drive_c/ddraw/ddraw.ini"), ddrawParent->nativePath.stringByApppendingPath("ddraw.ini"), false, parent);
+        }
+    }
+
+    //envValues.push_back(B("WINEDEBUG=+d3d"));
+
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
     // if I create more env values that are longer it doesn't crash, what is special about this one?
@@ -477,11 +499,9 @@ bool StartUpArgs::apply() {
 #endif
         }
     }
-    KSystem::videoEnabled = this->videoEnabled;
+    KSystem::videoOption = this->videoOption;
     KSystem::soundEnabled = this->soundEnabled;
-    KNativeWindow::init(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
-    initWine();
-    initWineAudio();
+    KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
     gl_init(this->glExt);        
@@ -489,6 +509,7 @@ bool StartUpArgs::apply() {
 #ifdef BOXEDWINE_VULKAN
     vulkan_init();
 #endif
+    x11_init();
 
     if (this->args.size()) {
         klog_nonewline("Launching ");
@@ -498,8 +519,9 @@ bool StartUpArgs::apply() {
         klog_nonewline("\n");
         bool result = false;
         {
-            std::shared_ptr<KProcess> process = KProcess::create();// keep in this small scope so we don't hold onto it for the life of the program
-            result = process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
+            KProcessPtr process = KProcess::create();// keep in this small scope so we don't hold onto it for the life of the program
+            KThread* thread = process->startProcess(this->workingDir, this->args, this->envValues, this->userId, this->groupId, this->effectiveUserId, this->effectiveGroupId);
+            result = thread != nullptr;
         }
         if (result) {
             if (!doMainLoop()) {
@@ -512,7 +534,7 @@ bool StartUpArgs::apply() {
         writeSource();
 #endif    
 	KSystem::destroy();
-    KNativeWindow::shutdown();
+    KNativeSystem::shutdown();
     KNativeAudio::shutdown();
     dspShutdown();
 
@@ -603,7 +625,11 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-nosound")) {
 			this->soundEnabled = false;
         } else if (!strcmp(argv[i], "-novideo")) {
-			this->videoEnabled = false;
+#ifdef BOXEDWINE_MSVC
+            this->videoOption = VIDEO_HIDE_WINDOW;
+#else
+            this->videoOption = VIDEO_NO_WINDOW;
+#endif
         } else if (!strcmp(argv[i], "-env")) {
 			this->envValues.push_back(BString::copy(argv[i+1]));
             i++;
@@ -681,8 +707,6 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             }
         } else if (!strcmp(argv[i], "-dpiAware")) {
             dpiAware = true;
-        } else if (!strcmp(argv[i], "-showWindowImmediately")) {
-            showWindowImmediately = true;
         } else if (!strcmp(argv[i], "-pollRate")) {
             this->pollRate = atoi(argv[i + 1]);
             i++;
@@ -725,7 +749,12 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         }
 #endif
-        else {
+        else if (!strcmp(argv[i], "-ddrawOverride")) {
+            this->ddrawOverridePath = argv[i + 1];
+            i++;
+        } else if (!strcmp(argv[i], "-disableHideCursor")) {
+            this->disableHideCursor = true;
+        } else {
             break;
         }
     } 

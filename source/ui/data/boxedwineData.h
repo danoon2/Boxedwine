@@ -9,18 +9,19 @@ class BoxedContainer;
 
 class BoxedWinVersion {
 public:
-    BoxedWinVersion(BString ver, BString desc, U32 major, U32 minor, U32 build, U32 id, BString csd, U16 majorPack, U16 minorPack, BString product);
+    BoxedWinVersion(const char* ver, const char* desc, const char* currentVersion, U32 major, U32 minor, U32 build, U32 id, const char* csd, U16 majorPack, U16 minorPack, const char* product);
 
-    BString szVersion;
-    BString szDescription;
+    const char* szVersion;
+    const char* szDescription;
+    const char* szCurrentVersion;
     U32       dwMajorVersion;
     U32       dwMinorVersion;
     U32       dwBuildNumber;
     U32       dwPlatformId;
-    BString szCSDVersion;
+    const char* szCSDVersion;
     U16        wServicePackMajor;
     U16        wServicePackMinor;
-    BString szProductType;
+    const char* szProductType;
 };
 
 class BoxedwineData {

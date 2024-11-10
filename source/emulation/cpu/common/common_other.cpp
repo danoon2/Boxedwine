@@ -22,16 +22,6 @@ U32 common_bound32(CPU* cpu, U32 reg, U32 address){
         return 1;
     }
 }
-void common_int98(CPU* cpu){
-    U32 index = cpu->peek32(0);
-    if (index<wine_callbackSize && wine_callback[index]) {
-        wine_callback[index](cpu);
-    } else if (index >= wine_audio_callback_base && index < wine_audio_callback_base + wine_audio_callback_size) {
-        wine_audio_callback[index - wine_audio_callback_base](cpu);
-    } else {
-        kpanic("Uknown int 98 call: %d", index);
-    }
-}
 void common_int99(CPU* cpu){
     U32 index = cpu->peek32(0);
     callOpenGL(cpu, index);    
@@ -41,6 +31,10 @@ void common_int9A(CPU* cpu) {
     U32 index = cpu->peek32(0);
     callVulkan(cpu, index);
 #endif
+}
+void common_int9B(CPU* cpu) {
+    U32 index = cpu->peek32(0);
+    callX11(cpu, index);
 }
 void common_intIb(CPU* cpu){
     cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
@@ -172,7 +166,27 @@ void common_verw(CPU* cpu, U32 selector){
     cpu->verw(selector);
 }
 
-void common_cmpxchgg8b(CPU* cpu, U32 address){
+#ifdef BOXEDWINE_MULTI_THREADED
+void common_cmpxchg8b_lock(CPU* cpu, U32 address) {    
+    U64 expected = ((U64)EDX) << 32 | EAX;
+    U64 value = ((U64)ECX) << 32 | EBX;
+
+    cpu->fillFlags();
+
+    U64& ram = *(U64*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U64> mem(ram);
+
+    if (mem.compare_exchange_strong(expected, value)) {
+        cpu->addZF();
+    } else {
+        cpu->removeZF();
+        EDX = (U32)(expected >> 32);
+        EAX = (U32)expected;
+    }
+}
+#endif
+
+void common_cmpxchg8b(CPU* cpu, U32 address){
     U64 value1 = ((U64)EDX) << 32 | EAX;
     U64 value2 = cpu->memory->readq(address);
     cpu->fillFlags();

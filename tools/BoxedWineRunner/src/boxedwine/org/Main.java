@@ -10,6 +10,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
 
@@ -40,7 +43,7 @@ public class Main {
         }
     }
 
-    public static void runBoxedWine(String directory, String scriptDir, String[] parts, Results results) throws IOException {
+    public static void runBoxedWine(String name, String directory, String scriptDir, String[] parts, Results results) throws IOException {
         ProcessBuilder builder = new ProcessBuilder();
         List<String> commands = new ArrayList<>();
         commands.add(boxedWineExe);
@@ -73,7 +76,7 @@ public class Main {
         }
         builder.directory(new File(directory));
         Process process = builder.start();
-        StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream());
+        StreamGobbler streamGobbler = new StreamGobbler(process.getInputStream(), name);
         streamGobbler.run();
         try {
             results.exitCode = process.waitFor();
@@ -112,7 +115,7 @@ public class Main {
         return new String[0];
     }
 
-    public static void runTest(String filesPath, String path, Results results) throws IOException {
+    public static void runTest(String name, String filesPath, String path, Results results) throws IOException {
         File rootPath = new File(path+File.separator+"root");
         if (rootPath.exists()) {
             deleteDir(rootPath);
@@ -130,8 +133,8 @@ public class Main {
             if (installLines.length<2) {
                 throw new IOException(path+File.separator+"Install.txt needs to have 2 lines");
             }
-            runBoxedWine(path, "install", installLines, results);
-            if (results.exitCode!=1) {
+            runBoxedWine(name, path, "install", installLines, results);
+            if (results.exitCode!=111) {
                 return;
             }
         }
@@ -139,8 +142,8 @@ public class Main {
             if (installLines2.length<2) {
                 throw new IOException(path+File.separator+"Install2.txt needs to have 2 lines");
             }
-            runBoxedWine(path, "install2", installLines2, results);
-            if (results.exitCode!=1) {
+            runBoxedWine(name, path, "install2", installLines2, results);
+            if (results.exitCode!=111) {
                 return;
             }
         }
@@ -148,30 +151,34 @@ public class Main {
             if (playLines.length<2) {
                 throw new IOException(path+File.separator+"Play.txt needs to have 2 lines");
             }
-            runBoxedWine(path, "play", playLines, results);
+            runBoxedWine(name, path, "play", playLines, results);
         }
         results.timeToComplete = (int)((System.currentTimeMillis()-startTime)/1000);
-        if (results.exitCode==1) {
+        if (results.exitCode==111) {
             deleteDir(rootPath);
         }
     }
 
     public static void runTest(String name) {
         try {
-            Results results = new Results();
-            runTest(scriptDir+File.separator+name+File.separator+"files", scriptDir+name, results);
-            if (results.exitCode==111) {
-                System.out.println("OK   "+name+" completed in "+results.timeToComplete+" seconds");
-            } else {
-                System.out.println("FAILED "+name);
-                atleastOneFailed = true;
-                if (results.scriptFinished) {
-                    System.out.println("    Script succeeded but Boxedwine did not exit cleanly");
+            Results results = null;
+            for (int i=0;i<3;i++) {
+                results = new Results();
+                runTest(name, scriptDir + File.separator + name + File.separator + "files", scriptDir + name, results);
+                if (results.exitCode == 111) {
+                    System.out.println("OK     " + name + " completed in " + results.timeToComplete + " seconds");
+                    return;
                 }
-                System.out.println(results.commandLine);
-                for (String line : results.output) {
-                    System.out.println("    "+line);
-                }
+                System.out.println("RETRY  " + name);
+            }
+            System.out.println("FAILED " + name + ".  Error Code " + results.exitCode);
+            atleastOneFailed = true;
+            if (results.scriptFinished) {
+                System.out.println("    Script succeeded but Boxedwine did not exit cleanly");
+            }
+            System.out.println(results.commandLine);
+            for (String line : results.output) {
+                System.out.println("    " + line);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -224,11 +231,31 @@ public class Main {
         }
         Arrays.sort(scripts);
         long startTime = System.currentTimeMillis();
+        int cores = Runtime.getRuntime().availableProcessors();
+        if (cores > 4) {
+            cores = cores / 2 + 1;
+        } else if (cores == 4) {
+            cores = 2;
+        }
+        System.out.println("Starting automation: using " + cores + " cores.");
+        ExecutorService exec = Executors.newFixedThreadPool(cores);
         for (File f : scripts) {
             if (f.isDirectory()) {
-                runTest(f.getName());
+                exec.submit(() -> {
+                    runTest(f.getName());
+                });
             }
         }
+
+        exec.shutdown();
+        try {
+            if (!exec.awaitTermination(60, TimeUnit.MINUTES)) {
+                exec.shutdownNow();
+            }
+        } catch (InterruptedException ex) {
+            exec.shutdownNow();
+        }
+
         int elapsedTime = (int)((System.currentTimeMillis()-startTime)/1000);
         int minutes = elapsedTime / 60;
         int seconds = elapsedTime - minutes*60;

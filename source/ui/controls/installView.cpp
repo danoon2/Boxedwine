@@ -309,6 +309,11 @@ void InstallView::onInstall() {
             containerCreated = true;
         }
         container->launch(); // fill out startUpArgs specific to a container        
+        BString path = GlobalSettings::getAutomationFolder(container);
+        if (!Fs::doesNativePathExist(path)) {
+            Fs::makeNativeDirs(path);
+        }
+        GlobalSettings::startUpArgs.recordAutomation = path;
 
         if (installType == INSTALL_TYPE_SETUP) {
             GlobalSettings::startUpArgs.addArg(location);

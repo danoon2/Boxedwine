@@ -59,6 +59,8 @@ void KThread::cleanup() {
     }
 #endif
     this->clearFutexes();    
+    this->exitRobustList();
+    this->robustList = 0;
     if (this->process) {
         this->process->removeThread(this);
     }
@@ -86,7 +88,7 @@ void KThread::setupStack() {
     }
 }
 
-KThread::KThread(U32 id, const std::shared_ptr<KProcess>& process) : 
+KThread::KThread(U32 id, const KProcessPtr& process) : 
     id(id),   
     process(process),
     memory(process->memory),    
@@ -191,14 +193,14 @@ U32 KThread::signal(U32 signal, bool wait) {
                     this->pendingSignals |= ((U64)1 << (signal - 1));
                 }
             }
-            if (wait) {
+            if (wait && !this->terminating) {
                 BOXEDWINE_CONDITION c = this->waitingCond;
                 if (c) {
                     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(c);
                     BOXEDWINE_CONDITION_SIGNAL_ALL(c);
                 }
                 BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
-                BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
+                BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->waitingForSignalToEndCond, 1000);
             }
             return 0;
         }
@@ -206,7 +208,7 @@ U32 KThread::signal(U32 signal, bool wait) {
         this->runSignal(signal, -1, 0);
         if (wait && KThread::currentThread()!=this) {
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
-            BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);
+            BOXEDWINE_CONDITION_WAIT_TIMEOUT(this->waitingForSignalToEndCond, 1000);
         }        
     } else {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->pendingSignalsMutex);
@@ -421,6 +423,232 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
     } else {
         kwarn("syscall __NR_futex op %d not implemented", op);
         return -1;
+    }
+}
+
+/*
+struct robust_list {
+    struct robust_list* next;
+};
+
+struct robust_list_head {
+    struct robust_list list;
+    U32 futex_offset;
+    struct robust_list __user* list_op_pending;
+};
+*/
+
+struct k_robust_list_head {
+    U32 next;
+    U32 futex_offset;
+    U32 list_op_pending;
+    U32 address;
+};
+
+
+// copied/ported from https://cregit.linuxsources.org/code/5.18/kernel/futex/core.c.html
+
+static U32 fetch_robust_entry(KThread* thread, struct k_robust_list_head* entry, U32 headAddress, U32* pi) {
+    *pi = headAddress & 1;
+    headAddress &= ~1;
+    entry->address = headAddress;
+
+    if (!thread->memory->canRead(headAddress, 12)) {
+        return -K_EFAULT;
+    }
+    thread->memory->memcpy(entry, headAddress, 12);
+    return 0;
+}
+
+/* Constants for the pending_op argument of handle_futex_death */
+#define HANDLE_DEATH_PENDING	true
+#define HANDLE_DEATH_LIST	false
+
+/*
+ * Are there any waiters for this robust futex:
+ */
+#define K_FUTEX_WAITERS		0x80000000
+
+/*
+ * The kernel signals via this bit that a thread holding a futex
+ * has exited without unlocking the futex. The kernel also does
+ * a FUTEX_WAKE on such futexes, after setting the bit, to wake
+ * up any possible waiters:
+ */
+#define K_FUTEX_OWNER_DIED	0x40000000
+#define K_FUTEX_TID_MASK		0x3fffffff
+
+/*
+ * Process a futex-list entry, check whether it's owned by the
+ * dying task, and do notification if so:
+ */
+U32 KThread::handleFutexDeath(U32 uaddr, bool pi, bool pending_op) {
+    U32 uval, nval, mval;
+
+    /* Futex address must be 32bit aligned */
+    if ((((unsigned long)uaddr) % 4) != 0)
+        return -1;
+
+retry:
+    uval = memory->readd(uaddr);
+
+    /*
+     * Special case for regular (non PI) futexes. The unlock path in
+     * user space has two race scenarios:
+     *
+     * 1. The unlock path releases the user space futex value and
+     *    before it can execute the futex() syscall to wake up
+     *    waiters it is killed.
+     *
+     * 2. A woken up waiter is killed before it can acquire the
+     *    futex in user space.
+     *
+     * In both cases the TID validation below prevents a wakeup of
+     * potential waiters which can cause these waiters to block
+     * forever.
+     *
+     * In both cases the following conditions are met:
+     *
+     *	1) task->robust_list->list_op_pending != NULL
+     *	   @pending_op == true
+     *	2) User space futex value == 0
+     *	3) Regular futex: @pi == false
+     *
+     * If these conditions are met, it is safe to attempt waking up a
+     * potential waiter without touching the user space futex value and
+     * trying to set the OWNER_DIED bit. The user space futex value is
+     * uncontended and the rest of the user space mutex state is
+     * consistent, so a woken waiter will just take over the
+     * uncontended futex. Setting the OWNER_DIED bit would create
+     * inconsistent state and malfunction of the user space owner died
+     * handling.
+     */
+    if (pending_op && !pi && !uval) {
+        // extern int futex_wake(u32 __user * uaddr, unsigned int flags, int nr_wake, u32 bitset);
+        // is the flag FLAGS_SHARED?
+        // futex_wake(uaddr, 1, 1, FUTEX_BITSET_MATCH_ANY);
+        futex(uaddr, FUTEX_WAIT, 1, 0, 0, 0, false);
+        return 0;
+    }
+
+    if ((uval & K_FUTEX_TID_MASK) != id) {
+        return 0;
+    }
+
+    /*
+     * Ok, this dying thread is truly holding a futex
+     * of interest. Set the OWNER_DIED bit atomically
+     * via cmpxchg, and if the value had FUTEX_WAITERS
+     * set, wake up a waiter (if any). (We have to do a
+     * futex_wake() even if OWNER_DIED is already set -
+     * to handle the rare but possible case of recursive
+     * thread-death.) The rest of the cleanup is done in
+     * userspace.
+     */
+    mval = (uval & K_FUTEX_WAITERS) | K_FUTEX_OWNER_DIED;
+
+    // futex_cmpxchg_value_locked     
+    U32 val = memory->readd(uaddr);
+    if (val == uval) {
+        memory->writed(uaddr, mval);
+    }
+    nval = val;
+
+    if (nval != uval)
+        goto retry;
+
+    /*
+     * Wake robust non-PI futexes here. The wakeup of
+     * PI futexes happens in exit_pi_state():
+     */
+    if (!pi && (uval & K_FUTEX_WAITERS)) {
+        // futex_wake(uaddr, 1, 1, FUTEX_BITSET_MATCH_ANY);
+        futex(uaddr, FUTEX_WAIT, 1, 0, 0, 0, false);
+    }        
+
+    return 0;
+}
+
+/*
+ * Walk curr->robust_list (very carefully, it's a userspace list!)
+ * and mark any locks found there dead, and notify any waiters.
+ *
+ * We silently return on any sign of list-walking problem.
+ */
+#define ROBUST_LIST_LIMIT 2048
+void KThread::exitRobustList()
+{
+    BOXEDWINE_CRITICAL_SECTION;
+
+    struct k_robust_list_head head;
+    struct k_robust_list_head entry;
+    struct k_robust_list_head next_entry;
+    struct k_robust_list_head pending;
+    unsigned int limit = ROBUST_LIST_LIMIT, pi, pip;
+    unsigned int next_pi;
+    U32 futex_offset = 0;
+    int rc;
+
+    if (!this->robustList || !memory->canRead(this->robustList, 12)) {
+        return;
+    }    
+    
+    memory->memcpy(&head, this->robustList, 12);
+    head.address = this->robustList;        
+
+    /*
+     * Fetch the list head (which was registered earlier, via
+     * sys_set_robust_list()):
+     */
+    if (fetch_robust_entry(this, &entry, head.next, &pi)) {
+        return;
+    }
+
+    /*
+     * Fetch the relative futex offset:
+     */
+    U32 futexOffset = head.futex_offset;
+
+    /*
+     * Fetch any possibly pending lock-add first, and handle it
+     * if it exists:
+     */
+    if (fetch_robust_entry(this, &pending, head.list_op_pending, &pip))
+        return;
+
+    next_entry.address = 0;	/* avoid warning with gcc */
+    while (entry.address != head.next) {
+        /*
+         * Fetch the next entry in the list before calling
+         * handle_futex_death:
+         */
+        rc = fetch_robust_entry(this, &next_entry, entry.next, &next_pi);
+        /*
+         * A pending lock might already be on the list, so
+         * don't process it twice:
+         */
+        if (entry.address != pending.address) {
+            if (handleFutexDeath(entry.address + futex_offset, pi, HANDLE_DEATH_LIST)) {
+                return;
+            }
+        }
+        if (rc) {
+            return;
+        }
+        entry = next_entry;
+        pi = next_pi;
+        /*
+         * Avoid excessively long or circular lists:
+         */
+        if (!--limit) {
+            break;
+        }
+
+        // cond_resched(); // give the scheduler a chance to run a higher-priority process
+    }
+
+    if (pending.address) {
+        handleFutexDeath(pending.address + futex_offset, pip, HANDLE_DEATH_PENDING);
     }
 }
 
@@ -765,7 +993,33 @@ struct rseq {
 // I'm not sure if this will every be able to be emulated properly, I might be stuck using Debian 11.  Debian 12 glibc uses this.
 U32 KThread::rseq(U32 rseq, U32 rseq_len, U32 flags, U32 sig) {
     memory->writed(rseq, 0);
-    memory->writed(rseq+4, 0);
+    memory->writed(rseq+4, -2); // RSEQ_CPU_ID_REGISTRATION_FAILED
+    return -K_EACCES;
+}
+
+U32 KThread::set_robust_list(U32 head, U32 len) {
+    if (len == 12) {
+        this->robustList = head;
+        return 0;
+    }
+    return -K_EINVAL;
+}
+
+U32 KThread::get_robust_list(U32 pid, U32 head_ptr, U32 len_ptr) {    
+    KThread* thread;
+    if (pid == 0) {
+        thread = this;
+    } else {
+        thread = KSystem::getThreadById(pid);
+        if (!thread) {
+            return -K_ESRCH;
+        }
+    }
+    if (!memory->canWrite(head_ptr, 4) || !memory->canWrite(len_ptr, 4)) {
+        return -K_EFAULT;
+    }
+    memory->writed(head_ptr, this->robustList);
+    memory->writed(len_ptr, 12);
     return 0;
 }
 
@@ -1211,6 +1465,14 @@ U32 KThread::signalstack(U32 ss, U32 oss) {
     return 0;
 }
 
+U64 KThread::getThreadUserTime() {
+#ifdef BOXEDWINE_MULTI_THREADED
+    return KSystem::getMicroCounter() - threadStartTime - kernelTime;
+#else
+    return userTime;
+#endif
+}
+
 std::shared_ptr<KThreadGlContext> KThread::getGlContextById(U32 id) {
     return this->glContext[id];
 }
@@ -1219,8 +1481,10 @@ void KThread::removeGlContextById(U32 id) {
     this->glContext.remove(id);
 }
 
-void KThread::addGlContext(U32 id, void* context) {
-    this->glContext.set(id, std::make_shared<KThreadGlContext>(context));
+KThreadGlContextPtr KThread::addGlContext(U32 id, void* context) {
+    KThreadGlContextPtr result = std::make_shared<KThreadGlContext>(context);
+    this->glContext.set(id, result);
+    return result;
 }
 
 void KThread::removeAllGlContexts() {

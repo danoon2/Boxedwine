@@ -1154,12 +1154,12 @@ static U32 intIb(X64Asm* data) {
     U8 i = data->fetch8();
     if (i==0x80) {
         data->syscall(data->ip-data->startOfOpIp);
-    } else if (i==0x98) {
-        data->int98(data->ip-data->startOfOpIp);
     } else if (i==0x99) {
         data->int99(data->ip-data->startOfOpIp);
     } else if (i == 0x9A) {
         data->int9A(data->ip - data->startOfOpIp);
+    } else if (i == 0x9B) {
+        data->int9B(data->ip - data->startOfOpIp);
     }
 #ifdef __TEST
     else if (i==0x97) {
@@ -1184,7 +1184,17 @@ static U32 movEwSw(X64Asm* data) {
 // Mov Ed,Sw
 static U32 movEdSw(X64Asm* data) {
     U8 rm = data->fetch8();
-    data->writeToEFromCpuOffset(rm, segOffset[((rm >> 3) & 7)], 4, 4);
+    // https://c9x.me/x86/html/file_module_x86_id_176.html
+    // When the processor executes the instruction with a 32 - bit general - purpose register, it assumes that the 16 least - significant 
+    // bits of the general - purpose register are the destination or source operand.If the register is a destination operand, the resulting 
+    // value in the two high - order bytes of the register is implementation dependent.For the Pentium 4, Intel Xeon, and P6 family processors, 
+    // the two high - order bytes are filled with zeros; for earlier 32 - bit IA - 32 processors, the two high order bytes are undefined.
+    if (rm >= 0xc0) {
+        data->writeToEFromCpuOffset(rm, segOffset[((rm >> 3) & 7)], 4, 4);
+    } else {
+        // even though 32-bit instruction, only write 16-bits
+        data->writeToEFromCpuOffset(rm, segOffset[((rm >> 3) & 7)], 4, 2);
+    }
     return 0;
 }
 
@@ -2136,7 +2146,7 @@ static void emulateRM(X64Asm* data, U8 rm) {
     // advance eip correctly
     U32 pos = data->bufferPos;
     data->translateRM(rm, false, false, false, false, 0);
-    data->bufferPos;
+    data->bufferPos = pos;
     data->emulateSingleOp(data->currentOp);
 }
 
@@ -2493,7 +2503,7 @@ X64Decoder x64Decoder[1024] = {
 
     // 300
     invalidOp, inst32RMSafeG, invalidOp, lsl32, invalidOp, invalidOp, invalidOp, invalidOp,
-    invalidOp, invalidOp, invalidOp, keepSame, invalidOp, invalidOp, invalidOp, invalidOp,
+    invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 310
     sseXmmEx, sseExXmm, sseXmmEx, sseExXmm, sseXmmEx, sseXmmEx, sseXmmEx, sseExXmm,
     sseOp318, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, &op1f,

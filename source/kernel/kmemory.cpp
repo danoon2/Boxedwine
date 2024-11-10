@@ -16,20 +16,12 @@ void KMemory::shutdown() {
 
 KMemory::KMemory(KProcess* process) : process(process) {
     data = new KMemoryData(this);    
-#ifdef BOXEDWINE_DYNAMIC
-    dynamicMemory = nullptr;
-#endif
 }
 
 KMemory::~KMemory() {
     if (data) {
         delete data;
     }
-#ifdef BOXEDWINE_DYNAMIC
-    if (dynamicMemory) {
-        delete dynamicMemory;
-    }
-#endif
 }
 
 void KMemory::cleanup() {
@@ -103,13 +95,13 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
         }
         if (pageStart == 0) {
             // :TODO: this seems like a hack, there must be something wrong with how I implemented mmap
-            if (KSystem::wineMajorVersion >= 7) {
+            if (KSystem::wineMajorVersion >= 7 && (flags & K_MAP_BOXEDWINE) == 0) {
                 pageStart = 0x10000;
             } else {
                 pageStart = ADDRESS_PROCESS_MMAP_START;
             }
         }
-        if (!data->reserveAddress(pageStart, pageCount, &pageStart, addr != 0, true, PAGE_MAPPED)) {
+        if (!data->reserveAddress(pageStart, pageCount, &pageStart, false, addr == 0, PAGE_MAPPED)) {
             return -K_ENOMEM;
         }
         addr = pageStart << K_PAGE_SHIFT;
@@ -156,7 +148,6 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                     U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
                     cache->data = new KRamPtr[size];
                     cache->dataSize = size;
-                    ::memset(cache->data, 0, size * sizeof(KRamPtr));
                 }
                 mappedFile->systemCacheEntry = cache;
             }
@@ -323,7 +314,6 @@ void KMemory::execvReset(bool cloneVM) {
     if (!cloneVM) {
         data->execvReset();
     } else {
-        std::shared_ptr<KProcess> parent = KSystem::getProcess(process->parentId);
         // data no longer shared with parent
         data = new KMemoryData(this);
     }
@@ -337,6 +327,12 @@ void KMemory::memcpy(U32 address, const void* p, U32 len) {
         ptr += len;
         return true;
         });
+}
+
+void KMemory::memcpy(U32 dest, U32 src, U32 len) {
+    for (U32 i = 0; i < len; i++, src++, dest++) {
+        writeb(dest, readb(src));
+    }
 }
 
 void KMemory::memcpy(void* p, U32 address, U32 len) {

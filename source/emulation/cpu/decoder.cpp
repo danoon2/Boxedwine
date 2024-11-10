@@ -432,9 +432,9 @@ const InstructionInfo instructionInfo[] = {
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // Invalid 
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // Int3,
     {DECODE_BRANCH_NO_CACHE, 1, 1, 0, 0, 0, 0}, // Int80 Syscall
-    {0, 1, 1, 0, 0, 0, 0}, // Int98 Wine callback
     {0, 1, 1, 0, 0, 0, 0}, // Int99 OpenGL callback
     {0, 1, 1, 0, 0, 0, 0}, // Int9A Vulkan callback
+    {0, 1, 1, 0, 0, 0, 0}, // Int9B X11 callback
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // IntIb,
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, OF, 0, 0}, // IntO,
 
@@ -2250,9 +2250,9 @@ const LogInstruction instructionLog[] = {
     {"Invalid", 0, logName},
     {"Int3", 0, logName},
     {"Int80 Syscall", 0, logName},
-    {"Int98 Wine", 0, logName},
     {"Int99 OpenGL", 0, logName},
     {"Int9A Vulkan", 0, logName },
+    {"Int9B X11", 0, logName },
     {"Int", 0, logName, true},
     {"Int0", 0, logName},
     {"IRet", 16, logName},
@@ -3695,12 +3695,12 @@ public:
         fetchImm(data, op);
         if (op->imm==0x80)
             op->inst = Int80;
-        else if (op->imm==0x98)
-            op->inst = Int98;
         else if (op->imm==0x99)
             op->inst = Int99;
         else if (op->imm == 0x9a)
             op->inst = Int9A;
+        else if (op->imm == 0x9b)
+            op->inst = Int9B;
         else
             op->inst = IntIb;
     }
@@ -6213,6 +6213,10 @@ void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBi
             op->inst = Invalid;
         } else {
             decoder[d.inst]->decode(&d, op);
+            // per x86 spec, this has an implicit lock
+            if (op->inst == XchgE8R8 || op->inst == XchgE16R16 || op->inst == XchgE32R32) {
+                op->lock = true;
+            }
         }
         if (op->inst == Invalid) {
 #if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR

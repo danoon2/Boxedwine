@@ -97,8 +97,16 @@ public class VkType {
         }
         int result = sizeof;
         if (members != null) {
-            for (VkParam param : members) {
-                result += param.getSize();
+            if (type.equals("union")) {
+                int max = 0;
+                for (VkParam param : members) {
+                    max = Math.max(max, param.getSize());
+                }
+                result += max;
+            } else {
+                for (VkParam param : members) {
+                    result += param.getSize();
+                }
             }
         }
         if (type.equals("VK_DEFINE_NON_DISPATCHABLE_HANDLE")) {
@@ -113,14 +121,27 @@ public class VkType {
         return result;
     }
 
+    public void copy(VkType from) {
+        name = from.name;
+        type = from.type;
+        category = from.category;
+        returnedonly = from.returnedonly;
+        parent = from.parent;
+        members = from.members;
+        needMarshalIn = from.needMarshalIn;
+        needMarshalOut = from.needMarshalOut;
+        sizeof = from.sizeof;
+    }
     public String name;
     public String type;
     public String category;
     public boolean returnedonly;
     public VkType parent;
-    public Vector<VkParam> members;
+    public Vector<VkParam> members = new Vector<>();
     public boolean needMarshalIn;
     public boolean needMarshalOut;
+    public boolean needDestructor;
+    public String values;
 
     private int sizeof;
 }

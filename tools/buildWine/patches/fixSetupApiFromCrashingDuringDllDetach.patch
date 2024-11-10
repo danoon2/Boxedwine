@@ -1,0 +1,14 @@
+diff --git a/dlls/setupapi/setupcab.c b/dlls/setupapi/setupcab.c
+index d4d475c98cb..c328e55deb6 100644
+--- a/dlls/setupapi/setupcab.c
++++ b/dlls/setupapi/setupcab.c
+@@ -450,7 +450,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+         break;
+     case DLL_PROCESS_DETACH:
+         if (lpvReserved) break;
+-        SetupCloseLog();
++        // causes RpcSs error during shutdown in Boxedwine
++        // SetupCloseLog();
+         break;
+     }
+ 

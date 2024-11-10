@@ -199,15 +199,27 @@ void BoxedWineCondition::signalThread(bool all) {
 
 void BoxedWineCondition::signal() {
     this->signalThread(false);
-    for (auto& parent : parents) {
-        parent->signal();
+
+    if (parentCount) {
+        for (int i = 0; i < MAX_PARENTS; i++) {
+            std::shared_ptr<BoxedWineCondition> parent = parents[i].lock();
+            if (parent) {
+                parent->signal();
+            }
+        }
     }
 }
 
 void BoxedWineCondition::signalAll() {
     this->signalThread(true);
-    for (auto& parent : parents) {
-        parent->signalAll();
+
+    if (parentCount) {
+        for (int i = 0; i < MAX_PARENTS; i++) {
+            std::shared_ptr<BoxedWineCondition> parent = parents[i].lock();
+            if (parent) {
+                parent->signalAll();
+            }
+        }
     }
 }
 
@@ -230,18 +242,39 @@ U32 BoxedWineCondition::waitWithTimeout(U32 ms) {
 }
  
 U32 BoxedWineCondition::waitCount() {
-    return this->waitingThreads.size() + (parents.size() > 0 ? 1 : 0);
+    return this->waitingThreads.size() + (parentCount > 0 ? 1 : 0);
 }
 
 void BoxedWineCondition::addParentCondition(const std::shared_ptr<BoxedWineCondition>& parent) {
-    parents.insert(parent);
+    if (parentCount) {
+        for (int i = 0; i < MAX_PARENTS; i++) {
+            std::shared_ptr<BoxedWineCondition> p = parents[i].lock();
+            if (p == parent) {
+                return;
+            }
+        }
+    }
+    for (int i = 0; i < MAX_PARENTS; i++) {
+        if (parents[i].expired()) {
+            parents[i] = parent;
+            parentCount++;
+            return;
+        }
+    }
+    kpanic("BoxedWineCondition::addParentCondition ran out of parent slots");
 }
 
 void BoxedWineCondition::removeParentCondition(const std::shared_ptr<BoxedWineCondition>& parent) {
-    parents.erase(parent);
+    for (int i = 0; i < MAX_PARENTS; i++) {
+        std::shared_ptr<BoxedWineCondition> p = parents[i].lock();
+        if (p == parent) {
+            parents[i].reset();
+            parentCount--;
+        }
+    }
 }
 
 U32 BoxedWineCondition::parentsCount() {
-    return parents.size();
+    return parentCount;
 }
 #endif

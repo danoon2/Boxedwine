@@ -1,8 +1,8 @@
 #ifndef __BOXEDWINE_H__
 #define __BOXEDWINE_H__
 
-#define BOXEDWINE_VERSION_STR "241"
-#define BOXEDWINE_VERSION_DISPLAY "24.0.0 (pre-beta)"
+#define BOXEDWINE_VERSION_STR "25R1"
+#define BOXEDWINE_VERSION_DISPLAY "25.0.0 (pre-beta)"
 
 #include <vector>
 #include <memory>
@@ -17,8 +17,13 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include <assert.h>
 
 #include <errno.h>
+
+#ifdef __MACH__
+#include "../platform/mac/atomic_ref.h"
+#endif
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)
 #define BOXEDWINE_OPENGL
@@ -48,7 +53,25 @@
 
 #include "platform.h"
 
+struct int2Float {
+    union {
+        U32 i;
+        float f;
+    };
+};
+
+struct long2Double {
+    union {
+        U64 l;
+        double d;
+    };
+};
+
 #include "log.h"
+
+class KProcess;
+typedef std::shared_ptr<KProcess> KProcessPtr;
+typedef std::weak_ptr<KProcess> KProcessWeakPtr;
 
 #include "../source/emulation/softmmu/soft_ram.h"
 #include "../source/util/bfile.h"

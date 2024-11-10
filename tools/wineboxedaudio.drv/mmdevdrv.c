@@ -632,9 +632,9 @@ void WINAPI get_device_guid(EDataFlow flow, AudioDeviceID device, GUID *guid)
 	if (key)
 		RegCloseKey(key);
 	if (flow == 0) {
-		guid0 = guid;
+		guid0 = *guid;
 	} else {
-		guid1 = guid;
+		guid1 = *guid;
 	}
 }
 
@@ -3065,7 +3065,7 @@ HRESULT WINAPI AUDDRV_GetAudioSessionManager(IMMDevice *device,
 
 BOOL WINAPI get_device_name_from_guid(GUID* guid, char** name, EDataFlow* flow)
 {
-	if (*guid == guid0) {
+	if (IsEqualGUID(guid, &guid0)) {
 		*flow = 0;
 		*name = strdup("Boxedaudio Render");
 	} else {

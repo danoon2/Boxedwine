@@ -1,5 +1,5 @@
 #include "boxedwine.h"
-#include "knativewindow.h"
+#include "knativesystem.h"
 #include "pixelMatch.h"
 
 #ifdef BOXEDWINE_RECORDER
@@ -28,9 +28,10 @@ void Player::readCommand() {
     BString line;
     if (!file.readLine(line)) {
         klog("script finished: success");
-        quit();
-        exit(0);
-    }    
+        this->nextCommand = B("DONE"); // will cause success exit code to be returned
+        KSystem::killTime = KSystem::getMilliesSinceStart() + 30000;
+        return;
+    }
     std::vector<BString> results;
     line.split("=", results);
     if (results.size() == 2) {
@@ -132,13 +133,43 @@ void bitmapCompareThread(Player* player) {
             }
             comparingPixels = COMPARING_PIXELS_WAITING;            
         }
+        Platform::nanoSleep(500000l);
     }
 }
 
 void Player::runSlice() {  
     // at least 10 ms between mouse moves
+    if (this->nextCommand == "MODIFIERS") {
+        currentInputModifiers = atoi(nextValue.c_str());
+        instance->readCommand();
+    } else if (this->nextCommand == "WHILEWAITING") {
+        std::vector<BString> items;
+        this->nextValue.split(',', items);
+        timerWhileWaiting = atoi(items[0].c_str());
+        if (items.size() > 1) {
+            waitCommand = items[1];
+        }
+        if (waitCommand == "LBUTTON") {
+            if (items.size() > 3) {
+                waitMouseX = atoi(items[2].c_str());
+                waitMouseY = atoi(items[3].c_str());
+            } else {
+                waitMouseX = 1;
+                waitMouseY = 1;
+            }
+        } else if (waitCommand == "KEY") {
+            waitKey = atoi(items[2].c_str());
+        }
+        nextWaitTime = KSystem::getMilliesSinceStart() + timerWhileWaiting * 1000;
+        instance->readCommand();
+    }
+
     if (KSystem::getMicroCounter()<this->lastCommandTime+10000)
         return;
+
+    KNativeScreenPtr screen = KNativeSystem::getScreen();
+    KNativeInputPtr input = KNativeSystem::getCurrentInput();
+
     if (this->nextCommand=="MOVETO") {
         std::vector<BString> items;
         this->nextValue.split(',', items);
@@ -146,16 +177,34 @@ void Player::runSlice() {
             klog("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
             exit(99);
         }
-        KNativeWindow::getNativeWindow()->mouseMove(atoi(items[0].c_str()), atoi(items[1].c_str()), false);
+        input->mouseMove(atoi(items[0].c_str()), atoi(items[1].c_str()), false);
         instance->readCommand();
         return;
     } 
     // 1000 ms between all other commands
-    if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand != "SCREENSHOT")
+    if (KSystem::getMicroCounter()<this->lastCommandTime+1000000 && this->nextCommand!="MOUSEUP" && this->nextCommand!="KEYUP" && this->nextCommand != "SCREENSHOT" && !processWaitCommand)
         return;
     // at least 100 ms between mouse or key down/up
     if (KSystem::getMicroCounter()<this->lastCommandTime+100000)
         return;
+
+    // process before any other command so that button up/down and key up/down stays balanced
+    if (processWaitCommand) {
+        if (waitCommand == "LBUTTON") {
+            processWaitCommand = false;
+            this->lastCommandTime = KSystem::getMicroCounter();
+            input->mouseButton(0, 0, waitMouseX, waitMouseY);
+            klog("script WHILEWAITING LBUTTON");
+            return;
+        } else if (waitCommand == "KEY") {
+            processWaitCommand = false;
+            this->lastCommandTime = KSystem::getMicroCounter();
+            input->key(waitKey, 0, 0);
+            klog("script WHILEWAITING KEY");
+            return;
+        }
+    }
+
     if (this->nextCommand=="MOUSEDOWN" || this->nextCommand=="MOUSEUP") {
         std::vector<BString> items;
         this->nextValue.split(',', items);
@@ -163,17 +212,11 @@ void Player::runSlice() {
             klog("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
             exit(99);
         }
-        KNativeWindow::getNativeWindow()->mouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
+        input->mouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
         instance->readCommand();
-        if (this->nextCommand=="MOUSEUP") {
-            runSlice();
-        }
     } else if (this->nextCommand=="KEYDOWN" || this->nextCommand=="KEYUP") {
-        KNativeWindow::getNativeWindow()->key(atoi(this->nextValue.c_str()), (this->nextCommand=="KEYDOWN")?1:0);
+        input->key(atoi(this->nextValue.c_str()), 0, (this->nextCommand=="KEYDOWN")?1:0);
         instance->readCommand();
-        if (this->nextCommand=="KEYUP") {
-            runSlice();
-        }
     } else if (this->nextCommand=="WAIT") {
         if (KSystem::getMicroCounter()>this->lastCommandTime+1000000l*this->nextValue.toInt64()) {
             klog("script: done waiting %s", this->nextValue.c_str());
@@ -205,7 +248,7 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory ^ fileName).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {
@@ -220,11 +263,13 @@ void Player::runSlice() {
             }            
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
-                klog("script: screen shot matched");
+                klog("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
+                this->timerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
-            } else if (comparingPixels == COMPARING_PIXELS_WAITING && KNativeWindow::getNativeWindow()->partialScreenShot(B(""), x, y, w, h, buffer, bufferlen)) {
+                comparingPixels = COMPARING_PIXELS_WAITING;
+            } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->partialScreenShot(B(""), x, y, w, h, buffer, bufferlen)) {
                 if (comparingThread.native_handle() == 0) {
                     comparingThread = std::thread(bitmapCompareThread, this);
                 }
@@ -237,7 +282,7 @@ void Player::runSlice() {
                 if (image_data) {
                     free(image_data);
                 }
-                image_data = stbi_load((directory ^ fileName).c_str(), &image_width, &image_height, nullptr, 4);
+                image_data = stbi_load((directory.stringByApppendingPath(fileName)).c_str(), &image_width, &image_height, nullptr, 4);
                 lastFileName = fileName;
                 U32 len = image_width * 4 * image_height;
                 if (bufferlen < len) {
@@ -252,22 +297,52 @@ void Player::runSlice() {
             }
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
-                klog("script: screen shot matched");
+                klog("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
+                this->timerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
                 this->instance->lastScreenRead = KSystem::getMicroCounter();
-            } else if (comparingPixels == COMPARING_PIXELS_WAITING && KNativeWindow::getNativeWindow()->screenShot(B(""), buffer, bufferlen)) {
+                comparingPixels = COMPARING_PIXELS_WAITING;
+            } else if (comparingPixels == COMPARING_PIXELS_WAITING && screen->screenShot(B(""), buffer, bufferlen)) {
                 if (comparingThread.native_handle() == 0) {
                     comparingThread = std::thread(bitmapCompareThread, this);
                 }
                 comparingCond.notify_one();
             }
+        }        
+    }
+    if ((this->nextCommand == "SCREENSHOT" || this->nextCommand == "DONE") && timerWhileWaiting && nextWaitTime < KSystem::getMilliesSinceStart()) {
+        nextWaitTime = KSystem::getMilliesSinceStart() + timerWhileWaiting * 1000;
+        if (waitCommand == "LBUTTON") {
+            input->mouseButton(1, 0, waitMouseX, waitMouseY);
+            processWaitCommand = true;
+            this->lastCommandTime = KSystem::getMicroCounter();
+        } else if (waitCommand == "KEY") {
+            input->key(waitKey, 0, 1);
+            processWaitCommand = true;
+            this->lastCommandTime = KSystem::getMicroCounter();
         }
     }
-    if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*10) {
+    if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
         klog("script timed out %s", this->directory.c_str());
-        KNativeWindow::getNativeWindow()->screenShot(B("failed.bmp"), nullptr, 0);
-        KNativeWindow::getNativeWindow()->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
+        if (this->nextCommand == "SCREENSHOT") {
+            std::vector<BString> items;
+            this->nextValue.split(',', items);
+
+            if (items.size() > 4) {
+                U32 x = atoi(items[0].c_str());
+                U32 y = atoi(items[1].c_str());
+                U32 w = atoi(items[2].c_str());
+                U32 h = atoi(items[3].c_str());
+
+                screen->partialScreenShot(B("failed.bmp"), x, y, w, h, nullptr, 0);
+            } else {
+                screen->screenShot(B("failed.bmp"), nullptr, 0);
+            }
+        } else {
+            screen->screenShot(B("failed.bmp"), nullptr, 0);
+        }
+        screen->saveBmp(B("failed_diff.bmp"), output, 32, image_width, image_height);
         quit();
         exit(2);
     }

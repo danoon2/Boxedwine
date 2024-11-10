@@ -2,10 +2,6 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-#ifdef BOXEDWINE_OPENGL_OSMESA
-bool isMesaOpenglAvailable();
-#endif
-
 ContainersView::ContainersView(BString tab, BString app) : BaseView(B("ContainersView")), currentContainer(nullptr), currentContainerChanged(false), currentContainerMountChanged(false), currentApp(nullptr), currentAppChanged(false) {
     std::shared_ptr<ImGuiLayout> model = std::make_shared<ImGuiLayout>();        
     section = model->addSection();
@@ -19,14 +15,14 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     };
 
     containerFileSystemControl = createFileSystemVersionCombobox(section);
-    containerFileSystemControl->setReadOnly(true);
     containerFileSystemControl->onChange = [this]() {
         this->currentContainerChanged = true;
-        bool renderer = this->currentContainer->getWineVersionAsNumber(this->containerFileSystemControl->getSelectionStringValue()) > 500;
-        containerGdiControl->setRowHidden(renderer);
-        containerRendererControl->setRowHidden(!renderer);
         std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
+        bool renderer = fileSystem->wineVersion > 500;
+        containerGdiControl->setRowHidden(renderer);
+        containerRendererControl->setRowHidden(!renderer);        
         appDirectDrawAutoRefreshControl->setReadOnly(atoi(fileSystem->fsVersion.c_str()) < 7 || !fileSystem->hasWine());
+        Fs::deleteNativeDirAndAllFilesInDir(this->currentContainer->getDir() + Fs::nativePathSeperator + "root" + Fs::nativePathSeperator + "opt" + Fs::nativePathSeperator + "wine");
     };
 
     std::shared_ptr<LayoutRow> row = section->addRow(Msg::CONTAINER_VIEW_CONTAINER_LOCATION_LABEL, Msg::NONE);
@@ -51,7 +47,9 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
 
     std::vector<ComboboxItem> rendererOptions;
     rendererOptions.push_back(ComboboxItem(B("OpenGL"), B("gl")));
+#ifdef BOXEDWINE_VULKAN
     rendererOptions.push_back(ComboboxItem(B("Vulkan"), B("vulkan")));
+#endif
     rendererOptions.push_back(ComboboxItem(B("GDI"), B("gdi")));
     containerRendererControl = section->addComboboxRow(Msg::CONTAINER_VIEW_RENDERER_LABEL, Msg::CONTAINER_VIEW_RENDERER_HELP, rendererOptions);
     containerRendererControl->onChange = [this]() {
@@ -322,6 +320,17 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
             this->currentAppChanged = true;
         };
     }
+
+    appDdrawOverrideControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_LABEL, Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_HELP, false);
+    appDdrawOverrideControl->onChange = [this]() {
+        this->currentAppChanged = true;
+        };
+
+    appDisableHideCursorControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_LABEL, Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_HELP, false);
+    appDisableHideCursorControl->onChange = [this]() {
+        this->currentAppChanged = true;
+        };
+
     appPollRateControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_POLL_RATE_LABEL, Msg::CONTAINER_VIEW_POLL_RATE_HELP);
     appPollRateControl->onChange = [this]() {
         this->currentApp->pollRate = atoi(appPollRateControl->getText().c_str());
@@ -391,11 +400,6 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         appGlExControl->setText(B("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture"));
         this->currentAppChanged = true;
     };    
-
-    appShowWindowImmediatelyControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_SHOW_WINDOW_LABEL, Msg::CONTAINER_VIEW_SHOW_WINDOW_HELP, false);
-    appShowWindowImmediatelyControl->onChange = [this]() {
-        this->currentAppChanged = true;
-    };
 
     appDirectDrawAutoRefreshControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL, Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP, false);
     appDirectDrawAutoRefreshControl->onChange = [this]() {
@@ -525,7 +529,7 @@ bool ContainersView::saveChanges() {
             std::shared_ptr<FileSystemZip> fs = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
             this->currentContainer->setFileSystem(fs);
             this->currentContainer->setWindowsVersion(BoxedwineData::getWinVersions()[this->containerWindowsVersionControl->getSelection()]);
-            if (this->currentContainer->getWineVersionAsNumber(fs->wineName) > 500) {
+            if (fs->wineVersion > 500) {
                 this->currentContainer->setGDI(containerRendererControl->getSelectionStringValue() == "gdi");
                 this->currentContainer->setRenderer(containerRendererControl->getSelectionStringValue());
             } else {
@@ -561,7 +565,8 @@ bool ContainersView::saveChanges() {
             if (GlobalSettings::isDpiAware()) {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
-            this->currentApp->showWindowImmediately = this->appShowWindowImmediatelyControl->isChecked();
+            this->currentApp->ddrawOverride = this->appDdrawOverrideControl->isChecked();
+            this->currentApp->disableHideCursor = this->appDisableHideCursorControl->isChecked();
             this->currentApp->autoRefresh = appDirectDrawAutoRefreshControl->isChecked();
 #ifdef BOXEDWINE_MULTI_THREADED
             this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
@@ -610,9 +615,10 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appFullScreenControl->setSelectionIntValue(app->fullScreen);
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
+    appDdrawOverrideControl->setCheck(app->ddrawOverride);
+    appDisableHideCursorControl->setCheck(app->disableHideCursor);
     appPollRateControl->setText(BString::valueOf(app->pollRate));
     appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));
-    appShowWindowImmediatelyControl->setCheck(app->showWindowImmediately);
     appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);
     std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
     bool hasAutoRefresh = fileSystem && atoi(fileSystem->fsVersion.c_str()) >= 7 && fileSystem->hasWine();
@@ -667,7 +673,8 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
             containerMountPathControl->setText(mount.nativePath);
         }
 
-        if (this->currentContainer->getWineVersionAsNumber(this->containerFileSystemControl->getSelectionStringValue()) > 500) {
+        std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
+        if (fileSystem->wineVersion > 500) {
             containerGdiControl->setCheck(false);
             containerRendererControl->setSelectionStringValue(container->getRenderer());
 
@@ -748,6 +755,7 @@ void ContainersView::winetricks(const std::shared_ptr<FileSystemZip>& winetricks
     GlobalSettings::startUpArgs.addArg(B("/bin/sh"));
     GlobalSettings::startUpArgs.addArg(B("/usr/local/bin/winetricks"));
     GlobalSettings::startUpArgs.addArg(verb);
+    GlobalSettings::startUpArgs.setWorkingDir(B("/usr/local/bin"));
     GlobalSettings::startUpArgs.envValues.push_back(B("WINETRICKS_DOWNLOADER=curl"));
     GlobalSettings::startUpArgs.readyToLaunch = true;
 #ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS

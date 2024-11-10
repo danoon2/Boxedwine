@@ -715,7 +715,7 @@ static const struct gdi_dc_funcs boxeddrv_funcs =
     NULL,                                   /* pD3DKMTCheckVidPnExclusiveOwnership */
     NULL,                                   /* pD3DKMTSetVidPnSourceOwner */
     boxeddrv_wine_get_wgl_driver,           /* wine_get_wgl_driver */
-    NULL,                                   /* wine_get_vulkan_driver */
+    boxeddrv_wine_get_vulkan_driver,        /* wine_get_vulkan_driver */
     GDI_PRIORITY_GRAPHICS_DRV               /* priority */
 };
 #endif
@@ -3578,7 +3578,7 @@ static const struct user_driver_funcs boxeddrv_funcs =
 
 // May 30, 2023 wine-8.10
 //  win32u: Expose and use ProcessEvents from drivers instead of MsgWaitForMultipleObjectsEx.
-#if BOXED_WINE_VERSION >= 8100
+#if BOXED_WINE_VERSION >= 8100 && BOXED_WINE_VERSION < 9050
 static const struct user_driver_funcs boxeddrv_funcs =
 {
     .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
@@ -3649,6 +3649,78 @@ static const struct user_driver_funcs boxeddrv_funcs =
 // May 31, 2023 wine-8.10
 // win32u: Don't use CDECL for gdi_dc_funcs entries.  
 // 83
+
+
+// Mar 13, 2024 wine-9.5
+// removed pD3DKMTSetVidPnSourceOwner and pD3DKMTCheckVidPnExclusiveOwnership from dc_funcs but I didn't set those
+// 84
+
+// Mar 22, 2024 wine-9.5
+// win32u: Move vulkan loading and init guard out of the drivers. 
+// 85
+#if BOXED_WINE_VERSION >= 9050
+static const struct user_driver_funcs boxeddrv_funcs =
+{
+    .dc_funcs.pCreateCompatibleDC = boxeddrv_CreateCompatibleDC,
+    .dc_funcs.pCreateDC = boxeddrv_CreateDC,
+    .dc_funcs.pDeleteDC = boxeddrv_DeleteDC,
+    .dc_funcs.pGetDeviceCaps = boxeddrv_GetDeviceCaps,
+    .dc_funcs.pGetDeviceGammaRamp = boxeddrv_GetDeviceGammaRamp,
+    .dc_funcs.pGetNearestColor = boxeddrv_GetNearestColor,
+    .dc_funcs.pGetSystemPaletteEntries = boxeddrv_GetSystemPaletteEntries,
+    .dc_funcs.pRealizeDefaultPalette = boxeddrv_RealizeDefaultPalette,
+    .dc_funcs.pRealizePalette = boxeddrv_RealizePalette,
+    .dc_funcs.pSetDeviceGammaRamp = boxeddrv_SetDeviceGammaRamp,
+    .dc_funcs.pUnrealizePalette = boxeddrv_UnrealizePalette,
+    .dc_funcs.priority = GDI_PRIORITY_GRAPHICS_DRV,
+
+    .pActivateKeyboardLayout = boxeddrv_ActivateKeyboardLayout,
+    .pBeep = boxeddrv_Beep,
+    .pChangeDisplaySettings = boxeddrv_ChangeDisplaySettings,
+    .pClipCursor = boxeddrv_ClipCursor,
+    .pCreateWindow = boxeddrv_CreateWindow,
+    .pDestroyCursorIcon = boxeddrv_DestroyCursorIcon,
+    .pDestroyWindow = boxeddrv_DestroyWindow,
+    .pGetCurrentDisplaySettings = boxeddrv_GetCurrentDisplaySettings,
+    .pGetDisplayDepth = boxeddrv_GetDisplayDepth,
+    //.pFlashWindowEx = boxeddrv_FlashWindowEx,
+    //.pGetDC = boxeddrv_GetDC,
+    .pUpdateDisplayDevices = boxedwine_UpdateDisplayDevices,
+    .pGetCursorPos = boxeddrv_GetCursorPos,
+    .pGetKeyboardLayoutList = boxeddrv_GetKeyboardLayoutList,
+    .pGetKeyNameText = boxeddrv_GetKeyNameText,
+    .pMapVirtualKeyEx = boxeddrv_MapVirtualKeyEx,
+    .pProcessEvents = boxeddrv_ProcessEvents,
+    //.pReleaseDC = boxeddrv_ReleaseDC,
+    //.pScrollDC = boxeddrv_ScrollDC,
+    .pRegisterHotKey = boxeddrv_RegisterHotKey,
+    .pSetCapture = boxeddrv_SetCapture,
+    .pSetCursor = boxeddrv_SetCursor,
+    .pSetCursorPos = boxeddrv_SetCursorPos,
+    .pSetDesktopWindow = boxeddrv_SetDesktopWindow,
+    .pSetFocus = boxeddrv_SetFocus,
+    .pSetLayeredWindowAttributes = boxeddrv_SetLayeredWindowAttributes,
+    .pSetParent = boxeddrv_SetParent,
+    //.pSetWindowIcon = boxeddrv_SetWindowIcon,
+    .pSetWindowRgn = boxeddrv_SetWindowRgn,
+    .pSetWindowStyle = boxeddrv_SetWindowStyle,
+    .pSetWindowText = boxeddrv_SetWindowText,
+    .pShowWindow = boxeddrv_ShowWindow,
+    .pSysCommand = boxeddrv_SysCommand,
+    .pSystemParametersInfo = boxeddrv_SystemParametersInfo,
+    .pThreadDetach = boxeddrv_ThreadDetach,
+    .pToUnicodeEx = boxeddrv_ToUnicodeEx,
+    .pUnregisterHotKey = boxeddrv_UnregisterHotKey,
+    .pUpdateClipboard = boxeddrv_UpdateClipboard,
+    .pUpdateLayeredWindow = boxeddrv_UpdateLayeredWindow,
+    .pVkKeyScanEx = boxeddrv_VkKeyScanEx,
+    .pWindowMessage = boxeddrv_WindowMessage,
+    .pWindowPosChanged = boxeddrv_WindowPosChanged,
+    .pWindowPosChanging = boxeddrv_WindowPosChanging,
+    .pwine_get_wgl_driver = boxeddrv_wine_get_wgl_driver,
+    .pVulkanInit = boxeddrv_VulkanInit,
+};
+#endif
 
 const struct gdi_dc_funcs* CDECL boxeddrv_get_gdi_driver(unsigned int version)
 {

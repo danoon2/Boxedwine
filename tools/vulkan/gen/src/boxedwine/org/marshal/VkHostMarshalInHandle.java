@@ -12,7 +12,7 @@ public class VkHostMarshalInHandle extends VkHostMarshal {
         out.append(param.full);
         out.append(" = ");
         out.append("("+param.paramType.name+")");
-        out.append("getVulkanPtr(");
+        out.append("getVulkanPtr(cpu->memory, ");
         out.append(param.paramArg);
         out.append(")");
         out.append(";\n");
@@ -20,7 +20,7 @@ public class VkHostMarshalInHandle extends VkHostMarshal {
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         if (fn.name.startsWith("vkDestroy") && fn.name.substring(9).toLowerCase().equals(param.name.toLowerCase())) {
-            out.append("    freeVulkanPtr(");
+            out.append("    freeVulkanPtr(cpu->memory, ");
             out.append(param.paramArg);
             out.append(");\n");
         }

@@ -1,7 +1,18 @@
 #include "boxedwine.h"
 #include "knativesystem.h"
 #include <SDL.h>
+#include "knativescreenSDL.h"
+#include "../../source/x11/x11.h"
+#include "../../source/util/threadutils.h"
+
 #include UNISTD
+
+#ifdef BOXEDWINE_OPENGL_OSMESA
+#include "../../source/opengl/osmesa/osmesa.h"
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+#include "../../source/opengl/sdl/sdlgl.h"
+#endif
 
 #ifndef __TEST
 int boxedmain(int argc, const char** argv);
@@ -11,10 +22,13 @@ int main(int argc, char** argv) {
 }
 #endif
 
-bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
+static KNativeScreenSDLPtr screen;
+static KOpenGLPtr opengl;
+
+bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
 
-    if (allowVideo) {
+    if (videoOption != VIDEO_NO_WINDOW) {
         flags |= SDL_INIT_VIDEO;
     }
     if (allowAudio) {
@@ -24,12 +38,105 @@ bool KNativeSystem::init(bool allowVideo, bool allowAudio) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return false;
     }
+#ifdef BOXEDWINE_OPENGL
+    PlatformOpenGL::init();
+#endif
     return true;
+}
+
+void KNativeSystem::initWindow(U32 cx, U32 cy, U32 bpp, int scaleX, int scaleY, const BString& scaleQuality, U32 fullScreen, U32 vsync) {
+    screen = std::make_shared<KNativeScreenSDL>(cx, cy, bpp, scaleX, scaleY, scaleQuality, fullScreen, vsync);
+}
+
+KNativeInputPtr KNativeSystem::getCurrentInput() {
+    return screen->getInput();
+}
+
+KNativeScreenPtr KNativeSystem::getScreen() {
+    return screen;
+}
+
+void KNativeSystem::tick() {
+    if (opengl && opengl->getLastUpdateTime() + 100 < screen->getLastUpdateTime()) {
+        opengl->hideCurrentWindow();
+    }
+}
+
+void KNativeSystem::showScreen(bool show) {
+    if (screen) {
+        screen->showWindow(show);
+    }
+}
+
+void KNativeSystem::warpMouse(S32 x, S32 y) {
+    if (!opengl || screen->isVisible()) {
+        screen->warpMouse(x, y);
+    } else {
+        opengl->warpMouse(x, y);
+    }    
+}
+
+KOpenGLPtr KNativeSystem::getOpenGL() {
+    if (!opengl) {
+#ifdef BOXEDWINE_OPENGL_OSMESA
+        if (KSystem::openglType == OPENGL_TYPE_OSMESA) {
+            opengl = OsMesaGL::create();
+            return opengl;
+        }
+#endif
+#ifdef BOXEDWINE_OPENGL_SDL
+        opengl = SDLGL::create();
+        return opengl;
+#endif
+        klog("Failed to load OpenGL, will probably crash");
+    }
+    return opengl;
+}
+
+void KNativeSystem::changeScreenSize(U32 cx, U32 cy) {
+    screen->setScreenSize(cx, cy);
+}
+
+void KNativeSystem::moveWindow(const XWindowPtr& wnd) {
+    if (opengl && opengl->isActive()) {
+        opengl->glResizeWindow(wnd);
+    }
+}
+
+void KNativeSystem::showWindow(const XWindowPtr & wnd, bool bShow) {
+}
+
+void KNativeSystem::shutdown() {
+    screen = nullptr;
+    opengl = nullptr;
+}
+
+void KNativeSystem::scheduledNewThread(KThread* thread) {
+    // glUpdateContextForThread(currentThread);
 }
 
 void KNativeSystem::exit(const char* msg, U32 code) {
     SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", msg, nullptr);
     _exit(code);
+}
+
+void KNativeSystem::forceShutdown() {
+    std::shared_ptr<KProcess> p = KSystem::getProcess(10);
+    if (!p) {
+        return;
+    }
+    klog("Forcing Shutdown");
+#if defined (BOXEDWINE_MULTI_THREADED) && !defined (__TEST)
+    runInBackgroundThread([p]() {
+        p->killAllThreads();
+        KSystem::eraseProcess(p->id);
+        });
+#else
+    KThread::setCurrentThread(nullptr);
+    DecodedBlock::currentBlock = nullptr; // so CodePage::removeEntry won't use a bad thread pointer
+    p->killAllThreads();
+    KSystem::eraseProcess(p->id);
+#endif
 }
 
 void KNativeSystem::cleanup() {

@@ -82,6 +82,10 @@ public:
 	void append(S32 i, int base = 10);
 	void append(S64 i, int base = 10);
 
+	// guarantees single path separator between
+	BString stringByApppendingPath(const BString& path) const;
+	BString stringByApppendingPath(const char* path) const;
+
 	void remove(int index, int len = -1);
 	void removeAll();
 
@@ -99,10 +103,6 @@ public:
 
 	BString operator+(const BString& s) const;
 	BString operator+(const char* s) const;
-
-	// guarantees single path separator between
-	BString operator^(const BString& s) const;
-	BString operator^(const char* s) const;
 
 	BString& operator+=(const BString& s);
 	BString& operator+=(const char* s);
@@ -160,6 +160,7 @@ public:
 	static BString valueOf(S64 i);
 	static BString valueOf(S64 i, int base);
 
+	static BString pathSeparator();
 protected:
 	friend bool operator==(const BString& s2, const BString& s1);
 

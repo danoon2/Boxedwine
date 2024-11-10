@@ -4,8 +4,9 @@
 #include "../../ui/mainui.h"
 #endif
 #include "knativesystem.h"
-#include "knativewindow.h"
 #include "devfb.h"
+#include "../../x11/x11.h"
+#include "platformOpenGL.h"
 
 U32 getNextTimer();
 void runTimers();
@@ -41,14 +42,29 @@ bool doMainLoop() {
 
         if (KSystem::killTime) {
             if (KSystem::killTime <= t) {
-                KNativeSystem::cleanup();
-                exit(9);
-                return true;
+                KSystem::killTime = 0;
+                KSystem::killTime2 = KSystem::getMilliesSinceStart() + 30000;
+                KNativeSystem::forceShutdown();
             }
             if (t - KSystem::killTime < timeout) {
                 timeout = t - KSystem::killTime;
             }
         }
+        if (KSystem::killTime2) {
+            if (KSystem::killTime2 <= t) {
+                klog("Forced Shutdown failed, now doing a hard exit");
+                return true;
+            }
+            if (t - KSystem::killTime2 < timeout) {
+                timeout = t - KSystem::killTime2;
+            }
+        }
+        XServer* server = XServer::getServer(true);
+        if (server) {
+            server->isDisplayDirty = true; // a bit of a hack, sometimes popups in Basstour get missed and don't draw
+            server->draw();
+            timeout = 17;
+        } 
         if (flipFB()) {
             timeout = 17;
         }
@@ -63,15 +79,16 @@ bool doMainLoop() {
         } else if (nextTimer < timeout) {
             timeout = nextTimer;
         }
+        KNativeSystem::tick();
 #ifdef BOXEDWINE_RECORDER
         if (Player::instance || Recorder::instance) {
-            KNativeWindow::getNativeWindow()->waitForEvent(10);
+            KNativeSystem::getCurrentInput()->waitForEvent(10);
             BOXEDWINE_RECORDER_RUN_SLICE();
         } else  {
-            KNativeWindow::getNativeWindow()->waitForEvent(timeout);
+            KNativeSystem::getCurrentInput()->waitForEvent(timeout);
         }
 #else
-        KNativeWindow::getNativeWindow()->waitForEvent(timeout);
+        KNativeSystem::getCurrentInput()->waitForEvent(timeout);
 #endif    
 #if !defined(BOXEDWINE_DISABLE_UI) && !defined(__TEST)
         if (uiIsRunning()) {
@@ -92,16 +109,16 @@ bool doMainLoop() {
                 title.append(getSize(allocatedRamPages));
             }
 
-            KNativeWindow::getNativeWindow()->setTitle(title);
+            KNativeSystem::getScreen()->setTitle(title);
         }
-        if (!KNativeWindow::getNativeWindow()->processEvents()) {
+        if (!KNativeSystem::getCurrentInput()->processEvents()) {
             return true;
         }
     };
     return true;
 }
 
-void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread) {
+void waitForProcessToFinish(const KProcessPtr& process, KThread* thread) {
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(KSystem::processesCond);
     while (!process->isTerminated()) {
         BOXEDWINE_CONDITION_WAIT(KSystem::processesCond);

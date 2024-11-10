@@ -9,49 +9,196 @@ import boxedwine.org.VkParam;
 public class VkHostMarshalInMemory extends VkHostMarshal {
     // uint32_t* pPhysicalDeviceCount = (uint32_t*)getPhysicalAddress(ARG2, 4);
     public void before(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-        out.append("    ");
-        out.append(param.paramType.name);
-        out.append("*");
-        if (param.isDoublePointer) {
-            out.append("*");
-        }
-        out.append(" ");
-        out.append(param.name);
-        out.append(" = (");
-        out.append(param.paramType.name);
-        out.append("*");
-        if (param.isDoublePointer) {
-            out.append("*");
-        }
-        out.append(")getPhysicalAddress(");
-        out.append(param.paramArg);
-        out.append(", ");
-        if (param.arrayLen == 0 && param.countParam != null) {
-            out.append("(U32)");
-            if (param.countParam.isPointer && !param.countParam.isConst) {
-                out.append("(");
-                out.append(param.countParam.name);
-                out.append(" ? ");
-                if (!param.countInStructure) {
-                    out.append("*");
-                }
-                out.append(param.len);
-                out.append(" : 0)");
-            } else {
-                out.append(param.len + " * " + param.countParam.getSize());
-            }
 
-        } else if (param.arrayLen != 0) {
-            out.append(param.arrayLen * param.paramType.getSize());
-        } else {
-            out.append(param.getSize());
+        if (param.isDoublePointer) {
+            throw new Exception("oops");
         }
-        out.append(");\n");
+
+        String len = null;
+        String getLen = null;
+
+        if (param.paramType.type.equals("char") && param.len.equals("null-terminated")) {
+            out.append("    U32 len = 0;\n");
+            len = "len";
+            getLen = "len = cpu->memory->strlen("+param.paramArg+")";
+        } else if (param.arrayLen == 0 && param.countParam != null) {
+            len = param.len;
+            if (!param.countInStructure && param.countParam.isPointer) {
+                len = "*" + len;
+            }
+        } else if (param.arrayLen != 0) {
+            len = String.valueOf(param.arrayLen);
+        }
+
+        if (len != null) {
+            out.append("    ");
+            out.append(param.paramType.name);
+            out.append("* ");
+            out.append(param.name);
+            out.append(" = nullptr;\n");
+            out.append("    if (");
+            out.append(param.paramArg);
+            out.append(") {\n");
+            if (getLen != null) {
+                out.append("        ");
+                out.append(getLen);
+                out.append(";\n");
+            }
+            out.append("        ");
+            out.append(param.name);
+            out.append(" = new ");
+            if (param.paramType.name.equals("void")) {
+                out.append("char");
+            } else {
+                out.append(param.paramType.name);
+            }
+            out.append("[");
+            out.append(len);
+            out.append("];\n");
+            out.append("        cpu->memory->memcpy(");
+            out.append(param.name);
+            out.append(", ");
+            out.append(param.paramArg);
+            out.append(", (U32)");
+            out.append(len);
+            out.append(" * sizeof(");
+            if (param.paramType.name.equals("void")) {
+                out.append("char");
+            } else {
+                out.append(param.paramType.name);
+            }
+            out.append("));\n    }\n");
+        } else {
+            out.append("    ");
+            if (param.isDoublePointer) {
+                throw new Exception("oops");
+            }
+            if (param.paramType.category.equals("struct") || param.paramType.category.equals("union") || param.paramType.type.equals("void")) {
+                out.append(param.paramType.name);
+                out.append(" tmp_");
+                out.append(param.name);
+                out.append(";\n");
+                out.append("    cpu->memory->memcpy(&tmp_");
+                out.append(param.name);
+                out.append(", ");
+                out.append(param.paramArg);
+                out.append(", ");
+                out.append(param.paramType.getSize());
+                out.append(");\n");
+
+                out.append("    ");
+                out.append(param.paramType.name);
+                out.append("* ");
+                out.append(param.name);
+                out.append(" = &tmp_");
+                out.append(param.name);
+                out.append(";\n");
+            } else {
+                out.append(param.paramType.name);
+                out.append(" tmp_");
+                out.append(param.name);
+                out.append(" = (");
+                out.append(param.paramType.name);
+                out.append(") cpu->memory->read");
+                switch (param.paramType.getSize()) {
+                    case 4:
+                        out.append("d");
+                        break;
+                    case 8:
+                        out.append("q");
+                        break;
+                    default:
+                        throw new Exception("oops");
+                }
+                out.append("(");
+                out.append(param.paramArg);
+                out.append(");\n");
+
+                out.append("    ");
+                out.append(param.paramType.name);
+                out.append("* ");
+                out.append(param.name);
+                out.append(" = &tmp_");
+                out.append(param.name);
+                out.append(";\n");
+            }
+        }
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         if (fn.name.equals("vkAllocateMemory") && param.name.equals("pMemory")) {
             out.append("    if (EAX == 0 && pMemory) {\n        registerVkMemoryAllocation(*pMemory, pAllocateInfo->allocationSize);\n    }\n");
+        }
+
+        String len = null;
+
+        if (param.paramType.type.equals("char") && param.len.equals("null-terminated")) {
+            len = "len";
+        } else if (param.arrayLen == 0 && param.countParam != null) {
+            len = param.len;
+            if (!param.countInStructure && param.countParam.isPointer) {
+                len = "*" + len;
+            }
+        } else if (param.arrayLen != 0) {
+            len = String.valueOf(param.arrayLen);
+        }
+
+        if (len != null) {
+            if (!param.isConst) {
+                out.append("    if (");
+                out.append(param.name);
+                out.append(") {\n");
+                out.append("        cpu->memory->memcpy(");
+                out.append(param.paramArg);
+                out.append(", ");
+                out.append(param.name);
+                out.append(", (U32)");
+                out.append(len);
+                out.append(" * sizeof(");
+                if (param.paramType.name.equals("void")) {
+                    out.append("char");
+                } else {
+                    out.append(param.paramType.name);
+                }
+                out.append("));\n    }\n");
+            }
+            out.append("    delete[] ");
+            out.append(param.name);
+            out.append(";\n");
+        } else {
+            if (!param.isConst) {
+                out.append("    ");
+                if (param.paramType.category.equals("struct") || param.paramType.category.equals("union") || param.paramType.type.equals("void")) {
+                    out.append("cpu->memory->memcpy(");
+                    out.append(param.paramArg);
+                    out.append(", &tmp_");
+                    out.append(param.name);
+                    out.append(", ");
+                    out.append(param.paramType.getSize());
+                    out.append(");\n");
+                } else {
+                    out.append("cpu->memory->write");
+                    switch (param.paramType.getSize()) {
+                        case 4:
+                            out.append("d");
+                            break;
+                        case 8:
+                            out.append("q");
+                            break;
+                        default:
+                            throw new Exception("oops");
+                    }
+                    out.append("(");
+                    out.append(param.paramArg);
+                    if (param.paramType.getSize() == 4) {
+                        out.append(", (U32)tmp_");
+                    } else {
+                        out.append(", (U64)tmp_");
+                    }
+                    out.append(param.name);
+                    out.append(");\n");
+                }
+            }
         }
     }
 }

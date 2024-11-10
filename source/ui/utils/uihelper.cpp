@@ -87,6 +87,7 @@ void askToDownloadDefaultWine() {
     new YesNoDlg(Msg::GENERIC_DLG_ERROR_TITLE, getTranslation(labelId), [](bool yes) {
         if (yes) {
             GlobalSettings::downloadFileSystem(GlobalSettings::getAvailableWineVersions().front(), [](bool success) {
+                gotoView(VIEW_INSTALL, B("Demo"));
                 });
         } else {
             gotoView(VIEW_OPTIONS, B("Wine"));

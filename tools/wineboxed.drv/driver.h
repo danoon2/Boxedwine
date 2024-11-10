@@ -26,7 +26,13 @@ struct opengl_funcs* CDECL boxeddrv_wine_get_wgl_driver(UINT version);
 struct opengl_funcs* CDECL boxeddrv_wine_get_wgl_driver(PHYSDEV hdc, UINT version);
 #endif
 
-#if WINE_VULKAN_DRIVER_VERSION >= 11
+#if WINE_GDI_DRIVER_VERSION >= 85
+#if WINE_VULKAN_DRIVER_VERSION >= 28
+UINT boxeddrv_VulkanInit(UINT version, void* vulkan_handle, const struct vulkan_driver_funcs** driver_funcs);
+#else
+UINT boxeddrv_VulkanInit(UINT version, void* vulkan_handle, struct vulkan_funcs* driver_funcs);
+#endif
+#elif WINE_VULKAN_DRIVER_VERSION >= 11
 const struct vulkan_funcs* boxeddrv_wine_get_vulkan_driver(UINT version);
 #elif WINE_GDI_DRIVER_VERSION >= 74
 const struct vulkan_funcs* CDECL boxeddrv_wine_get_vulkan_driver(UINT version);
@@ -36,7 +42,11 @@ const struct vulkan_funcs* CDECL boxeddrv_wine_get_vulkan_driver(PHYSDEV hdc, UI
 
 BOOL WINE_CDECL boxeddrv_EnumDisplaySettingsEx(LPCWSTR devname, DWORD mode, LPDEVMODEW devmode, DWORD flags);
 
-#if WINE_GDI_DRIVER_VERSION >= 81
+#if BOXED_WINE_VERSION >= 9100
+UINT WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, void* param);
+#elif BOXED_WINE_VERSION >= 9090
+UINT WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param);
+#elif WINE_GDI_DRIVER_VERSION >= 81
 BOOL WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param);
 #elif WINE_GDI_DRIVER_VERSION >= 70
 void WINE_CDECL boxedwine_UpdateDisplayDevices(const struct gdi_device_manager* device_manager, BOOL force, void* param);

@@ -19,7 +19,7 @@
 
 #ifdef BOXEDWINE_OPENGL
 #include GLH
-#include "knativewindow.h"
+#include "knativesystem.h"
 #include "glcommon.h"
 
 #undef GL_FUNCTION
@@ -33,7 +33,7 @@
 
 #include "glMarshal.h"
 
-thread_local static BString glExt;
+static BString glExt;
 
 float fARG(CPU* cpu, U32 arg) {
     struct int2Float i;
@@ -300,13 +300,16 @@ void glcommon_glGetString(CPU* cpu) {
             return;
         }
     }
-    U32 len = (U32)strlen(result) + 1;
-    U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE|K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
-    cpu->memory->memcpy(address, (void*)result, len);
-    cpu->thread->process->glStringsiExtensions = address;
+    if (!result) {
+        EAX = 0;
+    } else {
+        U32 len = (U32)strlen(result) + 1;
+        U32 address = cpu->memory->mmap(cpu->thread, 0, len, K_PROT_WRITE | K_PROT_READ, K_MAP_PRIVATE | K_MAP_ANONYMOUS, -1, 0);
+        cpu->memory->memcpy(address, (void*)result, len);
 
-    process->glStrings.set(name, address);
-    EAX = address;
+        process->glStrings.set(name, address);
+        EAX = address;
+    }
 }
 
 // GLAPI void APIENTRY glGetTexImage( GLenum target, GLint level, GLenum format, GLenum type, GLvoid *pixels ) {
@@ -521,6 +524,631 @@ void glcommon_glGetError(CPU* cpu) {
     }
 }
 
+#define GLX_USE_GL                        1
+#define GLX_BUFFER_SIZE                   2
+#define GLX_LEVEL                         3
+#define GLX_RGBA                          4
+#define GLX_DOUBLEBUFFER                  5
+#define GLX_STEREO                        6
+#define GLX_AUX_BUFFERS                   7
+#define GLX_RED_SIZE                      8
+#define GLX_GREEN_SIZE                    9
+#define GLX_BLUE_SIZE                     10
+#define GLX_ALPHA_SIZE                    11
+#define GLX_DEPTH_SIZE                    12
+#define GLX_STENCIL_SIZE                  13
+#define GLX_ACCUM_RED_SIZE                14
+#define GLX_ACCUM_GREEN_SIZE              15
+#define GLX_ACCUM_BLUE_SIZE               16
+#define GLX_ACCUM_ALPHA_SIZE              17
+
+#define GLX_BAD_SCREEN                    1
+#define GLX_BAD_ATTRIBUTE                 2
+#define GLX_NO_EXTENSION                  3
+#define GLX_BAD_VISUAL                    4
+#define GLX_BAD_CONTEXT                   5
+#define GLX_BAD_VALUE                     6
+#define GLX_BAD_ENUM                      7
+
+#include "../x11/x11.h"
+
+/*
+ * Tokens for glXChooseVisual and glXGetConfig:
+ */
+#define GLX_USE_GL		1
+#define GLX_BUFFER_SIZE		2
+#define GLX_LEVEL		3
+#define GLX_RGBA		4
+#define GLX_DOUBLEBUFFER	5
+#define GLX_STEREO		6
+#define GLX_AUX_BUFFERS		7
+#define GLX_RED_SIZE		8
+#define GLX_GREEN_SIZE		9
+#define GLX_BLUE_SIZE		10
+#define GLX_ALPHA_SIZE		11
+#define GLX_DEPTH_SIZE		12
+#define GLX_STENCIL_SIZE	13
+#define GLX_ACCUM_RED_SIZE	14
+#define GLX_ACCUM_GREEN_SIZE	15
+#define GLX_ACCUM_BLUE_SIZE	16
+#define GLX_ACCUM_ALPHA_SIZE	17
+
+
+ /*
+  * Error codes returned by glXGetConfig:
+  */
+#define GLX_BAD_SCREEN		1
+#define GLX_BAD_ATTRIBUTE	2
+#define GLX_NO_EXTENSION	3
+#define GLX_BAD_VISUAL		4
+#define GLX_BAD_CONTEXT		5
+#define GLX_BAD_VALUE       	6
+#define GLX_BAD_ENUM		7
+
+
+  /*
+   * GLX 1.1 and later:
+   */
+#define GLX_VENDOR		1
+#define GLX_VERSION		2
+#define GLX_EXTENSIONS 		3
+
+
+   /*
+    * GLX 1.3 and later:
+    */
+#define GLX_CONFIG_CAVEAT		0x20
+#define GLX_DONT_CARE			0xFFFFFFFF
+#define GLX_X_VISUAL_TYPE		0x22
+#define GLX_TRANSPARENT_TYPE		0x23
+#define GLX_TRANSPARENT_INDEX_VALUE	0x24
+#define GLX_TRANSPARENT_RED_VALUE	0x25
+#define GLX_TRANSPARENT_GREEN_VALUE	0x26
+#define GLX_TRANSPARENT_BLUE_VALUE	0x27
+#define GLX_TRANSPARENT_ALPHA_VALUE	0x28
+#define GLX_WINDOW_BIT			0x00000001
+#define GLX_PIXMAP_BIT			0x00000002
+#define GLX_PBUFFER_BIT			0x00000004
+#define GLX_AUX_BUFFERS_BIT		0x00000010
+#define GLX_FRONT_LEFT_BUFFER_BIT	0x00000001
+#define GLX_FRONT_RIGHT_BUFFER_BIT	0x00000002
+#define GLX_BACK_LEFT_BUFFER_BIT	0x00000004
+#define GLX_BACK_RIGHT_BUFFER_BIT	0x00000008
+#define GLX_DEPTH_BUFFER_BIT		0x00000020
+#define GLX_STENCIL_BUFFER_BIT		0x00000040
+#define GLX_ACCUM_BUFFER_BIT		0x00000080
+#define GLX_NONE			0x8000
+#define GLX_SLOW_CONFIG			0x8001
+#define GLX_TRUE_COLOR			0x8002
+#define GLX_DIRECT_COLOR		0x8003
+#define GLX_PSEUDO_COLOR		0x8004
+#define GLX_STATIC_COLOR		0x8005
+#define GLX_GRAY_SCALE			0x8006
+#define GLX_STATIC_GRAY			0x8007
+#define GLX_TRANSPARENT_RGB		0x8008
+#define GLX_TRANSPARENT_INDEX		0x8009
+#define GLX_VISUAL_ID			0x800B
+#define GLX_SCREEN			0x800C
+#define GLX_NON_CONFORMANT_CONFIG	0x800D
+#define GLX_DRAWABLE_TYPE		0x8010
+#define GLX_RENDER_TYPE			0x8011
+#define GLX_X_RENDERABLE		0x8012
+#define GLX_FBCONFIG_ID			0x8013
+#define GLX_RGBA_TYPE			0x8014
+#define GLX_COLOR_INDEX_TYPE		0x8015
+#define GLX_MAX_PBUFFER_WIDTH		0x8016
+#define GLX_MAX_PBUFFER_HEIGHT		0x8017
+#define GLX_MAX_PBUFFER_PIXELS		0x8018
+#define GLX_PRESERVED_CONTENTS		0x801B
+#define GLX_LARGEST_PBUFFER		0x801C
+#define GLX_WIDTH			0x801D
+#define GLX_HEIGHT			0x801E
+#define GLX_EVENT_MASK			0x801F
+#define GLX_DAMAGED			0x8020
+#define GLX_SAVED			0x8021
+#define GLX_WINDOW			0x8022
+#define GLX_PBUFFER			0x8023
+#define GLX_PBUFFER_HEIGHT              0x8040
+#define GLX_PBUFFER_WIDTH               0x8041
+#define GLX_RGBA_BIT			0x00000001
+#define GLX_COLOR_INDEX_BIT		0x00000002
+#define GLX_PBUFFER_CLOBBER_MASK	0x08000000
+
+#define GLX_CONTEXT_MAJOR_VERSION_ARB 0x2091
+#define GLX_CONTEXT_MINOR_VERSION_ARB 0x2092
+#define GLX_CONTEXT_FLAGS_ARB 0x2094
+#define GLX_CONTEXT_PROFILE_MASK_ARB 0x9126
+#define GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT  0x20B2
+#define GLX_FLOAT_COMPONENTS_NV           0x20B0
+
+    /*
+     * GLX 1.4 and later:
+     */
+#define GLX_SAMPLE_BUFFERS              0x186a0 /*100000*/
+#define GLX_SAMPLES                     0x186a1 /*100001*/
+
+// XVisualInfo* pglXChooseVisual(Display* dpy, int screen, int* attribList) {
+void gl_common_XChooseVisual(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 address = ARG3;
+    U32 value;
+
+    U32 colorType = PF_COLOR_TYPE_NOTSET;
+    U32 cRedBits = 0;
+    U32 cGreenBits = 0;
+    U32 cBlueBits = 0;
+    U32 cAlphaBits = 0;
+    U32 cAccumBits = 0;
+    U32 cDepthBits = 0;
+    U32 cStencilBits = 0;
+    bool doubleBuffer = false;
+
+    while (value = cpu->memory->readd(address)) {
+        if (value == GLX_RGBA) {
+            colorType = K_PFD_TYPE_RGBA;
+        } else if (value == GLX_DOUBLEBUFFER) {
+            doubleBuffer = true;
+        } 
+        else {
+            kpanic("gl_common_XChooseVisual unhandled attribute %d", value);
+        }
+        address += 4;
+    }
+
+    U32 visualId = 0;
+
+    server->iterateFbConfigs([&visualId, doubleBuffer, colorType](const CLXFBConfigPtr& cfg) {
+        if (!(cfg->glPixelFormat->pf.dwFlags & K_PFD_SUPPORT_OPENGL)) {
+            return true;
+        }
+        bool isDoubleBuffer = (cfg->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) != 0;
+        if (isDoubleBuffer != doubleBuffer) {
+            return true;
+        }
+        if (colorType != cfg->glPixelFormat->pf.iPixelType) {
+            return true;
+        }
+        visualId = cfg->visualId;
+        return false;
+    });
+
+    if (!visualId) {
+        EAX = 0;
+        return;
+    }
+    U32 result = thread->process->alloc(thread, sizeof(XVisualInfo));
+    bool found = false;
+    Display::iterateVisuals(thread, ARG1, [&memory, result, &found, visualId](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
+        if (visual->visualid == visualId) {
+            XVisualInfo visualInfo;
+            visualInfo.set(screenIndex, visualAddress, depth->depth, visual);
+            visualInfo.write(memory, result);
+            found = true;
+            return false;
+        }
+        return true;
+        });
+
+    if (found) {
+        EAX = result;
+    } else {
+        thread->process->free(result);
+        EAX = 0;
+    }
+}
+
+// GLXContext glXCreateContext(Display* dpy, XVisualInfo* vis, GLXContext shareList, Bool direct) {
+void gl_common_XCreateContext(CPU* cpu) {    
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 shareList = ARG3;
+    XVisualInfo info;
+    info.read(memory, ARG2);
+    U32 pixelFormatId = memory->readd(info.visual); // pixel format index is in visual.ext_data (first member)
+    KOpenGLPtr gl = KNativeSystem::getOpenGL();
+
+    EAX = gl->glCreateContext(thread, gl->getFormat(pixelFormatId), 0, 0, 0, 0, shareList);
+}
+
+// void glXDestroyContext(Display* dpy, GLXContext ctx) {
+void gl_common_XDestroyContext(CPU* cpu) {      
+    KNativeSystem::getOpenGL()->glDestroyContext(cpu->thread, ARG2);
+}
+
+// Bool glXMakeCurrent(Display* dpy, GLXDrawable drawable, GLXContext ctx) {
+void gl_common_XMakeCurrent(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr d = server->getDrawable(ARG2);
+    U32 ctx = ARG3;
+
+    if (ctx && !d) {
+        EAX = False;
+        return;
+    }    
+    EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? True : False;
+    thread->currentContext = ctx;
+}
+
+// void pglXCopyContext(Display* dpy, GLXContext src, GLXContext dst, unsigned long mask)
+void gl_common_XCopyContext(CPU* cpu) {
+    kpanic("glXCopyContext");
+}
+
+// Bool glXQueryVersion(Display* dpy, int* maj, int* min)
+void gl_common_XQueryVersion(CPU* cpu) {
+    kpanic("glXQueryVersion");
+}
+
+// Bool glXIsDirect(Display* dpy, GLXContext ctx)
+void gl_common_XIsDirect(CPU* cpu) {
+    EAX = True;
+}
+
+// GLXContext glXGetCurrentContext(void)
+void gl_common_XGetCurrentContext(CPU* cpu) {
+    kpanic("glXGetCurrentContext");
+}
+
+// GLXDrawable glXGetCurrentDrawable(void)
+void gl_common_XGetCurrentDrawable(CPU* cpu) {
+    kpanic("glXGetCurrentDrawable");
+}
+
+// const char* glXQueryExtensionsString(Display* dpy, int screen)
+void gl_common_XQueryExtensionsString(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    if (thread->process->glxStringExtensions) {
+        EAX = thread->process->glxStringExtensions;
+    }
+    const char* s = "GLX_ARB_multisample GLX_SGIX_fbconfig GLX_ARB_create_context WGL_ARB_create_context_profile GLX_ARB_create_context_no_error";
+    thread->process->glxStringExtensions = thread->process->alloc(thread, (U32)strlen(s) + 1);
+    thread->memory->memcpy(thread->process->glxStringExtensions, s, (U32)strlen(s) + 1);
+    EAX = thread->process->glxStringExtensions;
+}
+
+// const char* glXQueryServerString(Display* dpy, int screen, int name)
+void gl_common_XQueryServerString(CPU* cpu) {
+    kpanic("glXQueryServerString");
+}
+
+// const char* glXGetClientString(Display* dpy, int name)
+void gl_common_XGetClientString(CPU* cpu) {
+    kpanic("glXGetClientString");
+}
+
+// GLXFBConfig* glXChooseFBConfig(Display* dpy, int screen, const int* attribList, int* nitems)
+void gl_common_XChooseFBConfig(CPU* cpu) {
+    kpanic("glXChooseFBConfig");
+}
+
+// int glXGetFBConfigAttrib(Display* dpy, GLXFBConfig config, int attribute, int* value)
+void gl_common_XGetFBConfigAttrib(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 attribute = ARG3;
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+
+    switch (attribute) {
+    case GLX_DOUBLEBUFFER:
+        memory->writed(ARG4, (cfg->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) ? True : False);
+        break;
+    case GLX_STEREO:
+        memory->writed(ARG4, (cfg->glPixelFormat->pf.dwFlags & K_PFD_STEREO) ? True : False);
+        break;
+    case GLX_FBCONFIG_ID:
+        memory->writed(ARG4, cfg->fbId);
+        break;
+    case GLX_VISUAL_ID:
+        memory->writed(ARG4, cfg->visualId);
+        break;
+    case GLX_DRAWABLE_TYPE:
+    {
+        U32 result = 0;
+        if (cfg->glPixelFormat->pf.dwFlags & K_PFD_DRAW_TO_WINDOW) {
+            result |= GLX_WINDOW_BIT;
+        }
+        if (cfg->glPixelFormat->pf.dwFlags & K_PFD_DRAW_TO_BITMAP) {
+            result |= GLX_PIXMAP_BIT;
+        }
+        if (cfg->glPixelFormat->pbuffer) {
+            result |= GLX_PBUFFER_BIT;
+        }
+        memory->writed(ARG4, result);
+        break;
+    }
+    case GLX_RENDER_TYPE:
+        if (cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_RGBA) {
+            memory->writed(ARG4, GLX_RGBA_BIT);
+        } else if (cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_COLORINDEX) {
+            memory->writed(ARG4, GLX_COLOR_INDEX_BIT);
+        } else {
+            kpanic("gl_common_XGetFBConfigAttrib unhandled GLX_RENDER_TYPE %x", cfg->glPixelFormat->pf.iPixelType);
+        }
+        break;
+    case GLX_BUFFER_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cColorBits);
+        break;
+    case GLX_RED_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cRedBits);
+        break;
+    case GLX_GREEN_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cGreenBits);
+        break;
+    case GLX_BLUE_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cBlueBits);
+        break;
+    case GLX_ALPHA_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAlphaBits);
+        break;
+    case GLX_ACCUM_RED_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumRedBits);
+        break;
+    case GLX_ACCUM_BLUE_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumBlueBits);
+        break;
+    case GLX_ACCUM_GREEN_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumGreenBits);
+        break;
+    case GLX_ACCUM_ALPHA_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAccumAlphaBits);
+        break;
+    case GLX_AUX_BUFFERS:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cAuxBuffers);
+        break;
+    case GLX_DEPTH_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cDepthBits);
+        break;
+    case GLX_STENCIL_SIZE:
+        memory->writed(ARG4, cfg->glPixelFormat->pf.cStencilBits);
+        break;
+    case GLX_TRANSPARENT_TYPE:
+        memory->writed(ARG4, GLX_NONE);
+        break;
+    case GLX_MAX_PBUFFER_PIXELS:
+        memory->writed(ARG4, cfg->glPixelFormat->pbufferMaxPixels);
+        break;
+    case GLX_MAX_PBUFFER_WIDTH:
+        memory->writed(ARG4, cfg->glPixelFormat->pbufferMaxWidth);
+        break;
+    case GLX_MAX_PBUFFER_HEIGHT:
+        memory->writed(ARG4, cfg->glPixelFormat->pbufferMaxHeight);
+        break;
+    case GLX_SAMPLE_BUFFERS:
+        memory->writed(ARG4, cfg->glPixelFormat->sampleBuffers);
+        break;
+    case GLX_SAMPLES:
+        memory->writed(ARG4, cfg->glPixelFormat->samples);
+        break;
+    case GLX_FRAMEBUFFER_SRGB_CAPABLE_EXT:
+    case GLX_TRANSPARENT_INDEX_VALUE:
+    case GLX_TRANSPARENT_RED_VALUE:
+    case GLX_TRANSPARENT_GREEN_VALUE:
+    case GLX_TRANSPARENT_BLUE_VALUE:
+    case GLX_TRANSPARENT_ALPHA_VALUE:
+    case GLX_FLOAT_COMPONENTS_NV:
+        EAX = 1;
+        return;
+    default:
+        kpanic("gl_common_XGetFBConfigAttrib attribute not handled: %x", attribute);
+    }
+    EAX = Success;
+
+}
+
+// GLXFBConfig* glXGetFBConfigs(Display* dpy, int screen, int* nelements)
+void gl_common_XGetFBConfigs(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+
+    U32 count = 0;
+    U32 screen = ARG2;
+
+    U32 resultAddress = thread->process->alloc(thread, server->getFbConfigCount() * 4); // list of ids
+    EAX = resultAddress;
+    
+    server->iterateFbConfigs([memory, &resultAddress](const CLXFBConfigPtr& cfg) {
+        memory->writed(resultAddress, cfg->fbId);
+        resultAddress += 4;
+        return true;
+        });
+    memory->writed(ARG3, server->getFbConfigCount());
+}
+
+// XVisualInfo* glXGetVisualFromFBConfig(Display* dpy, GLXFBConfig config)
+void gl_common_XGetVisualFromFBConfig(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    if (!cfg) {
+        EAX = 0;
+        return;
+    }
+    U32 visualInfoAddress = thread->process->alloc(thread, sizeof(XVisualInfo));
+    VisualPtr vis = server->getVisual(cfg->visualId);
+    XVisualInfo info;
+    U32 visAddress = 0;
+
+    Display::iterateVisuals(thread, ARG1, [&cfg, &visAddress](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
+        if (visual->visualid == cfg->visualId) {
+            visAddress = visualAddress;
+        }
+        return true;
+        });
+    if (!visAddress) {
+        EAX = 0;
+        return;
+    }
+    info.set(0, visAddress, cfg->depth, vis.get());
+    info.write(memory, visualInfoAddress);
+    EAX = visualInfoAddress;    
+}
+
+// GLXPbuffer glXCreatePbuffer(Display* dpy, GLXFBConfig config, const int* attribList)
+void gl_common_XCreatePbuffer(CPU* cpu) {
+    kpanic("glXCreatePbuffer");
+}
+
+// void glXDestroyPbuffer(Display* dpy, GLXPbuffer pbuf)
+void gl_common_XDestroyPbuffer(CPU* cpu) {
+    kpanic("glXDestroyPbuffer");
+}
+
+// void glXQueryDrawable(Display* dpy, GLXDrawable draw, int attribute, unsigned int* value)
+void gl_common_XQueryDrawable(CPU* cpu) {
+    kpanic("glXQueryDrawable");
+}
+
+// GLXContext glXCreateNewContext(Display* dpy, GLXFBConfig config, int renderType, GLXContext shareList, Bool direct)
+void gl_common_XCreateNewContext(CPU* cpu) {
+    kpanic("glXCreateNewContext");
+}
+
+// Bool glXMakeContextCurrent(Display* dpy, GLXDrawable draw, GLXDrawable read, GLXContext ctx)
+void gl_common_XMakeContextCurrent(CPU* cpu) {
+    U32 draw = ARG2;
+    U32 read = ARG3;
+    U32 ctx = ARG4;
+    if (read && read != draw) {
+        kpanic("glXMakeContextCurrent");
+    }
+
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr d = server->getDrawable(draw);
+
+    if (ctx && !d) {
+        EAX = False;
+        return;
+    }
+    thread->currentContext = ctx;
+    EAX = KNativeSystem::getOpenGL()->glMakeCurrent(thread, d, ctx) ? True : False;
+}
+
+// GLXPixmap glXCreatePixmap(Display* dpy, GLXFBConfig config, Pixmap pixmap, const int* attrib_list)
+void gl_common_XCreatePixmap(CPU* cpu) {
+    XServer* server = XServer::getServer();
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    XPixmapPtr pixmap = server->getPixmap(ARG3);
+    if (!cfg || !pixmap) {
+        EAX = 0;
+        return;
+    }
+    if (ARG4) {
+        // not set by wine
+        kpanic("gl_common_XCreatePixmap attrib_list not implemented");
+    }
+    pixmap->isOpenGL = true;
+    EAX = ARG3; // the return must be a drawable, if we need config, maybe store on the actual pixmap
+}
+
+// void glXDestroyPixmap(Display* dpy, GLXPixmap pixmap)
+void gl_common_XDestroyPixmap(CPU* cpu) {
+    // no memory was allocated in gl_common_XCreatePixmap
+    XServer* server = XServer::getServer();
+    XPixmapPtr pixmap = server->getPixmap(ARG2);
+    if (pixmap) {
+        pixmap->isOpenGL = false;
+    }
+}
+
+// GLXWindow glXCreateWindow(Display* dpy, GLXFBConfig config, Window win, const int* attrib_list)
+void gl_common_XCreateWindow(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    XWindowPtr win = server->getWindow(ARG3);
+    if (!cfg || !win) {
+        EAX = 0;
+        return;
+    }
+    if (ARG4) {
+        // not set by wine
+        kpanic("gl_common_XCreateWindow attrib_list not implemented");
+    }
+    win->isOpenGL = true;
+    KNativeSystem::getOpenGL()->glCreateWindow(thread, win, cfg);    
+    EAX = win->id;
+}
+
+// void glXDestroyWindow(Display* dpy, GLXWindow win)
+void gl_common_XDestroyWindow(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XWindowPtr win = server->getWindow(ARG2);
+    if (win) {
+        KNativeSystem::getOpenGL()->glDestroyWindow(thread, win);
+        win->isOpenGL = false;
+    }
+}
+
+// GLXContext glXCreateContextAttribsARB(Display* dpy, GLXFBConfig config, GLXContext share_context, Bool direct, const int* attrib_list)
+void gl_common_XCreateContextAttribsARB(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    U32 share_context = ARG3;
+    U32 direct = ARG4;
+    U32 attribList = ARG5;
+    U32 major = 0;
+    U32 minor = 0;
+    U32 flags = 0;
+    U32 profile = 0;
+
+    while (true) {
+        U32 attrib = memory->readd(attribList);
+        attribList += 4;
+        if (!attrib) {
+            break;
+        }
+        switch (attrib) {
+        case GLX_CONTEXT_MAJOR_VERSION_ARB:
+            major = memory->readd(attribList);
+            attribList += 4;
+            break;
+        case GLX_CONTEXT_MINOR_VERSION_ARB:
+            minor = memory->readd(attribList);
+            attribList += 4;
+            break;
+        case GLX_CONTEXT_FLAGS_ARB:
+            flags = memory->readd(attribList);
+            attribList += 4;
+            break;
+        case GLX_CONTEXT_PROFILE_MASK_ARB:
+            profile = memory->readd(attribList);
+            attribList += 4;
+            break;
+        default:
+            kpanic("gl_common_XCreateContextAttribsARB unhandled attribute %x", attrib);
+        }
+    }
+    EAX = KNativeSystem::getOpenGL()->glCreateContext(thread, cfg->glPixelFormat, major, minor, profile, flags, share_context);
+}
+
+// void glXSwapIntervalEXT(Display* dpy, GLXDrawable drawable, int interval)
+void gl_common_XSwapIntervalEXT(CPU* cpu) {
+    kpanic("glXSwapIntervalEXT");
+}
+
+// void glXSwapBuffers(Display* dpy, GLXDrawable drawable) 
+void gl_common_XSwapBuffers(CPU* cpu) {
+    KThread* thread = cpu->thread;
+    XServer* server = XServer::getServer();
+    XDrawablePtr d = server->getDrawable(ARG2);
+    if (!d) {
+        EAX = BadDrawable;
+        return;
+    }
+    KNativeSystem::getOpenGL()->glSwapBuffers(thread, d);
+}
+
 // create variables to hold standard opengl calls like glClear
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl##func##_func pgl##func;
@@ -566,6 +1194,36 @@ void gl_init(BString allowExtensions) {
 #define GL_EXT_FUNCTION(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
 
 #include "glfunctions.h"      
+    
+    gl_callback[kXCreateContext] = gl_common_XCreateContext;
+    gl_callback[kXDestroyContext] = gl_common_XDestroyContext;
+    gl_callback[kXMakeCurrent] = gl_common_XMakeCurrent;
+
+    gl_callback[kXChooseVisual] = gl_common_XChooseVisual;
+    gl_callback[kXCopyContext] = gl_common_XCopyContext;
+    gl_callback[kXQueryVersion] = gl_common_XQueryVersion;
+    gl_callback[kXIsDirect] = gl_common_XIsDirect;
+    gl_callback[kXGetCurrentContext] = gl_common_XGetCurrentContext;
+    gl_callback[kXGetCurrentDrawable] = gl_common_XGetCurrentDrawable;
+    gl_callback[kXQueryExtensionsString] = gl_common_XQueryExtensionsString;
+    gl_callback[kXQueryServerString] = gl_common_XQueryServerString;
+    gl_callback[kXGetClientString] = gl_common_XGetClientString;
+    gl_callback[kXChooseFBConfig] = gl_common_XChooseFBConfig;
+    gl_callback[kXGetFBConfigAttrib] = gl_common_XGetFBConfigAttrib;
+    gl_callback[kXGetFBConfigs] = gl_common_XGetFBConfigs;
+    gl_callback[kXGetVisualFromFBConfig] = gl_common_XGetVisualFromFBConfig;
+    gl_callback[kXCreatePbuffer] = gl_common_XCreatePbuffer;
+    gl_callback[kXDestroyPbuffer] = gl_common_XDestroyPbuffer;
+    gl_callback[kXQueryDrawable] = gl_common_XQueryDrawable;
+    gl_callback[kXCreateNewContext] = gl_common_XCreateNewContext;
+    gl_callback[kXMakeContextCurrent] = gl_common_XMakeContextCurrent;
+    gl_callback[kXCreatePixmap] = gl_common_XCreatePixmap;
+    gl_callback[kXDestroyPixmap] = gl_common_XDestroyPixmap;
+    gl_callback[kXCreateWindow] = gl_common_XCreateWindow;
+    gl_callback[kXDestroyWindow] = gl_common_XDestroyWindow;
+    gl_callback[kXCreateContextAttribsARB] = gl_common_XCreateContextAttribsARB;
+    gl_callback[kXSwapIntervalEXT] = gl_common_XSwapIntervalEXT;
+    gl_callback[kXSwapBuffers] = gl_common_XSwapBuffers;
 }
 
 #else
@@ -579,7 +1237,7 @@ void gl_init() {
 
 void callOpenGL(CPU* cpu, U32 index) {
 #ifdef BOXEDWINE_OPENGL
-    KNativeWindow::getNativeWindow()->preOpenGLCall(index);
+    //KNativeWindow::getNativeWindow()->preOpenGLCall(index);
     if (index < int99CallbackSize && int99Callback[index]) {
         cpu->thread->marshalIndex = 0;
         lastGlCallTime = KSystem::getMilliesSinceStart();

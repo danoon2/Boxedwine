@@ -1,0 +1,2 @@
+void Xrenderer_dummy() {
+}

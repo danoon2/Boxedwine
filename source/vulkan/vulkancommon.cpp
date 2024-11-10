@@ -25,21 +25,35 @@
 static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
 
 static U32 freePtrMaps;
+static U32 vulkanPtrCount;
+static U32 vulkanPtrHighMark;
 
 BOXEDWINE_MUTEX freeVulkanPtrMutex;
 
-U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info) {
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+    VkDebugUtilsMessageTypeFlagsEXT messageType,
+    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+    void* pUserData) {
+
+    std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+
+    return VK_FALSE;
+}
+
+U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
     if (!freePtrMaps) {
-        U32 address = KThread::currentThread()->process->allocNative(K_PAGE_SIZE);
-        for (U32 i = 0; i < K_PAGE_SIZE; i += sizeof(void*) * 2) {
-            writed(address + i, freePtrMaps);
+        KThread* thread = KThread::currentThread();
+        U32 address = thread->memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
+        for (U32 i = 0; i < K_PAGE_SIZE; i += 16) {
+            memory->writed(address + i, freePtrMaps);
             freePtrMaps = address + i;
         }
     }
     U32 result = freePtrMaps;
-    freePtrMaps = readd(freePtrMaps);
-    writeq(result, value);
+    freePtrMaps = memory->readd(freePtrMaps);
+    memory->writeq(result, value);
 
     if (!info) {
         info = new BoxedVulkanInfo();
@@ -52,13 +66,32 @@ U32 createVulkanPtr(U64 value, BoxedVulkanInfo* info) {
 #define VKFUNC(f)
 #include "vkfuncs.h" 
         info->instance = (VkInstance)value;
+
+#ifdef _DEBUG
+        PFN_vkCreateDebugUtilsMessengerEXT debugFunc = (PFN_vkCreateDebugUtilsMessengerEXT)pvkGetInstanceProcAddr((VkInstance)value, "vkCreateDebugUtilsMessengerEXT");
+        VkDebugUtilsMessengerCreateInfoEXT createInfo = { 0 };
+        createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+        createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.pfnUserCallback = debugCallback;
+        createInfo.pUserData = nullptr;
+
+        VkDebugUtilsMessengerEXT debugMessenger;
+        if (debugFunc) {
+            debugFunc(info->instance, &createInfo, nullptr, &debugMessenger);
+        } else {
+            klog("Vulkan debug function not found");
+        }
+#endif
     }
-    writeq(result + 8, (U64)info);
+    memory->writeq(result + 8, (U64)info);
+    vulkanPtrCount++;
+    vulkanPtrHighMark = std::max(vulkanPtrHighMark, vulkanPtrCount);
     return result;
 }
 
-BoxedVulkanInfo* getInfoFromHandle(U32 address) {
-    return (BoxedVulkanInfo*)readq(address+8);
+BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address) {
+    return (BoxedVulkanInfo*)memory->readq(address+8);
 }
 
 static void hasProcAddress(CPU* cpu) {
@@ -66,9 +99,8 @@ static void hasProcAddress(CPU* cpu) {
     if (!handle) {
         EAX = 1;
     } else {
-        BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(handle);
-        char tmp[256];
-        BString name = getNativeStringB(cpu->peek32(2), tmp, sizeof(tmp));
+        BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, handle);
+        BString name = cpu->memory->readStringW(cpu->peek32(2));
 
         if (pBoxedInfo->functionAddressByName.count(name) || name == "vkGetDeviceProcAddr" || name == "vkCreateWin32SurfaceKHR") {
             EAX = 1;
@@ -79,17 +111,18 @@ static void hasProcAddress(CPU* cpu) {
     }
 }
 
-void freeVulkanPtr(U32 p) {
+void freeVulkanPtr(KMemory* memory, U32 p) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
-    writed(p, freePtrMaps);
+    memory->writed(p, freePtrMaps);
     freePtrMaps = p;
+    vulkanPtrCount--;
 }
 
-void* getVulkanPtr(U32 address) {
-    return (void*)(readq(address));
+void* getVulkanPtr(KMemory* memory, U32 address) {
+    return (void*)(memory->readq(address));
 }
 
-class VMemory : public BoxedPtrBase {
+class VMemory {
 public:
     VkDeviceMemory memory;
     VkDeviceSize size;
@@ -97,10 +130,10 @@ public:
     U32 mappedAddress;
 };
 
-std::unordered_map<VkDeviceMemory, BoxedPtr<VMemory>> vmemory;
+std::unordered_map<VkDeviceMemory, std::shared_ptr<VMemory>> vmemory;
 BOXEDWINE_MUTEX vmemoryMutex;
 
-BoxedPtr<VMemory> getVMemory(VkDeviceMemory memory) {
+std::shared_ptr<VMemory> getVMemory(VkDeviceMemory memory) {
     if (vmemory.count(memory))
         return vmemory[memory];
     return NULL;
@@ -108,7 +141,7 @@ BoxedPtr<VMemory> getVMemory(VkDeviceMemory memory) {
 
 void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    BoxedPtr<VMemory> m = new VMemory();
+    std::shared_ptr<VMemory> m = std::make_shared<VMemory>();
     m->memory = memory;
     m->size = size;
     m->mappedLen = 0;
@@ -118,7 +151,7 @@ void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size) {
 
 void unregisterVkMemoryAllocation(VkDeviceMemory memory) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    BoxedPtr<VMemory> m = getVMemory(memory);
+    std::shared_ptr<VMemory> m = getVMemory(memory);
     if (m) {
         vmemory.erase(memory);
     }
@@ -126,7 +159,7 @@ void unregisterVkMemoryAllocation(VkDeviceMemory memory) {
 
 U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    BoxedPtr<VMemory> m = getVMemory(memory);
+    std::shared_ptr<VMemory> m = getVMemory(memory);
     if (!m) {
         kpanic("Wasn't expecting mapVkMemory before registerVkMemoryAllocation");
     }
@@ -143,7 +176,7 @@ U32 mapVkMemory(VkDeviceMemory memory, void* pData, VkDeviceSize len) {
 
 void unmapVkMemory(VkDeviceMemory memory) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(vmemoryMutex);
-    BoxedPtr<VMemory> m = getVMemory(memory);
+    std::shared_ptr<VMemory> m = getVMemory(memory);
     if (!m) {
         kpanic("Wasn't expecting mapVkMemory before registerVkMemoryAllocation");
     }
@@ -161,22 +194,21 @@ static void BOXED_vkCreateWin32SurfaceKHR(CPU* cpu) {
     //const VkAllocationCallbacks* allocator, 
     // VkSurfaceKHR* surface
 
-    std::shared_ptr<KNativeWindow> wnd = KNativeWindow::getNativeWindow();
+    KNativeWindowPtr wnd = KNativeWindow::getNativeWindow();
 
     if (!wnd->isVulkan) {
         wnd->needsVulkan = true;
-        wnd->updateDisplay(cpu->thread);
+        wnd->updateDisplay();
     }
-    void* instance = getVulkanPtr(cpu->peek32(1));
+    void* instance = getVulkanPtr(cpu->memory, cpu->peek32(1));
 
     void* surface = wnd->createVulkanSurface(instance);
-    int ii = sizeof(VkAttachmentLoadOp);
     if (!surface) {
         EAX = VK_ERROR_OUT_OF_HOST_MEMORY;
     } else {
         EAX = VK_SUCCESS;
         // VK_DEFINE_NON_DISPATCHABLE_HANDLE (always 64 bit)
-        writeq(cpu->peek32(4), (U64)surface);
+        cpu->memory->writeq(cpu->peek32(4), (U64)surface);
     }
 }
 

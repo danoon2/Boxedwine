@@ -3,7 +3,7 @@
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
 #ifdef BOXEDWINE_OPENGL_OSMESA
-bool isMesaOpenglAvailable();
+#include "../../opengl/osmesa/osmesa.h"
 #endif
 
 OptionsView::OptionsView(BString tab) : BaseView(B("OptionsView")) {
@@ -127,7 +127,7 @@ void OptionsView::createGeneralTab() {
     };
 
 #if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
-    if (isMesaOpenglAvailable()) {
+    if (OsMesaGL::isAvailable()) {
         std::vector<ComboboxItem> glOptions;
         glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_SDL));
         glOptions.push_back(ComboboxItem(B("Mesa - OpenGL in Software"), OPENGL_TYPE_OSMESA));

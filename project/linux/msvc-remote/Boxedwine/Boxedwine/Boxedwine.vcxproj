@@ -160,14 +160,17 @@
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process.cpp" />
     <ClCompile Include="..\..\..\..\..\lib\tiny-process\process_unix.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platform.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\linux\platformOpenGL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-armv8.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads-x64.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\linux\platformThreads.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\kdspaudio.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativeinputSDL.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativescreenGL.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativescreenSDL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
-    <ClCompile Include="..\..\..\..\..\platform\sdl\knativewindow.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
@@ -286,7 +289,6 @@
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfb.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysfs.cpp" />
     <ClCompile Include="..\..\..\..\..\source\kernel\sys\sysmouse.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\opengl\boxedwineGL.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glcommon.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glext.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glfunctions_ext1.cpp" />
@@ -301,8 +303,6 @@
     <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\sdl\wineaudiodrv.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\sdl\winedrv.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testCPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testMMX.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testSSE.cpp" />
@@ -500,6 +500,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\bfile.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\util\bheap.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\crc.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\fileutils.cpp" />
@@ -508,12 +509,35 @@
     <ClCompile Include="..\..\..\..\..\source\util\pixelMatch.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\player.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\recorder.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\util\ring_buffer.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\stb_image.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\stringutil.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\threadutils.cpp" />
     <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host.cpp" />
     <ClCompile Include="..\..\..\..\..\source\vulkan\vulkancommon.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\displaydata.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\x11.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\x11common.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xcolor.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xcolormap.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xcursor.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xdepth.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xdisplay.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xdrawable.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xfbconfig.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xgc.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\ximage.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xinput2.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xkeyboard.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xpixmap.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xproperties.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xrandr.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xscreen.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xserver.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xvisual.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xvisualinfo.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\x11\xwindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\..\include\boxedwine.h" />
@@ -541,12 +565,14 @@
     <ClInclude Include="..\..\..\..\..\include\kfilelock.h" />
     <ClInclude Include="..\..\..\..\..\include\kmemory.h" />
     <ClInclude Include="..\..\..\..\..\include\knativeaudio.h" />
+    <ClInclude Include="..\..\..\..\..\include\knativeinput.h" />
+    <ClInclude Include="..\..\..\..\..\include\knativescreen.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesocket.h" />
     <ClInclude Include="..\..\..\..\..\include\knativesystem.h" />
     <ClInclude Include="..\..\..\..\..\include\knativethread.h" />
-    <ClInclude Include="..\..\..\..\..\include\knativewindow.h" />
     <ClInclude Include="..\..\..\..\..\include\knetlink.h" />
     <ClInclude Include="..\..\..\..\..\include\kobject.h" />
+    <ClInclude Include="..\..\..\..\..\include\kopengl.h" />
     <ClInclude Include="..\..\..\..\..\include\kpoll.h" />
     <ClInclude Include="..\..\..\..\..\include\kprocess.h" />
     <ClInclude Include="..\..\..\..\..\include\kscheduler.h" />
@@ -566,6 +592,7 @@
     <ClInclude Include="..\..\..\..\..\include\meminfo.h" />
     <ClInclude Include="..\..\..\..\..\include\pixelformat.h" />
     <ClInclude Include="..\..\..\..\..\include\platform.h" />
+    <ClInclude Include="..\..\..\..\..\include\platformOpenGL.h" />
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\..\include\player.h" />
     <ClInclude Include="..\..\..\..\..\include\procselfexe.h" />
@@ -705,6 +732,8 @@
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\ioapi.h" />
     <ClInclude Include="..\..\..\..\..\lib\zlib\contrib\minizip\unzip.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeaudiosdl.h" />
+    <ClInclude Include="..\..\..\..\..\platform\sdl\knativeinputSDL.h" />
+    <ClInclude Include="..\..\..\..\..\platform\sdl\knativescreenSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
@@ -838,12 +867,13 @@
     <ClInclude Include="..\..\..\..\..\source\io\fszipopennode.h" />
     <ClInclude Include="..\..\..\..\..\source\kernel\devs\oss.h" />
     <ClInclude Include="..\..\..\..\..\source\kernel\loader\kelf.h" />
-    <ClInclude Include="..\..\..\..\..\source\opengl\boxedwineGL.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glcommon.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions_ext.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions_ext_def.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glMarshal.h" />
+    <ClInclude Include="..\..\..\..\..\source\opengl\osmesa\osmesa.h" />
+    <ClInclude Include="..\..\..\..\..\source\opengl\sdl\sdlgl.h" />
     <ClInclude Include="..\..\..\..\..\source\sdl\mainloop.h" />
     <ClInclude Include="..\..\..\..\..\source\sdl\startupArgs.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testCPU.h" />
@@ -1046,6 +1076,7 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\bfile.h" />
     <ClInclude Include="..\..\..\..\..\source\util\bhashtable.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\bheap.h" />
     <ClInclude Include="..\..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h" />
@@ -1054,14 +1085,39 @@
     <ClInclude Include="..\..\..\..\..\source\util\networkutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\pixelMatch.h" />
     <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.h" />
+    <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.tcc.h" />
     <ClInclude Include="..\..\..\..\..\source\util\stb_image.h" />
     <ClInclude Include="..\..\..\..\..\source\util\stringutil.h" />
     <ClInclude Include="..\..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\..\source\util\threadutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\vectorutils.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\displaydata.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\x11.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xcolor.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xcolormap.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xcursor.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xdepth.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xdisplay.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xdrawable.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xfbconfig.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xgc.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\ximage.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xinput2.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xkeyboard.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xpixmap.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xproperties.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xrandr.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xscreen.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xserver.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xvisual.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xvisualinfo.h" />
+    <ClInclude Include="..\..\..\..\..\source\x11\xwindow.h" />
     <ClInclude Include="..\..\..\..\..\tools\opengl\gldef.h" />
     <ClInclude Include="..\..\..\..\..\tools\opengl\gldef_ext.h" />
     <ClInclude Include="..\..\..\..\..\tools\opengl\glfunctions.h" />
+    <ClInclude Include="..\..\..\..\..\tools\opengl\glxdef.h" />
+    <ClInclude Include="..\..\..\..\..\tools\x11\X11_def.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\..\..\..\lib\sdl2\include\SDL_config.h.cmake" />
@@ -1069,7 +1125,7 @@
   </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;_DEBUG;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1094,7 +1150,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_DYNAMIC_ARMV7;BOXEDWINE_DYNAMIC;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1106,7 +1162,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;_DEBUG;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_SMALL_VIRTUAL_MEMORY;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;SIMDE_NO_NEON;BOXEDWINE_OPENGL_IMGUI_V2;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1132,7 +1188,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_BT_DEBUG_NO_EXCEPTIONS;BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_RECORDER;BOXEDWINE_MULTI_THREADED;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_ARMV8BT;BOXEDWINE_64;BOXEDWINE_OPENGL_IMGUI_V2;SIMDE_NO_NEON;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;NDEBUG</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>
@@ -1147,7 +1203,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_IMGUI_V2</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_POSIX;_DEBUG;BOXEDWINE_64;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>

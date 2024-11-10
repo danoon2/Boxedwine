@@ -46,4 +46,8 @@ public class VkParam {
         }
         return paramType.getSize();
     }
+
+    public boolean isArray() {
+        return (len != null && len.length() > 0) || arrayLen != 0;
+    }
 }

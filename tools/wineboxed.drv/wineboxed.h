@@ -8,7 +8,7 @@
 #include "winuser.h"
 #if BOXED_WINE_VERSION < 8100 || defined(WINE_UNIX_LIB)
 #if BOXED_WINE_VERSION >= 7000
-#include "ntgdi.h"
+// include "ntgdi.h"
 #endif
 #include "wine/gdi_driver.h"
 #else
@@ -126,6 +126,8 @@
 #define BOXED_CREATE_DESKTOP                        (BOXED_BASE+86)
 #define BOXED_HAS_WND                               (BOXED_BASE+87)
 #define BOXED_GET_VERSION                           (BOXED_BASE+88)
+
+#define BOXED_GL_PIXEL_FORMATS				(BOXED_BASE+109)
 
 #define CALL_0(index) __asm__("push %1\n\tint $0x98\n\taddl $4, %%esp": "=a" (result):"i"(index):); 
 #define CALL_1(index, arg1) __asm__("push %2\n\tpush %1\n\tint $0x98\n\taddl $8, %%esp": "=a" (result):"i"(index), "g"((DWORD)arg1): "esp"); 

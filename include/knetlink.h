@@ -64,6 +64,11 @@ private:
     std::deque<S8> recvBuffer;
 
     std::shared_ptr<k_sockaddr_nl> afBound;
+
+    void append(U8 c);
+    void append(U16 s);
+    void append(U32 i);
+    void append(const char* s);
 };
 
 #endif

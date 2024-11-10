@@ -6,7 +6,7 @@
 #include "ksignal.h"
 
 KUnixSocketObject::KUnixSocketObject(U32 domain, U32 type, U32 protocol) : KSocketObject(KTYPE_UNIX_SOCKET, domain, type, protocol), 
-    lockCond(std::make_shared<BoxedWineCondition>(B("KUnixSocketObject::lockCond")))
+    lockCond(std::make_shared<BoxedWineCondition>(B("KUnixSocketObject::lockCond"))), recvBuffer(128)
 {
 }
 
@@ -92,7 +92,7 @@ bool KUnixSocketObject::isOpen() {
 
 bool KUnixSocketObject::isReadReady() {
     //BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    return this->inClosed || this->recvBuffer.size() || this->pendingConnections.size() || this->msgs.size();
+    return this->inClosed || this->recvBuffer.size_used() || this->pendingConnections.size() || this->msgs.size();
 }
 
 bool KUnixSocketObject::isWriteReady() {
@@ -146,7 +146,7 @@ U32 KUnixSocketObject::internal_write(KThread* thread, const std::shared_ptr<KUn
     //printf("internal_write: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->connection->recvBuffer, (int)this->connection->recvBuffer.size(), (int)this->connection->recvBuffer.capacity(), len);
 
     memory->performOnMemory(buffer, len, true, [con](U8* ram, U32 len) {
-        con->recvBuffer.insert(con->recvBuffer.end(), ram, ram + len);
+        con->recvBuffer.put(ram, len);
         return true;
         });
   
@@ -208,9 +208,14 @@ U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
     }
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond); 
-    con->recvBuffer.insert(con->recvBuffer.end(), buffer, buffer + len);
+    con->recvBuffer.put(buffer, len);
     BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
     return len;
+}
+
+void KUnixSocketObject::signalReadReady() {
+    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
+    BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
 }
 
 U32 KUnixSocketObject::unixsocket_write_native_nowait(const std::shared_ptr<KObject>& obj, U8* value, int len) {
@@ -227,7 +232,7 @@ U32 KUnixSocketObject::unixsocket_write_native_nowait(const std::shared_ptr<KObj
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
     //printf("SOCKET write len=%d bufferSize=%d pos=%d\n", len, s->connection->recvBufferLen, s->connection->recvBufferWritePos);
-    con->recvBuffer.insert(con->recvBuffer.end(), value, value + len);
+    con->recvBuffer.put(value, len);
     BOXEDWINE_CONDITION_SIGNAL_ALL(con->lockCond);
 
     return len;
@@ -239,7 +244,7 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
         return -K_EPIPE;
     con = nullptr; // don't hold a strong reference to this, if we are blocking then it would prevent the con object from being destroyed when its process is closed
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    while (this->recvBuffer.size()==0) {
+    while (this->recvBuffer.size_used()==0) {
         if (this->inClosed) {
             return 0;
         }
@@ -248,21 +253,24 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
         }
         BOXEDWINE_CONDITION_WAIT(this->lockCond);
 #ifdef BOXEDWINE_MULTI_THREADED
-		if (KThread::currentThread()->terminating) {
-			return -K_EINTR;
-		}
-        if (KThread::currentThread()->startSignal) {
-            KThread::currentThread()->startSignal = false;
-            return -K_CONTINUE;
+        KThread* thread = KThread::currentThread();
+        // audio thread will call this function without a thread
+        if (thread) {
+            if (thread->terminating) {
+                return -K_EINTR;
+            }
+            if (thread->startSignal) {
+                thread->startSignal = false;
+                return -K_CONTINUE;
+            }
         }
 #endif
     }
     //printf("readNative: %0.8X size=%d capacity=%d writeLen=%d", (int)&this->recvBuffer, (int)this->recvBuffer.size(), (int)this->recvBuffer.capacity(), len);
-    if (len > this->recvBuffer.size()) {
-        len = (U32)this->recvBuffer.size();
+    if (len > this->recvBuffer.size_used()) {
+        len = (U32)this->recvBuffer.size_used();
     }
-    std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + len, buffer);
-    this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + len);
+    this->recvBuffer.get(buffer, len);
     if (con) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     }
@@ -283,7 +291,7 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len) {
         return -K_EPIPE;
     con = nullptr; // don't hold a strong reference to this, if we are blocking then it would prevent the con object from being destroyed when its process is closed
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
-    while (this->recvBuffer.size()==0) {
+    while (this->recvBuffer.size_used()==0) {
         if (this->inClosed) {
             return 0;
         }
@@ -301,10 +309,9 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len) {
         }
 #endif
     }
-    count = std::min(len, (U32)this->recvBuffer.size());
+    count = std::min(len, (U32)this->recvBuffer.size_used());
     memory->performOnMemory(buffer, count, false, [this](U8* ram, U32 len) {
-        std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + len, ram);
-        this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + len);
+        this->recvBuffer.get(ram, len);
         return true;
         });
 
@@ -779,16 +786,15 @@ U32 KUnixSocketObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address
 
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->lockCond);
     while (!this->msgs.size()) {
-        if (this->recvBuffer.size()) {
+        if (this->recvBuffer.size_used()) {
             readMsgHdr(thread, address, &hdr);        
             for (U32 i = 0; i < hdr.msg_iovlen; i++) {
                 U32 p = memory->readd(hdr.msg_iov + 8 * i);
                 U32 len = memory->readd(hdr.msg_iov + 8 * i + 4);
 
-                U32 count = std::min(len, (U32)this->recvBuffer.size());
+                U32 count = std::min(len, (U32)this->recvBuffer.size_used());
                 memory->performOnMemory(p, count, false, [this](U8* ram, U32 len) {
-                    std::copy(this->recvBuffer.begin(), this->recvBuffer.begin() + len, ram);
-                    this->recvBuffer.erase(this->recvBuffer.begin(), this->recvBuffer.begin() + len);
+                    this->recvBuffer.get(ram, len);
                     return true;
                     });
                 result += count;

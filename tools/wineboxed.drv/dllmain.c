@@ -31,7 +31,10 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved)
         //TRACE("unix_init returned\n");
 #else
         BOXEDDRV_ProcessAttach();
+#if BOXED_WINE_VERSION < 9100
         BOXEDDRV_DisplayDevices_Init(FALSE);
+#endif
+
 #endif
         break;
     }

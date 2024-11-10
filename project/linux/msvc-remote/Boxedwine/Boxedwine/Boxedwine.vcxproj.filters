@@ -316,9 +316,6 @@
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp">
       <Filter>source\sdl</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\sdl\winedrv.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\test\testCPU.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
@@ -457,9 +454,6 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativeaudio.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\platform\sdl\knativewindow.cpp">
-      <Filter>sdlPlatform</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
@@ -529,17 +523,11 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\sdl\wineaudiodrv.cpp">
-      <Filter>source\sdl</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\platform\sdl\kdspaudio.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\opengl\osmesa\osmesa.cpp">
       <Filter>source\opengl\mesa</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\opengl\boxedwineGL.cpp">
-      <Filter>source\opengl</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\io\fsdynamiclinknode.cpp">
       <Filter>source\io</Filter>
@@ -616,6 +604,90 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\normal\normalPlatformMultiThreaded.cpp">
       <Filter>source\emulation\cpu\normal</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\displaydata.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\x11.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\x11common.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xcolor.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xcolormap.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xcursor.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xdepth.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xdisplay.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xdrawable.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xfbconfig.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xgc.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\ximage.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xinput2.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xkeyboard.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xpixmap.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xproperties.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xrandr.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xscreen.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xserver.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xvisual.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xvisualinfo.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\x11\xwindow.cpp">
+      <Filter>source\x11</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativeinputSDL.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativescreenGL.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\knativescreenSDL.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\bheap.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\linux\platformOpenGL.cpp">
+      <Filter>platform</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\ring_buffer.cpp">
+      <Filter>source\util</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -783,6 +855,18 @@
     </Filter>
     <Filter Include="lib\process">
       <UniqueIdentifier>{a0f4f1da-8521-4120-9ffc-0b963a08b11f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\x11">
+      <UniqueIdentifier>{9779e219-cc8a-4e50-a70e-d1f98e8769ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tools">
+      <UniqueIdentifier>{251bd2dd-082d-4014-92b4-f257ae689415}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tools\opengl">
+      <UniqueIdentifier>{9469886b-4f40-4fac-b531-b75cb965600c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="tools\x11">
+      <UniqueIdentifier>{9f53ce56-67c5-403b-b315-bff1b1436cec}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -1770,9 +1854,6 @@
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h">
       <Filter>sdlPlatform</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\include\knativewindow.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\imgui\examples\imgui_impl_opengl2.h">
       <Filter>lib\imgui\examples</Filter>
     </ClInclude>
@@ -1869,9 +1950,6 @@
     <ClInclude Include="..\..\..\..\..\include\kdspaudio.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\opengl\boxedwineGL.h">
-      <Filter>source\opengl</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fsdynamiclinknode.h">
       <Filter>source\io</Filter>
     </ClInclude>
@@ -1935,6 +2013,108 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\simde\simde\simde-f16.h">
       <Filter>lib\simde\simde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\displaydata.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\x11.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xcolor.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xcolormap.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xcursor.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xdepth.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xdisplay.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xdrawable.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xfbconfig.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xgc.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\ximage.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xinput2.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xkeyboard.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xpixmap.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xproperties.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xrandr.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xscreen.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xserver.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xvisual.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xvisualinfo.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\x11\xwindow.h">
+      <Filter>source\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\opengl\sdl\sdlgl.h">
+      <Filter>source\opengl\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\opengl\osmesa\osmesa.h">
+      <Filter>source\opengl\mesa</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\platform\sdl\knativeinputSDL.h">
+      <Filter>sdlPlatform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\platform\sdl\knativescreenSDL.h">
+      <Filter>sdlPlatform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativeinput.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\knativescreen.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\bheap.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\kopengl.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\platformOpenGL.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\tools\opengl\glxdef.h">
+      <Filter>tools\opengl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\tools\x11\X11_def.h">
+      <Filter>tools\x11</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\ring_buffer.tcc.h">
+      <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

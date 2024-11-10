@@ -23,6 +23,6 @@ public class VkHostMarshalMapMemory extends VkHostMarshal {
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-        out.append("    if (EAX == 0) {\n        writed(ARG6, mapVkMemory(memory, pData, size));\n    }\n");
+        out.append("    if (EAX == 0) {\n        cpu->memory->writed(ARG6, mapVkMemory(memory, pData, size));\n    }\n");
     }
 }

@@ -187,9 +187,9 @@ void BtCPU::startThread() {
     } catch (...) {
         int ii = 0;
     }
-    std::shared_ptr<KProcess> process = thread->process;
+    KProcessPtr process = thread->process;
     process->deleteThread(thread);
-
+    KThread::setCurrentThread(nullptr);
     platformThreadCount--;
     if (platformThreadCount == 0) {
         KSystem::shutingDown = true;
@@ -251,15 +251,14 @@ U64 BtCPU::handleMissingCode(U32 page, U32 offset) {
     return (U64)this->translateEip(this->eip.u32);
 }
 
-void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {
-    KThread* thread = process->getThreadById(threadId);        
-    if (thread) {
-        thread->terminating = true;
-        ((BtCPU*)thread->cpu)->exitToStartThreadLoop = true;
-        ((BtCPU*)thread->cpu)->wakeThreadIfWaiting();
-    }
-
+void terminateOtherThread(const std::shared_ptr<KProcess>& process, U32 threadId) {    
     while (true) {
+        KThread* thread = process->getThreadById(threadId);
+        if (thread) {
+            thread->terminating = true;
+            ((BtCPU*)thread->cpu)->exitToStartThreadLoop = true;
+            ((BtCPU*)thread->cpu)->wakeThreadIfWaiting();
+        }
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(process->threadRemovedCondition);
         if (!process->getThreadById(threadId)) {
             break;
@@ -301,12 +300,7 @@ void common_runSingleOp(BtCPU* cpu) {
     }
 
     try {
-        if (!op->lock) {
-            op->pfn(cpu, op);
-        } else {
-            BOXEDWINE_CRITICAL_SECTION;
-            op->pfn(cpu, op);
-        }
+        op->pfn(cpu, op);
     } catch (...) {
         int ii = 0;
     }

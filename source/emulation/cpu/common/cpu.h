@@ -21,13 +21,9 @@ typedef void (*Int99Callback)(CPU* cpu);
 extern Int99Callback* int99Callback;
 void callOpenGL(CPU* cpu, U32 index);
 void callVulkan(CPU* cpu, U32 index);
+void callX11(CPU* cpu, U32 index);
 extern U32 lastGlCallTime;
 extern U32 int99CallbackSize;
-extern Int99Callback* wine_callback;
-extern Int99Callback* wine_audio_callback;
-extern U32 wine_callbackSize;
-extern U32 wine_audio_callback_size;
-extern U32 wine_audio_callback_base;
 
 #define EXCEPTION_DIVIDE 0
 #define EXCEPTION_BOUND 5
@@ -343,7 +339,8 @@ public:
     virtual void setIsBig(U32 value);
 
 #ifdef BOXEDWINE_MULTI_THREADED
-    U64 nativeHandle = 0;    
+    U64 nativeHandle = 0;
+    U32 tmpLockAddress = 0;
 #endif
 
 #ifdef BOXEDWINE_DYNAMIC
