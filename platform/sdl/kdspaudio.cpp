@@ -182,7 +182,13 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	}
 	// If the previous audio is still playing, it will get cut off.  If I find a game that needs this, then perhaps I should think of a mixer.
 	closeSdlAudio();
-	if (SDL_OpenAudio(&this->want, &this->got) < 0) {
+    SDL_AudioSpec requested = this->want;
+#ifdef __MACH__
+    if (requested.freq < 44100) {
+        requested.freq = 44100;
+    }
+#endif
+	if (SDL_OpenAudio(&requested, &this->got) < 0) {
 		klog("Failed to open audio: %s", SDL_GetError());
 	}
 	sdlSilence = this->got.silence;
