@@ -381,7 +381,7 @@ XPropertyPtr XWindow::getProperty(U32 atom) {
 	return properties.getProperty(atom);
 }
 
-void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace) {
+void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, const U8* value, bool trace) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	properties.setProperty(atom, type, format, length, value);	
 
@@ -428,6 +428,9 @@ void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value,
 			klog(log.c_str());
 		}
 		});
+	for (auto& callback : onPropertyChanged) {
+		callback(atom);
+	}
 }
 
 void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace) {
@@ -476,6 +479,9 @@ void XWindow::setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value,
 			klog(log.c_str());
 		}
 		});
+	for (auto& callback : onPropertyChanged) {
+		callback(atom);
+	}
 }
 
 void XWindow::deleteProperty(U32 atom, bool trace) {

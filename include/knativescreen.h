@@ -45,6 +45,10 @@ public:
 
 	virtual void warpMouse(int x, int y) = 0;
 	virtual bool isVisible() = 0;
+
+	virtual bool clipboardIsTextAvailable() = 0;
+	virtual BString clipboardGetText() = 0;
+	virtual void clipboardSetText(const char* text) = 0;
 };
 
 typedef std::shared_ptr<KNativeScreen> KNativeScreenPtr;

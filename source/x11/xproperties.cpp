@@ -168,7 +168,7 @@ XPropertyPtr XProperties::getProperty(U32 atom) {
 	return properties.get(atom);
 }
 
-void XProperties::setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value) {
+void XProperties::setProperty(U32 atom, U32 type, U32 format, U32 length, const U8* value) {
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(propertiesMutex);
 	U8* newValue = new U8[length];
 	memcpy(newValue, value, length);

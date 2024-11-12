@@ -323,6 +323,22 @@ bool KNativeScreenSDL::isVisible() {
     return visible;
 }
 
+bool KNativeScreenSDL::clipboardIsTextAvailable() {
+    return SDL_HasClipboardText() != SDL_FALSE;
+}
+
+BString KNativeScreenSDL::clipboardGetText() {
+    char* result = SDL_GetClipboardText();
+    if (!result) {
+        return BString::empty;
+    }
+    return BString::copy(result);
+}
+
+void KNativeScreenSDL::clipboardSetText(const char* text) {
+    SDL_SetClipboardText(text);
+}
+
 #ifdef BOXEDWINE_RECORDER
 
 void KNativeScreenSDL::startRecorderScreenShot() {

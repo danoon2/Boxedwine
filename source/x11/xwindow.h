@@ -153,7 +153,7 @@ public:
 	int moveResize(S32 x, S32 y, U32 width, U32 height);
 
 	XPropertyPtr getProperty(U32 atom);
-	void setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value, bool trace = false);
+	void setProperty(U32 atom, U32 type, U32 format, U32 length, const U8* value, bool trace = false);
 	void setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value, bool trace = false);
 	void deleteProperty(U32 atom, bool trace = false);
 	int handleNetWmStatePropertyEvent(const XEvent& event);
@@ -196,7 +196,9 @@ public:
 	void getAncestorTree(std::vector<XWindowPtr>& ancestors);
 
 	XCursorPtr cursor;
-	XColorMapPtr colorMap;	
+	XColorMapPtr colorMap;
+
+	std::vector<std::function<void(U32 prop)>> onPropertyChanged;
 private:
 	friend class XServer;
 

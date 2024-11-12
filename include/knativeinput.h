@@ -33,6 +33,9 @@ public:
     virtual U32 getInputModifiers() = 0;    
 
     virtual void runOnUiThread(std::function<void()> callback) = 0;
+
+    std::vector<std::function<void()>> onFocusGained;
+    std::vector<std::function<void()>> onFocusLost;
 };
 
 typedef std::shared_ptr<KNativeInput> KNativeInputPtr;

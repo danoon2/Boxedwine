@@ -172,6 +172,10 @@ void XServer::initAtoms() {
 	setAtom(B("_NET_WM_NAME"), _NET_WM_NAME);
 	setAtom(B("_MOTIF_WM_HINTS"), _MOTIF_WM_HINTS);
 	setAtom(B("_NET_WM_ICON"), _NET_WM_ICON);
+	setAtom(B("CLIPBOARD"), CLIPBOARD);
+	setAtom(B("UTF8_STRING"), UTF8_STRING);
+	setAtom(B("TARGETS"), TARGETS);
+	setAtom(B("EXPORT_CLIPBOARD"), EXPORT_CLIPBOARD);
 	nextAtomID = 200;
 }
 
@@ -259,8 +263,82 @@ const XWindowPtr& XServer::getRoot() {
 		root->cursor = std::make_shared<XCursor>(132); // XC_top_left_arrow
 		addCursor(root->cursor);
 		pointerWindow = root;
+		initClipboard();		
 	}
 	return root;
+}
+
+void XServer::initClipboard() {
+	KNativeScreenPtr screen = KNativeSystem::getScreen();
+
+	selectionWindow = std::make_shared<XWindow>(0, root, 0, 0, 32, 0, 0, InputOnly, 0, visual);
+	windows.set(selectionWindow->id, selectionWindow);
+
+	selectionWindow->onPropertyChanged.push_back([this](U32 propAtom) {
+		if (propAtom == EXPORT_CLIPBOARD) {
+			XPropertyPtr prop = this->selectionWindow->getProperty(propAtom);
+			if (!prop) {
+				return;
+			}
+			char* value = new char[prop->length + 1];
+			memcpy(value, prop->value, prop->length);
+			value[prop->length] = 0;
+			KNativeSystem::getScreen()->clipboardSetText(value);
+			delete value;
+			this->selectionWindow->deleteProperty(propAtom);
+			return;
+		}
+	});
+
+	KNativeSystem::getCurrentInput()->onFocusGained.push_back([] {
+		XServer* server = XServer::getServer();
+		KNativeScreenPtr screen = KNativeSystem::getScreen();
+		if (!screen->clipboardIsTextAvailable()) {
+			return;
+		}
+		BString text = screen->clipboardGetText();
+		if (server->sdlLastSelection != text) {
+			server->sdlLastSelection = text;
+			if (!server->selectionOwner) {
+				server->selectionOwner = server->selectionWindow->id;
+			}
+			XWindowPtr owner = server->getWindow(server->selectionOwner);
+
+			if (owner && server->selectionOwner != server->selectionWindow->id) {
+				XEvent event;
+				DisplayDataPtr data = server->getDisplayDataById(owner->displayId);
+				event.type = SelectionClear;
+				event.xselectionclear.display = data->displayAddress;
+				event.xselectionclear.selection = CLIPBOARD;
+				event.xselectionclear.serial = data->getNextEventSerial();
+				event.xselectionclear.time = server->getEventTime();
+				event.xselectionclear.send_event = False;
+				event.xselectionclear.window = server->selectionOwner;
+				data->putEvent(event);
+
+				server->selectionOwner = server->selectionWindow->id;
+			}
+		}
+	});
+	KNativeSystem::getCurrentInput()->onFocusLost.push_back([] {
+		if (server->selectionOwner && server->selectionOwner != server->selectionWindow->id) {
+			XWindowPtr owner = server->getWindow(server->selectionOwner);
+			XEvent event;
+			DisplayDataPtr data = server->getDisplayDataById(owner->displayId);
+			event.type = SelectionRequest;
+			event.xselectionrequest.display = data->displayAddress;
+			event.xselectionrequest.owner = server->selectionOwner;
+			event.xselectionrequest.requestor = server->selectionWindow->id;
+			event.xselectionrequest.selection = CLIPBOARD;
+			event.xselectionrequest.target = UTF8_STRING;
+			event.xselectionrequest.property = EXPORT_CLIPBOARD;
+			event.xselectionrequest.serial = data->getNextEventSerial();
+			event.xselectionrequest.time = server->getEventTime();
+			event.xselectionrequest.send_event = False;
+
+			data->putEvent(event);
+		}
+	});
 }
 
 void XServer::draw(bool drawNow) {

@@ -31,6 +31,22 @@ void DisplayData::putEvent(const XEvent& event) {
 	}
 }
 
+bool DisplayData::findAndRemoveEvent(U32 window, U32 type, XEvent& event) {
+#ifdef BOXEDWINE_MULTI_THREADED
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMutex);
+#endif
+	U32 count = (U32)eventQueue.size();
+	for (U32 i = 0; i < count; i++) {
+		XEvent* e = &eventQueue.at(i);
+		if (e->type == type && e->xany.window == window) {
+			event = *e;
+			removeEvent(i);
+			return true;
+		}
+	}
+	return false;
+}
+
 U32 DisplayData::lockEvents() {
 	
 #ifdef BOXEDWINE_MULTI_THREADED

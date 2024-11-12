@@ -35,7 +35,7 @@ typedef std::shared_ptr<XProperty> XPropertyPtr;
 class XProperties {
 public:
 	XPropertyPtr getProperty(U32 atom);
-	void setProperty(U32 atom, U32 type, U32 format, U32 length, U8* value);
+	void setProperty(U32 atom, U32 type, U32 format, U32 length, const U8* value);
 	void setProperty(U32 atom, U32 type, U32 format, U32 length, U32 value);
 	void deleteProperty(U32 atom);
 

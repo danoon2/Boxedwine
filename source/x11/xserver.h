@@ -70,6 +70,9 @@ public:
 
 	XWindowPtr inputFocus;
 	U32 inputFocusRevertTo = 0;
+	XWindowPtr selectionWindow;
+	U32 selectionOwner = 0;
+	BString sdlLastSelection;
 
 	XWindowPtr pointerWindow;
 	VisualPtr visual;
@@ -141,6 +144,7 @@ private:
 	void initAtoms();
 	void initDepths();
 	void initVisuals();
+	void initClipboard();
 	void setAtom(const BString& name, U32 key);
 	VisualPtr addVisual(U32 redMask, U32 greenMask, U32 blueMask, U32 depth, U32 bitsPerPixel, U32 pixelFormatIndex);
 	U32 createScreen(KThread* thread, U32 displayAddress);

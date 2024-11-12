@@ -96,6 +96,10 @@
 #define _NET_WM_NAME 106
 #define _MOTIF_WM_HINTS 107
 #define _NET_WM_ICON 108
+#define CLIPBOARD 109
+#define UTF8_STRING 110
+#define TARGETS 111
+#define EXPORT_CLIPBOARD 112
 
 /* Byte order  used in imageByteOrder and bitmapBitOrder */
 

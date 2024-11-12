@@ -580,6 +580,16 @@ bool KNativeInputSDL::handlSdlEvent(SDL_Event* e) {
                 onKeyUp(translate(e->key.keysym.sym));
             }
         }
+    } else if (e->type == SDL_WINDOWEVENT) {
+        if (e->window.event == SDL_WINDOWEVENT_FOCUS_GAINED) {
+            for (auto& callback : onFocusGained) {
+                callback();
+            }
+        } else if (e->window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+            for (auto& callback : onFocusLost) {
+                callback();
+            }
+        }
     }
     return true;
 }

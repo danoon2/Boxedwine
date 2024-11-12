@@ -72,6 +72,10 @@ public:
     void warpMouse(int x, int y) override;
     bool isVisible() override;
 
+    bool clipboardIsTextAvailable() override;
+    BString clipboardGetText() override;
+    void clipboardSetText(const char* text) override;
+
 #ifdef BOXEDWINE_RECORDER
     void startRecorderScreenShot() override;
     void finishRecorderScreenShot() override;

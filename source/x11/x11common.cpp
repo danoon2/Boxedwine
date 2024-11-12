@@ -593,13 +593,16 @@ static void x11_SetTextProperty(CPU* cpu) {
     w->setTextProperty(thread, &text_prop, ARG4, true);
 }
 
+// int XSetSelectionOwner(Display* display, Atom selection, Window owner, Time time)
 static void x11_SetSelectionOwner(CPU* cpu) {
-    //kpanic("x11_SetSelectionOwner");
+    XServer* server = XServer::getServer();
+    server->selectionOwner = ARG3;
 }
 
 // Window XGetSelectionOwner(Display* display, Atom selection)
 static void x11_GetSelectionOwner(CPU* cpu) {
-    EAX = 0;
+    XServer* server = XServer::getServer();    
+    EAX = server->selectionOwner;
 }
 
 // Bool XGetEvent(Display* display, XEvent* event_return, int index)
@@ -609,11 +612,10 @@ static void x11_GetEvent(CPU* cpu) {
     DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
     XEvent* event = data->getEvent(ARG3);
     if (event) {
-        EAX = 1;
-        U32 i = sizeof(XEvent);
+        EAX = True;
         memory->memcpy(ARG2, event, sizeof(XEvent));
     } else {
-        EAX = 0;
+        EAX = False;
     }
 }
 
@@ -661,6 +663,10 @@ static void x11_SendEvent(CPU* cpu) {
     U32 propagate = ARG3;
     U32 event_mask = ARG4;
 
+    if (windowId == server->selectionWindow->id) {
+        EAX = Success;
+        return;
+    }
     if (windowId == PointerWindow) {
         // not used in winex11
         kpanic("XSendEvent w=PointerWindow not implemented");
@@ -1063,12 +1069,71 @@ static void x11_DeleteProperty(CPU* cpu) {
     EAX = Success;
 }
 
+// int XConvertSelection(Display* display, Atom selection, Atom target, Atom property, Window requestor, Time time)
 static void x11_ConvertSelection(CPU* cpu) {
-    kpanic("x11_ConvertSelection");
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    U32 selection = ARG2;
+    U32 target = ARG3;
+    U32 property = ARG4;
+    U32 requestor = ARG5;
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+    BString targetName;
+    server->getAtom(target, targetName);
+    BString propertyName;
+    server->getAtom(property, propertyName);
+    XWindowPtr wnd = server->getWindow(requestor);
+
+    if (!wnd) {
+        EAX = BadWindow;
+        return;
+    }
+    if (selection == CLIPBOARD) {
+        if (target == TARGETS) {
+            U32 atom = UTF8_STRING;
+            wnd->setProperty(property, XA_ATOM, 32, 4, (const U8*)&atom);
+        } else if (target == UTF8_STRING) {
+            BString text = KNativeSystem::getScreen()->clipboardGetText();
+            server->sdlLastSelection = text;
+            wnd->setProperty(property, UTF8_STRING, 8, text.length(), (const U8*)text.c_str());
+        } else {
+            property = None;
+        }
+    } else {
+        property = None;
+    }
+    XEvent event;
+    event.type = SelectionNotify;
+    event.xselection.display = ARG1;
+    event.xselection.requestor = requestor;
+    event.xselection.selection = selection;
+    event.xselection.target = target;
+    event.xselection.property = property;
+    event.xselection.serial = data->getNextEventSerial();
+    event.xselection.time = server->getEventTime();
+    event.xselection.send_event = False;
+    data->putEvent(event);
+    EAX = Success;
 }
 
+// Bool XCheckTypedWindowEvent(Display* display, Window w, int event_type, XEvent* event_return) {
 static void x11_CheckTypedWindowEvent(CPU* cpu) {
-    kpanic("x11_CheckTypedWindowEvent");
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    XWindowPtr window = server->getWindow(ARG2);
+    DisplayDataPtr data = server->getDisplayDataByAddressOfDisplay(memory, ARG1);
+
+    if (!window) {
+        EAX = False;
+        return;
+    }
+    XEvent event = { 0 };
+    if (data->findAndRemoveEvent(window->id, ARG3, event)) {
+        memory->memcpy(ARG4, &event, sizeof(XEvent));
+        EAX = True;
+    } else {
+        EAX = False;
+    }
 }
 
 static void x11_GetGeometry(CPU* cpu) {
