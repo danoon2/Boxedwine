@@ -21,7 +21,7 @@
 
 #include <errno.h>
 
-#ifdef __MACH__
+#if defined(__MACH__) || defined(BOXEDWINE_NEED_ATOMIC_REF)
 #include "../platform/mac/atomic_ref.h"
 #endif
 

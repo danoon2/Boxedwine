@@ -1465,7 +1465,7 @@ static void x11_GetVisualInfo(CPU* cpu) {
     U32 listAddress = thread->process->alloc(thread, (sizeof(XVisualInfo) + sizeof(U32)) * count);
     EAX = listAddress;
     U32 itemAddress = listAddress + sizeof(U32) * count;
-    Display::iterateVisuals(thread, displayAddress, [&memory, &listAddress, &itemAddress, mask, &count, &infoTemplate](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
+    Display::iterateVisuals(thread, displayAddress, [&memory, &listAddress, &itemAddress, mask, &infoTemplate](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
         if (infoTemplate.match(mask, screenIndex, depth, visual)) {
             XVisualInfo* visualInfo = (XVisualInfo*)memory->getIntPtr(itemAddress, true);
             memory->writed(listAddress, itemAddress);

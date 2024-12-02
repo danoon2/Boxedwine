@@ -284,7 +284,7 @@ void XServer::initClipboard() {
 			memcpy(value, prop->value, prop->length);
 			value[prop->length] = 0;
 			KNativeSystem::getScreen()->clipboardSetText(value);
-			delete value;
+			delete[] value;
 			this->selectionWindow->deleteProperty(propAtom);
 			return;
 		}
