@@ -177,6 +177,16 @@ U64 BtCPU::handleFpuException(int code) {
     return result;
 }
 
+U64 BtCPU::handleAccessException(DecodedOp* op) {
+    try {
+        op->pfn(this, op);
+    } catch (...) {
+        int ii = 0;
+    }
+    fillFlags();
+    return (U64)this->translateEip(this->eip.u32);
+}
+
 extern std::atomic<int> platformThreadCount;
 
 void BtCPU::startThread() {

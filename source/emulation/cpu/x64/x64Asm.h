@@ -31,6 +31,9 @@
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
 #define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(x64CPU, returnToLoopAddress))
+#define CPU_OFFSET_FPU_TOP (U32)(offsetof(CPU, fpu.top))
+#define CPU_OFFSET_FPU_TAG (U32)(offsetof(CPU, fpu.tags[0]))
+#define CPU_OFFSET_INSTRUCTION_FLAGS (U32)(offsetof(x64CPU, instructionStoredFlags))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
@@ -147,6 +150,7 @@ public:
     bool tmp2InUse;
     bool tmp3InUse;
     bool tmp4InUse;
+    bool tmp5InUse;
     bool param1InUse;
     bool param2InUse;
     bool param3InUse;
@@ -156,6 +160,8 @@ public:
     void bound16(U8 rm);
     void movRdCrx(U32 which, U32 reg);
     void movCrxRd(U32 which, U32 reg);
+    void clearDirectionFlag();
+    void setDirectionFlag();
 
     void fpu0(U8 rm);
     void fpu1(U8 rm);
@@ -198,7 +204,7 @@ private:
     void minSyncRegsFromHost();
     void minSyncRegsToHost();
     void adjustStack(U8 tmpReg, S32 bytes);
-    void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags = false, bool generateCmp = true, bool releaseRegAfterCmp = false);
+    void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags = false, bool generateCmp = true, bool releaseRegAfterCmp = false, U8 nz = 0x75, U8 z = 0x74);
     void setPF_onAL(U8 flagReg);
     void setZF_onAL(U8 flagReg);
     void setSF_onAL(U8 flagReg);
@@ -229,9 +235,10 @@ private:
     void doLoop16(U8 inst, U32 eip);
     void jmpReg(U8 reg, bool isRex, bool mightNeedCS);
     void jmpNativeReg(U8 reg, bool isRegRex);
-    void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith = false);
+    void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith = false, bool is64bit = false);
     void shiftLeftReg(U8 reg, bool isRegRex, U8 shiftAmount);
     void bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
+    void bmi2ShiftLeftReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
     void andReg(U8 reg, bool isRegRex, U32 mask);
     void orReg(U8 reg, bool isRegRex, U32 mask);
     void subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64);
@@ -239,10 +246,12 @@ private:
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
     void getAddressInRegFromE(U8 reg, bool isRegRex, U8 rm, bool calculateHostAddress = false); // will trash current op data    
     void zeroExtend16to32(U8 reg, bool isRegRex, U8 fromReg, bool isFromRex);
+    void testReg(U8 reg, bool isRegRex, U64 value, bool is64bit);
+    void cmpReg(U8 reg, bool isRegRex, U64 value, bool is64bit);
 
     void pushFlagsToReg(U8 reg, bool isRexReg, bool includeOF);
     void popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF);
-    void xchange4(U8 reg1, bool isRexReg1, U8 reg2, bool isRexReg2);
+    void xchange4(U8 reg1, bool isRexReg1, U8 reg2, bool isRexReg2);    
 
     void callFpuNoArg(PFN_FPU pfn);
     void callFpuWithAddress(PFN_FPU_ADDRESS pfn, U8 rm);
@@ -254,7 +263,7 @@ private:
 
     void shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg);    
 
-    void checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg = 0xFF, bool writeHostMemToReg = false, bool skipAlignmentCheck = false, bool releaseReg = false);
+    void checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg = 0xff);
 public:
     void lods(U32 width) {
         string(width, true, false);
@@ -274,6 +283,8 @@ public:
 private:
     void string(U32 width, bool hasSrc, bool hasDst);
     void cmps(U32 width, bool hasSrc);
+
+    void getRamPage(U8 memReg, U8 pageReg, bool isWrite);
 };
 #endif
 #endif

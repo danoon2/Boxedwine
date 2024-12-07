@@ -32,6 +32,10 @@ KMemoryData* getMemData(KMemory* memory) {
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+, mmuReadPtr{ 0 }
+, mmuWritePtr{ 0 }
+#endif
 #else
 KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }
 #endif
@@ -71,14 +75,26 @@ void KMemoryData::onPageChanged(U32 index) {
     U8* readPtr = page->getReadPtr(memory, address);
     if (readPtr) {
         this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+        this->mmuReadPtr[index] = readPtr;
+#endif
     } else {
         this->mmuReadPtrAdjusted[index] = nullptr;
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+        this->mmuReadPtr[index] = nullptr;
+#endif
     }
     U8* writePtr = page->getWritePtr(memory, address, K_PAGE_SHIFT);
     if (writePtr) {
         this->mmuWritePtrAdjusted[index] = writePtr - (index << K_PAGE_SHIFT);
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+        this->mmuWritePtr[index] = writePtr;
+#endif
     } else {
         this->mmuWritePtrAdjusted[index] = nullptr;
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+        this->mmuWritePtr[index] = nullptr;
+#endif
     }
 #endif
 }

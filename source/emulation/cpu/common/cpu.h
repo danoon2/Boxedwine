@@ -238,7 +238,7 @@ public:
     MMX_reg reg_mmx[8];
     ALIGN(SSE xmm[8], 16);
 
-#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64)
+#if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64) && !defined(BOXEDWINE_4K_PAGE_SIZE)
     U64 memcheckq[K_PAGE_SIZE];
     U64 memcheckd[K_PAGE_SIZE];
     U64 memcheckw[K_PAGE_SIZE];

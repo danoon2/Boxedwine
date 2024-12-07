@@ -29,7 +29,7 @@
 #define HOST_ESP          3
 
 #define HOST_MEM_READ 4
-#define HOST_MEM_WRITE 6
+#define HOST_TMP5 6
 
 // R13 is good for this one, because R13 can not be used in sib memory encoding, it will translate to 0 instead of the reg, and HOST_CPU will never be used to encode memory
 #define HOST_CPU          5
@@ -89,7 +89,7 @@ public:
     
     bool skipWriteOp;
     bool isG8bitWritten;
-    bool flagsWrittenToStringFlags;
+    bool flagsWrittenToInstructionStoredFlags;
 };
 #endif
 #endif

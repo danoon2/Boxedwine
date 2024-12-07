@@ -73,11 +73,18 @@ protected:
     X64Asm data2;
 
 public:
+    void updateX64Flags() {
+        this->currentHostFlags = ((this->flags & 0xff) << 8) | ((this->flags & OF) ? 1 : 0);
+    }
+    void updateFlagsFromX64() {
+        this->flags = ((this->currentHostFlags >> 8) & 0xFF) | (this->flags & DF) | ((this->currentHostFlags & 0xFF) ? OF : 0);
+    }
 
     U32 negSegAddress[6] = { 0 };
 	U8*** eipToHostInstructionPages = nullptr;
     U32 arg5 = 0;
-    U32 stringFlags = 0;
+    U32 currentHostFlags = 0;
+    U32 instructionStoredFlags = 0;
     ALIGN(FxsaveStruct fpuState, 16) = { 0 };
     ALIGN(FxsaveStruct originalFpuState, 16) = { 0 };
     ALIGN(U8 fpuBuffer[512], 16) = { 0 };

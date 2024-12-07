@@ -42,6 +42,10 @@ public:
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8* mmuReadPtrAdjusted[K_NUMBER_OF_PAGES];
     U8* mmuWritePtrAdjusted[K_NUMBER_OF_PAGES];
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    U8* mmuReadPtr[K_NUMBER_OF_PAGES];
+    U8* mmuWritePtr[K_NUMBER_OF_PAGES];
+#endif
 #else
     U8* mmuReadPtr[K_NUMBER_OF_PAGES];
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];

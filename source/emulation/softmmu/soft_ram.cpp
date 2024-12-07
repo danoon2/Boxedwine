@@ -28,26 +28,19 @@ KRamPtr ramPageAlloc() {
         allocatedRamPages++;
         return ram;
     }
+    
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    U8* pages = (U8*)Platform::reserveNativeMemory64k(8);
 
-    U8* pages = (U8*)Platform::alloc64kBlock(1);
-#ifdef _DEBUG
-    if (Platform::getPagePermissionGranularity() == 1) {
-        // the page before and after the allocated ram will be allocated too and set to no permission so that read/write will generate exception
-        Platform::updateNativePermission((U64)(pages), 0, K_PAGE_SIZE);
+    U32 count = (8 * 16 / 2) - 1; // -1 so that there is an uncommitted page at the end
+    for (int i = 0; i < count; i++) {
+        pages += K_PAGE_SIZE; // keep uncommitted page between each committed so that if a read/write crosses a page boundry it will generate an exception
+        Platform::commitNativeMemoryPage(pages);
+        freeRamPages.put(pages);
         pages += K_PAGE_SIZE;
-        for (int i = 0; i < 7; i++) {
-            pages[0] = 0;
-            freeRamPages.put(pages);
-            Platform::updateNativePermission((U64)(pages + K_PAGE_SIZE), 0, K_PAGE_SIZE);
-            pages += 2 * K_PAGE_SIZE;
-        }
-    } else {
-        for (int i = 0; i < 16; i++) {
-            freeRamPages.put(pages);
-            pages += K_PAGE_SIZE;
-        }
     }
 #else
+    U8* pages = (U8*)Platform::alloc64kBlock(1);
     for (int i = 0; i < 16; i++) {
         freeRamPages.put(pages);
         pages += K_PAGE_SIZE;

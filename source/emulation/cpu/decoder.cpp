@@ -3451,8 +3451,10 @@ public:
     void decode(DecodeData* data, DecodedOp* op) const override {
         DecodeRM::decode(data, op);
         op->imm &= this->mask;
+#ifndef BOXEDWINE_X64
         if (op->imm==0)
             op->inst = Nop;
+#endif
     }
 private:
     U32 mask;
@@ -3959,8 +3961,10 @@ public:
         } else {
             fetchImm(data, op);            
             op->imm&=0x1f;
+#ifndef BOXEDWINE_X64
             if (op->imm==0)
                 op->inst = Nop;
+#endif
             switch (G(rm)) {
                 case 2: op->imm = op->imm % 9; break;
                 case 3: op->imm = op->imm % 9; break;
@@ -3995,8 +3999,10 @@ public:
         } else {
             fetchImm(data, op);
             op->imm&=0x1f;
+#ifndef BOXEDWINE_X64
             if (op->imm==0)
                 op->inst = Nop;
+#endif
             switch (G(rm)) {
                 case 2: op->imm = op->imm % 17; break;
                 case 3: op->imm = op->imm % 17; break;
@@ -4031,8 +4037,10 @@ public:
         } else {
             fetchImm(data, op);
             op->imm&=0x1f;
+#ifndef BOXEDWINE_X64
             if (op->imm==0)
                 op->inst = Nop;
+#endif
         }
     }
 private:

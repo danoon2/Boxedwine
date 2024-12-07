@@ -48,6 +48,7 @@ public:
     void makePendingCodePagesReadOnly();
     U64 startException(U64 address, bool readAddress);
     U64 handleFpuException(int code);
+    U64 handleAccessException(DecodedOp* op);
     void startThread();
     void wakeThreadIfWaiting();    
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed

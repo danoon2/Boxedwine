@@ -1781,6 +1781,18 @@ static U32 sti(X64Asm* data) {
     return 0;
 }
 
+static U32 clearDirectionFlag(X64Asm* data) {
+    // cpu->flags &= ~DF
+    data->clearDirectionFlag();
+    return 0;
+}
+
+static U32 setDirectionFlag(X64Asm* data) {
+    // cpu->flags |= DF
+    data->setDirectionFlag();
+    return 0;
+}
+
 static U32 movRdCrx(X64Asm* data) {
     U8 rm = data->fetch8();
     data->movRdCrx(G(rm), E(rm));
@@ -2401,7 +2413,7 @@ X64Decoder x64Decoder[1024] = {
     callJw, jmpJw, jmpAp, jmpJb, inb_dx, inw_dx, outb_dx, outw_dx,
     // F0
     lock, invalidOp, repnz, repz, hlt, keepSame, grp3b, grp3w,
-    keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5w,
+    keepSame, keepSame, cli, sti, clearDirectionFlag, setDirectionFlag, instGrp4, grp5w,
 
     // 100
     grp6_16, invalidOp, lar, lsl, invalidOp, invalidOp, invalidOp, invalidOp,
@@ -2499,7 +2511,7 @@ X64Decoder x64Decoder[1024] = {
     callJd, jmpJd, jmpFar32, jmpJb, inb_dx, ind_dx, outb_dx, outd_dx,
     // 2f0
     lock, keepSame, repnz, repz, hlt, keepSame, grp3b, grp3d,
-    keepSame, keepSame, cli, sti, keepSame, keepSame, instGrp4, grp5d,
+    keepSame, keepSame, cli, sti, clearDirectionFlag, setDirectionFlag, instGrp4, grp5d,
 
     // 300
     invalidOp, inst32RMSafeG, invalidOp, lsl32, invalidOp, invalidOp, invalidOp, invalidOp,

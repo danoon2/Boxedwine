@@ -124,6 +124,8 @@ public:
     static void releaseNativeMemory(void* address, U64 len);
     static U8* alloc64kBlock(U32 count, bool executable = false);
     static BString procStat();
+    static U8* reserveNativeMemory64k(U32 count);
+    static void commitNativeMemoryPage(void* address);
 
 #ifdef BOXEDWINE_MULTI_THREADED
     static void setCpuAffinityForThread(KThread* thread, U32 count);

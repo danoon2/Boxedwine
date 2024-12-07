@@ -31,7 +31,7 @@
 #define CPU_OFFSET_STRING_REPEAT (U32)(offsetof(x64CPU, stringRepeat))
 #define CPU_OFFSET_STRING_WRITES_DI (U32)(offsetof(x64CPU, stringWritesToDi))
 #define CPU_OFFSET_ARG5 (U32)(offsetof(x64CPU, arg5))
-#define CPU_OFFSET_STRING_FLAGS (U32)(offsetof(x64CPU, stringFlags))
+#define CPU_OFFSET_HOST_FLAGS (U32)(offsetof(x64CPU, currentHostFlags))
 #define CPU_OFFSET_FPU_STATE (U32)(offsetof(x64CPU, fpuState))
 #define CPU_OFFSET_FPU_BUFFER (U32)(offsetof(x64CPU, fpuBuffer))
 #define CPU_OFFSET_RETURN_HOST_ADDRESS (U32)(offsetof(x64CPU, returnHostAddress))
@@ -70,7 +70,17 @@
 #define PARAM_4_REX false
 #endif
 
+bool writesFlags[InstructionCount];
+bool writesFlagsInitialized = false;
+
 X64Asm::X64Asm(x64CPU* cpu) : X64Data(cpu), tmp1InUse(false), tmp2InUse(false), tmp3InUse(false), tmp4InUse(false), param1InUse(false), param2InUse(false), param3InUse(false), param4InUse(false)  {
+    if (!writesFlagsInitialized) {
+        writesFlagsInitialized = true;
+        for (int i = Movsb; i <= Scasd; i++) {
+            writesFlags[i] = true;
+        }
+        // x64Ops_fpu/PushPopFlags will add to writesFlags
+    }
 }
 
 void X64Asm::reset() {
@@ -78,6 +88,7 @@ void X64Asm::reset() {
     tmp2InUse = false;
     tmp3InUse = false;
     tmp4InUse = false;
+    tmp5InUse = false;
     param1InUse = false;
     param2InUse = false;
     param3InUse = false;
@@ -339,14 +350,8 @@ void X64Asm::shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpR
 
 U8 X64Asm::getHostMem(U8 regEmulatedAddress, bool isRex) {
     U8 resultReg = getTmpReg();
-    U8 tmpReg = 0xff;
-        
-    if (isTmpRegAvailable()) {
-        tmpReg = getTmpReg();
-    } else {
-        tmpReg = (instructionInfo[this->currentOp->inst].writeMemWidth ? HOST_MEM_READ : HOST_MEM_WRITE);
-        pushNativeReg(tmpReg, true);            
-    }
+    U8 tmpReg = getTmpReg();
+
     if (regEmulatedAddress == 4 && !isRex) {
         regEmulatedAddress = HOST_ESP;
         isRex = true;
@@ -360,13 +365,13 @@ U8 X64Asm::getHostMem(U8 regEmulatedAddress, bool isRex) {
         shiftRightReg(resultReg, true, K_PAGE_SHIFT); // get page
         popFlagsFromReg(tmpReg, true, true);            
     }
-    writeToRegFromMem(resultReg, true, (instructionInfo[this->currentOp->inst].writeMemWidth ? HOST_MEM_WRITE : HOST_MEM_READ), true, resultReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]
-        
-    if (isTmpReg(tmpReg)) {
-        releaseTmpReg(tmpReg);            
-    } else {
-        popNativeReg(tmpReg, true);
+    U32 disp = 0;
+    if (instructionInfo[this->currentOp->inst].writeMemWidth) {
+        disp = K_NUMBER_OF_PAGES * 8;
     }
+    writeToRegFromMem(resultReg, true, HOST_MEM_READ, true, resultReg, true, 3, disp, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]
+        
+    releaseTmpReg(tmpReg);            
     return resultReg;
 }
 
@@ -378,8 +383,18 @@ void X64Asm::bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg
     // shrx tmpReg,regEmulatedAddress,12 
     U8 index = 7 - amountReg;
     write8(0xc4); // vex
-    write8(isSrcRex?0x42:0x62);
-    write8(0x83 | (index << 3));
+    write8(isSrcRex ? 0x42 : 0x62);
+    write8(0x03 | (index << 3));
+    write8(0xf7);
+    write8(0xc0 | (dstReg << 3) | srcReg);
+}
+
+void X64Asm::bmi2ShiftLeftReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg) {
+    // shlx tmpReg,regEmulatedAddress,12 
+    U8 index = 7 - amountReg;
+    write8(0xc4); // vex
+    write8(isSrcRex ? 0x42 : 0x62);
+    write8(0x81 | (index << 3));
     write8(0xf7);
     write8(0xc0 | (dstReg << 3) | srcReg);
 }
@@ -389,24 +404,26 @@ void X64Asm::bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg
 // reg3 is optional, pass -1 to ignore it
 // displacement is optional, pass 0 to ignore it
 void X64Asm::writeToRegFromMem(U8 dst, bool isDstRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck, bool releaseReg3) {
-    if (translateToHost) {             
+    if (translateToHost) {
         if (reg3 >= 0 || displacement) {
-            U8 tmpReg = getTmpReg();
-            addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
+            U8 emulatedAddressReg = getTmpReg();
+            addWithLea(emulatedAddressReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
             if (releaseReg3) {
                 releaseTmpReg(reg3);
             }
-            checkMemory(tmpReg, true, false, bytes, 0xff, true, skipAlignmentCheck);
-            writeToRegFromMem(dst, isDstRex, tmpReg, true, -1, false, 0, 0, bytes, false);
-            releaseTmpReg(tmpReg);
+            U8 hostMemReg = getTmpReg();
+            checkMemory(emulatedAddressReg, true, false, bytes, hostMemReg, skipAlignmentCheck, dst);
+            writeToRegFromMem(dst, isDstRex, emulatedAddressReg, true, hostMemReg, true, 0, 0, bytes, false);
+            releaseTmpReg(emulatedAddressReg);
+            releaseTmpReg(hostMemReg);
         } else {
             U8 hostMemReg = getTmpReg();
-            checkMemory(reg2, isReg2Rex, false, bytes, hostMemReg, false, skipAlignmentCheck);
+            checkMemory(reg2, isReg2Rex, false, bytes, hostMemReg, skipAlignmentCheck);
             writeToRegFromMem(dst, isDstRex, reg2, isReg2Rex, hostMemReg, true, 0, 0, bytes, false);
             releaseTmpReg(hostMemReg);
-        }        
+        }
     } else {
-        doMemoryInstruction(bytes==1?0x8a:0x8b, dst, isDstRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
+        doMemoryInstruction(bytes == 1 ? 0x8a : 0x8b, dst, isDstRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
         if (releaseReg3) {
             releaseTmpReg(reg3);
         }
@@ -939,13 +956,57 @@ void X64Asm::setRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit) 
 
 void common_runSingleOp(x64CPU* cpu);
 
-void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg, bool writeHostMemToReg, bool skipAlignmentCheck, bool releaseReg) {
-    bool memRegNeedsRelease = false;
+void X64Asm::getRamPage(U8 memReg, U8 pageReg, bool isWrite) {
+    // get mmu entry "mmu[page]"
+    // mov memReg, HOST_MMU + memReg << 2
+    if (isWrite) {
+        writeToRegFromMem(memReg, true, HOST_MEM_READ, true, pageReg, true, 3, K_NUMBER_OF_PAGES * 8, 8, false);
+    } else {
+        writeToRegFromMem(memReg, true, HOST_MEM_READ, true, pageReg, true, 3, 0, 8, false);
+    }
+}
+
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
+    bool needFlags = false;
+
+    if (!flagsWrittenToInstructionStoredFlags && !x64CPU::hasBMI2) {
+        needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;        
+    }
+    if (needFlags) {
+        U8 flagsReg = getTmpReg();
+        pushFlagsToReg(flagsReg, true, true);
+        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
+        releaseTmpReg(flagsReg);
+    }
+    // the exception handler will need this
+    writeToMemFromValue(startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+
+    // get page
+    U8 pageReg = getTmpReg();
+    shiftRightNoFlags(emulatedAddressReg, isRex, pageReg, K_PAGE_SHIFT, memReg);
+
+    writeToRegFromMem(memReg, true, HOST_MEM_READ, true, pageReg, true, 3, K_NUMBER_OF_PAGES * (isWrite ? 24 : 16), 8, false);
+    // test that memReg isn't null by causing an exception
+    writeToRegFromMem(memReg, true, memReg, true, -1, false, 0, 0, 4, false);
+
+    getRamPage(memReg, pageReg, isWrite);
+    releaseTmpReg(pageReg);
+
+    if (needFlags) {
+        U8 flagsReg = getTmpReg();
+        writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
+        popFlagsFromReg(flagsReg, true, true);
+        releaseTmpReg(flagsReg);
+    }
+}
+#else
+void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
     //bool fpuMustBeNative = currentOp->inst == FNSAVE || currentOp->inst == FRSTOR || currentOp->inst == FLDENV || currentOp->inst == FNSTENV || currentOp->inst == Fxrstor || currentOp->inst == Fxsave;
 
     bool needFlags = false;
 
-    if (!flagsWrittenToStringFlags) {
+    if (!flagsWrittenToInstructionStoredFlags) {
         needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
     }
     if (!skipAlignmentCheck && width != 1 && width != 2 && width != 4 && width != 8 && width != 16) {
@@ -959,56 +1020,36 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
         releaseTmpReg(flagsReg);
     }
 
-    if (memReg == 0xff) {
-        memRegNeedsRelease = true;
-        memReg = getTmpReg();
-    }     
-
-    // get page
-    writeToRegFromReg(memReg, true, reg, isRex, 4);
-    shiftRightReg(memReg, true, K_PAGE_SHIFT);
-
-    // if hostMemReg is 0, then we don't have permission            
-    writeToRegFromMem(memReg, true, (isWrite ? HOST_MEM_WRITE : HOST_MEM_READ), true, memReg, true, 3, 0, 8, false); // shift page << 3 (page*8), since sizeof(U64)==8 to get the value in memOffsets[page]            
-
-    U8 testReg = memReg;
-    U8 testRegReleaseAfterCmp = memRegNeedsRelease;
-
-    if (writeHostMemToReg) {
-        // ram is guaranteed to have 4k alignment, so it's ok that we write this now and test the offset below
-        addWithLea(reg, isRex, reg, isRex, memReg, true, 0, 0, 8);
+    U8 offsetReg = 0xff;
+    if (width > 1 && !skipAlignmentCheck) {
+        if (tmpReg != 0xff) {
+            offsetReg = tmpReg;
+        } else {
+            offsetReg = getTmpReg();
+        }
+        writeToRegFromReg(offsetReg, true, emulatedAddressReg, isRex, 4);
+        andReg(offsetReg, true, 0xFFF);
     }
 
-    if (width > 1 && !skipAlignmentCheck) {        
+    // get page
+    writeToRegFromReg(memReg, true, emulatedAddressReg, isRex, 4);
+    shiftRightReg(memReg, true, K_PAGE_SHIFT);
+
+    getRamPage(memReg, memReg, isWrite);
+
+    U8 testReg = memReg;
+
+    if (width > 1 && !skipAlignmentCheck) {
         // 
         // 5 or 6 instructions to check for page splitting, I feel like this could be better
         // mov         r8d, r9d
         // and         r8d, 0FFFh
         // cmp         r8, 0FFCh
         // mov         r8d, 0
-        // cmova       r10, r8
+        // cmova       r10, r8        
 
-        if (!memRegNeedsRelease) {
-            testReg = getTmpReg();
-            writeToRegFromReg(testReg, true, memReg, true, 8);
-            testRegReleaseAfterCmp = true;
-        }
-
-        U8 tmp = 0xff;
-        bool hostMemPushed = false;
-        if (releaseReg) {
-            tmp = reg;
-        } else {
-            if (!isTmpRegAvailable()) {
-                pushNativeReg(HOST_ESP, true);
-                hostMemPushed = true;
-                tmp = HOST_ESP;
-            } else {
-                tmp = getTmpReg();
-            }
-            writeToRegFromReg(tmp, true, reg, isRex, 4);
-        }
-        andReg(tmp, true, 0xFFF);
+        testReg = getTmpReg();
+        writeToRegFromReg(testReg, true, memReg, true, 8);
 
         // 2-4% faster
         if (width == 2 || width == 4 || width == 8 || width == 16) {
@@ -1016,7 +1057,7 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
             write8(0x4f);
             write8(0x23);
             write8(0x84 | (testReg << 3));
-            write8(0xC0 | HOST_CPU | (tmp << 3));
+            write8(0xC0 | HOST_CPU | (offsetReg << 3));
             if (width == 2) {
                 write32(offsetof(CPU, memcheckw));
             } else if (width == 4) {
@@ -1032,29 +1073,23 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
             // cmp tmp, 0x1000 - width
             write8(0x49);
             write8(0x81);
-            write8(0xf8 | tmp);
+            write8(0xf8 | offsetReg);
             write32(0x1000 - width);
 
-            zeroReg(tmp, true, true);
+            zeroReg(offsetReg, true, true);
 
             // nbe = tmp > 0x1000 - width
             // cmovnbe memReg, zeroReg
             write8(0x4d);
             write8(0x0f);
             write8(0x47);
-            write8(0xC0 | (testReg << 3) | tmp);
+            write8(0xC0 | (testReg << 3) | offsetReg);
         }
-        if (hostMemPushed) {
-            popNativeReg(HOST_ESP, true);
-        } else {
-            releaseTmpReg(tmp);
-        }
-    } else {
-        if (releaseReg) {
-            releaseTmpReg(reg);
+        if (offsetReg != tmpReg) {
+            releaseTmpReg(offsetReg);
         }
     }
-    
+
     doIf(testReg, true, 0, [=, this] {
         if (needFlags) {
             U8 flagsReg = getTmpReg();
@@ -1063,7 +1098,7 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
             releaseTmpReg(flagsReg);
         }
         emulateSingleOp(currentOp);
-        }, nullptr, false, true, testRegReleaseAfterCmp);
+        }, nullptr, false, true, testReg != memReg);
 
     if (needFlags) {
         U8 flagsReg = getTmpReg();
@@ -1074,42 +1109,46 @@ void X64Asm::checkMemory(U8 reg, bool isRex, bool isWrite, U32 width, U8 memReg,
 
     //releaseTmpReg(flagsReg);
 }
+#endif
 
 // rm could be set to use the rexReg in tmpReg
 void X64Asm::translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress) {
     if (rm < 0xC0) {
         bool isWrite = instructionInfo[this->currentOp->inst].writeMemWidth;
         U32 width = (isWrite ? instructionInfo[this->currentOp->inst].writeMemWidth : instructionInfo[this->currentOp->inst].readMemWidth) / 8;
-
-        if (calculateHostAddress && width) {
+        if (!width) {
+            width = 4; // i've only seen this of 0x11f, an sse hint that the decoder converts to a nop.  MDK with cnc ddraw triggers it.
+        }
+        if (this->ds == SEG_ZERO) {
+            calculateMemory(G(rm), false, rm);
+            skipWriteOp = true;
+        } else if (calculateHostAddress && width) {
             U8 emulatedAddressReg = getTmpReg();
-            U8 memReg = getTmpReg();
 
-            U32 ip = this->ip;
             calculateMemory(emulatedAddressReg, true, rm);
-            this->ip = ip;
 
-            // :TODO: use this address in the actual op below so it doesn't have to calculate it again (retrieved from checkMemory, last optional param)
-            checkMemory(emulatedAddressReg, true, isWrite, width, memReg, false, false, true);
+            U8 memReg = getTmpReg();
+            checkMemory(emulatedAddressReg, true, isWrite, width, memReg, false);
 
-            translateMemory(rm, checkG, isG8bit, isE8bit, calculateHostAddress, memReg);            
+            // memReg and emulatedAddressReg will be auto-release after this op
+            writeHostPlusTmp((rm & (7 << 3)) | 4, checkG, isG8bit, isE8bit, emulatedAddressReg, calculateHostAddress, memReg);
         } else {
-            translateMemory(rm, checkG, isG8bit, isE8bit, calculateHostAddress);
+            int ii = 0;
         }
     } else {
         setRM(rm, checkG, checkE, isG8bit, isE8bit);
     }
-    if (immWidth==8) {
+    if (immWidth == 8) {
         setImmediate8(this->fetch8());
-    } else if (immWidth==16) {
+    } else if (immWidth == 16) {
         setImmediate16(this->fetch16());
-    } else if (immWidth==32) {
+    } else if (immWidth == 32) {
         setImmediate32(this->fetch32());
     }
     if (!this->skipWriteOp) {
         this->writeOp(isG8bit);
     }
-    for (auto & tmpReg : this->autoReleaseTmpAfterWriteOp) {
+    for (auto& tmpReg : this->autoReleaseTmpAfterWriteOp) {
         releaseTmpReg(tmpReg);
     }
     this->autoReleaseTmpAfterWriteOp.clear();
@@ -1148,10 +1187,12 @@ void X64Asm::writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes) {
 }
 
 void X64Asm::writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes) {
-    if (rm < 0xC0) {                
+    if (rm < 0xC0) {
         getAddressInRegFromE(reg, isRegRex, rm, false);
-        checkMemory(reg, isRegRex, false, bytes, 0xff, true);
-        writeToRegFromMem(reg, isRegRex, reg, isRegRex, -1, false, 0, 0, bytes, false);
+        U8 memReg = getTmpReg();
+        checkMemory(reg, isRegRex, false, bytes, memReg, false);
+        writeToRegFromMem(reg, isRegRex, reg, isRegRex, memReg, true, 0, 0, bytes, false);
+        releaseTmpReg(memReg);
     } else {
         writeToRegFromReg(reg, isRegRex, E(rm), false, bytes);
     }
@@ -1173,8 +1214,8 @@ void X64Asm::xlat() {
     write8(REX_BASE | REX_MOD_REG);
     write8(0xf);
     write8(0xb6);
-    write8(0xC0 | (tmpReg<<3));
-    
+    write8(0xC0 | (tmpReg << 3));
+
     if (this->ea16) {
         // AL = readb(cpu->thread, cpu->segAddress[op->base] + (U16)(BX + AL));
         addWithLea(tmpReg, true, tmpReg, true, 3, false, 0, 0, 2);
@@ -1183,12 +1224,14 @@ void X64Asm::xlat() {
         addWithLea(tmpReg, true, tmpReg, true, 3, false, 0, 0, 4);
     }
     // tmp = tmp + DS
-    U8 tmpReg2 = getTmpReg();
-    addWithLea(tmpReg, true, tmpReg, true, getRegForSeg(this->ds, tmpReg2), true, 0, 0, 4);
-    releaseTmpReg(tmpReg2);
+    U8 memReg = getTmpReg();
+    addWithLea(tmpReg, true, tmpReg, true, getRegForSeg(this->ds, memReg), true, 0, 0, 4);
 
+    checkMemory(tmpReg, true, false, 1, memReg, false);
     // [HOST_MEM + HOST_TMP]
-    writeHostPlusTmp(4, false, true, true, tmpReg, true, 0xFF);
+    writeHostPlusTmp(4, false, true, true, tmpReg, true, memReg);
+    releaseTmpReg(memReg);
+
     for (auto& tmpReg : this->autoReleaseTmpAfterWriteOp) {
         releaseTmpReg(tmpReg);
     }
@@ -1383,10 +1426,10 @@ void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U
         U8 pageReg = getTmpReg();
         writeToRegFromReg(pageReg, true, addressReg, true, 4);
         shiftRightReg(pageReg, true, K_PAGE_SHIFT);
-        writeToRegFromMem(tmpReg, true, HOST_MEM_WRITE, true, pageReg, true, 3, 0, 8, false);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_READ, true, pageReg, true, 3, K_NUMBER_OF_PAGES * 8, 8, false);
         releaseTmpReg(pageReg);
     } else {
-        writeToRegFromMem(tmpReg, true, HOST_MEM_WRITE, true, -1, false, 0, (disp >> K_PAGE_SHIFT) << 3, 8, false);
+        writeToRegFromMem(tmpReg, true, HOST_MEM_READ, true, -1, false, 0, ((disp >> K_PAGE_SHIFT) << 3) + K_NUMBER_OF_PAGES * 8, 8, false);
     }
 
     doIf(tmpReg, true, 0, [=, this] {
@@ -1550,25 +1593,30 @@ void X64Asm::andWriteToRegFromCPU(U8 reg, bool isRegRex, U32 offset) {
 // reg3 is optional, pass -1 to ignore it
 // displacement is optional, pass 0 to ignore it
 void X64Asm::writeToMemFromReg(U8 src, bool isSrcRex, U8 reg2, bool isReg2Rex, S8 reg3, bool isReg3Rex, U8 reg3Shift, S32 displacement, U8 bytes, bool translateToHost, bool skipAlignmentCheck, bool releaseReg3) {
-    if (translateToHost) {                      
+    if (translateToHost) {
         if (reg3 >= 0 || displacement) {
-            U8 tmpReg = getTmpReg();
-            addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
+            U8 emulatedAddressReg = getTmpReg();
+            addWithLea(emulatedAddressReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
             if (releaseReg3) {
                 releaseTmpReg(reg3);
             }
-            checkMemory(tmpReg, true, true, bytes, 0xff, true, skipAlignmentCheck);
-            writeToMemFromReg(src, isSrcRex, tmpReg, true, -1, true, 0, 0, bytes, false);
-            releaseTmpReg(tmpReg);
+            U8 memReg = getTmpReg();
+            checkMemory(emulatedAddressReg, true, true, bytes, memReg, skipAlignmentCheck);
+            writeToMemFromReg(src, isSrcRex, emulatedAddressReg, true, memReg, true, 0, 0, bytes, false);
+            releaseTmpReg(emulatedAddressReg);
+            releaseTmpReg(memReg);
         } else {
             U8 hostMemReg = getTmpReg();
-            checkMemory(reg2, isReg2Rex, true, bytes, hostMemReg, false, skipAlignmentCheck);
+            checkMemory(reg2, isReg2Rex, true, bytes, hostMemReg, skipAlignmentCheck);
             writeToMemFromReg(src, isSrcRex, reg2, isReg2Rex, hostMemReg, true, 0, 0, bytes, false);
             releaseTmpReg(hostMemReg);
-        }        
+        }
     } else {
+        if (disp > 0x7fffffff) {
+            kpanic("X64Asm::writeToMemFromReg untranslated memory access will treat disp as signed, which is not correct");
+        }
         // reg 1 will be ignored
-        doMemoryInstruction(bytes==1?0x88:0x89, src, isSrcRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
+        doMemoryInstruction(bytes == 1 ? 0x88 : 0x89, src, isSrcRex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
         if (reg3 >= 0 && releaseReg3) {
             releaseTmpReg(reg3);
         }
@@ -1580,26 +1628,26 @@ void X64Asm::writeToMemFromValue(U64 value, U8 reg2, bool isReg2Rex, S8 reg3, bo
         if (canUseReg2AsTmp) {
             U8 hostMemReg = getTmpReg();
             addWithLea(reg2, isReg2Rex, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
-            checkMemory(reg2, isReg2Rex, true, bytes, hostMemReg, false, skipAlignmentCheck);
-            writeToMemFromValue(value, reg2, isReg2Rex, hostMemReg, true, 0, 0, bytes, false);
+            checkMemory(reg2, isReg2Rex, true, bytes, hostMemReg, skipAlignmentCheck);
+            writeToMemFromValue(value, reg2, true, hostMemReg, true, 0, 0, bytes, false);
             releaseTmpReg(hostMemReg);
         } else {
-            U8 tmpReg = getTmpReg();
+            U8 emulatedAddressReg = getTmpReg();
             U8 hostMemReg = getTmpReg();
-            addWithLea(tmpReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
-            checkMemory(tmpReg, true, true, bytes, hostMemReg, false, skipAlignmentCheck);
-            writeToMemFromValue(value, tmpReg, true, hostMemReg, true, 0, 0, bytes, false);
-            releaseTmpReg(tmpReg);
+            addWithLea(emulatedAddressReg, true, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, 4);
+            checkMemory(emulatedAddressReg, true, true, bytes, hostMemReg, skipAlignmentCheck);
+            writeToMemFromValue(value, emulatedAddressReg, true, hostMemReg, true, 0, 0, bytes, false);
+            releaseTmpReg(emulatedAddressReg);
             releaseTmpReg(hostMemReg);
         }
     } else {
         // reg 1 will be ignored
-        doMemoryInstruction(bytes==1?0xc6:0xc7, 0, false, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
+        doMemoryInstruction(bytes == 1 ? 0xc6 : 0xc7, 0, false, reg2, isReg2Rex, reg3, isReg3Rex, reg3Shift, displacement, bytes);
         if (bytes == 1)
             write8((U8)value);
         else if (bytes == 2)
             write16((U16)value);
-        else if (bytes == 4) 
+        else if (bytes == 4)
             write32((U32)value);
         else if (bytes == 8)
             kpanic("writeToMemFromValue 64-bit not implemented");
@@ -1817,6 +1865,9 @@ bool X64Asm::isTmpRegAvailable() {
     if (!this->tmp4InUse) {
         return true;
     }
+    if (!this->tmp5InUse) {
+        return true;
+    }
     return false;
 }
 
@@ -1836,6 +1887,10 @@ U8 X64Asm::getTmpReg() {
     if (!this->tmp4InUse) {
         this->tmp4InUse = true;
         return HOST_TMP4;
+    }
+    if (!this->tmp5InUse) {
+        this->tmp5InUse = true;
+        return HOST_TMP5;
     }
     kpanic("x64: ran out of tmp variables");
     return 0;
@@ -1863,13 +1918,18 @@ void X64Asm::releaseTmpReg(U8 tmpReg) {
             kpanic("x64: tried to release HOST_TMP4 but it was not in use");
         }
         this->tmp4InUse = false;
+    } else if (tmpReg == HOST_TMP5) {
+        if (!this->tmp5InUse) {
+            kpanic("x64: tried to release HOST_TMP5 but it was not in use");
+        }
+        this->tmp5InUse = false;
     } else {
         kpanic("x64: tried to release an unknown reg");
     }
 }
 
 bool X64Asm::isTmpReg(U8 tmpReg) {
-    return tmpReg == HOST_TMP || tmpReg == HOST_TMP2 || tmpReg == HOST_TMP3 || tmpReg == HOST_TMP4;
+    return tmpReg == HOST_TMP || tmpReg == HOST_TMP2 || tmpReg == HOST_TMP3 || tmpReg == HOST_TMP4 || tmpReg == HOST_TMP5;
 }
 
 // calling convention, these regs can be modified 
@@ -2007,9 +2067,8 @@ void X64Asm::createCodeForSyncFromHost() {
     writeToMemFromReg(6, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ESI, 4, false);
     writeToMemFromReg(7, false, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EDI, 4, false);
     U8 tmpReg = getTmpReg();
-    pushNativeFlags();
-    popNativeReg(tmpReg, true);
-    writeToMemFromReg(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
+    pushFlagsToReg(tmpReg, true, true);    
+    writeToMemFromReg(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_HOST_FLAGS, 2, false);
     releaseTmpReg(tmpReg);
 
     write8(0x41);
@@ -2036,10 +2095,8 @@ void X64Asm::createCodeForSyncToHost() {
     // R12-R15 are non volitile on windows and linux
 
     U8 tmpReg = getTmpReg();
-    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
-    //popFlagsFromReg(tmpReg, true, true);
-    pushNativeReg(tmpReg, true);
-    popNativeFlags();
+    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_HOST_FLAGS, 2, false);
+    popFlagsFromReg(tmpReg, true, true);
     releaseTmpReg(tmpReg);
 
     write8(0x41);
@@ -2090,9 +2147,8 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     // R12-R15 are non volitile on windows and linux
 
     U8 tmpReg = getTmpReg();
-    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
-    pushNativeReg(tmpReg, true);
-    popNativeFlags();
+    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_HOST_FLAGS, 4, false);
+    popFlagsFromReg(tmpReg, true, true);
     releaseTmpReg(tmpReg);
 
     // fxrstor
@@ -2100,7 +2156,7 @@ void X64Asm::syncRegsToHost(S8 excludeReg) {
     write8(0x0f);
     write8(0xae);
     write8(0x88 | HOST_CPU);
-    write32(CPU_OFFSET_FPU_STATE);  
+    write32(CPU_OFFSET_FPU_STATE);
 }
 
 void badStack(CPU* cpu) {
@@ -2176,7 +2232,7 @@ void X64Asm::callHost(void* pfn, U8 tmp, bool internal) {
     unlockParamReg(PARAM_4_REG, PARAM_4_REX);
 }
 
-void X64Asm::doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags, bool generateCmp, bool releaseRegAfterCmp) {
+void X64Asm::doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags, bool generateCmp, bool releaseRegAfterCmp, U8 nz, U8 z) {
     U8 tmpReg = 0xFF;
     if (keepFlags) {
         tmpReg = getTmpReg();
@@ -2205,11 +2261,11 @@ void X64Asm::doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(voi
     if (keepFlags && elseBlock == nullptr) {
         elseBlock = [] {};
     }
-    if (elseBlock == nullptr) {        
+    if (elseBlock == nullptr) {
         // jnz
-        write8(0x75);
+        write8(nz);
         U32 pos = this->bufferPos;
-        write8(0);        
+        write8(0);
         ifBlock();
         if (this->bufferPos - pos - 1 > 127) {
             kpanic("doIf needs some work");
@@ -2217,7 +2273,7 @@ void X64Asm::doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(voi
         this->buffer[pos] = this->bufferPos - pos - 1; // else block jumps over if block
     } else {
         // jz 
-        write8(0x74);
+        write8(z);
         U32 pos = this->bufferPos;
         write8(0);
 
@@ -2231,7 +2287,7 @@ void X64Asm::doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(voi
         if (this->firstPass && this->firstPass->needLargeIfJmpReg) {
             large = true;
         }
-        write8(large?0xe9:0xeb);
+        write8(large ? 0xe9 : 0xeb);
         U32 pos2 = this->bufferPos;
         if (large) {
             write32(0);
@@ -2935,9 +2991,83 @@ void X64Asm::call(bool big, U32 sel, U32 offset, U32 oldEip) {
     done = true;
 }
 
-void X64Asm::shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith) {
-    if (isRegRex)
-        write8(REX_BASE | REX_MOD_RM);
+void X64Asm::testReg(U8 reg, bool isRegRex, U64 value, bool is64bit) {
+    if (value > 0xffffffffl && is64bit) {
+        U8 tmp = getTmpReg();
+        writeToRegFromValue(tmp, true, value, 8);
+
+        U8 rex = REX_BASE | REX_64 | REX_MOD_REG;
+        if (isRegRex) {
+            rex += REX_MOD_RM;
+        }
+        write8(rex);
+        write8(0x85);
+        write8(0xc0 | reg | (tmp << 3));
+        releaseTmpReg(tmp);
+    } else {
+        if (isRegRex || is64bit) {
+            U8 rex = REX_BASE;
+            if (isRegRex) {
+                rex += REX_MOD_RM;
+            }
+            if (is64bit) {
+                rex += REX_64;
+            }
+            write8(rex);
+        }
+        write8(0xf7);
+        write8(0xc0 | reg);
+        write32((U32)value);
+    }
+}
+
+void X64Asm::cmpReg(U8 reg, bool isRegRex, U64 value, bool is64bit) {
+    if (value > 0xffffffffl && is64bit) {
+        U8 tmp = getTmpReg();
+        writeToRegFromValue(tmp, true, value, 8);
+
+        U8 rex = REX_BASE | REX_64 | REX_MOD_REG;
+        if (isRegRex) {
+            rex += REX_MOD_RM;
+        }
+        write8(rex);
+        write8(0x39);
+        write8(0xc0 | reg | (tmp << 3));
+        releaseTmpReg(tmp);
+    } else {
+        if (isRegRex || is64bit) {
+            U8 rex = REX_BASE;
+            if (isRegRex) {
+                rex += REX_MOD_RM;
+            }
+            if (is64bit) {
+                rex += REX_64;
+            }
+            write8(rex);
+        }
+        if (value <= 0x7f) {
+            write8(0x83);
+            write8(0xf8 | reg);
+            write8((U8)value);
+        } else {
+            write8(0x81);
+            write8(0xf8 | reg);
+            write32((U32)value);
+        }
+    }
+}
+
+void X64Asm::shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith, bool is64bit) {
+    if (isRegRex || is64bit) {
+        U8 rex = REX_BASE;
+        if (isRegRex) {
+            rex += REX_MOD_RM;
+        }
+        if (is64bit) {
+            rex += REX_64;
+        }
+        write8(rex);
+    }
     write8(0xC1);
     if (arith) {
         write8(0xF8 | reg);
@@ -3324,6 +3454,7 @@ void X64Asm::bswapSp() {
 
 void X64Asm::DsEdiMmxOrSSE(U8 rm) {
     emulateSingleOp(currentOp);
+    done = true;
 }
 
 // U16 val = readw(eaa);
@@ -3596,6 +3727,40 @@ void X64Asm::emulateSingleOp(DecodedOp* op, bool dynamic) {
     jmpNativeReg(HOST_TMP2, true);
 }
 
+void X64Asm::clearDirectionFlag() {
+    bool needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
+    U8 flagsReg = getTmpReg();
+    if (needFlags) {
+        pushFlagsToReg(flagsReg, true, true);
+    }
+    // and dword ptr[HOST_CPU + CPU_OFFSET_FLAGS], ~DF
+    write8(0x41);
+    write8(0x81);
+    write8(0xa0 | HOST_CPU);
+    write32(CPU_OFFSET_FLAGS);
+    write32(~DF);
+    if (needFlags) {
+        popFlagsFromReg(flagsReg, true, true);
+    }
+}
+
+void X64Asm::setDirectionFlag() {
+    bool needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
+    U8 flagsReg = getTmpReg();
+    if (needFlags) {
+        pushFlagsToReg(flagsReg, true, true);
+    }
+    // or byte ptr[HOST_CPU + CPU_OFFSET_FLAGS + 1], 0x4
+    write8(0x41);
+    write8(0x83);
+    write8(0x88 | HOST_CPU);
+    write32(CPU_OFFSET_FLAGS + 1);
+    write8(4);
+    if (needFlags) {
+        popFlagsFromReg(flagsReg, true, true);
+    }
+}
+
 // U32 dBase = cpu->seg[ES].address;
 // U32 sBase = cpu->seg[base].address;
 // S32 inc = cpu->getDirection();
@@ -3615,9 +3780,9 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
     if (needFlags) {
         U8 flagsReg = getTmpReg();
         pushFlagsToReg(flagsReg, true, true);
-        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
         releaseTmpReg(flagsReg);
-        flagsWrittenToStringFlags = true;
+        flagsWrittenToInstructionStoredFlags = true;
     }
     if (repeat) {
         // test (e)cx, (e)cx
@@ -3634,12 +3799,11 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
         skipPos = bufferPos;
         write32(0x0);
     }
-   
+
     // get direction (DF)
     {
         U8 tmp = getTmpReg();
-        pushNativeFlags();
-        popNativeReg(tmp, true);
+        writeToRegFromMem(tmp, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FLAGS, 4, false);
         shiftLeftReg(tmp, true, 21);
         shiftRightReg(tmp, true, 31, true);
         orReg(tmp, true, width);
@@ -3657,7 +3821,7 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
         U8 tmpReg = getTmpReg();
         U8 srcReg = 6;
         bool srcRegIsRex = false;
-        
+
         if (this->cpu->thread->process->hasSetSeg[ds]) {
             if (ea16) {
                 srcReg = getTmpReg();
@@ -3688,11 +3852,18 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
             dstRegIsRex = true;
         }
         if (this->cpu->thread->process->hasSetSeg[ES]) {
-            U8 segReg = getTmpReg();
-            writeToMemFromReg(tmpReg, true, dstReg, dstRegIsRex, getRegForSeg(ES, segReg), true, 0, 0, width, true, false, true);
-        } else {
-            writeToMemFromReg(tmpReg, true, dstReg, dstRegIsRex, -1, false, 0, 0, width, true);
+            if (tmpDst == 0xff) {
+                tmpDst = getTmpReg();
+                dstReg = tmpDst;
+                dstRegIsRex = true;
+                addWithLea(dstReg, true, 7, false, getRegForSeg(ES, dstReg), true, 0, 0, 4);
+            } else {
+                U8 segReg = getTmpReg();
+                addWithLea(dstReg, true, dstReg, true, getRegForSeg(ES, segReg), true, 0, 0, 4);
+                releaseTmpReg(segReg);
+            }
         }
+        writeToMemFromReg(tmpReg, true, dstReg, dstRegIsRex, -1, false, 0, 0, width, true);
         if (tmpDst != 0xff) {
             releaseTmpReg(tmpDst);
         }
@@ -3739,7 +3910,7 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
     } else {
         kpanic("X64Asm::string oops");
     }
-      
+
     {
         U8 tmpReg = getTmpReg();
         writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_ARG5, 4, false);
@@ -3783,7 +3954,7 @@ void X64Asm::string(U32 width, bool hasSrc, bool hasDst) {
     }
     if (needFlags) {
         U8 flagsReg = getTmpReg();
-        writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+        writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
         popFlagsFromReg(flagsReg, true, true);
         releaseTmpReg(flagsReg);
     }
@@ -3797,9 +3968,9 @@ void X64Asm::cmps(U32 width, bool hasSrc) {
     if (needFlags) {
         U8 flagsReg = getTmpReg();
         pushFlagsToReg(flagsReg, true, true);
-        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
         releaseTmpReg(flagsReg);
-        flagsWrittenToStringFlags = true;
+        flagsWrittenToInstructionStoredFlags = true;
     }    
     if (repeat) {        
         // test (e)cx, (e)cx
@@ -3919,7 +4090,7 @@ void X64Asm::cmps(U32 width, bool hasSrc) {
         U8 flagsReg = getTmpReg();
         pushFlagsToReg(flagsReg, true, true);
         // technically correct, the flags should be set so that they are correct for the next loop, but I'm not sure if its really necessary just in case an exception happens
-        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
 
         // cmp (e)cx, 0
         if (ea16) {
@@ -3950,7 +4121,7 @@ void X64Asm::cmps(U32 width, bool hasSrc) {
             write8(0x0);
             
             U8 flagsReg = getTmpReg();
-            writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_STRING_FLAGS, 4, false);
+            writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
             popFlagsFromReg(flagsReg, true, true);
             releaseTmpReg(flagsReg);
             buffer[pos] = bufferPos - pos - 1;
@@ -4463,9 +4634,16 @@ void X64Asm::fpu7(U8 rm) {
 void X64Asm::translateInstruction() {
     KMemoryData* mem = getMemData(cpu->memory);
     this->startOfOpIp = this->ip;
-
+    if (ip == 0x4049DF) {
+        int ii = 0;
+        if (!cpu->logFile.isOpen()) {
+           //cpu->logFile.createNew("2.txt");
+        }
+    }
 #ifdef _DEBUG
-    //this->logOp(this->ip);
+    if (cpu->thread->process->id == 0xa) {
+        //this->logOp(this->ip);
+    }
     // just makes debugging the asm output easier
 #ifndef __TEST
     this->writeToMemFromValue(this->ip, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);

@@ -55,7 +55,6 @@ void* x64CPU::init() {
     //data.writeToRegFromValue(HOST_CPU, true, (U64)this, 8);
     KMemoryData* memData = getMemData(memory);
     data.writeToRegFromValue(HOST_MEM_READ, true, (U64)memData->mmuReadPtrAdjusted, 8);
-    data.writeToRegFromValue(HOST_MEM_WRITE, true, (U64)memData->mmuWritePtrAdjusted, 8);
     data.setNativeFlags(this->flags, FMASK_TEST|DF);
 
     data.writeToRegFromValue(0, false, EAX, 4);
@@ -237,14 +236,11 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
     }  
 }
 
-void common_runSingleOp(x64CPU* cpu) {
-    U32 address = cpu->eip.u32;
+extern bool writesFlags[InstructionCount];
 
-    if (cpu->isBig()) {
-        address += cpu->seg[CS].address;
-    } else {
-        address = cpu->seg[CS].address + (address & 0xFFFF);
-    }
+void common_runSingleOp(x64CPU* cpu) {
+    U32 address = cpu->getEipAddress();
+    cpu->updateFlagsFromX64();
     DecodedOp* op = cpu->currentSingleOp;
     bool deallocOp = false;
     bool dynamic = cpu->arg5 != 0;
@@ -283,9 +279,9 @@ void common_runSingleOp(x64CPU* cpu) {
         }
     }
     bool inSignal = cpu->thread->inSignal;
-    if (op->inst >= Movsb && op->inst <= Scasd) {
+    if (writesFlags[op->inst]) {
         cpu->flags &= ~(SF | AF | ZF | PF | CF | OF);
-        cpu->flags |= ((cpu->stringFlags >> 8) & 0xff) | ((cpu->stringFlags & 1) << 11);    
+        cpu->flags |= ((cpu->instructionStoredFlags >> 8) & 0xff) | ((cpu->instructionStoredFlags & 1) << 11);
     }
     try {
         op->pfn(cpu, op);
@@ -325,6 +321,7 @@ void common_runSingleOp(x64CPU* cpu) {
         }
     }
     cpu->fillFlags();
+    cpu->updateX64Flags();
     if (deallocOp) {
         op->dealloc(true);
     }

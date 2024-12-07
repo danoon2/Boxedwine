@@ -616,6 +616,25 @@ U8* Platform::alloc64kBlock(U32 count, bool executable) {
     return result;
 }
 
+U8* Platform::reserveNativeMemory64k(U32 count) {
+    U8* result = static_cast<U8*>(VirtualAlloc(nullptr, 64 * 1024 * count, MEM_RESERVE, PAGE_READWRITE));
+    if (!result) {
+        LPSTR messageBuffer = nullptr;
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+        kpanic("reserveNativeMemory: failed to commit memory : %s", messageBuffer);
+    }
+    return result;
+}
+
+void Platform::commitNativeMemoryPage(void* address) {
+    U8* result = static_cast<U8*>(VirtualAlloc(address, K_PAGE_SIZE, MEM_COMMIT, PAGE_READWRITE));
+    if (!result) {
+        LPSTR messageBuffer = nullptr;
+        FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
+        kpanic("reserveNativeMemory: failed to commit memory : %s", messageBuffer);
+    }
+}
+
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     DWORD proto = 0;
     DWORD oldProtect = 0;

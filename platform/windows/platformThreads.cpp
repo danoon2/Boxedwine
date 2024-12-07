@@ -7,7 +7,7 @@
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR)
 
-void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
+void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     EAX = (U32)ep->ContextRecord->Rax;
     ECX = (U32)ep->ContextRecord->Rcx;
@@ -18,30 +18,35 @@ void syncFromException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ESI = (U32)ep->ContextRecord->Rsi;
     EDI = (U32)ep->ContextRecord->Rdi;
 
-    cpu->flags = ep->ContextRecord->EFlags;
-    cpu->lazyFlags = FLAGS_NONE;
-    for (int i=0;i<8;i++) {
-        cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
-        cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
-    }
-
-    if (includeFPU && !cpu->thread->process->emulateFPU) {
-        cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
-        cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
-        cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord); 
-        for (U32 i=0;i<8;i++) {
-            if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
-                cpu->fpu.setReg(i, 0.0);
-            } else {
-                U32 index = (i-cpu->fpu.GetTop()) & 7;
-                double d = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
-                cpu->fpu.setReg(i, d);
+    cpu->flags = (ep->ContextRecord->EFlags & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
+    cpu->lazyFlags = FLAGS_NONE;    
+    if (includeFPU) {
+        if (cpu->thread->process->emulateFPU) {
+            for (int i = 0; i < 8; i++) {
+                cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
+                cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
+                cpu->reg_mmx[i].q = ep->ContextRecord->FltSave.FloatRegisters[i].Low;
+            }
+        } else {
+            cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
+            cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
+            cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord);
+            for (U32 i = 0; i < 8; i++) {
+                cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
+                cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
+                if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
+                    cpu->fpu.setReg(i, 0.0);
+                } else {
+                    U32 index = (i - cpu->fpu.GetTop()) & 7;
+                    double d = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
+                    cpu->fpu.setReg(i, d);
+                }
             }
         }
     }
 }
 
-void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
+void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
     ep->ContextRecord->Rax = EAX;
     ep->ContextRecord->Rcx = ECX;
@@ -52,22 +57,30 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
     ep->ContextRecord->Rsi = ESI;
     ep->ContextRecord->Rdi = EDI;
     cpu->fillFlags();
-    ep->ContextRecord->EFlags = cpu->flags;
-    for (int i=0;i<8;i++) {
-        ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
-        ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
-    }
-    if (includeFPU && !cpu->thread->process->emulateFPU) {
-        ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
-        ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
-        ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag();
-        for (U32 i=0;i<8;i++) {
-            U32 index = (i-cpu->fpu.GetTop()) & 7;
-            if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
-                ep->ContextRecord->FltSave.FloatRegisters[index].Low = 0;
-                ep->ContextRecord->FltSave.FloatRegisters[index].High = 0;
-            } else {                
-                cpu->fpu.ST80(i, &ep->ContextRecord->FltSave.FloatRegisters[index].Low, (ULONGLONG*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
+    ep->ContextRecord->EFlags &= ~(AF | CF | OF | SF | PF | ZF);
+    ep->ContextRecord->EFlags |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
+    
+    if (includeFPU) {
+        if (cpu->thread->process->emulateFPU) {
+            for (int i = 0; i < 8; i++) {
+                ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
+                ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
+                ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->reg_mmx[i].q;
+            }
+        } else {
+            ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
+            ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
+            ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag();
+            for (U32 i = 0; i < 8; i++) {
+                ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
+                ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
+                U32 index = (i - cpu->fpu.GetTop()) & 7;
+                if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
+                    ep->ContextRecord->FltSave.FloatRegisters[index].Low = 0;
+                    ep->ContextRecord->FltSave.FloatRegisters[index].High = 0;
+                } else {
+                    cpu->fpu.ST80(i, &ep->ContextRecord->FltSave.FloatRegisters[index].Low, (ULONGLONG*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
+                }
             }
         }
     }
@@ -75,8 +88,8 @@ void syncToException(struct _EXCEPTION_POINTERS *ep, bool includeFPU) {
 
 class InException {
 public:
-    InException(BtCPU* cpu) : cpu(cpu) {this->cpu->inException = true;}
-    ~InException() {this->cpu->inException = false;}
+    InException(BtCPU* cpu) : cpu(cpu) { this->cpu->inException = true; }
+    ~InException() { this->cpu->inException = false; }
     BtCPU* cpu;
 };
 
@@ -91,7 +104,9 @@ int getFpuException(int control, int status) {
     return K_FPE_FLTINV;
 }
 
-LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
+extern bool writesFlags[InstructionCount];
+
+LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     BOXEDWINE_CRITICAL_SECTION;
     exceptionCount++;
     KThread* currentThread = KThread::currentThread();
@@ -101,7 +116,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
     if (ep->ContextRecord->EFlags & AC) {
         // :TODO: not sure what causes this, seen it in winroids
-        ep->ContextRecord->EFlags&=~AC;
+        ep->ContextRecord->EFlags &= ~AC;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     if (cpu != (BtCPU*)ep->ContextRecord->R13) {
@@ -116,16 +131,15 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         // motorhead installer will trigger this a few time
         // caesar 3 installer will trigger this when it exits
         return EXCEPTION_CONTINUE_SEARCH;
-    }    	
-    
+    }
     syncFromException(ep, true);
-    U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0]==0);
+    U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0] == 0);
     if (result) {
         syncToException(ep, true);
         ep->ContextRecord->Rip = result;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
-    
+
     InException inException(cpu);
 
     if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
@@ -138,6 +152,16 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS *ep) {
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == STATUS_INTEGER_DIVIDE_BY_ZERO) {
         ep->ContextRecord->Rip = cpu->handleFpuException(K_FPE_INTDIV);
+        syncToException(ep, true);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
+        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler
+        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        if (writesFlags[op->inst]) {
+            cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
+        }
+        ep->ContextRecord->Rip = cpu->handleAccessException(op);
+        op->dealloc(true);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -158,9 +182,9 @@ void initThreadForTesting() {
 DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
     BtCPU* cpu = (BtCPU*)thread->cpu;
-    
+
     if (!pHandler) {
-        pHandler = AddVectoredExceptionHandler(1,seh_filter);
+        pHandler = AddVectoredExceptionHandler(1, seh_filter);
     }
     cpu->startThread();
     return 0;
@@ -190,7 +214,7 @@ void scheduleThread(KThread* thread) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void ATOMIC_WRITE64(U64* pTarget, U64 value) {
-    InterlockedExchange64((volatile LONGLONG *)pTarget, (LONGLONG)value);
+    InterlockedExchange64((volatile LONGLONG*)pTarget, (LONGLONG)value);
 }
 #endif
 
