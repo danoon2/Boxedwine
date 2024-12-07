@@ -658,6 +658,9 @@
     <ClCompile Include="..\..\..\..\source\util\ring_buffer.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp">
+      <Filter>source\emulation\cpu\x64</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1454,6 +1457,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\ring_buffer.h">
       <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h">
+      <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -250,6 +250,7 @@ void common_runSingleOp(x64CPU* cpu) {
     } else if (!op) {
         kpanic("common_runSingleOp oops");
     }
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
     if (op->inst >= Fxsave && op->inst <= ShufpdXmmE128) {
         for (U32 i = 0; i < 8; i++) {
             cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
@@ -278,6 +279,7 @@ void common_runSingleOp(x64CPU* cpu) {
             cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
         }
     }
+#endif
     bool inSignal = cpu->thread->inSignal;
     if (writesFlags[op->inst]) {
         cpu->flags &= ~(SF | AF | ZF | PF | CF | OF);
@@ -296,6 +298,7 @@ void common_runSingleOp(x64CPU* cpu) {
             memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
         }
     }
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
     if (!cpu->thread->process->emulateFPU && op->inst >= FADD_ST0_STj && op->inst <= FISTP_QWORD_INTEGER) {
         cpu->fpuState.fcw = cpu->fpu.CW();
         cpu->fpuState.fsw = cpu->fpu.SW();
@@ -320,6 +323,7 @@ void common_runSingleOp(x64CPU* cpu) {
             cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
         }
     }
+#endif
     cpu->fillFlags();
     cpu->updateX64Flags();
     if (deallocOp) {

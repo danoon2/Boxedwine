@@ -1378,12 +1378,7 @@ static U32 movAxOw(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    if ((disp & 1) != 0) {
-        data->emulateSingleOp(data->currentOp);
-        data->done = true;
-    } else {
-        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
-    }
+    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
     return 0;
 }
 
@@ -1395,12 +1390,7 @@ static U32 movEaxOd(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    if ((disp & 3) != 0) {
-        data->emulateSingleOp(data->currentOp);
-        data->done = true;
-    } else {
-        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
-    }
+    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
     return 0;
 }
 
@@ -1424,12 +1414,7 @@ static U32 movOwAx(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    if ((disp & 1) != 0) {
-        data->emulateSingleOp(data->currentOp);
-        data->done = true;
-    } else {
-        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
-    }
+    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
     return 0;
 }
 
@@ -1441,12 +1426,7 @@ static U32 movOdEax(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    if ((disp & 3) != 0) {
-        data->emulateSingleOp(data->currentOp);
-        data->done = true;
-    } else {
-        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
-    }
+    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
     return 0;
 }
 
@@ -1994,15 +1974,7 @@ static U32 mmxRegE(X64Asm* data) {
     return 0;
 }
 
-// FPU ESC 0
-// FPU ESC 1
-// FPU ESC 2
-// FPU ESC 3
-// FPU ESC 4
-// FPU ESC 5
-// FPU ESC 6
-// FPU ESC 7
-
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
 static U32 instFPU(X64Asm* data, U8 rm) {
     bool isBig = data->currentOp->originalOp >= 0x200;    
     if (!isBig) {
@@ -2032,83 +2004,118 @@ static U32 instFPU(X64Asm* data, U8 rm) {
     data->translateRM(rm, false, false, false, false, 0);
     return 0;
 }
+#endif
 
 static U32 wait(X64Asm* data) {
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
     if (!data->cpu->thread->process->emulateFPU) {
         keepSame(data);
     }
+#endif
     return 0;
 }
 
 static U32 instFPU0(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu0(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu0(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
-    }
+    }    
+#endif
     return 0;
 }
 
 static U32 instFPU1(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu1(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu1(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
     }
+#endif
     return 0;
 }
 
 static U32 instFPU2(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu2(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu2(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
     }
+#endif
     return 0;
 }
 
 static U32 instFPU3(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu3(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu3(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
     }
+#endif
     return 0;
 }
 
 static U32 instFPU4(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu4(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu4(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
     }
+#endif
     return 0;
 }
 
 static U32 instFPU5(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu5(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu5(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
     }
+#endif
     return 0;
 }
 
 static U32 instFPU6(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu6(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu6(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
     }
+#endif
     return 0;
 }
 
 static U32 instFPU7(X64Asm* data) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    data->fpu7(data->fetch8());
+#else
     if (data->cpu->thread->process->emulateFPU) {
         data->fpu7(data->fetch8());
     } else {
         return instFPU(data, data->fetch8());
     }
+#endif
     return 0;
 }
 
@@ -2166,18 +2173,26 @@ static U32 sseOp3AE(X64Asm* data) {
     U8 rm = data->fetch8();
     switch (G(rm)) {
     case 0: // FXSAVE
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+        emulateRM(data, rm);
+#else
         if (data->cpu->thread->process->emulateFPU) {
             emulateRM(data, rm);
         } else {
             instFPU(data, rm);
         }
+#endif
         break;
     case 1: // FXRSTOR
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+        emulateRM(data, rm);
+#else
         if (data->cpu->thread->process->emulateFPU) {
             emulateRM(data, rm);
         } else {
             instFPU(data, rm);
         }
+#endif
         break;
     case 2: // LDMXCSR
         data->translateRM(rm, false, true, false, false, 0);

@@ -21,6 +21,13 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     cpu->flags = (ep->ContextRecord->EFlags & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
     cpu->lazyFlags = FLAGS_NONE;    
     if (includeFPU) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+        for (int i = 0; i < 8; i++) {
+            cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
+            cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
+            cpu->reg_mmx[i].q = ep->ContextRecord->FltSave.FloatRegisters[i].Low;
+        }
+#else
         if (cpu->thread->process->emulateFPU) {
             for (int i = 0; i < 8; i++) {
                 cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
@@ -43,6 +50,7 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
                 }
             }
         }
+#endif
     }
 }
 
@@ -61,6 +69,13 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     ep->ContextRecord->EFlags |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
     
     if (includeFPU) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+        for (int i = 0; i < 8; i++) {
+            ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
+            ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
+            ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->reg_mmx[i].q;
+        }
+#else
         if (cpu->thread->process->emulateFPU) {
             for (int i = 0; i < 8; i++) {
                 ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
@@ -83,6 +98,7 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
                 }
             }
         }
+#endif
     }
 }
 

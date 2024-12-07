@@ -177,7 +177,7 @@ public:
 #ifdef __TEST
     void addReturnFromTest();
 #endif
-private:
+
     U8 getTmpReg();
     bool isTmpRegAvailable();
     void releaseTmpReg(U8 reg);
