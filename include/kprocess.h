@@ -279,7 +279,7 @@ public:
     void* returnToLoopAddress = nullptr; // will be called after a syscall if x64CPU.exitToStartThreadLoop is set to true.  This return will cause the program to return to x64CPU::run()
     void* jmpAndTranslateIfNecessary = nullptr;
 #ifdef BOXEDWINE_POSIX
-    void* runSignalAddress;
+    void* runSignalAddress = nullptr;
 #endif
 #endif
 #ifdef BOXEDWINE_MULTI_THREADED    

@@ -13,6 +13,8 @@
 #define DF		0x00000400
 #define OF		0x00000800
 
+#define ARITH_FLAGS (AF | CF | ZF | PF | SF | OF)
+
 #define TF		0x00000100
 #define IF		0x00000200
 

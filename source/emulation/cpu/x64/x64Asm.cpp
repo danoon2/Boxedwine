@@ -11,8 +11,9 @@
 
 #include "../common/common_fpu.h"
 #include "x64CPU.h"
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
 #include "x64Ops_fpu.h"
-
+#endif
 #define G(rm) ((rm >> 3) & 7)
 #define E(rm) (rm & 7)
 
@@ -4355,6 +4356,16 @@ void X64Asm::createCodeForJmpAndTranslateIfNecessary(bool includeSetupFromR9) {
 void signalHandler();
 
 void X64Asm::createCodeForRunSignal() {
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+    // fxsave cpu->fpuState
+    write8(0x41);
+    write8(0x0f);
+    write8(0xae);
+    write8(0x80 | HOST_CPU);
+    write32((U32)(offsetof(x64CPU, fpuState)));
+#else
+    // platformThreads-x64.cpp / syncFromException will store SSE and MMX into cpu 
+#endif
     callHost((void*)signalHandler);
     syncRegsToHost();
 

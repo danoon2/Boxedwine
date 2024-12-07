@@ -25,12 +25,12 @@ void initHandlers() {
         struct sigaction oldsa;
         sigaction(SIGBUS, &sa, &oldsa);
         sigaction(SIGSEGV, &sa, &oldsa);
-        sigaction(SIGILL, &sa, &oldsa);
+        //sigaction(SIGILL, &sa, &oldsa);
         sigaction(SIGFPE, &sa, &oldsa);
-        for (int i = 0x91; i <= 0x96; i++) {
-            sigaction(i, &sa, &oldsa);
-        }
-        sigaction(SIGTRAP, &sa, &oldsa);
+        //for (int i = 0x91; i <= 0x96; i++) {
+        //    sigaction(i, &sa, &oldsa);
+        //}
+        //sigaction(SIGTRAP, &sa, &oldsa);
         initializedHandler = true;
 #ifdef __MACH__
         // proc hand -p true -s false SIGILL
@@ -38,7 +38,8 @@ void initHandlers() {
         // in the debug out put window, (lldb) enter the above 2 commands in order to run while debugging on Mac
 
         // set a break point on this line then enter the above commands.
-        task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
+        
+        //task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
 #endif
     }
 }
@@ -50,7 +51,7 @@ void initThreadForTesting() {
 #endif
 
 void* platformThreadProc(void* param) {
-#ifdef BOXEDWINE_64BIT_MMU
+#ifdef BOXEDWINE_4K_PAGE_SIZE
     initHandlers();
 #endif
     KThread* thread = (KThread*)param;

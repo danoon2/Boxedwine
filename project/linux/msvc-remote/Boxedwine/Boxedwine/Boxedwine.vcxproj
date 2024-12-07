@@ -218,6 +218,7 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
@@ -839,6 +840,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_code_page.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />

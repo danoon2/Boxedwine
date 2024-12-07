@@ -5,6 +5,7 @@
 #include "ksignal.h"
 #include "../../source/emulation/cpu/x64/x64CPU.h"
 #include "../../source/emulation/softmmu/kmemory_soft.h"
+#include "../../source/emulation/cpu/normal/normalCPU.h"
 
 #ifdef __MACH__
 #define __USE_GNU
@@ -119,8 +120,21 @@ void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
     EBP = (U32)context->CONTEXT_RBP;
     ESI = (U32)context->CONTEXT_RSI;
     EDI = (U32)context->CONTEXT_RDI;
-    cpu->flags = (U32)context->CONTEXT_FLAGS;
+    //cpu->flags = (U32)context->CONTEXT_FLAGS;
+    
+    cpu->flags = (context->CONTEXT_FLAGS & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
+
     cpu->lazyFlags = FLAGS_NONE;
+#if defined(BOXEDWINE_X64) && defined(BOXEDWINE_USE_SSE_FOR_FPU)
+    cpu->reg_mmx[0].q = *CONTEXT_FPU_REG_0_LOW(context);
+    cpu->reg_mmx[1].q = *CONTEXT_FPU_REG_1_LOW(context);
+    cpu->reg_mmx[2].q = *CONTEXT_FPU_REG_2_LOW(context);
+    cpu->reg_mmx[3].q = *CONTEXT_FPU_REG_3_LOW(context);
+    cpu->reg_mmx[4].q = *CONTEXT_FPU_REG_4_LOW(context);
+    cpu->reg_mmx[5].q = *CONTEXT_FPU_REG_5_LOW(context);
+    cpu->reg_mmx[6].q = *CONTEXT_FPU_REG_6_LOW(context);
+    cpu->reg_mmx[7].q = *CONTEXT_FPU_REG_7_LOW(context);
+
     memcpy(&cpu->xmm[0], &context->CONTEXT_XMM0, 16);
     memcpy(&cpu->xmm[1], &context->CONTEXT_XMM1, 16);
     memcpy(&cpu->xmm[2], &context->CONTEXT_XMM2, 16);
@@ -129,144 +143,7 @@ void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
     memcpy(&cpu->xmm[5], &context->CONTEXT_XMM5, 16);
     memcpy(&cpu->xmm[6], &context->CONTEXT_XMM6, 16);
     memcpy(&cpu->xmm[7], &context->CONTEXT_XMM7, 16);
-
-
-    if (includeFPU && !cpu->thread->process->emulateFPU) {
-        cpu->fpu.SetCW(*((U16*)&context->CONTEXT_FCW));
-        cpu->fpu.SetSW(*((U16*)&context->CONTEXT_FSW));
-        cpu->fpu.SetTagFromAbridged(context->CONTEXT_FTW);
-        for (U32 i = 0; i < 8; i++) {
-            if (!(context->CONTEXT_FTW & (1 << i))) {
-                cpu->fpu.setReg(i, 0.0);
-            } else {
-                U32 index = (i - cpu->fpu.GetTop()) & 7;
-                U64 low = 0;
-                S16 high = 0;
-
-                switch (index) {
-                case 0:
-                    low = *CONTEXT_FPU_REG_0_LOW(context);
-                    high = *CONTEXT_FPU_REG_0_HIGH(context);
-                    break;
-                case 1:
-                    low = *CONTEXT_FPU_REG_1_LOW(context);
-                    high = *CONTEXT_FPU_REG_1_HIGH(context);
-                    break;
-                case 2:
-                    low = *CONTEXT_FPU_REG_2_LOW(context);
-                    high = *CONTEXT_FPU_REG_2_HIGH(context);
-                    break;
-                case 3:
-                    low = *CONTEXT_FPU_REG_3_LOW(context);
-                    high = *CONTEXT_FPU_REG_3_HIGH(context);
-                    break;
-                case 4:
-                    low = *CONTEXT_FPU_REG_4_LOW(context);
-                    high = *CONTEXT_FPU_REG_4_HIGH(context);
-                    break;
-                case 5:
-                    low = *CONTEXT_FPU_REG_5_LOW(context);
-                    high = *CONTEXT_FPU_REG_5_HIGH(context);
-                    break;
-                case 6:
-                    low = *CONTEXT_FPU_REG_6_LOW(context);
-                    high = *CONTEXT_FPU_REG_6_HIGH(context);
-                    break;
-                case 7:
-                    low = *CONTEXT_FPU_REG_7_LOW(context);
-                    high = *CONTEXT_FPU_REG_7_HIGH(context);
-                    break;
-                }
-                double d = cpu->fpu.FLD80(low, high);
-                cpu->fpu.setReg(i, d);
-            }
-        }
-    }
-}
-
-void syncToException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
-    context->CONTEXT_RAX = EAX;
-    context->CONTEXT_RCX = ECX;
-    context->CONTEXT_RDX = EDX;
-    context->CONTEXT_RBX = EBX;
-    context->CONTEXT_R11 = ESP;
-    context->CONTEXT_RBP = EBP;
-    context->CONTEXT_RSI = ESI;
-    context->CONTEXT_RDI = EDI;
-    context->CONTEXT_R14 = cpu->seg[SS].address;
-    context->CONTEXT_R15 = cpu->seg[DS].address;
-    cpu->fillFlags();
-    context->CONTEXT_FLAGS &= ~CF | OF | PF | AF | SF | ZF;
-    context->CONTEXT_FLAGS |= (cpu->flags & (CF | OF | PF | AF | SF | ZF));
-
-    memcpy(&context->CONTEXT_XMM0, &cpu->xmm[0], 16);
-    memcpy(&context->CONTEXT_XMM1, &cpu->xmm[1], 16);
-    memcpy(&context->CONTEXT_XMM2, &cpu->xmm[2], 16);
-    memcpy(&context->CONTEXT_XMM3, &cpu->xmm[3], 16);
-    memcpy(&context->CONTEXT_XMM4, &cpu->xmm[4], 16);
-    memcpy(&context->CONTEXT_XMM5, &cpu->xmm[5], 16);
-    memcpy(&context->CONTEXT_XMM6, &cpu->xmm[6], 16);
-    memcpy(&context->CONTEXT_XMM7, &cpu->xmm[7], 16);
-
-    if (includeFPU && !cpu->thread->process->emulateFPU) {
-#ifdef __MACH__
-        * ((U16*)&context->CONTEXT_FCW) = cpu->fpu.CW();
-        *((U16*)&context->CONTEXT_FSW) = cpu->fpu.SW();
-#else
-        context->CONTEXT_FCW = cpu->fpu.CW();
-        context->CONTEXT_FSW = cpu->fpu.SW();
 #endif
-        context->CONTEXT_FTW = cpu->fpu.GetAbridgedTag();
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            U64* low = NULL;
-            S16* high = NULL;
-
-            switch (index) {
-            case 0:
-                low = CONTEXT_FPU_REG_0_LOW(context);
-                high = CONTEXT_FPU_REG_0_HIGH(context);
-                break;
-            case 1:
-                low = CONTEXT_FPU_REG_1_LOW(context);
-                high = CONTEXT_FPU_REG_1_HIGH(context);
-                break;
-            case 2:
-                low = CONTEXT_FPU_REG_2_LOW(context);
-                high = CONTEXT_FPU_REG_2_HIGH(context);
-                break;
-            case 3:
-                low = CONTEXT_FPU_REG_3_LOW(context);
-                high = CONTEXT_FPU_REG_3_HIGH(context);
-                break;
-            case 4:
-                low = CONTEXT_FPU_REG_4_LOW(context);
-                high = CONTEXT_FPU_REG_4_HIGH(context);
-                break;
-            case 5:
-                low = CONTEXT_FPU_REG_5_LOW(context);
-                high = CONTEXT_FPU_REG_5_HIGH(context);
-                break;
-            case 6:
-                low = CONTEXT_FPU_REG_6_LOW(context);
-                high = CONTEXT_FPU_REG_6_HIGH(context);
-                break;
-            case 7:
-                low = CONTEXT_FPU_REG_7_LOW(context);
-                high = CONTEXT_FPU_REG_7_HIGH(context);
-                break;
-            }
-
-            if (!(context->CONTEXT_FTW & (1 << i))) {
-                *low = 0;
-                *high = 0;
-            } else {
-                U64 h = 0;
-                cpu->fpu.ST80(i, low, &h);
-                *high = h;
-            }
-        }
-    }
 }
 
 class InException {
@@ -321,6 +198,8 @@ int getFPUCode(int code) {
     }
 }
 
+extern bool writesFlags[InstructionCount];
+
 void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
@@ -336,6 +215,26 @@ void signalHandler() {
     if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
         cpu->returnHostAddress = cpu->handleFpuException(code);
+        return;
+    }
+    if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
+        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        if (writesFlags[op->inst]) {
+            cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
+        }
+#if defined(BOXEDWINE_X64) && !defined(BOXEDWINE_USE_SSE_FOR_FPU)
+        cpu->loadFxState(op->inst);
+#endif
+        cpu->returnHostAddress = cpu->handleAccessException(op);
+        cpu->fillFlags();        
+#ifdef BOXEDWINE_X64
+        U32 o = offsetof(x64CPU, fpuState);
+        cpu->updateX64Flags();
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+        cpu->saveToFxState(op->inst);
+#endif
+#endif
+        op->dealloc(true);
         return;
     }
     kpanic("unhandled exception %d", cpu->exceptionSigNo);

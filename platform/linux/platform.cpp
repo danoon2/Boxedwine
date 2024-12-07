@@ -304,6 +304,18 @@ BString Platform::procStat() {
     return BReadFile(B("/proc/stat")).readAll();
 }
 
+U8* Platform::reserveNativeMemory64k(U32 count) {
+    U8* result = (U8*)mmap(NULL, 64 * 1024 * count, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE , -1, 0);
+    if (result == MAP_FAILED) {
+        kpanic("reserveNativeMemory64k: failed to commit memory : %s", strerror(errno));
+    }
+    return result;
+}
+
+void Platform::commitNativeMemoryPage(void* address) {
+    mprotect((void*)address, K_PAGE_SIZE, PROT_WRITE | PROT_READ);
+}
+
 U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     U32 proto = 0;
     if ((permission & PAGE_READ) || (permission & PAGE_EXEC)) {
