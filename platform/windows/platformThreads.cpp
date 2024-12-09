@@ -166,6 +166,10 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         ep->ContextRecord->Rip = cpu->handleFpuException(code);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_INEXACT_RESULT) {
+        ep->ContextRecord->Rip = cpu->handleFpuException(K_FPE_FLTRES);
+        syncToException(ep, true);
+        return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == STATUS_INTEGER_DIVIDE_BY_ZERO) {
         ep->ContextRecord->Rip = cpu->handleFpuException(K_FPE_INTDIV);
         syncToException(ep, true);
@@ -176,7 +180,17 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
+        bool inSignal = cpu->thread->inSignal;
         ep->ContextRecord->Rip = cpu->handleAccessException(op);
+        if (inSignal != (cpu->thread->inSignal != 0)) {
+            // :TODO: move this threads context read/write
+            // realdeal can trigger this
+            if (inSignal) {
+                memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
+            } else {
+                memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
+            }
+        }
         op->dealloc(true);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
