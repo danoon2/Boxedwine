@@ -223,15 +223,28 @@ void signalHandler() {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
 #if defined(BOXEDWINE_X64) && !defined(BOXEDWINE_USE_SSE_FOR_FPU)
-        cpu->loadFxState(op->inst);
+        cpu->loadFxState(op->inst);        
 #endif
+        bool saveFxState = true;
+        bool inSignal = cpu->thread->inSignal;
         cpu->returnHostAddress = cpu->handleAccessException(op);
+        if (inSignal != (cpu->thread->inSignal != 0)) {
+            // :TODO: move this threads context read/write
+            // realdeal can trigger this
+            if (inSignal) {
+                memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
+                saveFxState = false;
+            } else {
+                memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
+            }
+        }
         cpu->fillFlags();        
 #ifdef BOXEDWINE_X64
-        U32 o = offsetof(x64CPU, fpuState);
         cpu->updateX64Flags();
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
-        cpu->saveToFxState(op->inst);
+        if (saveFxState) {
+            cpu->saveToFxState(op->inst);
+        }
 #endif
 #endif
         op->dealloc(true);
