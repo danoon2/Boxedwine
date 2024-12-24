@@ -114,22 +114,20 @@ pipeline {
                             sh '''#!/bin/bash
                                 source ~/emsdk/emsdk_env.sh
                                 set -x
-                                rm boxedwine.wasm
+                                rm Build/Release/boxedwine.wasm
                                 rm -rf Deploy
-                                sh buildjs.sh
-                                if [ ! -f "boxedwine.wasm" ] 
+                                make
+                                if [ ! -f "Build/Release/boxedwine.wasm" ] 
                                 then
                                     echo "boxedwine.wasm DOES NOT exists."
                                     exit 999
                                 fi
                                 mkdir -p Deploy/Web
-                                cp boxedwine.html Deploy/Web
+                                cp Build/Release/boxedwine.html Deploy/Web
                                 cp boxedwine.css Deploy/Web
                                 cp boxedwine-shell.js Deploy/Web
-                                cp boxedwine.js Deploy/Web
-                                cp jszip.min.js Deploy/Web
-                                cp browserfs.boxedwine.js Deploy/Web
-                                cp boxedwine.wasm Deploy/Web
+                                cp Build/Release/boxedwine.js Deploy/Web
+                                cp Build/Release/boxedwine.wasm Deploy/Web
                                 cp /var/www/buildfiles/* Deploy/Web
                             ''' 
                         }
