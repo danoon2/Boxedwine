@@ -17,50 +17,25 @@ BOXEDWINE_SDL    SDL OpenGL context will be used
 To compile for Windows it is recommended to use Visual Studio 2022 Community Edition
 https://visualstudio.microsoft.com/vs/community/
 
-Javascript
+Emscripten
 
-
-buildjs.sh/boxedwine-shell.js/shellfs.html
-This build script integrates the browserfs library [https://github.com/jvilk/BrowserFS].
-It introduces a writeable file store for the HOME_DIRECTORY directory. 
-3 options for setting variable storageMode:
-- STORAGE_DROPBOX (requires configuration - see below)
-- STORAGE_LOCAL_STORAGE
-- STORAGE_MEMORY (default)
+see boxedwine-shell.js
+By default files are stored in memory. To save changes set:
+Config.storageMode = STORAGE_INDEXED_DB;
 
 settings:
  - specify an alternate root zip file system.
  	i.e. root=win32.zip. If not set it is assumed the root fs is boxedwine.zip.
- - specify a zip file to appear uncompressed mounted on d:
- 	i.e. app=chomp.zip would appear as /home/username/.wine/dosdevices/d:/chomp/. Use: zip -r9qdgds 10m chomp.zip ./chomp/*
+ - specify a zip file to appear uncompressed mounted as c:/files
+ 	i.e. app=chomp.zip would appear as /home/username/.wine/dosdevices/c:/files/. Use: zip -r9qdgds 10m chomp.zip ./chomp/*
  - change the program to execute via ?p=/home/username/chomp/CHOMP.EXE. surround in quotes if path includes spaces. Can call a .BAT file.
  - set the working directory via ?work=chomp. This simplifies p as it can then be relative to the working directory.
- - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system. Existing files are overridden.
- - load a ISO CD-ROM image via ?iso=cdrom.iso. The whole image file is loaded into memory and mounted as e:.
+ - set an overlay via ?overlay=more.zip;files.zip. Where each zip file contains additional files to add to the root file system.
  - set the initial emulated screen size via ?resolution=WxH. Ie resolution=640x480.
- - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/ and e:/)
+ - use c:/ as shorthand for /home/username/.wine/dosdevices/c:/ (also works for d:/)
 Some simplifications are possible:
 boxedwine.html?p=notepad - run notepad in the root fs
 boxedwine.html?root=win32&app=chomp&work=chomp&p=CHOMP.EXE - no need to add .zip for root and app zip file name
-boxedwine.html?app=chomp&p=CHOMP.EXE - if p does not start with a ‘/‘ and app is set, then the working directory is set to dir + app, i.e. d:/chomp
-
-Remote serving of files
-The default browserfs ZipFs takes as an argument the zipped contents of the file system and lazily unzips files upon request.
-Using the &ondemand parameter changes the behaviour to only request the individual zip file entries on demand.
-This can affect the loading of &root filesystem
-ie
-&ondemand=root&root=fullWine1.7.55-v8&overlay=wine1.7.55-v8-min
-- files in wine1.7.55-v8-min are downloaded on startup, any files not found are loaded on demand from fullWine1.7.55-v8.zip
-
-This approach has the advantage that the downloaded zipped filesystems are smaller, but it has the disadvantage that
-the network requests for on demand files are synchronous (may block ui thread and also potentially crash the emulator when retrieving large files) and the web server must support range requests.
-Provided in /project/linux/buildFiles is wine1.7.55-v8-min.zip which contains the minimum files necessary to load a basic wine application
-To generate your own minimal set of files follow the instructions in /tools/common/Main.java or alternatively:
-Add: -s FS_DEBUG=1 to build flags
-1. Set Config.recordLoadedFiles = true; in boxedwine-shell.js
-2. Execute program in boxedwine
-3. click the 'Save FS Image' button
-Step 3 will generate a zip file containing all the files loaded in step 2
 
 Dynamically sending files
 The *-payload parameters can be used to pass in a base64 encoded zip file. 
@@ -75,14 +50,6 @@ Other configuration options:
 AUTO_RUN - indicates if start button is shown or page auto-runs. default true
 ALLOW_PARAM_OVERRIDE_FROM_URL - indicates if url can be appended with params as above for dir, app, m & p.
 
-notes on file system modes:
-DROPBOX - OAuth dance provided via dropbox.js library [https://github.com/dropbox/dropbox-js] and oauth_receiver.html.
-Because of this boxedwine must be served from a web server when using this option (make sure you copy and comment back in dropbox.min.js script).
-Also must set DROPBOX_APP_KEY and RECEIVE_URL (absolute path) inside the html.
-Remember to also set the receive_url in your dropbox app console.
-LOCAL_STORAGE - There are limits depending on browser and OS.
-
-other dials/tweaks inside boxedwine-shell.js
 see var Module and configure as appropriate
 As an example to set linux ENV variables use the following format:
 ?env="LIBGL_NPOT:2;LIBGL_DEFAULT_WRAP:0;LIBGL_MIPMAP:3;"
@@ -90,6 +57,6 @@ As an example to set linux ENV variables use the following format:
 You can avoid using url params and hardcode the values.  Search for MANUAL:
 
 Drag and drop is supported. Set AUTO_RUN to false. Simply drag a directory into the page. A dialog will appear and list entries for all executable files found. This is very useful.
-Getting files into/out of the emulator is provided behind the SHOW_UPLOAD_DOWNLOAD flag. Jszip is used to download a directory as an archive.
+Getting files into/out of the emulator is provided behind the SHOW_UPLOAD_DOWNLOAD flag.
 By default uploading/downloading occurs inside the directory mapped to d:
 

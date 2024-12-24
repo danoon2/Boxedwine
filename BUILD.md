@@ -50,3 +50,10 @@ To build, in the terminal go to the source directory and in, project/linux, you 
 
 make
 
+## Emscripten
+
+Follow instructions for installing Emscripten on: https://emscripten.org/docs/getting_started/downloads.html
+
+To build, in the terminal go to the source directory and in, project/emscripten, you need to type
+
+make release
