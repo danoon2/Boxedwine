@@ -12,7 +12,7 @@ test: export EXTRA_CPP_FLAGS := -D__TEST
 test: export SHELL_FILE := shelltest.html
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread -DBOXEDWINE_NEED_ATOMIC_REF
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
-multiThreaded: export SHELL_FILE := shellfs.html
+multiThreaded: export SHELL_FILE := shell.html
 multiThreaded: export EXTRA_LDFLAGS := -s PROXY_TO_PTHREAD
 
 uname_s  :=$(shell uname -s)
