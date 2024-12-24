@@ -9,7 +9,6 @@
       <link rel="stylesheet" type="text/css" href="boxedwine.css">
   </head>
   <body>
-  <!-- if running inline add style="display: none" to id="loading" and id="inline" and remove same from id="run-inline" -->
   <div id="loading">
       <figure id="spinner" style="overflow: visible;">
          <div class="spinner" style="margin-top: .5em; margin-left: auto; margin-right: auto;"></div>
@@ -19,17 +18,12 @@
           <progress value="0" max="100" id="progress"></progress>
       </div>
   </div>
-    <div id="run-inline" style="display: none">
-        <button id="inline-runbtn" onclick="startInline()">inline</button>
-    </div>
-
-    <div id="inline">
+    <div>
         <div class="emscripten">
-            <button id="saveFSImage" style="display: none" onclick="saveFSImage()">Save FS Image</button>         
             <button id="startbtn" style="display: none" onclick="start()">Start</button>
             <button id="uploadbtn" style="display: none" onclick="document.getElementById('upload').click()" >Add File(s)</button>
             <input style="display: none" id="upload" name="upload" onclick="document.getElementById('uploadbtn').click();" onchange="startWithFiles(event.target.files);"  type="file" multiple />
-            <button id="downloadbtn" style="display: none" onclick="buildTree();">Get File(s)</button>
+            <button id="downloadbtn" style="display: none" onclick="buildGetFilesModal();">Get File(s)</button>
             <a style="display: none" id="modalLink" href="#openModal">Open</a>
             <a style="display: none" id="modalLinkExe" href="#openModalExe">Open</a>
 
@@ -40,7 +34,7 @@
           <input type="checkbox" id="showConsole" onclick="toggleConsole();" checked>Show console
           &nbsp;&nbsp;&nbsp;
           <input type="checkbox" id="resize">Resize canvas
-          <input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, document.getElementById('resize').checked)">
+          <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, document.getElementById('resize').checked)">
         </div>
         <div id="dropzone">
             <div class="emscripten_border">
@@ -51,7 +45,7 @@
             <textarea class="emscripten" id="output" rows="8" style="display: none"></textarea>
         </div>
         <div id="openModal" class="modalDialog">
-            <div> <a href="#close" title="Close" class="close" onclick="done();">X</a>
+            <div> <a href="#close" title="Close" class="close" onclick="closeGetFilesModal();">X</a>
                 <div>
                     <h3>Get File(s)</h3>
                     <input id="selectedItem" type="text" size="50" readonly>
@@ -75,35 +69,7 @@
         </div>
         <hr>
     </div>
-        <!-- script src="dropbox.min.js"></script -->
-        <script src="browserfs.boxedwine.js"></script>
-        <script src="jszip.min.js"></script>
         <script src="boxedwine-shell.js"></script>
-        <script>
-        function startInline() {
-            document.getElementById('run-inline').style.display = 'none';
-            document.getElementById('loading').style.display = '';
-            Config.isRunningInline = true;
-            //Config.showUploadDownload = true;
-            //Config.locateRootBaseUrl = "/boxedwine/fs/";
-            //Config.locateAppBaseUrl = "/boxedwine/apps/";
-            //Config.locateOverlayBaseUrl = "/boxedwine/apps/";
-            Config.urlParams = "p=notepad";
-            //Config.urlParams = addDefaultOnDemand("p=notepad");
-            var script = document.createElement('script');
-            script.src = "boxedwine.js";
-            document.body.appendChild(script);
-        }
-        function addDefaultOnDemand(params) {
-        	if(! params.includes("root=") &&  ! params.includes("ondemand=")) {
-        		if(params.length >0) {
-        			params = params + "&";
-        		}
-        		params = params + "ondemand=root&root=fullWine1.7.55-v8&inline-default-ondemand-root-overlay=wine1.7.55-v8-min";
-        	}
-        	return params;
-        }
-        </script>
 {{{ SCRIPT }}}
   </body>
 </html>
