@@ -15,7 +15,7 @@
         Config.locateAppBaseUrl = "";
         Config.locateOverlayBaseUrl = "";
         Config.urlParams = "";
-        Config.storageMode = STORAGE_MEMORY;
+        Config.storageMode = STORAGE_INDEXED_DB;
         Config.persist_d_drive = true;
         Config.showUploadDownload = false;
         Config.WorkingDir = "";
