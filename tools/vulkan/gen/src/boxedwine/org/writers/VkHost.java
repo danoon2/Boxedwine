@@ -322,8 +322,8 @@ public class VkHost {
         outHeader.append("    U32 callbackAddress;\n");
         outHeader.append("    U32 userData;\n");
         outHeader.append("};\n");
-        outHeader.append("VkBool32 boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData);\n");
-        outHeader.append("VkBool32 boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);\n");
+        outHeader.append("VkBool32 VKAPI_PTR boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData);\n");
+        outHeader.append("VkBool32 VKAPI_PTR boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);\n");
         for (VkType t : data.orderedTypes) {
             if (t.isNeedMarshalIn() || t.needMarshalOut) {
                 VkHostMarshalType.write(data, t, outMarshal);

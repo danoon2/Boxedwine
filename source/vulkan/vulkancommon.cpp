@@ -323,7 +323,7 @@ static void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
     delete[] pProperties;
 }
 
-VkBool32 boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData) {
+VkBool32 VKAPI_PTR boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData) {
     if (pMessage) {
         klog(pMessage);
     } else {
@@ -332,7 +332,7 @@ VkBool32 boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugRepo
     return VK_TRUE;
 }
 
-VkBool32 boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+VkBool32 VKAPI_PTR boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
     if (pCallbackData && pCallbackData->pMessage) {
         klog(pCallbackData->pMessage);
     } else {

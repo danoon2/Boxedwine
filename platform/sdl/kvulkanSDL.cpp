@@ -23,7 +23,7 @@ void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance
 	screen->setScreenSize(wnd->width(), wnd->height());
 	screen->showWindow(true);
 	if (SDL_Vulkan_CreateSurface(screen->window, (VkInstance)instance, &result)) {
-		return result;
+		return (void*)result;
 	}
 	return nullptr;
 }
