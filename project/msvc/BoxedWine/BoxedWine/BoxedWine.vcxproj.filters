@@ -661,6 +661,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\kvulkanSDL.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1460,6 +1463,12 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h">
       <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kvulkan.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h">
+      <Filter>platform\sdl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -663,9 +663,11 @@ void KNativeScreenSDL::destroyMainWindow() {
 
     if (renderer) {
         SDL_DestroyRenderer(renderer);
+        renderer = nullptr;
     }
     if (window) {
         SDL_DestroyWindow(window);
+        window = nullptr;
     }
 }
 
@@ -676,7 +678,7 @@ void KNativeScreenSDL::recreateMainWindow() {
 
         int cx = input->width * input->scaleX / 100;
         int cy = input->height * input->scaleY / 100;
-        int flags = SDL_WINDOW_HIDDEN;
+        int flags = SDL_WINDOW_HIDDEN | additionalSDLWindowFlags;
         
         SDL_DisplayMode dm;
 

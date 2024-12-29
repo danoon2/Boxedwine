@@ -381,7 +381,7 @@ bool StartUpArgs::apply() {
         }
     }
 
-    //envValues.push_back(B("WINEDEBUG=+d3d"));
+    //envValues.push_back(B("WINEDEBUG=+vulkan"));
 
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu

@@ -1,7 +1,7 @@
 package boxedwine.org.marshal;
 
-import boxedwine.org.VkFunction;
-import boxedwine.org.VkParam;
+import boxedwine.org.data.VkFunction;
+import boxedwine.org.data.VkParam;
 
 /**
  * Created by James on 8/22/2021.
@@ -20,7 +20,7 @@ public class VkHostMarshalInStructure extends VkHostMarshal {
             out.append(param.paramType.name);
             out.append(" local_");
             out.append(param.name);
-            out.append("(cpu->memory, ");
+            out.append("(pBoxedInfo, cpu->memory, ");
             out.append(param.paramArg);
             out.append(");\n");
             out.append("    ");
@@ -30,7 +30,7 @@ public class VkHostMarshalInStructure extends VkHostMarshal {
             out.append(" = &local_");
             out.append(param.name);
             out.append(".s;\n");
-            param.paramType.needMarshalIn = true;
+            param.paramType.setNeedMarshalIn(true);
         }
     }
 

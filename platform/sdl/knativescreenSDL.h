@@ -42,6 +42,7 @@ public:
 };
 
 typedef std::shared_ptr<WndCache> WndCachePtr;
+class KVulkdanSDLImpl;
 
 class KNativeScreenSDL : public KNativeScreen {
 public:
@@ -91,8 +92,10 @@ public:
     void buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) override;
 
     KNativeInputSDLPtr input;
-
+    
 private:
+    friend class KVulkdanSDLImpl;
+
     bool visible = false;
     bool showOnDraw = true;
     bool presented = false;
@@ -106,6 +109,7 @@ private:
     U32 lastUpdateTime = 0;
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
+    U32 additionalSDLWindowFlags = SDL_WINDOW_VULKAN;
 
     void recreateMainWindow();
     void destroyMainWindow();

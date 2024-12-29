@@ -273,9 +273,6 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
                 }
             }
             data->currentOp = data->currentBlock->getOp(address);
-            if (!data->currentOp) {
-                int ii = 0;
-            }
         }
         if (hostAddress) {
             data->jumpTo(data->ip);

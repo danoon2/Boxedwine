@@ -1,13 +1,16 @@
 package boxedwine.org.marshal;
 
-import boxedwine.org.VkFunction;
-import boxedwine.org.VkParam;
+import boxedwine.org.data.VkFunction;
+import boxedwine.org.data.VkParam;
 
 /**
  * Created by James on 8/22/2021.
  */
 public class VkHostMarshalInHandleArray extends VkHostMarshal {
     public void before(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+        if (param.stride != null) {
+            throw new Exception();
+        }
         out.append("    ");
         out.append(param.paramType.name);
         out.append("* ");

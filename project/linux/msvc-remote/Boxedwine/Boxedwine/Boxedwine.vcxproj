@@ -516,6 +516,7 @@
     <ClCompile Include="..\..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\threadutils.cpp" />
     <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host_marshal.cpp" />
     <ClCompile Include="..\..\..\..\..\source\vulkan\vulkancommon.cpp" />
     <ClCompile Include="..\..\..\..\..\source\x11\displaydata.cpp" />
     <ClCompile Include="..\..\..\..\..\source\x11\x11.cpp" />
@@ -1094,6 +1095,10 @@
     <ClInclude Include="..\..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\..\source\util\threadutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\vectorutils.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vkdef.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vkfuncs.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host_marshal.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\displaydata.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\x11.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\xcolor.h" />
@@ -1241,7 +1246,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>

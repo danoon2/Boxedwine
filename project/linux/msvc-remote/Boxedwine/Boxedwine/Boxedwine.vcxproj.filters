@@ -692,6 +692,9 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host_marshal.cpp">
+      <Filter>source\vulkan</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -2121,6 +2124,18 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h">
       <Filter>source\emulation\cpu\x64</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host.h">
+      <Filter>source\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host_marshal.h">
+      <Filter>source\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vkdef.h">
+      <Filter>source\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vkfuncs.h">
+      <Filter>source\vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,7 +1,7 @@
 package boxedwine.org.marshal;
 
-import boxedwine.org.VkFunction;
-import boxedwine.org.VkParam;
+import boxedwine.org.data.VkFunction;
+import boxedwine.org.data.VkParam;
 
 public class vkHostMarshalNotImplemented extends VkHostMarshal {
     public void before(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
@@ -10,11 +10,18 @@ public class vkHostMarshalNotImplemented extends VkHostMarshal {
         if (param.isPointer) {
             out.append("*");
         }
+        if (param.isDoublePointer) {
+            out.append("*");
+        }
         out.append(" ");
         out.append(param.name);
         out.append(";\n");
 
-        out.append("    kpanic(\"vkUpdateDescriptorSetWithTemplate not implemented\");\n");
+        out.append("    kpanic(\""+fn.name+" not implemented\");\n");
+        System.out.println(fn.name + " incomplete");
+        if (fn.name.equals("vkMapMemory2KHR")) {
+            int ii=0;
+        }
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {

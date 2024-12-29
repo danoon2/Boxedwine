@@ -4735,6 +4735,15 @@ public:
     }
 };
 
+class DecodeNopRm : public DecodeFunc {
+public:
+    void decode(DecodeData* data, DecodedOp* op) const override {
+        U8 rm = data->fetch8();
+
+        func(data, op, rm, Nop, Nop);
+    }
+};
+
 class DecodeSSE : public Decode {
 public:
     DecodeSSE(Instruction reg1, Instruction mem1, Instruction reg2, Instruction mem2) {
@@ -5787,6 +5796,7 @@ DecodeRMr sseShufp(ShufpsXmmXmm, ShufpsXmmE128, 8);
 DecodeRMr sseUnpckhp(UnpckhpsXmmXmm, UnpckhpsXmmE128);
 DecodeRMr sseUnpcklp(UnpcklpsXmmXmm, UnpcklpsXmmE128);
 Decode318 seePrefetch;
+DecodeNopRm nopRm;
 DecodeSSE2 sseCmp(CmppsXmmXmm, CmppsXmmE128, CmpsdXmmXmm, CmpsdXmmE64, CmpssXmmXmm, CmpssXmmE32, 8);
 DecodeRMr sseComis(ComissXmmXmm, ComissXmmE32);
 DecodeRMr sseUcomis(UcomissXmmXmm, UcomissXmmE32);
@@ -5946,7 +5956,7 @@ const Decode* const decoder[] = {
     nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
     // 0x310
     &sseMov0x310, &sseMov0x311, &sseMov0x312, &sseMov0x313, &sseUnpcklp, &sseUnpckhp, &sseMov0x316, &sseMov0x317,
-    &seePrefetch, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &decodeHintNop,
+    &seePrefetch, &nopRm, &nopRm, &nopRm, &nopRm, &nopRm, &nopRm, &decodeHintNop,
     // 0x320
     &decodeMovRdCrx, nullptr, &decodeMovCrxRd, nullptr, nullptr, nullptr, nullptr, nullptr,
     &sseMovapsXE, &sseMovapsEX, &sseCvt2a, &sseMovnt, &sseCvt2c, &sseCvt2d, &sseUcomis, &sseComis,

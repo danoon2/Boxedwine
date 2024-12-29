@@ -17,12 +17,14 @@
  */
 #include "boxedwine.h"
 #ifdef BOXEDWINE_VULKAN
+#include "knativesystem.h"
+#include "../x11/x11.h"
 #include "vk_host.h"
 #include "vkdef.h"
+#include "kvulkan.h"
 #include <SDL_vulkan.h>
-#include "knativewindow.h"
 
-static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = NULL;
+static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = nullptr;
 
 static U32 freePtrMaps;
 static U32 vulkanPtrCount;
@@ -68,17 +70,18 @@ U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
         info->instance = (VkInstance)value;
 
 #ifdef _DEBUG
+        KNativeSystem::getScreen()->showWindow(true);
         PFN_vkCreateDebugUtilsMessengerEXT debugFunc = (PFN_vkCreateDebugUtilsMessengerEXT)pvkGetInstanceProcAddr((VkInstance)value, "vkCreateDebugUtilsMessengerEXT");
-        VkDebugUtilsMessengerCreateInfoEXT createInfo = { 0 };
+        VkDebugUtilsMessengerCreateInfoEXT createInfo;
+        memset(&createInfo, 0, sizeof(VkDebugUtilsMessengerCreateInfoEXT));
         createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
         createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+        createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
         createInfo.pfnUserCallback = debugCallback;
         createInfo.pUserData = nullptr;
 
-        VkDebugUtilsMessengerEXT debugMessenger;
         if (debugFunc) {
-            debugFunc(info->instance, &createInfo, nullptr, &debugMessenger);
+            debugFunc(info->instance, &createInfo, nullptr, &info->debugMessenger);
         } else {
             klog("Vulkan debug function not found");
         }
@@ -102,7 +105,7 @@ static void hasProcAddress(CPU* cpu) {
         BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, handle);
         BString name = cpu->memory->readStringW(cpu->peek32(2));
 
-        if (pBoxedInfo->functionAddressByName.count(name) || name == "vkGetDeviceProcAddr" || name == "vkCreateWin32SurfaceKHR") {
+        if (pBoxedInfo->functionAddressByName.count(name) || name == "vkGetDeviceProcAddr" || name == "vkCreateXlibSurfaceKHR") {
             EAX = 1;
         }
         else {
@@ -188,27 +191,174 @@ void unmapVkMemory(VkDeviceMemory memory) {
     m->mappedLen = 0;
 }
 
-static void BOXED_vkCreateWin32SurfaceKHR(CPU* cpu) {
+#define ARG1 cpu->peek32(1)
+#define ARG2 cpu->peek32(2)
+#define ARG3 cpu->peek32(3)
+#define ARG4 cpu->peek32(4)
+
+/*
+typedef struct VkXlibSurfaceCreateInfoKHR {
+    VkStructureType                sType;
+    const void* pNext;
+    VkFlags    flags;
+    Display* dpy;
+    Window                         window;
+} VkXlibSurfaceCreateInfoKHR;
+*/
+
+// VkResult vkCreateXlibSurfaceKHR( VkInstance instance, const VkXlibSurfaceCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSurfaceKHR* pSurface  ) const
+static void BOXED_vkCreateXlibSurfaceKHR(CPU* cpu) {
     //VkInstance instance,
     //const VkWin32SurfaceCreateInfoKHR* create_info,
     //const VkAllocationCallbacks* allocator, 
     // VkSurfaceKHR* surface
 
-    KNativeWindowPtr wnd = KNativeWindow::getNativeWindow();
+    KVulkanPtr vulkanWnd = KNativeSystem::getVulkan();
 
-    if (!wnd->isVulkan) {
-        wnd->needsVulkan = true;
-        wnd->updateDisplay();
-    }
     void* instance = getVulkanPtr(cpu->memory, cpu->peek32(1));
-
-    void* surface = wnd->createVulkanSurface(instance);
+    // window is the 5th 32-bit variable in VkXlibSurfaceCreateInfoKHR
+    U32 windowId = cpu->memory->readd(ARG2 + 4 * sizeof(U32));
+    XWindowPtr xWindow = XServer::getServer()->getWindow(windowId);
+    void* surface = vulkanWnd->createVulkanSurface(xWindow, instance);
     if (!surface) {
         EAX = VK_ERROR_OUT_OF_HOST_MEMORY;
     } else {
         EAX = VK_SUCCESS;
         // VK_DEFINE_NON_DISPATCHABLE_HANDLE (always 64 bit)
         cpu->memory->writeq(cpu->peek32(4), (U64)surface);
+    }
+}
+
+#include "vk_host_marshal.h"
+
+void initVulkan();
+static void vk_CreateInstance(CPU* cpu) {
+    initVulkan();
+    MarshalVkInstanceCreateInfo local_pCreateInfo(nullptr, cpu->memory, ARG1);
+    VkInstanceCreateInfo* pCreateInfo = &local_pCreateInfo.s;
+    static bool shown; if (!shown && ARG2) { klog("vkCreateInstance:VkAllocationCallbacks not implemented"); shown = true; }
+    VkAllocationCallbacks* pAllocator = NULL;
+    VkInstance pInstance;
+    bool containsDebug = false;
+    for (U32 i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
+        if (strstr(pCreateInfo->ppEnabledExtensionNames[i], "VK_KHR_xlib_surface")) {
+            delete[] pCreateInfo->ppEnabledExtensionNames[i];
+            const char* platformSurface = "VK_KHR_win32_surface";
+            char** p = new char* [pCreateInfo->enabledExtensionCount];
+            memcpy(p, pCreateInfo->ppEnabledExtensionNames, sizeof(char*) * (pCreateInfo->enabledExtensionCount));
+            p[i] = new char[strlen(platformSurface) + 1];
+            strcpy(p[i], platformSurface);
+            delete[] pCreateInfo->ppEnabledExtensionNames;
+            pCreateInfo->ppEnabledExtensionNames = p;
+        }
+    }
+#ifdef _DEBUG
+    if (!containsDebug) {
+        char** p = new char*[pCreateInfo->enabledExtensionCount + 1];
+        memcpy(p, pCreateInfo->ppEnabledExtensionNames, sizeof(char*) * (pCreateInfo->enabledExtensionCount));
+        p[pCreateInfo->enabledExtensionCount] = new char[strlen(VK_EXT_DEBUG_UTILS_EXTENSION_NAME) + 1];
+        strcpy(p[pCreateInfo->enabledExtensionCount], VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        delete[] pCreateInfo->ppEnabledExtensionNames;
+        pCreateInfo->ppEnabledExtensionNames = p;
+        pCreateInfo->enabledExtensionCount++;
+    }
+    pCreateInfo->enabledLayerCount = 1;
+    char** names = new char*[1];
+    names[0] = (char*)"VK_LAYER_KHRONOS_validation";
+    pCreateInfo->ppEnabledLayerNames = names;
+#endif
+    EAX = pvkCreateInstance(pCreateInfo, pAllocator, &pInstance);
+    if (EAX == VK_SUCCESS) {
+        cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, (U64)pInstance, NULL));
+    }
+}
+
+static void vk_DestroyInstance(CPU* cpu) {
+    VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
+    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
+    static bool shown; if (!shown && ARG2) { klog("vkDestroyInstance:VkAllocationCallbacks not implemented"); shown = true; }
+    VkAllocationCallbacks* pAllocator = NULL;
+
+#ifdef _DEBUG
+    PFN_vkDestroyDebugUtilsMessengerEXT debugFunc = (PFN_vkDestroyDebugUtilsMessengerEXT)pvkGetInstanceProcAddr(pBoxedInfo->instance, "vkDestroyDebugUtilsMessengerEXT");
+
+    if (debugFunc) {
+        debugFunc(pBoxedInfo->instance, pBoxedInfo->debugMessenger, nullptr);
+    } else {
+        klog("Vulkan debug function not found");
+    }
+#endif
+
+    pBoxedInfo->pvkDestroyInstance(instance, pAllocator);
+    freeVulkanPtr(cpu->memory, ARG1);
+}
+
+static void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
+    initVulkan();
+    U32 len = 0;
+    char* pLayerName = nullptr;
+    if (ARG1) {
+        len = cpu->memory->strlen(ARG1);
+        pLayerName = new char[len];
+        cpu->memory->memcpy(pLayerName, ARG1, (U32)len * sizeof(char));
+    }
+    uint32_t tmp_pPropertyCount = (uint32_t)cpu->memory->readd(ARG2);
+    uint32_t* pPropertyCount = &tmp_pPropertyCount;
+    VkExtensionProperties* pProperties = nullptr;
+    if (ARG3) {
+        pProperties = new VkExtensionProperties[*pPropertyCount];
+        cpu->memory->memcpy(pProperties, ARG3, (U32)*pPropertyCount * sizeof(VkExtensionProperties));
+    }
+    EAX = pvkEnumerateInstanceExtensionProperties(pLayerName, pPropertyCount, pProperties);
+    delete[] pLayerName;
+    cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
+    if (pProperties) {
+        for (U32 i = 0; i < tmp_pPropertyCount; i++) {
+            if (!strcmp(pProperties[i].extensionName, "VK_MVK_macos_surface") || !strcmp(pProperties[i].extensionName, "VK_EXT_metal_surface") || !strcmp(pProperties[i].extensionName, "VK_KHR_win32_surface")) {
+                strcpy(pProperties[i].extensionName, "VK_KHR_xlib_surface");
+            }
+        }
+        cpu->memory->memcpy(ARG3, pProperties, (U32)*pPropertyCount * sizeof(VkExtensionProperties));
+    }
+    delete[] pProperties;
+}
+
+VkBool32 boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData) {
+    if (pMessage) {
+        klog(pMessage);
+    } else {
+        klog("vkDebugReportCallbackEXT %d", messageCode);
+    }
+    return VK_TRUE;
+}
+
+VkBool32 boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData) {
+    if (pCallbackData && pCallbackData->pMessage) {
+        klog(pCallbackData->pMessage);
+    } else {
+        klog("vkDebugUtilsMessengerCallbackEXT");
+    }
+    return VK_TRUE;
+}
+
+#include "../vulkan/vk_host.h"
+
+static bool vulkanInitialized;
+
+void initVulkan() {
+    if (!vulkanInitialized) {
+        vulkanInitialized = true;
+
+        if (SDL_Vulkan_LoadLibrary(NULL)) {
+            kpanic("Failed to load vulkan: %d\n", SDL_GetError());
+        }
+        pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
+#undef VKFUNC_INSTANCE
+#define VKFUNC_INSTANCE(f)
+#undef VKFUNC
+#define VKFUNC(f) pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vk"#f); if (!pvk##f) {kwarn("Failed to load vk"#f);}
+#include "../vulkan/vkfuncs.h"
+#undef LOAD_FUNCPTR
     }
 }
 
@@ -224,9 +374,12 @@ void vulkan_init() {
 #define VKFUNC_INSTANCE(name) int9ACallback[name] = vk_##name;
 #include "vkfuncs.h"      
 
-    int9ACallback[CreateWin32SurfaceKHR] = BOXED_vkCreateWin32SurfaceKHR;
+    int9ACallback[CreateXlibSurfaceKHR] = BOXED_vkCreateXlibSurfaceKHR;
     int9ACallback[GetDeviceProcAddr] = hasProcAddress;
     int9ACallback[GetInstanceProcAddr] = hasProcAddress;
+    int9ACallback[CreateInstance] = vk_CreateInstance;
+    int9ACallback[DestroyInstance] = vk_DestroyInstance;
+    int9ACallback[EnumerateInstanceExtensionProperties] = vk_EnumerateInstanceExtensionProperties;
 }
 
 #endif
