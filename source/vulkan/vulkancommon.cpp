@@ -103,9 +103,11 @@ static void hasProcAddress(CPU* cpu) {
         EAX = 1;
     } else {
         BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, handle);
-        BString name = cpu->memory->readStringW(cpu->peek32(2));
+        BString name = cpu->memory->readString(cpu->peek32(2));
 
-        if (pBoxedInfo->functionAddressByName.count(name) || name == "vkGetDeviceProcAddr" || name == "vkCreateXlibSurfaceKHR") {
+        if (name == "vkMapMemory2KHR" || name == "vkUnmapMemory2") {
+            EAX = 0;
+        } else if (pBoxedInfo->functionAddressByName.count(name) || name == "vkGetDeviceProcAddr" || name == "vkCreateXlibSurfaceKHR") {
             EAX = 1;
         }
         else {
@@ -353,6 +355,7 @@ void initVulkan() {
             kpanic("Failed to load vulkan: %d\n", SDL_GetError());
         }
         pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
+        pvkCreateInstance = (PFN_vkCreateInstance)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
 #undef VKFUNC_INSTANCE
 #define VKFUNC_INSTANCE(f)
 #undef VKFUNC

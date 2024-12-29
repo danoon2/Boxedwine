@@ -30,6 +30,12 @@
 #define CALL_2_R64(index, arg1, arg2) __asm__("push %2\n\tpush %1\n\tpush %0\n\tint $0x9a\n\taddl $12, %%esp"::"i"(index), "g"(arg1), "g"(arg2):"%eax", "%edx");
 #define CALL_4_R64(index, arg1, arg2, arg3, arg4) __asm__("push %4\n\tpush %3\n\tpush %2\n\tpush %1\n\tpush %0\n\tint $0x9a\n\taddl $20, %%esp"::"i"(index), "g"(arg1), "g"(arg2), "g"(arg3), "g"(arg4):"%eax", "%edx");
 
+U32 hasDeviceProc(U32 device, U32 pName) {
+    CALL_2_R32(GetDeviceProcAddr, device, pName);
+}
+U32 hasInstanceProc(U32 instance, U32 pName) {
+    CALL_2_R32(GetInstanceProcAddr, instance, pName);
+}
 U32 /* VkResult */ vkCreateInstance(U32/* const VkInstanceCreateInfo* */ pCreateInfo, U32/* const VkAllocationCallbacks* */ pAllocator, U32/* VkInstance* */ pInstance) {
     CALL_3_R32(CreateInstance, pCreateInfo, pAllocator, pInstance);
 }
@@ -40,13 +46,20 @@ U32 /* VkResult */ vkEnumeratePhysicalDevices(U32/* VkInstance */ instance, U32/
     CALL_3_R32(EnumeratePhysicalDevices, instance, pPhysicalDeviceCount, pPhysicalDevices);
 }
 U32 /* PFN_vkVoidFunction */ vkGetDeviceProcAddr(U32/* VkDevice */ device, U32/* const char* */ pName) {
-    U32 result = (U32)dlsym((void*)0,(const char*) pName);
-    if (!result) {printf("vkGetDeviceProcAddr : Failed to load function %s\n", (const char*)pName);}
+    U32 result = hasDeviceProc(device, pName);
+    if (result) {
+        result = (U32)dlsym((void*)0, (const char*)pName);
+        if (!result) {printf("vkGetDeviceProcAddr : Failed to load function %s\n", (const char*)pName);}
+    }
     return result;
+    CALL_2_R32(GetDeviceProcAddr, device, pName);
 }
 U32 /* PFN_vkVoidFunction */ vkGetInstanceProcAddr(U32/* VkInstance */ instance, U32/* const char* */ pName) {
-    U32 result = (U32)dlsym((void*)0,(const char*) pName);
-    if (!result) {printf("vkGetInstanceProcAddr : Failed to load function %s\n", (const char*)pName);}
+    U32 result = hasInstanceProc(instance, pName);
+    if (result) {
+        result = (U32)dlsym((void*)0, (const char*)pName);
+        if (!result) {printf("vkGetInstanceProcAddr : Failed to load function %s\n", (const char*)pName);}
+    }
     return result;
 }
 void vkGetPhysicalDeviceProperties(U32/* VkPhysicalDevice */ physicalDevice, U32/* VkPhysicalDeviceProperties* */ pProperties) {

@@ -145,7 +145,7 @@ public class VkHost {
             stackPos++;
         }
         stackPos = 1;
-        if (fn.name.equals("vkCmdSetFragmentShadingRateEnumNV")) {
+        if (fn.name.equals("vkEnumerateDeviceExtensionProperties")) {
             int ii=0;
         }
         for (VkParam param : fn.params) {

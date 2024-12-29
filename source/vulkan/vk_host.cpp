@@ -173,7 +173,7 @@ void vk_EnumerateInstanceLayerProperties(CPU* cpu) {
     cpu->memory->writed(ARG1, (U32)tmp_pPropertyCount);
     if (ARG2) {
         for (U32 i=0;i<*pPropertyCount;i++) {
-            MarshalVkLayerProperties::write(nullptr, cpu->memory, ARG2 + i * 16, &pProperties[i]);
+            MarshalVkLayerProperties::write(nullptr, cpu->memory, ARG2 + i * 520, &pProperties[i]);
         }
         delete[] pProperties;
     }
@@ -198,7 +198,7 @@ void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
         for (U32 i=0;i<*pPropertyCount;i++) {
-            MarshalVkExtensionProperties::write(nullptr, cpu->memory, ARG3 + i * 8, &pProperties[i]);
+            MarshalVkExtensionProperties::write(nullptr, cpu->memory, ARG3 + i * 260, &pProperties[i]);
         }
         delete[] pProperties;
     }
@@ -217,7 +217,7 @@ void vk_EnumerateDeviceLayerProperties(CPU* cpu) {
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
     if (ARG3) {
         for (U32 i=0;i<*pPropertyCount;i++) {
-            MarshalVkLayerProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 16, &pProperties[i]);
+            MarshalVkLayerProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 520, &pProperties[i]);
         }
         delete[] pProperties;
     }
@@ -243,7 +243,7 @@ void vk_EnumerateDeviceExtensionProperties(CPU* cpu) {
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
     if (ARG4) {
         for (U32 i=0;i<*pPropertyCount;i++) {
-            MarshalVkExtensionProperties::write(pBoxedInfo, cpu->memory, ARG4 + i * 8, &pProperties[i]);
+            MarshalVkExtensionProperties::write(pBoxedInfo, cpu->memory, ARG4 + i * 260, &pProperties[i]);
         }
         delete[] pProperties;
     }
@@ -1583,7 +1583,7 @@ void vk_CmdBlitImage(CPU* cpu) {
     if (ARG7) {
         pRegions = new VkImageBlit[regionCount];
         for (U32 i=0;i<regionCount;i++) {
-            MarshalVkImageBlit::read(pBoxedInfo, cpu->memory, ARG7 + i * 56, &pRegions[i]);
+            MarshalVkImageBlit::read(pBoxedInfo, cpu->memory, ARG7 + i * 80, &pRegions[i]);
         }
     }
     VkFilter filter = (VkFilter)ARG8;
@@ -2697,7 +2697,7 @@ void vk_EnumeratePhysicalDeviceGroups(CPU* cpu) {
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceGroupCount);
     if (ARG3) {
         for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
-            MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pPhysicalDeviceGroupProperties[i]);
+            MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 144, &pPhysicalDeviceGroupProperties[i]);
         }
         delete[] pPhysicalDeviceGroupProperties;
     }
@@ -2716,7 +2716,7 @@ void vk_EnumeratePhysicalDeviceGroupsKHR(CPU* cpu) {
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceGroupCount);
     if (ARG3) {
         for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
-            MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pPhysicalDeviceGroupProperties[i]);
+            MarshalVkPhysicalDeviceGroupProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 144, &pPhysicalDeviceGroupProperties[i]);
         }
         delete[] pPhysicalDeviceGroupProperties;
     }
@@ -4560,13 +4560,13 @@ void vk_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(CPU* cpu) 
     cpu->memory->writed(ARG3, (U32)tmp_pCounterCount);
     if (ARG4) {
         for (U32 i=0;i<*pCounterCount;i++) {
-            MarshalVkPerformanceCounterKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 24, &pCounters[i]);
+            MarshalVkPerformanceCounterKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 36, &pCounters[i]);
         }
         delete[] pCounters;
     }
     if (ARG5) {
         for (U32 i=0;i<*pCounterCount;i++) {
-            MarshalVkPerformanceCounterDescriptionKHR::write(pBoxedInfo, cpu->memory, ARG5 + i * 16, &pCounterDescriptions[i]);
+            MarshalVkPerformanceCounterDescriptionKHR::write(pBoxedInfo, cpu->memory, ARG5 + i * 780, &pCounterDescriptions[i]);
         }
         delete[] pCounterDescriptions;
     }
@@ -4770,7 +4770,7 @@ void vk_GetPipelineExecutablePropertiesKHR(CPU* cpu) {
     cpu->memory->writed(ARG3, (U32)tmp_pExecutableCount);
     if (ARG4) {
         for (U32 i=0;i<*pExecutableCount;i++) {
-            MarshalVkPipelineExecutablePropertiesKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 20, &pProperties[i]);
+            MarshalVkPipelineExecutablePropertiesKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 528, &pProperties[i]);
         }
         delete[] pProperties;
     }
@@ -4791,7 +4791,7 @@ void vk_GetPipelineExecutableStatisticsKHR(CPU* cpu) {
     cpu->memory->writed(ARG3, (U32)tmp_pStatisticCount);
     if (ARG4) {
         for (U32 i=0;i<*pStatisticCount;i++) {
-            MarshalVkPipelineExecutableStatisticKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 24, &pStatistics[i]);
+            MarshalVkPipelineExecutableStatisticKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 532, &pStatistics[i]);
         }
         delete[] pStatistics;
     }
@@ -4812,7 +4812,7 @@ void vk_GetPipelineExecutableInternalRepresentationsKHR(CPU* cpu) {
     cpu->memory->writed(ARG3, (U32)tmp_pInternalRepresentationCount);
     if (ARG4) {
         for (U32 i=0;i<*pInternalRepresentationCount;i++) {
-            MarshalVkPipelineExecutableInternalRepresentationKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 24, &pInternalRepresentations[i]);
+            MarshalVkPipelineExecutableInternalRepresentationKHR::write(pBoxedInfo, cpu->memory, ARG4 + i * 532, &pInternalRepresentations[i]);
         }
         delete[] pInternalRepresentations;
     }
@@ -4852,7 +4852,7 @@ void vk_GetPhysicalDeviceToolProperties(CPU* cpu) {
     cpu->memory->writed(ARG2, (U32)tmp_pToolCount);
     if (ARG3) {
         for (U32 i=0;i<*pToolCount;i++) {
-            MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pToolProperties[i]);
+            MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 1036, &pToolProperties[i]);
         }
         delete[] pToolProperties;
     }
@@ -4871,7 +4871,7 @@ void vk_GetPhysicalDeviceToolPropertiesEXT(CPU* cpu) {
     cpu->memory->writed(ARG2, (U32)tmp_pToolCount);
     if (ARG3) {
         for (U32 i=0;i<*pToolCount;i++) {
-            MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 20, &pToolProperties[i]);
+            MarshalVkPhysicalDeviceToolProperties::write(pBoxedInfo, cpu->memory, ARG3 + i * 1036, &pToolProperties[i]);
         }
         delete[] pToolProperties;
     }

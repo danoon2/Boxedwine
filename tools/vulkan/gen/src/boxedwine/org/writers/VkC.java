@@ -54,6 +54,8 @@ public class VkC {
         }
         out.append("\n");
         //#define CALL_0_R(index) __asm__("push %0\n\tint $0x99\n\taddl $4, %%esp"::"i"(index):"%eax");
+        out.append("U32 hasDeviceProc(U32 device, U32 pName) {\n    CALL_2_R32(GetDeviceProcAddr, device, pName);\n}\n");
+        out.append("U32 hasInstanceProc(U32 instance, U32 pName) {\n    CALL_2_R32(GetInstanceProcAddr, instance, pName);\n}\n");
         for (VkFunction fn : data.functions ) {
             out.append(fn.returnType.getEmulatedType());
             if (fn.returnType.sizeof != 0) {
@@ -73,9 +75,19 @@ public class VkC {
                 out.append(param.name);
             }
             out.append(") {\n");
-            if (fn.name.equals("vkGetDeviceProcAddr") || fn.name.equals("vkGetInstanceProcAddr")) {
-                out.append("    U32 result = (U32)dlsym((void*)0,(const char*) pName);\n");
-                out.append("    if (!result) {printf(\""+ fn.name + " : Failed to load function %s\\n\", (const char*)pName);}\n");
+            if (fn.name.equals("vkGetDeviceProcAddr")) {
+                out.append("    U32 result = hasDeviceProc(device, pName);\n");
+                out.append("    if (result) {\n");
+                out.append("        result = (U32)dlsym((void*)0, (const char*)pName);\n");
+                out.append("        if (!result) {printf(\""+ fn.name + " : Failed to load function %s\\n\", (const char*)pName);}\n");
+                out.append("    }\n");
+                out.append("    return result;\n");
+            } if (fn.name.equals("vkGetInstanceProcAddr")) {
+                out.append("    U32 result = hasInstanceProc(instance, pName);\n");
+                out.append("    if (result) {\n");
+                out.append("        result = (U32)dlsym((void*)0, (const char*)pName);\n");
+                out.append("        if (!result) {printf(\""+ fn.name + " : Failed to load function %s\\n\", (const char*)pName);}\n");
+                out.append("    }\n");
                 out.append("    return result;\n");
             } else {
                 String callType = "";

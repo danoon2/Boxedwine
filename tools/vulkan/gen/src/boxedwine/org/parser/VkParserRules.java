@@ -1843,6 +1843,9 @@ public class VkParserRules {
     }
     static void setTypeEmulatedSize(VkData data, VkType vkType) throws Exception {
         if (vkType.sizeof == 0) {
+            if (vkType.name.equals("VkExtensionProperties")) {
+                int ii = 0;
+            }
             if (vkType.getCategory().equals("struct")) {
                 // Boxedwine runs wine in an emulated 32-bit linux environment
                 // This means 8 byte members are aligned to 4 byte boundaries
@@ -1864,8 +1867,10 @@ public class VkParserRules {
                     int size;
                     if (member.isPointer) {
                         size = 4;
-                    } else {
+                    } else if (member.arrayLen == 0) {
                         size = member.paramType.sizeof;
+                    } else {
+                        size = member.paramType.sizeof * member.arrayLen;
                     }
                     if (size == 0) {
                         size = member.sizeof;

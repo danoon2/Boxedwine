@@ -224,12 +224,16 @@ public class VkHostMarshalType {
             }
             size += String.valueOf(param.len);
         }
-        if (param.paramType.getType().equals("void")) {
-            size += " * sizeof(char)";
-        }
 
         out.append(size);
         out.append("];\n");
+        if (param.paramType.name.equals("void")) {
+            size += " * sizeof(char)";
+        } else {
+            size += " * sizeof(";
+            size += param.paramType.name;
+            size += ")";
+        }
         out.append("        memory->memcpy((");
         out.append(param.paramType.name);
         out.append("*)s->");
@@ -491,6 +495,9 @@ public class VkHostMarshalType {
         }
         int offset = 0;
         for (VkParam param : t.members) {
+            if (param.name.equals("pQueuePriorities")) {
+                int ii=0;
+            }
             if (t.name.equals("VkDebugReportCallbackCreateInfoEXT") && param.name.equals("pfnCallback")) {
                 out.append("    s->pfnCallback = boxed_vkDebugReportCallbackEXT;\n");
                 out.append("    MarshalCallbackData* pData = new MarshalCallbackData();\n");

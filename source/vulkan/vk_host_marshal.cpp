@@ -88,7 +88,7 @@ void MarshalVkPhysicalDeviceProperties::read(BoxedVulkanInfo* pBoxedInfo, KMemor
     s->deviceType = (VkPhysicalDeviceType)memory->readd(address);address+=4;
     memory->memcpy(&s->deviceName, address, 256);address+=256;
     memory->memcpy(&s->pipelineCacheUUID, address, 16);address+=16;
-    MarshalVkPhysicalDeviceLimits::read(pBoxedInfo, memory, address, &s->limits); address+=456;
+    MarshalVkPhysicalDeviceLimits::read(pBoxedInfo, memory, address, &s->limits); address+=488;
     memory->memcpy(&s->sparseProperties, address, 20);address+=20;
 }
 void MarshalVkPhysicalDeviceProperties::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProperties* s) {
@@ -99,7 +99,7 @@ void MarshalVkPhysicalDeviceProperties::write(BoxedVulkanInfo* pBoxedInfo, KMemo
     memory->writed(address, s->deviceType);address+=4;
     memory->memcpy(address, s->deviceName, 256); address+=256;
     memory->memcpy(address, s->pipelineCacheUUID, 16); address+=16;
-    memory->memcpy(address, &s->limits, 456); address+=456;
+    memory->memcpy(address, &s->limits, 488); address+=488;
     memory->memcpy(address, &s->sparseProperties, 20); address+=20;
 }
 void MarshalVkExtensionProperties::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtensionProperties* s) {
@@ -130,7 +130,7 @@ void MarshalVkApplicationInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory
     } else {
         U32 pApplicationNameLen = memory->strlen(paramAddress)+1;
         s->pApplicationName = new char[pApplicationNameLen];
-        memory->memcpy((char*)s->pApplicationName, paramAddress, pApplicationNameLen);
+        memory->memcpy((char*)s->pApplicationName, paramAddress, pApplicationNameLen * sizeof(char));
     }
     s->applicationVersion = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -139,7 +139,7 @@ void MarshalVkApplicationInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory
     } else {
         U32 pEngineNameLen = memory->strlen(paramAddress)+1;
         s->pEngineName = new char[pEngineNameLen];
-        memory->memcpy((char*)s->pEngineName, paramAddress, pEngineNameLen);
+        memory->memcpy((char*)s->pEngineName, paramAddress, pEngineNameLen * sizeof(char));
     }
     s->engineVersion = (uint32_t)memory->readd(address);address+=4;
     s->apiVersion = (uint32_t)memory->readd(address);address+=4;
@@ -183,7 +183,7 @@ void MarshalVkDeviceQueueCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pQueuePriorities = NULL;
     } else {
         s->pQueuePriorities = new float[(U32)s->queueCount];
-        memory->memcpy((float*)s->pQueuePriorities, paramAddress, (U32)s->queueCount);
+        memory->memcpy((float*)s->pQueuePriorities, paramAddress, (U32)s->queueCount * sizeof(float));
     }
 }
 void MarshalVkDeviceQueueCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueCreateInfo* s) {
@@ -525,14 +525,14 @@ void MarshalVkWriteDescriptorSet::read(BoxedVulkanInfo* pBoxedInfo, KMemory* mem
         s->pBufferInfo = NULL;
     } else {
         s->pBufferInfo = new VkDescriptorBufferInfo[(U32)s->descriptorCount];
-        memory->memcpy((VkDescriptorBufferInfo*)s->pBufferInfo, paramAddress, (U32)s->descriptorCount * sizeof(VkDescriptorBufferInfo));
+        memory->memcpy((VkDescriptorBufferInfo*)s->pBufferInfo, paramAddress, (U32)s->descriptorCount * sizeof(VkDescriptorBufferInfo) * sizeof(VkDescriptorBufferInfo));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pTexelBufferView = NULL;
     } else {
         s->pTexelBufferView = new VkBufferView[(U32)s->descriptorCount];
-        memory->memcpy((VkBufferView*)s->pTexelBufferView, paramAddress, (U32)s->descriptorCount);
+        memory->memcpy((VkBufferView*)s->pTexelBufferView, paramAddress, (U32)s->descriptorCount * sizeof(VkBufferView));
     }
 }
 void MarshalVkWriteDescriptorSet::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSet* s) {
@@ -641,7 +641,7 @@ void MarshalVkBufferCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         s->pQueueFamilyIndices = NULL;
     } else {
         s->pQueueFamilyIndices = new uint32_t[(U32)s->queueFamilyIndexCount];
-        memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, (U32)s->queueFamilyIndexCount);
+        memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, (U32)s->queueFamilyIndexCount * sizeof(uint32_t));
     }
 }
 void MarshalVkBufferCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCreateInfo* s) {
@@ -826,7 +826,7 @@ void MarshalVkImageCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory
         s->pQueueFamilyIndices = NULL;
     } else {
         s->pQueueFamilyIndices = new uint32_t[(U32)s->queueFamilyIndexCount];
-        memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, (U32)s->queueFamilyIndexCount);
+        memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, (U32)s->queueFamilyIndexCount * sizeof(uint32_t));
     }
     s->initialLayout = (VkImageLayout)memory->readd(address);address+=4;
 }
@@ -915,7 +915,7 @@ void MarshalVkSparseBufferMemoryBindInfo::read(BoxedVulkanInfo* pBoxedInfo, KMem
         s->pBinds = NULL;
     } else {
         s->pBinds = new VkSparseMemoryBind[(U32)s->bindCount];
-        memory->memcpy((VkSparseMemoryBind*)s->pBinds, paramAddress, (U32)s->bindCount * sizeof(VkSparseMemoryBind));
+        memory->memcpy((VkSparseMemoryBind*)s->pBinds, paramAddress, (U32)s->bindCount * sizeof(VkSparseMemoryBind) * sizeof(VkSparseMemoryBind));
     }
 }
 MarshalVkSparseBufferMemoryBindInfo::~MarshalVkSparseBufferMemoryBindInfo() {
@@ -929,7 +929,7 @@ void MarshalVkSparseImageOpaqueMemoryBindInfo::read(BoxedVulkanInfo* pBoxedInfo,
         s->pBinds = NULL;
     } else {
         s->pBinds = new VkSparseMemoryBind[(U32)s->bindCount];
-        memory->memcpy((VkSparseMemoryBind*)s->pBinds, paramAddress, (U32)s->bindCount * sizeof(VkSparseMemoryBind));
+        memory->memcpy((VkSparseMemoryBind*)s->pBinds, paramAddress, (U32)s->bindCount * sizeof(VkSparseMemoryBind) * sizeof(VkSparseMemoryBind));
     }
 }
 MarshalVkSparseImageOpaqueMemoryBindInfo::~MarshalVkSparseImageOpaqueMemoryBindInfo() {
@@ -943,7 +943,7 @@ void MarshalVkSparseImageMemoryBindInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemo
         s->pBinds = NULL;
     } else {
         s->pBinds = new VkSparseImageMemoryBind[(U32)s->bindCount];
-        memory->memcpy((VkSparseImageMemoryBind*)s->pBinds, paramAddress, (U32)s->bindCount * sizeof(VkSparseImageMemoryBind));
+        memory->memcpy((VkSparseImageMemoryBind*)s->pBinds, paramAddress, (U32)s->bindCount * sizeof(VkSparseImageMemoryBind) * sizeof(VkSparseImageMemoryBind));
     }
 }
 MarshalVkSparseImageMemoryBindInfo::~MarshalVkSparseImageMemoryBindInfo() {
@@ -963,7 +963,7 @@ void MarshalVkBindSparseInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
         s->pWaitSemaphores = NULL;
     } else {
         s->pWaitSemaphores = new VkSemaphore[(U32)s->waitSemaphoreCount];
-        memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, (U32)s->waitSemaphoreCount);
+        memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, (U32)s->waitSemaphoreCount * sizeof(VkSemaphore));
     }
     s->bufferBindCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -971,7 +971,7 @@ void MarshalVkBindSparseInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
         s->pBufferBinds = NULL;
     } else {
         s->pBufferBinds = new VkSparseBufferMemoryBindInfo[(U32)s->bufferBindCount];
-        memory->memcpy((VkSparseBufferMemoryBindInfo*)s->pBufferBinds, paramAddress, (U32)s->bufferBindCount * sizeof(VkSparseBufferMemoryBindInfo));
+        memory->memcpy((VkSparseBufferMemoryBindInfo*)s->pBufferBinds, paramAddress, (U32)s->bufferBindCount * sizeof(VkSparseBufferMemoryBindInfo) * sizeof(VkSparseBufferMemoryBindInfo));
     }
     s->imageOpaqueBindCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -979,7 +979,7 @@ void MarshalVkBindSparseInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
         s->pImageOpaqueBinds = NULL;
     } else {
         s->pImageOpaqueBinds = new VkSparseImageOpaqueMemoryBindInfo[(U32)s->imageOpaqueBindCount];
-        memory->memcpy((VkSparseImageOpaqueMemoryBindInfo*)s->pImageOpaqueBinds, paramAddress, (U32)s->imageOpaqueBindCount * sizeof(VkSparseImageOpaqueMemoryBindInfo));
+        memory->memcpy((VkSparseImageOpaqueMemoryBindInfo*)s->pImageOpaqueBinds, paramAddress, (U32)s->imageOpaqueBindCount * sizeof(VkSparseImageOpaqueMemoryBindInfo) * sizeof(VkSparseImageOpaqueMemoryBindInfo));
     }
     s->imageBindCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -987,7 +987,7 @@ void MarshalVkBindSparseInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
         s->pImageBinds = NULL;
     } else {
         s->pImageBinds = new VkSparseImageMemoryBindInfo[(U32)s->imageBindCount];
-        memory->memcpy((VkSparseImageMemoryBindInfo*)s->pImageBinds, paramAddress, (U32)s->imageBindCount * sizeof(VkSparseImageMemoryBindInfo));
+        memory->memcpy((VkSparseImageMemoryBindInfo*)s->pImageBinds, paramAddress, (U32)s->imageBindCount * sizeof(VkSparseImageMemoryBindInfo) * sizeof(VkSparseImageMemoryBindInfo));
     }
     s->signalSemaphoreCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -995,7 +995,7 @@ void MarshalVkBindSparseInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
         s->pSignalSemaphores = NULL;
     } else {
         s->pSignalSemaphores = new VkSemaphore[(U32)s->signalSemaphoreCount];
-        memory->memcpy((VkSemaphore*)s->pSignalSemaphores, paramAddress, (U32)s->signalSemaphoreCount);
+        memory->memcpy((VkSemaphore*)s->pSignalSemaphores, paramAddress, (U32)s->signalSemaphoreCount * sizeof(VkSemaphore));
     }
 }
 void MarshalVkBindSparseInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindSparseInfo* s) {
@@ -1087,7 +1087,7 @@ void MarshalVkShaderModuleCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory*
         s->pCode = NULL;
     } else {
         s->pCode = new uint32_t[(U32)s->codeSize / 4];
-        memory->memcpy((uint32_t*)s->pCode, paramAddress, (U32)s->codeSize / 4);
+        memory->memcpy((uint32_t*)s->pCode, paramAddress, (U32)s->codeSize / 4 * sizeof(uint32_t));
     }
 }
 void MarshalVkShaderModuleCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderModuleCreateInfo* s) {
@@ -1117,7 +1117,7 @@ void MarshalVkDescriptorSetLayoutBinding::read(BoxedVulkanInfo* pBoxedInfo, KMem
         s->pImmutableSamplers = NULL;
     } else {
         s->pImmutableSamplers = new VkSampler[(U32)s->descriptorCount];
-        memory->memcpy((VkSampler*)s->pImmutableSamplers, paramAddress, (U32)s->descriptorCount);
+        memory->memcpy((VkSampler*)s->pImmutableSamplers, paramAddress, (U32)s->descriptorCount * sizeof(VkSampler));
     }
 }
 MarshalVkDescriptorSetLayoutBinding::~MarshalVkDescriptorSetLayoutBinding() {
@@ -1224,7 +1224,7 @@ void MarshalVkDescriptorSetAllocateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemo
         s->pSetLayouts = NULL;
     } else {
         s->pSetLayouts = new VkDescriptorSetLayout[(U32)s->descriptorSetCount];
-        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->descriptorSetCount);
+        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->descriptorSetCount * sizeof(VkDescriptorSetLayout));
     }
 }
 void MarshalVkDescriptorSetAllocateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetAllocateInfo* s) {
@@ -1267,7 +1267,7 @@ void MarshalVkSpecializationInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* mem
         s->pData = NULL;
     } else {
         s->pData = new char[(U32)s->dataSize];
-        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize);
+        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize * sizeof(char));
     }
 }
 MarshalVkSpecializationInfo::~MarshalVkSpecializationInfo() {
@@ -1291,7 +1291,7 @@ void MarshalVkPipelineShaderStageCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, K
     } else {
         U32 pNameLen = memory->strlen(paramAddress)+1;
         s->pName = new char[pNameLen];
-        memory->memcpy((char*)s->pName, paramAddress, pNameLen);
+        memory->memcpy((char*)s->pName, paramAddress, pNameLen * sizeof(char));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -1535,7 +1535,7 @@ void MarshalVkPipelineViewportStateCreateInfo::read(BoxedVulkanInfo* pBoxedInfo,
         s->pViewports = NULL;
     } else {
         s->pViewports = new VkViewport[(U32)s->viewportCount];
-        memory->memcpy((VkViewport*)s->pViewports, paramAddress, (U32)s->viewportCount * sizeof(VkViewport));
+        memory->memcpy((VkViewport*)s->pViewports, paramAddress, (U32)s->viewportCount * sizeof(VkViewport) * sizeof(VkViewport));
     }
     s->scissorCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -1543,7 +1543,7 @@ void MarshalVkPipelineViewportStateCreateInfo::read(BoxedVulkanInfo* pBoxedInfo,
         s->pScissors = NULL;
     } else {
         s->pScissors = new VkRect2D[(U32)s->scissorCount];
-        memory->memcpy((VkRect2D*)s->pScissors, paramAddress, (U32)s->scissorCount * sizeof(VkRect2D));
+        memory->memcpy((VkRect2D*)s->pScissors, paramAddress, (U32)s->scissorCount * sizeof(VkRect2D) * sizeof(VkRect2D));
     }
 }
 void MarshalVkPipelineViewportStateCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportStateCreateInfo* s) {
@@ -1649,7 +1649,7 @@ void MarshalVkPipelineMultisampleStateCreateInfo::read(BoxedVulkanInfo* pBoxedIn
         s->pSampleMask = NULL;
     } else {
         s->pSampleMask = new VkSampleMask[(s->rasterizationSamples + 31) / 32];
-        memory->memcpy((VkSampleMask*)s->pSampleMask, paramAddress, (s->rasterizationSamples + 31) / 32);
+        memory->memcpy((VkSampleMask*)s->pSampleMask, paramAddress, (s->rasterizationSamples + 31) / 32 * sizeof(VkSampleMask));
     }
     s->alphaToCoverageEnable = (VkBool32)memory->readd(address);address+=4;
     s->alphaToOneEnable = (VkBool32)memory->readd(address);address+=4;
@@ -1748,7 +1748,7 @@ void MarshalVkPipelineDynamicStateCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, 
         s->pDynamicStates = NULL;
     } else {
         s->pDynamicStates = new VkDynamicState[(U32)s->dynamicStateCount];
-        memory->memcpy((VkDynamicState*)s->pDynamicStates, paramAddress, (U32)s->dynamicStateCount);
+        memory->memcpy((VkDynamicState*)s->pDynamicStates, paramAddress, (U32)s->dynamicStateCount * sizeof(VkDynamicState));
     }
 }
 void MarshalVkPipelineDynamicStateCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDynamicStateCreateInfo* s) {
@@ -2024,7 +2024,7 @@ void MarshalVkPipelineCacheCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory
         s->pInitialData = NULL;
     } else {
         s->pInitialData = new char[(U32)s->initialDataSize];
-        memory->memcpy((void*)s->pInitialData, paramAddress, (U32)s->initialDataSize);
+        memory->memcpy((void*)s->pInitialData, paramAddress, (U32)s->initialDataSize * sizeof(char));
     }
 }
 void MarshalVkPipelineCacheCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCacheCreateInfo* s) {
@@ -2114,7 +2114,7 @@ void MarshalVkPipelineBinaryHandlesInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pPipelineBinaries = NULL;
     } else {
         s->pPipelineBinaries = new VkPipelineBinaryKHR[(U32)s->pipelineBinaryCount];
-        memory->memcpy((VkPipelineBinaryKHR*)s->pPipelineBinaries, paramAddress, (U32)s->pipelineBinaryCount);
+        memory->memcpy((VkPipelineBinaryKHR*)s->pPipelineBinaries, paramAddress, (U32)s->pipelineBinaryCount * sizeof(VkPipelineBinaryKHR));
     }
 }
 void MarshalVkPipelineBinaryHandlesInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryHandlesInfoKHR* s) {
@@ -2140,7 +2140,7 @@ void MarshalVkPipelineBinaryDataKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pData = NULL;
     } else {
         s->pData = new char[(U32)s->dataSize];
-        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize);
+        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize * sizeof(char));
     }
 }
 MarshalVkPipelineBinaryDataKHR::~MarshalVkPipelineBinaryDataKHR() {
@@ -2154,7 +2154,7 @@ void MarshalVkPipelineBinaryKeysAndDataKHR::read(BoxedVulkanInfo* pBoxedInfo, KM
     } else {
         VkPipelineBinaryKeyKHR* pPipelineBinaryKeys = new VkPipelineBinaryKeyKHR[s->binaryCount];
         for (U32 i = 0; i < s->binaryCount; i++) {
-            MarshalVkPipelineBinaryKeyKHR::read(pBoxedInfo, memory, paramAddress + i*16, &pPipelineBinaryKeys[i]);
+            MarshalVkPipelineBinaryKeyKHR::read(pBoxedInfo, memory, paramAddress + i*44, &pPipelineBinaryKeys[i]);
         }
         s->pPipelineBinaryKeys = pPipelineBinaryKeys;
     }
@@ -2210,7 +2210,7 @@ void MarshalVkPipelineBinaryInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pPipelineBinaries = NULL;
     } else {
         s->pPipelineBinaries = new VkPipelineBinaryKHR[(U32)s->binaryCount];
-        memory->memcpy((VkPipelineBinaryKHR*)s->pPipelineBinaries, paramAddress, (U32)s->binaryCount);
+        memory->memcpy((VkPipelineBinaryKHR*)s->pPipelineBinaries, paramAddress, (U32)s->binaryCount * sizeof(VkPipelineBinaryKHR));
     }
 }
 void MarshalVkPipelineBinaryInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryInfoKHR* s) {
@@ -2305,7 +2305,7 @@ void MarshalVkPipelineLayoutCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemor
         s->pSetLayouts = NULL;
     } else {
         s->pSetLayouts = new VkDescriptorSetLayout[(U32)s->setLayoutCount];
-        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->setLayoutCount);
+        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->setLayoutCount * sizeof(VkDescriptorSetLayout));
     }
     s->pushConstantRangeCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -2313,7 +2313,7 @@ void MarshalVkPipelineLayoutCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemor
         s->pPushConstantRanges = NULL;
     } else {
         s->pPushConstantRanges = new VkPushConstantRange[(U32)s->pushConstantRangeCount];
-        memory->memcpy((VkPushConstantRange*)s->pPushConstantRanges, paramAddress, (U32)s->pushConstantRangeCount * sizeof(VkPushConstantRange));
+        memory->memcpy((VkPushConstantRange*)s->pPushConstantRanges, paramAddress, (U32)s->pushConstantRangeCount * sizeof(VkPushConstantRange) * sizeof(VkPushConstantRange));
     }
 }
 void MarshalVkPipelineLayoutCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineLayoutCreateInfo* s) {
@@ -2540,7 +2540,7 @@ void MarshalVkRenderPassBeginInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
         s->pClearValues = NULL;
     } else {
         s->pClearValues = new VkClearValue[(U32)s->clearValueCount];
-        memory->memcpy((VkClearValue*)s->pClearValues, paramAddress, (U32)s->clearValueCount);
+        memory->memcpy((VkClearValue*)s->pClearValues, paramAddress, (U32)s->clearValueCount * sizeof(VkClearValue));
     }
 }
 void MarshalVkRenderPassBeginInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassBeginInfo* s) {
@@ -2642,7 +2642,7 @@ void MarshalVkSubpassDescription::read(BoxedVulkanInfo* pBoxedInfo, KMemory* mem
         s->pPreserveAttachments = NULL;
     } else {
         s->pPreserveAttachments = new uint32_t[(U32)s->preserveAttachmentCount];
-        memory->memcpy((uint32_t*)s->pPreserveAttachments, paramAddress, (U32)s->preserveAttachmentCount);
+        memory->memcpy((uint32_t*)s->pPreserveAttachments, paramAddress, (U32)s->preserveAttachmentCount * sizeof(uint32_t));
     }
 }
 MarshalVkSubpassDescription::~MarshalVkSubpassDescription() {
@@ -2698,7 +2698,7 @@ void MarshalVkRenderPassCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* m
         s->pDependencies = NULL;
     } else {
         s->pDependencies = new VkSubpassDependency[(U32)s->dependencyCount];
-        memory->memcpy((VkSubpassDependency*)s->pDependencies, paramAddress, (U32)s->dependencyCount * sizeof(VkSubpassDependency));
+        memory->memcpy((VkSubpassDependency*)s->pDependencies, paramAddress, (U32)s->dependencyCount * sizeof(VkSubpassDependency) * sizeof(VkSubpassDependency));
     }
 }
 void MarshalVkRenderPassCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreateInfo* s) {
@@ -3078,7 +3078,7 @@ void MarshalVkFramebufferCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pAttachments = NULL;
     } else {
         s->pAttachments = new VkImageView[(U32)s->attachmentCount];
-        memory->memcpy((VkImageView*)s->pAttachments, paramAddress, (U32)s->attachmentCount);
+        memory->memcpy((VkImageView*)s->pAttachments, paramAddress, (U32)s->attachmentCount * sizeof(VkImageView));
     }
     s->width = (uint32_t)memory->readd(address);address+=4;
     s->height = (uint32_t)memory->readd(address);address+=4;
@@ -3128,14 +3128,14 @@ void MarshalVkSubmitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32
         s->pWaitSemaphores = NULL;
     } else {
         s->pWaitSemaphores = new VkSemaphore[(U32)s->waitSemaphoreCount];
-        memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, (U32)s->waitSemaphoreCount);
+        memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, (U32)s->waitSemaphoreCount * sizeof(VkSemaphore));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pWaitDstStageMask = NULL;
     } else {
         s->pWaitDstStageMask = new VkPipelineStageFlags[(U32)s->waitSemaphoreCount];
-        memory->memcpy((VkPipelineStageFlags*)s->pWaitDstStageMask, paramAddress, (U32)s->waitSemaphoreCount);
+        memory->memcpy((VkPipelineStageFlags*)s->pWaitDstStageMask, paramAddress, (U32)s->waitSemaphoreCount * sizeof(VkPipelineStageFlags));
     }
     s->commandBufferCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -3155,7 +3155,7 @@ void MarshalVkSubmitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32
         s->pSignalSemaphores = NULL;
     } else {
         s->pSignalSemaphores = new VkSemaphore[(U32)s->signalSemaphoreCount];
-        memory->memcpy((VkSemaphore*)s->pSignalSemaphores, paramAddress, (U32)s->signalSemaphoreCount);
+        memory->memcpy((VkSemaphore*)s->pSignalSemaphores, paramAddress, (U32)s->signalSemaphoreCount * sizeof(VkSemaphore));
     }
 }
 void MarshalVkSubmitInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubmitInfo* s) {
@@ -3292,7 +3292,7 @@ void MarshalVkSwapchainCreateInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory*
         s->pQueueFamilyIndices = NULL;
     } else {
         s->pQueueFamilyIndices = new uint32_t[(U32)s->queueFamilyIndexCount];
-        memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, (U32)s->queueFamilyIndexCount);
+        memory->memcpy((uint32_t*)s->pQueueFamilyIndices, paramAddress, (U32)s->queueFamilyIndexCount * sizeof(uint32_t));
     }
     s->preTransform = (VkSurfaceTransformFlagBitsKHR)memory->readd(address);address+=4;
     s->compositeAlpha = (VkCompositeAlphaFlagBitsKHR)memory->readd(address);address+=4;
@@ -3344,7 +3344,7 @@ void MarshalVkPresentInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
         s->pWaitSemaphores = NULL;
     } else {
         s->pWaitSemaphores = new VkSemaphore[(U32)s->waitSemaphoreCount];
-        memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, (U32)s->waitSemaphoreCount);
+        memory->memcpy((VkSemaphore*)s->pWaitSemaphores, paramAddress, (U32)s->waitSemaphoreCount * sizeof(VkSemaphore));
     }
     s->swapchainCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -3352,21 +3352,21 @@ void MarshalVkPresentInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
         s->pSwapchains = NULL;
     } else {
         s->pSwapchains = new VkSwapchainKHR[(U32)s->swapchainCount];
-        memory->memcpy((VkSwapchainKHR*)s->pSwapchains, paramAddress, (U32)s->swapchainCount);
+        memory->memcpy((VkSwapchainKHR*)s->pSwapchains, paramAddress, (U32)s->swapchainCount * sizeof(VkSwapchainKHR));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pImageIndices = NULL;
     } else {
         s->pImageIndices = new uint32_t[(U32)s->swapchainCount];
-        memory->memcpy((uint32_t*)s->pImageIndices, paramAddress, (U32)s->swapchainCount);
+        memory->memcpy((uint32_t*)s->pImageIndices, paramAddress, (U32)s->swapchainCount * sizeof(uint32_t));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pResults = NULL;
     } else {
         s->pResults = new VkResult[(U32)s->swapchainCount];
-        memory->memcpy((VkResult*)s->pResults, paramAddress, (U32)s->swapchainCount);
+        memory->memcpy((VkResult*)s->pResults, paramAddress, (U32)s->swapchainCount * sizeof(VkResult));
     }
 }
 void MarshalVkPresentInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentInfoKHR* s) {
@@ -3436,7 +3436,7 @@ void MarshalVkValidationFlagsEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* mem
         s->pDisabledValidationChecks = NULL;
     } else {
         s->pDisabledValidationChecks = new VkValidationCheckEXT[(U32)s->disabledValidationCheckCount];
-        memory->memcpy((VkValidationCheckEXT*)s->pDisabledValidationChecks, paramAddress, (U32)s->disabledValidationCheckCount);
+        memory->memcpy((VkValidationCheckEXT*)s->pDisabledValidationChecks, paramAddress, (U32)s->disabledValidationCheckCount * sizeof(VkValidationCheckEXT));
     }
 }
 void MarshalVkValidationFlagsEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationFlagsEXT* s) {
@@ -3469,7 +3469,7 @@ void MarshalVkValidationFeaturesEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pEnabledValidationFeatures = NULL;
     } else {
         s->pEnabledValidationFeatures = new VkValidationFeatureEnableEXT[(U32)s->enabledValidationFeatureCount];
-        memory->memcpy((VkValidationFeatureEnableEXT*)s->pEnabledValidationFeatures, paramAddress, (U32)s->enabledValidationFeatureCount);
+        memory->memcpy((VkValidationFeatureEnableEXT*)s->pEnabledValidationFeatures, paramAddress, (U32)s->enabledValidationFeatureCount * sizeof(VkValidationFeatureEnableEXT));
     }
     s->disabledValidationFeatureCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -3477,7 +3477,7 @@ void MarshalVkValidationFeaturesEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pDisabledValidationFeatures = NULL;
     } else {
         s->pDisabledValidationFeatures = new VkValidationFeatureDisableEXT[(U32)s->disabledValidationFeatureCount];
-        memory->memcpy((VkValidationFeatureDisableEXT*)s->pDisabledValidationFeatures, paramAddress, (U32)s->disabledValidationFeatureCount);
+        memory->memcpy((VkValidationFeatureDisableEXT*)s->pDisabledValidationFeatures, paramAddress, (U32)s->disabledValidationFeatureCount * sizeof(VkValidationFeatureDisableEXT));
     }
 }
 void MarshalVkValidationFeaturesEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationFeaturesEXT* s) {
@@ -3547,7 +3547,7 @@ void MarshalVkLayerSettingEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory
     } else {
         U32 pLayerNameLen = memory->strlen(paramAddress)+1;
         s->pLayerName = new char[pLayerNameLen];
-        memory->memcpy((char*)s->pLayerName, paramAddress, pLayerNameLen);
+        memory->memcpy((char*)s->pLayerName, paramAddress, pLayerNameLen * sizeof(char));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -3555,7 +3555,7 @@ void MarshalVkLayerSettingEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory
     } else {
         U32 pSettingNameLen = memory->strlen(paramAddress)+1;
         s->pSettingName = new char[pSettingNameLen];
-        memory->memcpy((char*)s->pSettingName, paramAddress, pSettingNameLen);
+        memory->memcpy((char*)s->pSettingName, paramAddress, pSettingNameLen * sizeof(char));
     }
     s->type = (VkLayerSettingTypeEXT)memory->readd(address);address+=4;
     s->valueCount = (uint32_t)memory->readd(address);address+=4;
@@ -3564,7 +3564,7 @@ void MarshalVkLayerSettingEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory
         s->pValues = NULL;
     } else {
         s->pValues = new char[(U32)s->valueCount];
-        memory->memcpy((void*)s->pValues, paramAddress, (U32)s->valueCount);
+        memory->memcpy((void*)s->pValues, paramAddress, (U32)s->valueCount * sizeof(char));
     }
 }
 MarshalVkLayerSettingEXT::~MarshalVkLayerSettingEXT() {
@@ -3609,7 +3609,7 @@ void MarshalVkDebugMarkerObjectNameInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KM
     } else {
         U32 pObjectNameLen = memory->strlen(paramAddress)+1;
         s->pObjectName = new char[pObjectNameLen];
-        memory->memcpy((char*)s->pObjectName, paramAddress, pObjectNameLen);
+        memory->memcpy((char*)s->pObjectName, paramAddress, pObjectNameLen * sizeof(char));
     }
 }
 void MarshalVkDebugMarkerObjectNameInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerObjectNameInfoEXT* s) {
@@ -3646,7 +3646,7 @@ void MarshalVkDebugMarkerObjectTagInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pTag = NULL;
     } else {
         s->pTag = new char[(U32)s->tagSize];
-        memory->memcpy((void*)s->pTag, paramAddress, (U32)s->tagSize);
+        memory->memcpy((void*)s->pTag, paramAddress, (U32)s->tagSize * sizeof(char));
     }
 }
 void MarshalVkDebugMarkerObjectTagInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerObjectTagInfoEXT* s) {
@@ -3682,7 +3682,7 @@ void MarshalVkDebugMarkerMarkerInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemor
     } else {
         U32 pMarkerNameLen = memory->strlen(paramAddress)+1;
         s->pMarkerName = new char[pMarkerNameLen];
-        memory->memcpy((char*)s->pMarkerName, paramAddress, pMarkerNameLen);
+        memory->memcpy((char*)s->pMarkerName, paramAddress, pMarkerNameLen * sizeof(char));
     }
     memory->memcpy(&s->color, address, 16);address+=16;
 }
@@ -4069,7 +4069,7 @@ void MarshalVkGraphicsPipelineShaderGroupsCreateInfoNV::read(BoxedVulkanInfo* pB
         s->pPipelines = NULL;
     } else {
         s->pPipelines = new VkPipeline[(U32)s->pipelineCount];
-        memory->memcpy((VkPipeline*)s->pPipelines, paramAddress, (U32)s->pipelineCount);
+        memory->memcpy((VkPipeline*)s->pPipelines, paramAddress, (U32)s->pipelineCount * sizeof(VkPipeline));
     }
 }
 void MarshalVkGraphicsPipelineShaderGroupsCreateInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsPipelineShaderGroupsCreateInfoNV* s) {
@@ -4124,14 +4124,14 @@ void MarshalVkIndirectCommandsLayoutTokenNV::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pIndexTypes = NULL;
     } else {
         s->pIndexTypes = new VkIndexType[(U32)s->indexTypeCount];
-        memory->memcpy((VkIndexType*)s->pIndexTypes, paramAddress, (U32)s->indexTypeCount);
+        memory->memcpy((VkIndexType*)s->pIndexTypes, paramAddress, (U32)s->indexTypeCount * sizeof(VkIndexType));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pIndexTypeValues = NULL;
     } else {
         s->pIndexTypeValues = new uint32_t[(U32)s->indexTypeCount];
-        memory->memcpy((uint32_t*)s->pIndexTypeValues, paramAddress, (U32)s->indexTypeCount);
+        memory->memcpy((uint32_t*)s->pIndexTypeValues, paramAddress, (U32)s->indexTypeCount * sizeof(uint32_t));
     }
 }
 void MarshalVkIndirectCommandsLayoutTokenNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutTokenNV* s) {
@@ -4192,7 +4192,7 @@ void MarshalVkIndirectCommandsLayoutCreateInfoNV::read(BoxedVulkanInfo* pBoxedIn
         s->pStreamStrides = NULL;
     } else {
         s->pStreamStrides = new uint32_t[(U32)s->streamCount];
-        memory->memcpy((uint32_t*)s->pStreamStrides, paramAddress, (U32)s->streamCount);
+        memory->memcpy((uint32_t*)s->pStreamStrides, paramAddress, (U32)s->streamCount * sizeof(uint32_t));
     }
 }
 void MarshalVkIndirectCommandsLayoutCreateInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutCreateInfoNV* s) {
@@ -4238,7 +4238,7 @@ void MarshalVkGeneratedCommandsInfoNV::read(BoxedVulkanInfo* pBoxedInfo, KMemory
         s->pStreams = NULL;
     } else {
         s->pStreams = new VkIndirectCommandsStreamNV[(U32)s->streamCount];
-        memory->memcpy((VkIndirectCommandsStreamNV*)s->pStreams, paramAddress, (U32)s->streamCount * sizeof(VkIndirectCommandsStreamNV));
+        memory->memcpy((VkIndirectCommandsStreamNV*)s->pStreams, paramAddress, (U32)s->streamCount * sizeof(VkIndirectCommandsStreamNV) * sizeof(VkIndirectCommandsStreamNV));
     }
     s->sequencesCount = (uint32_t)memory->readd(address);address+=4;
     s->preprocessBuffer = (VkBuffer)memory->readq(address);address+=8;
@@ -4357,7 +4357,7 @@ void MarshalVkPhysicalDeviceProperties2::read(BoxedVulkanInfo* pBoxedInfo, KMemo
     } else {
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
-    MarshalVkPhysicalDeviceProperties::read(pBoxedInfo, memory, address, &s->properties); address+=500;
+    MarshalVkPhysicalDeviceProperties::read(pBoxedInfo, memory, address, &s->properties); address+=800;
 }
 void MarshalVkPhysicalDeviceProperties2::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProperties2* s) {
     memory->writed(address, s->sType);address+=4;
@@ -4365,7 +4365,7 @@ void MarshalVkPhysicalDeviceProperties2::write(BoxedVulkanInfo* pBoxedInfo, KMem
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->memcpy(address, &s->properties, 500); address+=500;
+    memory->memcpy(address, &s->properties, 800); address+=800;
 }
 MarshalVkPhysicalDeviceProperties2::~MarshalVkPhysicalDeviceProperties2() {
     delete s.pNext;
@@ -4470,7 +4470,7 @@ void MarshalVkPhysicalDeviceMemoryProperties2::read(BoxedVulkanInfo* pBoxedInfo,
     } else {
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
-    memory->memcpy(&s->memoryProperties, address, 28);address+=28;
+    memory->memcpy(&s->memoryProperties, address, 456);address+=456;
 }
 void MarshalVkPhysicalDeviceMemoryProperties2::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryProperties2* s) {
     memory->writed(address, s->sType);address+=4;
@@ -4478,7 +4478,7 @@ void MarshalVkPhysicalDeviceMemoryProperties2::write(BoxedVulkanInfo* pBoxedInfo
     if (paramAddress != 0) {
         vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);
     }
-    memory->memcpy(address, &s->memoryProperties, 28); address+=28;
+    memory->memcpy(address, &s->memoryProperties, 456); address+=456;
 }
 MarshalVkPhysicalDeviceMemoryProperties2::~MarshalVkPhysicalDeviceMemoryProperties2() {
     delete s.pNext;
@@ -4595,7 +4595,7 @@ void MarshalVkPresentRegionsKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
         s->pRegions = NULL;
     } else {
         s->pRegions = new VkPresentRegionKHR[(U32)s->swapchainCount];
-        memory->memcpy((VkPresentRegionKHR*)s->pRegions, paramAddress, (U32)s->swapchainCount * sizeof(VkPresentRegionKHR));
+        memory->memcpy((VkPresentRegionKHR*)s->pRegions, paramAddress, (U32)s->swapchainCount * sizeof(VkPresentRegionKHR) * sizeof(VkPresentRegionKHR));
     }
 }
 void MarshalVkPresentRegionsKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentRegionsKHR* s) {
@@ -4623,7 +4623,7 @@ void MarshalVkPresentRegionKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         s->pRectangles = NULL;
     } else {
         s->pRectangles = new VkRectLayerKHR[(U32)s->rectangleCount];
-        memory->memcpy((VkRectLayerKHR*)s->pRectangles, paramAddress, (U32)s->rectangleCount * sizeof(VkRectLayerKHR));
+        memory->memcpy((VkRectLayerKHR*)s->pRectangles, paramAddress, (U32)s->rectangleCount * sizeof(VkRectLayerKHR) * sizeof(VkRectLayerKHR));
     }
 }
 MarshalVkPresentRegionKHR::~MarshalVkPresentRegionKHR() {
@@ -5028,7 +5028,7 @@ void MarshalVkRenderPassMultiviewCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pViewMasks = NULL;
     } else {
         s->pViewMasks = new uint32_t[(U32)s->subpassCount];
-        memory->memcpy((uint32_t*)s->pViewMasks, paramAddress, (U32)s->subpassCount);
+        memory->memcpy((uint32_t*)s->pViewMasks, paramAddress, (U32)s->subpassCount * sizeof(uint32_t));
     }
     s->dependencyCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -5036,7 +5036,7 @@ void MarshalVkRenderPassMultiviewCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pViewOffsets = NULL;
     } else {
         s->pViewOffsets = new int32_t[(U32)s->dependencyCount];
-        memory->memcpy((int32_t*)s->pViewOffsets, paramAddress, (U32)s->dependencyCount);
+        memory->memcpy((int32_t*)s->pViewOffsets, paramAddress, (U32)s->dependencyCount * sizeof(int32_t));
     }
     s->correlationMaskCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -5044,7 +5044,7 @@ void MarshalVkRenderPassMultiviewCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pCorrelationMasks = NULL;
     } else {
         s->pCorrelationMasks = new uint32_t[(U32)s->correlationMaskCount];
-        memory->memcpy((uint32_t*)s->pCorrelationMasks, paramAddress, (U32)s->correlationMaskCount);
+        memory->memcpy((uint32_t*)s->pCorrelationMasks, paramAddress, (U32)s->correlationMaskCount * sizeof(uint32_t));
     }
 }
 void MarshalVkRenderPassMultiviewCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassMultiviewCreateInfo* s) {
@@ -5287,7 +5287,7 @@ void MarshalVkBindBufferMemoryDeviceGroupInfo::read(BoxedVulkanInfo* pBoxedInfo,
         s->pDeviceIndices = NULL;
     } else {
         s->pDeviceIndices = new uint32_t[(U32)s->deviceIndexCount];
-        memory->memcpy((uint32_t*)s->pDeviceIndices, paramAddress, (U32)s->deviceIndexCount);
+        memory->memcpy((uint32_t*)s->pDeviceIndices, paramAddress, (U32)s->deviceIndexCount * sizeof(uint32_t));
     }
 }
 void MarshalVkBindBufferMemoryDeviceGroupInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindBufferMemoryDeviceGroupInfo* s) {
@@ -5345,7 +5345,7 @@ void MarshalVkBindImageMemoryDeviceGroupInfo::read(BoxedVulkanInfo* pBoxedInfo, 
         s->pDeviceIndices = NULL;
     } else {
         s->pDeviceIndices = new uint32_t[(U32)s->deviceIndexCount];
-        memory->memcpy((uint32_t*)s->pDeviceIndices, paramAddress, (U32)s->deviceIndexCount);
+        memory->memcpy((uint32_t*)s->pDeviceIndices, paramAddress, (U32)s->deviceIndexCount * sizeof(uint32_t));
     }
     s->splitInstanceBindRegionCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -5353,7 +5353,7 @@ void MarshalVkBindImageMemoryDeviceGroupInfo::read(BoxedVulkanInfo* pBoxedInfo, 
         s->pSplitInstanceBindRegions = NULL;
     } else {
         s->pSplitInstanceBindRegions = new VkRect2D[(U32)s->splitInstanceBindRegionCount];
-        memory->memcpy((VkRect2D*)s->pSplitInstanceBindRegions, paramAddress, (U32)s->splitInstanceBindRegionCount * sizeof(VkRect2D));
+        memory->memcpy((VkRect2D*)s->pSplitInstanceBindRegions, paramAddress, (U32)s->splitInstanceBindRegionCount * sizeof(VkRect2D) * sizeof(VkRect2D));
     }
 }
 void MarshalVkBindImageMemoryDeviceGroupInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImageMemoryDeviceGroupInfo* s) {
@@ -5395,7 +5395,7 @@ void MarshalVkDeviceGroupRenderPassBeginInfo::read(BoxedVulkanInfo* pBoxedInfo, 
         s->pDeviceRenderAreas = NULL;
     } else {
         s->pDeviceRenderAreas = new VkRect2D[(U32)s->deviceRenderAreaCount];
-        memory->memcpy((VkRect2D*)s->pDeviceRenderAreas, paramAddress, (U32)s->deviceRenderAreaCount * sizeof(VkRect2D));
+        memory->memcpy((VkRect2D*)s->pDeviceRenderAreas, paramAddress, (U32)s->deviceRenderAreaCount * sizeof(VkRect2D) * sizeof(VkRect2D));
     }
 }
 void MarshalVkDeviceGroupRenderPassBeginInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupRenderPassBeginInfo* s) {
@@ -5452,7 +5452,7 @@ void MarshalVkDeviceGroupSubmitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pWaitSemaphoreDeviceIndices = NULL;
     } else {
         s->pWaitSemaphoreDeviceIndices = new uint32_t[(U32)s->waitSemaphoreCount];
-        memory->memcpy((uint32_t*)s->pWaitSemaphoreDeviceIndices, paramAddress, (U32)s->waitSemaphoreCount);
+        memory->memcpy((uint32_t*)s->pWaitSemaphoreDeviceIndices, paramAddress, (U32)s->waitSemaphoreCount * sizeof(uint32_t));
     }
     s->commandBufferCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -5460,7 +5460,7 @@ void MarshalVkDeviceGroupSubmitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pCommandBufferDeviceMasks = NULL;
     } else {
         s->pCommandBufferDeviceMasks = new uint32_t[(U32)s->commandBufferCount];
-        memory->memcpy((uint32_t*)s->pCommandBufferDeviceMasks, paramAddress, (U32)s->commandBufferCount);
+        memory->memcpy((uint32_t*)s->pCommandBufferDeviceMasks, paramAddress, (U32)s->commandBufferCount * sizeof(uint32_t));
     }
     s->signalSemaphoreCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -5468,7 +5468,7 @@ void MarshalVkDeviceGroupSubmitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pSignalSemaphoreDeviceIndices = NULL;
     } else {
         s->pSignalSemaphoreDeviceIndices = new uint32_t[(U32)s->signalSemaphoreCount];
-        memory->memcpy((uint32_t*)s->pSignalSemaphoreDeviceIndices, paramAddress, (U32)s->signalSemaphoreCount);
+        memory->memcpy((uint32_t*)s->pSignalSemaphoreDeviceIndices, paramAddress, (U32)s->signalSemaphoreCount * sizeof(uint32_t));
     }
 }
 void MarshalVkDeviceGroupSubmitInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupSubmitInfo* s) {
@@ -5632,7 +5632,7 @@ void MarshalVkDeviceGroupPresentInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemo
         s->pDeviceMasks = NULL;
     } else {
         s->pDeviceMasks = new uint32_t[(U32)s->swapchainCount];
-        memory->memcpy((uint32_t*)s->pDeviceMasks, paramAddress, (U32)s->swapchainCount);
+        memory->memcpy((uint32_t*)s->pDeviceMasks, paramAddress, (U32)s->swapchainCount * sizeof(uint32_t));
     }
     s->mode = (VkDeviceGroupPresentModeFlagBitsKHR)memory->readd(address);address+=4;
 }
@@ -5804,7 +5804,7 @@ void MarshalVkPresentIdKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U
         s->pPresentIds = NULL;
     } else {
         s->pPresentIds = new uint64_t[(U32)s->swapchainCount];
-        memory->memcpy((uint64_t*)s->pPresentIds, paramAddress, (U32)s->swapchainCount);
+        memory->memcpy((uint64_t*)s->pPresentIds, paramAddress, (U32)s->swapchainCount * sizeof(uint64_t));
     }
 }
 void MarshalVkPresentIdKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentIdKHR* s) {
@@ -5909,7 +5909,7 @@ void MarshalVkHdrVividDynamicMetadataHUAWEI::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pDynamicMetadata = NULL;
     } else {
         s->pDynamicMetadata = new char[(U32)s->dynamicMetadataSize];
-        memory->memcpy((void*)s->pDynamicMetadata, paramAddress, (U32)s->dynamicMetadataSize);
+        memory->memcpy((void*)s->pDynamicMetadata, paramAddress, (U32)s->dynamicMetadataSize * sizeof(char));
     }
 }
 void MarshalVkHdrVividDynamicMetadataHUAWEI::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHdrVividDynamicMetadataHUAWEI* s) {
@@ -5951,7 +5951,7 @@ void MarshalVkPipelineViewportWScalingStateCreateInfoNV::read(BoxedVulkanInfo* p
         s->pViewportWScalings = NULL;
     } else {
         s->pViewportWScalings = new VkViewportWScalingNV[(U32)s->viewportCount];
-        memory->memcpy((VkViewportWScalingNV*)s->pViewportWScalings, paramAddress, (U32)s->viewportCount * sizeof(VkViewportWScalingNV));
+        memory->memcpy((VkViewportWScalingNV*)s->pViewportWScalings, paramAddress, (U32)s->viewportCount * sizeof(VkViewportWScalingNV) * sizeof(VkViewportWScalingNV));
     }
 }
 void MarshalVkPipelineViewportWScalingStateCreateInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportWScalingStateCreateInfoNV* s) {
@@ -6056,7 +6056,7 @@ void MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::read(BoxedVulkanInfo* 
         s->pDiscardRectangles = NULL;
     } else {
         s->pDiscardRectangles = new VkRect2D[(U32)s->discardRectangleCount];
-        memory->memcpy((VkRect2D*)s->pDiscardRectangles, paramAddress, (U32)s->discardRectangleCount * sizeof(VkRect2D));
+        memory->memcpy((VkRect2D*)s->pDiscardRectangles, paramAddress, (U32)s->discardRectangleCount * sizeof(VkRect2D) * sizeof(VkRect2D));
     }
 }
 void MarshalVkPipelineDiscardRectangleStateCreateInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDiscardRectangleStateCreateInfoEXT* s) {
@@ -6119,7 +6119,7 @@ void MarshalVkRenderPassInputAttachmentAspectCreateInfo::read(BoxedVulkanInfo* p
         s->pAspectReferences = NULL;
     } else {
         s->pAspectReferences = new VkInputAttachmentAspectReference[(U32)s->aspectReferenceCount];
-        memory->memcpy((VkInputAttachmentAspectReference*)s->pAspectReferences, paramAddress, (U32)s->aspectReferenceCount * sizeof(VkInputAttachmentAspectReference));
+        memory->memcpy((VkInputAttachmentAspectReference*)s->pAspectReferences, paramAddress, (U32)s->aspectReferenceCount * sizeof(VkInputAttachmentAspectReference) * sizeof(VkInputAttachmentAspectReference));
     }
 }
 void MarshalVkRenderPassInputAttachmentAspectCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassInputAttachmentAspectCreateInfo* s) {
@@ -7059,7 +7059,7 @@ void MarshalVkSampleLocationsInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory*
         s->pSampleLocations = NULL;
     } else {
         s->pSampleLocations = new VkSampleLocationEXT[(U32)s->sampleLocationsCount];
-        memory->memcpy((VkSampleLocationEXT*)s->pSampleLocations, paramAddress, (U32)s->sampleLocationsCount * sizeof(VkSampleLocationEXT));
+        memory->memcpy((VkSampleLocationEXT*)s->pSampleLocations, paramAddress, (U32)s->sampleLocationsCount * sizeof(VkSampleLocationEXT) * sizeof(VkSampleLocationEXT));
     }
 }
 void MarshalVkSampleLocationsInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSampleLocationsInfoEXT* s) {
@@ -7405,7 +7405,7 @@ void MarshalVkWriteDescriptorSetInlineUniformBlock::read(BoxedVulkanInfo* pBoxed
         s->pData = NULL;
     } else {
         s->pData = new char[(U32)s->dataSize];
-        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize);
+        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize * sizeof(char));
     }
 }
 void MarshalVkWriteDescriptorSetInlineUniformBlock::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetInlineUniformBlock* s) {
@@ -7462,7 +7462,7 @@ void MarshalVkPipelineCoverageModulationStateCreateInfoNV::read(BoxedVulkanInfo*
         s->pCoverageModulationTable = NULL;
     } else {
         s->pCoverageModulationTable = new float[(U32)s->coverageModulationTableCount];
-        memory->memcpy((float*)s->pCoverageModulationTable, paramAddress, (U32)s->coverageModulationTableCount);
+        memory->memcpy((float*)s->pCoverageModulationTable, paramAddress, (U32)s->coverageModulationTableCount * sizeof(float));
     }
 }
 void MarshalVkPipelineCoverageModulationStateCreateInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCoverageModulationStateCreateInfoNV* s) {
@@ -7498,7 +7498,7 @@ void MarshalVkImageFormatListCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemo
         s->pViewFormats = NULL;
     } else {
         s->pViewFormats = new VkFormat[(U32)s->viewFormatCount];
-        memory->memcpy((VkFormat*)s->pViewFormats, paramAddress, (U32)s->viewFormatCount);
+        memory->memcpy((VkFormat*)s->pViewFormats, paramAddress, (U32)s->viewFormatCount * sizeof(VkFormat));
     }
 }
 void MarshalVkImageFormatListCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageFormatListCreateInfo* s) {
@@ -7532,7 +7532,7 @@ void MarshalVkValidationCacheCreateInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pInitialData = NULL;
     } else {
         s->pInitialData = new char[(U32)s->initialDataSize];
-        memory->memcpy((void*)s->pInitialData, paramAddress, (U32)s->initialDataSize);
+        memory->memcpy((void*)s->pInitialData, paramAddress, (U32)s->initialDataSize * sizeof(char));
     }
 }
 void MarshalVkValidationCacheCreateInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationCacheCreateInfoEXT* s) {
@@ -7751,7 +7751,7 @@ void MarshalVkRenderingAreaInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
         s->pColorAttachmentFormats = NULL;
     } else {
         s->pColorAttachmentFormats = new VkFormat[(U32)s->colorAttachmentCount];
-        memory->memcpy((VkFormat*)s->pColorAttachmentFormats, paramAddress, (U32)s->colorAttachmentCount);
+        memory->memcpy((VkFormat*)s->pColorAttachmentFormats, paramAddress, (U32)s->colorAttachmentCount * sizeof(VkFormat));
     }
     s->depthAttachmentFormat = (VkFormat)memory->readd(address);address+=4;
     s->stencilAttachmentFormat = (VkFormat)memory->readd(address);address+=4;
@@ -7995,7 +7995,7 @@ void MarshalVkDebugUtilsObjectNameInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMe
     } else {
         U32 pObjectNameLen = memory->strlen(paramAddress)+1;
         s->pObjectName = new char[pObjectNameLen];
-        memory->memcpy((char*)s->pObjectName, paramAddress, pObjectNameLen);
+        memory->memcpy((char*)s->pObjectName, paramAddress, pObjectNameLen * sizeof(char));
     }
 }
 void MarshalVkDebugUtilsObjectNameInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsObjectNameInfoEXT* s) {
@@ -8032,7 +8032,7 @@ void MarshalVkDebugUtilsObjectTagInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMem
         s->pTag = NULL;
     } else {
         s->pTag = new char[(U32)s->tagSize];
-        memory->memcpy((void*)s->pTag, paramAddress, (U32)s->tagSize);
+        memory->memcpy((void*)s->pTag, paramAddress, (U32)s->tagSize * sizeof(char));
     }
 }
 void MarshalVkDebugUtilsObjectTagInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsObjectTagInfoEXT* s) {
@@ -8068,7 +8068,7 @@ void MarshalVkDebugUtilsLabelEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* mem
     } else {
         U32 pLabelNameLen = memory->strlen(paramAddress)+1;
         s->pLabelName = new char[pLabelNameLen];
-        memory->memcpy((char*)s->pLabelName, paramAddress, pLabelNameLen);
+        memory->memcpy((char*)s->pLabelName, paramAddress, pLabelNameLen * sizeof(char));
     }
     memory->memcpy(&s->color, address, 16);address+=16;
 }
@@ -8126,7 +8126,7 @@ void MarshalVkDebugUtilsMessengerCallbackDataEXT::read(BoxedVulkanInfo* pBoxedIn
     } else {
         U32 pMessageIdNameLen = memory->strlen(paramAddress)+1;
         s->pMessageIdName = new char[pMessageIdNameLen];
-        memory->memcpy((char*)s->pMessageIdName, paramAddress, pMessageIdNameLen);
+        memory->memcpy((char*)s->pMessageIdName, paramAddress, pMessageIdNameLen * sizeof(char));
     }
     s->messageIdNumber = (int32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -8135,7 +8135,7 @@ void MarshalVkDebugUtilsMessengerCallbackDataEXT::read(BoxedVulkanInfo* pBoxedIn
     } else {
         U32 pMessageLen = memory->strlen(paramAddress)+1;
         s->pMessage = new char[pMessageLen];
-        memory->memcpy((char*)s->pMessage, paramAddress, pMessageLen);
+        memory->memcpy((char*)s->pMessage, paramAddress, pMessageLen * sizeof(char));
     }
     s->queueLabelCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -8144,7 +8144,7 @@ void MarshalVkDebugUtilsMessengerCallbackDataEXT::read(BoxedVulkanInfo* pBoxedIn
     } else {
         VkDebugUtilsLabelEXT* pQueueLabels = new VkDebugUtilsLabelEXT[s->queueLabelCount];
         for (U32 i = 0; i < s->queueLabelCount; i++) {
-            MarshalVkDebugUtilsLabelEXT::read(pBoxedInfo, memory, paramAddress + i*16, &pQueueLabels[i]);
+            MarshalVkDebugUtilsLabelEXT::read(pBoxedInfo, memory, paramAddress + i*28, &pQueueLabels[i]);
         }
         s->pQueueLabels = pQueueLabels;
     }
@@ -8155,7 +8155,7 @@ void MarshalVkDebugUtilsMessengerCallbackDataEXT::read(BoxedVulkanInfo* pBoxedIn
     } else {
         VkDebugUtilsLabelEXT* pCmdBufLabels = new VkDebugUtilsLabelEXT[s->cmdBufLabelCount];
         for (U32 i = 0; i < s->cmdBufLabelCount; i++) {
-            MarshalVkDebugUtilsLabelEXT::read(pBoxedInfo, memory, paramAddress + i*16, &pCmdBufLabels[i]);
+            MarshalVkDebugUtilsLabelEXT::read(pBoxedInfo, memory, paramAddress + i*28, &pCmdBufLabels[i]);
         }
         s->pCmdBufLabels = pCmdBufLabels;
     }
@@ -8572,7 +8572,7 @@ void MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo::read(BoxedVulkanInfo* p
         s->pBindingFlags = NULL;
     } else {
         s->pBindingFlags = new VkDescriptorBindingFlags[(U32)s->bindingCount];
-        memory->memcpy((VkDescriptorBindingFlags*)s->pBindingFlags, paramAddress, (U32)s->bindingCount);
+        memory->memcpy((VkDescriptorBindingFlags*)s->pBindingFlags, paramAddress, (U32)s->bindingCount * sizeof(VkDescriptorBindingFlags));
     }
 }
 void MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutBindingFlagsCreateInfo* s) {
@@ -8605,7 +8605,7 @@ void MarshalVkDescriptorSetVariableDescriptorCountAllocateInfo::read(BoxedVulkan
         s->pDescriptorCounts = NULL;
     } else {
         s->pDescriptorCounts = new uint32_t[(U32)s->descriptorSetCount];
-        memory->memcpy((uint32_t*)s->pDescriptorCounts, paramAddress, (U32)s->descriptorSetCount);
+        memory->memcpy((uint32_t*)s->pDescriptorCounts, paramAddress, (U32)s->descriptorSetCount * sizeof(uint32_t));
     }
 }
 void MarshalVkDescriptorSetVariableDescriptorCountAllocateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetVariableDescriptorCountAllocateInfo* s) {
@@ -8764,7 +8764,7 @@ void MarshalVkSubpassDescription2::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
         s->pPreserveAttachments = NULL;
     } else {
         s->pPreserveAttachments = new uint32_t[(U32)s->preserveAttachmentCount];
-        memory->memcpy((uint32_t*)s->pPreserveAttachments, paramAddress, (U32)s->preserveAttachmentCount);
+        memory->memcpy((uint32_t*)s->pPreserveAttachments, paramAddress, (U32)s->preserveAttachmentCount * sizeof(uint32_t));
     }
 }
 void MarshalVkSubpassDescription2::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDescription2* s) {
@@ -8899,7 +8899,7 @@ void MarshalVkRenderPassCreateInfo2::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pCorrelatedViewMasks = NULL;
     } else {
         s->pCorrelatedViewMasks = new uint32_t[(U32)s->correlatedViewMaskCount];
-        memory->memcpy((uint32_t*)s->pCorrelatedViewMasks, paramAddress, (U32)s->correlatedViewMaskCount);
+        memory->memcpy((uint32_t*)s->pCorrelatedViewMasks, paramAddress, (U32)s->correlatedViewMaskCount * sizeof(uint32_t));
     }
 }
 void MarshalVkRenderPassCreateInfo2::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreateInfo2* s) {
@@ -9062,7 +9062,7 @@ void MarshalVkTimelineSemaphoreSubmitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pWaitSemaphoreValues = NULL;
     } else {
         s->pWaitSemaphoreValues = new uint64_t[(U32)s->waitSemaphoreValueCount];
-        memory->memcpy((uint64_t*)s->pWaitSemaphoreValues, paramAddress, (U32)s->waitSemaphoreValueCount);
+        memory->memcpy((uint64_t*)s->pWaitSemaphoreValues, paramAddress, (U32)s->waitSemaphoreValueCount * sizeof(uint64_t));
     }
     s->signalSemaphoreValueCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -9070,7 +9070,7 @@ void MarshalVkTimelineSemaphoreSubmitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pSignalSemaphoreValues = NULL;
     } else {
         s->pSignalSemaphoreValues = new uint64_t[(U32)s->signalSemaphoreValueCount];
-        memory->memcpy((uint64_t*)s->pSignalSemaphoreValues, paramAddress, (U32)s->signalSemaphoreValueCount);
+        memory->memcpy((uint64_t*)s->pSignalSemaphoreValues, paramAddress, (U32)s->signalSemaphoreValueCount * sizeof(uint64_t));
     }
 }
 void MarshalVkTimelineSemaphoreSubmitInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkTimelineSemaphoreSubmitInfo* s) {
@@ -9110,14 +9110,14 @@ void MarshalVkSemaphoreWaitInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
         s->pSemaphores = NULL;
     } else {
         s->pSemaphores = new VkSemaphore[(U32)s->semaphoreCount];
-        memory->memcpy((VkSemaphore*)s->pSemaphores, paramAddress, (U32)s->semaphoreCount);
+        memory->memcpy((VkSemaphore*)s->pSemaphores, paramAddress, (U32)s->semaphoreCount * sizeof(VkSemaphore));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pValues = NULL;
     } else {
         s->pValues = new uint64_t[(U32)s->semaphoreCount];
-        memory->memcpy((uint64_t*)s->pValues, paramAddress, (U32)s->semaphoreCount);
+        memory->memcpy((uint64_t*)s->pValues, paramAddress, (U32)s->semaphoreCount * sizeof(uint64_t));
     }
 }
 void MarshalVkSemaphoreWaitInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreWaitInfo* s) {
@@ -9183,7 +9183,7 @@ void MarshalVkPipelineVertexInputDivisorStateCreateInfo::read(BoxedVulkanInfo* p
         s->pVertexBindingDivisors = NULL;
     } else {
         s->pVertexBindingDivisors = new VkVertexInputBindingDivisorDescription[(U32)s->vertexBindingDivisorCount];
-        memory->memcpy((VkVertexInputBindingDivisorDescription*)s->pVertexBindingDivisors, paramAddress, (U32)s->vertexBindingDivisorCount * sizeof(VkVertexInputBindingDivisorDescription));
+        memory->memcpy((VkVertexInputBindingDivisorDescription*)s->pVertexBindingDivisors, paramAddress, (U32)s->vertexBindingDivisorCount * sizeof(VkVertexInputBindingDivisorDescription) * sizeof(VkVertexInputBindingDivisorDescription));
     }
 }
 void MarshalVkPipelineVertexInputDivisorStateCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineVertexInputDivisorStateCreateInfo* s) {
@@ -9814,7 +9814,7 @@ void MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::read(BoxedVulka
         s->pExclusiveScissors = NULL;
     } else {
         s->pExclusiveScissors = new VkRect2D[(U32)s->exclusiveScissorCount];
-        memory->memcpy((VkRect2D*)s->pExclusiveScissors, paramAddress, (U32)s->exclusiveScissorCount * sizeof(VkRect2D));
+        memory->memcpy((VkRect2D*)s->pExclusiveScissors, paramAddress, (U32)s->exclusiveScissorCount * sizeof(VkRect2D) * sizeof(VkRect2D));
     }
 }
 void MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportExclusiveScissorStateCreateInfoNV* s) {
@@ -10035,7 +10035,7 @@ void MarshalVkShadingRatePaletteNV::read(BoxedVulkanInfo* pBoxedInfo, KMemory* m
         s->pShadingRatePaletteEntries = NULL;
     } else {
         s->pShadingRatePaletteEntries = new VkShadingRatePaletteEntryNV[(U32)s->shadingRatePaletteEntryCount];
-        memory->memcpy((VkShadingRatePaletteEntryNV*)s->pShadingRatePaletteEntries, paramAddress, (U32)s->shadingRatePaletteEntryCount);
+        memory->memcpy((VkShadingRatePaletteEntryNV*)s->pShadingRatePaletteEntries, paramAddress, (U32)s->shadingRatePaletteEntryCount * sizeof(VkShadingRatePaletteEntryNV));
     }
 }
 MarshalVkShadingRatePaletteNV::~MarshalVkShadingRatePaletteNV() {
@@ -10159,7 +10159,7 @@ void MarshalVkCoarseSampleOrderCustomNV::read(BoxedVulkanInfo* pBoxedInfo, KMemo
         s->pSampleLocations = NULL;
     } else {
         s->pSampleLocations = new VkCoarseSampleLocationNV[(U32)s->sampleLocationCount];
-        memory->memcpy((VkCoarseSampleLocationNV*)s->pSampleLocations, paramAddress, (U32)s->sampleLocationCount * sizeof(VkCoarseSampleLocationNV));
+        memory->memcpy((VkCoarseSampleLocationNV*)s->pSampleLocations, paramAddress, (U32)s->sampleLocationCount * sizeof(VkCoarseSampleLocationNV) * sizeof(VkCoarseSampleLocationNV));
     }
 }
 MarshalVkCoarseSampleOrderCustomNV::~MarshalVkCoarseSampleOrderCustomNV() {
@@ -10808,7 +10808,7 @@ void MarshalVkBindAccelerationStructureMemoryInfoNV::read(BoxedVulkanInfo* pBoxe
         s->pDeviceIndices = NULL;
     } else {
         s->pDeviceIndices = new uint32_t[(U32)s->deviceIndexCount];
-        memory->memcpy((uint32_t*)s->pDeviceIndices, paramAddress, (U32)s->deviceIndexCount);
+        memory->memcpy((uint32_t*)s->pDeviceIndices, paramAddress, (U32)s->deviceIndexCount * sizeof(uint32_t));
     }
 }
 void MarshalVkBindAccelerationStructureMemoryInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindAccelerationStructureMemoryInfoNV* s) {
@@ -10844,7 +10844,7 @@ void MarshalVkWriteDescriptorSetAccelerationStructureKHR::read(BoxedVulkanInfo* 
         s->pAccelerationStructures = NULL;
     } else {
         s->pAccelerationStructures = new VkAccelerationStructureKHR[(U32)s->accelerationStructureCount];
-        memory->memcpy((VkAccelerationStructureKHR*)s->pAccelerationStructures, paramAddress, (U32)s->accelerationStructureCount);
+        memory->memcpy((VkAccelerationStructureKHR*)s->pAccelerationStructures, paramAddress, (U32)s->accelerationStructureCount * sizeof(VkAccelerationStructureKHR));
     }
 }
 void MarshalVkWriteDescriptorSetAccelerationStructureKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetAccelerationStructureKHR* s) {
@@ -10877,7 +10877,7 @@ void MarshalVkWriteDescriptorSetAccelerationStructureNV::read(BoxedVulkanInfo* p
         s->pAccelerationStructures = NULL;
     } else {
         s->pAccelerationStructures = new VkAccelerationStructureNV[(U32)s->accelerationStructureCount];
-        memory->memcpy((VkAccelerationStructureNV*)s->pAccelerationStructures, paramAddress, (U32)s->accelerationStructureCount);
+        memory->memcpy((VkAccelerationStructureNV*)s->pAccelerationStructures, paramAddress, (U32)s->accelerationStructureCount * sizeof(VkAccelerationStructureNV));
     }
 }
 void MarshalVkWriteDescriptorSetAccelerationStructureNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetAccelerationStructureNV* s) {
@@ -11348,7 +11348,7 @@ void MarshalVkSubpassFragmentDensityMapOffsetEndInfoQCOM::read(BoxedVulkanInfo* 
         s->pFragmentDensityOffsets = NULL;
     } else {
         s->pFragmentDensityOffsets = new VkOffset2D[(U32)s->fragmentDensityOffsetCount];
-        memory->memcpy((VkOffset2D*)s->pFragmentDensityOffsets, paramAddress, (U32)s->fragmentDensityOffsetCount * sizeof(VkOffset2D));
+        memory->memcpy((VkOffset2D*)s->pFragmentDensityOffsets, paramAddress, (U32)s->fragmentDensityOffsetCount * sizeof(VkOffset2D) * sizeof(VkOffset2D));
     }
 }
 void MarshalVkSubpassFragmentDensityMapOffsetEndInfoQCOM::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassFragmentDensityMapOffsetEndInfoQCOM* s) {
@@ -11780,7 +11780,7 @@ void MarshalVkFramebufferAttachmentImageInfo::read(BoxedVulkanInfo* pBoxedInfo, 
         s->pViewFormats = NULL;
     } else {
         s->pViewFormats = new VkFormat[(U32)s->viewFormatCount];
-        memory->memcpy((VkFormat*)s->pViewFormats, paramAddress, (U32)s->viewFormatCount);
+        memory->memcpy((VkFormat*)s->pViewFormats, paramAddress, (U32)s->viewFormatCount * sizeof(VkFormat));
     }
 }
 void MarshalVkFramebufferAttachmentImageInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferAttachmentImageInfo* s) {
@@ -11818,7 +11818,7 @@ void MarshalVkRenderPassAttachmentBeginInfo::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pAttachments = NULL;
     } else {
         s->pAttachments = new VkImageView[(U32)s->attachmentCount];
-        memory->memcpy((VkImageView*)s->pAttachments, paramAddress, (U32)s->attachmentCount);
+        memory->memcpy((VkImageView*)s->pAttachments, paramAddress, (U32)s->attachmentCount * sizeof(VkImageView));
     }
 }
 void MarshalVkRenderPassAttachmentBeginInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassAttachmentBeginInfo* s) {
@@ -12032,7 +12032,7 @@ void MarshalVkPipelineCreationFeedbackCreateInfo::read(BoxedVulkanInfo* pBoxedIn
         s->pPipelineStageCreationFeedbacks = NULL;
     } else {
         s->pPipelineStageCreationFeedbacks = new VkPipelineCreationFeedback[(U32)s->pipelineStageCreationFeedbackCount];
-        memory->memcpy((VkPipelineCreationFeedback*)s->pPipelineStageCreationFeedbacks, paramAddress, (U32)s->pipelineStageCreationFeedbackCount * sizeof(VkPipelineCreationFeedback));
+        memory->memcpy((VkPipelineCreationFeedback*)s->pPipelineStageCreationFeedbacks, paramAddress, (U32)s->pipelineStageCreationFeedbackCount * sizeof(VkPipelineCreationFeedback) * sizeof(VkPipelineCreationFeedback));
     }
 }
 void MarshalVkPipelineCreationFeedbackCreateInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreationFeedbackCreateInfo* s) {
@@ -12236,7 +12236,7 @@ void MarshalVkQueryPoolPerformanceCreateInfoKHR::read(BoxedVulkanInfo* pBoxedInf
         s->pCounterIndices = NULL;
     } else {
         s->pCounterIndices = new uint32_t[(U32)s->counterIndexCount];
-        memory->memcpy((uint32_t*)s->pCounterIndices, paramAddress, (U32)s->counterIndexCount);
+        memory->memcpy((uint32_t*)s->pCounterIndices, paramAddress, (U32)s->counterIndexCount * sizeof(uint32_t));
     }
 }
 void MarshalVkQueryPoolPerformanceCreateInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolPerformanceCreateInfoKHR* s) {
@@ -12867,7 +12867,7 @@ void MarshalVkPipelineExecutableInternalRepresentationKHR::read(BoxedVulkanInfo*
         s->pData = NULL;
     } else {
         s->pData = new char[(U32)s->dataSize];
-        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize);
+        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize * sizeof(char));
     }
 }
 void MarshalVkPipelineExecutableInternalRepresentationKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutableInternalRepresentationKHR* s) {
@@ -13822,7 +13822,7 @@ void MarshalVkPhysicalDeviceVulkan14Properties::read(BoxedVulkanInfo* pBoxedInfo
         s->pCopySrcLayouts = NULL;
     } else {
         s->pCopySrcLayouts = new VkImageLayout[(U32)s->copySrcLayoutCount];
-        memory->memcpy((VkImageLayout*)s->pCopySrcLayouts, paramAddress, (U32)s->copySrcLayoutCount);
+        memory->memcpy((VkImageLayout*)s->pCopySrcLayouts, paramAddress, (U32)s->copySrcLayoutCount * sizeof(VkImageLayout));
     }
     s->copyDstLayoutCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -13830,7 +13830,7 @@ void MarshalVkPhysicalDeviceVulkan14Properties::read(BoxedVulkanInfo* pBoxedInfo
         s->pCopyDstLayouts = NULL;
     } else {
         s->pCopyDstLayouts = new VkImageLayout[(U32)s->copyDstLayoutCount];
-        memory->memcpy((VkImageLayout*)s->pCopyDstLayouts, paramAddress, (U32)s->copyDstLayoutCount);
+        memory->memcpy((VkImageLayout*)s->pCopyDstLayouts, paramAddress, (U32)s->copyDstLayoutCount * sizeof(VkImageLayout));
     }
     memory->memcpy(&s->optimalTilingLayoutUUID, address, 16);address+=16;
     s->identicalMemoryTypeRequirements = (VkBool32)memory->readd(address);address+=4;
@@ -14295,7 +14295,7 @@ void MarshalVkAccelerationStructureVersionInfoKHR::read(BoxedVulkanInfo* pBoxedI
         s->pVersionData = NULL;
     } else {
         s->pVersionData = new uint8_t[2*VK_UUID_SIZE];
-        memory->memcpy((uint8_t*)s->pVersionData, paramAddress, 2*VK_UUID_SIZE);
+        memory->memcpy((uint8_t*)s->pVersionData, paramAddress, 2*VK_UUID_SIZE * sizeof(uint8_t));
     }
 }
 void MarshalVkAccelerationStructureVersionInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureVersionInfoKHR* s) {
@@ -14425,7 +14425,7 @@ void MarshalVkPipelineLibraryCreateInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pLibraries = NULL;
     } else {
         s->pLibraries = new VkPipeline[(U32)s->libraryCount];
-        memory->memcpy((VkPipeline*)s->pLibraries, paramAddress, (U32)s->libraryCount);
+        memory->memcpy((VkPipeline*)s->pLibraries, paramAddress, (U32)s->libraryCount * sizeof(VkPipeline));
     }
 }
 void MarshalVkPipelineLibraryCreateInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineLibraryCreateInfoKHR* s) {
@@ -15188,7 +15188,7 @@ void MarshalVkBlitImageInfo2::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory,
     } else {
         VkImageBlit2* pRegions = new VkImageBlit2[s->regionCount];
         for (U32 i = 0; i < s->regionCount; i++) {
-            MarshalVkImageBlit2::read(pBoxedInfo, memory, paramAddress + i*64, &pRegions[i]);
+            MarshalVkImageBlit2::read(pBoxedInfo, memory, paramAddress + i*88, &pRegions[i]);
         }
         s->pRegions = pRegions;
     }
@@ -15786,7 +15786,7 @@ void MarshalVkMutableDescriptorTypeListEXT::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pDescriptorTypes = NULL;
     } else {
         s->pDescriptorTypes = new VkDescriptorType[(U32)s->descriptorTypeCount];
-        memory->memcpy((VkDescriptorType*)s->pDescriptorTypes, paramAddress, (U32)s->descriptorTypeCount);
+        memory->memcpy((VkDescriptorType*)s->pDescriptorTypes, paramAddress, (U32)s->descriptorTypeCount * sizeof(VkDescriptorType));
     }
 }
 MarshalVkMutableDescriptorTypeListEXT::~MarshalVkMutableDescriptorTypeListEXT() {
@@ -15952,7 +15952,7 @@ void MarshalVkGeneratedCommandsShaderInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, 
         s->pShaders = NULL;
     } else {
         s->pShaders = new VkShaderEXT[(U32)s->shaderCount];
-        memory->memcpy((VkShaderEXT*)s->pShaders, paramAddress, (U32)s->shaderCount);
+        memory->memcpy((VkShaderEXT*)s->pShaders, paramAddress, (U32)s->shaderCount * sizeof(VkShaderEXT));
     }
 }
 void MarshalVkGeneratedCommandsShaderInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsShaderInfoEXT* s) {
@@ -16035,7 +16035,7 @@ void MarshalVkIndirectExecutionSetShaderLayoutInfoEXT::read(BoxedVulkanInfo* pBo
         s->pSetLayouts = NULL;
     } else {
         s->pSetLayouts = new VkDescriptorSetLayout[(U32)s->setLayoutCount];
-        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->setLayoutCount);
+        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->setLayoutCount * sizeof(VkDescriptorSetLayout));
     }
 }
 void MarshalVkIndirectExecutionSetShaderLayoutInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetShaderLayoutInfoEXT* s) {
@@ -16068,7 +16068,7 @@ void MarshalVkIndirectExecutionSetShaderInfoEXT::read(BoxedVulkanInfo* pBoxedInf
         s->pInitialShaders = NULL;
     } else {
         s->pInitialShaders = new VkShaderEXT[(U32)s->shaderCount];
-        memory->memcpy((VkShaderEXT*)s->pInitialShaders, paramAddress, (U32)s->shaderCount);
+        memory->memcpy((VkShaderEXT*)s->pInitialShaders, paramAddress, (U32)s->shaderCount * sizeof(VkShaderEXT));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -16087,7 +16087,7 @@ void MarshalVkIndirectExecutionSetShaderInfoEXT::read(BoxedVulkanInfo* pBoxedInf
         s->pPushConstantRanges = NULL;
     } else {
         s->pPushConstantRanges = new VkPushConstantRange[(U32)s->pushConstantRangeCount];
-        memory->memcpy((VkPushConstantRange*)s->pPushConstantRanges, paramAddress, (U32)s->pushConstantRangeCount * sizeof(VkPushConstantRange));
+        memory->memcpy((VkPushConstantRange*)s->pPushConstantRanges, paramAddress, (U32)s->pushConstantRangeCount * sizeof(VkPushConstantRange) * sizeof(VkPushConstantRange));
     }
 }
 void MarshalVkIndirectExecutionSetShaderInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetShaderInfoEXT* s) {
@@ -16510,7 +16510,7 @@ void MarshalVkPipelineColorWriteCreateInfoEXT::read(BoxedVulkanInfo* pBoxedInfo,
         s->pColorWriteEnables = NULL;
     } else {
         s->pColorWriteEnables = new VkBool32[(U32)s->attachmentCount];
-        memory->memcpy((VkBool32*)s->pColorWriteEnables, paramAddress, (U32)s->attachmentCount);
+        memory->memcpy((VkBool32*)s->pColorWriteEnables, paramAddress, (U32)s->attachmentCount * sizeof(VkBool32));
     }
 }
 void MarshalVkPipelineColorWriteCreateInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorWriteCreateInfoEXT* s) {
@@ -16938,7 +16938,7 @@ void MarshalVkPhysicalDeviceHostImageCopyProperties::read(BoxedVulkanInfo* pBoxe
         s->pCopySrcLayouts = NULL;
     } else {
         s->pCopySrcLayouts = new VkImageLayout[(U32)s->copySrcLayoutCount];
-        memory->memcpy((VkImageLayout*)s->pCopySrcLayouts, paramAddress, (U32)s->copySrcLayoutCount);
+        memory->memcpy((VkImageLayout*)s->pCopySrcLayouts, paramAddress, (U32)s->copySrcLayoutCount * sizeof(VkImageLayout));
     }
     s->copyDstLayoutCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -16946,7 +16946,7 @@ void MarshalVkPhysicalDeviceHostImageCopyProperties::read(BoxedVulkanInfo* pBoxe
         s->pCopyDstLayouts = NULL;
     } else {
         s->pCopyDstLayouts = new VkImageLayout[(U32)s->copyDstLayoutCount];
-        memory->memcpy((VkImageLayout*)s->pCopyDstLayouts, paramAddress, (U32)s->copyDstLayoutCount);
+        memory->memcpy((VkImageLayout*)s->pCopyDstLayouts, paramAddress, (U32)s->copyDstLayoutCount * sizeof(VkImageLayout));
     }
     memory->memcpy(&s->optimalTilingLayoutUUID, address, 16);address+=16;
     s->identicalMemoryTypeRequirements = (VkBool32)memory->readd(address);address+=4;
@@ -17654,7 +17654,7 @@ void MarshalVkVideoCapabilitiesKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* m
     memory->memcpy(&s->maxCodedExtent, address, 8);address+=8;
     s->maxDpbSlots = (uint32_t)memory->readd(address);address+=4;
     s->maxActiveReferencePictures = (uint32_t)memory->readd(address);address+=4;
-    memory->memcpy(&s->stdHeaderVersion, address, 8);address+=8;
+    memory->memcpy(&s->stdHeaderVersion, address, 260);address+=260;
 }
 void MarshalVkVideoCapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoCapabilitiesKHR* s) {
     memory->writed(address, s->sType);address+=4;
@@ -17670,7 +17670,7 @@ void MarshalVkVideoCapabilitiesKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* 
     memory->memcpy(address, &s->maxCodedExtent, 8); address+=8;
     memory->writed(address, s->maxDpbSlots);address+=4;
     memory->writed(address, s->maxActiveReferencePictures);address+=4;
-    memory->memcpy(address, &s->stdHeaderVersion, 8); address+=8;
+    memory->memcpy(address, &s->stdHeaderVersion, 260); address+=260;
 }
 MarshalVkVideoCapabilitiesKHR::~MarshalVkVideoCapabilitiesKHR() {
     delete s.pNext;
@@ -18041,7 +18041,7 @@ void MarshalVkVideoDecodeH264SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdSPSs = NULL;
     } else {
         s->pStdSPSs = new StdVideoH264SequenceParameterSet[(U32)s->stdSPSCount];
-        memory->memcpy((StdVideoH264SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH264SequenceParameterSet));
+        memory->memcpy((StdVideoH264SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH264SequenceParameterSet) * sizeof(StdVideoH264SequenceParameterSet));
     }
     s->stdPPSCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -18049,7 +18049,7 @@ void MarshalVkVideoDecodeH264SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdPPSs = NULL;
     } else {
         s->pStdPPSs = new StdVideoH264PictureParameterSet[(U32)s->stdPPSCount];
-        memory->memcpy((StdVideoH264PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH264PictureParameterSet));
+        memory->memcpy((StdVideoH264PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH264PictureParameterSet) * sizeof(StdVideoH264PictureParameterSet));
     }
 }
 void MarshalVkVideoDecodeH264SessionParametersAddInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264SessionParametersAddInfoKHR* s) {
@@ -18138,7 +18138,7 @@ void MarshalVkVideoDecodeH264PictureInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pSliceOffsets = NULL;
     } else {
         s->pSliceOffsets = new uint32_t[(U32)s->sliceCount];
-        memory->memcpy((uint32_t*)s->pSliceOffsets, paramAddress, (U32)s->sliceCount);
+        memory->memcpy((uint32_t*)s->pSliceOffsets, paramAddress, (U32)s->sliceCount * sizeof(uint32_t));
     }
 }
 void MarshalVkVideoDecodeH264PictureInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264PictureInfoKHR* s) {
@@ -18466,7 +18466,7 @@ void MarshalVkVideoDecodeH265SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdVPSs = NULL;
     } else {
         s->pStdVPSs = new StdVideoH265VideoParameterSet[(U32)s->stdVPSCount];
-        memory->memcpy((StdVideoH265VideoParameterSet*)s->pStdVPSs, paramAddress, (U32)s->stdVPSCount * sizeof(StdVideoH265VideoParameterSet));
+        memory->memcpy((StdVideoH265VideoParameterSet*)s->pStdVPSs, paramAddress, (U32)s->stdVPSCount * sizeof(StdVideoH265VideoParameterSet) * sizeof(StdVideoH265VideoParameterSet));
     }
     s->stdSPSCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -18474,7 +18474,7 @@ void MarshalVkVideoDecodeH265SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdSPSs = NULL;
     } else {
         s->pStdSPSs = new StdVideoH265SequenceParameterSet[(U32)s->stdSPSCount];
-        memory->memcpy((StdVideoH265SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH265SequenceParameterSet));
+        memory->memcpy((StdVideoH265SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH265SequenceParameterSet) * sizeof(StdVideoH265SequenceParameterSet));
     }
     s->stdPPSCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -18482,7 +18482,7 @@ void MarshalVkVideoDecodeH265SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdPPSs = NULL;
     } else {
         s->pStdPPSs = new StdVideoH265PictureParameterSet[(U32)s->stdPPSCount];
-        memory->memcpy((StdVideoH265PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH265PictureParameterSet));
+        memory->memcpy((StdVideoH265PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH265PictureParameterSet) * sizeof(StdVideoH265PictureParameterSet));
     }
 }
 void MarshalVkVideoDecodeH265SessionParametersAddInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265SessionParametersAddInfoKHR* s) {
@@ -18581,7 +18581,7 @@ void MarshalVkVideoDecodeH265PictureInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pSliceSegmentOffsets = NULL;
     } else {
         s->pSliceSegmentOffsets = new uint32_t[(U32)s->sliceSegmentCount];
-        memory->memcpy((uint32_t*)s->pSliceSegmentOffsets, paramAddress, (U32)s->sliceSegmentCount);
+        memory->memcpy((uint32_t*)s->pSliceSegmentOffsets, paramAddress, (U32)s->sliceSegmentCount * sizeof(uint32_t));
     }
 }
 void MarshalVkVideoDecodeH265PictureInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265PictureInfoKHR* s) {
@@ -18876,14 +18876,14 @@ void MarshalVkVideoDecodeAV1PictureInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pTileOffsets = NULL;
     } else {
         s->pTileOffsets = new uint32_t[(U32)s->tileCount];
-        memory->memcpy((uint32_t*)s->pTileOffsets, paramAddress, (U32)s->tileCount);
+        memory->memcpy((uint32_t*)s->pTileOffsets, paramAddress, (U32)s->tileCount * sizeof(uint32_t));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pTileSizes = NULL;
     } else {
         s->pTileSizes = new uint32_t[(U32)s->tileCount];
-        memory->memcpy((uint32_t*)s->pTileSizes, paramAddress, (U32)s->tileCount);
+        memory->memcpy((uint32_t*)s->pTileSizes, paramAddress, (U32)s->tileCount * sizeof(uint32_t));
     }
 }
 void MarshalVkVideoDecodeAV1PictureInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1PictureInfoKHR* s) {
@@ -19645,7 +19645,7 @@ void MarshalStdVideoEncodeH264SliceHeader::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pWeightTable = NULL;
     } else {
         s->pWeightTable = new StdVideoEncodeH264WeightTable[1];
-        memory->memcpy((StdVideoEncodeH264WeightTable*)s->pWeightTable, paramAddress, 1 * sizeof(StdVideoEncodeH264WeightTable));
+        memory->memcpy((StdVideoEncodeH264WeightTable*)s->pWeightTable, paramAddress, 1 * sizeof(StdVideoEncodeH264WeightTable) * sizeof(StdVideoEncodeH264WeightTable));
     }
 }
 MarshalStdVideoEncodeH264SliceHeader::~MarshalStdVideoEncodeH264SliceHeader() {
@@ -19719,7 +19719,7 @@ void MarshalVkVideoEncodeH264SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdSPSs = NULL;
     } else {
         s->pStdSPSs = new StdVideoH264SequenceParameterSet[(U32)s->stdSPSCount];
-        memory->memcpy((StdVideoH264SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH264SequenceParameterSet));
+        memory->memcpy((StdVideoH264SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH264SequenceParameterSet) * sizeof(StdVideoH264SequenceParameterSet));
     }
     s->stdPPSCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -19727,7 +19727,7 @@ void MarshalVkVideoEncodeH264SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdPPSs = NULL;
     } else {
         s->pStdPPSs = new StdVideoH264PictureParameterSet[(U32)s->stdPPSCount];
-        memory->memcpy((StdVideoH264PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH264PictureParameterSet));
+        memory->memcpy((StdVideoH264PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH264PictureParameterSet) * sizeof(StdVideoH264PictureParameterSet));
     }
 }
 void MarshalVkVideoEncodeH264SessionParametersAddInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersAddInfoKHR* s) {
@@ -19968,7 +19968,7 @@ void MarshalVkVideoEncodeH264NaluSliceInfoKHR::read(BoxedVulkanInfo* pBoxedInfo,
         s->pStdSliceHeader = NULL;
     } else {
         s->pStdSliceHeader = new StdVideoEncodeH264SliceHeader[1];
-        memory->memcpy((StdVideoEncodeH264SliceHeader*)s->pStdSliceHeader, paramAddress, 1 * sizeof(StdVideoEncodeH264SliceHeader));
+        memory->memcpy((StdVideoEncodeH264SliceHeader*)s->pStdSliceHeader, paramAddress, 1 * sizeof(StdVideoEncodeH264SliceHeader) * sizeof(StdVideoEncodeH264SliceHeader));
     }
 }
 void MarshalVkVideoEncodeH264NaluSliceInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264NaluSliceInfoKHR* s) {
@@ -20272,7 +20272,7 @@ void MarshalVkVideoEncodeH265SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdVPSs = NULL;
     } else {
         s->pStdVPSs = new StdVideoH265VideoParameterSet[(U32)s->stdVPSCount];
-        memory->memcpy((StdVideoH265VideoParameterSet*)s->pStdVPSs, paramAddress, (U32)s->stdVPSCount * sizeof(StdVideoH265VideoParameterSet));
+        memory->memcpy((StdVideoH265VideoParameterSet*)s->pStdVPSs, paramAddress, (U32)s->stdVPSCount * sizeof(StdVideoH265VideoParameterSet) * sizeof(StdVideoH265VideoParameterSet));
     }
     s->stdSPSCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -20280,7 +20280,7 @@ void MarshalVkVideoEncodeH265SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdSPSs = NULL;
     } else {
         s->pStdSPSs = new StdVideoH265SequenceParameterSet[(U32)s->stdSPSCount];
-        memory->memcpy((StdVideoH265SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH265SequenceParameterSet));
+        memory->memcpy((StdVideoH265SequenceParameterSet*)s->pStdSPSs, paramAddress, (U32)s->stdSPSCount * sizeof(StdVideoH265SequenceParameterSet) * sizeof(StdVideoH265SequenceParameterSet));
     }
     s->stdPPSCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -20288,7 +20288,7 @@ void MarshalVkVideoEncodeH265SessionParametersAddInfoKHR::read(BoxedVulkanInfo* 
         s->pStdPPSs = NULL;
     } else {
         s->pStdPPSs = new StdVideoH265PictureParameterSet[(U32)s->stdPPSCount];
-        memory->memcpy((StdVideoH265PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH265PictureParameterSet));
+        memory->memcpy((StdVideoH265PictureParameterSet*)s->pStdPPSs, paramAddress, (U32)s->stdPPSCount * sizeof(StdVideoH265PictureParameterSet) * sizeof(StdVideoH265PictureParameterSet));
     }
 }
 void MarshalVkVideoEncodeH265SessionParametersAddInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersAddInfoKHR* s) {
@@ -20876,7 +20876,7 @@ void MarshalStdVideoEncodeAV1PictureInfo::read(BoxedVulkanInfo* pBoxedInfo, KMem
         s->pBufferRemovalTimes = NULL;
     } else {
         s->pBufferRemovalTimes = new uint32_t[1];
-        memory->memcpy((uint32_t*)s->pBufferRemovalTimes, paramAddress, 1);
+        memory->memcpy((uint32_t*)s->pBufferRemovalTimes, paramAddress, 1 * sizeof(uint32_t));
     }
 }
 MarshalStdVideoEncodeAV1PictureInfo::~MarshalStdVideoEncodeAV1PictureInfo() {
@@ -20982,7 +20982,7 @@ void MarshalVkVideoEncodeAV1SessionParametersCreateInfoKHR::read(BoxedVulkanInfo
         s->pStdOperatingPoints = NULL;
     } else {
         s->pStdOperatingPoints = new StdVideoEncodeAV1OperatingPointInfo[(U32)s->stdOperatingPointCount];
-        memory->memcpy((StdVideoEncodeAV1OperatingPointInfo*)s->pStdOperatingPoints, paramAddress, (U32)s->stdOperatingPointCount * sizeof(StdVideoEncodeAV1OperatingPointInfo));
+        memory->memcpy((StdVideoEncodeAV1OperatingPointInfo*)s->pStdOperatingPoints, paramAddress, (U32)s->stdOperatingPointCount * sizeof(StdVideoEncodeAV1OperatingPointInfo) * sizeof(StdVideoEncodeAV1OperatingPointInfo));
     }
 }
 void MarshalVkVideoEncodeAV1SessionParametersCreateInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1SessionParametersCreateInfoKHR* s) {
@@ -21366,7 +21366,7 @@ void MarshalVkCuModuleCreateInfoNVX::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         s->pData = NULL;
     } else {
         s->pData = new char[(U32)s->dataSize];
-        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize);
+        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize * sizeof(char));
     }
 }
 void MarshalVkCuModuleCreateInfoNVX::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuModuleCreateInfoNVX* s) {
@@ -21421,7 +21421,7 @@ void MarshalVkCuFunctionCreateInfoNVX::read(BoxedVulkanInfo* pBoxedInfo, KMemory
     } else {
         U32 pNameLen = memory->strlen(paramAddress)+1;
         s->pName = new char[pNameLen];
-        memory->memcpy((char*)s->pName, paramAddress, pNameLen);
+        memory->memcpy((char*)s->pName, paramAddress, pNameLen * sizeof(char));
     }
 }
 void MarshalVkCuFunctionCreateInfoNVX::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuFunctionCreateInfoNVX* s) {
@@ -22028,7 +22028,7 @@ void MarshalVkCudaModuleCreateInfoNV::read(BoxedVulkanInfo* pBoxedInfo, KMemory*
         s->pData = NULL;
     } else {
         s->pData = new char[(U32)s->dataSize];
-        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize);
+        memory->memcpy((void*)s->pData, paramAddress, (U32)s->dataSize * sizeof(char));
     }
 }
 void MarshalVkCudaModuleCreateInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaModuleCreateInfoNV* s) {
@@ -22062,7 +22062,7 @@ void MarshalVkCudaFunctionCreateInfoNV::read(BoxedVulkanInfo* pBoxedInfo, KMemor
     } else {
         U32 pNameLen = memory->strlen(paramAddress)+1;
         s->pName = new char[pNameLen];
-        memory->memcpy((char*)s->pName, paramAddress, pNameLen);
+        memory->memcpy((char*)s->pName, paramAddress, pNameLen * sizeof(char));
     }
 }
 void MarshalVkCudaFunctionCreateInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaFunctionCreateInfoNV* s) {
@@ -22148,7 +22148,7 @@ void MarshalVkPipelineRenderingCreateInfo::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pColorAttachmentFormats = NULL;
     } else {
         s->pColorAttachmentFormats = new VkFormat[(U32)s->colorAttachmentCount];
-        memory->memcpy((VkFormat*)s->pColorAttachmentFormats, paramAddress, (U32)s->colorAttachmentCount);
+        memory->memcpy((VkFormat*)s->pColorAttachmentFormats, paramAddress, (U32)s->colorAttachmentCount * sizeof(VkFormat));
     }
     s->depthAttachmentFormat = (VkFormat)memory->readd(address);address+=4;
     s->stencilAttachmentFormat = (VkFormat)memory->readd(address);address+=4;
@@ -22343,7 +22343,7 @@ void MarshalVkCommandBufferInheritanceRenderingInfo::read(BoxedVulkanInfo* pBoxe
         s->pColorAttachmentFormats = NULL;
     } else {
         s->pColorAttachmentFormats = new VkFormat[(U32)s->colorAttachmentCount];
-        memory->memcpy((VkFormat*)s->pColorAttachmentFormats, paramAddress, (U32)s->colorAttachmentCount);
+        memory->memcpy((VkFormat*)s->pColorAttachmentFormats, paramAddress, (U32)s->colorAttachmentCount * sizeof(VkFormat));
     }
     s->depthAttachmentFormat = (VkFormat)memory->readd(address);address+=4;
     s->stencilAttachmentFormat = (VkFormat)memory->readd(address);address+=4;
@@ -22384,7 +22384,7 @@ void MarshalVkAttachmentSampleCountInfoAMD::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pColorAttachmentSamples = NULL;
     } else {
         s->pColorAttachmentSamples = new VkSampleCountFlagBits[(U32)s->colorAttachmentCount];
-        memory->memcpy((VkSampleCountFlagBits*)s->pColorAttachmentSamples, paramAddress, (U32)s->colorAttachmentCount);
+        memory->memcpy((VkSampleCountFlagBits*)s->pColorAttachmentSamples, paramAddress, (U32)s->colorAttachmentCount * sizeof(VkSampleCountFlagBits));
     }
     s->depthStencilAttachmentSamples = (VkSampleCountFlagBits)memory->readd(address);address+=4;
 }
@@ -22825,7 +22825,7 @@ void MarshalVkPipelineShaderStageModuleIdentifierCreateInfoEXT::read(BoxedVulkan
         s->pIdentifier = NULL;
     } else {
         s->pIdentifier = new uint8_t[(U32)s->identifierSize];
-        memory->memcpy((uint8_t*)s->pIdentifier, paramAddress, (U32)s->identifierSize);
+        memory->memcpy((uint8_t*)s->pIdentifier, paramAddress, (U32)s->identifierSize * sizeof(uint8_t));
     }
 }
 void MarshalVkPipelineShaderStageModuleIdentifierCreateInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineShaderStageModuleIdentifierCreateInfoEXT* s) {
@@ -22882,7 +22882,7 @@ void MarshalVkImageCompressionControlEXT::read(BoxedVulkanInfo* pBoxedInfo, KMem
         s->pFixedRateFlags = NULL;
     } else {
         s->pFixedRateFlags = new VkImageCompressionFixedRateFlagsEXT[(U32)s->compressionControlPlaneCount];
-        memory->memcpy((VkImageCompressionFixedRateFlagsEXT*)s->pFixedRateFlags, paramAddress, (U32)s->compressionControlPlaneCount);
+        memory->memcpy((VkImageCompressionFixedRateFlagsEXT*)s->pFixedRateFlags, paramAddress, (U32)s->compressionControlPlaneCount * sizeof(VkImageCompressionFixedRateFlagsEXT));
     }
 }
 void MarshalVkImageCompressionControlEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCompressionControlEXT* s) {
@@ -23177,7 +23177,7 @@ void MarshalVkMicromapVersionInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory*
         s->pVersionData = NULL;
     } else {
         s->pVersionData = new uint8_t[2*VK_UUID_SIZE];
-        memory->memcpy((uint8_t*)s->pVersionData, paramAddress, 2*VK_UUID_SIZE);
+        memory->memcpy((uint8_t*)s->pVersionData, paramAddress, 2*VK_UUID_SIZE * sizeof(uint8_t));
     }
 }
 void MarshalVkMicromapVersionInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapVersionInfoEXT* s) {
@@ -23904,7 +23904,7 @@ void MarshalVkOpticalFlowExecuteInfoNV::read(BoxedVulkanInfo* pBoxedInfo, KMemor
         s->pRegions = NULL;
     } else {
         s->pRegions = new VkRect2D[(U32)s->regionCount];
-        memory->memcpy((VkRect2D*)s->pRegions, paramAddress, (U32)s->regionCount * sizeof(VkRect2D));
+        memory->memcpy((VkRect2D*)s->pRegions, paramAddress, (U32)s->regionCount * sizeof(VkRect2D) * sizeof(VkRect2D));
     }
 }
 void MarshalVkOpticalFlowExecuteInfoNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowExecuteInfoNV* s) {
@@ -24130,7 +24130,7 @@ void MarshalVkFrameBoundaryEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         s->pImages = NULL;
     } else {
         s->pImages = new VkImage[(U32)s->imageCount];
-        memory->memcpy((VkImage*)s->pImages, paramAddress, (U32)s->imageCount);
+        memory->memcpy((VkImage*)s->pImages, paramAddress, (U32)s->imageCount * sizeof(VkImage));
     }
     s->bufferCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -24138,7 +24138,7 @@ void MarshalVkFrameBoundaryEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         s->pBuffers = NULL;
     } else {
         s->pBuffers = new VkBuffer[(U32)s->bufferCount];
-        memory->memcpy((VkBuffer*)s->pBuffers, paramAddress, (U32)s->bufferCount);
+        memory->memcpy((VkBuffer*)s->pBuffers, paramAddress, (U32)s->bufferCount * sizeof(VkBuffer));
     }
     s->tagName = (uint64_t)memory->readq(address);address+=8;
     s->tagSize = (size_t)memory->readd(address);address+=4;
@@ -24147,7 +24147,7 @@ void MarshalVkFrameBoundaryEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         s->pTag = NULL;
     } else {
         s->pTag = new char[(U32)s->tagSize];
-        memory->memcpy((void*)s->pTag, paramAddress, (U32)s->tagSize);
+        memory->memcpy((void*)s->pTag, paramAddress, (U32)s->tagSize * sizeof(char));
     }
 }
 void MarshalVkFrameBoundaryEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFrameBoundaryEXT* s) {
@@ -24287,7 +24287,7 @@ void MarshalVkSurfacePresentModeCompatibilityEXT::read(BoxedVulkanInfo* pBoxedIn
         s->pPresentModes = NULL;
     } else {
         s->pPresentModes = new VkPresentModeKHR[(U32)s->presentModeCount];
-        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->presentModeCount);
+        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->presentModeCount * sizeof(VkPresentModeKHR));
     }
 }
 void MarshalVkSurfacePresentModeCompatibilityEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfacePresentModeCompatibilityEXT* s) {
@@ -24341,7 +24341,7 @@ void MarshalVkSwapchainPresentFenceInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pFences = NULL;
     } else {
         s->pFences = new VkFence[(U32)s->swapchainCount];
-        memory->memcpy((VkFence*)s->pFences, paramAddress, (U32)s->swapchainCount);
+        memory->memcpy((VkFence*)s->pFences, paramAddress, (U32)s->swapchainCount * sizeof(VkFence));
     }
 }
 void MarshalVkSwapchainPresentFenceInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentFenceInfoEXT* s) {
@@ -24374,7 +24374,7 @@ void MarshalVkSwapchainPresentModesCreateInfoEXT::read(BoxedVulkanInfo* pBoxedIn
         s->pPresentModes = NULL;
     } else {
         s->pPresentModes = new VkPresentModeKHR[(U32)s->presentModeCount];
-        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->presentModeCount);
+        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->presentModeCount * sizeof(VkPresentModeKHR));
     }
 }
 void MarshalVkSwapchainPresentModesCreateInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentModesCreateInfoEXT* s) {
@@ -24407,7 +24407,7 @@ void MarshalVkSwapchainPresentModeInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pPresentModes = NULL;
     } else {
         s->pPresentModes = new VkPresentModeKHR[(U32)s->swapchainCount];
-        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->swapchainCount);
+        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->swapchainCount * sizeof(VkPresentModeKHR));
     }
 }
 void MarshalVkSwapchainPresentModeInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentModeInfoEXT* s) {
@@ -24466,7 +24466,7 @@ void MarshalVkReleaseSwapchainImagesInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, K
         s->pImageIndices = NULL;
     } else {
         s->pImageIndices = new uint32_t[(U32)s->imageIndexCount];
-        memory->memcpy((uint32_t*)s->pImageIndices, paramAddress, (U32)s->imageIndexCount);
+        memory->memcpy((uint32_t*)s->pImageIndices, paramAddress, (U32)s->imageIndexCount * sizeof(uint32_t));
     }
 }
 void MarshalVkReleaseSwapchainImagesInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkReleaseSwapchainImagesInfoEXT* s) {
@@ -24752,7 +24752,7 @@ void MarshalVkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM::read(BoxedVulk
         s->pPerViewRenderAreas = NULL;
     } else {
         s->pPerViewRenderAreas = new VkRect2D[(U32)s->perViewRenderAreaCount];
-        memory->memcpy((VkRect2D*)s->pPerViewRenderAreas, paramAddress, (U32)s->perViewRenderAreaCount * sizeof(VkRect2D));
+        memory->memcpy((VkRect2D*)s->pPerViewRenderAreas, paramAddress, (U32)s->perViewRenderAreaCount * sizeof(VkRect2D) * sizeof(VkRect2D));
     }
 }
 void MarshalVkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM* s) {
@@ -24891,7 +24891,7 @@ void MarshalVkShaderCreateInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
         s->pCode = NULL;
     } else {
         s->pCode = new char[(U32)s->codeSize];
-        memory->memcpy((void*)s->pCode, paramAddress, (U32)s->codeSize);
+        memory->memcpy((void*)s->pCode, paramAddress, (U32)s->codeSize * sizeof(char));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -24899,7 +24899,7 @@ void MarshalVkShaderCreateInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
     } else {
         U32 pNameLen = memory->strlen(paramAddress)+1;
         s->pName = new char[pNameLen];
-        memory->memcpy((char*)s->pName, paramAddress, pNameLen);
+        memory->memcpy((char*)s->pName, paramAddress, pNameLen * sizeof(char));
     }
     s->setLayoutCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -24907,7 +24907,7 @@ void MarshalVkShaderCreateInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
         s->pSetLayouts = NULL;
     } else {
         s->pSetLayouts = new VkDescriptorSetLayout[(U32)s->setLayoutCount];
-        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->setLayoutCount);
+        memory->memcpy((VkDescriptorSetLayout*)s->pSetLayouts, paramAddress, (U32)s->setLayoutCount * sizeof(VkDescriptorSetLayout));
     }
     s->pushConstantRangeCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -24915,7 +24915,7 @@ void MarshalVkShaderCreateInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* me
         s->pPushConstantRanges = NULL;
     } else {
         s->pPushConstantRanges = new VkPushConstantRange[(U32)s->pushConstantRangeCount];
-        memory->memcpy((VkPushConstantRange*)s->pPushConstantRanges, paramAddress, (U32)s->pushConstantRangeCount * sizeof(VkPushConstantRange));
+        memory->memcpy((VkPushConstantRange*)s->pPushConstantRanges, paramAddress, (U32)s->pushConstantRangeCount * sizeof(VkPushConstantRange) * sizeof(VkPushConstantRange));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -25208,7 +25208,7 @@ void MarshalVkBindDescriptorSetsInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory*
         s->pDescriptorSets = NULL;
     } else {
         s->pDescriptorSets = new VkDescriptorSet[(U32)s->descriptorSetCount];
-        memory->memcpy((VkDescriptorSet*)s->pDescriptorSets, paramAddress, (U32)s->descriptorSetCount);
+        memory->memcpy((VkDescriptorSet*)s->pDescriptorSets, paramAddress, (U32)s->descriptorSetCount * sizeof(VkDescriptorSet));
     }
     s->dynamicOffsetCount = (uint32_t)memory->readd(address);address+=4;
     paramAddress = memory->readd(address);address+=4;
@@ -25216,7 +25216,7 @@ void MarshalVkBindDescriptorSetsInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory*
         s->pDynamicOffsets = NULL;
     } else {
         s->pDynamicOffsets = new uint32_t[(U32)s->dynamicOffsetCount];
-        memory->memcpy((uint32_t*)s->pDynamicOffsets, paramAddress, (U32)s->dynamicOffsetCount);
+        memory->memcpy((uint32_t*)s->pDynamicOffsets, paramAddress, (U32)s->dynamicOffsetCount * sizeof(uint32_t));
     }
 }
 void MarshalVkBindDescriptorSetsInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindDescriptorSetsInfo* s) {
@@ -25261,7 +25261,7 @@ void MarshalVkPushConstantsInfo::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
         s->pValues = NULL;
     } else {
         s->pValues = new char[(U32)s->size];
-        memory->memcpy((void*)s->pValues, paramAddress, (U32)s->size);
+        memory->memcpy((void*)s->pValues, paramAddress, (U32)s->size * sizeof(char));
     }
 }
 void MarshalVkPushConstantsInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushConstantsInfo* s) {
@@ -25350,14 +25350,14 @@ void MarshalVkSetDescriptorBufferOffsetsInfoEXT::read(BoxedVulkanInfo* pBoxedInf
         s->pBufferIndices = NULL;
     } else {
         s->pBufferIndices = new uint32_t[(U32)s->setCount];
-        memory->memcpy((uint32_t*)s->pBufferIndices, paramAddress, (U32)s->setCount);
+        memory->memcpy((uint32_t*)s->pBufferIndices, paramAddress, (U32)s->setCount * sizeof(uint32_t));
     }
     paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
         s->pOffsets = NULL;
     } else {
         s->pOffsets = new VkDeviceSize[(U32)s->setCount];
-        memory->memcpy((VkDeviceSize*)s->pOffsets, paramAddress, (U32)s->setCount);
+        memory->memcpy((VkDeviceSize*)s->pOffsets, paramAddress, (U32)s->setCount * sizeof(VkDeviceSize));
     }
 }
 void MarshalVkSetDescriptorBufferOffsetsInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSetDescriptorBufferOffsetsInfoEXT* s) {
@@ -25900,7 +25900,7 @@ void MarshalVkLatencySurfaceCapabilitiesNV::read(BoxedVulkanInfo* pBoxedInfo, KM
         s->pPresentModes = NULL;
     } else {
         s->pPresentModes = new VkPresentModeKHR[(U32)s->presentModeCount];
-        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->presentModeCount);
+        memory->memcpy((VkPresentModeKHR*)s->pPresentModes, paramAddress, (U32)s->presentModeCount * sizeof(VkPresentModeKHR));
     }
 }
 void MarshalVkLatencySurfaceCapabilitiesNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySurfaceCapabilitiesNV* s) {
@@ -26309,7 +26309,7 @@ void MarshalVkRenderingAttachmentLocationInfo::read(BoxedVulkanInfo* pBoxedInfo,
         s->pColorAttachmentLocations = NULL;
     } else {
         s->pColorAttachmentLocations = new uint32_t[(U32)s->colorAttachmentCount];
-        memory->memcpy((uint32_t*)s->pColorAttachmentLocations, paramAddress, (U32)s->colorAttachmentCount);
+        memory->memcpy((uint32_t*)s->pColorAttachmentLocations, paramAddress, (U32)s->colorAttachmentCount * sizeof(uint32_t));
     }
 }
 void MarshalVkRenderingAttachmentLocationInfo::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingAttachmentLocationInfo* s) {
