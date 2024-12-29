@@ -869,6 +869,12 @@
 		1AEBC3A42AABC1AC007ECB08 /* BoxedwineUnitTestsMain.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */; };
 		1AEBC3A72AABC248007ECB08 /* BoxedwineUnitTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */; };
 		1AEBC3BA2AABC52B007ECB08 /* BoxedwineUnitTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */; };
+		1AF730B02D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */; };
+		1AF730B12D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */; };
+		1AF730B22D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */; };
+		1AF730B32D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */; };
+		1AF730B42D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */; };
+		1AF730B52D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */; };
 		1AFC4768264096CB00EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
 		1AFC4769264096CB00EE5FCC /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1AFC476D26409EB200EE5FCC /* armv8CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */; };
@@ -1792,6 +1798,9 @@
 		1AEBC39B2AABC108007ECB08 /* BoxedwineUnitTestsMain.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxedwineUnitTestsMain.m; sourceTree = "<group>"; };
 		1AEBC3A62AABC248007ECB08 /* BoxedwineUnitTests.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = BoxedwineUnitTests.m; sourceTree = "<group>"; };
 		1AEBC3B12AABC519007ECB08 /* BoxedwineSlowUnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BoxedwineSlowUnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1AF730AD2D21D2DC00F282A4 /* kvulkan.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = kvulkan.h; sourceTree = "<group>"; };
+		1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = vk_host_marshal.cpp; path = vulkan/vk_host_marshal.cpp; sourceTree = "<group>"; };
+		1AF730AF2D21D30C00F282A4 /* vk_host_marshal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = vk_host_marshal.h; path = vulkan/vk_host_marshal.h; sourceTree = "<group>"; };
 		1AFC4764264096CB00EE5FCC /* armv8CPU.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = armv8CPU.cpp; sourceTree = "<group>"; };
 		1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = llvm_helper.cpp; sourceTree = "<group>"; };
 		1AFC4766264096CB00EE5FCC /* armv8CPU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = armv8CPU.h; sourceTree = "<group>"; };
@@ -2502,6 +2511,8 @@
 		1AC96011278FB67800107ED0 /* vulkan */ = {
 			isa = PBXGroup;
 			children = (
+				1AF730AE2D21D30C00F282A4 /* vk_host_marshal.cpp */,
+				1AF730AF2D21D30C00F282A4 /* vk_host_marshal.h */,
 				1AC96012278FB69500107ED0 /* vk_host.cpp */,
 				1AC96014278FB69600107ED0 /* vk_host.h */,
 				1AC96015278FB69600107ED0 /* vkdef.h */,
@@ -2749,6 +2760,7 @@
 		71FBFCD72433BBAD003F17F1 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				1AF730AD2D21D2DC00F282A4 /* kvulkan.h */,
 				1A0F958F2CA5101A00E5A9BF /* knativeaudiosdl.h */,
 				1A0F956C2C912C3C00E5A9BF /* knativeinput.h */,
 				1A0F956A2C912C3C00E5A9BF /* knativescreen.h */,
@@ -3880,6 +3892,7 @@
 				1A0F95712C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1A80EFF2276EBCC70032A70A /* log.cpp in Sources */,
 				1A80EFF8276EBCC70032A70A /* common_sse.cpp in Sources */,
+				1AF730B22D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				1A80EFFE276EBCC70032A70A /* soft_copy_on_write_page.cpp in Sources */,
 				1A80F000276EBCC70032A70A /* fs.cpp in Sources */,
 				1A80F004276EBCC70032A70A /* glew.cpp in Sources */,
@@ -4141,6 +4154,7 @@
 				1A0F95722C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
 				1AC5F2D82772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				1A80F225276EBF170032A70A /* common_fpu.cpp in Sources */,
+				1AF730B32D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				1A80F235276EBF170032A70A /* glext.cpp in Sources */,
 				1A80F239276EBF170032A70A /* spinnerControl.cpp in Sources */,
 				1A80F240276EBF170032A70A /* log.cpp in Sources */,
@@ -4351,6 +4365,7 @@
 				71222B9B2435169100CDBABD /* self.cpp in Sources */,
 				7100914D2644D42C003413C3 /* knativeaudio.cpp in Sources */,
 				71222BB82435169100CDBABD /* kobject.cpp in Sources */,
+				1AF730B42D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				7100915F2644D44E003413C3 /* platform.cpp in Sources */,
 				71222B872435169100CDBABD /* fsmemopennode.cpp in Sources */,
 				71222B5F2435169100CDBABD /* x64CodeChunk.cpp in Sources */,
@@ -4638,6 +4653,7 @@
 				1A0F95112C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				1AC9601E278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				71222C5A24351CBA00CDBABD /* devdsp.cpp in Sources */,
+				1AF730B12D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				71222C5B24351CBA00CDBABD /* globalSettings.cpp in Sources */,
 				71222C5C24351CBA00CDBABD /* mesagl.c in Sources */,
 				71222C5D24351CBA00CDBABD /* baseDlg.cpp in Sources */,
@@ -4810,6 +4826,7 @@
 				1AA711C52B505C9B008704E2 /* kmemory_soft.cpp in Sources */,
 				7135DC6E264EBCD0005D6AA6 /* glfunctions_ext2.cpp in Sources */,
 				7135DC6F264EBCD0005D6AA6 /* devtty.cpp in Sources */,
+				1AF730B52D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				7135DC70264EBCD0005D6AA6 /* x64Asm.cpp in Sources */,
 				1AC5F2F22772D957001D0FCA /* armv8btOps_bits.cpp in Sources */,
 				7135DC71264EBCD0005D6AA6 /* soft_invalid_page.cpp in Sources */,
@@ -5097,6 +5114,7 @@
 				71FBFE5B2433BBBE003F17F1 /* uihelper.cpp in Sources */,
 				1A0F95102C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				712228F52433EE5400CDBABD /* imguitinyfiledialogs.cpp in Sources */,
+				1AF730B02D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				71FBFEC72433BBBE003F17F1 /* devdsp.cpp in Sources */,
 				71FBFE6C2433BBBE003F17F1 /* globalSettings.cpp in Sources */,
 				71FBFEDB2433BBBE003F17F1 /* mesagl.c in Sources */,
