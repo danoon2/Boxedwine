@@ -395,7 +395,7 @@ public class VkHost {
             out.append(", \"false\");\n");
         }
          */
-        out.append("#endif\n\n");
+        part2.append("#endif\n\n");
         fos.write(out.toString().getBytes());
         fos.write(part2.toString().getBytes());
     }

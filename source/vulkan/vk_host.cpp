@@ -45,8 +45,6 @@ void unmapVkMemory(VkDeviceMemory memory);
 #define ARG24 cpu->peek32(24)
 #define ARG25 cpu->peek32(25)
 #define ARG26 cpu->peek32(26)
-#endif
-
 void vk_DestroyInstance(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
@@ -14973,3 +14971,5 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             kpanic("vulkanWriteNextPtr not implemented for %d", type);
     }
 }
+#endif
+
