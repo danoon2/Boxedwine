@@ -29,9 +29,10 @@ pipeline {
                         sh '''#!/bin/bash
                             source ~/emsdk/emsdk_env.sh
                             cd project/emscripten
-                            sh buildtestjs.sh
+                            make test
                             killall -9 python3
-                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwineTest.html
+                            cd Build/Test
+                            emrun --kill_start --kill_exit --browser="/usr/bin/firefox" --browser_args="--headless" boxedwine.html
                         '''
                     }
                 }
