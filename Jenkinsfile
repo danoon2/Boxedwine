@@ -114,7 +114,6 @@ pipeline {
                             sh '''#!/bin/bash
                                 source ~/emsdk/emsdk_env.sh
                                 set -x
-                                rm Build/Release/boxedwine.wasm
                                 rm -rf Deploy
                                 make
                                 if [ ! -f "Build/Release/boxedwine.wasm" ] 
