@@ -709,9 +709,9 @@
                     }
                 }
                 createFile(base.substring(0,base.length-1), filename, new Uint8Array(data));
-                if(allFiles){
-                    allFiles.pop(name);
-                }
+            }
+            if(allFiles){
+                allFiles.pop();
             }
         }
 function createFolder(parent, dir) {
