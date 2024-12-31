@@ -20,7 +20,7 @@ https://visualstudio.microsoft.com/vs/community/
 Emscripten
 
 see boxedwine-shell.js
-By default files are stored to IndexedDB. To save changes set:
+By default files are stored to IndexedDB. To NOT save changes set:
 Config.storageMode = STORAGE_MEMORY;
 
 settings:
