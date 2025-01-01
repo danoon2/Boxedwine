@@ -9,72 +9,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="d1d13446-0aaf-46e7-a3a0-41f3d1f63670" name="Default" comment="">
-      <change afterPath="$PROJECT_DIR$/../../../include/kvulkan.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../../../platform/sdl/kvulkanSDL.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/../../../platform/sdl/kvulkanSDL.h" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/uiDesigner.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/data/VkData.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/data/VkExtension.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/data/VkFeature.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInUnion.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalMapMemory2.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/parser/VkParser.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/parser/VkParserRules.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/writers/VkC.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/writers/VkDefH.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/boxedwine/org/writers/VkFuncsH.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../include/boxedwine.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../include/boxedwine.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../include/knativesystem.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../include/knativesystem.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../lib/mesa/vkRegistry/vk.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../../../lib/mesa/vkRegistry/vk.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../platform/sdl/knativescreenSDL.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../platform/sdl/knativescreenSDL.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../platform/sdl/knativescreenSDL.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../platform/sdl/knativescreenSDL.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../platform/sdl/knativesystem.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../platform/sdl/knativesystem.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../project/linux/msvc-remote/Boxedwine/Boxedwine/Boxedwine.vcxproj" beforeDir="false" afterPath="$PROJECT_DIR$/../../../project/linux/msvc-remote/Boxedwine/Boxedwine/Boxedwine.vcxproj" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../project/linux/msvc-remote/Boxedwine/Boxedwine/Boxedwine.vcxproj.filters" beforeDir="false" afterPath="$PROJECT_DIR$/../../../project/linux/msvc-remote/Boxedwine/Boxedwine/Boxedwine.vcxproj.filters" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj" beforeDir="false" afterPath="$PROJECT_DIR$/../../../project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj.filters" beforeDir="false" afterPath="$PROJECT_DIR$/../../../project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj.filters" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/emulation/cpu/decoder.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/emulation/cpu/decoder.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/emulation/cpu/x64/x64CPU.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/emulation/cpu/x64/x64CPU.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/emulation/cpu/x64/x64Ops.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/emulation/cpu/x64/x64Ops.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/sdl/startupArgs.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/sdl/startupArgs.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vk/vk_platform.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vk/vk_platform.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vk/vulkan.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vk/vulkan.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vk/vulkan_core.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vk/vulkan_core.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vk_host.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vk_host.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vk_host.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vk_host.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vk_host_marshal.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vk_host_marshal.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vk_host_marshal.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vk_host_marshal.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vkdef.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vkdef.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vkfuncs.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vkfuncs.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../source/vulkan/vulkancommon.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/vulkan/vulkancommon.cpp" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../source/x11/xserver.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../source/x11/xserver.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/Main.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/Main.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/VkFunction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/data/VkFunction.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/VkHost.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/writers/VkHost.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/VkParam.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/data/VkParam.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/VkType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/data/VkType.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshal.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshal.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInEnumArray.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInEnumArray.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInHandle.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInHandle.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInHandleArray.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInHandleArray.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInMemory.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInMemory.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInStructure.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInStructure.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInStructureArray.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalInStructureArray.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalMapMemory.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalMapMemory.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalNone.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalNone.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutData.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutData.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutEnum.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutEnum.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutEnumArray.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutEnumArray.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutHandle.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutHandle.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutHandleArray.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutHandleArray.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutStructure.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutStructure.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutStructureArray.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalOutStructureArray.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/marshal/vkHostMarshalNotImplemented.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/marshal/vkHostMarshalNotImplemented.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/parser/VkParserRules.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/parser/VkParserRules.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/boxedwine/org/writers/VkHost.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/boxedwine/org/writers/VkHost.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../vk.c" beforeDir="false" afterPath="$PROJECT_DIR$/../vk.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../vkdef.h" beforeDir="false" afterPath="$PROJECT_DIR$/../vkdef.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -279,7 +227,7 @@
     "Application.Unnamed.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "master",
+    "git-widget-placeholder": "james/vulkan",
     "ignore.virus.scanning.warn.message": "true",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Boxedwine2/tools/vulkan/gen",
@@ -450,12 +398,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
-          <line>359</line>
+          <line>371</line>
           <option name="timeStamp" value="219" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
-          <line>428</line>
+          <line>440</line>
           <option name="timeStamp" value="220" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
@@ -495,7 +443,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
-          <line>891</line>
+          <line>1108</line>
           <option name="timeStamp" value="423" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
@@ -510,33 +458,18 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
-          <line>399</line>
+          <line>411</line>
           <option name="timeStamp" value="472" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/boxedwine/org/parser/VkParserRules.java</url>
-          <line>1868</line>
-          <option name="timeStamp" value="475" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
-          <line>462</line>
+          <line>474</line>
           <option name="timeStamp" value="476" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
-          <line>646</line>
+          <line>813</line>
           <option name="timeStamp" value="477" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/boxedwine/org/parser/VkParserRules.java</url>
-          <line>1855</line>
-          <option name="timeStamp" value="488" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/boxedwine/org/parser/VkParserRules.java</url>
-          <line>1924</line>
-          <option name="timeStamp" value="489" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
           <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
@@ -544,9 +477,9 @@
           <option name="timeStamp" value="492" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/boxedwine/org/writers/VkHost.java</url>
-          <line>148</line>
-          <option name="timeStamp" value="493" />
+          <url>file://$PROJECT_DIR$/src/boxedwine/org/marshal/VkHostMarshalType.java</url>
+          <line>354</line>
+          <option name="timeStamp" value="510" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -234,7 +234,7 @@ static void BOXED_vkCreateXlibSurfaceKHR(CPU* cpu) {
 #include "vk_host_marshal.h"
 
 void initVulkan();
-static void vk_CreateInstance(CPU* cpu) {
+void vk_CreateInstance(CPU* cpu) {
     initVulkan();
     MarshalVkInstanceCreateInfo local_pCreateInfo(nullptr, cpu->memory, ARG1);
     VkInstanceCreateInfo* pCreateInfo = &local_pCreateInfo.s;
@@ -275,7 +275,7 @@ static void vk_CreateInstance(CPU* cpu) {
     }
 }
 
-static void vk_DestroyInstance(CPU* cpu) {
+void vk_DestroyInstance2(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     static bool shown; if (!shown && ARG2) { klog("vkDestroyInstance:VkAllocationCallbacks not implemented"); shown = true; }
@@ -295,7 +295,7 @@ static void vk_DestroyInstance(CPU* cpu) {
     freeVulkanPtr(cpu->memory, ARG1);
 }
 
-static void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
+void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
     initVulkan();
     U32 len = 0;
     char* pLayerName = nullptr;
@@ -356,6 +356,7 @@ void initVulkan() {
         }
         pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
         pvkCreateInstance = (PFN_vkCreateInstance)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
+        pvkEnumerateInstanceExtensionProperties = (PFN_vkEnumerateInstanceExtensionProperties)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vkEnumerateInstanceExtensionProperties");
 #undef VKFUNC_INSTANCE
 #define VKFUNC_INSTANCE(f)
 #undef VKFUNC
@@ -381,7 +382,7 @@ void vulkan_init() {
     int9ACallback[GetDeviceProcAddr] = hasProcAddress;
     int9ACallback[GetInstanceProcAddr] = hasProcAddress;
     int9ACallback[CreateInstance] = vk_CreateInstance;
-    int9ACallback[DestroyInstance] = vk_DestroyInstance;
+    int9ACallback[DestroyInstance] = vk_DestroyInstance2;
     int9ACallback[EnumerateInstanceExtensionProperties] = vk_EnumerateInstanceExtensionProperties;
 }
 

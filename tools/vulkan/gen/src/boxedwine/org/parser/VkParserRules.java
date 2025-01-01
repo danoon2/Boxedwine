@@ -21,6 +21,8 @@ public class VkParserRules {
         data.stubMarshalWrite.add("VkDebugReportCallbackCreateInfoEXT"); // I don't think this is possible
         data.stubMarshalWrite.add("VkDebugUtilsMessengerCreateInfoEXT"); // I don't think this is possible
         data.stubMarshalWrite.add("VkAccelerationStructureBuildGeometryInfoKHR"); // I don't think this is possible
+        data.stubMarshalWrite.add("VkIndirectCommandsLayoutTokenEXT"); // I don't think this is possible
+        data.stubMarshalWrite.add("VkDescriptorGetInfoEXT"); // I don't think this is possible
         data.stubMarshalWrite.add("VkImportMemoryHostPointerInfoEXT"); // used by allocators which I don't support
         data.stubMarshalWrite.add("VkMemoryToImageCopy"); // :TODO: need to implement
         data.stubMarshalWrite.add("VkImageToMemoryCopy"); // :TODO: need to implement
@@ -36,6 +38,14 @@ public class VkParserRules {
         data.stubMarshalWrite.add("VkCudaLaunchInfoNV"); // :TODO: need to implement
         data.stubMarshalWrite.add("VkMicromapBuildInfoEXT"); // :TODO: need to implement
         data.stubMarshalWrite.add("VkAccelerationStructureTrianglesOpacityMicromapEXT"); // :TODO: need to implement
+        data.stubMarshalWrite.add("VkAccelerationStructureGeometryTrianglesDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkAccelerationStructureGeometryAabbsDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkAccelerationStructureGeometryInstancesDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkAccelerationStructureGeometryMotionTrianglesDataNV"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkCopyAccelerationStructureToMemoryInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkCopyMemoryToAccelerationStructureInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkCopyMicromapToMemoryInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkCopyMemoryToMicromapInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
 
         data.stubMarshalRead.add("VkMemoryToImageCopy"); // :TODO: need to implement
         data.stubMarshalRead.add("VkImageToMemoryCopy"); // :TODO: need to implement
@@ -54,13 +64,23 @@ public class VkParserRules {
         data.stubMarshalRead.add("VkMicromapBuildInfoEXT"); // :TODO: need to implement
         data.stubMarshalRead.add("StdVideoH265ShortTermRefPicSet"); // :TODO: need to implement
         data.stubMarshalRead.add("VkAccelerationStructureTrianglesOpacityMicromapEXT"); // :TODO: need to implement
-
+        data.stubMarshalRead.add("VkAccelerationStructureGeometryTrianglesDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
         data.stubMarshalRead.add("VkImportMemoryHostPointerInfoEXT");
+        data.stubMarshalRead.add("VkAccelerationStructureGeometryAabbsDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalRead.add("VkAccelerationStructureGeometryInstancesDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalRead.add("VkAccelerationStructureBuildGeometryInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalRead.add("VkAccelerationStructureGeometryMotionTrianglesDataNV"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalRead.add("VkCopyAccelerationStructureToMemoryInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalRead.add("VkCopyMemoryToAccelerationStructureInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalRead.add("VkCopyMicromapToMemoryInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalRead.add("VkCopyMemoryToMicromapInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
 
         data.manuallyHandledFunctions.add("vkCreateXlibSurfaceKHR");
         data.manuallyHandledFunctions.add("vkGetPhysicalDeviceXlibPresentationSupportKHR");
         data.manuallyHandledFunctions.add("vkCreateInstance");
         data.manuallyHandledFunctions.add("vkGetDeviceProcAddr");
+        data.manuallyHandledFunctions.add("vkEnumerateInstanceExtensionProperties");
+        //data.manuallyHandledFunctions.add("vkDestroyInstance");
         data.manuallyHandledFunctions.add("vkGetInstanceProcAddr");
 
         data.ignoreStructTypes.add("VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR");
@@ -234,6 +254,7 @@ public class VkParserRules {
 
         vkType = getType(data, "StdVideoEncodeH264SliceHeader");
         vkType.setCategory("struct");
+        addMember(data, vkType, "StdVideoEncodeH264SliceHeaderFlags","flags");
         addMember(data, vkType, "uint32_t","first_mb_in_slice");
         addMember(data, vkType, "StdVideoH264SliceType","slice_type");
         addMember(data, vkType, "int8_t", "slice_alpha_c0_offset_div2");
@@ -336,13 +357,10 @@ public class VkParserRules {
         addMember(data, vkType, "uint8_t", "au_cpb_removal_delay_length_minus1");
         addMember(data, vkType, "uint8_t", "dpb_output_delay_length_minus1");
         addMember(data, vkType, "uint8_t", "cpb_cnt_minus1").arrayLen = 7;
-        addMember(data, vkType, "uint8_t", "elemental_duration_in_tc_minus1").arrayLen = 7;
-        addMember(data, vkType, "uint8_t", "reserved").arrayLen = 3;
+        addMember(data, vkType, "uint16_t", "elemental_duration_in_tc_minus1").arrayLen = 7;
+        addMember(data, vkType, "uint16_t", "reserved").arrayLen = 3;
         addMember(data, vkType, "StdVideoH265SubLayerHrdParameters", "pSubLayerHrdParametersNal", true, true);
         addMember(data, vkType, "StdVideoH265SubLayerHrdParameters", "pSubLayerHrdParametersVcl", true, true);
-
-        vkType = getType(data, "StdVideoH265DecPicBufMgr");
-        vkType.sizeof = 4;
 
         vkType = getType(data, "StdVideoH265VpsFlags");
         vkType.sizeof = 4;
@@ -442,7 +460,7 @@ public class VkParserRules {
         } StdVideoH265ShortTermRefPicSet;
         */
         vkType.setCategory("struct");
-        addMember(data, vkType, "StdVideoH265ShortTermRefPicSetFlags", "ScalingList4x4").arrayLen = 96; // 6x16
+        addMember(data, vkType, "StdVideoH265ShortTermRefPicSetFlags", "flags");
         addMember(data, vkType, "uint32_t", "delta_idx_minus1");
         addMember(data, vkType, "uint16_t", "use_delta_flag");
         addMember(data, vkType, "uint16_t", "abs_delta_rps_minus1");
@@ -1843,9 +1861,6 @@ public class VkParserRules {
     }
     static void setTypeEmulatedSize(VkData data, VkType vkType) throws Exception {
         if (vkType.sizeof == 0) {
-            if (vkType.name.equals("VkExtensionProperties")) {
-                int ii = 0;
-            }
             if (vkType.getCategory().equals("struct")) {
                 // Boxedwine runs wine in an emulated 32-bit linux environment
                 // This means 8 byte members are aligned to 4 byte boundaries
@@ -1865,20 +1880,26 @@ public class VkParserRules {
                         throw new Exception("Could not determine sizeof " + member.paramType.name);
                     }
                     int size;
+                    int align = 1;
                     if (member.isPointer) {
                         size = 4;
+                        align = 4;
                     } else if (member.arrayLen == 0) {
                         size = member.paramType.sizeof;
+                        align = Math.min(member.paramType.alignment, 4);
                     } else {
                         size = member.paramType.sizeof * member.arrayLen;
+                        align = Math.min(member.paramType.alignment, 4);
                     }
                     if (size == 0) {
                         size = member.sizeof;
+                        align = Math.min(size, 4);
                     }
-                    if (size == 0) {
-                        int ii=0;
+                    if (align == 0 && member.paramType.members.size() == 0) {
+                        // :TODO: why was member.paramType.alignment 0
+                        align = Math.min(member.paramType.sizeof, 4);
                     }
-                    int align = Math.min(size, 4);
+
                     vkType.alignment = Math.max(vkType.alignment, align);
                     if (offset > 0 && (offset % align) != 0) {
                         int adjust = align - ((offset % align));
@@ -1903,7 +1924,11 @@ public class VkParserRules {
                     if (member.paramType.sizeof == 0 && !member.paramType.name.equals("void")) {
                         throw new Exception("Could not determine sizeof " + member.paramType.name);
                     }
-                    member.sizeof = member.paramType.sizeof;
+                    if (member.isPointer) {
+                        member.sizeof = 4;
+                    } else {
+                        member.sizeof = member.paramType.sizeof;
+                    }
                     if (member.arrayLen != 0) {
                         member.sizeof = member.sizeof * member.arrayLen;
                     }

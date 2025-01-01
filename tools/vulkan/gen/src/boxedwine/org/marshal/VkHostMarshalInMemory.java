@@ -1,5 +1,6 @@
 package boxedwine.org.marshal;
 
+import boxedwine.org.data.VkData;
 import boxedwine.org.data.VkFunction;
 import boxedwine.org.data.VkParam;
 
@@ -8,7 +9,7 @@ import boxedwine.org.data.VkParam;
  */
 public class VkHostMarshalInMemory extends VkHostMarshal {
     // uint32_t* pPhysicalDeviceCount = (uint32_t*)getPhysicalAddress(ARG2, 4);
-    public void before(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void before(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         String len = null;
         String getLen = null;
 
@@ -105,7 +106,7 @@ public class VkHostMarshalInMemory extends VkHostMarshal {
                     out.append("[j]);\n");
                     out.append("            }\n");
                     out.append("        }\n");
-                    param.paramType.setNeedMarshalIn(true);
+                    param.paramType.setNeedMarshalIn(data, true);
                 } else {
                     out.append("            cpu->memory->memcpy(");
                     out.append(param.name);

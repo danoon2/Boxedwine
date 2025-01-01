@@ -123,9 +123,10 @@ public class VkType {
         return needMarshalIn;
     }
 
-    public void setNeedMarshalIn(boolean needMarshalIn) {
-        if (name.equals("uint32_t")) {
-            int ii=0;
+    public void setNeedMarshalIn(VkData data, boolean needMarshalIn) {
+        if (!data.types.containsKey(this.name)) {
+            data.types.put(this.name, this);
+            data.orderedTypes.add(this);
         }
         this.needMarshalIn = needMarshalIn;
     }

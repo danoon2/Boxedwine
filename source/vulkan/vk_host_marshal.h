@@ -29,6 +29,14 @@ public:
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOffset2D* s);
 };
 
+class MarshalVkOffset3D {
+public:
+    MarshalVkOffset3D() {}
+    VkOffset3D s;
+    MarshalVkOffset3D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOffset3D* s);
+};
+
 class MarshalVkExtent2D {
 public:
     MarshalVkExtent2D() {}
@@ -36,6 +44,14 @@ public:
     MarshalVkExtent2D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtent2D* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtent2D* s);
+};
+
+class MarshalVkExtent3D {
+public:
+    MarshalVkExtent3D() {}
+    VkExtent3D s;
+    MarshalVkExtent3D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtent3D* s);
 };
 
 class MarshalVkViewport {
@@ -140,6 +156,8 @@ class MarshalVkQueueFamilyProperties {
 public:
     MarshalVkQueueFamilyProperties() {}
     VkQueueFamilyProperties s;
+    MarshalVkQueueFamilyProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyProperties* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyProperties* s);
 };
 
@@ -175,6 +193,8 @@ class MarshalVkSparseImageFormatProperties {
 public:
     MarshalVkSparseImageFormatProperties() {}
     VkSparseImageFormatProperties s;
+    MarshalVkSparseImageFormatProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageFormatProperties* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageFormatProperties* s);
 };
 
@@ -182,7 +202,25 @@ class MarshalVkSparseImageMemoryRequirements {
 public:
     MarshalVkSparseImageMemoryRequirements() {}
     VkSparseImageMemoryRequirements s;
+    MarshalVkSparseImageMemoryRequirements(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryRequirements* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryRequirements* s);
+};
+
+class MarshalVkMemoryType {
+public:
+    MarshalVkMemoryType() {}
+    VkMemoryType s;
+    MarshalVkMemoryType(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryType* s);
+};
+
+class MarshalVkMemoryHeap {
+public:
+    MarshalVkMemoryHeap() {}
+    VkMemoryHeap s;
+    MarshalVkMemoryHeap(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryHeap* s);
 };
 
 class MarshalVkMappedMemoryRange {
@@ -368,6 +406,22 @@ public:
     VkBufferCopy s;
     MarshalVkBufferCopy(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCopy* s);
+};
+
+class MarshalVkSparseMemoryBind {
+public:
+    MarshalVkSparseMemoryBind() {}
+    VkSparseMemoryBind s;
+    MarshalVkSparseMemoryBind(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseMemoryBind* s);
+};
+
+class MarshalVkSparseImageMemoryBind {
+public:
+    MarshalVkSparseImageMemoryBind() {}
+    VkSparseImageMemoryBind s;
+    MarshalVkSparseImageMemoryBind(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryBind* s);
 };
 
 class MarshalVkSparseBufferMemoryBindInfo {
@@ -957,6 +1011,14 @@ public:
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFeatures* s);
 };
 
+class MarshalVkPhysicalDeviceSparseProperties {
+public:
+    MarshalVkPhysicalDeviceSparseProperties() {}
+    VkPhysicalDeviceSparseProperties s;
+    MarshalVkPhysicalDeviceSparseProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSparseProperties* s);
+};
+
 class MarshalVkPhysicalDeviceLimits {
 public:
     MarshalVkPhysicalDeviceLimits() {}
@@ -1466,6 +1528,14 @@ public:
     ~MarshalVkPhysicalDevicePushDescriptorProperties();
 };
 
+class MarshalVkConformanceVersion {
+public:
+    MarshalVkConformanceVersion() {}
+    VkConformanceVersion s;
+    MarshalVkConformanceVersion(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkConformanceVersion* s);
+};
+
 class MarshalVkPhysicalDeviceDriverProperties {
 public:
     MarshalVkPhysicalDeviceDriverProperties() {}
@@ -1495,6 +1565,14 @@ public:
     ~MarshalVkPresentRegionKHR();
 };
 
+class MarshalVkRectLayerKHR {
+public:
+    MarshalVkRectLayerKHR() {}
+    VkRectLayerKHR s;
+    MarshalVkRectLayerKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRectLayerKHR* s);
+};
+
 class MarshalVkPhysicalDeviceVariablePointersFeatures {
 public:
     MarshalVkPhysicalDeviceVariablePointersFeatures() {}
@@ -1503,6 +1581,14 @@ public:
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVariablePointersFeatures* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVariablePointersFeatures* s);
     ~MarshalVkPhysicalDeviceVariablePointersFeatures();
+};
+
+class MarshalVkExternalMemoryProperties {
+public:
+    MarshalVkExternalMemoryProperties() {}
+    VkExternalMemoryProperties s;
+    MarshalVkExternalMemoryProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryProperties* s);
 };
 
 class MarshalVkPhysicalDeviceExternalImageFormatInfo {
@@ -1911,6 +1997,14 @@ public:
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorUpdateTemplateCreateInfo* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorUpdateTemplateCreateInfo* s);
     ~MarshalVkDescriptorUpdateTemplateCreateInfo();
+};
+
+class MarshalVkXYColorEXT {
+public:
+    MarshalVkXYColorEXT() {}
+    VkXYColorEXT s;
+    MarshalVkXYColorEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkXYColorEXT* s);
 };
 
 class MarshalVkPhysicalDevicePresentIdFeaturesKHR {
@@ -3507,6 +3601,14 @@ public:
     ~MarshalVkPhysicalDeviceInvocationMaskFeaturesHUAWEI();
 };
 
+class MarshalVkCoarseSampleLocationNV {
+public:
+    MarshalVkCoarseSampleLocationNV() {}
+    VkCoarseSampleLocationNV s;
+    MarshalVkCoarseSampleLocationNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCoarseSampleLocationNV* s);
+};
+
 class MarshalVkCoarseSampleOrderCustomNV {
 public:
     MarshalVkCoarseSampleOrderCustomNV() {}
@@ -4307,6 +4409,7 @@ public:
     MarshalVkPerformanceValueINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceValueINTEL* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceValueINTEL* s);
+    ~MarshalVkPerformanceValueINTEL();
 };
 
 class MarshalVkInitializePerformanceApiInfoINTEL {
@@ -4836,7 +4939,6 @@ public:
     MarshalVkAccelerationStructureGeometryTrianglesDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryTrianglesDataKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryTrianglesDataKHR* s);
-    ~MarshalVkAccelerationStructureGeometryTrianglesDataKHR();
 };
 
 class MarshalVkAccelerationStructureGeometryAabbsDataKHR {
@@ -4846,7 +4948,6 @@ public:
     MarshalVkAccelerationStructureGeometryAabbsDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryAabbsDataKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryAabbsDataKHR* s);
-    ~MarshalVkAccelerationStructureGeometryAabbsDataKHR();
 };
 
 class MarshalVkAccelerationStructureGeometryInstancesDataKHR {
@@ -4856,7 +4957,6 @@ public:
     MarshalVkAccelerationStructureGeometryInstancesDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryInstancesDataKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryInstancesDataKHR* s);
-    ~MarshalVkAccelerationStructureGeometryInstancesDataKHR();
 };
 
 class MarshalVkAccelerationStructureGeometryKHR {
@@ -4876,7 +4976,6 @@ public:
     MarshalVkAccelerationStructureBuildGeometryInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildGeometryInfoKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildGeometryInfoKHR* s);
-    ~MarshalVkAccelerationStructureBuildGeometryInfoKHR();
 };
 
 class MarshalVkAccelerationStructureBuildRangeInfoKHR {
@@ -4934,7 +5033,6 @@ public:
     MarshalVkCopyAccelerationStructureToMemoryInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyAccelerationStructureToMemoryInfoKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyAccelerationStructureToMemoryInfoKHR* s);
-    ~MarshalVkCopyAccelerationStructureToMemoryInfoKHR();
 };
 
 class MarshalVkCopyMemoryToAccelerationStructureInfoKHR {
@@ -4944,7 +5042,6 @@ public:
     MarshalVkCopyMemoryToAccelerationStructureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToAccelerationStructureInfoKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToAccelerationStructureInfoKHR* s);
-    ~MarshalVkCopyMemoryToAccelerationStructureInfoKHR();
 };
 
 class MarshalVkRayTracingPipelineInterfaceCreateInfoKHR {
@@ -6818,6 +6915,22 @@ public:
     ~MarshalVkVideoEncodeH264RateControlInfoKHR();
 };
 
+class MarshalVkVideoEncodeH264QpKHR {
+public:
+    MarshalVkVideoEncodeH264QpKHR() {}
+    VkVideoEncodeH264QpKHR s;
+    MarshalVkVideoEncodeH264QpKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264QpKHR* s);
+};
+
+class MarshalVkVideoEncodeH264FrameSizeKHR {
+public:
+    MarshalVkVideoEncodeH264FrameSizeKHR() {}
+    VkVideoEncodeH264FrameSizeKHR s;
+    MarshalVkVideoEncodeH264FrameSizeKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264FrameSizeKHR* s);
+};
+
 class MarshalVkVideoEncodeH264GopRemainingFrameInfoKHR {
 public:
     MarshalVkVideoEncodeH264GopRemainingFrameInfoKHR() {}
@@ -6962,6 +7075,22 @@ public:
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265RateControlInfoKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265RateControlInfoKHR* s);
     ~MarshalVkVideoEncodeH265RateControlInfoKHR();
+};
+
+class MarshalVkVideoEncodeH265QpKHR {
+public:
+    MarshalVkVideoEncodeH265QpKHR() {}
+    VkVideoEncodeH265QpKHR s;
+    MarshalVkVideoEncodeH265QpKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265QpKHR* s);
+};
+
+class MarshalVkVideoEncodeH265FrameSizeKHR {
+public:
+    MarshalVkVideoEncodeH265FrameSizeKHR() {}
+    VkVideoEncodeH265FrameSizeKHR s;
+    MarshalVkVideoEncodeH265FrameSizeKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265FrameSizeKHR* s);
 };
 
 class MarshalVkVideoEncodeH265GopRemainingFrameInfoKHR {
@@ -7134,6 +7263,22 @@ public:
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1RateControlInfoKHR* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1RateControlInfoKHR* s);
     ~MarshalVkVideoEncodeAV1RateControlInfoKHR();
+};
+
+class MarshalVkVideoEncodeAV1QIndexKHR {
+public:
+    MarshalVkVideoEncodeAV1QIndexKHR() {}
+    VkVideoEncodeAV1QIndexKHR s;
+    MarshalVkVideoEncodeAV1QIndexKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1QIndexKHR* s);
+};
+
+class MarshalVkVideoEncodeAV1FrameSizeKHR {
+public:
+    MarshalVkVideoEncodeAV1FrameSizeKHR() {}
+    VkVideoEncodeAV1FrameSizeKHR s;
+    MarshalVkVideoEncodeAV1FrameSizeKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1FrameSizeKHR* s);
 };
 
 class MarshalVkVideoEncodeAV1GopRemainingFrameInfoKHR {
@@ -7451,7 +7596,6 @@ public:
     MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryMotionTrianglesDataNV* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryMotionTrianglesDataNV* s);
-    ~MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV();
 };
 
 class MarshalVkAccelerationStructureMotionInfoNV {
@@ -7945,7 +8089,6 @@ public:
     MarshalVkCopyMicromapToMemoryInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMicromapToMemoryInfoEXT* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMicromapToMemoryInfoEXT* s);
-    ~MarshalVkCopyMicromapToMemoryInfoEXT();
 };
 
 class MarshalVkCopyMemoryToMicromapInfoEXT {
@@ -7955,7 +8098,6 @@ public:
     MarshalVkCopyMemoryToMicromapInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToMicromapInfoEXT* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToMicromapInfoEXT* s);
-    ~MarshalVkCopyMemoryToMicromapInfoEXT();
 };
 
 class MarshalVkMicromapBuildSizesInfoEXT {
@@ -9326,6 +9468,22 @@ public:
     ~MarshalVkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT();
 };
 
+class MarshalStdVideoEncodeH264WeightTableFlags {
+public:
+    MarshalStdVideoEncodeH264WeightTableFlags() {}
+    StdVideoEncodeH264WeightTableFlags s;
+    MarshalStdVideoEncodeH264WeightTableFlags(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264WeightTableFlags* s);
+};
+
+class MarshalStdVideoEncodeH264WeightTable {
+public:
+    MarshalStdVideoEncodeH264WeightTable() {}
+    StdVideoEncodeH264WeightTable s;
+    MarshalStdVideoEncodeH264WeightTable(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264WeightTable* s);
+};
+
 class MarshalStdVideoH265SubLayerHrdParameters {
 public:
     MarshalStdVideoH265SubLayerHrdParameters() {}
@@ -9398,6 +9556,14 @@ public:
     MarshalStdVideoH265SequenceParameterSetVui(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265SequenceParameterSetVui* s);
     ~MarshalStdVideoH265SequenceParameterSetVui();
+};
+
+class MarshalStdVideoEncodeH265WeightTableFlags {
+public:
+    MarshalStdVideoEncodeH265WeightTableFlags() {}
+    StdVideoEncodeH265WeightTableFlags s;
+    MarshalStdVideoEncodeH265WeightTableFlags(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265WeightTableFlags* s);
 };
 
 class MarshalStdVideoEncodeH265WeightTable {
@@ -9535,5 +9701,46 @@ public:
     StdVideoAV1FilmGrain s;
     MarshalStdVideoAV1FilmGrain(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1FilmGrain* s);
+};
+
+class MarshalVkDisplayModePropertiesKHR {
+public:
+    MarshalVkDisplayModePropertiesKHR() {}
+    VkDisplayModePropertiesKHR s;
+    MarshalVkDisplayModePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModePropertiesKHR* s);
+};
+
+class MarshalVkDisplayPropertiesKHR {
+public:
+    MarshalVkDisplayPropertiesKHR() {}
+    VkDisplayPropertiesKHR s;
+    MarshalVkDisplayPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPropertiesKHR* s);
+    ~MarshalVkDisplayPropertiesKHR();
+};
+
+class MarshalVkDisplayPlaneCapabilitiesKHR {
+public:
+    MarshalVkDisplayPlaneCapabilitiesKHR() {}
+    VkDisplayPlaneCapabilitiesKHR s;
+    MarshalVkDisplayPlaneCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneCapabilitiesKHR* s);
+};
+
+class MarshalVkDisplayPlanePropertiesKHR {
+public:
+    MarshalVkDisplayPlanePropertiesKHR() {}
+    VkDisplayPlanePropertiesKHR s;
+    MarshalVkDisplayPlanePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlanePropertiesKHR* s);
+};
+
+class MarshalVkDisplayModeParametersKHR {
+public:
+    MarshalVkDisplayModeParametersKHR() {}
+    VkDisplayModeParametersKHR s;
+    MarshalVkDisplayModeParametersKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModeParametersKHR* s);
 };
 

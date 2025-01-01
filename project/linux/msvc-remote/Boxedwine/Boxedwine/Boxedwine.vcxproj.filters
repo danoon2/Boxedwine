@@ -695,6 +695,9 @@
     <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host_marshal.cpp">
       <Filter>source\vulkan</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\platform\sdl\kvulkanSDL.cpp">
+      <Filter>sdlPlatform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -873,6 +876,12 @@
     </Filter>
     <Filter Include="tools\x11">
       <UniqueIdentifier>{9f53ce56-67c5-403b-b315-bff1b1436cec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\vulkan\vk">
+      <UniqueIdentifier>{c3cf8db3-63d6-46a1-816d-a2d24cfaa490}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\vulkan\vk\vk_video">
+      <UniqueIdentifier>{6a3c0448-54f0-4d95-8885-f8de7711d63c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -2136,6 +2145,51 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\vulkan\vkfuncs.h">
       <Filter>source\vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\kvulkan.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\platform\sdl\kvulkanSDL.h">
+      <Filter>sdlPlatform</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_platform.h">
+      <Filter>source\vulkan\vk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vulkan.h">
+      <Filter>source\vulkan\vk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vulkan_core.h">
+      <Filter>source\vulkan\vk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std_decode.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std_encode.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std_decode.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std_encode.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std_decode.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std_encode.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codecs_common.h">
+      <Filter>source\vulkan\vk\vk_video</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

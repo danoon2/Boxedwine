@@ -138,7 +138,7 @@ public class VkHost {
             }
             VkHostMarshal marshal = VkHostMarshalType.getMarshal(fn, param);
             paramMarshals.put(param.paramArg , marshal);
-            marshal.before(fn, out, param);
+            marshal.before(data, fn, out, param);
             if (stackPos == 1 && fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);\n");
             }
@@ -160,7 +160,7 @@ public class VkHost {
             }
             VkHostMarshal marshal = VkHostMarshalType.getMarshal(fn, param);
             paramMarshals.put(param.paramArg , marshal);
-            marshal.before(fn, out, param);
+            marshal.before(data, fn, out, param);
             if (stackPos == 1 && fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("    BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);\n");
             }
@@ -275,19 +275,20 @@ public class VkHost {
              if (t.structType != null && data.orderedTypes.contains(t) && !data.ignoreStructTypes.contains(t.structType)) {
                  structTypes.put(t.structType, t.name);
                  t.needMarshalOut = true;
-                 t.setNeedMarshalIn(true);
+                 t.setNeedMarshalIn(data, true);
              }
         }
         for (String ext : structTypes.values()) {
             VkType extType = data.types.get(ext);
             if (extType != null) {
-                extType.setNeedMarshalIn(true);
+                extType.setNeedMarshalIn(data, true);
                 extType.needMarshalOut = true;
             }
         }
         // pass 1 will add more types that need marshaling, like VkApplicationInfo
         for (int i=0;i<3;i++) {
-            for (VkType t : data.orderedTypes) {
+            Hashtable<String, VkType> types = (Hashtable)data.types.clone();
+            for (VkType t : types.values()) {
                 if (t.isNeedMarshalIn() || t.needMarshalOut) {
                     VkHostMarshalType.write(data, t, tmp);
                 }
@@ -383,18 +384,19 @@ public class VkHost {
         part2.append("    }\n");
         part2.append("}\n");
 
-        /*
-        for (VkType t : Main.orderedTypes) {
-            if (!t.needMarshalIn && !t.needMarshalOut) {
+        out.append("#if defined(__linux__) && defined(__i386__)\n");
+        for (VkType t : data.orderedTypes) {
+            if (!t.isNeedMarshalIn() && !t.needMarshalOut) {
                 continue;
             }
             out.append("static_assert(sizeof(");
             out.append(t.name);
             out.append(") == ");
-            out.append(t.getSize());
+            out.append(t.sizeof);
             out.append(", \"false\");\n");
         }
-         */
+        out.append("#endif\n\n");
+
         part2.append("#endif\n\n");
         fos.write(out.toString().getBytes());
         fos.write(part2.toString().getBytes());

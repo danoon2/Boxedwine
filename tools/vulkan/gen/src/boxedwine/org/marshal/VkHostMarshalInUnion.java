@@ -1,10 +1,11 @@
 package boxedwine.org.marshal;
 
+import boxedwine.org.data.VkData;
 import boxedwine.org.data.VkFunction;
 import boxedwine.org.data.VkParam;
 
 public class VkHostMarshalInUnion extends VkHostMarshal {
-    public void before(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void before(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         if (param.paramType.name.equals("VkAllocationCallbacks")) {
             out.append("    static bool shown; if (!shown && " + param.paramArg + ") { klog(\""+fn.name+":VkAllocationCallbacks not implemented\"); shown = true;}\n");
             out.append("    ");
@@ -27,7 +28,7 @@ public class VkHostMarshalInUnion extends VkHostMarshal {
             out.append(" = &local_");
             out.append(param.name);
             out.append(".s;\n");
-            param.paramType.setNeedMarshalIn(true);
+            param.paramType.setNeedMarshalIn(data, true);
         }
     }
 

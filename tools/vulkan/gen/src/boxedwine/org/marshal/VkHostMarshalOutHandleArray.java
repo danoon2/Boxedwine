@@ -1,5 +1,6 @@
 package boxedwine.org.marshal;
 
+import boxedwine.org.data.VkData;
 import boxedwine.org.data.VkFunction;
 import boxedwine.org.data.VkParam;
 
@@ -7,7 +8,7 @@ import boxedwine.org.data.VkParam;
  * Created by James on 8/22/2021.
  */
 public class VkHostMarshalOutHandleArray extends VkHostMarshal {
-    public void before(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void before(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    ");
         out.append(param.paramType.name);
         out.append("* ");

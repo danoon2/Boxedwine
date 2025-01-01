@@ -240,9 +240,6 @@ public class VkHostMarshalType {
         out.append(param.name);
         out.append(", paramAddress, ");
         if (param.paramType.getCategory().equals("struct")) {
-            size += (" * sizeof(");
-            size += param.paramType.name;
-            size += ")";
             if (needsMarshaling(param.paramType)) {
                 throw new Exception();
             }
@@ -250,7 +247,7 @@ public class VkHostMarshalType {
         out.append(size);
         out.append(");\n");
     }
-    private static void marshalInArrayOfStructs(VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) throws Exception {
+    private static void marshalInArrayOfStructs(VkData data, VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) throws Exception {
         out.append("        ");
         out.append(param.paramType.name);
         out.append("* ");
@@ -261,8 +258,8 @@ public class VkHostMarshalType {
         out.append("[");
         out.append(getParamLen(param));
         out.append("];\n");
-        out.append("        for (U32 i = 0; i < s->");
-        out.append(param.len);
+        out.append("        for (U32 i = 0; i < ");
+        out.append(getParamLen(param));
         out.append("; i++) {\n");
 
         out.append("            Marshal");
@@ -280,11 +277,11 @@ public class VkHostMarshalType {
         out.append(" = ");
         out.append(param.name);
         out.append(";\n");
-        param.paramType.setNeedMarshalIn(true);
+        param.paramType.setNeedMarshalIn(data,true);
     }
 
-    private static void marshalInPointerToStruct(VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) {
-        param.paramType.setNeedMarshalIn(true);
+    private static void marshalInPointerToStruct(VkData data, VkParam param, StringBuilder out, Vector<MarshalParamData> paramData) {
+        param.paramType.setNeedMarshalIn(data, true);
         out.append("        ");
         out.append(param.paramType.name);
         out.append("* ");
@@ -305,17 +302,20 @@ public class VkHostMarshalType {
         out.append(";\n");
     }
 
-    private static void marshalInPointer(VkParam param, StringBuilder out, PointerData data, Vector<MarshalParamData> paramData) throws Exception {
-        if (data.createdParamAddress) {
+    private static void marshalInPointer(VkData data, VkParam param, StringBuilder out, PointerData pdata, Vector<MarshalParamData> paramData) throws Exception {
+        if (pdata.createdParamAddress) {
             out.append("    paramAddress = memory->readd(address);address+=4;\n");
         } else {
             out.append("    U32 paramAddress = memory->readd(address);address+=4;\n");
-            data.createdParamAddress = true;
+            pdata.createdParamAddress = true;
         }
         out.append("    if (paramAddress == 0) {\n");
         out.append("        s->");
         out.append(param.name);
         out.append(" = NULL;\n    } else {\n");
+        if (param.paramType.name.equals("VkClearValue")) {
+            int ii=0;
+        }
         if (param.name.equals("pNext")) {
             out.append("        s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);\n");
             paramData.add(new MarshalParamData("s.pNext", false));
@@ -324,15 +324,16 @@ public class VkHostMarshalType {
                 marshalInArrayOfPointers(param, out, paramData);
             } else if (param.paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 marshalInArrayOfHandles(param, out, paramData);
-            } else if (!needsMarshaling(param.paramType) || (param.isPointer && !param.isDoublePointer && param.paramType.getType().equals("void")) || param.paramType.getCategory().equals("enum")) {
+            } else if (!needsMarshaling(param.paramType) || (param.isPointer && !param.isDoublePointer && (param.paramType.getType().equals("void") || param.paramType.name.equals("void"))) || param.paramType.getCategory().equals("enum")) {
                 marshalInArrayOfData(param, out, paramData);
             } else if (param.paramType.getCategory().equals("struct")) {
-                marshalInArrayOfStructs(param, out, paramData);
+                marshalInArrayOfStructs(data, param, out, paramData);
             } else {
-                throw new Exception("oops");
+                out.append("oops\n");
+                //throw new Exception("oops");
             }
         } else if (param.paramType.getCategory().equals("struct")) {
-            marshalInPointerToStruct(param, out, paramData);
+            marshalInPointerToStruct(data, param, out, paramData);
         } else {
             if (param.name.equals("pShaderGroupCaptureReplayHandle")) {
                 out.append("        s->");
@@ -347,16 +348,38 @@ public class VkHostMarshalType {
         out.append("    }\n");
     }
 
-    private static void marshalInParam(VkParam param, StringBuilder out) throws Exception {
+    private static void marshalInParam(VkData data, VkParam param, StringBuilder out) throws Exception {
+        if (param.paramType.getCategory().equals("union")) {
+            for (VkParam p : param.paramType.members) {
+                if (p.isPointer) {
+                    out.append(":TODO: A\n");
+                    break;
+                }
+            }
+        }
         if (param.paramType.getCategory().equals("struct") && needsMarshaling(param.paramType)) {
-            param.paramType.setNeedMarshalIn(true);
-            out.append("    Marshal");
-            out.append(param.paramType.name);
-            out.append("::read(pBoxedInfo, memory, address, &s->");
-            out.append(param.name);
-            out.append("); address+=");
-            out.append(param.paramType.sizeof);
-            out.append(";\n");
+            param.paramType.setNeedMarshalIn(data, true);
+            if (param.arrayLen > 0) {
+                out.append("    for (U32 i = 0; i < ");
+                out.append(param.arrayLen);
+                out.append("; i++) {\n");
+                out.append("        Marshal");
+                out.append(param.paramType.name);
+                out.append("::read(pBoxedInfo, memory, address, &s->");
+                out.append(param.name);
+                out.append("[i]); address+=");
+                out.append(param.paramType.sizeof);
+                out.append(";\n");
+                out.append("    }\n");
+            } else {
+                out.append("    Marshal");
+                out.append(param.paramType.name);
+                out.append("::read(pBoxedInfo, memory, address, &s->");
+                out.append(param.name);
+                out.append("); address+=");
+                out.append(param.paramType.sizeof);
+                out.append(";\n");
+            }
         } else if (param.arrayLen > 0) {
             if (param.paramType.getCategory().equals("struct")) {
                 for (VkParam member : param.paramType.members) {
@@ -495,24 +518,11 @@ public class VkHostMarshalType {
         }
         int offset = 0;
         for (VkParam param : t.members) {
-            if (param.name.equals("pQueuePriorities")) {
+            if (param.name.equals("displayProperties")) {
                 int ii=0;
             }
-            if (t.name.equals("VkDebugReportCallbackCreateInfoEXT") && param.name.equals("pfnCallback")) {
-                out.append("    s->pfnCallback = boxed_vkDebugReportCallbackEXT;\n");
-                out.append("    MarshalCallbackData* pData = new MarshalCallbackData();\n");
-                out.append("    pData->callbackAddress = memory->readd(address); address += 4;\n");
-                out.append("    pData->userData = memory->readd(address);address+=4;\n");
-                out.append("    s->pUserData = pData;\n");
-                break;
-            }
-            if (t.name.equals("VkDebugUtilsMessengerCreateInfoEXT") && param.name.equals("pfnUserCallback")) {
-                out.append("    s->pfnUserCallback = boxed_vkDebugUtilsMessengerCallbackEXT;\n");
-                out.append("    MarshalCallbackData* pData = new MarshalCallbackData();\n");
-                out.append("    pData->callbackAddress = memory->readd(address); address += 4;\n");
-                out.append("    pData->userData = memory->readd(address);address+=4;\n");
-                out.append("    s->pUserData = pData;\n");
-                break;
+            if (t.name.equals("StdVideoEncodeH264SliceHeader") && param.name.equals("pWeightTable")) {
+                int ii=0;
             }
             int alignment = param.getAlignment();
             if ((offset % alignment) != 0) {
@@ -521,28 +531,157 @@ public class VkHostMarshalType {
                 out.append("; // structure padding\n");
                 offset += alignment - (offset % alignment);
             }
-            if (param.isPointer) {
-                marshalInPointer(param, out, pointerData, paramsData);
+            if (t.name.equals("VkPerformanceValueINTEL") && param.name.equals("data")) {
+                out.append("    switch (s->type) {\n");
+                out.append("    case VK_PERFORMANCE_VALUE_TYPE_UINT32_INTEL:\n");
+                out.append("        s->data.value32 = memory->readd(address);\n");
+                out.append("        break;\n");
+                out.append("    case VK_PERFORMANCE_VALUE_TYPE_UINT64_INTEL:\n");
+                out.append("        s->data.value64 = memory->readq(address);\n");
+                out.append("        break;\n");
+                out.append("    case VK_PERFORMANCE_VALUE_TYPE_FLOAT_INTEL:\n");
+                out.append("        int2Float i2f;\n");
+                out.append("        i2f.i = memory->readd(address);\n");
+                out.append("        s->data.valueFloat = i2f.f;\n");
+                out.append("        break;\n");
+                out.append("    case VK_PERFORMANCE_VALUE_TYPE_BOOL_INTEL:\n");
+                out.append("        s->data.valueBool = memory->readd(address);\n");
+                out.append("        break;\n");
+                out.append("    case VK_PERFORMANCE_VALUE_TYPE_STRING_INTEL: {\n");
+                out.append("        U32 strAddress = memory->readd(address);\n");
+                out.append("        U32 len = memory->strlen(strAddress);\n");
+                out.append("        s->data.valueString = new char[len + 1];\n");
+                out.append("        memory->memcpy((U8*)s->data.valueString, strAddress, len + 1);\n");
+                out.append("        break; }\n");
+                out.append("    default:\n");
+                out.append("        kpanic(\"MarshalVkPerformanceValueINTEL::read unknown s->type %d\", s->type);\n");
+                out.append("    }\n");
+                out.append("    address += 8;\n");
+                paramsData.add(new MarshalParamData("s.data", false));
+            } else if (t.name.equals("VkIndirectExecutionSetCreateInfoEXT") && param.name.equals("info")) {
+                out.append("    if (s->type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_PIPELINES_EXT) {\n");
+                out.append("        VkIndirectExecutionSetPipelineInfoEXT* p = new VkIndirectExecutionSetPipelineInfoEXT();\n");
+                out.append("        s->info.pPipelineInfo = p;\n");
+                out.append("        MarshalVkIndirectExecutionSetPipelineInfoEXT::read(pBoxedInfo, memory, address, p);\n");
+                out.append("    } else if (s->type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_SHADER_OBJECTS_EXT) {\n");
+                out.append("        VkIndirectExecutionSetShaderInfoEXT* p = new VkIndirectExecutionSetShaderInfoEXT();\n");
+                out.append("        s->info.pShaderInfo = p;\n");
+                out.append("        MarshalVkIndirectExecutionSetShaderInfoEXT::read(pBoxedInfo, memory, address, p);\n");
+                out.append("    } else {\n");
+                out.append("        kpanic(\"MarshalVkIndirectExecutionSetCreateInfoEXT::read unknown s->type %d\", s->type);\n");
+                out.append("    }\n");
+                out.append("    address += 4;\n");
+            } else if (t.name.equals("VkIndirectCommandsLayoutTokenEXT") && param.name.equals("data")) {
+                out.append("    paramAddress = memory->readd(address); address += 4;\n");
+                out.append("    if (!paramAddress) {\n");
+                out.append("        s->data.pPushConstant = nullptr;\n");
+                out.append("    } else if (s->type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_PUSH_CONSTANT_EXT || s->type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_SEQUENCE_INDEX_EXT) {\n");
+                out.append("        VkIndirectCommandsPushConstantTokenEXT* p = new VkIndirectCommandsPushConstantTokenEXT();\n");
+                out.append("        memory->memcpy(&p->updateRange, paramAddress, 12);\n");
+                out.append("        s->data.pPushConstant = p;\n");
+                out.append("    } else if (s->type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_VERTEX_BUFFER_EXT) {\n");
+                out.append("        VkIndirectCommandsVertexBufferTokenEXT* p = new VkIndirectCommandsVertexBufferTokenEXT();\n");
+                out.append("        p->vertexBindingUnit = memory->readd(paramAddress);\n");
+                out.append("        s->data.pVertexBuffer = p;\n");
+                out.append("    } else if (s->type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_INDEX_BUFFER_EXT) {\n");
+                out.append("        VkIndirectCommandsIndexBufferTokenEXT* p = new VkIndirectCommandsIndexBufferTokenEXT();\n");
+                out.append("        p->mode = (VkIndirectCommandsInputModeFlagBitsEXT)memory->readd(paramAddress);\n");
+                out.append("        s->data.pIndexBuffer = p;\n");
+                out.append("    } else if (s->type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_EXECUTION_SET_EXT) {\n");
+                out.append("        VkIndirectCommandsExecutionSetTokenEXT* p = new VkIndirectCommandsExecutionSetTokenEXT();\n");
+                out.append("        p->type = (VkIndirectExecutionSetInfoTypeEXT)memory->readd(paramAddress);\n");
+                out.append("        p->shaderStages = memory->readd(paramAddress + 4);\n");
+                out.append("        s->data.pExecutionSet = p;\n");
+                out.append("    } else {\n");
+                out.append("        // ignored\n");
+                out.append("    }\n");
+                out.append("    address += 4;\n");
+            } else if (t.name.equals("VkDescriptorGetInfoEXT") && param.name.equals("data")) {
+                out.append("    paramAddress = memory->readd(address); address += 8; // sizeof(VkDescriptorDataEXT) == 8\n");
+                out.append("    if (s->type == VK_DESCRIPTOR_TYPE_SAMPLER) {\n");
+                out.append("        VkSampler* p = new VkSampler();\n");
+                out.append("        *p = (VkSampler)memory->readq(paramAddress);\n");
+                out.append("        s->data.pSampler = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {\n");
+                out.append("        VkDescriptorImageInfo* p = new VkDescriptorImageInfo();\n");
+                out.append("        p->sampler = (VkSampler)memory->readq(paramAddress);\n");
+                out.append("        p->imageView = (VkImageView)memory->readq(paramAddress + 8);\n");
+                out.append("        p->imageLayout = (VkImageLayout)memory->readd(paramAddress + 16);\n");
+                out.append("        s->data.pCombinedImageSampler = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {\n");
+                out.append("        VkDescriptorImageInfo* p = new VkDescriptorImageInfo();\n");
+                out.append("        p->sampler = (VkSampler)memory->readq(paramAddress);\n");
+                out.append("        p->imageView = (VkImageView)memory->readq(paramAddress + 8);\n");
+                out.append("        p->imageLayout = (VkImageLayout)memory->readd(paramAddress + 16);\n");
+                out.append("        s->data.pInputAttachmentImage = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) {\n");
+                out.append("        VkDescriptorImageInfo* p = new VkDescriptorImageInfo();\n");
+                out.append("        p->sampler = (VkSampler)memory->readq(paramAddress);\n");
+                out.append("        p->imageView = (VkImageView)memory->readq(paramAddress + 8);\n");
+                out.append("        p->imageLayout = (VkImageLayout)memory->readd(paramAddress + 16);\n");
+                out.append("        s->data.pSampledImage = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {\n");
+                out.append("        VkDescriptorImageInfo* p = new VkDescriptorImageInfo();\n");
+                out.append("        p->sampler = (VkSampler)memory->readq(paramAddress);\n");
+                out.append("        p->imageView = (VkImageView)memory->readq(paramAddress + 8);\n");
+                out.append("        p->imageLayout = (VkImageLayout)memory->readd(paramAddress + 16);\n");
+                out.append("        s->data.pStorageImage = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER) {\n");
+                out.append("        VkDescriptorAddressInfoEXT* p = new VkDescriptorAddressInfoEXT();\n");
+                out.append("        MarshalVkDescriptorAddressInfoEXT::read(pBoxedInfo, memory, paramAddress, p);\n");
+                out.append("        s->data.pUniformTexelBuffer = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {\n");
+                out.append("        VkDescriptorAddressInfoEXT* p = new VkDescriptorAddressInfoEXT();\n");
+                out.append("        MarshalVkDescriptorAddressInfoEXT::read(pBoxedInfo, memory, paramAddress, p);\n");
+                out.append("        s->data.pStorageTexelBuffer = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {\n");
+                out.append("        VkDescriptorAddressInfoEXT* p = new VkDescriptorAddressInfoEXT();\n");
+                out.append("        MarshalVkDescriptorAddressInfoEXT::read(pBoxedInfo, memory, paramAddress, p);\n");
+                out.append("        s->data.pUniformBuffer = p;\n");
+                out.append("    } else if (s->type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {\n");
+                out.append("        VkDescriptorAddressInfoEXT* p = new VkDescriptorAddressInfoEXT();\n");
+                out.append("        MarshalVkDescriptorAddressInfoEXT::read(pBoxedInfo, memory, paramAddress, p);\n");
+                out.append("        s->data.pStorageBuffer = p;\n");
+                out.append("    } else {\n");
+                out.append("        kpanic(\"MarshalVkDescriptorGetInfoEXT::read unknown s->type %d\", s->type);\n");
+                out.append("    }\n");
+                out.append("    address += 8;\n");
+            } else if (t.name.equals("VkDebugReportCallbackCreateInfoEXT") && param.name.equals("pfnCallback")) {
+                out.append("    s->pfnCallback = boxed_vkDebugReportCallbackEXT;\n");
+                out.append("    MarshalCallbackData* pData = new MarshalCallbackData();\n");
+                out.append("    pData->callbackAddress = memory->readd(address); address += 4;\n");
+                out.append("    pData->userData = memory->readd(address);address+=4;\n");
+                out.append("    s->pUserData = pData;\n");
+                break; // pfnCallback and pUserData were handled
+            } else if (t.name.equals("VkDebugUtilsMessengerCreateInfoEXT") && param.name.equals("pfnUserCallback")) {
+                out.append("    s->pfnUserCallback = boxed_vkDebugUtilsMessengerCallbackEXT;\n");
+                out.append("    MarshalCallbackData* pData = new MarshalCallbackData();\n");
+                out.append("    pData->callbackAddress = memory->readd(address); address += 4;\n");
+                out.append("    pData->userData = memory->readd(address);address+=4;\n");
+                out.append("    s->pUserData = pData;\n");
+                break; // pfnCallback and pUserData were handled
+            } else if (param.isPointer) {
+                marshalInPointer(data, param, out, pointerData, paramsData);
             } else {
-                marshalInParam(param, out);
+                marshalInParam(data, param, out);
             }
             offset += param.getSize();
         }
         out.append("}\n");
     }
 
-    private static void marshalOutPointer(VkParam param, StringBuilder out, PointerData data, Vector<MarshalParamData> paramData) {
-        if (data.createdParamAddress) {
+    private static void marshalOutPointer(VkData data, VkParam param, StringBuilder out, PointerData pdata, Vector<MarshalParamData> paramData) {
+        if (pdata.createdParamAddress) {
             out.append("    paramAddress = memory->readd(address);address+=4;\n");
         } else {
             out.append("    U32 paramAddress = memory->readd(address);address+=4;\n");
-            data.createdParamAddress = true;
+            pdata.createdParamAddress = true;
         }
         out.append("    if (paramAddress != 0) {\n");
         if (param.name.equals("pNext")) {
             out.append("        vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);\n");
         } else if (param.paramType.getCategory().equals("struct")) {
-            param.paramType.setNeedMarshalIn(true);
+            param.paramType.setNeedMarshalIn(data, true);
             out.append("        ");
             out.append(param.paramType.name);
             out.append("* ");
@@ -569,8 +708,40 @@ public class VkHostMarshalType {
     private static void marshalOutParam(VkType type, VkParam param, StringBuilder out) throws Exception {
         int width = param.getSize();
 
-        if (type.name.equals("VkPipelineExecutableStatisticKHR") && param.name.equals("value")) {
-            int ii=0;
+        if (type.name.equals("VkPerformanceValueINTEL") && param.name.equals("data")) {
+            out.append("    switch (s->type) {\n");
+            out.append("    case VK_PERFORMANCE_VALUE_TYPE_UINT32_INTEL:\n");
+            out.append("        memory->writed(address, s->data.value32);\n");
+            out.append("        break;\n");
+            out.append("    case VK_PERFORMANCE_VALUE_TYPE_UINT64_INTEL:\n");
+            out.append("        memory->writeq(address, s->data.value64);\n");
+            out.append("        break;\n");
+            out.append("    case VK_PERFORMANCE_VALUE_TYPE_FLOAT_INTEL:\n");
+            out.append("        int2Float i2f;\n");
+            out.append("        i2f.f = s->data.valueFloat;\n");
+            out.append("        memory->writed(address, i2f.i);\n");
+            out.append("        break;\n");
+            out.append("    case VK_PERFORMANCE_VALUE_TYPE_BOOL_INTEL:\n");
+            out.append("        memory->writed(address, s->data.valueBool);\n");
+            out.append("        break;\n");
+            out.append("    case VK_PERFORMANCE_VALUE_TYPE_STRING_INTEL:\n");
+            out.append("        kpanic(\"MarshalVkPerformanceValueINTEL::write unhandled types: VK_PERFORMANCE_VALUE_TYPE_STRING_INTEL\");\n");
+            out.append("        break;\n");
+            out.append("    default:\n");
+            out.append("        kpanic(\"MarshalVkPerformanceValueINTEL::write unknown s->type %d\", s->type);\n");
+            out.append("    }\n");
+            out.append("    address += 8;\n");
+            return;
+        }
+        if (type.name.equals("VkIndirectExecutionSetCreateInfoEXT") && param.name.equals("info")) {
+            out.append("    if (s->type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_PIPELINES_EXT) {\n");
+            out.append("        MarshalVkIndirectExecutionSetPipelineInfoEXT::write(pBoxedInfo, memory, address, (VkIndirectExecutionSetPipelineInfoEXT*)s->info.pPipelineInfo);\n");
+            out.append("    } else if (s->type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_SHADER_OBJECTS_EXT) {\n");
+            out.append("        MarshalVkIndirectExecutionSetShaderInfoEXT::write(pBoxedInfo, memory, address, (VkIndirectExecutionSetShaderInfoEXT*)s->info.pShaderInfo);\n");
+            out.append("    } else {\n");
+            out.append("        kpanic(\"MarshalVkIndirectExecutionSetCreateInfoEXT::write unknown s->type %d\", s->type);\n");
+            out.append("    }\n");
+            return;
         }
         if (width > 8 || param.arrayLen > 0 || param.paramType.getCategory().equals("struct") || param.paramType.getType().equals("union")) {
             out.append("    memory->memcpy(address, ");
@@ -680,7 +851,7 @@ public class VkHostMarshalType {
                 offset += alignment - (offset % alignment);
             }
             if (param.isPointer) {
-                marshalOutPointer(param, out, pointerData, paramsData);
+                marshalOutPointer(data, param, out, pointerData, paramsData);
             } else {
                 marshalOutParam(t, param, out);
             }
@@ -697,6 +868,13 @@ public class VkHostMarshalType {
         out.append("() {\n");
         HashSet<String> alreadyAdded = new HashSet<>();
 
+        if (t.name.equals("VkPerformanceValueINTEL")) {
+            out.append("    if (s.type == VK_PERFORMANCE_VALUE_TYPE_STRING_INTEL) {\n");
+            out.append("        delete[] s.data.valueString;\n");
+            out.append("    }\n");
+            out.append("}\n");
+            return;
+        }
         for (MarshalParamData data : paramsData) {
             if (alreadyAdded.contains(data.name)) {
                 continue;
@@ -721,6 +899,49 @@ public class VkHostMarshalType {
             out.append(";\n");
             alreadyAdded.add(data.name);
         }
+        if (t.name.equals("VkIndirectExecutionSetCreateInfoEXT")) {
+            out.append("    if (s.type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_PIPELINES_EXT) {\n");
+            out.append("        delete s.info.pPipelineInfo;\n");
+            out.append("    } else if (s.type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_SHADER_OBJECTS_EXT) {\n");
+            out.append("        delete s.info.pShaderInfo;\n");
+            out.append("    } else {\n");
+            out.append("        kpanic(\"MarshalVkIndirectExecutionSetCreateInfoEXT::MarshalVkIndirectExecutionSetCreateInfoEXT unknown s.type %d\", s.type);\n");
+            out.append("    }\n");
+        }
+        if (t.name.equals("VkIndirectCommandsLayoutTokenEXT")) {
+            out.append("    if (s.type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_PUSH_CONSTANT_EXT || s.type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_SEQUENCE_INDEX_EXT) {\n");
+            out.append("        delete s.data.pPushConstant;\n");
+            out.append("    } else if (s.type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_VERTEX_BUFFER_EXT) {\n");
+            out.append("        delete s.data.pVertexBuffer;\n");
+            out.append("    } else if (s.type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_INDEX_BUFFER_EXT) {\n");
+            out.append("        delete s.data.pIndexBuffer;\n");
+            out.append("    } else if (s.type == VK_INDIRECT_COMMANDS_TOKEN_TYPE_EXECUTION_SET_EXT) {\n");
+            out.append("        delete s.data.pExecutionSet;\n");
+            out.append("    }\n");
+        }
+        if (t.name.equals("VkDescriptorGetInfoEXT")) {
+            out.append("    if (s.type == VK_DESCRIPTOR_TYPE_SAMPLER) {\n");
+            out.append("        delete s.data.pSampler;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) {\n");
+            out.append("        delete s.data.pCombinedImageSampler;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) {\n");
+            out.append("        delete s.data.pInputAttachmentImage;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) {\n");
+            out.append("        delete s.data.pSampledImage;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {\n");
+            out.append("        delete s.data.pStorageImage;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER) {\n");
+            out.append("        delete s.data.pUniformTexelBuffer;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {\n");
+            out.append("        delete s.data.pStorageTexelBuffer;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) {\n");
+            out.append("        delete s.data.pUniformBuffer;\n");
+            out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {\n");
+            out.append("        delete s.data.pStorageBuffer;\n");
+            out.append("    } else {\n");
+            out.append("        kpanic(\"MarshalVkDescriptorGetInfoEXT::~MarshalVkDescriptorGetInfoEXT unknown s.type %d\", s.type);\n");
+            out.append("    }\n");
+        }
         out.append("}\n");
     }
     public static void write(VkData data, VkType t, StringBuilder out) throws Exception {
@@ -739,6 +960,13 @@ public class VkHostMarshalType {
     }
 
     static boolean needsMarshaling(VkType type) {
+        if (type.name.equals("VkClearValue")) {
+            return false;
+        }
+        if (type.getCategory().equals("struct")) {
+            // need to be careful of struct padding
+            return true;
+        }
         if (type.getCategory().equals("enum")) {
             // size if not guaranteed in C99, could be char, could be int
             return true;
@@ -753,12 +981,18 @@ public class VkHostMarshalType {
             return false;
         }
 
-        if (type.members != null) {
-            for (VkParam member : type.members) {
-                if (needsMarshaling(member.paramType)) {
+        if (type.members.size() > 0) {
+            for (VkParam param : type.members) {
+                if (needsMarshaling(param.paramType)) {
                     return true;
                 }
             }
+            return false;
+        }
+        if (simpleTypes.contains(type.name)) {
+            return false;
+        }
+        if (simpleTypes.contains(type.getType())) {
             return false;
         }
         return true;
@@ -786,6 +1020,7 @@ public class VkHostMarshalType {
     static {
         simpleTypes = new HashSet<>();
         simpleTypes.add("int");
+        simpleTypes.add("uint8_t");
         simpleTypes.add("uint16_t");
         simpleTypes.add("uint32_t");
         simpleTypes.add("uint64_t");
@@ -793,7 +1028,10 @@ public class VkHostMarshalType {
         simpleTypes.add("VkFlags64");
         simpleTypes.add("VkFlags");
         simpleTypes.add("float");
+        simpleTypes.add("int8_t");
+        simpleTypes.add("int16_t");
         simpleTypes.add("int32_t");
+        simpleTypes.add("int64_t");
         simpleTypes.add("VK_DEFINE_NON_DISPATCHABLE_HANDLE");
         simpleTypes.add("Display");
         simpleTypes.add("Window");

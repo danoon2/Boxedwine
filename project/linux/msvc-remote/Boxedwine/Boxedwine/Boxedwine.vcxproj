@@ -171,6 +171,7 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativescreenSDL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\kvulkanSDL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
@@ -589,6 +590,7 @@
     <ClInclude Include="..\..\..\..\..\include\ktimer.h" />
     <ClInclude Include="..\..\..\..\..\include\ktimercallback.h" />
     <ClInclude Include="..\..\..\..\..\include\kunixsocket.h" />
+    <ClInclude Include="..\..\..\..\..\include\kvulkan.h" />
     <ClInclude Include="..\..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\..\include\meminfo.h" />
@@ -736,6 +738,7 @@
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeinputSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativescreenSDL.h" />
+    <ClInclude Include="..\..\..\..\..\platform\sdl\kvulkanSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
@@ -1097,6 +1100,19 @@
     <ClInclude Include="..\..\..\..\..\source\util\vectorutils.h" />
     <ClInclude Include="..\..\..\..\..\source\vulkan\vkdef.h" />
     <ClInclude Include="..\..\..\..\..\source\vulkan\vkfuncs.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_platform.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codecs_common.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std_decode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std_encode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std_decode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std_encode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std_decode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std_encode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vulkan.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vulkan_core.h" />
     <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host.h" />
     <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host_marshal.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\displaydata.h" />

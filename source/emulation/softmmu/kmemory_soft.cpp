@@ -714,7 +714,7 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount+2, &result, false, true, PAGE_MAPPED)) {
         return 0;
     }
-    result++;
+    result++; // guard page
     for (U32 i = 0; i < pageCount; i++) {
         data->flags[result + i] = PAGE_MAPPED | PAGE_READ | PAGE_WRITE;
         getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i));
