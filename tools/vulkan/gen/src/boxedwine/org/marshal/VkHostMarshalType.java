@@ -313,9 +313,6 @@ public class VkHostMarshalType {
         out.append("        s->");
         out.append(param.name);
         out.append(" = NULL;\n    } else {\n");
-        if (param.paramType.name.equals("VkClearValue")) {
-            int ii=0;
-        }
         if (param.name.equals("pNext")) {
             out.append("        s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);\n");
             paramData.add(new MarshalParamData("s.pNext", false));
@@ -519,9 +516,6 @@ public class VkHostMarshalType {
         int offset = 0;
         for (VkParam param : t.members) {
             if (param.name.equals("displayProperties")) {
-                int ii=0;
-            }
-            if (t.name.equals("StdVideoEncodeH264SliceHeader") && param.name.equals("pWeightTable")) {
                 int ii=0;
             }
             int alignment = param.getAlignment();

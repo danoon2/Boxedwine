@@ -3041,6 +3041,10 @@ void vk_GetPhysicalDeviceSurfacePresentModesKHR(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, pPresentModeCount, pPresentModes);
     cpu->memory->writed(ARG3, (U32)tmp_pPresentModeCount);
+    if (pPresentModes) {
+        cpu->memory->memcpy(ARG4, pPresentModes, (U32)*pPresentModeCount * sizeof(VkPresentModeKHR));
+    }
+    delete[] pPresentModes;
 }
 // return type: VkResult(4 bytes)
 void vk_CreateSwapchainKHR(CPU* cpu) {
@@ -4446,6 +4450,10 @@ void vk_GetPhysicalDeviceCalibrateableTimeDomainsKHR(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCalibrateableTimeDomainsKHR(physicalDevice, pTimeDomainCount, pTimeDomains);
     cpu->memory->writed(ARG2, (U32)tmp_pTimeDomainCount);
+    if (pTimeDomains) {
+        cpu->memory->memcpy(ARG3, pTimeDomains, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
+    }
+    delete[] pTimeDomains;
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(CPU* cpu) {
@@ -4461,6 +4469,10 @@ void vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(CPU* cpu) {
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice, pTimeDomainCount, pTimeDomains);
     cpu->memory->writed(ARG2, (U32)tmp_pTimeDomainCount);
+    if (pTimeDomains) {
+        cpu->memory->memcpy(ARG3, pTimeDomains, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
+    }
+    delete[] pTimeDomains;
 }
 // return type: VkResult(4 bytes)
 void vk_GetCalibratedTimestampsKHR(CPU* cpu) {

@@ -14,6 +14,6 @@ public class VkHostMarshalOutEnumArray extends VkHostMarshalInMemory {
     }
 
     public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-
+        super.after(fn, out, param);
     }
 }
