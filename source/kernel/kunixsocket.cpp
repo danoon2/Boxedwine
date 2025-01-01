@@ -863,7 +863,7 @@ U32 KUnixSocketObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message,
 U32 KUnixSocketObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
     if (address == 0) {
         if (flags) {
-            kpanic("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
+            kwarn("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
         }
         return read(thread, buffer, length);
     }

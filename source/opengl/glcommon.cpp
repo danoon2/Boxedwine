@@ -573,6 +573,7 @@ void glcommon_glGetError(CPU* cpu) {
 #define GLX_ACCUM_BLUE_SIZE	16
 #define GLX_ACCUM_ALPHA_SIZE	17
 
+#define GLX_DONT_CARE                     0xFFFFFFFF
 
  /*
   * Error codes returned by glXGetConfig:
@@ -822,7 +823,130 @@ void gl_common_XGetClientString(CPU* cpu) {
 
 // GLXFBConfig* glXChooseFBConfig(Display* dpy, int screen, const int* attribList, int* nitems)
 void gl_common_XChooseFBConfig(CPU* cpu) {
-    kpanic("glXChooseFBConfig");
+    KThread* thread = cpu->thread;
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+
+    U32 count = 0;
+    U32 screen = ARG2;    
+
+    U32 colorType = PF_COLOR_TYPE_NOTSET;
+    U32 bufferSize = 0;
+    U32 cAlphaBits = 0;
+    U32 cDepthBits = 0;
+    U32 cStencilBits = 0;
+    U32 cAuxBits = 0;
+    U32 doubleBuffer = GLX_DONT_CARE;
+    U32 sampleBuffers = 0;
+    U32 samples = 0;
+    U32 drawableType = 0;
+    U32 renderType = 0;
+    U32 address = ARG3;
+    U32 value;
+
+    while (value = cpu->memory->readd(address)) {
+        if (value == GLX_BUFFER_SIZE) {
+            bufferSize = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_ALPHA_SIZE) {
+            cAlphaBits = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_DEPTH_SIZE) {
+            cDepthBits = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_STENCIL_SIZE) {
+            cStencilBits = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_AUX_BUFFERS) {
+            cAuxBits = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_DOUBLEBUFFER) {
+            doubleBuffer = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == 100000/*GLX_SAMPLE_BUFFERS_ARB*/) {
+            sampleBuffers = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == 100001/*GLX_SAMPLES_ARB*/) {
+            samples = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == 0x8010/*GLX_DRAWABLE_TYPE*/) {
+            drawableType = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == 0x8011/*GLX_RENDER_TYPE*/) {
+            renderType = cpu->memory->readd(address + 4);
+            address += 4;
+        } else {
+            kpanic("gl_common_XChooseFBConfig unhandled attribute %d", value);
+        }
+        address += 4;
+    }
+
+    std::vector<CLXFBConfigPtr> foundCfgs;
+    server->iterateFbConfigs([=, &foundCfgs](const CLXFBConfigPtr& cfg) {
+        if (samples && samples > cfg->glPixelFormat->samples) {
+            return true;
+        }
+        if (sampleBuffers && sampleBuffers > cfg->glPixelFormat->sampleBuffers) {
+            return true;
+        }
+        if (cAuxBits && cAuxBits > cfg->glPixelFormat->pf.cAuxBuffers) {
+            return true;
+        }
+        if (doubleBuffer != GLX_DONT_CARE) {
+            bool hasDoubleBuffer = (cfg->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) != 0;
+            bool wantsDoubleBuffer = doubleBuffer != 0;
+            if (hasDoubleBuffer != wantsDoubleBuffer) {
+                return true;
+            }
+        }
+        if (cStencilBits && cStencilBits > cfg->glPixelFormat->pf.cStencilBits) {
+            return true;
+        }
+        if (cDepthBits && cDepthBits > cfg->glPixelFormat->pf.cDepthBits) {
+            return true;
+        }
+        if (cAlphaBits && cAlphaBits > cfg->glPixelFormat->pf.cAlphaBits) {
+            return true;
+        }
+        if (bufferSize && bufferSize > cfg->glPixelFormat->depth) {
+            return true;
+        }
+        foundCfgs.push_back(cfg);
+        return true;
+        });
+    std::sort(foundCfgs.begin(), foundCfgs.end(), [=](const CLXFBConfigPtr& a, const CLXFBConfigPtr& b) {
+        if (a->glPixelFormat->depth != b->glPixelFormat->depth) {
+            return a->glPixelFormat->depth < b->glPixelFormat->depth;
+        }
+        if (doubleBuffer == GLX_DONT_CARE) {
+            bool doubleA = (a->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) != 0;
+            bool doubleB = (b->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) != 0;
+
+            if (doubleA != doubleB) {
+                // single buffer should come first
+                return !doubleA;
+            }
+        }
+        if (a->glPixelFormat->pf.cAuxBuffers != b->glPixelFormat->pf.cAuxBuffers) {
+            return a->glPixelFormat->pf.cAuxBuffers < b->glPixelFormat->pf.cAuxBuffers;
+        }
+        if (a->glPixelFormat->pf.cDepthBits != b->glPixelFormat->pf.cDepthBits) {
+            return a->glPixelFormat->pf.cDepthBits > b->glPixelFormat->pf.cDepthBits;
+        }
+        if (a->glPixelFormat->pf.cStencilBits != b->glPixelFormat->pf.cStencilBits) {
+            return a->glPixelFormat->pf.cStencilBits < b->glPixelFormat->pf.cStencilBits;
+        }
+        return a->fbId < b->fbId;
+        });
+    memory->writed(ARG4, (U32)foundCfgs.size());
+
+    U32 resultAddress = thread->process->alloc(thread, (U32)foundCfgs.size() * 4); // list of ids
+    EAX = resultAddress;
+
+    for (auto& cfg : foundCfgs) {
+        memory->writed(resultAddress, cfg->fbId);
+        resultAddress += 4;
+    }
 }
 
 // int glXGetFBConfigAttrib(Display* dpy, GLXFBConfig config, int attribute, int* value)
