@@ -69,6 +69,7 @@ public:
     void present() override;
     bool presentedSinceLastCheck() override;
     void clearTextureCache(U32 id) override;
+    bool canBltToScreen() override;
 
     void warpMouse(int x, int y) override;
     bool isVisible() override;

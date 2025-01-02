@@ -311,6 +311,10 @@ void KNativeScreenSDL::clearTextureCache(U32 id) {
     wndCache.clear();
 }
 
+bool KNativeScreenSDL::canBltToScreen() {
+    return additionalSDLWindowFlags == 0;
+}
+
 void KNativeScreenSDL::warpMouse(int x, int y) {
     DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
         if (window) {

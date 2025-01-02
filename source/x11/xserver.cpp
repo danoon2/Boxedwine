@@ -359,7 +359,11 @@ void XServer::draw(bool drawNow) {
 		lastDraw = now;
 		isDisplayDirty = false;
 	}
+
 	KNativeScreenPtr screen = KNativeSystem::getScreen();
+	if (!screen->canBltToScreen()) {
+		return;
+	}
 	screen->getInput()->runOnUiThread([screen, this]() {
 		bool childWasDrawn = false;
 
