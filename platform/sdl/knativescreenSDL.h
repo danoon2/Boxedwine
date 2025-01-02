@@ -110,7 +110,7 @@ private:
     U32 lastUpdateTime = 0;
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
-    U32 additionalSDLWindowFlags = SDL_WINDOW_VULKAN;
+    U32 additionalSDLWindowFlags = 0;
 
     void recreateMainWindow();
     void destroyMainWindow();

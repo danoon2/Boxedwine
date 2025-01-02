@@ -684,6 +684,8 @@ void KNativeScreenSDL::recreateMainWindow() {
         int cy = input->height * input->scaleY / 100;
         int flags = SDL_WINDOW_HIDDEN | additionalSDLWindowFlags;
         
+        visible = false;
+
         SDL_DisplayMode dm;
 
         if (SDL_GetDesktopDisplayMode(0, &dm) != 0) {

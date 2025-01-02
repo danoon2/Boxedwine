@@ -4,6 +4,7 @@
 #include <SDL.h>
 #include <SDL_vulkan.h>
 #include "kvulkanSDL.h"
+#include "sdlcallback.h"
 
 class KVulkdanSDLImpl : public KVulkan {
 public:
@@ -16,12 +17,14 @@ public:
 void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance) {
 	VkSurfaceKHR result;
 
+	DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
 	if (!screen->additionalSDLWindowFlags) {
 		screen->additionalSDLWindowFlags = SDL_WINDOW_VULKAN;
 		screen->recreateMainWindow();		
 	}
 	screen->setScreenSize(wnd->width(), wnd->height());
 	screen->showWindow(true);
+	DISPATCH_MAIN_THREAD_BLOCK_END
 	if (SDL_Vulkan_CreateSurface(screen->window, (VkInstance)instance, &result)) {
 		return (void*)result;
 	}
