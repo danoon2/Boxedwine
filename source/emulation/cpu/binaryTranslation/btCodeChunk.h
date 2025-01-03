@@ -47,6 +47,11 @@ public:
     U32 getStartOfInstructionByEip(U32 eip, U8** hostAddress, U32* index);
     
     DecodedBlock* block;
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    U32 startTimeForExceptionTracking = 0;
+    U32 exceptionCount = 0;
+    bool retranslatedForException = false;
+#endif
 protected:
     void detachFromHost(KMemory* memory);
     void internalDealloc();

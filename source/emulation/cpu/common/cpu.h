@@ -239,12 +239,12 @@ public:
     ALIGN(SSE xmm[8], 16);
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64)
-#ifndef BOXEDWINE_4K_PAGE_SIZE
+
     U64 memcheckq[K_PAGE_SIZE];
     U64 memcheckd[K_PAGE_SIZE];
     U64 memcheckw[K_PAGE_SIZE];
     U64 memcheckqq[K_PAGE_SIZE];
-#endif
+
     U64 fNeg = 0x8000000000000000l;
     U64 fAbs = 0x7fffffffffffffffl;
     U64 fZero = 0l;

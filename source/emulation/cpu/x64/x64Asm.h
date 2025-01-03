@@ -263,6 +263,9 @@ public:
 
     void shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpReg);    
 
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    void checkMemory4k(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg = 0xff);
+#endif
     void checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg = 0xff);
 public:
     void lods(U32 width) {

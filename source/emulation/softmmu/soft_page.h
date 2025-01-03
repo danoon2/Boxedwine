@@ -16,8 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#ifndef __PAGE_H__
-#define __PAGE_H__
+#ifndef __SOFT_PAGE_H__
+#define __SOFT_PAGE_H__
 
 #include "platform.h"
 #include "soft_ram.h"
