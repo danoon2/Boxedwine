@@ -49,7 +49,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
     bool exec = (prot & K_PROT_EXEC) != 0;
     U32 pageStart = addr >> K_PAGE_SHIFT;
     U32 pageCount = (len + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
-    KFileDescriptor* fd = nullptr;
+    KFileDescriptorPtr fd;
 
     if (0xFFFFFFFF - addr < len) {
         return -K_EINVAL;

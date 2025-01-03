@@ -51,14 +51,13 @@ public:
 
     bool canRead();
     bool canWrite();
-    void close();
 
     U32 accessFlags;
     U32 descriptorFlags;
     U32 handle;
     std::shared_ptr<KObject> kobject;
-    U32 refCount;
     KProcessWeakPtr process;
 };
 
+typedef std::shared_ptr<KFileDescriptor> KFileDescriptorPtr;
 #endif

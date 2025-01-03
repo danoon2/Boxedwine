@@ -134,10 +134,10 @@ public:
 
     BString getModuleName(U32 eip);
     U32 getModuleEip(U32 eip);    
-    KFileDescriptor* allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
-    KFileDescriptor* getFileDescriptor(FD handle);
+    KFileDescriptorPtr allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
+    KFileDescriptorPtr getFileDescriptor(FD handle);
     void clearFdHandle(FD handle);
-    U32 openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptor** result);
+    U32 openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result);
     bool isStopped();
     bool isTerminated();
     KThread* startProcess(BString currentDirectory, const std::vector<BString>& args, const std::vector<BString>& envValues, int userId, int groupId, int effectiveUserId, int effectiveGroupId);
@@ -291,7 +291,7 @@ public:
     BOXEDWINE_MUTEX keySymToNameMutex;
     BHashTable<U32, U32> keySymToName;
 private:
-    BHashTable<U32, KFileDescriptor*> fds;    
+    BHashTable<U32, KFileDescriptorPtr> fds;    
 
     user_desc ldt[LDT_ENTRIES];
     BOXEDWINE_MUTEX ldtMutex;
@@ -319,7 +319,7 @@ private:
     U32 usedTLS[TLS_ENTRIES] = { 0 };
     BOXEDWINE_MUTEX usedTlsMutex;
 
-    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result);    
+    U32 openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result);    
     void setupCommandlineNode();
     void initStdio();
     std::shared_ptr<FsNode> findInPath(BString path);

@@ -1169,7 +1169,7 @@ static U32 syscall_fsetxattr(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOTSUP;
     BString name = cpu->memory->readString(ARG2);
 
-    KFileDescriptor* fd = cpu->thread->process->getFileDescriptor(ARG1);
+    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
     if (!fd) {
         result = -K_EBADFD;
     } else if (name == "user.DOSATTRIB") {
@@ -1238,7 +1238,7 @@ static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOTSUP;
     BString name = cpu->memory->readString(ARG2);
 
-    KFileDescriptor* fd = cpu->thread->process->getFileDescriptor(ARG1);
+    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
     if (!fd) {
         result = -K_EBADFD;
     } else if (name == "user.DOSATTRIB") {
@@ -1272,7 +1272,7 @@ static U32 syscall_fremovexattr(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOTSUP;
     BString name = cpu->memory->readString(ARG2);
 
-    KFileDescriptor* fd = cpu->thread->process->getFileDescriptor(ARG1);
+    KFileDescriptorPtr fd = cpu->thread->process->getFileDescriptor(ARG1);
     if (!fd) {
         result = -K_EBADFD;
     } else if (name == "user.DOSATTRIB") {

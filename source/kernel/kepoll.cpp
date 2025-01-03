@@ -134,7 +134,7 @@ void KEPoll::close() {
 #define K_EPOLL_CTL_MOD 3
 
 U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
-    KFileDescriptor* targetFD = KThread::currentThread()->process->getFileDescriptor(fd);
+    KFileDescriptorPtr targetFD = KThread::currentThread()->process->getFileDescriptor(fd);
 
     if (!targetFD) {
         return -K_EBADF;
