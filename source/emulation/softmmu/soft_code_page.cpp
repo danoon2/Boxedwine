@@ -131,6 +131,9 @@ CodePage::CodePageEntry* CodePage::findEntry(U32 start, U32 stop) {
     U32 bucketIndexStart = start >> CODE_ENTRIES_SHIFT;
     U32 bucketIndexStop = stop >> CODE_ENTRIES_SHIFT;
 
+    if (bucketIndexStop >= CODE_ENTRIES) {
+        bucketIndexStop = CODE_ENTRIES - 1;
+    }
     for (U32 i = bucketIndexStart; i <= bucketIndexStop; i++) {
         CodePageEntry* e = entries[i];        
         while (e) {

@@ -30,7 +30,9 @@ public:
     void* syncFromHostAddress = nullptr;
     void* doSingleOpAddress = nullptr;
     int exitToStartThreadLoop = 0; // this will be checked after a syscall, if set to 1 then then x64CPU.returnToLoopAddress will be called    
-
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    bool use4kMemCheck = true;
+#endif
     std::vector<U32> pendingCodePages;
 
     std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);

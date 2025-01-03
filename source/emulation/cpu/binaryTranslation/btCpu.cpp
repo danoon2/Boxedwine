@@ -7,6 +7,7 @@
 #include "knativesystem.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
+#include "../../softmmu/soft_page.h"
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
@@ -178,6 +179,28 @@ U64 BtCPU::handleFpuException(int code) {
 }
 
 U64 BtCPU::handleAccessException(DecodedOp* op) {
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    U32 address = getEipAddress();
+    CodeBlock block = getMemData(memory)->getCodeChunkContainingEip(address);
+    if (block->startTimeForExceptionTracking + 1000 < KSystem::getMilliesSinceStart()) {
+        block->startTimeForExceptionTracking = KSystem::getMilliesSinceStart();
+        block->exceptionCount = 0;
+    }
+    Page* page = getMemData(memory)->getPage(address >> K_PAGE_SHIFT);
+    if (page->getType() == Page::Type::Native_Page || page->getType() == Page::Type::Code_Page) {
+        block->exceptionCount++;
+    }
+    if (block->exceptionCount > 1000) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(getMemData(memory)->executableMemoryMutex);
+        if (!block->retranslatedForException) {
+            use4kMemCheck = false;
+            block->releaseAndRetranslate();
+            block = getMemData(memory)->getCodeChunkContainingEip(address);
+            block->retranslatedForException = true;
+            use4kMemCheck = true;
+        }
+    }
+#endif
     try {
         op->pfn(this, op);
     } catch (...) {

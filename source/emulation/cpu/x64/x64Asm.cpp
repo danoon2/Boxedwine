@@ -971,7 +971,7 @@ void X64Asm::getRamPage(U8 memReg, U8 pageReg, bool isWrite) {
 }
 
 #ifdef BOXEDWINE_4K_PAGE_SIZE
-void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
+void X64Asm::checkMemory4k(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
     bool needFlags = false;
 
     if (!flagsWrittenToInstructionStoredFlags && !x64CPU::hasBMI2) {
@@ -1004,10 +1004,15 @@ void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 wi
         releaseTmpReg(flagsReg);
     }
 }
-#else
+#endif
 void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
     //bool fpuMustBeNative = currentOp->inst == FNSAVE || currentOp->inst == FRSTOR || currentOp->inst == FLDENV || currentOp->inst == FNSTENV || currentOp->inst == Fxrstor || currentOp->inst == Fxsave;
-
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    if (cpu->use4kMemCheck) {
+        checkMemory4k(emulatedAddressReg, isRex, isWrite, width, memReg, skipAlignmentCheck, tmpReg);
+        return;
+    }
+#endif
     bool needFlags = false;
 
     if (!flagsWrittenToInstructionStoredFlags) {
@@ -1113,7 +1118,6 @@ void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 wi
 
     //releaseTmpReg(flagsReg);
 }
-#endif
 
 // rm could be set to use the rexReg in tmpReg
 void X64Asm::translateRM(U8 rm, bool checkG, bool checkE, bool isG8bit, bool isE8bit, U8 immWidth, bool calculateHostAddress) {
