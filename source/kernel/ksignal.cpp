@@ -242,7 +242,7 @@ S64 KSignal::length() {
 }
 
 U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 flags) {
-    KFileDescriptor* fd = nullptr;
+    KFileDescriptorPtr fd;
     KMemory* memory = thread->memory;
 
     if (fildes>=0) {

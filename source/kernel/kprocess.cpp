@@ -95,12 +95,11 @@ KProcess::KProcess(U32 id) : id(id), exitOrExecCond(std::make_shared<BoxedWineCo
 }
 
 void KProcess::onExec(KThread* thread) {
-    BHashTable<U32, KFileDescriptor*> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
+    BHashTable<U32, KFileDescriptorPtr> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
     for( const auto& n : fdsToClose ) {
-        KFileDescriptor* fd = n.value;
+        KFileDescriptorPtr fd = n.value;
         if (fd->descriptorFlags) {
-            fd->refCount = 1; // make sure it is really closed
-            fd->close();
+            clearFdHandle(fd->handle);
         }
     }
     this->attachedShm.clear();
@@ -179,11 +178,9 @@ void KProcess::cleanupProcess() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     removeTimer(&this->timer);
 
-    BHashTable<U32, KFileDescriptor*> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
+    BHashTable<U32, KFileDescriptorPtr> fdsToClose = this->fds; // make a copy since we can't remove from it while iterating
     for( const auto& n : fdsToClose ) {
-        KFileDescriptor* fd = n.value;
-        fd->refCount = 1; // make sure it is really closed
-        fd->close();
+        clearFdHandle(n.value->handle);
     }
     this->attachedShm.clear();
     this->privateShm.clear();
@@ -266,9 +263,8 @@ void KProcess::clone(const KProcessPtr& from) {
     this->currentDirectory = from->currentDirectory;
     this->brkEnd = from->brkEnd;
     for (auto& n : from->fds) {
-        KFileDescriptor* fromFd = n.value;
-        KFileDescriptor* fd = this->allocFileDescriptor(fromFd->kobject, fromFd->accessFlags, fromFd->descriptorFlags, n.key, 0);
-        fd->refCount = fromFd->refCount;
+        KFileDescriptorPtr fromFd = n.value;
+        KFileDescriptorPtr fd = this->allocFileDescriptor(fromFd->kobject, fromFd->accessFlags, fromFd->descriptorFlags, n.key, 0);
         this->fds.set(n.key, fd);     
         KObject* kobject = fd->kobject.get();
         Fs::addDynamicLinkFile(fdNode->path + "/" + BString::valueOf(n.key), k_mdev(0, 0), fdNode, false, [kobject] {
@@ -444,16 +440,12 @@ U32 KProcess::getNextFileDescriptorHandle(int after) {
     }
 }
 
-KFileDescriptor* KProcess::allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {    
+KFileDescriptorPtr KProcess::allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle) {    
     if (handle<0) {
         handle = this->getNextFileDescriptorHandle(afterHandle);
     }
-    KFileDescriptor* result = new KFileDescriptor(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
+    KFileDescriptorPtr result = std::make_shared<KFileDescriptor>(shared_from_this(), kobject, accessFlags, descriptorFlags, handle);
 
-    KFileDescriptor* old = this->getFileDescriptor(handle);
-    if (old) {
-        old->close();
-    }
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     this->fds.set(handle, result);
     Fs::addDynamicLinkFile(fdNode->path+"/"+BString::valueOf(handle), k_mdev(0, 0), fdNode, false, [kobject] {
@@ -472,7 +464,7 @@ U32 translateOpenError() {
     return -K_EINVAL;
 }
 
-U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptor** result) {
+U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle, KFileDescriptorPtr& result) {
     std::shared_ptr<FsNode> node;
     std::shared_ptr<KObject> kobject;
 
@@ -526,26 +518,24 @@ U32 KProcess::openFileDescriptor(BString currentDirectory, BString localPath, U3
         openNode->openedPath = Fs::getFullPath(currentDirectory, localPath);
         kobject = std::make_shared<KFile>(openNode);
     }
-    KFileDescriptor* f = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
-    if (result) {
-        *result = f;
-    }
+    result = this->allocFileDescriptor(kobject, accessFlags, descriptorFlags, handle, afterHandle);
     return 0;
 }
 
-U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptor** result) {
+U32 KProcess::openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result) {
     return this->openFileDescriptor( currentDirectory, localPath, accessFlags, (accessFlags & K_O_CLOEXEC)?FD_CLOEXEC:0, -1, 0, result);
 }
 
 void KProcess::initStdio() {
+    KFileDescriptorPtr fd;
     if (!this->getFileDescriptor(0)) {
-        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_RDONLY, 0, 0, 0, nullptr);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_RDONLY, 0, 0, 0, fd);
     }
     if (!this->getFileDescriptor(1)) {
-        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 1, 0, nullptr);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 1, 0, fd);
     }
     if (!this->getFileDescriptor(2)) {
-        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 2, 0, nullptr);
+        this->openFileDescriptor(B(""), B("/dev/tty0"), K_O_WRONLY, 0, 2, 0, fd);
     }
 }
 
@@ -635,7 +625,7 @@ U32 KProcess::exit(KThread* thread, U32 code) {
     return 0;
 }
 
-KFileDescriptor* KProcess::getFileDescriptor(FD handle) {
+KFileDescriptorPtr KProcess::getFileDescriptor(FD handle) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     return this->fds[handle];
 }
@@ -881,7 +871,7 @@ void KProcess::signalALRM() {
 }
 
 U32 KProcess::dup(U32 fildes) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
         return -K_EBADF;
@@ -963,7 +953,7 @@ U32 KProcess::access(BString path, U32 mode) {
 }
 
 U32 KProcess::lseek(FD fildes, S32 offset, U32 whence) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
     S64 pos = 0;
 
     if (!fd) {
@@ -1063,18 +1053,18 @@ U32 KProcess::link(BString from, BString to) {
 }
 
 U32 KProcess::close(FD fildes) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
     if (!fd) {
         return -K_EBADF;
     }
-    fd->close();
+    clearFdHandle(fd->handle);
     return 0;
 }
 
 U32 KProcess::open(BString path, U32 flags) {
-    KFileDescriptor* fd = nullptr;
+    KFileDescriptorPtr fd;
         
-    U32 result = this->openFile(this->currentDirectory, path, flags, &fd);
+    U32 result = this->openFile(this->currentDirectory, path, flags, fd);
     if (result || !fd) {
         return result;
     }
@@ -1082,7 +1072,7 @@ U32 KProcess::open(BString path, U32 flags) {
 }
 
 U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
     if (!fd) {
         return -K_EBADF;
     }
@@ -1097,8 +1087,8 @@ U32 KProcess::read(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen)
 
 U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
-    KFileDescriptor* fdOut = getFileDescriptor(outFd);
-    KFileDescriptor* fdIn = getFileDescriptor(inFd);
+    KFileDescriptorPtr fdOut = getFileDescriptor(outFd);
+    KFileDescriptorPtr fdIn = getFileDescriptor(inFd);
 
     if (!fdOut || !fdIn) {
         return -K_EBADFD;
@@ -1134,7 +1124,7 @@ U32 KProcess::sendFile(U32 outFd, U32 inFd, U32 offset, U32 count) {
 }
 
 U32 KProcess::write(KThread* thread, FD fildes, U32 bufferAddress, U32 bufferLen) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
     if (!fd) {
         return -K_EBADF;
     }
@@ -1173,7 +1163,7 @@ U32 KProcess::brk(KThread* thread, U32 address) {
 }
 
 U32 KProcess::ioctl(KThread* thread, FD fildes, U32 request) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (fd == nullptr) {
         return -K_EBADF;
@@ -1188,7 +1178,7 @@ U32 KProcess::umask(U32 umask) {
 }
 
 U32 KProcess::dup2(FD fildes, FD fildes2) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (!fd || fildes2<0) {
         return -K_EBADF;
@@ -1196,12 +1186,12 @@ U32 KProcess::dup2(FD fildes, FD fildes2) {
     if (fildes == fildes2) {
         return fildes;
     }
-    KFileDescriptor* fd2 = this->getFileDescriptor(fildes2);
-    if (fd2) {
-        if (fd2->refCount>1) {
-            kpanic("Not sure what to do on a dup2 where the refcount is %d", fd2->refCount);
+    KFileDescriptorPtr fd2 = this->getFileDescriptor(fildes2);
+    if (fd2) {        
+        if (fd2.use_count()>2) { // 1 in this->fds and 1 for fd2
+            kpanic("Not sure what to do on a dup2 where the refcount is %d", fd2.use_count());
         }
-        fd2->close();
+        clearFdHandle(fd2->handle);
     } 
     this->allocFileDescriptor(fd->kobject, fd->accessFlags, 0, fildes2, 0); // do not copy file descriptor flags
     return fildes2;
@@ -1311,7 +1301,7 @@ U32 KProcess::readlink(BString path, U32 buffer, U32 bufSize) {
 }
 
 U32 KProcess::ftruncate64(FD fildes, U64 length) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (fd==nullptr) {
         return -K_EBADF;
@@ -1375,7 +1365,7 @@ U32 KProcess::statfs64(BString path, U32 address) {
 }
 
 U32 KProcess::fstatfs64(FD fildes, U32 address) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
         return -K_EBADF;
@@ -1688,7 +1678,7 @@ U32 KProcess::exitgroup(KThread* thread, U32 code) {
 }
 
 U32 KProcess::fchdir(FD fildes) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (fd==nullptr) {
         return -K_EBADF;
@@ -1712,7 +1702,7 @@ U32 KProcess::fchdir(FD fildes) {
 }
 
 S64 KProcess::llseek(FD fildes, S64 offset, U32 whence) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
     S64 pos = 0;
 
     if (!fd) {
@@ -1770,7 +1760,7 @@ U32 writeRecord(KMemory* memory, U32 dirp, U32 len, U32 count, U32 pos, bool is6
 }
 
 U32 KProcess::getdents(FD fildes, U32 dirp, U32 count, bool is64) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
         return -K_EBADF;
@@ -1817,7 +1807,7 @@ U32 KProcess::msync(KThread* thread, U32 addr, U32 len, U32 flags) {
 }
 
 U32 KProcess::writev(KThread* thread, FD handle, U32 iov, S32 iovcnt) {
-    KFileDescriptor* fd = this->getFileDescriptor(handle);
+    KFileDescriptorPtr fd = this->getFileDescriptor(handle);
 
     if (fd==nullptr) {
         return -K_EBADF;
@@ -1872,7 +1862,7 @@ U32 KProcess::sigaction(U32 sig, U32 act, U32 oact, U32 sigsetSize) {
 }
 
 U32 KProcess::pread64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
         return -K_EBADF;
@@ -1896,7 +1886,7 @@ U32 KProcess::pread64(KThread* thread, FD fildes, U32 address, U32 len, U64 offs
 }
 
 U32 KProcess::pwrite64(KThread* thread, FD fildes, U32 address, U32 len, U64 offset) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
         return -K_EBADF;
@@ -1968,7 +1958,7 @@ U32 KProcess::lstat64(BString path, U32 buffer) {
 }
 
 U32 KProcess::fstat64(FD handle, U32 buf) {
-    KFileDescriptor* fd = this->getFileDescriptor(handle);
+    KFileDescriptorPtr fd = this->getFileDescriptor(handle);
     
     if (!fd) {
         return -K_EBADF;
@@ -1993,7 +1983,7 @@ U32 KProcess::mincore(U32 address, U32 length, U32 vec) {
 }
 
 U32 KProcess::fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg) {
-    KFileDescriptor* fd = this->getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = this->getFileDescriptor(fildes);
 
     if (!fd) {
         return -K_EBADF;
@@ -2005,11 +1995,11 @@ U32 KProcess::fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg) {
             }
             return 0;
         case K_F_DUPFD: {
-            KFileDescriptor* result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, -1, arg);        
+            KFileDescriptorPtr result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, -1, arg);        
             return result->handle;
         }
         case K_F_DUPFD_CLOEXEC: {
-            KFileDescriptor* result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, -1, arg);
+            KFileDescriptorPtr result = this->allocFileDescriptor(fd->kobject, fd->accessFlags, fd->descriptorFlags, -1, arg);
             result->descriptorFlags=FD_CLOEXEC;
             return result->handle;
         }
@@ -2127,12 +2117,12 @@ U32 KProcess::set_thread_area(KThread* thread, U32 info) {
 
 U32 KProcess::epollcreate(U32 size, U32 flags) {
     std::shared_ptr<KObject> o = std::make_shared<KEPoll>();
-    KFileDescriptor* result = this->allocFileDescriptor(o, K_O_RDWR, flags, -1, 0);
+    KFileDescriptorPtr result = this->allocFileDescriptor(o, K_O_RDWR, flags, -1, 0);
     return result->handle;
 }
 
 U32 KProcess::epollctl(FD epfd, U32 op, FD fd, U32 address) {
-    KFileDescriptor* epollFD = this->getFileDescriptor(epfd);
+    KFileDescriptorPtr epollFD = this->getFileDescriptor(epfd);
     if (fd==epfd || epollFD->kobject->type != KTYPE_EPOLL) {
         return -K_EINVAL;
     }
@@ -2141,7 +2131,7 @@ U32 KProcess::epollctl(FD epfd, U32 op, FD fd, U32 address) {
 }
 
 U32 KProcess::epollwait(KThread* thread, FD epfd, U32 events, U32 maxevents, U32 timeout) {
-    KFileDescriptor* epollFD = this->getFileDescriptor(epfd);
+    KFileDescriptorPtr epollFD = this->getFileDescriptor(epfd);
     if (!epollFD) {
         return -K_EBADF;
     }
@@ -2180,7 +2170,7 @@ U32 KProcess::getCurrentDirectoryFromDirFD(FD dirfd, BString& currentDirectory) 
     if (dirfd==-100) { // AT_FDCWD
         currentDirectory = this->currentDirectory;
     } else {
-        KFileDescriptor* fd = this->getFileDescriptor(dirfd);
+        KFileDescriptorPtr fd = this->getFileDescriptor(dirfd);
         if (!fd) {
             result = -K_EBADF;
         } else if (fd->kobject->type!=KTYPE_FILE){
@@ -2202,8 +2192,8 @@ U32 KProcess::openat(FD dirfd, BString path, U32 flags) {
 
     if (result)
         return result;
-    KFileDescriptor* fd = nullptr;
-    result = this->openFile(dir, path, flags, &fd);
+    KFileDescriptorPtr fd;
+    result = this->openFile(dir, path, flags, fd);
     if (result || !fd) {
         return result;
     }
@@ -2345,7 +2335,7 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
     }
     if (result) {
         if (result == -K_ENOTDIR) {
-            KFileDescriptor* fd = this->getFileDescriptor(dirfd);
+            KFileDescriptorPtr fd = this->getFileDescriptor(dirfd);
             if (fd->kobject->type == KTYPE_UNIX_SOCKET) {
                 std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
                 U64 t = s->lastModifiedTime;
@@ -2539,7 +2529,7 @@ U32 KProcess::utimesat64(FD dirfd, BString path, U32 times, U32 flags) {
 
 U32 KProcess::timerfd_create(U32 clockid, U32 flags) {
     std::shared_ptr<KTimer> o = std::make_shared<KTimer>();
-    KFileDescriptor* fd = allocFileDescriptor(o, K_O_RDONLY, 0, -1, 0);
+    KFileDescriptorPtr fd = allocFileDescriptor(o, K_O_RDONLY, 0, -1, 0);
 
     if (flags & K_O_CLOEXEC) {
         fd->descriptorFlags |= FD_CLOEXEC;
@@ -2552,7 +2542,7 @@ U32 KProcess::timerfd_create(U32 clockid, U32 flags) {
 }
 
 U32 KProcess::timerfd_settime(U32 fildes, U32 flags, U32 newValue, U32 oldValue) {
-    KFileDescriptor* fd = getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = getFileDescriptor(fildes);
     if (!fd) {
         return -K_EBADF;
     }
@@ -2596,7 +2586,7 @@ U32 KProcess::timerfd_settime(U32 fildes, U32 flags, U32 newValue, U32 oldValue)
 }
 
 U32 KProcess::timerfd_gettime(U32 fildes, U32 value) {
-    KFileDescriptor* fd = getFileDescriptor(fildes);
+    KFileDescriptorPtr fd = getFileDescriptor(fildes);
     if (!fd) {
         return -K_EBADF;
     }
@@ -2776,7 +2766,7 @@ U32 KProcess::signal(U32 signal) {
 void KProcess::signalFd(KThread* thread, U32 signal) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     for (auto& n : this->fds) {
-        KFileDescriptor* fd = n.value;
+        KFileDescriptorPtr fd = n.value;
         if (fd->kobject->type == KTYPE_SIGNAL) {
             std::shared_ptr<KSignal> p = std::dynamic_pointer_cast<KSignal>(fd->kobject);
             if ((p->mask & signal) && (!thread || thread->waitingCond == p->lockCond)) {

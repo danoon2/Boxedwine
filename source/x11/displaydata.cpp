@@ -19,8 +19,8 @@ void DisplayData::putEvent(const XEvent& event) {
 		if (!process) {
 			return;
 		}
-		KFileDescriptor* server = process->getFileDescriptor(this->serverFd);
-		KFileDescriptor* client = process->getFileDescriptor(this->clientFd);
+		KFileDescriptorPtr server = process->getFileDescriptor(this->serverFd);
+		KFileDescriptorPtr client = process->getFileDescriptor(this->clientFd);
 		if (server && server->kobject->type == KTYPE_UNIX_SOCKET) {
 			std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(server->kobject);
 			std::shared_ptr<KUnixSocketObject> c = std::dynamic_pointer_cast<KUnixSocketObject>(client->kobject);
@@ -78,7 +78,7 @@ void DisplayData::removeEvent(U32 index) {
 		if (!process) {
 			return;
 		}
-		KFileDescriptor* fd = process->getFileDescriptor(this->clientFd);
+		KFileDescriptorPtr fd = process->getFileDescriptor(this->clientFd);
 		if (fd && fd->kobject->type == KTYPE_UNIX_SOCKET) {
 			std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
 			while (s->isReadReady()) {

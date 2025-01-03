@@ -225,7 +225,7 @@ S64 KNetLinkObject::length() {
     return -1;
 }
 
-U32 KNetLinkObject::bind(KThread* thread, KFileDescriptor* fd, U32 address, U32 len) {
+U32 KNetLinkObject::bind(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) {
     KMemory* memory = thread->memory;
 
     U32 family = memory->readw(address);
@@ -242,19 +242,19 @@ U32 KNetLinkObject::bind(KThread* thread, KFileDescriptor* fd, U32 address, U32 
     return 0;
 }
 
-U32 KNetLinkObject::connect(KThread* thread, KFileDescriptor* fd, U32 address, U32 len) {
+U32 KNetLinkObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) {
     return -K_EOPNOTSUPP;
 }
 
-U32 KNetLinkObject::listen(KThread* thread, KFileDescriptor* fd, U32 backlog) {
+U32 KNetLinkObject::listen(KThread* thread, const KFileDescriptorPtr& fd, U32 backlog) {
     return -K_EOPNOTSUPP;
 }
 
-U32 KNetLinkObject::accept(KThread* thread, KFileDescriptor* fd, U32 address, U32 len, U32 flags) {
+U32 KNetLinkObject::accept(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len, U32 flags) {
     return -K_EOPNOTSUPP;
 }
 
-U32 KNetLinkObject::getsockname(KThread* thread, KFileDescriptor* fd, U32 address, U32 plen) {
+U32 KNetLinkObject::getsockname(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) {
     KMemory* memory = thread->memory;
 
     if (afBound) {
@@ -268,15 +268,15 @@ U32 KNetLinkObject::getsockname(KThread* thread, KFileDescriptor* fd, U32 addres
     return -K_ENOTCONN;
 }
 
-U32 KNetLinkObject::getpeername(KThread* thread, KFileDescriptor* fd, U32 address, U32 plen) {
+U32 KNetLinkObject::getpeername(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) {
     return -K_EOPNOTSUPP;
 }
 
-U32 KNetLinkObject::shutdown(KThread* thread, KFileDescriptor* fd, U32 how) {
+U32 KNetLinkObject::shutdown(KThread* thread, const KFileDescriptorPtr& fd, U32 how) {
     return -K_EOPNOTSUPP;
 }
 
-U32 KNetLinkObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len) {
+U32 KNetLinkObject::setsockopt(KThread* thread, const KFileDescriptorPtr& fd, U32 level, U32 name, U32 value, U32 len) {
     KMemory* memory = thread->memory;
 
     if (level == K_SOL_SOCKET) {
@@ -306,7 +306,7 @@ U32 KNetLinkObject::setsockopt(KThread* thread, KFileDescriptor* fd, U32 level, 
     return 0;
 }
 
-U32 KNetLinkObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len_address) {
+U32 KNetLinkObject::getsockopt(KThread* thread, const KFileDescriptorPtr& fd, U32 level, U32 name, U32 value, U32 len_address) {
     KMemory* memory = thread->memory;
 
     U32 len = memory->readd(len_address);
@@ -338,12 +338,12 @@ U32 KNetLinkObject::getsockopt(KThread* thread, KFileDescriptor* fd, U32 level, 
     return 0;
 }
 
-U32 KNetLinkObject::sendmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
+U32 KNetLinkObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 flags) {
     kpanic("KNetLinkObject::sendmsg not implemented");
     return 0;
 }
 
-U32 KNetLinkObject::recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) {
+U32 KNetLinkObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 flags) {
     MsgHdr hdr = {};
     U32 result = 0;
     KMemory* memory = thread->memory;
@@ -444,7 +444,7 @@ void KNetLinkObject::append(const char* s) {
 
 U32 ipAddress();
 
-U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 sendtoFlags, U32 dest_addr, U32 dest_len) {
+U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 message, U32 length, U32 sendtoFlags, U32 dest_addr, U32 dest_len) {
     if (0) {
         thread->cpu->logFile.createNew(B("link.txt"));
     }
@@ -627,7 +627,7 @@ U32 KNetLinkObject::sendto(KThread* thread, KFileDescriptor* fd, U32 message, U3
     return -1; // if we return 0 here and pretend it succeeded, then some library might call recvfrom on a block thread to get the response and hang the app
 }
 
-U32 KNetLinkObject::recvfrom(KThread* thread, KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
+U32 KNetLinkObject::recvfrom(KThread* thread, const KFileDescriptorPtr& fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
     if (address == 0) {
         if (flags) {
             kpanic("KUnixSocketObject::recvfrom unhandled flags=%x", flags);

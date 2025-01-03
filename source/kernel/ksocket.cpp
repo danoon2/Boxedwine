@@ -54,18 +54,18 @@ BString socketAddressName(KMemory* memory, U32 address, U32 len) {
 U32 ksocket(U32 domain, U32 type, U32 protocol) {
     if (domain==K_AF_UNIX) {
         std::shared_ptr<KUnixSocketObject> kSocket = std::make_shared<KUnixSocketObject>(domain, type, protocol);
-        KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
+        KFileDescriptorPtr result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
     } else if (domain == K_AF_NETLINK) {       
         std::shared_ptr<KNetLinkObject> kSocket = std::make_shared<KNetLinkObject>(domain, type, protocol);
-        KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
+        KFileDescriptorPtr result = KThread::currentThread()->process->allocFileDescriptor(kSocket, K_O_RDWR, 0, -1, 0);
         return result->handle;
     } else if (domain == K_AF_INET) {
         std::shared_ptr<KNativeSocketObject> s = std::make_shared<KNativeSocketObject>(domain, type, protocol);
         if (s->error) {
             return s->error;
         } else {
-            KFileDescriptor* result = KThread::currentThread()->process->allocFileDescriptor(s, K_O_RDWR, 0, -1, 0);
+            KFileDescriptorPtr result = KThread::currentThread()->process->allocFileDescriptor(s, K_O_RDWR, 0, -1, 0);
             return result->handle;
         }
     }
@@ -75,7 +75,7 @@ U32 ksocket(U32 domain, U32 type, U32 protocol) {
 #define IS_NOT_SOCKET(fd) (fd->kobject->type!=KTYPE_NATIVE_SOCKET && fd->kobject->type!=KTYPE_UNIX_SOCKET)
 
 U32 kbind(KThread* thread, U32 socket, U32 address, U32 len) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -88,7 +88,7 @@ U32 kbind(KThread* thread, U32 socket, U32 address, U32 len) {
 }
 
 U32 kconnect(KThread* thread, U32 socket, U32 address, U32 len) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -104,7 +104,7 @@ U32 kconnect(KThread* thread, U32 socket, U32 address, U32 len) {
 }
 
 U32 klisten(KThread* thread, U32 socket, U32 backlog) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -117,7 +117,7 @@ U32 klisten(KThread* thread, U32 socket, U32 backlog) {
 }
 
 U32 kaccept(KThread* thread, U32 socket, U32 address, U32 len, U32 flags) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -133,7 +133,7 @@ U32 kaccept(KThread* thread, U32 socket, U32 address, U32 len, U32 flags) {
 }
 
 U32 kgetsockname(KThread* thread, U32 socket, U32 address, U32 plen) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
     
     if (!fd) {
         return -K_EBADF;
@@ -146,7 +146,7 @@ U32 kgetsockname(KThread* thread, U32 socket, U32 address, U32 plen) {
 }
 
 U32 kgetpeername(KThread* thread, U32 socket, U32 address, U32 plen) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
     
     if (!fd) {
         return -K_EBADF;
@@ -161,8 +161,8 @@ U32 kgetpeername(KThread* thread, U32 socket, U32 address, U32 plen) {
 U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 flags) {
     FD fd1 = 0;
     FD fd2 = 0;
-    KFileDescriptor* f1 = nullptr;
-    KFileDescriptor* f2 = nullptr;
+    KFileDescriptorPtr f1;
+    KFileDescriptorPtr f2;
     std::shared_ptr<KUnixSocketObject> s1;
     std::shared_ptr<KUnixSocketObject> s2;
     KMemory* memory = thread->memory;
@@ -208,7 +208,7 @@ U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 
 }
 
 U32 ksend(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -221,7 +221,7 @@ U32 ksend(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
 }
 
 U32 krecv(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -234,7 +234,7 @@ U32 krecv(KThread* thread, U32 socket, U32 buffer, U32 len, U32 flags) {
 }
 
 U32 kshutdown(KThread* thread, U32 socket, U32 how) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -247,7 +247,7 @@ U32 kshutdown(KThread* thread, U32 socket, U32 how) {
 }
 
 U32 ksetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32 len) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -260,7 +260,7 @@ U32 ksetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32
 }
 
 U32 kgetsockopt(KThread* thread, U32 socket, U32 level, U32 name, U32 value, U32 len_address) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -290,7 +290,7 @@ U32 ksendmmsg(KThread* thread, U32 socket, U32 address, U32 vlen, U32 flags) {
 }
 
 U32 ksendmsg(KThread* thread, U32 socket, U32 address, U32 flags) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -303,7 +303,7 @@ U32 ksendmsg(KThread* thread, U32 socket, U32 address, U32 flags) {
 }
 
 U32 krecvmsg(KThread* thread, U32 socket, U32 address, U32 flags) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -317,7 +317,7 @@ U32 krecvmsg(KThread* thread, U32 socket, U32 address, U32 flags) {
 
 // ssize_t sendto(int socket, const void *message, size_t length, int flags, const struct sockaddr *dest_addr, socklen_t dest_len);
 U32 ksendto(KThread* thread, U32 socket, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -331,7 +331,7 @@ U32 ksendto(KThread* thread, U32 socket, U32 message, U32 length, U32 flags, U32
 
 // ssize_t recvfrom(int socket, void *restrict buffer, size_t length, int flags, struct sockaddr *restrict address, socklen_t *restrict address_len);
 U32 krecvfrom(KThread* thread, U32 socket, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(socket);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(socket);
 
     if (!fd) {
         return -K_EBADF;
@@ -344,7 +344,7 @@ U32 krecvfrom(KThread* thread, U32 socket, U32 buffer, U32 length, U32 flags, U3
 }
 
 bool isNativeSocket(KThread* thread, FD desc) {
-    KFileDescriptor* fd = thread->process->getFileDescriptor(desc);
+    KFileDescriptorPtr fd = thread->process->getFileDescriptor(desc);
 
     if (!fd) {
         return false;

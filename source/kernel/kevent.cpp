@@ -150,7 +150,7 @@ S64 KEvent::length() {
 }
 
 U32 syscall_eventfd2(KThread* thread, U32 initialValue, U32 flags) {
-    KFileDescriptor* fd = nullptr;
+    KFileDescriptorPtr fd;
     KMemory* memory = thread->memory;
 
     std::shared_ptr<KEvent> o = std::make_shared<KEvent>();

@@ -43,19 +43,19 @@ public:
     BString selfFd() override;
 
     // from KSocketObject
-    U32 accept(KThread* thread, KFileDescriptor* fd, U32 address, U32 len, U32 flags) override;
-    U32 bind(KThread* thread, KFileDescriptor* fd, U32 address, U32 len) override;
-    U32 connect(KThread* thread, KFileDescriptor* fd, U32 address, U32 len) override;
-    U32 getpeername(KThread* thread, KFileDescriptor* fd, U32 address, U32 plen) override;
-    U32 getsockname(KThread* thread, KFileDescriptor* fd, U32 address, U32 plen) override;
-    U32 getsockopt(KThread* thread, KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len_address) override;
-    U32 listen(KThread* thread, KFileDescriptor* fd, U32 backlog) override;
-    U32 recvfrom(KThread* thread, KFileDescriptor* fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) override;
-    U32 recvmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) override;
-    U32 sendmsg(KThread* thread, KFileDescriptor* fd, U32 address, U32 flags) override;
-    U32 sendto(KThread* thread, KFileDescriptor* fd, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) override;
-    U32 setsockopt(KThread* thread, KFileDescriptor* fd, U32 level, U32 name, U32 value, U32 len) override;
-    U32 shutdown(KThread* thread, KFileDescriptor* fd, U32 how) override;
+    U32 accept(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len, U32 flags) override;
+    U32 bind(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) override;
+    U32 connect(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) override;
+    U32 getpeername(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) override;
+    U32 getsockname(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) override;
+    U32 getsockopt(KThread* thread, const KFileDescriptorPtr& fd, U32 level, U32 name, U32 value, U32 len_address) override;
+    U32 listen(KThread* thread, const KFileDescriptorPtr& fd, U32 backlog) override;
+    U32 recvfrom(KThread* thread, const KFileDescriptorPtr& fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) override;
+    U32 recvmsg(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 flags) override;
+    U32 sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 flags) override;
+    U32 sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 message, U32 length, U32 flags, U32 dest_addr, U32 dest_len) override;
+    U32 setsockopt(KThread* thread, const KFileDescriptorPtr& fd, U32 level, U32 name, U32 value, U32 len) override;
+    U32 shutdown(KThread* thread, const KFileDescriptorPtr& fd, U32 how) override;
 
 private:
 

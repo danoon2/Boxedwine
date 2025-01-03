@@ -295,7 +295,7 @@ BString getFunctionName(BString name, U32 moduleEip) {
     KProcessPtr process = KProcess::create();
     std::vector<BString> args;
     std::vector<BString> env;
-    KFileDescriptor* fd = nullptr;
+    KFileDescriptorPtr fd;
 
     if (!name.length())
         return B("Unknown");
@@ -315,7 +315,7 @@ BString getFunctionName(BString name, U32 moduleEip) {
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), B("/dev"), true);
         std::shared_ptr<FsNode> node = Fs::addVirtualFile(B("/dev/tty9"), openTTY9, K__S_IWRITE, (4 << 8) | 9, parent);
         process = tmpThread->process;
-        process->openFile(B(""), B("/dev/tty9"), K_O_WRONLY, &fd);
+        process->openFile(B(""), B("/dev/tty9"), K_O_WRONLY, fd);
         if (fd) {
             tmpThread->log = false;
             tmpThread->process->dup2(fd->handle, 1); // replace stdout with tty9
