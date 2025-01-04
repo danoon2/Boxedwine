@@ -187,6 +187,7 @@ public class VkHost {
         out.append("#endif\n");
         out.append("class BoxedVulkanInfo;\n");
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
+        out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
         out.append("void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);\n");
         out.append("void* getVulkanPtr(KMemory* memory, U32 address);\n");
         for (VkFunction fn : hostFunctions ) {
@@ -242,7 +243,6 @@ public class VkHost {
         out.append("#include \"vk_host.h\"\n");
         out.append("#include \"vk_host_marshal.h\"\n\n");
         out.append("void initVulkan();\n");
-        out.append("U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info);\n");
         out.append("BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);\n");
         out.append("void freeVulkanPtr(KMemory* memory, U32 p);\n");
         out.append("void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);\n");

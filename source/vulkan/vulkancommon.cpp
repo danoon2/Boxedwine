@@ -31,6 +31,7 @@ static U32 vulkanPtrCount;
 static U32 vulkanPtrHighMark;
 
 BOXEDWINE_MUTEX freeVulkanPtrMutex;
+BHashTable<void*, U32> vulkanPtrMap;
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -43,8 +44,16 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
-U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
+U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
+    U32 result = 0;
+
+    if (value == nullptr) {
+        return 0;
+    }
+    if (vulkanPtrMap.get(value, result)) {
+        return result;
+    }
     if (!freePtrMaps) {
         KThread* thread = KThread::currentThread();
         U32 address = thread->memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
@@ -53,9 +62,9 @@ U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
             freePtrMaps = address + i;
         }
     }
-    U32 result = freePtrMaps;
+    result = freePtrMaps;
     freePtrMaps = memory->readd(freePtrMaps);
-    memory->writeq(result, value);
+    memory->writeq(result, (U64)value);
 
     if (!info) {
         info = new BoxedVulkanInfo();
@@ -90,6 +99,7 @@ U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info) {
     memory->writeq(result + 8, (U64)info);
     vulkanPtrCount++;
     vulkanPtrHighMark = std::max(vulkanPtrHighMark, vulkanPtrCount);
+    vulkanPtrMap.set(value, result);
     return result;
 }
 
@@ -105,7 +115,7 @@ static void hasProcAddress(CPU* cpu) {
         BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, handle);
         BString name = cpu->memory->readString(cpu->peek32(2));
 
-        if (name == "vkMapMemory2KHR" || name == "vkUnmapMemory2") {
+        if (name == "vkMapMemory2KHR" || name == "vkUnmapMemory2KHR") {
             EAX = 0;
         } else if (pBoxedInfo->functionAddressByName.count(name) || name == "vkGetDeviceProcAddr" || name == "vkCreateXlibSurfaceKHR") {
             EAX = 1;
@@ -118,6 +128,8 @@ static void hasProcAddress(CPU* cpu) {
 
 void freeVulkanPtr(KMemory* memory, U32 p) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
+    void* address = getVulkanPtr(memory, p);
+    vulkanPtrMap.remove(address);
     memory->writed(p, freePtrMaps);
     freePtrMaps = p;
     vulkanPtrCount--;
@@ -243,7 +255,9 @@ void vk_CreateInstance(CPU* cpu) {
     VkInstance pInstance;
     bool containsDebug = false;
     for (U32 i = 0; i < pCreateInfo->enabledExtensionCount; i++) {
-        if (strstr(pCreateInfo->ppEnabledExtensionNames[i], "VK_KHR_xlib_surface")) {
+        if (strstr(pCreateInfo->ppEnabledExtensionNames[i], VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+            containsDebug = true;
+        } else if (strstr(pCreateInfo->ppEnabledExtensionNames[i], "VK_KHR_xlib_surface")) {
             delete[] pCreateInfo->ppEnabledExtensionNames[i];
             const char* platformSurface = "VK_KHR_win32_surface";
             char** p = new char* [pCreateInfo->enabledExtensionCount];
@@ -265,13 +279,14 @@ void vk_CreateInstance(CPU* cpu) {
         pCreateInfo->enabledExtensionCount++;
     }
     pCreateInfo->enabledLayerCount = 1;
-    char** names = new char*[1];
+    char** names = new char*[2];
     names[0] = (char*)"VK_LAYER_KHRONOS_validation";
+    names[1] = (char*)"VK_LAYER_LUNARG_api_dump";
     pCreateInfo->ppEnabledLayerNames = names;
 #endif
     EAX = pvkCreateInstance(pCreateInfo, pAllocator, &pInstance);
     if (EAX == VK_SUCCESS) {
-        cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, (U64)pInstance, NULL));
+        cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, pInstance, NULL));
     }
 }
 
@@ -318,7 +333,7 @@ void vk_EnumerateInstanceExtensionProperties(CPU* cpu) {
         for (U32 i = 0; i < tmp_pPropertyCount; i++) {
             if (!strcmp(pProperties[i].extensionName, "VK_MVK_macos_surface") || !strcmp(pProperties[i].extensionName, "VK_EXT_metal_surface") || !strcmp(pProperties[i].extensionName, "VK_KHR_win32_surface")) {
                 strcpy(pProperties[i].extensionName, "VK_KHR_xlib_surface");
-            }
+            }            
         }
         cpu->memory->memcpy(ARG3, pProperties, (U32)*pPropertyCount * sizeof(VkExtensionProperties));
     }

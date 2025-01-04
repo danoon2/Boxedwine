@@ -8,6 +8,7 @@
 #endif
 class BoxedVulkanInfo;
 VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);
+U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);
 void* getVulkanPtr(KMemory* memory, U32 address);
 BOXED_VK_EXTERN PFN_vkCreateInstance pvkCreateInstance;

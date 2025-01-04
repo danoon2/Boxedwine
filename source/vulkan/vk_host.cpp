@@ -11,7 +11,6 @@
 #include "vk_host_marshal.h"
 
 void initVulkan();
-U32 createVulkanPtr(KMemory* memory, U64 value, BoxedVulkanInfo* info);
 BoxedVulkanInfo* getInfoFromHandle(KMemory* memory, U32 address);
 void freeVulkanPtr(KMemory* memory, U32 p);
 void registerVkMemoryAllocation(VkDeviceMemory memory, VkDeviceSize size);
@@ -877,6 +876,7 @@ static_assert(sizeof(VkCopyMicromapInfoEXT) == 28, "false");
 static_assert(sizeof(VkCopyMicromapToMemoryInfoEXT) == 28, "false");
 static_assert(sizeof(VkCopyMemoryToMicromapInfoEXT) == 28, "false");
 static_assert(sizeof(VkMicromapBuildSizesInfoEXT) == 28, "false");
+static_assert(sizeof(VkMicromapUsageEXT) == 12, "false");
 static_assert(sizeof(VkPhysicalDeviceOpacityMicromapFeaturesEXT) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceOpacityMicromapPropertiesEXT) == 16, "false");
 static_assert(sizeof(VkAccelerationStructureTrianglesOpacityMicromapEXT) == 52, "false");
@@ -905,6 +905,8 @@ static_assert(sizeof(VkOpticalFlowSessionCreateInfoNV) == 44, "false");
 static_assert(sizeof(VkOpticalFlowSessionCreatePrivateDataInfoNV) == 20, "false");
 static_assert(sizeof(VkOpticalFlowExecuteInfoNV) == 20, "false");
 static_assert(sizeof(VkPhysicalDeviceFaultFeaturesEXT) == 16, "false");
+static_assert(sizeof(VkDeviceFaultAddressInfoEXT) == 20, "false");
+static_assert(sizeof(VkDeviceFaultVendorInfoEXT) == 272, "false");
 static_assert(sizeof(VkDeviceFaultCountsEXT) == 24, "false");
 static_assert(sizeof(VkDeviceFaultInfoEXT) == 276, "false");
 static_assert(sizeof(VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT) == 12, "false");
@@ -1030,6 +1032,8 @@ static_assert(sizeof(StdVideoEncodeH265WeightTable) == 190, "false");
 static_assert(sizeof(StdVideoEncodeH265ReferenceListsInfo) == 68, "false");
 static_assert(sizeof(StdVideoEncodeH265LongTermRefPics) == 148, "false");
 static_assert(sizeof(StdVideoH264ScalingLists) == 484, "false");
+static_assert(sizeof(StdVideoH264HrdParameters) == 308, "false");
+static_assert(sizeof(StdVideoH264SequenceParameterSetVui) == 36, "false");
 static_assert(sizeof(StdVideoEncodeH264RefListModEntry) == 8, "false");
 static_assert(sizeof(StdVideoEncodeH264RefPicMarkingEntry) == 12, "false");
 static_assert(sizeof(StdVideoEncodeH264ReferenceListsInfo) == 92, "false");
@@ -1072,7 +1076,7 @@ void vk_EnumeratePhysicalDevices(CPU* cpu) {
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceCount);
     if (ARG3) {
         for (U32 i=0;i<*pPhysicalDeviceCount;i++) {
-            cpu->memory->writed(ARG3 + i*4, createVulkanPtr(cpu->memory, (U64)pPhysicalDevices[i], pBoxedInfo));
+            cpu->memory->writed(ARG3 + i*4, createVulkanPtr(cpu->memory, pPhysicalDevices[i], pBoxedInfo));
         }
         delete[] pPhysicalDevices;
     }
@@ -1147,7 +1151,7 @@ void vk_CreateDevice(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDevice pDevice = (VkDevice)getVulkanPtr(cpu->memory, ARG4);
     EAX = (U32)pBoxedInfo->pvkCreateDevice(physicalDevice, pCreateInfo, pAllocator, &pDevice);
-    cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, (U64)pDevice, pBoxedInfo));
+    cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, pDevice, pBoxedInfo));
 }
 void vk_DestroyDevice(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -1235,7 +1239,7 @@ void vk_GetDeviceQueue(CPU* cpu) {
     uint32_t queueIndex = (uint32_t)ARG3;
     VkQueue pQueue = (VkQueue)getVulkanPtr(cpu->memory, ARG4);
     pBoxedInfo->pvkGetDeviceQueue(device, queueFamilyIndex, queueIndex, &pQueue);
-    cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, (U64)pQueue, pBoxedInfo));
+    cpu->memory->writed(ARG4, createVulkanPtr(cpu->memory, pQueue, pBoxedInfo));
 }
 // return type: VkResult(4 bytes)
 void vk_QueueSubmit(CPU* cpu) {
@@ -2201,7 +2205,7 @@ void vk_AllocateCommandBuffers(CPU* cpu) {
     EAX = (U32)pBoxedInfo->pvkAllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers);
     if (ARG3) {
         for (U32 i=0;i<pAllocateInfo->commandBufferCount;i++) {
-            cpu->memory->writed(ARG3 + i*4, createVulkanPtr(cpu->memory, (U64)pCommandBuffers[i], pBoxedInfo));
+            cpu->memory->writed(ARG3 + i*4, createVulkanPtr(cpu->memory, pCommandBuffers[i], pBoxedInfo));
         }
         delete[] pCommandBuffers;
     }
@@ -4341,7 +4345,7 @@ void vk_GetDeviceQueue2(CPU* cpu) {
     VkDeviceQueueInfo2* pQueueInfo = &local_pQueueInfo.s;
     VkQueue pQueue = (VkQueue)getVulkanPtr(cpu->memory, ARG3);
     pBoxedInfo->pvkGetDeviceQueue2(device, pQueueInfo, &pQueue);
-    cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, (U64)pQueue, pBoxedInfo));
+    cpu->memory->writed(ARG3, createVulkanPtr(cpu->memory, pQueue, pBoxedInfo));
 }
 // return type: VkResult(4 bytes)
 void vk_CreateValidationCacheEXT(CPU* cpu) {

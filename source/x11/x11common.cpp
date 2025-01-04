@@ -1703,7 +1703,7 @@ static void x11_DefineCursor(CPU* cpu) {
 }
 
 static void x11_FreeCursor(CPU* cpu) {
-    kpanic("x11_FreeCursor");
+    kwarn("x11_FreeCursor");
 }
 
 // int XSetFunction(Display* display, GC gc, int function)

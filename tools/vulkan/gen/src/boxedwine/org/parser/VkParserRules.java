@@ -46,6 +46,7 @@ public class VkParserRules {
         data.stubMarshalWrite.add("VkCopyMemoryToAccelerationStructureInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
         data.stubMarshalWrite.add("VkCopyMicromapToMemoryInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
         data.stubMarshalWrite.add("VkCopyMemoryToMicromapInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
+        data.stubMarshalWrite.add("VkAccelerationStructureGeometryKHR"); // I don't think this is possible
 
         data.stubMarshalRead.add("VkMemoryToImageCopy"); // :TODO: need to implement
         data.stubMarshalRead.add("VkImageToMemoryCopy"); // :TODO: need to implement

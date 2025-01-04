@@ -1470,6 +1470,9 @@
     <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h">
       <Filter>platform\sdl</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\page.h">
+      <Filter>include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">

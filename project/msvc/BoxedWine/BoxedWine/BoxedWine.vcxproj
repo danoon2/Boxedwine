@@ -494,6 +494,7 @@
     <ClInclude Include="..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\include\meminfo.h" />
     <ClInclude Include="..\..\..\..\include\mixer.h" />
+    <ClInclude Include="..\..\..\..\include\page.h" />
     <ClInclude Include="..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\include\platformOpenGL.h" />
     <ClInclude Include="..\..\..\..\include\player.h" />
