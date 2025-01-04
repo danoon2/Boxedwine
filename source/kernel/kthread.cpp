@@ -370,6 +370,8 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
                 }
             }
             if (f->wake) {
+                // need to unlock before getting futexesMutex since FUTEX_WAKE will get futexesMutex then try to signal f->cond
+                boxedWineCriticalSection.unlock();
                 BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
                 freeFutex(f);
                 return 0;
@@ -377,6 +379,8 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
             if (f->expireTimeInMillies<0x7FFFFFFF) {
                 S32 diff = f->expireTimeInMillies - KSystem::getMilliesSinceStart();
                 if (diff<=0) {
+                    // need to unlock before getting futexesMutex since FUTEX_WAKE will get futexesMutex then try to signal f->cond
+                    boxedWineCriticalSection.unlock();
                     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
                     freeFutex(f);
                     return -K_ETIMEDOUT;
