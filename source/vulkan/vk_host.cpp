@@ -2293,15 +2293,23 @@ void vk_CmdSetScissor(CPU* cpu) {
 void vk_CmdSetLineWidth(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    float lineWidth = (float)ARG2;
+    MarshalFloat lineWidthFloat;
+    lineWidthFloat.i = ARG2;
+    float lineWidth = lineWidthFloat.f;
     pBoxedInfo->pvkCmdSetLineWidth(commandBuffer, lineWidth);
 }
 void vk_CmdSetDepthBias(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    float depthBiasConstantFactor = (float)ARG2;
-    float depthBiasClamp = (float)ARG3;
-    float depthBiasSlopeFactor = (float)ARG4;
+    MarshalFloat depthBiasConstantFactorFloat;
+    depthBiasConstantFactorFloat.i = ARG2;
+    float depthBiasConstantFactor = depthBiasConstantFactorFloat.f;
+    MarshalFloat depthBiasClampFloat;
+    depthBiasClampFloat.i = ARG3;
+    float depthBiasClamp = depthBiasClampFloat.f;
+    MarshalFloat depthBiasSlopeFactorFloat;
+    depthBiasSlopeFactorFloat.i = ARG4;
+    float depthBiasSlopeFactor = depthBiasSlopeFactorFloat.f;
     pBoxedInfo->pvkCmdSetDepthBias(commandBuffer, depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor);
 }
 void vk_CmdSetBlendConstants(CPU* cpu) {
@@ -2318,8 +2326,12 @@ void vk_CmdSetBlendConstants(CPU* cpu) {
 void vk_CmdSetDepthBounds(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    float minDepthBounds = (float)ARG2;
-    float maxDepthBounds = (float)ARG3;
+    MarshalFloat minDepthBoundsFloat;
+    minDepthBoundsFloat.i = ARG2;
+    float minDepthBounds = minDepthBoundsFloat.f;
+    MarshalFloat maxDepthBoundsFloat;
+    maxDepthBoundsFloat.i = ARG3;
+    float maxDepthBounds = maxDepthBoundsFloat.f;
     pBoxedInfo->pvkCmdSetDepthBounds(commandBuffer, minDepthBounds, maxDepthBounds);
 }
 void vk_CmdSetStencilCompareMask(CPU* cpu) {
@@ -6489,7 +6501,9 @@ void vk_CmdSetConservativeRasterizationModeEXT(CPU* cpu) {
 void vk_CmdSetExtraPrimitiveOverestimationSizeEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    float extraPrimitiveOverestimationSize = (float)ARG2;
+    MarshalFloat extraPrimitiveOverestimationSizeFloat;
+    extraPrimitiveOverestimationSizeFloat.i = ARG2;
+    float extraPrimitiveOverestimationSize = extraPrimitiveOverestimationSizeFloat.f;
     pBoxedInfo->pvkCmdSetExtraPrimitiveOverestimationSizeEXT(commandBuffer, extraPrimitiveOverestimationSize);
 }
 void vk_CmdSetDepthClipEnableEXT(CPU* cpu) {
@@ -7533,7 +7547,9 @@ void vk_SetDeviceMemoryPriorityEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkDeviceMemory memory = (VkDeviceMemory)cpu->memory->readq(ARG2);
-    float priority = (float)ARG3;
+    MarshalFloat priorityFloat;
+    priorityFloat.i = ARG3;
+    float priority = priorityFloat.f;
     pBoxedInfo->pvkSetDeviceMemoryPriorityEXT(device, memory, priority);
 }
 // return type: VkResult(4 bytes)

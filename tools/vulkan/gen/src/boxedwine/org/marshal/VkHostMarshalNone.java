@@ -9,6 +9,21 @@ import boxedwine.org.data.VkParam;
  */
 public class VkHostMarshalNone extends VkHostMarshal {
     public void before(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+        if (param.paramType.name.equals("float")) {
+            out.append("    MarshalFloat ");
+            out.append(param.name);
+            out.append("Float;\n");
+            out.append("    ");
+            out.append(param.name);
+            out.append("Float.i = ");
+            out.append(param.paramArg);
+            out.append(";\n    ");
+            out.append(param.full);
+            out.append(" = ");
+            out.append(param.name);
+            out.append("Float.f;\n");
+            return;
+        }
         out.append("    ");
         out.append(param.full);
         out.append(" = ");

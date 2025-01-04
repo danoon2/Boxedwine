@@ -14532,7 +14532,7 @@ MarshalVkPhysicalDeviceBorderColorSwizzleFeaturesEXT::~MarshalVkPhysicalDeviceBo
     delete s.pNext;
 }
 void MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryTrianglesDataKHR* s) {
-    kpanic("MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read");
+    //kpanic("MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -14541,14 +14541,14 @@ void MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read(BoxedVulkanInf
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->vertexFormat = (VkFormat)memory->readd(address);address+=4;
-    kpanic("A");
+    //kpanic("A");
     s->vertexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
     s->vertexStride = (VkDeviceSize)memory->readq(address);address+=8;
     s->maxVertex = (uint32_t)memory->readd(address);address+=4;
     s->indexType = (VkIndexType)memory->readd(address);address+=4;
-    kpanic("A");
+    //kpanic("A");
     s->indexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
-    kpanic("A");
+    //kpanic("A");
     s->transformData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryTrianglesDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryTrianglesDataKHR* s) {
@@ -14577,7 +14577,7 @@ MarshalVkAccelerationStructureGeometryAabbsDataKHR::~MarshalVkAccelerationStruct
     delete s.pNext;
 }
 void MarshalVkAccelerationStructureGeometryInstancesDataKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryInstancesDataKHR* s) {
-    kpanic("MarshalVkAccelerationStructureGeometryInstancesDataKHR::read");
+    //kpanic("MarshalVkAccelerationStructureGeometryInstancesDataKHR::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -14586,7 +14586,7 @@ void MarshalVkAccelerationStructureGeometryInstancesDataKHR::read(BoxedVulkanInf
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->arrayOfPointers = (VkBool32)memory->readd(address);address+=4;
-    kpanic("A");
+    //kpanic("A");
     s->data = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryInstancesDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryInstancesDataKHR* s) {
@@ -14621,7 +14621,7 @@ MarshalVkAccelerationStructureGeometryKHR::~MarshalVkAccelerationStructureGeomet
     delete s.pNext;
 }
 void MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildGeometryInfoKHR* s) {
-    kpanic("MarshalVkAccelerationStructureBuildGeometryInfoKHR::read");
+    //kpanic("MarshalVkAccelerationStructureBuildGeometryInfoKHR::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -14657,7 +14657,7 @@ void MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(BoxedVulkanInfo* p
         }
         s->ppGeometries = ppGeometries;
     }
-    kpanic("A");
+    //kpanic("A");
     s->scratchData = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureBuildGeometryInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildGeometryInfoKHR* s) {
