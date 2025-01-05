@@ -6,12 +6,14 @@
 #ifndef BOXED_VK_EXTERN
 #define BOXED_VK_EXTERN extern
 #endif
+class MarshalVkDescriptorUpdateTemplateCreateInfo;
 class MarshalVkImageCreateInfo;
 class BoxedVulkanInfo;
 VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);
 void* getVulkanPtr(KMemory* memory, U32 address);
+U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo, VkDescriptorUpdateTemplate descriptorUpdateTemplate);
 BOXED_VK_EXTERN PFN_vkCreateInstance pvkCreateInstance;
 BOXED_VK_EXTERN PFN_vkEnumerateInstanceVersion pvkEnumerateInstanceVersion;
 BOXED_VK_EXTERN PFN_vkEnumerateInstanceLayerProperties pvkEnumerateInstanceLayerProperties;
@@ -1303,6 +1305,7 @@ public:
     std::unordered_map<U32, void*> rayTracingCaptureReplayShaderGroupHandles;
     std::unordered_map<U64, void*> debugReportCallbacks;
     std::unordered_map<U64, void*> debugUtilsCallbacks;
+    std::unordered_map<U64, std::shared_ptr<MarshalVkDescriptorUpdateTemplateCreateInfo>> descriptorUpdateTemplateCreateInfo;
     std::unordered_map<U64, std::shared_ptr<MarshalVkImageCreateInfo>> imageCreateInfo;
     VkDebugUtilsMessengerEXT debugMessenger;
 };

@@ -359,6 +359,74 @@ VkBool32 VKAPI_PTR boxed_vkDebugUtilsMessengerCallbackEXT(VkDebugUtilsMessageSev
     return VK_TRUE;
 }
 
+// ported/inspired by https://github.com/KhronosGroup/Vulkan-ValidationLayers/blob/main/layers/core_checks/cc_descriptor.cpp
+U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo, VkDescriptorUpdateTemplate descriptorUpdateTemplate) {
+    std::shared_ptr<MarshalVkDescriptorUpdateTemplateCreateInfo> pCreateInfo = pBoxedInfo->descriptorUpdateTemplateCreateInfo.at((U64)descriptorUpdateTemplate);
+    if (!pCreateInfo) {
+        kpanic("calculateUpdateDescriptorSetWithTemplateDataSize missing cached pCreateInfo");
+    }
+
+    size_t size = 0;
+    for (uint32_t i = 0; i < pCreateInfo->s.descriptorUpdateEntryCount; i++) {
+        uint32_t count = pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorCount;
+        // find the fartherest offset + count * stride
+        size = std::max(size, pCreateInfo->s.pDescriptorUpdateEntries[i].offset + count * pCreateInfo->s.pDescriptorUpdateEntries[i].stride);
+    }
+
+    for (uint32_t i = 0; i < pCreateInfo->s.descriptorUpdateEntryCount; i++) {
+        for (uint32_t j = 0; j < pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorCount; j++) {
+            switch (pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorType) {
+            case VK_DESCRIPTOR_TYPE_SAMPLER:
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+                if (sizeof(VkDescriptorImageInfo) > pCreateInfo->s.pDescriptorUpdateEntries[i].stride) {
+                    // because of padding, this can be 20 or 24
+                    kpanic("calculateUpdateDescriptorSetWithTemplateDataSize sizeof(VkDescriptorBufferInfo) %d > stride", sizeof(VkDescriptorImageInfo), pCreateInfo->s.pDescriptorUpdateEntries[i].stride);
+                }
+                break;
+
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+                if (sizeof(VkDescriptorBufferInfo) != 24) {
+                    kpanic("calculateUpdateDescriptorSetWithTemplateDataSize unexpected sizeof(VkDescriptorBufferInfo) %d", sizeof(VkDescriptorBufferInfo));
+                }
+                break;
+
+            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+                // VkBufferView - VK_DEFINE_NON_DISPATCHABLE_HANDLE
+                break;
+            case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK:
+                // size = pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorCount
+                // 
+                // skip the rest of the array, they just represent bytes in the update
+                j = pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorCount;
+                break;
+            case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR:
+                // VkAccelerationStructureKHR - VK_DEFINE_NON_DISPATCHABLE_HANDLE
+                break;
+            case VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV:
+                // VkAccelerationStructureNV - VK_DEFINE_NON_DISPATCHABLE_HANDLE
+                break;
+            default:
+            {
+                static bool showOnce;
+                if (!showOnce) {
+                    kwarn("calculateUpdateDescriptorSetWithTemplateDataSize unexpected descriptorType %x", pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorType);
+                    showOnce = true;
+                }
+            }
+                break;
+            }
+        }
+    }
+    return size;
+}
+
 #include "../vulkan/vk_host.h"
 
 static bool vulkanInitialized;

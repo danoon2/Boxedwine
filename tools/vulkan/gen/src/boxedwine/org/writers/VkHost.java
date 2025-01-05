@@ -188,12 +188,21 @@ public class VkHost {
         out.append("#ifndef BOXED_VK_EXTERN\n");
         out.append("#define BOXED_VK_EXTERN extern\n");
         out.append("#endif\n");
-        out.append("class MarshalVkImageCreateInfo;\n");
+        HashSet<String> forwardedClass = new HashSet<>();
+        for (VkCopyData copyData : data.copyData.values()) {
+            if (!forwardedClass.contains(copyData.marshalType)) {
+                forwardedClass.add(copyData.marshalType);
+                out.append("class ");
+                out.append(copyData.marshalType);
+                out.append(";\n");
+            }
+        }
         out.append("class BoxedVulkanInfo;\n");
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
         out.append("void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);\n");
         out.append("void* getVulkanPtr(KMemory* memory, U32 address);\n");
+        out.append("U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo, VkDescriptorUpdateTemplate descriptorUpdateTemplate);\n");
         for (VkFunction fn : hostFunctions ) {
             if (!fn.params.elementAt(0).paramType.getType().equals("VK_DEFINE_HANDLE")) {
                 out.append("BOXED_VK_EXTERN PFN_");

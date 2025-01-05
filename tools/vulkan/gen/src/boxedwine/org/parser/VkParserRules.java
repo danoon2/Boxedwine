@@ -90,6 +90,32 @@ public class VkParserRules {
         data.copyData.put("vkCreateImage", copyData);
         data.copyData.put("vkDestroyImage", copyData);
 
+        copyData = new VkCopyData();
+        copyData.variableName = "descriptorUpdateTemplateCreateInfo";
+        copyData.createFunction = "vkCreateDescriptorUpdateTemplateKHR";
+        copyData.createParamName = "pCreateInfo";
+        copyData.createKey = "tmp_pDescriptorUpdateTemplate";
+        copyData.destroyFunction = "vkDestroyDescriptorUpdateTemplateKHR";
+        copyData.destroyParamName = "descriptorUpdateTemplate";
+        copyData.destroyKey = "descriptorUpdateTemplate";
+        copyData.conditionToStore = "!EAX && tmp_pDescriptorUpdateTemplate";
+        copyData.marshalType = "MarshalVkDescriptorUpdateTemplateCreateInfo";
+        data.copyData.put("vkCreateDescriptorUpdateTemplateKHR", copyData);
+        data.copyData.put("vkDestroyDescriptorUpdateTemplateKHR", copyData);
+
+        copyData = new VkCopyData();
+        copyData.variableName = "descriptorUpdateTemplateCreateInfo";
+        copyData.createFunction = "vkCreateDescriptorUpdateTemplate";
+        copyData.createParamName = "pCreateInfo";
+        copyData.createKey = "tmp_pDescriptorUpdateTemplate";
+        copyData.destroyFunction = "vkDestroyDescriptorUpdateTemplate";
+        copyData.destroyParamName = "descriptorUpdateTemplate";
+        copyData.destroyKey = "descriptorUpdateTemplate";
+        copyData.conditionToStore = "!EAX && tmp_pDescriptorUpdateTemplate";
+        copyData.marshalType = "MarshalVkDescriptorUpdateTemplateCreateInfo";
+        data.copyData.put("vkCreateDescriptorUpdateTemplate", copyData);
+        data.copyData.put("vkDestroyDescriptorUpdateTemplate", copyData);
+
         removeUnsupportedTypes(data);
         postParseParams(data); // will set isPointer, needed by setTypeEmulatedSizes
         postParseTypes(data);

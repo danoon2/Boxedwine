@@ -770,6 +770,34 @@ public class VkHostMarshalType {
             out.append("::write(pBoxedInfo, memory, paramAddress, s->");
             out.append(param.name);
             out.append(");\n");
+        } else if (param.paramType.getCategory().equals("enum")) {
+            String size;
+
+            if (param.arrayLen != 0) {
+                size = String.valueOf(param.arrayLen);
+            } else if (param.len.startsWith("(")) {
+                size = "(s->";
+                size += String.valueOf(param.len.substring(1));
+            } else if (param.len.equals("null-terminated")) {
+                size = param.name + "Len";
+            } else {
+                if (Character.isDigit(param.len.charAt(0))) {
+                    size = "";
+                } else {
+                    size = "(U32)s->";
+                }
+                size += String.valueOf(param.len);
+            }
+            size += " * sizeof(";
+            size += param.paramType.name;
+            size += ")";
+            out.append("        memory->memcpy((");
+            out.append(param.paramType.name);
+            out.append("*)s->");
+            out.append(param.name);
+            out.append(", paramAddress, ");
+            out.append(size);
+            out.append(");\n");
         } else {
             out.append("        kpanic(\"Can't marshal void*\");\n");
         }
@@ -1138,6 +1166,7 @@ public class VkHostMarshalType {
     static VkHostMarshalNone none = new VkHostMarshalNone();
     static VkHostMarshalInUnion inUnion = new VkHostMarshalInUnion();
     static vkHostMarshalNotImplemented notImplemented = new vkHostMarshalNotImplemented();
+    static VkUpdateDescriptorSetWithTemplateMarshal updateDescriptorSetWithTemplateMarshal = new VkUpdateDescriptorSetWithTemplateMarshal();
     private static HashSet<String> simpleTypes;
 
     static {
@@ -1248,6 +1277,9 @@ public class VkHostMarshalType {
         if (param.paramType.name.equals("void")) {
             if (!param.isPointer) {
                 throw new Exception("Unhandled param type: " + function.name + ":" + param.name);
+            }
+            if ((function.name.equals("vkUpdateDescriptorSetWithTemplateKHR") || function.name.equals("vkUpdateDescriptorSetWithTemplate")) && param.name.equals("pData")) {
+                return updateDescriptorSetWithTemplateMarshal;
             }
             if (param.len == null && param.arrayLen == 0) {
                 return notImplemented;
