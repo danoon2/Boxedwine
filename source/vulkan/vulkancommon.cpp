@@ -240,6 +240,7 @@ static void BOXED_vkCreateXlibSurfaceKHR(CPU* cpu) {
         EAX = VK_SUCCESS;
         // VK_DEFINE_NON_DISPATCHABLE_HANDLE (always 64 bit)
         cpu->memory->writeq(cpu->peek32(4), (U64)surface);
+        XServer::getServer()->setFakeFullScreenWindow(xWindow);
     }
 }
 

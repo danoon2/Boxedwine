@@ -397,7 +397,9 @@ int XServer::destroyWindow(U32 window) {
 	if (w->id == grabbedId) {
 		ungrabPointer(0);
 	}
-
+	if (fakeFullScreenWnd && fakeFullScreenWnd->id == window) {
+		fakeFullScreenWnd = nullptr;
+	}
 	return Success;
 }
 
@@ -899,6 +901,9 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 }
 
 void XServer::mouseMove(S32 x, S32 y, bool relative) {
+	if (fakeFullScreenWnd) {
+		fakeFullScreenWnd->windowToScreen(x, y);
+	}
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 		XWindowPtr grabbed = getWindow(grabbedId);
@@ -930,6 +935,9 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 }
 
 void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
+	if (fakeFullScreenWnd) {
+		fakeFullScreenWnd->windowToScreen(x, y);
+	}
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 		XWindowPtr grabbed = getWindow(grabbedId);

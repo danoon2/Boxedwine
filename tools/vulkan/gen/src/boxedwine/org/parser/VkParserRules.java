@@ -61,16 +61,7 @@ public class VkParserRules {
         data.stubMarshalRead.add("VkMicromapBuildInfoEXT"); // :TODO: need to implement
         data.stubMarshalRead.add("StdVideoH265ShortTermRefPicSet"); // :TODO: need to implement
         data.stubMarshalRead.add("VkAccelerationStructureTrianglesOpacityMicromapEXT"); // :TODO: need to implement
-        data.stubMarshalRead.add("VkAccelerationStructureGeometryTrianglesDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
         data.stubMarshalRead.add("VkImportMemoryHostPointerInfoEXT");
-        data.stubMarshalRead.add("VkAccelerationStructureGeometryAabbsDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
-        data.stubMarshalRead.add("VkAccelerationStructureGeometryInstancesDataKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
-        data.stubMarshalRead.add("VkAccelerationStructureBuildGeometryInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
-        data.stubMarshalRead.add("VkAccelerationStructureGeometryMotionTrianglesDataNV"); // :TODO: how to know if it is deviceAddress or hostAddress
-        data.stubMarshalRead.add("VkCopyAccelerationStructureToMemoryInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
-        data.stubMarshalRead.add("VkCopyMemoryToAccelerationStructureInfoKHR"); // :TODO: how to know if it is deviceAddress or hostAddress
-        data.stubMarshalRead.add("VkCopyMicromapToMemoryInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
-        data.stubMarshalRead.add("VkCopyMemoryToMicromapInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
 
         data.manuallyHandledFunctions.add("vkCreateXlibSurfaceKHR");
         data.manuallyHandledFunctions.add("vkGetPhysicalDeviceXlibPresentationSupportKHR");

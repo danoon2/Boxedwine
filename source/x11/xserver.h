@@ -26,6 +26,7 @@ public:
 
 	XWindowPtr createNewWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual);
 	XWindowPtr getWindow(U32 window);
+	void setFakeFullScreenWindow(XWindowPtr wnd) {fakeFullScreenWnd = wnd;}
 	int destroyWindow(U32 window);
 
 	XPixmapPtr createNewPixmap(U32 width, U32 height, U32 depth, const VisualPtr& visual);
@@ -69,6 +70,7 @@ public:
 	static U32 getNextId();
 
 	XWindowPtr inputFocus;
+	XWindowPtr fakeFullScreenWnd;
 	U32 inputFocusRevertTo = 0;
 	XWindowPtr selectionWindow;
 	U32 selectionOwner = 0;

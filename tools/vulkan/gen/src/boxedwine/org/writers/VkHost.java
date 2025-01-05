@@ -143,9 +143,6 @@ public class VkHost {
             stackPos++;
         }
         stackPos = 1;
-        if (fn.name.equals("vkCopyMemoryToImage")) {
-            int ii=0;
-        }
         for (VkParam param : fn.params) {
             if (param == strideParam) {
                 stackPos++;

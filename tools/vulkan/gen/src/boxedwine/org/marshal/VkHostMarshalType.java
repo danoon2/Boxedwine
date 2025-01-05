@@ -360,7 +360,11 @@ public class VkHostMarshalType {
         if (param.paramType.getCategory().equals("union")) {
             for (VkParam p : param.paramType.members) {
                 if (p.isPointer) {
-                    out.append("    kpanic(\"A\");\n");
+                    if (param.paramType.name.equals("VkDeviceOrHostAddressConstKHR") || param.paramType.name.equals("VkDeviceOrHostAddressKHR")) {
+                        out.append("    //assuming deviceAddress is used\n");
+                    } else {
+                        out.append("    kpanic(\"A\");\n");
+                    }
                 }
             }
         }

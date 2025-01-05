@@ -14676,11 +14676,14 @@ void MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read(BoxedVulkanInf
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->vertexFormat = (VkFormat)memory->readd(address);address+=4;
+    //assuming deviceAddress is used
     s->vertexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
     s->vertexStride = (VkDeviceSize)memory->readq(address);address+=8;
     s->maxVertex = (uint32_t)memory->readd(address);address+=4;
     s->indexType = (VkIndexType)memory->readd(address);address+=4;
+    //assuming deviceAddress is used
     s->indexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    //assuming deviceAddress is used
     s->transformData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryTrianglesDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryTrianglesDataKHR* s) {
@@ -14690,7 +14693,6 @@ MarshalVkAccelerationStructureGeometryTrianglesDataKHR::~MarshalVkAccelerationSt
     delete s.pNext;
 }
 void MarshalVkAccelerationStructureGeometryAabbsDataKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryAabbsDataKHR* s) {
-    kpanic("MarshalVkAccelerationStructureGeometryAabbsDataKHR::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -14698,7 +14700,7 @@ void MarshalVkAccelerationStructureGeometryAabbsDataKHR::read(BoxedVulkanInfo* p
     } else {
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
-    kpanic("A");
+    //assuming deviceAddress is used
     s->data = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
     s->stride = (VkDeviceSize)memory->readq(address);address+=8;
 }
@@ -14717,6 +14719,7 @@ void MarshalVkAccelerationStructureGeometryInstancesDataKHR::read(BoxedVulkanInf
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->arrayOfPointers = (VkBool32)memory->readd(address);address+=4;
+    //assuming deviceAddress is used
     s->data = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryInstancesDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryInstancesDataKHR* s) {
@@ -14786,6 +14789,7 @@ void MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(BoxedVulkanInfo* p
         }
         s->ppGeometries = ppGeometries;
     }
+    //assuming deviceAddress is used
     s->scratchData = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureBuildGeometryInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureBuildGeometryInfoKHR* s) {
@@ -14916,7 +14920,6 @@ MarshalVkCopyAccelerationStructureInfoKHR::~MarshalVkCopyAccelerationStructureIn
     delete s.pNext;
 }
 void MarshalVkCopyAccelerationStructureToMemoryInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyAccelerationStructureToMemoryInfoKHR* s) {
-    kpanic("MarshalVkCopyAccelerationStructureToMemoryInfoKHR::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -14925,7 +14928,7 @@ void MarshalVkCopyAccelerationStructureToMemoryInfoKHR::read(BoxedVulkanInfo* pB
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->src = (VkAccelerationStructureKHR)memory->readq(address);address+=8;
-    kpanic("A");
+    //assuming deviceAddress is used
     s->dst = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
     s->mode = (VkCopyAccelerationStructureModeKHR)memory->readd(address);address+=4;
 }
@@ -14936,7 +14939,6 @@ MarshalVkCopyAccelerationStructureToMemoryInfoKHR::~MarshalVkCopyAccelerationStr
     delete s.pNext;
 }
 void MarshalVkCopyMemoryToAccelerationStructureInfoKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToAccelerationStructureInfoKHR* s) {
-    kpanic("MarshalVkCopyMemoryToAccelerationStructureInfoKHR::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -14944,7 +14946,7 @@ void MarshalVkCopyMemoryToAccelerationStructureInfoKHR::read(BoxedVulkanInfo* pB
     } else {
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
-    kpanic("A");
+    //assuming deviceAddress is used
     s->src = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
     s->dst = (VkAccelerationStructureKHR)memory->readq(address);address+=8;
     s->mode = (VkCopyAccelerationStructureModeKHR)memory->readd(address);address+=4;
@@ -23221,7 +23223,6 @@ MarshalVkPhysicalDeviceRayTracingValidationFeaturesNV::~MarshalVkPhysicalDeviceR
     delete s.pNext;
 }
 void MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryMotionTrianglesDataNV* s) {
-    kpanic("MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -23229,7 +23230,7 @@ void MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::read(BoxedVulk
     } else {
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
-    kpanic("A");
+    //assuming deviceAddress is used
     s->vertexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryMotionTrianglesDataNV* s) {
@@ -24441,11 +24442,11 @@ void MarshalVkMicromapBuildInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* m
         }
         s->ppUsageCounts = ppUsageCounts;
     }
-    kpanic("A");
+    //assuming deviceAddress is used
     s->data = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
-    kpanic("A");
+    //assuming deviceAddress is used
     s->scratchData = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
-    kpanic("A");
+    //assuming deviceAddress is used
     s->triangleArray = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
     s->triangleArrayStride = (VkDeviceSize)memory->readq(address);address+=8;
 }
@@ -24550,7 +24551,6 @@ MarshalVkCopyMicromapInfoEXT::~MarshalVkCopyMicromapInfoEXT() {
     delete s.pNext;
 }
 void MarshalVkCopyMicromapToMemoryInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMicromapToMemoryInfoEXT* s) {
-    kpanic("MarshalVkCopyMicromapToMemoryInfoEXT::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -24559,7 +24559,7 @@ void MarshalVkCopyMicromapToMemoryInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->src = (VkMicromapEXT)memory->readq(address);address+=8;
-    kpanic("A");
+    //assuming deviceAddress is used
     s->dst = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
     s->mode = (VkCopyMicromapModeEXT)memory->readd(address);address+=4;
 }
@@ -24570,7 +24570,6 @@ MarshalVkCopyMicromapToMemoryInfoEXT::~MarshalVkCopyMicromapToMemoryInfoEXT() {
     delete s.pNext;
 }
 void MarshalVkCopyMemoryToMicromapInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToMicromapInfoEXT* s) {
-    kpanic("MarshalVkCopyMemoryToMicromapInfoEXT::read");
     s->sType = (VkStructureType)memory->readd(address);address+=4;
     U32 paramAddress = memory->readd(address);address+=4;
     if (paramAddress == 0) {
@@ -24578,7 +24577,7 @@ void MarshalVkCopyMemoryToMicromapInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMe
     } else {
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
-    kpanic("A");
+    //assuming deviceAddress is used
     s->src = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
     s->dst = (VkMicromapEXT)memory->readq(address);address+=8;
     s->mode = (VkCopyMicromapModeEXT)memory->readd(address);address+=4;
@@ -24677,7 +24676,7 @@ void MarshalVkAccelerationStructureTrianglesOpacityMicromapEXT::read(BoxedVulkan
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->indexType = (VkIndexType)memory->readd(address);address+=4;
-    kpanic("A");
+    //assuming deviceAddress is used
     s->indexBuffer = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
     s->indexStride = (VkDeviceSize)memory->readq(address);address+=8;
     s->baseTriangle = (uint32_t)memory->readd(address);address+=4;
