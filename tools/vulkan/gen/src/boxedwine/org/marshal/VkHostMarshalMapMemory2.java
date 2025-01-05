@@ -20,7 +20,7 @@ public class VkHostMarshalMapMemory2 extends VkHostMarshal {
         out.append(" = NULL;\n");
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    if (EAX == 0) {\n        cpu->memory->writed(ARG3, mapVkMemory(pMemoryMapInfo->memory, pData, pMemoryMapInfo->size));\n    }\n");
     }
 }

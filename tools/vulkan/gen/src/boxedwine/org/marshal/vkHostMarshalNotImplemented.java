@@ -25,7 +25,7 @@ public class vkHostMarshalNotImplemented extends VkHostMarshal {
         }
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
 
     }
 }

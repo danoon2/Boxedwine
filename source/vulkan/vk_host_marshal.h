@@ -17,7 +17,7 @@ public:
     VkBaseOutStructure s;
     MarshalVkBaseOutStructure(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBaseOutStructure* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBaseOutStructure* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBaseOutStructure* s);
     ~MarshalVkBaseOutStructure();
 };
 
@@ -27,7 +27,7 @@ public:
     VkOffset2D s;
     MarshalVkOffset2D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOffset2D* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOffset2D* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOffset2D* s);
 };
 
 class MarshalVkOffset3D {
@@ -36,7 +36,7 @@ public:
     VkOffset3D s;
     MarshalVkOffset3D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOffset3D* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOffset3D* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOffset3D* s);
 };
 
 class MarshalVkExtent2D {
@@ -45,7 +45,7 @@ public:
     VkExtent2D s;
     MarshalVkExtent2D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtent2D* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtent2D* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExtent2D* s);
 };
 
 class MarshalVkExtent3D {
@@ -54,7 +54,7 @@ public:
     VkExtent3D s;
     MarshalVkExtent3D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtent3D* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtent3D* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExtent3D* s);
 };
 
 class MarshalVkViewport {
@@ -63,6 +63,7 @@ public:
     VkViewport s;
     MarshalVkViewport(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkViewport* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkViewport* s);
 };
 
 class MarshalVkRect2D {
@@ -71,7 +72,7 @@ public:
     VkRect2D s;
     MarshalVkRect2D(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRect2D* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRect2D* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRect2D* s);
 };
 
 class MarshalVkClearRect {
@@ -88,7 +89,7 @@ public:
     VkComponentMapping s;
     MarshalVkComponentMapping(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkComponentMapping* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkComponentMapping* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkComponentMapping* s);
 };
 
 class MarshalVkPhysicalDeviceProperties {
@@ -97,7 +98,7 @@ public:
     VkPhysicalDeviceProperties s;
     MarshalVkPhysicalDeviceProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceProperties* s);
 };
 
 class MarshalVkExtensionProperties {
@@ -106,14 +107,14 @@ public:
     VkExtensionProperties s;
     MarshalVkExtensionProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtensionProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExtensionProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExtensionProperties* s);
 };
 
 class MarshalVkLayerProperties {
 public:
     MarshalVkLayerProperties() {}
     VkLayerProperties s;
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLayerProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLayerProperties* s);
 };
 
 class MarshalVkApplicationInfo {
@@ -122,7 +123,7 @@ public:
     VkApplicationInfo s;
     MarshalVkApplicationInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkApplicationInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkApplicationInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkApplicationInfo* s);
     ~MarshalVkApplicationInfo();
 };
 
@@ -132,7 +133,7 @@ public:
     VkDeviceQueueCreateInfo s;
     MarshalVkDeviceQueueCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceQueueCreateInfo* s);
     ~MarshalVkDeviceQueueCreateInfo();
 };
 
@@ -142,7 +143,7 @@ public:
     VkDeviceCreateInfo s;
     MarshalVkDeviceCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceCreateInfo* s);
     ~MarshalVkDeviceCreateInfo();
 };
 
@@ -152,7 +153,7 @@ public:
     VkInstanceCreateInfo s;
     MarshalVkInstanceCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkInstanceCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkInstanceCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkInstanceCreateInfo* s);
     ~MarshalVkInstanceCreateInfo();
 };
 
@@ -162,7 +163,7 @@ public:
     VkQueueFamilyProperties s;
     MarshalVkQueueFamilyProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueueFamilyProperties* s);
 };
 
 class MarshalVkPhysicalDeviceMemoryProperties {
@@ -171,7 +172,7 @@ public:
     VkPhysicalDeviceMemoryProperties s;
     MarshalVkPhysicalDeviceMemoryProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMemoryProperties* s);
 };
 
 class MarshalVkMemoryAllocateInfo {
@@ -180,7 +181,7 @@ public:
     VkMemoryAllocateInfo s;
     MarshalVkMemoryAllocateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryAllocateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryAllocateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryAllocateInfo* s);
     ~MarshalVkMemoryAllocateInfo();
 };
 
@@ -190,7 +191,7 @@ public:
     VkMemoryRequirements s;
     MarshalVkMemoryRequirements(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryRequirements* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryRequirements* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryRequirements* s);
 };
 
 class MarshalVkSparseImageFormatProperties {
@@ -199,7 +200,7 @@ public:
     VkSparseImageFormatProperties s;
     MarshalVkSparseImageFormatProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageFormatProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageFormatProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseImageFormatProperties* s);
 };
 
 class MarshalVkSparseImageMemoryRequirements {
@@ -208,7 +209,7 @@ public:
     VkSparseImageMemoryRequirements s;
     MarshalVkSparseImageMemoryRequirements(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryRequirements* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryRequirements* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseImageMemoryRequirements* s);
 };
 
 class MarshalVkMemoryType {
@@ -217,7 +218,7 @@ public:
     VkMemoryType s;
     MarshalVkMemoryType(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryType* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryType* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryType* s);
 };
 
 class MarshalVkMemoryHeap {
@@ -226,7 +227,7 @@ public:
     VkMemoryHeap s;
     MarshalVkMemoryHeap(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryHeap* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryHeap* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryHeap* s);
 };
 
 class MarshalVkMappedMemoryRange {
@@ -235,7 +236,7 @@ public:
     VkMappedMemoryRange s;
     MarshalVkMappedMemoryRange(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMappedMemoryRange* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMappedMemoryRange* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMappedMemoryRange* s);
     ~MarshalVkMappedMemoryRange();
 };
 
@@ -245,7 +246,7 @@ public:
     VkFormatProperties s;
     MarshalVkFormatProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFormatProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFormatProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFormatProperties* s);
 };
 
 class MarshalVkImageFormatProperties {
@@ -254,7 +255,7 @@ public:
     VkImageFormatProperties s;
     MarshalVkImageFormatProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageFormatProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageFormatProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageFormatProperties* s);
 };
 
 class MarshalVkDescriptorBufferInfo {
@@ -263,6 +264,7 @@ public:
     VkDescriptorBufferInfo s;
     MarshalVkDescriptorBufferInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorBufferInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorBufferInfo* s);
 };
 
 class MarshalVkDescriptorImageInfo {
@@ -271,6 +273,7 @@ public:
     VkDescriptorImageInfo s;
     MarshalVkDescriptorImageInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorImageInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorImageInfo* s);
 };
 
 class MarshalVkWriteDescriptorSet {
@@ -279,7 +282,7 @@ public:
     VkWriteDescriptorSet s;
     MarshalVkWriteDescriptorSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSet* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkWriteDescriptorSet* s);
     ~MarshalVkWriteDescriptorSet();
 };
 
@@ -289,7 +292,7 @@ public:
     VkCopyDescriptorSet s;
     MarshalVkCopyDescriptorSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyDescriptorSet* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyDescriptorSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyDescriptorSet* s);
     ~MarshalVkCopyDescriptorSet();
 };
 
@@ -299,7 +302,7 @@ public:
     VkBufferUsageFlags2CreateInfo s;
     MarshalVkBufferUsageFlags2CreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferUsageFlags2CreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferUsageFlags2CreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferUsageFlags2CreateInfo* s);
     ~MarshalVkBufferUsageFlags2CreateInfo();
 };
 
@@ -309,7 +312,7 @@ public:
     VkBufferCreateInfo s;
     MarshalVkBufferCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferCreateInfo* s);
     ~MarshalVkBufferCreateInfo();
 };
 
@@ -319,7 +322,7 @@ public:
     VkBufferViewCreateInfo s;
     MarshalVkBufferViewCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferViewCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferViewCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferViewCreateInfo* s);
     ~MarshalVkBufferViewCreateInfo();
 };
 
@@ -329,7 +332,7 @@ public:
     VkImageSubresource s;
     MarshalVkImageSubresource(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresource* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresource* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageSubresource* s);
 };
 
 class MarshalVkImageSubresourceLayers {
@@ -338,7 +341,7 @@ public:
     VkImageSubresourceLayers s;
     MarshalVkImageSubresourceLayers(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresourceLayers* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresourceLayers* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageSubresourceLayers* s);
 };
 
 class MarshalVkImageSubresourceRange {
@@ -347,7 +350,7 @@ public:
     VkImageSubresourceRange s;
     MarshalVkImageSubresourceRange(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresourceRange* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresourceRange* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageSubresourceRange* s);
 };
 
 class MarshalVkMemoryBarrier {
@@ -356,7 +359,7 @@ public:
     VkMemoryBarrier s;
     MarshalVkMemoryBarrier(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryBarrier* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryBarrier* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryBarrier* s);
     ~MarshalVkMemoryBarrier();
 };
 
@@ -366,7 +369,7 @@ public:
     VkBufferMemoryBarrier s;
     MarshalVkBufferMemoryBarrier(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferMemoryBarrier* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferMemoryBarrier* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferMemoryBarrier* s);
     ~MarshalVkBufferMemoryBarrier();
 };
 
@@ -376,7 +379,7 @@ public:
     VkImageMemoryBarrier s;
     MarshalVkImageMemoryBarrier(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageMemoryBarrier* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageMemoryBarrier* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageMemoryBarrier* s);
     ~MarshalVkImageMemoryBarrier();
 };
 
@@ -386,7 +389,7 @@ public:
     VkImageCreateInfo s;
     MarshalVkImageCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageCreateInfo* s);
     ~MarshalVkImageCreateInfo();
 };
 
@@ -396,7 +399,7 @@ public:
     VkSubresourceLayout s;
     MarshalVkSubresourceLayout(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubresourceLayout* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubresourceLayout* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubresourceLayout* s);
 };
 
 class MarshalVkImageViewCreateInfo {
@@ -405,7 +408,7 @@ public:
     VkImageViewCreateInfo s;
     MarshalVkImageViewCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewCreateInfo* s);
     ~MarshalVkImageViewCreateInfo();
 };
 
@@ -423,6 +426,7 @@ public:
     VkSparseMemoryBind s;
     MarshalVkSparseMemoryBind(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseMemoryBind* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseMemoryBind* s);
 };
 
 class MarshalVkSparseImageMemoryBind {
@@ -431,6 +435,7 @@ public:
     VkSparseImageMemoryBind s;
     MarshalVkSparseImageMemoryBind(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryBind* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseImageMemoryBind* s);
 };
 
 class MarshalVkSparseBufferMemoryBindInfo {
@@ -439,6 +444,7 @@ public:
     VkSparseBufferMemoryBindInfo s;
     MarshalVkSparseBufferMemoryBindInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseBufferMemoryBindInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseBufferMemoryBindInfo* s);
     ~MarshalVkSparseBufferMemoryBindInfo();
 };
 
@@ -448,6 +454,7 @@ public:
     VkSparseImageOpaqueMemoryBindInfo s;
     MarshalVkSparseImageOpaqueMemoryBindInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageOpaqueMemoryBindInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseImageOpaqueMemoryBindInfo* s);
     ~MarshalVkSparseImageOpaqueMemoryBindInfo();
 };
 
@@ -457,6 +464,7 @@ public:
     VkSparseImageMemoryBindInfo s;
     MarshalVkSparseImageMemoryBindInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryBindInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseImageMemoryBindInfo* s);
     ~MarshalVkSparseImageMemoryBindInfo();
 };
 
@@ -466,7 +474,7 @@ public:
     VkBindSparseInfo s;
     MarshalVkBindSparseInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindSparseInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindSparseInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindSparseInfo* s);
     ~MarshalVkBindSparseInfo();
 };
 
@@ -508,7 +516,7 @@ public:
     VkShaderModuleCreateInfo s;
     MarshalVkShaderModuleCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderModuleCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderModuleCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkShaderModuleCreateInfo* s);
     ~MarshalVkShaderModuleCreateInfo();
 };
 
@@ -518,6 +526,7 @@ public:
     VkDescriptorSetLayoutBinding s;
     MarshalVkDescriptorSetLayoutBinding(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutBinding* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetLayoutBinding* s);
     ~MarshalVkDescriptorSetLayoutBinding();
 };
 
@@ -527,7 +536,7 @@ public:
     VkDescriptorSetLayoutCreateInfo s;
     MarshalVkDescriptorSetLayoutCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetLayoutCreateInfo* s);
     ~MarshalVkDescriptorSetLayoutCreateInfo();
 };
 
@@ -537,6 +546,7 @@ public:
     VkDescriptorPoolSize s;
     MarshalVkDescriptorPoolSize(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorPoolSize* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorPoolSize* s);
 };
 
 class MarshalVkDescriptorPoolCreateInfo {
@@ -545,7 +555,7 @@ public:
     VkDescriptorPoolCreateInfo s;
     MarshalVkDescriptorPoolCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorPoolCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorPoolCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorPoolCreateInfo* s);
     ~MarshalVkDescriptorPoolCreateInfo();
 };
 
@@ -555,7 +565,7 @@ public:
     VkDescriptorSetAllocateInfo s;
     MarshalVkDescriptorSetAllocateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetAllocateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetAllocateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetAllocateInfo* s);
     ~MarshalVkDescriptorSetAllocateInfo();
 };
 
@@ -565,6 +575,7 @@ public:
     VkSpecializationMapEntry s;
     MarshalVkSpecializationMapEntry(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSpecializationMapEntry* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSpecializationMapEntry* s);
 };
 
 class MarshalVkSpecializationInfo {
@@ -573,6 +584,7 @@ public:
     VkSpecializationInfo s;
     MarshalVkSpecializationInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSpecializationInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSpecializationInfo* s);
     ~MarshalVkSpecializationInfo();
 };
 
@@ -582,7 +594,7 @@ public:
     VkPipelineShaderStageCreateInfo s;
     MarshalVkPipelineShaderStageCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineShaderStageCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineShaderStageCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineShaderStageCreateInfo* s);
     ~MarshalVkPipelineShaderStageCreateInfo();
 };
 
@@ -592,7 +604,7 @@ public:
     VkComputePipelineCreateInfo s;
     MarshalVkComputePipelineCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkComputePipelineCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkComputePipelineCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkComputePipelineCreateInfo* s);
     ~MarshalVkComputePipelineCreateInfo();
 };
 
@@ -602,7 +614,7 @@ public:
     VkComputePipelineIndirectBufferInfoNV s;
     MarshalVkComputePipelineIndirectBufferInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkComputePipelineIndirectBufferInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkComputePipelineIndirectBufferInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkComputePipelineIndirectBufferInfoNV* s);
     ~MarshalVkComputePipelineIndirectBufferInfoNV();
 };
 
@@ -612,7 +624,7 @@ public:
     VkPipelineCreateFlags2CreateInfo s;
     MarshalVkPipelineCreateFlags2CreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreateFlags2CreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreateFlags2CreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCreateFlags2CreateInfo* s);
     ~MarshalVkPipelineCreateFlags2CreateInfo();
 };
 
@@ -622,6 +634,7 @@ public:
     VkVertexInputBindingDescription s;
     MarshalVkVertexInputBindingDescription(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVertexInputBindingDescription* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVertexInputBindingDescription* s);
 };
 
 class MarshalVkVertexInputAttributeDescription {
@@ -630,6 +643,7 @@ public:
     VkVertexInputAttributeDescription s;
     MarshalVkVertexInputAttributeDescription(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVertexInputAttributeDescription* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVertexInputAttributeDescription* s);
 };
 
 class MarshalVkPipelineVertexInputStateCreateInfo {
@@ -638,7 +652,7 @@ public:
     VkPipelineVertexInputStateCreateInfo s;
     MarshalVkPipelineVertexInputStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineVertexInputStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineVertexInputStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineVertexInputStateCreateInfo* s);
     ~MarshalVkPipelineVertexInputStateCreateInfo();
 };
 
@@ -648,7 +662,7 @@ public:
     VkPipelineInputAssemblyStateCreateInfo s;
     MarshalVkPipelineInputAssemblyStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineInputAssemblyStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineInputAssemblyStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineInputAssemblyStateCreateInfo* s);
     ~MarshalVkPipelineInputAssemblyStateCreateInfo();
 };
 
@@ -658,7 +672,7 @@ public:
     VkPipelineTessellationStateCreateInfo s;
     MarshalVkPipelineTessellationStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineTessellationStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineTessellationStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineTessellationStateCreateInfo* s);
     ~MarshalVkPipelineTessellationStateCreateInfo();
 };
 
@@ -668,7 +682,7 @@ public:
     VkPipelineViewportStateCreateInfo s;
     MarshalVkPipelineViewportStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportStateCreateInfo* s);
     ~MarshalVkPipelineViewportStateCreateInfo();
 };
 
@@ -678,7 +692,7 @@ public:
     VkPipelineRasterizationStateCreateInfo s;
     MarshalVkPipelineRasterizationStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRasterizationStateCreateInfo* s);
     ~MarshalVkPipelineRasterizationStateCreateInfo();
 };
 
@@ -688,7 +702,7 @@ public:
     VkPipelineMultisampleStateCreateInfo s;
     MarshalVkPipelineMultisampleStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineMultisampleStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineMultisampleStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineMultisampleStateCreateInfo* s);
     ~MarshalVkPipelineMultisampleStateCreateInfo();
 };
 
@@ -698,6 +712,7 @@ public:
     VkPipelineColorBlendAttachmentState s;
     MarshalVkPipelineColorBlendAttachmentState(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorBlendAttachmentState* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineColorBlendAttachmentState* s);
 };
 
 class MarshalVkPipelineColorBlendStateCreateInfo {
@@ -706,7 +721,7 @@ public:
     VkPipelineColorBlendStateCreateInfo s;
     MarshalVkPipelineColorBlendStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorBlendStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorBlendStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineColorBlendStateCreateInfo* s);
     ~MarshalVkPipelineColorBlendStateCreateInfo();
 };
 
@@ -716,7 +731,7 @@ public:
     VkPipelineDynamicStateCreateInfo s;
     MarshalVkPipelineDynamicStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDynamicStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDynamicStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineDynamicStateCreateInfo* s);
     ~MarshalVkPipelineDynamicStateCreateInfo();
 };
 
@@ -726,7 +741,7 @@ public:
     VkStencilOpState s;
     MarshalVkStencilOpState(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkStencilOpState* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkStencilOpState* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkStencilOpState* s);
 };
 
 class MarshalVkPipelineDepthStencilStateCreateInfo {
@@ -735,7 +750,7 @@ public:
     VkPipelineDepthStencilStateCreateInfo s;
     MarshalVkPipelineDepthStencilStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDepthStencilStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDepthStencilStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineDepthStencilStateCreateInfo* s);
     ~MarshalVkPipelineDepthStencilStateCreateInfo();
 };
 
@@ -745,7 +760,7 @@ public:
     VkGraphicsPipelineCreateInfo s;
     MarshalVkGraphicsPipelineCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsPipelineCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsPipelineCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGraphicsPipelineCreateInfo* s);
     ~MarshalVkGraphicsPipelineCreateInfo();
 };
 
@@ -755,7 +770,7 @@ public:
     VkPipelineCacheCreateInfo s;
     MarshalVkPipelineCacheCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCacheCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCacheCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCacheCreateInfo* s);
     ~MarshalVkPipelineCacheCreateInfo();
 };
 
@@ -765,6 +780,7 @@ public:
     VkPushConstantRange s;
     MarshalVkPushConstantRange(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushConstantRange* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPushConstantRange* s);
 };
 
 class MarshalVkPipelineBinaryCreateInfoKHR {
@@ -773,7 +789,7 @@ public:
     VkPipelineBinaryCreateInfoKHR s;
     MarshalVkPipelineBinaryCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineBinaryCreateInfoKHR* s);
     ~MarshalVkPipelineBinaryCreateInfoKHR();
 };
 
@@ -783,7 +799,7 @@ public:
     VkPipelineBinaryHandlesInfoKHR s;
     MarshalVkPipelineBinaryHandlesInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryHandlesInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryHandlesInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineBinaryHandlesInfoKHR* s);
     ~MarshalVkPipelineBinaryHandlesInfoKHR();
 };
 
@@ -793,6 +809,7 @@ public:
     VkPipelineBinaryDataKHR s;
     MarshalVkPipelineBinaryDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryDataKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineBinaryDataKHR* s);
     ~MarshalVkPipelineBinaryDataKHR();
 };
 
@@ -802,6 +819,7 @@ public:
     VkPipelineBinaryKeysAndDataKHR s;
     MarshalVkPipelineBinaryKeysAndDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryKeysAndDataKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineBinaryKeysAndDataKHR* s);
     ~MarshalVkPipelineBinaryKeysAndDataKHR();
 };
 
@@ -811,7 +829,7 @@ public:
     VkPipelineBinaryKeyKHR s;
     MarshalVkPipelineBinaryKeyKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryKeyKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryKeyKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineBinaryKeyKHR* s);
     ~MarshalVkPipelineBinaryKeyKHR();
 };
 
@@ -821,7 +839,7 @@ public:
     VkPipelineBinaryInfoKHR s;
     MarshalVkPipelineBinaryInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineBinaryInfoKHR* s);
     ~MarshalVkPipelineBinaryInfoKHR();
 };
 
@@ -831,7 +849,7 @@ public:
     VkReleaseCapturedPipelineDataInfoKHR s;
     MarshalVkReleaseCapturedPipelineDataInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkReleaseCapturedPipelineDataInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkReleaseCapturedPipelineDataInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkReleaseCapturedPipelineDataInfoKHR* s);
     ~MarshalVkReleaseCapturedPipelineDataInfoKHR();
 };
 
@@ -841,7 +859,7 @@ public:
     VkPipelineBinaryDataInfoKHR s;
     MarshalVkPipelineBinaryDataInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryDataInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryDataInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineBinaryDataInfoKHR* s);
     ~MarshalVkPipelineBinaryDataInfoKHR();
 };
 
@@ -851,7 +869,7 @@ public:
     VkPipelineCreateInfoKHR s;
     MarshalVkPipelineCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCreateInfoKHR* s);
     ~MarshalVkPipelineCreateInfoKHR();
 };
 
@@ -861,7 +879,7 @@ public:
     VkPipelineLayoutCreateInfo s;
     MarshalVkPipelineLayoutCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineLayoutCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineLayoutCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineLayoutCreateInfo* s);
     ~MarshalVkPipelineLayoutCreateInfo();
 };
 
@@ -871,7 +889,7 @@ public:
     VkSamplerCreateInfo s;
     MarshalVkSamplerCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerCreateInfo* s);
     ~MarshalVkSamplerCreateInfo();
 };
 
@@ -881,7 +899,7 @@ public:
     VkCommandPoolCreateInfo s;
     MarshalVkCommandPoolCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandPoolCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandPoolCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandPoolCreateInfo* s);
     ~MarshalVkCommandPoolCreateInfo();
 };
 
@@ -891,7 +909,7 @@ public:
     VkCommandBufferAllocateInfo s;
     MarshalVkCommandBufferAllocateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferAllocateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferAllocateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferAllocateInfo* s);
     ~MarshalVkCommandBufferAllocateInfo();
 };
 
@@ -901,7 +919,7 @@ public:
     VkCommandBufferInheritanceInfo s;
     MarshalVkCommandBufferInheritanceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferInheritanceInfo* s);
     ~MarshalVkCommandBufferInheritanceInfo();
 };
 
@@ -911,7 +929,7 @@ public:
     VkCommandBufferBeginInfo s;
     MarshalVkCommandBufferBeginInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferBeginInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferBeginInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferBeginInfo* s);
     ~MarshalVkCommandBufferBeginInfo();
 };
 
@@ -921,7 +939,7 @@ public:
     VkRenderPassBeginInfo s;
     MarshalVkRenderPassBeginInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassBeginInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassBeginInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassBeginInfo* s);
     ~MarshalVkRenderPassBeginInfo();
 };
 
@@ -955,6 +973,7 @@ public:
     VkAttachmentDescription s;
     MarshalVkAttachmentDescription(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentDescription* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentDescription* s);
 };
 
 class MarshalVkAttachmentReference {
@@ -963,7 +982,7 @@ public:
     VkAttachmentReference s;
     MarshalVkAttachmentReference(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentReference* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentReference* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentReference* s);
 };
 
 class MarshalVkSubpassDescription {
@@ -972,6 +991,7 @@ public:
     VkSubpassDescription s;
     MarshalVkSubpassDescription(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDescription* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassDescription* s);
     ~MarshalVkSubpassDescription();
 };
 
@@ -981,6 +1001,7 @@ public:
     VkSubpassDependency s;
     MarshalVkSubpassDependency(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDependency* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassDependency* s);
 };
 
 class MarshalVkRenderPassCreateInfo {
@@ -989,7 +1010,7 @@ public:
     VkRenderPassCreateInfo s;
     MarshalVkRenderPassCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassCreateInfo* s);
     ~MarshalVkRenderPassCreateInfo();
 };
 
@@ -999,7 +1020,7 @@ public:
     VkEventCreateInfo s;
     MarshalVkEventCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkEventCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkEventCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkEventCreateInfo* s);
     ~MarshalVkEventCreateInfo();
 };
 
@@ -1009,7 +1030,7 @@ public:
     VkFenceCreateInfo s;
     MarshalVkFenceCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFenceCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFenceCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFenceCreateInfo* s);
     ~MarshalVkFenceCreateInfo();
 };
 
@@ -1019,7 +1040,7 @@ public:
     VkPhysicalDeviceFeatures s;
     MarshalVkPhysicalDeviceFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFeatures* s);
 };
 
 class MarshalVkPhysicalDeviceSparseProperties {
@@ -1028,7 +1049,7 @@ public:
     VkPhysicalDeviceSparseProperties s;
     MarshalVkPhysicalDeviceSparseProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSparseProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSparseProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSparseProperties* s);
 };
 
 class MarshalVkPhysicalDeviceLimits {
@@ -1037,7 +1058,7 @@ public:
     VkPhysicalDeviceLimits s;
     MarshalVkPhysicalDeviceLimits(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLimits* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLimits* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLimits* s);
 };
 
 class MarshalVkSemaphoreCreateInfo {
@@ -1046,7 +1067,7 @@ public:
     VkSemaphoreCreateInfo s;
     MarshalVkSemaphoreCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSemaphoreCreateInfo* s);
     ~MarshalVkSemaphoreCreateInfo();
 };
 
@@ -1056,7 +1077,7 @@ public:
     VkQueryPoolCreateInfo s;
     MarshalVkQueryPoolCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueryPoolCreateInfo* s);
     ~MarshalVkQueryPoolCreateInfo();
 };
 
@@ -1066,7 +1087,7 @@ public:
     VkFramebufferCreateInfo s;
     MarshalVkFramebufferCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFramebufferCreateInfo* s);
     ~MarshalVkFramebufferCreateInfo();
 };
 
@@ -1092,7 +1113,7 @@ public:
     VkSubmitInfo s;
     MarshalVkSubmitInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubmitInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubmitInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubmitInfo* s);
     ~MarshalVkSubmitInfo();
 };
 
@@ -1102,7 +1123,7 @@ public:
     VkDisplaySurfaceStereoCreateInfoNV s;
     MarshalVkDisplaySurfaceStereoCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplaySurfaceStereoCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplaySurfaceStereoCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplaySurfaceStereoCreateInfoNV* s);
     ~MarshalVkDisplaySurfaceStereoCreateInfoNV();
 };
 
@@ -1112,7 +1133,7 @@ public:
     VkDisplayPresentInfoKHR s;
     MarshalVkDisplayPresentInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPresentInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPresentInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPresentInfoKHR* s);
     ~MarshalVkDisplayPresentInfoKHR();
 };
 
@@ -1122,7 +1143,7 @@ public:
     VkSurfaceCapabilitiesKHR s;
     MarshalVkSurfaceCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfaceCapabilitiesKHR* s);
 };
 
 class MarshalVkSurfaceFormatKHR {
@@ -1131,7 +1152,7 @@ public:
     VkSurfaceFormatKHR s;
     MarshalVkSurfaceFormatKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceFormatKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceFormatKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfaceFormatKHR* s);
 };
 
 class MarshalVkSwapchainCreateInfoKHR {
@@ -1140,7 +1161,7 @@ public:
     VkSwapchainCreateInfoKHR s;
     MarshalVkSwapchainCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainCreateInfoKHR* s);
     ~MarshalVkSwapchainCreateInfoKHR();
 };
 
@@ -1150,7 +1171,7 @@ public:
     VkPresentInfoKHR s;
     MarshalVkPresentInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPresentInfoKHR* s);
     ~MarshalVkPresentInfoKHR();
 };
 
@@ -1160,7 +1181,7 @@ public:
     VkDebugReportCallbackCreateInfoEXT s;
     MarshalVkDebugReportCallbackCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugReportCallbackCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugReportCallbackCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugReportCallbackCreateInfoEXT* s);
     ~MarshalVkDebugReportCallbackCreateInfoEXT();
 };
 
@@ -1170,7 +1191,7 @@ public:
     VkValidationFlagsEXT s;
     MarshalVkValidationFlagsEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationFlagsEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationFlagsEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkValidationFlagsEXT* s);
     ~MarshalVkValidationFlagsEXT();
 };
 
@@ -1180,7 +1201,7 @@ public:
     VkValidationFeaturesEXT s;
     MarshalVkValidationFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkValidationFeaturesEXT* s);
     ~MarshalVkValidationFeaturesEXT();
 };
 
@@ -1190,7 +1211,7 @@ public:
     VkLayerSettingsCreateInfoEXT s;
     MarshalVkLayerSettingsCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLayerSettingsCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLayerSettingsCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLayerSettingsCreateInfoEXT* s);
     ~MarshalVkLayerSettingsCreateInfoEXT();
 };
 
@@ -1200,6 +1221,7 @@ public:
     VkLayerSettingEXT s;
     MarshalVkLayerSettingEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLayerSettingEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLayerSettingEXT* s);
     ~MarshalVkLayerSettingEXT();
 };
 
@@ -1209,7 +1231,7 @@ public:
     VkPipelineRasterizationStateRasterizationOrderAMD s;
     MarshalVkPipelineRasterizationStateRasterizationOrderAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationStateRasterizationOrderAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationStateRasterizationOrderAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRasterizationStateRasterizationOrderAMD* s);
     ~MarshalVkPipelineRasterizationStateRasterizationOrderAMD();
 };
 
@@ -1219,7 +1241,7 @@ public:
     VkDebugMarkerObjectNameInfoEXT s;
     MarshalVkDebugMarkerObjectNameInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerObjectNameInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerObjectNameInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugMarkerObjectNameInfoEXT* s);
     ~MarshalVkDebugMarkerObjectNameInfoEXT();
 };
 
@@ -1229,7 +1251,7 @@ public:
     VkDebugMarkerObjectTagInfoEXT s;
     MarshalVkDebugMarkerObjectTagInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerObjectTagInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerObjectTagInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugMarkerObjectTagInfoEXT* s);
     ~MarshalVkDebugMarkerObjectTagInfoEXT();
 };
 
@@ -1239,7 +1261,7 @@ public:
     VkDebugMarkerMarkerInfoEXT s;
     MarshalVkDebugMarkerMarkerInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerMarkerInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugMarkerMarkerInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugMarkerMarkerInfoEXT* s);
     ~MarshalVkDebugMarkerMarkerInfoEXT();
 };
 
@@ -1249,7 +1271,7 @@ public:
     VkDedicatedAllocationImageCreateInfoNV s;
     MarshalVkDedicatedAllocationImageCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDedicatedAllocationImageCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDedicatedAllocationImageCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDedicatedAllocationImageCreateInfoNV* s);
     ~MarshalVkDedicatedAllocationImageCreateInfoNV();
 };
 
@@ -1259,7 +1281,7 @@ public:
     VkDedicatedAllocationBufferCreateInfoNV s;
     MarshalVkDedicatedAllocationBufferCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDedicatedAllocationBufferCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDedicatedAllocationBufferCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDedicatedAllocationBufferCreateInfoNV* s);
     ~MarshalVkDedicatedAllocationBufferCreateInfoNV();
 };
 
@@ -1269,7 +1291,7 @@ public:
     VkDedicatedAllocationMemoryAllocateInfoNV s;
     MarshalVkDedicatedAllocationMemoryAllocateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDedicatedAllocationMemoryAllocateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDedicatedAllocationMemoryAllocateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDedicatedAllocationMemoryAllocateInfoNV* s);
     ~MarshalVkDedicatedAllocationMemoryAllocateInfoNV();
 };
 
@@ -1279,7 +1301,7 @@ public:
     VkExternalMemoryImageCreateInfoNV s;
     MarshalVkExternalMemoryImageCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryImageCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryImageCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalMemoryImageCreateInfoNV* s);
     ~MarshalVkExternalMemoryImageCreateInfoNV();
 };
 
@@ -1289,7 +1311,7 @@ public:
     VkExportMemoryAllocateInfoNV s;
     MarshalVkExportMemoryAllocateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportMemoryAllocateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportMemoryAllocateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExportMemoryAllocateInfoNV* s);
     ~MarshalVkExportMemoryAllocateInfoNV();
 };
 
@@ -1299,7 +1321,7 @@ public:
     VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV s;
     MarshalVkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV* s);
     ~MarshalVkPhysicalDeviceDeviceGeneratedCommandsFeaturesNV();
 };
 
@@ -1309,7 +1331,7 @@ public:
     VkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV s;
     MarshalVkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV* s);
     ~MarshalVkPhysicalDeviceDeviceGeneratedCommandsComputeFeaturesNV();
 };
 
@@ -1319,7 +1341,7 @@ public:
     VkDevicePrivateDataCreateInfo s;
     MarshalVkDevicePrivateDataCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDevicePrivateDataCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDevicePrivateDataCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDevicePrivateDataCreateInfo* s);
     ~MarshalVkDevicePrivateDataCreateInfo();
 };
 
@@ -1329,7 +1351,7 @@ public:
     VkPrivateDataSlotCreateInfo s;
     MarshalVkPrivateDataSlotCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPrivateDataSlotCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPrivateDataSlotCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPrivateDataSlotCreateInfo* s);
     ~MarshalVkPrivateDataSlotCreateInfo();
 };
 
@@ -1339,7 +1361,7 @@ public:
     VkPhysicalDevicePrivateDataFeatures s;
     MarshalVkPhysicalDevicePrivateDataFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePrivateDataFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePrivateDataFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePrivateDataFeatures* s);
     ~MarshalVkPhysicalDevicePrivateDataFeatures();
 };
 
@@ -1349,7 +1371,7 @@ public:
     VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV s;
     MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV* s);
     ~MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesNV();
 };
 
@@ -1359,7 +1381,7 @@ public:
     VkPhysicalDeviceMultiDrawPropertiesEXT s;
     MarshalVkPhysicalDeviceMultiDrawPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiDrawPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiDrawPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultiDrawPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceMultiDrawPropertiesEXT();
 };
 
@@ -1369,7 +1391,7 @@ public:
     VkGraphicsShaderGroupCreateInfoNV s;
     MarshalVkGraphicsShaderGroupCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsShaderGroupCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsShaderGroupCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGraphicsShaderGroupCreateInfoNV* s);
     ~MarshalVkGraphicsShaderGroupCreateInfoNV();
 };
 
@@ -1379,7 +1401,7 @@ public:
     VkGraphicsPipelineShaderGroupsCreateInfoNV s;
     MarshalVkGraphicsPipelineShaderGroupsCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsPipelineShaderGroupsCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsPipelineShaderGroupsCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGraphicsPipelineShaderGroupsCreateInfoNV* s);
     ~MarshalVkGraphicsPipelineShaderGroupsCreateInfoNV();
 };
 
@@ -1389,6 +1411,7 @@ public:
     VkIndirectCommandsStreamNV s;
     MarshalVkIndirectCommandsStreamNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsStreamNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectCommandsStreamNV* s);
 };
 
 class MarshalVkIndirectCommandsLayoutTokenNV {
@@ -1397,7 +1420,7 @@ public:
     VkIndirectCommandsLayoutTokenNV s;
     MarshalVkIndirectCommandsLayoutTokenNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutTokenNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutTokenNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectCommandsLayoutTokenNV* s);
     ~MarshalVkIndirectCommandsLayoutTokenNV();
 };
 
@@ -1407,7 +1430,7 @@ public:
     VkIndirectCommandsLayoutCreateInfoNV s;
     MarshalVkIndirectCommandsLayoutCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectCommandsLayoutCreateInfoNV* s);
     ~MarshalVkIndirectCommandsLayoutCreateInfoNV();
 };
 
@@ -1417,7 +1440,7 @@ public:
     VkGeneratedCommandsInfoNV s;
     MarshalVkGeneratedCommandsInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeneratedCommandsInfoNV* s);
     ~MarshalVkGeneratedCommandsInfoNV();
 };
 
@@ -1427,7 +1450,7 @@ public:
     VkGeneratedCommandsMemoryRequirementsInfoNV s;
     MarshalVkGeneratedCommandsMemoryRequirementsInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsMemoryRequirementsInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsMemoryRequirementsInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeneratedCommandsMemoryRequirementsInfoNV* s);
     ~MarshalVkGeneratedCommandsMemoryRequirementsInfoNV();
 };
 
@@ -1437,7 +1460,7 @@ public:
     VkPipelineIndirectDeviceAddressInfoNV s;
     MarshalVkPipelineIndirectDeviceAddressInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineIndirectDeviceAddressInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineIndirectDeviceAddressInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineIndirectDeviceAddressInfoNV* s);
     ~MarshalVkPipelineIndirectDeviceAddressInfoNV();
 };
 
@@ -1447,7 +1470,7 @@ public:
     VkPhysicalDeviceFeatures2 s;
     MarshalVkPhysicalDeviceFeatures2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFeatures2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFeatures2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFeatures2* s);
     ~MarshalVkPhysicalDeviceFeatures2();
 };
 
@@ -1457,7 +1480,7 @@ public:
     VkPhysicalDeviceProperties2 s;
     MarshalVkPhysicalDeviceProperties2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProperties2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProperties2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceProperties2* s);
     ~MarshalVkPhysicalDeviceProperties2();
 };
 
@@ -1467,7 +1490,7 @@ public:
     VkFormatProperties2 s;
     MarshalVkFormatProperties2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFormatProperties2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFormatProperties2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFormatProperties2* s);
     ~MarshalVkFormatProperties2();
 };
 
@@ -1477,7 +1500,7 @@ public:
     VkImageFormatProperties2 s;
     MarshalVkImageFormatProperties2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageFormatProperties2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageFormatProperties2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageFormatProperties2* s);
     ~MarshalVkImageFormatProperties2();
 };
 
@@ -1487,7 +1510,7 @@ public:
     VkPhysicalDeviceImageFormatInfo2 s;
     MarshalVkPhysicalDeviceImageFormatInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageFormatInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageFormatInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageFormatInfo2* s);
     ~MarshalVkPhysicalDeviceImageFormatInfo2();
 };
 
@@ -1497,7 +1520,7 @@ public:
     VkQueueFamilyProperties2 s;
     MarshalVkQueueFamilyProperties2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyProperties2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyProperties2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueueFamilyProperties2* s);
     ~MarshalVkQueueFamilyProperties2();
 };
 
@@ -1507,7 +1530,7 @@ public:
     VkPhysicalDeviceMemoryProperties2 s;
     MarshalVkPhysicalDeviceMemoryProperties2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryProperties2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryProperties2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMemoryProperties2* s);
     ~MarshalVkPhysicalDeviceMemoryProperties2();
 };
 
@@ -1517,7 +1540,7 @@ public:
     VkSparseImageFormatProperties2 s;
     MarshalVkSparseImageFormatProperties2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageFormatProperties2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageFormatProperties2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseImageFormatProperties2* s);
     ~MarshalVkSparseImageFormatProperties2();
 };
 
@@ -1527,7 +1550,7 @@ public:
     VkPhysicalDeviceSparseImageFormatInfo2 s;
     MarshalVkPhysicalDeviceSparseImageFormatInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSparseImageFormatInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSparseImageFormatInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSparseImageFormatInfo2* s);
     ~MarshalVkPhysicalDeviceSparseImageFormatInfo2();
 };
 
@@ -1537,7 +1560,7 @@ public:
     VkPhysicalDevicePushDescriptorProperties s;
     MarshalVkPhysicalDevicePushDescriptorProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePushDescriptorProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePushDescriptorProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePushDescriptorProperties* s);
     ~MarshalVkPhysicalDevicePushDescriptorProperties();
 };
 
@@ -1547,7 +1570,7 @@ public:
     VkConformanceVersion s;
     MarshalVkConformanceVersion(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkConformanceVersion* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkConformanceVersion* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkConformanceVersion* s);
 };
 
 class MarshalVkPhysicalDeviceDriverProperties {
@@ -1556,7 +1579,7 @@ public:
     VkPhysicalDeviceDriverProperties s;
     MarshalVkPhysicalDeviceDriverProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDriverProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDriverProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDriverProperties* s);
     ~MarshalVkPhysicalDeviceDriverProperties();
 };
 
@@ -1566,7 +1589,7 @@ public:
     VkPresentRegionsKHR s;
     MarshalVkPresentRegionsKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentRegionsKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentRegionsKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPresentRegionsKHR* s);
     ~MarshalVkPresentRegionsKHR();
 };
 
@@ -1576,6 +1599,7 @@ public:
     VkPresentRegionKHR s;
     MarshalVkPresentRegionKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentRegionKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPresentRegionKHR* s);
     ~MarshalVkPresentRegionKHR();
 };
 
@@ -1585,6 +1609,7 @@ public:
     VkRectLayerKHR s;
     MarshalVkRectLayerKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRectLayerKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRectLayerKHR* s);
 };
 
 class MarshalVkPhysicalDeviceVariablePointersFeatures {
@@ -1593,7 +1618,7 @@ public:
     VkPhysicalDeviceVariablePointersFeatures s;
     MarshalVkPhysicalDeviceVariablePointersFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVariablePointersFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVariablePointersFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVariablePointersFeatures* s);
     ~MarshalVkPhysicalDeviceVariablePointersFeatures();
 };
 
@@ -1603,7 +1628,7 @@ public:
     VkExternalMemoryProperties s;
     MarshalVkExternalMemoryProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalMemoryProperties* s);
 };
 
 class MarshalVkPhysicalDeviceExternalImageFormatInfo {
@@ -1612,7 +1637,7 @@ public:
     VkPhysicalDeviceExternalImageFormatInfo s;
     MarshalVkPhysicalDeviceExternalImageFormatInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalImageFormatInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalImageFormatInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExternalImageFormatInfo* s);
     ~MarshalVkPhysicalDeviceExternalImageFormatInfo();
 };
 
@@ -1622,7 +1647,7 @@ public:
     VkExternalImageFormatProperties s;
     MarshalVkExternalImageFormatProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalImageFormatProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalImageFormatProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalImageFormatProperties* s);
     ~MarshalVkExternalImageFormatProperties();
 };
 
@@ -1632,7 +1657,7 @@ public:
     VkPhysicalDeviceExternalBufferInfo s;
     MarshalVkPhysicalDeviceExternalBufferInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalBufferInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalBufferInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExternalBufferInfo* s);
     ~MarshalVkPhysicalDeviceExternalBufferInfo();
 };
 
@@ -1642,7 +1667,7 @@ public:
     VkExternalBufferProperties s;
     MarshalVkExternalBufferProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalBufferProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalBufferProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalBufferProperties* s);
     ~MarshalVkExternalBufferProperties();
 };
 
@@ -1652,7 +1677,7 @@ public:
     VkPhysicalDeviceIDProperties s;
     MarshalVkPhysicalDeviceIDProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceIDProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceIDProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceIDProperties* s);
     ~MarshalVkPhysicalDeviceIDProperties();
 };
 
@@ -1662,7 +1687,7 @@ public:
     VkExternalMemoryImageCreateInfo s;
     MarshalVkExternalMemoryImageCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryImageCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryImageCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalMemoryImageCreateInfo* s);
     ~MarshalVkExternalMemoryImageCreateInfo();
 };
 
@@ -1672,7 +1697,7 @@ public:
     VkExternalMemoryBufferCreateInfo s;
     MarshalVkExternalMemoryBufferCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryBufferCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryBufferCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalMemoryBufferCreateInfo* s);
     ~MarshalVkExternalMemoryBufferCreateInfo();
 };
 
@@ -1682,7 +1707,7 @@ public:
     VkExportMemoryAllocateInfo s;
     MarshalVkExportMemoryAllocateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportMemoryAllocateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportMemoryAllocateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExportMemoryAllocateInfo* s);
     ~MarshalVkExportMemoryAllocateInfo();
 };
 
@@ -1692,7 +1717,7 @@ public:
     VkPhysicalDeviceExternalSemaphoreInfo s;
     MarshalVkPhysicalDeviceExternalSemaphoreInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalSemaphoreInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalSemaphoreInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExternalSemaphoreInfo* s);
     ~MarshalVkPhysicalDeviceExternalSemaphoreInfo();
 };
 
@@ -1702,7 +1727,7 @@ public:
     VkExternalSemaphoreProperties s;
     MarshalVkExternalSemaphoreProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalSemaphoreProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalSemaphoreProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalSemaphoreProperties* s);
     ~MarshalVkExternalSemaphoreProperties();
 };
 
@@ -1712,7 +1737,7 @@ public:
     VkExportSemaphoreCreateInfo s;
     MarshalVkExportSemaphoreCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportSemaphoreCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportSemaphoreCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExportSemaphoreCreateInfo* s);
     ~MarshalVkExportSemaphoreCreateInfo();
 };
 
@@ -1722,7 +1747,7 @@ public:
     VkPhysicalDeviceExternalFenceInfo s;
     MarshalVkPhysicalDeviceExternalFenceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalFenceInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalFenceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExternalFenceInfo* s);
     ~MarshalVkPhysicalDeviceExternalFenceInfo();
 };
 
@@ -1732,7 +1757,7 @@ public:
     VkExternalFenceProperties s;
     MarshalVkExternalFenceProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalFenceProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalFenceProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalFenceProperties* s);
     ~MarshalVkExternalFenceProperties();
 };
 
@@ -1742,7 +1767,7 @@ public:
     VkExportFenceCreateInfo s;
     MarshalVkExportFenceCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportFenceCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExportFenceCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExportFenceCreateInfo* s);
     ~MarshalVkExportFenceCreateInfo();
 };
 
@@ -1752,7 +1777,7 @@ public:
     VkPhysicalDeviceMultiviewFeatures s;
     MarshalVkPhysicalDeviceMultiviewFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultiviewFeatures* s);
     ~MarshalVkPhysicalDeviceMultiviewFeatures();
 };
 
@@ -1762,7 +1787,7 @@ public:
     VkPhysicalDeviceMultiviewProperties s;
     MarshalVkPhysicalDeviceMultiviewProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultiviewProperties* s);
     ~MarshalVkPhysicalDeviceMultiviewProperties();
 };
 
@@ -1772,7 +1797,7 @@ public:
     VkRenderPassMultiviewCreateInfo s;
     MarshalVkRenderPassMultiviewCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassMultiviewCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassMultiviewCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassMultiviewCreateInfo* s);
     ~MarshalVkRenderPassMultiviewCreateInfo();
 };
 
@@ -1782,7 +1807,7 @@ public:
     VkSurfaceCapabilities2EXT s;
     MarshalVkSurfaceCapabilities2EXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilities2EXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilities2EXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfaceCapabilities2EXT* s);
     ~MarshalVkSurfaceCapabilities2EXT();
 };
 
@@ -1792,7 +1817,7 @@ public:
     VkDisplayPowerInfoEXT s;
     MarshalVkDisplayPowerInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPowerInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPowerInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPowerInfoEXT* s);
     ~MarshalVkDisplayPowerInfoEXT();
 };
 
@@ -1802,7 +1827,7 @@ public:
     VkDeviceEventInfoEXT s;
     MarshalVkDeviceEventInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceEventInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceEventInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceEventInfoEXT* s);
     ~MarshalVkDeviceEventInfoEXT();
 };
 
@@ -1812,7 +1837,7 @@ public:
     VkDisplayEventInfoEXT s;
     MarshalVkDisplayEventInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayEventInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayEventInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayEventInfoEXT* s);
     ~MarshalVkDisplayEventInfoEXT();
 };
 
@@ -1822,7 +1847,7 @@ public:
     VkSwapchainCounterCreateInfoEXT s;
     MarshalVkSwapchainCounterCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainCounterCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainCounterCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainCounterCreateInfoEXT* s);
     ~MarshalVkSwapchainCounterCreateInfoEXT();
 };
 
@@ -1832,7 +1857,7 @@ public:
     VkPhysicalDeviceGroupProperties s;
     MarshalVkPhysicalDeviceGroupProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGroupProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGroupProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceGroupProperties* s);
     ~MarshalVkPhysicalDeviceGroupProperties();
 };
 
@@ -1842,7 +1867,7 @@ public:
     VkMemoryAllocateFlagsInfo s;
     MarshalVkMemoryAllocateFlagsInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryAllocateFlagsInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryAllocateFlagsInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryAllocateFlagsInfo* s);
     ~MarshalVkMemoryAllocateFlagsInfo();
 };
 
@@ -1852,7 +1877,7 @@ public:
     VkBindBufferMemoryInfo s;
     MarshalVkBindBufferMemoryInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindBufferMemoryInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindBufferMemoryInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindBufferMemoryInfo* s);
     ~MarshalVkBindBufferMemoryInfo();
 };
 
@@ -1862,7 +1887,7 @@ public:
     VkBindBufferMemoryDeviceGroupInfo s;
     MarshalVkBindBufferMemoryDeviceGroupInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindBufferMemoryDeviceGroupInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindBufferMemoryDeviceGroupInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindBufferMemoryDeviceGroupInfo* s);
     ~MarshalVkBindBufferMemoryDeviceGroupInfo();
 };
 
@@ -1872,7 +1897,7 @@ public:
     VkBindImageMemoryInfo s;
     MarshalVkBindImageMemoryInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImageMemoryInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImageMemoryInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindImageMemoryInfo* s);
     ~MarshalVkBindImageMemoryInfo();
 };
 
@@ -1882,7 +1907,7 @@ public:
     VkBindImageMemoryDeviceGroupInfo s;
     MarshalVkBindImageMemoryDeviceGroupInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImageMemoryDeviceGroupInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImageMemoryDeviceGroupInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindImageMemoryDeviceGroupInfo* s);
     ~MarshalVkBindImageMemoryDeviceGroupInfo();
 };
 
@@ -1892,7 +1917,7 @@ public:
     VkDeviceGroupRenderPassBeginInfo s;
     MarshalVkDeviceGroupRenderPassBeginInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupRenderPassBeginInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupRenderPassBeginInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupRenderPassBeginInfo* s);
     ~MarshalVkDeviceGroupRenderPassBeginInfo();
 };
 
@@ -1902,7 +1927,7 @@ public:
     VkDeviceGroupCommandBufferBeginInfo s;
     MarshalVkDeviceGroupCommandBufferBeginInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupCommandBufferBeginInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupCommandBufferBeginInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupCommandBufferBeginInfo* s);
     ~MarshalVkDeviceGroupCommandBufferBeginInfo();
 };
 
@@ -1912,7 +1937,7 @@ public:
     VkDeviceGroupSubmitInfo s;
     MarshalVkDeviceGroupSubmitInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupSubmitInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupSubmitInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupSubmitInfo* s);
     ~MarshalVkDeviceGroupSubmitInfo();
 };
 
@@ -1922,7 +1947,7 @@ public:
     VkDeviceGroupBindSparseInfo s;
     MarshalVkDeviceGroupBindSparseInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupBindSparseInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupBindSparseInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupBindSparseInfo* s);
     ~MarshalVkDeviceGroupBindSparseInfo();
 };
 
@@ -1932,7 +1957,7 @@ public:
     VkDeviceGroupPresentCapabilitiesKHR s;
     MarshalVkDeviceGroupPresentCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupPresentCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupPresentCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupPresentCapabilitiesKHR* s);
     ~MarshalVkDeviceGroupPresentCapabilitiesKHR();
 };
 
@@ -1942,7 +1967,7 @@ public:
     VkImageSwapchainCreateInfoKHR s;
     MarshalVkImageSwapchainCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSwapchainCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSwapchainCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageSwapchainCreateInfoKHR* s);
     ~MarshalVkImageSwapchainCreateInfoKHR();
 };
 
@@ -1952,7 +1977,7 @@ public:
     VkBindImageMemorySwapchainInfoKHR s;
     MarshalVkBindImageMemorySwapchainInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImageMemorySwapchainInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImageMemorySwapchainInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindImageMemorySwapchainInfoKHR* s);
     ~MarshalVkBindImageMemorySwapchainInfoKHR();
 };
 
@@ -1962,7 +1987,7 @@ public:
     VkAcquireNextImageInfoKHR s;
     MarshalVkAcquireNextImageInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAcquireNextImageInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAcquireNextImageInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAcquireNextImageInfoKHR* s);
     ~MarshalVkAcquireNextImageInfoKHR();
 };
 
@@ -1972,7 +1997,7 @@ public:
     VkDeviceGroupPresentInfoKHR s;
     MarshalVkDeviceGroupPresentInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupPresentInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupPresentInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupPresentInfoKHR* s);
     ~MarshalVkDeviceGroupPresentInfoKHR();
 };
 
@@ -1982,7 +2007,7 @@ public:
     VkDeviceGroupDeviceCreateInfo s;
     MarshalVkDeviceGroupDeviceCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupDeviceCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupDeviceCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupDeviceCreateInfo* s);
     ~MarshalVkDeviceGroupDeviceCreateInfo();
 };
 
@@ -1992,7 +2017,7 @@ public:
     VkDeviceGroupSwapchainCreateInfoKHR s;
     MarshalVkDeviceGroupSwapchainCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupSwapchainCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceGroupSwapchainCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceGroupSwapchainCreateInfoKHR* s);
     ~MarshalVkDeviceGroupSwapchainCreateInfoKHR();
 };
 
@@ -2002,6 +2027,7 @@ public:
     VkDescriptorUpdateTemplateEntry s;
     MarshalVkDescriptorUpdateTemplateEntry(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorUpdateTemplateEntry* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorUpdateTemplateEntry* s);
 };
 
 class MarshalVkDescriptorUpdateTemplateCreateInfo {
@@ -2010,7 +2036,7 @@ public:
     VkDescriptorUpdateTemplateCreateInfo s;
     MarshalVkDescriptorUpdateTemplateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorUpdateTemplateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorUpdateTemplateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorUpdateTemplateCreateInfo* s);
     ~MarshalVkDescriptorUpdateTemplateCreateInfo();
 };
 
@@ -2020,7 +2046,7 @@ public:
     VkXYColorEXT s;
     MarshalVkXYColorEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkXYColorEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkXYColorEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkXYColorEXT* s);
 };
 
 class MarshalVkPhysicalDevicePresentIdFeaturesKHR {
@@ -2029,7 +2055,7 @@ public:
     VkPhysicalDevicePresentIdFeaturesKHR s;
     MarshalVkPhysicalDevicePresentIdFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentIdFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentIdFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePresentIdFeaturesKHR* s);
     ~MarshalVkPhysicalDevicePresentIdFeaturesKHR();
 };
 
@@ -2039,7 +2065,7 @@ public:
     VkPresentIdKHR s;
     MarshalVkPresentIdKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentIdKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPresentIdKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPresentIdKHR* s);
     ~MarshalVkPresentIdKHR();
 };
 
@@ -2049,7 +2075,7 @@ public:
     VkPhysicalDevicePresentWaitFeaturesKHR s;
     MarshalVkPhysicalDevicePresentWaitFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentWaitFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentWaitFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePresentWaitFeaturesKHR* s);
     ~MarshalVkPhysicalDevicePresentWaitFeaturesKHR();
 };
 
@@ -2059,7 +2085,7 @@ public:
     VkHdrMetadataEXT s;
     MarshalVkHdrMetadataEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHdrMetadataEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHdrMetadataEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkHdrMetadataEXT* s);
     ~MarshalVkHdrMetadataEXT();
 };
 
@@ -2069,7 +2095,7 @@ public:
     VkHdrVividDynamicMetadataHUAWEI s;
     MarshalVkHdrVividDynamicMetadataHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHdrVividDynamicMetadataHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHdrVividDynamicMetadataHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkHdrVividDynamicMetadataHUAWEI* s);
     ~MarshalVkHdrVividDynamicMetadataHUAWEI();
 };
 
@@ -2079,6 +2105,7 @@ public:
     VkViewportWScalingNV s;
     MarshalVkViewportWScalingNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkViewportWScalingNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkViewportWScalingNV* s);
 };
 
 class MarshalVkPipelineViewportWScalingStateCreateInfoNV {
@@ -2087,7 +2114,7 @@ public:
     VkPipelineViewportWScalingStateCreateInfoNV s;
     MarshalVkPipelineViewportWScalingStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportWScalingStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportWScalingStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportWScalingStateCreateInfoNV* s);
     ~MarshalVkPipelineViewportWScalingStateCreateInfoNV();
 };
 
@@ -2097,6 +2124,7 @@ public:
     VkViewportSwizzleNV s;
     MarshalVkViewportSwizzleNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkViewportSwizzleNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkViewportSwizzleNV* s);
 };
 
 class MarshalVkPipelineViewportSwizzleStateCreateInfoNV {
@@ -2105,7 +2133,7 @@ public:
     VkPipelineViewportSwizzleStateCreateInfoNV s;
     MarshalVkPipelineViewportSwizzleStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportSwizzleStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportSwizzleStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportSwizzleStateCreateInfoNV* s);
     ~MarshalVkPipelineViewportSwizzleStateCreateInfoNV();
 };
 
@@ -2115,7 +2143,7 @@ public:
     VkPhysicalDeviceDiscardRectanglePropertiesEXT s;
     MarshalVkPhysicalDeviceDiscardRectanglePropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDiscardRectanglePropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDiscardRectanglePropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDiscardRectanglePropertiesEXT* s);
     ~MarshalVkPhysicalDeviceDiscardRectanglePropertiesEXT();
 };
 
@@ -2125,7 +2153,7 @@ public:
     VkPipelineDiscardRectangleStateCreateInfoEXT s;
     MarshalVkPipelineDiscardRectangleStateCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDiscardRectangleStateCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineDiscardRectangleStateCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineDiscardRectangleStateCreateInfoEXT* s);
     ~MarshalVkPipelineDiscardRectangleStateCreateInfoEXT();
 };
 
@@ -2135,7 +2163,7 @@ public:
     VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX s;
     MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX* s);
     ~MarshalVkPhysicalDeviceMultiviewPerViewAttributesPropertiesNVX();
 };
 
@@ -2145,6 +2173,7 @@ public:
     VkInputAttachmentAspectReference s;
     MarshalVkInputAttachmentAspectReference(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkInputAttachmentAspectReference* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkInputAttachmentAspectReference* s);
 };
 
 class MarshalVkRenderPassInputAttachmentAspectCreateInfo {
@@ -2153,7 +2182,7 @@ public:
     VkRenderPassInputAttachmentAspectCreateInfo s;
     MarshalVkRenderPassInputAttachmentAspectCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassInputAttachmentAspectCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassInputAttachmentAspectCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassInputAttachmentAspectCreateInfo* s);
     ~MarshalVkRenderPassInputAttachmentAspectCreateInfo();
 };
 
@@ -2163,7 +2192,7 @@ public:
     VkPhysicalDeviceSurfaceInfo2KHR s;
     MarshalVkPhysicalDeviceSurfaceInfo2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSurfaceInfo2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSurfaceInfo2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSurfaceInfo2KHR* s);
     ~MarshalVkPhysicalDeviceSurfaceInfo2KHR();
 };
 
@@ -2173,7 +2202,7 @@ public:
     VkSurfaceCapabilities2KHR s;
     MarshalVkSurfaceCapabilities2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilities2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilities2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfaceCapabilities2KHR* s);
     ~MarshalVkSurfaceCapabilities2KHR();
 };
 
@@ -2183,7 +2212,7 @@ public:
     VkSurfaceFormat2KHR s;
     MarshalVkSurfaceFormat2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceFormat2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceFormat2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfaceFormat2KHR* s);
     ~MarshalVkSurfaceFormat2KHR();
 };
 
@@ -2193,7 +2222,7 @@ public:
     VkDisplayProperties2KHR s;
     MarshalVkDisplayProperties2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayProperties2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayProperties2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayProperties2KHR* s);
     ~MarshalVkDisplayProperties2KHR();
 };
 
@@ -2203,7 +2232,7 @@ public:
     VkDisplayPlaneProperties2KHR s;
     MarshalVkDisplayPlaneProperties2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneProperties2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneProperties2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPlaneProperties2KHR* s);
     ~MarshalVkDisplayPlaneProperties2KHR();
 };
 
@@ -2213,7 +2242,7 @@ public:
     VkDisplayModeProperties2KHR s;
     MarshalVkDisplayModeProperties2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModeProperties2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModeProperties2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayModeProperties2KHR* s);
     ~MarshalVkDisplayModeProperties2KHR();
 };
 
@@ -2223,7 +2252,7 @@ public:
     VkDisplayModeStereoPropertiesNV s;
     MarshalVkDisplayModeStereoPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModeStereoPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModeStereoPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayModeStereoPropertiesNV* s);
     ~MarshalVkDisplayModeStereoPropertiesNV();
 };
 
@@ -2233,7 +2262,7 @@ public:
     VkDisplayPlaneInfo2KHR s;
     MarshalVkDisplayPlaneInfo2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneInfo2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneInfo2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPlaneInfo2KHR* s);
     ~MarshalVkDisplayPlaneInfo2KHR();
 };
 
@@ -2243,7 +2272,7 @@ public:
     VkDisplayPlaneCapabilities2KHR s;
     MarshalVkDisplayPlaneCapabilities2KHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneCapabilities2KHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneCapabilities2KHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPlaneCapabilities2KHR* s);
     ~MarshalVkDisplayPlaneCapabilities2KHR();
 };
 
@@ -2253,7 +2282,7 @@ public:
     VkPhysicalDevice16BitStorageFeatures s;
     MarshalVkPhysicalDevice16BitStorageFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevice16BitStorageFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevice16BitStorageFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevice16BitStorageFeatures* s);
     ~MarshalVkPhysicalDevice16BitStorageFeatures();
 };
 
@@ -2263,7 +2292,7 @@ public:
     VkPhysicalDeviceSubgroupProperties s;
     MarshalVkPhysicalDeviceSubgroupProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubgroupProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubgroupProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSubgroupProperties* s);
     ~MarshalVkPhysicalDeviceSubgroupProperties();
 };
 
@@ -2273,7 +2302,7 @@ public:
     VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures s;
     MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures* s);
     ~MarshalVkPhysicalDeviceShaderSubgroupExtendedTypesFeatures();
 };
 
@@ -2283,7 +2312,7 @@ public:
     VkBufferMemoryRequirementsInfo2 s;
     MarshalVkBufferMemoryRequirementsInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferMemoryRequirementsInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferMemoryRequirementsInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferMemoryRequirementsInfo2* s);
     ~MarshalVkBufferMemoryRequirementsInfo2();
 };
 
@@ -2293,7 +2322,7 @@ public:
     VkDeviceBufferMemoryRequirements s;
     MarshalVkDeviceBufferMemoryRequirements(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceBufferMemoryRequirements* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceBufferMemoryRequirements* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceBufferMemoryRequirements* s);
     ~MarshalVkDeviceBufferMemoryRequirements();
 };
 
@@ -2303,7 +2332,7 @@ public:
     VkImageMemoryRequirementsInfo2 s;
     MarshalVkImageMemoryRequirementsInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageMemoryRequirementsInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageMemoryRequirementsInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageMemoryRequirementsInfo2* s);
     ~MarshalVkImageMemoryRequirementsInfo2();
 };
 
@@ -2313,7 +2342,7 @@ public:
     VkImageSparseMemoryRequirementsInfo2 s;
     MarshalVkImageSparseMemoryRequirementsInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSparseMemoryRequirementsInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSparseMemoryRequirementsInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageSparseMemoryRequirementsInfo2* s);
     ~MarshalVkImageSparseMemoryRequirementsInfo2();
 };
 
@@ -2323,7 +2352,7 @@ public:
     VkDeviceImageMemoryRequirements s;
     MarshalVkDeviceImageMemoryRequirements(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceImageMemoryRequirements* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceImageMemoryRequirements* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceImageMemoryRequirements* s);
     ~MarshalVkDeviceImageMemoryRequirements();
 };
 
@@ -2333,7 +2362,7 @@ public:
     VkMemoryRequirements2 s;
     MarshalVkMemoryRequirements2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryRequirements2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryRequirements2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryRequirements2* s);
     ~MarshalVkMemoryRequirements2();
 };
 
@@ -2343,7 +2372,7 @@ public:
     VkSparseImageMemoryRequirements2 s;
     MarshalVkSparseImageMemoryRequirements2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryRequirements2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSparseImageMemoryRequirements2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSparseImageMemoryRequirements2* s);
     ~MarshalVkSparseImageMemoryRequirements2();
 };
 
@@ -2353,7 +2382,7 @@ public:
     VkPhysicalDevicePointClippingProperties s;
     MarshalVkPhysicalDevicePointClippingProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePointClippingProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePointClippingProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePointClippingProperties* s);
     ~MarshalVkPhysicalDevicePointClippingProperties();
 };
 
@@ -2363,7 +2392,7 @@ public:
     VkMemoryDedicatedRequirements s;
     MarshalVkMemoryDedicatedRequirements(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryDedicatedRequirements* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryDedicatedRequirements* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryDedicatedRequirements* s);
     ~MarshalVkMemoryDedicatedRequirements();
 };
 
@@ -2373,7 +2402,7 @@ public:
     VkMemoryDedicatedAllocateInfo s;
     MarshalVkMemoryDedicatedAllocateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryDedicatedAllocateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryDedicatedAllocateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryDedicatedAllocateInfo* s);
     ~MarshalVkMemoryDedicatedAllocateInfo();
 };
 
@@ -2383,7 +2412,7 @@ public:
     VkImageViewUsageCreateInfo s;
     MarshalVkImageViewUsageCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewUsageCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewUsageCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewUsageCreateInfo* s);
     ~MarshalVkImageViewUsageCreateInfo();
 };
 
@@ -2393,7 +2422,7 @@ public:
     VkImageViewSlicedCreateInfoEXT s;
     MarshalVkImageViewSlicedCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewSlicedCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewSlicedCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewSlicedCreateInfoEXT* s);
     ~MarshalVkImageViewSlicedCreateInfoEXT();
 };
 
@@ -2403,7 +2432,7 @@ public:
     VkPipelineTessellationDomainOriginStateCreateInfo s;
     MarshalVkPipelineTessellationDomainOriginStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineTessellationDomainOriginStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineTessellationDomainOriginStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineTessellationDomainOriginStateCreateInfo* s);
     ~MarshalVkPipelineTessellationDomainOriginStateCreateInfo();
 };
 
@@ -2413,7 +2442,7 @@ public:
     VkSamplerYcbcrConversionInfo s;
     MarshalVkSamplerYcbcrConversionInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerYcbcrConversionInfo* s);
     ~MarshalVkSamplerYcbcrConversionInfo();
 };
 
@@ -2423,7 +2452,7 @@ public:
     VkSamplerYcbcrConversionCreateInfo s;
     MarshalVkSamplerYcbcrConversionCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerYcbcrConversionCreateInfo* s);
     ~MarshalVkSamplerYcbcrConversionCreateInfo();
 };
 
@@ -2433,7 +2462,7 @@ public:
     VkBindImagePlaneMemoryInfo s;
     MarshalVkBindImagePlaneMemoryInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImagePlaneMemoryInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindImagePlaneMemoryInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindImagePlaneMemoryInfo* s);
     ~MarshalVkBindImagePlaneMemoryInfo();
 };
 
@@ -2443,7 +2472,7 @@ public:
     VkImagePlaneMemoryRequirementsInfo s;
     MarshalVkImagePlaneMemoryRequirementsInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImagePlaneMemoryRequirementsInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImagePlaneMemoryRequirementsInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImagePlaneMemoryRequirementsInfo* s);
     ~MarshalVkImagePlaneMemoryRequirementsInfo();
 };
 
@@ -2453,7 +2482,7 @@ public:
     VkPhysicalDeviceSamplerYcbcrConversionFeatures s;
     MarshalVkPhysicalDeviceSamplerYcbcrConversionFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSamplerYcbcrConversionFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSamplerYcbcrConversionFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSamplerYcbcrConversionFeatures* s);
     ~MarshalVkPhysicalDeviceSamplerYcbcrConversionFeatures();
 };
 
@@ -2463,7 +2492,7 @@ public:
     VkSamplerYcbcrConversionImageFormatProperties s;
     MarshalVkSamplerYcbcrConversionImageFormatProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionImageFormatProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionImageFormatProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerYcbcrConversionImageFormatProperties* s);
     ~MarshalVkSamplerYcbcrConversionImageFormatProperties();
 };
 
@@ -2473,7 +2502,7 @@ public:
     VkTextureLODGatherFormatPropertiesAMD s;
     MarshalVkTextureLODGatherFormatPropertiesAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkTextureLODGatherFormatPropertiesAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkTextureLODGatherFormatPropertiesAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkTextureLODGatherFormatPropertiesAMD* s);
     ~MarshalVkTextureLODGatherFormatPropertiesAMD();
 };
 
@@ -2483,7 +2512,7 @@ public:
     VkConditionalRenderingBeginInfoEXT s;
     MarshalVkConditionalRenderingBeginInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkConditionalRenderingBeginInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkConditionalRenderingBeginInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkConditionalRenderingBeginInfoEXT* s);
     ~MarshalVkConditionalRenderingBeginInfoEXT();
 };
 
@@ -2493,7 +2522,7 @@ public:
     VkProtectedSubmitInfo s;
     MarshalVkProtectedSubmitInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkProtectedSubmitInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkProtectedSubmitInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkProtectedSubmitInfo* s);
     ~MarshalVkProtectedSubmitInfo();
 };
 
@@ -2503,7 +2532,7 @@ public:
     VkPhysicalDeviceProtectedMemoryFeatures s;
     MarshalVkPhysicalDeviceProtectedMemoryFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProtectedMemoryFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProtectedMemoryFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceProtectedMemoryFeatures* s);
     ~MarshalVkPhysicalDeviceProtectedMemoryFeatures();
 };
 
@@ -2513,7 +2542,7 @@ public:
     VkPhysicalDeviceProtectedMemoryProperties s;
     MarshalVkPhysicalDeviceProtectedMemoryProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProtectedMemoryProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProtectedMemoryProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceProtectedMemoryProperties* s);
     ~MarshalVkPhysicalDeviceProtectedMemoryProperties();
 };
 
@@ -2523,7 +2552,7 @@ public:
     VkDeviceQueueInfo2 s;
     MarshalVkDeviceQueueInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceQueueInfo2* s);
     ~MarshalVkDeviceQueueInfo2();
 };
 
@@ -2533,7 +2562,7 @@ public:
     VkPipelineCoverageToColorStateCreateInfoNV s;
     MarshalVkPipelineCoverageToColorStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCoverageToColorStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCoverageToColorStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCoverageToColorStateCreateInfoNV* s);
     ~MarshalVkPipelineCoverageToColorStateCreateInfoNV();
 };
 
@@ -2543,7 +2572,7 @@ public:
     VkPhysicalDeviceSamplerFilterMinmaxProperties s;
     MarshalVkPhysicalDeviceSamplerFilterMinmaxProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSamplerFilterMinmaxProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSamplerFilterMinmaxProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSamplerFilterMinmaxProperties* s);
     ~MarshalVkPhysicalDeviceSamplerFilterMinmaxProperties();
 };
 
@@ -2553,6 +2582,7 @@ public:
     VkSampleLocationEXT s;
     MarshalVkSampleLocationEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSampleLocationEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSampleLocationEXT* s);
 };
 
 class MarshalVkSampleLocationsInfoEXT {
@@ -2561,7 +2591,7 @@ public:
     VkSampleLocationsInfoEXT s;
     MarshalVkSampleLocationsInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSampleLocationsInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSampleLocationsInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSampleLocationsInfoEXT* s);
     ~MarshalVkSampleLocationsInfoEXT();
 };
 
@@ -2571,6 +2601,7 @@ public:
     VkAttachmentSampleLocationsEXT s;
     MarshalVkAttachmentSampleLocationsEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentSampleLocationsEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentSampleLocationsEXT* s);
 };
 
 class MarshalVkSubpassSampleLocationsEXT {
@@ -2579,6 +2610,7 @@ public:
     VkSubpassSampleLocationsEXT s;
     MarshalVkSubpassSampleLocationsEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassSampleLocationsEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassSampleLocationsEXT* s);
 };
 
 class MarshalVkRenderPassSampleLocationsBeginInfoEXT {
@@ -2587,7 +2619,7 @@ public:
     VkRenderPassSampleLocationsBeginInfoEXT s;
     MarshalVkRenderPassSampleLocationsBeginInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassSampleLocationsBeginInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassSampleLocationsBeginInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassSampleLocationsBeginInfoEXT* s);
     ~MarshalVkRenderPassSampleLocationsBeginInfoEXT();
 };
 
@@ -2597,7 +2629,7 @@ public:
     VkPipelineSampleLocationsStateCreateInfoEXT s;
     MarshalVkPipelineSampleLocationsStateCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineSampleLocationsStateCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineSampleLocationsStateCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineSampleLocationsStateCreateInfoEXT* s);
     ~MarshalVkPipelineSampleLocationsStateCreateInfoEXT();
 };
 
@@ -2607,7 +2639,7 @@ public:
     VkPhysicalDeviceSampleLocationsPropertiesEXT s;
     MarshalVkPhysicalDeviceSampleLocationsPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSampleLocationsPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSampleLocationsPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSampleLocationsPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceSampleLocationsPropertiesEXT();
 };
 
@@ -2617,7 +2649,7 @@ public:
     VkMultisamplePropertiesEXT s;
     MarshalVkMultisamplePropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultisamplePropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultisamplePropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMultisamplePropertiesEXT* s);
     ~MarshalVkMultisamplePropertiesEXT();
 };
 
@@ -2627,7 +2659,7 @@ public:
     VkSamplerReductionModeCreateInfo s;
     MarshalVkSamplerReductionModeCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerReductionModeCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerReductionModeCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerReductionModeCreateInfo* s);
     ~MarshalVkSamplerReductionModeCreateInfo();
 };
 
@@ -2637,7 +2669,7 @@ public:
     VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT s;
     MarshalVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceBlendOperationAdvancedFeaturesEXT();
 };
 
@@ -2647,7 +2679,7 @@ public:
     VkPhysicalDeviceMultiDrawFeaturesEXT s;
     MarshalVkPhysicalDeviceMultiDrawFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiDrawFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiDrawFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultiDrawFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceMultiDrawFeaturesEXT();
 };
 
@@ -2657,7 +2689,7 @@ public:
     VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT s;
     MarshalVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceBlendOperationAdvancedPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceBlendOperationAdvancedPropertiesEXT();
 };
 
@@ -2667,7 +2699,7 @@ public:
     VkPipelineColorBlendAdvancedStateCreateInfoEXT s;
     MarshalVkPipelineColorBlendAdvancedStateCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorBlendAdvancedStateCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorBlendAdvancedStateCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineColorBlendAdvancedStateCreateInfoEXT* s);
     ~MarshalVkPipelineColorBlendAdvancedStateCreateInfoEXT();
 };
 
@@ -2677,7 +2709,7 @@ public:
     VkPhysicalDeviceInlineUniformBlockFeatures s;
     MarshalVkPhysicalDeviceInlineUniformBlockFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInlineUniformBlockFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInlineUniformBlockFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceInlineUniformBlockFeatures* s);
     ~MarshalVkPhysicalDeviceInlineUniformBlockFeatures();
 };
 
@@ -2687,7 +2719,7 @@ public:
     VkPhysicalDeviceInlineUniformBlockProperties s;
     MarshalVkPhysicalDeviceInlineUniformBlockProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInlineUniformBlockProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInlineUniformBlockProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceInlineUniformBlockProperties* s);
     ~MarshalVkPhysicalDeviceInlineUniformBlockProperties();
 };
 
@@ -2697,7 +2729,7 @@ public:
     VkWriteDescriptorSetInlineUniformBlock s;
     MarshalVkWriteDescriptorSetInlineUniformBlock(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetInlineUniformBlock* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetInlineUniformBlock* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkWriteDescriptorSetInlineUniformBlock* s);
     ~MarshalVkWriteDescriptorSetInlineUniformBlock();
 };
 
@@ -2707,7 +2739,7 @@ public:
     VkDescriptorPoolInlineUniformBlockCreateInfo s;
     MarshalVkDescriptorPoolInlineUniformBlockCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorPoolInlineUniformBlockCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorPoolInlineUniformBlockCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorPoolInlineUniformBlockCreateInfo* s);
     ~MarshalVkDescriptorPoolInlineUniformBlockCreateInfo();
 };
 
@@ -2717,7 +2749,7 @@ public:
     VkPipelineCoverageModulationStateCreateInfoNV s;
     MarshalVkPipelineCoverageModulationStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCoverageModulationStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCoverageModulationStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCoverageModulationStateCreateInfoNV* s);
     ~MarshalVkPipelineCoverageModulationStateCreateInfoNV();
 };
 
@@ -2727,7 +2759,7 @@ public:
     VkImageFormatListCreateInfo s;
     MarshalVkImageFormatListCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageFormatListCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageFormatListCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageFormatListCreateInfo* s);
     ~MarshalVkImageFormatListCreateInfo();
 };
 
@@ -2737,7 +2769,7 @@ public:
     VkValidationCacheCreateInfoEXT s;
     MarshalVkValidationCacheCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationCacheCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkValidationCacheCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkValidationCacheCreateInfoEXT* s);
     ~MarshalVkValidationCacheCreateInfoEXT();
 };
 
@@ -2747,7 +2779,7 @@ public:
     VkShaderModuleValidationCacheCreateInfoEXT s;
     MarshalVkShaderModuleValidationCacheCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderModuleValidationCacheCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderModuleValidationCacheCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkShaderModuleValidationCacheCreateInfoEXT* s);
     ~MarshalVkShaderModuleValidationCacheCreateInfoEXT();
 };
 
@@ -2757,7 +2789,7 @@ public:
     VkPhysicalDeviceMaintenance3Properties s;
     MarshalVkPhysicalDeviceMaintenance3Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance3Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance3Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMaintenance3Properties* s);
     ~MarshalVkPhysicalDeviceMaintenance3Properties();
 };
 
@@ -2767,7 +2799,7 @@ public:
     VkPhysicalDeviceMaintenance4Features s;
     MarshalVkPhysicalDeviceMaintenance4Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance4Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance4Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMaintenance4Features* s);
     ~MarshalVkPhysicalDeviceMaintenance4Features();
 };
 
@@ -2777,7 +2809,7 @@ public:
     VkPhysicalDeviceMaintenance4Properties s;
     MarshalVkPhysicalDeviceMaintenance4Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance4Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance4Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMaintenance4Properties* s);
     ~MarshalVkPhysicalDeviceMaintenance4Properties();
 };
 
@@ -2787,7 +2819,7 @@ public:
     VkPhysicalDeviceMaintenance5Features s;
     MarshalVkPhysicalDeviceMaintenance5Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance5Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance5Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMaintenance5Features* s);
     ~MarshalVkPhysicalDeviceMaintenance5Features();
 };
 
@@ -2797,7 +2829,7 @@ public:
     VkPhysicalDeviceMaintenance5Properties s;
     MarshalVkPhysicalDeviceMaintenance5Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance5Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance5Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMaintenance5Properties* s);
     ~MarshalVkPhysicalDeviceMaintenance5Properties();
 };
 
@@ -2807,7 +2839,7 @@ public:
     VkPhysicalDeviceMaintenance6Features s;
     MarshalVkPhysicalDeviceMaintenance6Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance6Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance6Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMaintenance6Features* s);
     ~MarshalVkPhysicalDeviceMaintenance6Features();
 };
 
@@ -2817,7 +2849,7 @@ public:
     VkPhysicalDeviceMaintenance6Properties s;
     MarshalVkPhysicalDeviceMaintenance6Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance6Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMaintenance6Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMaintenance6Properties* s);
     ~MarshalVkPhysicalDeviceMaintenance6Properties();
 };
 
@@ -2827,7 +2859,7 @@ public:
     VkRenderingAreaInfo s;
     MarshalVkRenderingAreaInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingAreaInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingAreaInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderingAreaInfo* s);
     ~MarshalVkRenderingAreaInfo();
 };
 
@@ -2837,7 +2869,7 @@ public:
     VkDescriptorSetLayoutSupport s;
     MarshalVkDescriptorSetLayoutSupport(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutSupport* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutSupport* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetLayoutSupport* s);
     ~MarshalVkDescriptorSetLayoutSupport();
 };
 
@@ -2847,7 +2879,7 @@ public:
     VkPhysicalDeviceShaderDrawParametersFeatures s;
     MarshalVkPhysicalDeviceShaderDrawParametersFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderDrawParametersFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderDrawParametersFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderDrawParametersFeatures* s);
     ~MarshalVkPhysicalDeviceShaderDrawParametersFeatures();
 };
 
@@ -2857,7 +2889,7 @@ public:
     VkPhysicalDeviceShaderFloat16Int8Features s;
     MarshalVkPhysicalDeviceShaderFloat16Int8Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderFloat16Int8Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderFloat16Int8Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderFloat16Int8Features* s);
     ~MarshalVkPhysicalDeviceShaderFloat16Int8Features();
 };
 
@@ -2867,7 +2899,7 @@ public:
     VkPhysicalDeviceFloatControlsProperties s;
     MarshalVkPhysicalDeviceFloatControlsProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFloatControlsProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFloatControlsProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFloatControlsProperties* s);
     ~MarshalVkPhysicalDeviceFloatControlsProperties();
 };
 
@@ -2877,7 +2909,7 @@ public:
     VkPhysicalDeviceHostQueryResetFeatures s;
     MarshalVkPhysicalDeviceHostQueryResetFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHostQueryResetFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHostQueryResetFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceHostQueryResetFeatures* s);
     ~MarshalVkPhysicalDeviceHostQueryResetFeatures();
 };
 
@@ -2887,7 +2919,7 @@ public:
     VkDeviceQueueGlobalPriorityCreateInfo s;
     MarshalVkDeviceQueueGlobalPriorityCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueGlobalPriorityCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueGlobalPriorityCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceQueueGlobalPriorityCreateInfo* s);
     ~MarshalVkDeviceQueueGlobalPriorityCreateInfo();
 };
 
@@ -2897,7 +2929,7 @@ public:
     VkPhysicalDeviceGlobalPriorityQueryFeatures s;
     MarshalVkPhysicalDeviceGlobalPriorityQueryFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGlobalPriorityQueryFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGlobalPriorityQueryFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceGlobalPriorityQueryFeatures* s);
     ~MarshalVkPhysicalDeviceGlobalPriorityQueryFeatures();
 };
 
@@ -2907,7 +2939,7 @@ public:
     VkQueueFamilyGlobalPriorityProperties s;
     MarshalVkQueueFamilyGlobalPriorityProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyGlobalPriorityProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyGlobalPriorityProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueueFamilyGlobalPriorityProperties* s);
     ~MarshalVkQueueFamilyGlobalPriorityProperties();
 };
 
@@ -2917,7 +2949,7 @@ public:
     VkDebugUtilsObjectNameInfoEXT s;
     MarshalVkDebugUtilsObjectNameInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsObjectNameInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsObjectNameInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugUtilsObjectNameInfoEXT* s);
     ~MarshalVkDebugUtilsObjectNameInfoEXT();
 };
 
@@ -2927,7 +2959,7 @@ public:
     VkDebugUtilsObjectTagInfoEXT s;
     MarshalVkDebugUtilsObjectTagInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsObjectTagInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsObjectTagInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugUtilsObjectTagInfoEXT* s);
     ~MarshalVkDebugUtilsObjectTagInfoEXT();
 };
 
@@ -2937,7 +2969,7 @@ public:
     VkDebugUtilsLabelEXT s;
     MarshalVkDebugUtilsLabelEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsLabelEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsLabelEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugUtilsLabelEXT* s);
     ~MarshalVkDebugUtilsLabelEXT();
 };
 
@@ -2947,7 +2979,7 @@ public:
     VkDebugUtilsMessengerCreateInfoEXT s;
     MarshalVkDebugUtilsMessengerCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsMessengerCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsMessengerCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugUtilsMessengerCreateInfoEXT* s);
     ~MarshalVkDebugUtilsMessengerCreateInfoEXT();
 };
 
@@ -2957,7 +2989,7 @@ public:
     VkDebugUtilsMessengerCallbackDataEXT s;
     MarshalVkDebugUtilsMessengerCallbackDataEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsMessengerCallbackDataEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDebugUtilsMessengerCallbackDataEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDebugUtilsMessengerCallbackDataEXT* s);
     ~MarshalVkDebugUtilsMessengerCallbackDataEXT();
 };
 
@@ -2967,7 +2999,7 @@ public:
     VkImportMemoryHostPointerInfoEXT s;
     MarshalVkImportMemoryHostPointerInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImportMemoryHostPointerInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImportMemoryHostPointerInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImportMemoryHostPointerInfoEXT* s);
     ~MarshalVkImportMemoryHostPointerInfoEXT();
 };
 
@@ -2977,7 +3009,7 @@ public:
     VkMemoryHostPointerPropertiesEXT s;
     MarshalVkMemoryHostPointerPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryHostPointerPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryHostPointerPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryHostPointerPropertiesEXT* s);
     ~MarshalVkMemoryHostPointerPropertiesEXT();
 };
 
@@ -2987,7 +3019,7 @@ public:
     VkPhysicalDeviceExternalMemoryHostPropertiesEXT s;
     MarshalVkPhysicalDeviceExternalMemoryHostPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalMemoryHostPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExternalMemoryHostPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExternalMemoryHostPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceExternalMemoryHostPropertiesEXT();
 };
 
@@ -2997,7 +3029,7 @@ public:
     VkPhysicalDeviceConservativeRasterizationPropertiesEXT s;
     MarshalVkPhysicalDeviceConservativeRasterizationPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceConservativeRasterizationPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceConservativeRasterizationPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceConservativeRasterizationPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceConservativeRasterizationPropertiesEXT();
 };
 
@@ -3007,7 +3039,7 @@ public:
     VkCalibratedTimestampInfoKHR s;
     MarshalVkCalibratedTimestampInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCalibratedTimestampInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCalibratedTimestampInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCalibratedTimestampInfoKHR* s);
     ~MarshalVkCalibratedTimestampInfoKHR();
 };
 
@@ -3017,7 +3049,7 @@ public:
     VkPhysicalDeviceShaderCorePropertiesAMD s;
     MarshalVkPhysicalDeviceShaderCorePropertiesAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCorePropertiesAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCorePropertiesAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderCorePropertiesAMD* s);
     ~MarshalVkPhysicalDeviceShaderCorePropertiesAMD();
 };
 
@@ -3027,7 +3059,7 @@ public:
     VkPhysicalDeviceShaderCoreProperties2AMD s;
     MarshalVkPhysicalDeviceShaderCoreProperties2AMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCoreProperties2AMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCoreProperties2AMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderCoreProperties2AMD* s);
     ~MarshalVkPhysicalDeviceShaderCoreProperties2AMD();
 };
 
@@ -3037,7 +3069,7 @@ public:
     VkPipelineRasterizationConservativeStateCreateInfoEXT s;
     MarshalVkPipelineRasterizationConservativeStateCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationConservativeStateCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationConservativeStateCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRasterizationConservativeStateCreateInfoEXT* s);
     ~MarshalVkPipelineRasterizationConservativeStateCreateInfoEXT();
 };
 
@@ -3047,7 +3079,7 @@ public:
     VkPhysicalDeviceDescriptorIndexingFeatures s;
     MarshalVkPhysicalDeviceDescriptorIndexingFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorIndexingFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorIndexingFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDescriptorIndexingFeatures* s);
     ~MarshalVkPhysicalDeviceDescriptorIndexingFeatures();
 };
 
@@ -3057,7 +3089,7 @@ public:
     VkPhysicalDeviceDescriptorIndexingProperties s;
     MarshalVkPhysicalDeviceDescriptorIndexingProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorIndexingProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorIndexingProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDescriptorIndexingProperties* s);
     ~MarshalVkPhysicalDeviceDescriptorIndexingProperties();
 };
 
@@ -3067,7 +3099,7 @@ public:
     VkDescriptorSetLayoutBindingFlagsCreateInfo s;
     MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutBindingFlagsCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutBindingFlagsCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetLayoutBindingFlagsCreateInfo* s);
     ~MarshalVkDescriptorSetLayoutBindingFlagsCreateInfo();
 };
 
@@ -3077,7 +3109,7 @@ public:
     VkDescriptorSetVariableDescriptorCountAllocateInfo s;
     MarshalVkDescriptorSetVariableDescriptorCountAllocateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetVariableDescriptorCountAllocateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetVariableDescriptorCountAllocateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetVariableDescriptorCountAllocateInfo* s);
     ~MarshalVkDescriptorSetVariableDescriptorCountAllocateInfo();
 };
 
@@ -3087,7 +3119,7 @@ public:
     VkDescriptorSetVariableDescriptorCountLayoutSupport s;
     MarshalVkDescriptorSetVariableDescriptorCountLayoutSupport(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetVariableDescriptorCountLayoutSupport* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetVariableDescriptorCountLayoutSupport* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetVariableDescriptorCountLayoutSupport* s);
     ~MarshalVkDescriptorSetVariableDescriptorCountLayoutSupport();
 };
 
@@ -3097,7 +3129,7 @@ public:
     VkAttachmentDescription2 s;
     MarshalVkAttachmentDescription2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentDescription2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentDescription2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentDescription2* s);
     ~MarshalVkAttachmentDescription2();
 };
 
@@ -3107,7 +3139,7 @@ public:
     VkAttachmentReference2 s;
     MarshalVkAttachmentReference2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentReference2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentReference2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentReference2* s);
     ~MarshalVkAttachmentReference2();
 };
 
@@ -3117,7 +3149,7 @@ public:
     VkSubpassDescription2 s;
     MarshalVkSubpassDescription2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDescription2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDescription2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassDescription2* s);
     ~MarshalVkSubpassDescription2();
 };
 
@@ -3127,7 +3159,7 @@ public:
     VkSubpassDependency2 s;
     MarshalVkSubpassDependency2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDependency2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDependency2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassDependency2* s);
     ~MarshalVkSubpassDependency2();
 };
 
@@ -3137,7 +3169,7 @@ public:
     VkRenderPassCreateInfo2 s;
     MarshalVkRenderPassCreateInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreateInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreateInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassCreateInfo2* s);
     ~MarshalVkRenderPassCreateInfo2();
 };
 
@@ -3147,7 +3179,7 @@ public:
     VkSubpassBeginInfo s;
     MarshalVkSubpassBeginInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassBeginInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassBeginInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassBeginInfo* s);
     ~MarshalVkSubpassBeginInfo();
 };
 
@@ -3157,7 +3189,7 @@ public:
     VkSubpassEndInfo s;
     MarshalVkSubpassEndInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassEndInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassEndInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassEndInfo* s);
     ~MarshalVkSubpassEndInfo();
 };
 
@@ -3167,7 +3199,7 @@ public:
     VkPhysicalDeviceTimelineSemaphoreFeatures s;
     MarshalVkPhysicalDeviceTimelineSemaphoreFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTimelineSemaphoreFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTimelineSemaphoreFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTimelineSemaphoreFeatures* s);
     ~MarshalVkPhysicalDeviceTimelineSemaphoreFeatures();
 };
 
@@ -3177,7 +3209,7 @@ public:
     VkPhysicalDeviceTimelineSemaphoreProperties s;
     MarshalVkPhysicalDeviceTimelineSemaphoreProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTimelineSemaphoreProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTimelineSemaphoreProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTimelineSemaphoreProperties* s);
     ~MarshalVkPhysicalDeviceTimelineSemaphoreProperties();
 };
 
@@ -3187,7 +3219,7 @@ public:
     VkSemaphoreTypeCreateInfo s;
     MarshalVkSemaphoreTypeCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreTypeCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreTypeCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSemaphoreTypeCreateInfo* s);
     ~MarshalVkSemaphoreTypeCreateInfo();
 };
 
@@ -3197,7 +3229,7 @@ public:
     VkTimelineSemaphoreSubmitInfo s;
     MarshalVkTimelineSemaphoreSubmitInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkTimelineSemaphoreSubmitInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkTimelineSemaphoreSubmitInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkTimelineSemaphoreSubmitInfo* s);
     ~MarshalVkTimelineSemaphoreSubmitInfo();
 };
 
@@ -3207,7 +3239,7 @@ public:
     VkSemaphoreWaitInfo s;
     MarshalVkSemaphoreWaitInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreWaitInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreWaitInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSemaphoreWaitInfo* s);
     ~MarshalVkSemaphoreWaitInfo();
 };
 
@@ -3217,7 +3249,7 @@ public:
     VkSemaphoreSignalInfo s;
     MarshalVkSemaphoreSignalInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreSignalInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreSignalInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSemaphoreSignalInfo* s);
     ~MarshalVkSemaphoreSignalInfo();
 };
 
@@ -3227,6 +3259,7 @@ public:
     VkVertexInputBindingDivisorDescription s;
     MarshalVkVertexInputBindingDivisorDescription(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVertexInputBindingDivisorDescription* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVertexInputBindingDivisorDescription* s);
 };
 
 class MarshalVkPipelineVertexInputDivisorStateCreateInfo {
@@ -3235,7 +3268,7 @@ public:
     VkPipelineVertexInputDivisorStateCreateInfo s;
     MarshalVkPipelineVertexInputDivisorStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineVertexInputDivisorStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineVertexInputDivisorStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineVertexInputDivisorStateCreateInfo* s);
     ~MarshalVkPipelineVertexInputDivisorStateCreateInfo();
 };
 
@@ -3245,7 +3278,7 @@ public:
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT s;
     MarshalVkPhysicalDeviceVertexAttributeDivisorPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceVertexAttributeDivisorPropertiesEXT();
 };
 
@@ -3255,7 +3288,7 @@ public:
     VkPhysicalDeviceVertexAttributeDivisorProperties s;
     MarshalVkPhysicalDeviceVertexAttributeDivisorProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVertexAttributeDivisorProperties* s);
     ~MarshalVkPhysicalDeviceVertexAttributeDivisorProperties();
 };
 
@@ -3265,7 +3298,7 @@ public:
     VkPhysicalDevicePCIBusInfoPropertiesEXT s;
     MarshalVkPhysicalDevicePCIBusInfoPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePCIBusInfoPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePCIBusInfoPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePCIBusInfoPropertiesEXT* s);
     ~MarshalVkPhysicalDevicePCIBusInfoPropertiesEXT();
 };
 
@@ -3275,7 +3308,7 @@ public:
     VkCommandBufferInheritanceConditionalRenderingInfoEXT s;
     MarshalVkCommandBufferInheritanceConditionalRenderingInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceConditionalRenderingInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceConditionalRenderingInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferInheritanceConditionalRenderingInfoEXT* s);
     ~MarshalVkCommandBufferInheritanceConditionalRenderingInfoEXT();
 };
 
@@ -3285,7 +3318,7 @@ public:
     VkPhysicalDevice8BitStorageFeatures s;
     MarshalVkPhysicalDevice8BitStorageFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevice8BitStorageFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevice8BitStorageFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevice8BitStorageFeatures* s);
     ~MarshalVkPhysicalDevice8BitStorageFeatures();
 };
 
@@ -3295,7 +3328,7 @@ public:
     VkPhysicalDeviceConditionalRenderingFeaturesEXT s;
     MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceConditionalRenderingFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceConditionalRenderingFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceConditionalRenderingFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceConditionalRenderingFeaturesEXT();
 };
 
@@ -3305,7 +3338,7 @@ public:
     VkPhysicalDeviceVulkanMemoryModelFeatures s;
     MarshalVkPhysicalDeviceVulkanMemoryModelFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkanMemoryModelFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkanMemoryModelFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkanMemoryModelFeatures* s);
     ~MarshalVkPhysicalDeviceVulkanMemoryModelFeatures();
 };
 
@@ -3315,7 +3348,7 @@ public:
     VkPhysicalDeviceShaderAtomicInt64Features s;
     MarshalVkPhysicalDeviceShaderAtomicInt64Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicInt64Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicInt64Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderAtomicInt64Features* s);
     ~MarshalVkPhysicalDeviceShaderAtomicInt64Features();
 };
 
@@ -3325,7 +3358,7 @@ public:
     VkPhysicalDeviceShaderAtomicFloatFeaturesEXT s;
     MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicFloatFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicFloatFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderAtomicFloatFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceShaderAtomicFloatFeaturesEXT();
 };
 
@@ -3335,7 +3368,7 @@ public:
     VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT s;
     MarshalVkPhysicalDeviceShaderAtomicFloat2FeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderAtomicFloat2FeaturesEXT* s);
     ~MarshalVkPhysicalDeviceShaderAtomicFloat2FeaturesEXT();
 };
 
@@ -3345,7 +3378,7 @@ public:
     VkPhysicalDeviceVertexAttributeDivisorFeatures s;
     MarshalVkPhysicalDeviceVertexAttributeDivisorFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeDivisorFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVertexAttributeDivisorFeatures* s);
     ~MarshalVkPhysicalDeviceVertexAttributeDivisorFeatures();
 };
 
@@ -3355,7 +3388,7 @@ public:
     VkQueueFamilyCheckpointPropertiesNV s;
     MarshalVkQueueFamilyCheckpointPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyCheckpointPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyCheckpointPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueueFamilyCheckpointPropertiesNV* s);
     ~MarshalVkQueueFamilyCheckpointPropertiesNV();
 };
 
@@ -3365,7 +3398,7 @@ public:
     VkCheckpointDataNV s;
     MarshalVkCheckpointDataNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCheckpointDataNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCheckpointDataNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCheckpointDataNV* s);
     ~MarshalVkCheckpointDataNV();
 };
 
@@ -3375,7 +3408,7 @@ public:
     VkPhysicalDeviceDepthStencilResolveProperties s;
     MarshalVkPhysicalDeviceDepthStencilResolveProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthStencilResolveProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthStencilResolveProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDepthStencilResolveProperties* s);
     ~MarshalVkPhysicalDeviceDepthStencilResolveProperties();
 };
 
@@ -3385,7 +3418,7 @@ public:
     VkSubpassDescriptionDepthStencilResolve s;
     MarshalVkSubpassDescriptionDepthStencilResolve(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDescriptionDepthStencilResolve* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassDescriptionDepthStencilResolve* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassDescriptionDepthStencilResolve* s);
     ~MarshalVkSubpassDescriptionDepthStencilResolve();
 };
 
@@ -3395,7 +3428,7 @@ public:
     VkImageViewASTCDecodeModeEXT s;
     MarshalVkImageViewASTCDecodeModeEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewASTCDecodeModeEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewASTCDecodeModeEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewASTCDecodeModeEXT* s);
     ~MarshalVkImageViewASTCDecodeModeEXT();
 };
 
@@ -3405,7 +3438,7 @@ public:
     VkPhysicalDeviceASTCDecodeFeaturesEXT s;
     MarshalVkPhysicalDeviceASTCDecodeFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceASTCDecodeFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceASTCDecodeFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceASTCDecodeFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceASTCDecodeFeaturesEXT();
 };
 
@@ -3415,7 +3448,7 @@ public:
     VkPhysicalDeviceTransformFeedbackFeaturesEXT s;
     MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTransformFeedbackFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTransformFeedbackFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTransformFeedbackFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceTransformFeedbackFeaturesEXT();
 };
 
@@ -3425,7 +3458,7 @@ public:
     VkPhysicalDeviceTransformFeedbackPropertiesEXT s;
     MarshalVkPhysicalDeviceTransformFeedbackPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTransformFeedbackPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTransformFeedbackPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTransformFeedbackPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceTransformFeedbackPropertiesEXT();
 };
 
@@ -3435,7 +3468,7 @@ public:
     VkPipelineRasterizationStateStreamCreateInfoEXT s;
     MarshalVkPipelineRasterizationStateStreamCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationStateStreamCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationStateStreamCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRasterizationStateStreamCreateInfoEXT* s);
     ~MarshalVkPipelineRasterizationStateStreamCreateInfoEXT();
 };
 
@@ -3445,7 +3478,7 @@ public:
     VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV s;
     MarshalVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRepresentativeFragmentTestFeaturesNV* s);
     ~MarshalVkPhysicalDeviceRepresentativeFragmentTestFeaturesNV();
 };
 
@@ -3455,7 +3488,7 @@ public:
     VkPipelineRepresentativeFragmentTestStateCreateInfoNV s;
     MarshalVkPipelineRepresentativeFragmentTestStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRepresentativeFragmentTestStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRepresentativeFragmentTestStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRepresentativeFragmentTestStateCreateInfoNV* s);
     ~MarshalVkPipelineRepresentativeFragmentTestStateCreateInfoNV();
 };
 
@@ -3465,7 +3498,7 @@ public:
     VkPhysicalDeviceExclusiveScissorFeaturesNV s;
     MarshalVkPhysicalDeviceExclusiveScissorFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExclusiveScissorFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExclusiveScissorFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExclusiveScissorFeaturesNV* s);
     ~MarshalVkPhysicalDeviceExclusiveScissorFeaturesNV();
 };
 
@@ -3475,7 +3508,7 @@ public:
     VkPipelineViewportExclusiveScissorStateCreateInfoNV s;
     MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportExclusiveScissorStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportExclusiveScissorStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportExclusiveScissorStateCreateInfoNV* s);
     ~MarshalVkPipelineViewportExclusiveScissorStateCreateInfoNV();
 };
 
@@ -3485,7 +3518,7 @@ public:
     VkPhysicalDeviceCornerSampledImageFeaturesNV s;
     MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCornerSampledImageFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCornerSampledImageFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCornerSampledImageFeaturesNV* s);
     ~MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV();
 };
 
@@ -3495,7 +3528,7 @@ public:
     VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR s;
     MarshalVkPhysicalDeviceComputeShaderDerivativesFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceComputeShaderDerivativesFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceComputeShaderDerivativesFeaturesKHR();
 };
 
@@ -3505,7 +3538,7 @@ public:
     VkPhysicalDeviceComputeShaderDerivativesPropertiesKHR s;
     MarshalVkPhysicalDeviceComputeShaderDerivativesPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceComputeShaderDerivativesPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceComputeShaderDerivativesPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceComputeShaderDerivativesPropertiesKHR* s);
     ~MarshalVkPhysicalDeviceComputeShaderDerivativesPropertiesKHR();
 };
 
@@ -3515,7 +3548,7 @@ public:
     VkPhysicalDeviceShaderImageFootprintFeaturesNV s;
     MarshalVkPhysicalDeviceShaderImageFootprintFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderImageFootprintFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderImageFootprintFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderImageFootprintFeaturesNV* s);
     ~MarshalVkPhysicalDeviceShaderImageFootprintFeaturesNV();
 };
 
@@ -3525,7 +3558,7 @@ public:
     VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV s;
     MarshalVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV* s);
     ~MarshalVkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV();
 };
 
@@ -3535,7 +3568,7 @@ public:
     VkPhysicalDeviceCopyMemoryIndirectFeaturesNV s;
     MarshalVkPhysicalDeviceCopyMemoryIndirectFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCopyMemoryIndirectFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCopyMemoryIndirectFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCopyMemoryIndirectFeaturesNV* s);
     ~MarshalVkPhysicalDeviceCopyMemoryIndirectFeaturesNV();
 };
 
@@ -3545,7 +3578,7 @@ public:
     VkPhysicalDeviceCopyMemoryIndirectPropertiesNV s;
     MarshalVkPhysicalDeviceCopyMemoryIndirectPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCopyMemoryIndirectPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCopyMemoryIndirectPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCopyMemoryIndirectPropertiesNV* s);
     ~MarshalVkPhysicalDeviceCopyMemoryIndirectPropertiesNV();
 };
 
@@ -3555,7 +3588,7 @@ public:
     VkPhysicalDeviceMemoryDecompressionFeaturesNV s;
     MarshalVkPhysicalDeviceMemoryDecompressionFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryDecompressionFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryDecompressionFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMemoryDecompressionFeaturesNV* s);
     ~MarshalVkPhysicalDeviceMemoryDecompressionFeaturesNV();
 };
 
@@ -3565,7 +3598,7 @@ public:
     VkPhysicalDeviceMemoryDecompressionPropertiesNV s;
     MarshalVkPhysicalDeviceMemoryDecompressionPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryDecompressionPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryDecompressionPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMemoryDecompressionPropertiesNV* s);
     ~MarshalVkPhysicalDeviceMemoryDecompressionPropertiesNV();
 };
 
@@ -3575,6 +3608,7 @@ public:
     VkShadingRatePaletteNV s;
     MarshalVkShadingRatePaletteNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShadingRatePaletteNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkShadingRatePaletteNV* s);
     ~MarshalVkShadingRatePaletteNV();
 };
 
@@ -3584,7 +3618,7 @@ public:
     VkPipelineViewportShadingRateImageStateCreateInfoNV s;
     MarshalVkPipelineViewportShadingRateImageStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportShadingRateImageStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportShadingRateImageStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportShadingRateImageStateCreateInfoNV* s);
     ~MarshalVkPipelineViewportShadingRateImageStateCreateInfoNV();
 };
 
@@ -3594,7 +3628,7 @@ public:
     VkPhysicalDeviceShadingRateImageFeaturesNV s;
     MarshalVkPhysicalDeviceShadingRateImageFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShadingRateImageFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShadingRateImageFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShadingRateImageFeaturesNV* s);
     ~MarshalVkPhysicalDeviceShadingRateImageFeaturesNV();
 };
 
@@ -3604,7 +3638,7 @@ public:
     VkPhysicalDeviceShadingRateImagePropertiesNV s;
     MarshalVkPhysicalDeviceShadingRateImagePropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShadingRateImagePropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShadingRateImagePropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShadingRateImagePropertiesNV* s);
     ~MarshalVkPhysicalDeviceShadingRateImagePropertiesNV();
 };
 
@@ -3614,7 +3648,7 @@ public:
     VkPhysicalDeviceInvocationMaskFeaturesHUAWEI s;
     MarshalVkPhysicalDeviceInvocationMaskFeaturesHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInvocationMaskFeaturesHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInvocationMaskFeaturesHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceInvocationMaskFeaturesHUAWEI* s);
     ~MarshalVkPhysicalDeviceInvocationMaskFeaturesHUAWEI();
 };
 
@@ -3624,6 +3658,7 @@ public:
     VkCoarseSampleLocationNV s;
     MarshalVkCoarseSampleLocationNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCoarseSampleLocationNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCoarseSampleLocationNV* s);
 };
 
 class MarshalVkCoarseSampleOrderCustomNV {
@@ -3632,6 +3667,7 @@ public:
     VkCoarseSampleOrderCustomNV s;
     MarshalVkCoarseSampleOrderCustomNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCoarseSampleOrderCustomNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCoarseSampleOrderCustomNV* s);
     ~MarshalVkCoarseSampleOrderCustomNV();
 };
 
@@ -3641,7 +3677,7 @@ public:
     VkPipelineViewportCoarseSampleOrderStateCreateInfoNV s;
     MarshalVkPipelineViewportCoarseSampleOrderStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportCoarseSampleOrderStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportCoarseSampleOrderStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportCoarseSampleOrderStateCreateInfoNV* s);
     ~MarshalVkPipelineViewportCoarseSampleOrderStateCreateInfoNV();
 };
 
@@ -3651,7 +3687,7 @@ public:
     VkPhysicalDeviceMeshShaderFeaturesNV s;
     MarshalVkPhysicalDeviceMeshShaderFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMeshShaderFeaturesNV* s);
     ~MarshalVkPhysicalDeviceMeshShaderFeaturesNV();
 };
 
@@ -3661,7 +3697,7 @@ public:
     VkPhysicalDeviceMeshShaderPropertiesNV s;
     MarshalVkPhysicalDeviceMeshShaderPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMeshShaderPropertiesNV* s);
     ~MarshalVkPhysicalDeviceMeshShaderPropertiesNV();
 };
 
@@ -3671,7 +3707,7 @@ public:
     VkPhysicalDeviceMeshShaderFeaturesEXT s;
     MarshalVkPhysicalDeviceMeshShaderFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMeshShaderFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceMeshShaderFeaturesEXT();
 };
 
@@ -3681,7 +3717,7 @@ public:
     VkPhysicalDeviceMeshShaderPropertiesEXT s;
     MarshalVkPhysicalDeviceMeshShaderPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMeshShaderPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMeshShaderPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceMeshShaderPropertiesEXT();
 };
 
@@ -3691,7 +3727,7 @@ public:
     VkRayTracingShaderGroupCreateInfoNV s;
     MarshalVkRayTracingShaderGroupCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingShaderGroupCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingShaderGroupCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRayTracingShaderGroupCreateInfoNV* s);
     ~MarshalVkRayTracingShaderGroupCreateInfoNV();
 };
 
@@ -3701,7 +3737,7 @@ public:
     VkRayTracingShaderGroupCreateInfoKHR s;
     MarshalVkRayTracingShaderGroupCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingShaderGroupCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingShaderGroupCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRayTracingShaderGroupCreateInfoKHR* s);
     ~MarshalVkRayTracingShaderGroupCreateInfoKHR();
 };
 
@@ -3711,7 +3747,7 @@ public:
     VkRayTracingPipelineCreateInfoNV s;
     MarshalVkRayTracingPipelineCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingPipelineCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingPipelineCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRayTracingPipelineCreateInfoNV* s);
     ~MarshalVkRayTracingPipelineCreateInfoNV();
 };
 
@@ -3721,7 +3757,7 @@ public:
     VkRayTracingPipelineCreateInfoKHR s;
     MarshalVkRayTracingPipelineCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingPipelineCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingPipelineCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRayTracingPipelineCreateInfoKHR* s);
     ~MarshalVkRayTracingPipelineCreateInfoKHR();
 };
 
@@ -3731,7 +3767,7 @@ public:
     VkGeometryTrianglesNV s;
     MarshalVkGeometryTrianglesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryTrianglesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryTrianglesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeometryTrianglesNV* s);
     ~MarshalVkGeometryTrianglesNV();
 };
 
@@ -3741,7 +3777,7 @@ public:
     VkGeometryAABBNV s;
     MarshalVkGeometryAABBNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryAABBNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryAABBNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeometryAABBNV* s);
     ~MarshalVkGeometryAABBNV();
 };
 
@@ -3751,7 +3787,7 @@ public:
     VkGeometryDataNV s;
     MarshalVkGeometryDataNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryDataNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryDataNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeometryDataNV* s);
 };
 
 class MarshalVkGeometryNV {
@@ -3760,7 +3796,7 @@ public:
     VkGeometryNV s;
     MarshalVkGeometryNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeometryNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeometryNV* s);
     ~MarshalVkGeometryNV();
 };
 
@@ -3770,7 +3806,7 @@ public:
     VkAccelerationStructureInfoNV s;
     MarshalVkAccelerationStructureInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureInfoNV* s);
     ~MarshalVkAccelerationStructureInfoNV();
 };
 
@@ -3780,7 +3816,7 @@ public:
     VkAccelerationStructureCreateInfoNV s;
     MarshalVkAccelerationStructureCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureCreateInfoNV* s);
     ~MarshalVkAccelerationStructureCreateInfoNV();
 };
 
@@ -3790,7 +3826,7 @@ public:
     VkBindAccelerationStructureMemoryInfoNV s;
     MarshalVkBindAccelerationStructureMemoryInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindAccelerationStructureMemoryInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindAccelerationStructureMemoryInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindAccelerationStructureMemoryInfoNV* s);
     ~MarshalVkBindAccelerationStructureMemoryInfoNV();
 };
 
@@ -3800,7 +3836,7 @@ public:
     VkWriteDescriptorSetAccelerationStructureKHR s;
     MarshalVkWriteDescriptorSetAccelerationStructureKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetAccelerationStructureKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetAccelerationStructureKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkWriteDescriptorSetAccelerationStructureKHR* s);
     ~MarshalVkWriteDescriptorSetAccelerationStructureKHR();
 };
 
@@ -3810,7 +3846,7 @@ public:
     VkWriteDescriptorSetAccelerationStructureNV s;
     MarshalVkWriteDescriptorSetAccelerationStructureNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetAccelerationStructureNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteDescriptorSetAccelerationStructureNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkWriteDescriptorSetAccelerationStructureNV* s);
     ~MarshalVkWriteDescriptorSetAccelerationStructureNV();
 };
 
@@ -3820,7 +3856,7 @@ public:
     VkAccelerationStructureMemoryRequirementsInfoNV s;
     MarshalVkAccelerationStructureMemoryRequirementsInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureMemoryRequirementsInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureMemoryRequirementsInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureMemoryRequirementsInfoNV* s);
     ~MarshalVkAccelerationStructureMemoryRequirementsInfoNV();
 };
 
@@ -3830,7 +3866,7 @@ public:
     VkPhysicalDeviceAccelerationStructureFeaturesKHR s;
     MarshalVkPhysicalDeviceAccelerationStructureFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAccelerationStructureFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAccelerationStructureFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceAccelerationStructureFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceAccelerationStructureFeaturesKHR();
 };
 
@@ -3840,7 +3876,7 @@ public:
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR s;
     MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPipelineFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPipelineFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingPipelineFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceRayTracingPipelineFeaturesKHR();
 };
 
@@ -3850,7 +3886,7 @@ public:
     VkPhysicalDeviceRayQueryFeaturesKHR s;
     MarshalVkPhysicalDeviceRayQueryFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayQueryFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayQueryFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayQueryFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceRayQueryFeaturesKHR();
 };
 
@@ -3860,7 +3896,7 @@ public:
     VkPhysicalDeviceAccelerationStructurePropertiesKHR s;
     MarshalVkPhysicalDeviceAccelerationStructurePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAccelerationStructurePropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAccelerationStructurePropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceAccelerationStructurePropertiesKHR* s);
     ~MarshalVkPhysicalDeviceAccelerationStructurePropertiesKHR();
 };
 
@@ -3870,7 +3906,7 @@ public:
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR s;
     MarshalVkPhysicalDeviceRayTracingPipelinePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPipelinePropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPipelinePropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingPipelinePropertiesKHR* s);
     ~MarshalVkPhysicalDeviceRayTracingPipelinePropertiesKHR();
 };
 
@@ -3880,7 +3916,7 @@ public:
     VkPhysicalDeviceRayTracingPropertiesNV s;
     MarshalVkPhysicalDeviceRayTracingPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingPropertiesNV* s);
     ~MarshalVkPhysicalDeviceRayTracingPropertiesNV();
 };
 
@@ -3898,7 +3934,7 @@ public:
     VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR s;
     MarshalVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingMaintenance1FeaturesKHR* s);
     ~MarshalVkPhysicalDeviceRayTracingMaintenance1FeaturesKHR();
 };
 
@@ -3908,7 +3944,7 @@ public:
     VkImageStencilUsageCreateInfo s;
     MarshalVkImageStencilUsageCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageStencilUsageCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageStencilUsageCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageStencilUsageCreateInfo* s);
     ~MarshalVkImageStencilUsageCreateInfo();
 };
 
@@ -3918,7 +3954,7 @@ public:
     VkDeviceMemoryOverallocationCreateInfoAMD s;
     MarshalVkDeviceMemoryOverallocationCreateInfoAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceMemoryOverallocationCreateInfoAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceMemoryOverallocationCreateInfoAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceMemoryOverallocationCreateInfoAMD* s);
     ~MarshalVkDeviceMemoryOverallocationCreateInfoAMD();
 };
 
@@ -3928,7 +3964,7 @@ public:
     VkPhysicalDeviceFragmentDensityMapFeaturesEXT s;
     MarshalVkPhysicalDeviceFragmentDensityMapFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentDensityMapFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceFragmentDensityMapFeaturesEXT();
 };
 
@@ -3938,7 +3974,7 @@ public:
     VkPhysicalDeviceFragmentDensityMap2FeaturesEXT s;
     MarshalVkPhysicalDeviceFragmentDensityMap2FeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMap2FeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMap2FeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentDensityMap2FeaturesEXT* s);
     ~MarshalVkPhysicalDeviceFragmentDensityMap2FeaturesEXT();
 };
 
@@ -3948,7 +3984,7 @@ public:
     VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM s;
     MarshalVkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceFragmentDensityMapOffsetFeaturesQCOM();
 };
 
@@ -3958,7 +3994,7 @@ public:
     VkPhysicalDeviceFragmentDensityMapPropertiesEXT s;
     MarshalVkPhysicalDeviceFragmentDensityMapPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentDensityMapPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceFragmentDensityMapPropertiesEXT();
 };
 
@@ -3968,7 +4004,7 @@ public:
     VkPhysicalDeviceFragmentDensityMap2PropertiesEXT s;
     MarshalVkPhysicalDeviceFragmentDensityMap2PropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMap2PropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMap2PropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentDensityMap2PropertiesEXT* s);
     ~MarshalVkPhysicalDeviceFragmentDensityMap2PropertiesEXT();
 };
 
@@ -3978,7 +4014,7 @@ public:
     VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM s;
     MarshalVkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM* s);
     ~MarshalVkPhysicalDeviceFragmentDensityMapOffsetPropertiesQCOM();
 };
 
@@ -3988,7 +4024,7 @@ public:
     VkRenderPassFragmentDensityMapCreateInfoEXT s;
     MarshalVkRenderPassFragmentDensityMapCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassFragmentDensityMapCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassFragmentDensityMapCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassFragmentDensityMapCreateInfoEXT* s);
     ~MarshalVkRenderPassFragmentDensityMapCreateInfoEXT();
 };
 
@@ -3998,7 +4034,7 @@ public:
     VkSubpassFragmentDensityMapOffsetEndInfoQCOM s;
     MarshalVkSubpassFragmentDensityMapOffsetEndInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassFragmentDensityMapOffsetEndInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassFragmentDensityMapOffsetEndInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassFragmentDensityMapOffsetEndInfoQCOM* s);
     ~MarshalVkSubpassFragmentDensityMapOffsetEndInfoQCOM();
 };
 
@@ -4008,7 +4044,7 @@ public:
     VkPhysicalDeviceScalarBlockLayoutFeatures s;
     MarshalVkPhysicalDeviceScalarBlockLayoutFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceScalarBlockLayoutFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceScalarBlockLayoutFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceScalarBlockLayoutFeatures* s);
     ~MarshalVkPhysicalDeviceScalarBlockLayoutFeatures();
 };
 
@@ -4018,7 +4054,7 @@ public:
     VkPhysicalDeviceUniformBufferStandardLayoutFeatures s;
     MarshalVkPhysicalDeviceUniformBufferStandardLayoutFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceUniformBufferStandardLayoutFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceUniformBufferStandardLayoutFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceUniformBufferStandardLayoutFeatures* s);
     ~MarshalVkPhysicalDeviceUniformBufferStandardLayoutFeatures();
 };
 
@@ -4028,7 +4064,7 @@ public:
     VkPhysicalDeviceDepthClipEnableFeaturesEXT s;
     MarshalVkPhysicalDeviceDepthClipEnableFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClipEnableFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClipEnableFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDepthClipEnableFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDepthClipEnableFeaturesEXT();
 };
 
@@ -4038,7 +4074,7 @@ public:
     VkPipelineRasterizationDepthClipStateCreateInfoEXT s;
     MarshalVkPipelineRasterizationDepthClipStateCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationDepthClipStateCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationDepthClipStateCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRasterizationDepthClipStateCreateInfoEXT* s);
     ~MarshalVkPipelineRasterizationDepthClipStateCreateInfoEXT();
 };
 
@@ -4048,7 +4084,7 @@ public:
     VkPhysicalDeviceMemoryBudgetPropertiesEXT s;
     MarshalVkPhysicalDeviceMemoryBudgetPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryBudgetPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryBudgetPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMemoryBudgetPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceMemoryBudgetPropertiesEXT();
 };
 
@@ -4058,7 +4094,7 @@ public:
     VkPhysicalDeviceMemoryPriorityFeaturesEXT s;
     MarshalVkPhysicalDeviceMemoryPriorityFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryPriorityFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMemoryPriorityFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMemoryPriorityFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceMemoryPriorityFeaturesEXT();
 };
 
@@ -4068,7 +4104,7 @@ public:
     VkMemoryPriorityAllocateInfoEXT s;
     MarshalVkMemoryPriorityAllocateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryPriorityAllocateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryPriorityAllocateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryPriorityAllocateInfoEXT* s);
     ~MarshalVkMemoryPriorityAllocateInfoEXT();
 };
 
@@ -4078,7 +4114,7 @@ public:
     VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT s;
     MarshalVkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT* s);
     ~MarshalVkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT();
 };
 
@@ -4088,7 +4124,7 @@ public:
     VkPhysicalDeviceBufferDeviceAddressFeatures s;
     MarshalVkPhysicalDeviceBufferDeviceAddressFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBufferDeviceAddressFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBufferDeviceAddressFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceBufferDeviceAddressFeatures* s);
     ~MarshalVkPhysicalDeviceBufferDeviceAddressFeatures();
 };
 
@@ -4098,7 +4134,7 @@ public:
     VkPhysicalDeviceBufferDeviceAddressFeaturesEXT s;
     MarshalVkPhysicalDeviceBufferDeviceAddressFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBufferDeviceAddressFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBufferDeviceAddressFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceBufferDeviceAddressFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceBufferDeviceAddressFeaturesEXT();
 };
 
@@ -4108,7 +4144,7 @@ public:
     VkBufferDeviceAddressInfo s;
     MarshalVkBufferDeviceAddressInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferDeviceAddressInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferDeviceAddressInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferDeviceAddressInfo* s);
     ~MarshalVkBufferDeviceAddressInfo();
 };
 
@@ -4118,7 +4154,7 @@ public:
     VkBufferOpaqueCaptureAddressCreateInfo s;
     MarshalVkBufferOpaqueCaptureAddressCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferOpaqueCaptureAddressCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferOpaqueCaptureAddressCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferOpaqueCaptureAddressCreateInfo* s);
     ~MarshalVkBufferOpaqueCaptureAddressCreateInfo();
 };
 
@@ -4128,7 +4164,7 @@ public:
     VkBufferDeviceAddressCreateInfoEXT s;
     MarshalVkBufferDeviceAddressCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferDeviceAddressCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferDeviceAddressCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferDeviceAddressCreateInfoEXT* s);
     ~MarshalVkBufferDeviceAddressCreateInfoEXT();
 };
 
@@ -4138,7 +4174,7 @@ public:
     VkPhysicalDeviceImageViewImageFormatInfoEXT s;
     MarshalVkPhysicalDeviceImageViewImageFormatInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageViewImageFormatInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageViewImageFormatInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageViewImageFormatInfoEXT* s);
     ~MarshalVkPhysicalDeviceImageViewImageFormatInfoEXT();
 };
 
@@ -4148,7 +4184,7 @@ public:
     VkFilterCubicImageViewImageFormatPropertiesEXT s;
     MarshalVkFilterCubicImageViewImageFormatPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFilterCubicImageViewImageFormatPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFilterCubicImageViewImageFormatPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFilterCubicImageViewImageFormatPropertiesEXT* s);
     ~MarshalVkFilterCubicImageViewImageFormatPropertiesEXT();
 };
 
@@ -4158,7 +4194,7 @@ public:
     VkPhysicalDeviceImagelessFramebufferFeatures s;
     MarshalVkPhysicalDeviceImagelessFramebufferFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImagelessFramebufferFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImagelessFramebufferFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImagelessFramebufferFeatures* s);
     ~MarshalVkPhysicalDeviceImagelessFramebufferFeatures();
 };
 
@@ -4168,7 +4204,7 @@ public:
     VkFramebufferAttachmentsCreateInfo s;
     MarshalVkFramebufferAttachmentsCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferAttachmentsCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferAttachmentsCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFramebufferAttachmentsCreateInfo* s);
     ~MarshalVkFramebufferAttachmentsCreateInfo();
 };
 
@@ -4178,7 +4214,7 @@ public:
     VkFramebufferAttachmentImageInfo s;
     MarshalVkFramebufferAttachmentImageInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferAttachmentImageInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferAttachmentImageInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFramebufferAttachmentImageInfo* s);
     ~MarshalVkFramebufferAttachmentImageInfo();
 };
 
@@ -4188,7 +4224,7 @@ public:
     VkRenderPassAttachmentBeginInfo s;
     MarshalVkRenderPassAttachmentBeginInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassAttachmentBeginInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassAttachmentBeginInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassAttachmentBeginInfo* s);
     ~MarshalVkRenderPassAttachmentBeginInfo();
 };
 
@@ -4198,7 +4234,7 @@ public:
     VkPhysicalDeviceTextureCompressionASTCHDRFeatures s;
     MarshalVkPhysicalDeviceTextureCompressionASTCHDRFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTextureCompressionASTCHDRFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTextureCompressionASTCHDRFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTextureCompressionASTCHDRFeatures* s);
     ~MarshalVkPhysicalDeviceTextureCompressionASTCHDRFeatures();
 };
 
@@ -4208,7 +4244,7 @@ public:
     VkPhysicalDeviceCooperativeMatrixFeaturesNV s;
     MarshalVkPhysicalDeviceCooperativeMatrixFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCooperativeMatrixFeaturesNV* s);
     ~MarshalVkPhysicalDeviceCooperativeMatrixFeaturesNV();
 };
 
@@ -4218,7 +4254,7 @@ public:
     VkPhysicalDeviceCooperativeMatrixPropertiesNV s;
     MarshalVkPhysicalDeviceCooperativeMatrixPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCooperativeMatrixPropertiesNV* s);
     ~MarshalVkPhysicalDeviceCooperativeMatrixPropertiesNV();
 };
 
@@ -4228,7 +4264,7 @@ public:
     VkCooperativeMatrixPropertiesNV s;
     MarshalVkCooperativeMatrixPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCooperativeMatrixPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCooperativeMatrixPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCooperativeMatrixPropertiesNV* s);
     ~MarshalVkCooperativeMatrixPropertiesNV();
 };
 
@@ -4238,7 +4274,7 @@ public:
     VkPhysicalDeviceYcbcrImageArraysFeaturesEXT s;
     MarshalVkPhysicalDeviceYcbcrImageArraysFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceYcbcrImageArraysFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceYcbcrImageArraysFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceYcbcrImageArraysFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceYcbcrImageArraysFeaturesEXT();
 };
 
@@ -4248,7 +4284,7 @@ public:
     VkImageViewHandleInfoNVX s;
     MarshalVkImageViewHandleInfoNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewHandleInfoNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewHandleInfoNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewHandleInfoNVX* s);
     ~MarshalVkImageViewHandleInfoNVX();
 };
 
@@ -4258,7 +4294,7 @@ public:
     VkImageViewAddressPropertiesNVX s;
     MarshalVkImageViewAddressPropertiesNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewAddressPropertiesNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewAddressPropertiesNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewAddressPropertiesNVX* s);
     ~MarshalVkImageViewAddressPropertiesNVX();
 };
 
@@ -4268,6 +4304,7 @@ public:
     VkPipelineCreationFeedback s;
     MarshalVkPipelineCreationFeedback(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreationFeedback* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCreationFeedback* s);
 };
 
 class MarshalVkPipelineCreationFeedbackCreateInfo {
@@ -4276,7 +4313,7 @@ public:
     VkPipelineCreationFeedbackCreateInfo s;
     MarshalVkPipelineCreationFeedbackCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreationFeedbackCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCreationFeedbackCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCreationFeedbackCreateInfo* s);
     ~MarshalVkPipelineCreationFeedbackCreateInfo();
 };
 
@@ -4286,7 +4323,7 @@ public:
     VkPhysicalDevicePresentBarrierFeaturesNV s;
     MarshalVkPhysicalDevicePresentBarrierFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentBarrierFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentBarrierFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePresentBarrierFeaturesNV* s);
     ~MarshalVkPhysicalDevicePresentBarrierFeaturesNV();
 };
 
@@ -4296,7 +4333,7 @@ public:
     VkSurfaceCapabilitiesPresentBarrierNV s;
     MarshalVkSurfaceCapabilitiesPresentBarrierNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilitiesPresentBarrierNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfaceCapabilitiesPresentBarrierNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfaceCapabilitiesPresentBarrierNV* s);
     ~MarshalVkSurfaceCapabilitiesPresentBarrierNV();
 };
 
@@ -4306,7 +4343,7 @@ public:
     VkSwapchainPresentBarrierCreateInfoNV s;
     MarshalVkSwapchainPresentBarrierCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentBarrierCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentBarrierCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainPresentBarrierCreateInfoNV* s);
     ~MarshalVkSwapchainPresentBarrierCreateInfoNV();
 };
 
@@ -4316,7 +4353,7 @@ public:
     VkPhysicalDevicePerformanceQueryFeaturesKHR s;
     MarshalVkPhysicalDevicePerformanceQueryFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePerformanceQueryFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePerformanceQueryFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePerformanceQueryFeaturesKHR* s);
     ~MarshalVkPhysicalDevicePerformanceQueryFeaturesKHR();
 };
 
@@ -4326,7 +4363,7 @@ public:
     VkPhysicalDevicePerformanceQueryPropertiesKHR s;
     MarshalVkPhysicalDevicePerformanceQueryPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePerformanceQueryPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePerformanceQueryPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePerformanceQueryPropertiesKHR* s);
     ~MarshalVkPhysicalDevicePerformanceQueryPropertiesKHR();
 };
 
@@ -4336,7 +4373,7 @@ public:
     VkPerformanceCounterKHR s;
     MarshalVkPerformanceCounterKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceCounterKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceCounterKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceCounterKHR* s);
     ~MarshalVkPerformanceCounterKHR();
 };
 
@@ -4346,7 +4383,7 @@ public:
     VkPerformanceCounterDescriptionKHR s;
     MarshalVkPerformanceCounterDescriptionKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceCounterDescriptionKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceCounterDescriptionKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceCounterDescriptionKHR* s);
     ~MarshalVkPerformanceCounterDescriptionKHR();
 };
 
@@ -4356,7 +4393,7 @@ public:
     VkQueryPoolPerformanceCreateInfoKHR s;
     MarshalVkQueryPoolPerformanceCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolPerformanceCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolPerformanceCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueryPoolPerformanceCreateInfoKHR* s);
     ~MarshalVkQueryPoolPerformanceCreateInfoKHR();
 };
 
@@ -4366,7 +4403,7 @@ public:
     VkAcquireProfilingLockInfoKHR s;
     MarshalVkAcquireProfilingLockInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAcquireProfilingLockInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAcquireProfilingLockInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAcquireProfilingLockInfoKHR* s);
     ~MarshalVkAcquireProfilingLockInfoKHR();
 };
 
@@ -4376,7 +4413,7 @@ public:
     VkPerformanceQuerySubmitInfoKHR s;
     MarshalVkPerformanceQuerySubmitInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceQuerySubmitInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceQuerySubmitInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceQuerySubmitInfoKHR* s);
     ~MarshalVkPerformanceQuerySubmitInfoKHR();
 };
 
@@ -4386,7 +4423,7 @@ public:
     VkPhysicalDeviceCoverageReductionModeFeaturesNV s;
     MarshalVkPhysicalDeviceCoverageReductionModeFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCoverageReductionModeFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCoverageReductionModeFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCoverageReductionModeFeaturesNV* s);
     ~MarshalVkPhysicalDeviceCoverageReductionModeFeaturesNV();
 };
 
@@ -4396,7 +4433,7 @@ public:
     VkPipelineCoverageReductionStateCreateInfoNV s;
     MarshalVkPipelineCoverageReductionStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCoverageReductionStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCoverageReductionStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCoverageReductionStateCreateInfoNV* s);
     ~MarshalVkPipelineCoverageReductionStateCreateInfoNV();
 };
 
@@ -4406,7 +4443,7 @@ public:
     VkFramebufferMixedSamplesCombinationNV s;
     MarshalVkFramebufferMixedSamplesCombinationNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferMixedSamplesCombinationNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFramebufferMixedSamplesCombinationNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFramebufferMixedSamplesCombinationNV* s);
     ~MarshalVkFramebufferMixedSamplesCombinationNV();
 };
 
@@ -4416,7 +4453,7 @@ public:
     VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL s;
     MarshalVkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL* s);
     ~MarshalVkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL();
 };
 
@@ -4426,7 +4463,7 @@ public:
     VkPerformanceValueINTEL s;
     MarshalVkPerformanceValueINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceValueINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceValueINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceValueINTEL* s);
     ~MarshalVkPerformanceValueINTEL();
 };
 
@@ -4436,7 +4473,7 @@ public:
     VkInitializePerformanceApiInfoINTEL s;
     MarshalVkInitializePerformanceApiInfoINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkInitializePerformanceApiInfoINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkInitializePerformanceApiInfoINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkInitializePerformanceApiInfoINTEL* s);
     ~MarshalVkInitializePerformanceApiInfoINTEL();
 };
 
@@ -4446,7 +4483,7 @@ public:
     VkQueryPoolPerformanceQueryCreateInfoINTEL s;
     MarshalVkQueryPoolPerformanceQueryCreateInfoINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolPerformanceQueryCreateInfoINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolPerformanceQueryCreateInfoINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueryPoolPerformanceQueryCreateInfoINTEL* s);
     ~MarshalVkQueryPoolPerformanceQueryCreateInfoINTEL();
 };
 
@@ -4456,7 +4493,7 @@ public:
     VkPerformanceMarkerInfoINTEL s;
     MarshalVkPerformanceMarkerInfoINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceMarkerInfoINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceMarkerInfoINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceMarkerInfoINTEL* s);
     ~MarshalVkPerformanceMarkerInfoINTEL();
 };
 
@@ -4466,7 +4503,7 @@ public:
     VkPerformanceStreamMarkerInfoINTEL s;
     MarshalVkPerformanceStreamMarkerInfoINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceStreamMarkerInfoINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceStreamMarkerInfoINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceStreamMarkerInfoINTEL* s);
     ~MarshalVkPerformanceStreamMarkerInfoINTEL();
 };
 
@@ -4476,7 +4513,7 @@ public:
     VkPerformanceOverrideInfoINTEL s;
     MarshalVkPerformanceOverrideInfoINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceOverrideInfoINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceOverrideInfoINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceOverrideInfoINTEL* s);
     ~MarshalVkPerformanceOverrideInfoINTEL();
 };
 
@@ -4486,7 +4523,7 @@ public:
     VkPerformanceConfigurationAcquireInfoINTEL s;
     MarshalVkPerformanceConfigurationAcquireInfoINTEL(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceConfigurationAcquireInfoINTEL* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPerformanceConfigurationAcquireInfoINTEL* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPerformanceConfigurationAcquireInfoINTEL* s);
     ~MarshalVkPerformanceConfigurationAcquireInfoINTEL();
 };
 
@@ -4496,7 +4533,7 @@ public:
     VkPhysicalDeviceShaderClockFeaturesKHR s;
     MarshalVkPhysicalDeviceShaderClockFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderClockFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderClockFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderClockFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceShaderClockFeaturesKHR();
 };
 
@@ -4506,7 +4543,7 @@ public:
     VkPhysicalDeviceIndexTypeUint8Features s;
     MarshalVkPhysicalDeviceIndexTypeUint8Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceIndexTypeUint8Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceIndexTypeUint8Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceIndexTypeUint8Features* s);
     ~MarshalVkPhysicalDeviceIndexTypeUint8Features();
 };
 
@@ -4516,7 +4553,7 @@ public:
     VkPhysicalDeviceShaderSMBuiltinsPropertiesNV s;
     MarshalVkPhysicalDeviceShaderSMBuiltinsPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSMBuiltinsPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSMBuiltinsPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderSMBuiltinsPropertiesNV* s);
     ~MarshalVkPhysicalDeviceShaderSMBuiltinsPropertiesNV();
 };
 
@@ -4526,7 +4563,7 @@ public:
     VkPhysicalDeviceShaderSMBuiltinsFeaturesNV s;
     MarshalVkPhysicalDeviceShaderSMBuiltinsFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSMBuiltinsFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSMBuiltinsFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderSMBuiltinsFeaturesNV* s);
     ~MarshalVkPhysicalDeviceShaderSMBuiltinsFeaturesNV();
 };
 
@@ -4536,7 +4573,7 @@ public:
     VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT s;
     MarshalVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceFragmentShaderInterlockFeaturesEXT();
 };
 
@@ -4546,7 +4583,7 @@ public:
     VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures s;
     MarshalVkPhysicalDeviceSeparateDepthStencilLayoutsFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSeparateDepthStencilLayoutsFeatures* s);
     ~MarshalVkPhysicalDeviceSeparateDepthStencilLayoutsFeatures();
 };
 
@@ -4556,7 +4593,7 @@ public:
     VkAttachmentReferenceStencilLayout s;
     MarshalVkAttachmentReferenceStencilLayout(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentReferenceStencilLayout* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentReferenceStencilLayout* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentReferenceStencilLayout* s);
     ~MarshalVkAttachmentReferenceStencilLayout();
 };
 
@@ -4566,7 +4603,7 @@ public:
     VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT s;
     MarshalVkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT* s);
     ~MarshalVkPhysicalDevicePrimitiveTopologyListRestartFeaturesEXT();
 };
 
@@ -4576,7 +4613,7 @@ public:
     VkAttachmentDescriptionStencilLayout s;
     MarshalVkAttachmentDescriptionStencilLayout(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentDescriptionStencilLayout* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentDescriptionStencilLayout* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentDescriptionStencilLayout* s);
     ~MarshalVkAttachmentDescriptionStencilLayout();
 };
 
@@ -4586,7 +4623,7 @@ public:
     VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR s;
     MarshalVkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR* s);
     ~MarshalVkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR();
 };
 
@@ -4596,7 +4633,7 @@ public:
     VkPipelineInfoKHR s;
     MarshalVkPipelineInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineInfoKHR* s);
     ~MarshalVkPipelineInfoKHR();
 };
 
@@ -4606,7 +4643,7 @@ public:
     VkPipelineExecutablePropertiesKHR s;
     MarshalVkPipelineExecutablePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutablePropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutablePropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineExecutablePropertiesKHR* s);
     ~MarshalVkPipelineExecutablePropertiesKHR();
 };
 
@@ -4616,7 +4653,7 @@ public:
     VkPipelineExecutableInfoKHR s;
     MarshalVkPipelineExecutableInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutableInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutableInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineExecutableInfoKHR* s);
     ~MarshalVkPipelineExecutableInfoKHR();
 };
 
@@ -4626,7 +4663,7 @@ public:
     VkPipelineExecutableStatisticKHR s;
     MarshalVkPipelineExecutableStatisticKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutableStatisticKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutableStatisticKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineExecutableStatisticKHR* s);
     ~MarshalVkPipelineExecutableStatisticKHR();
 };
 
@@ -4636,7 +4673,7 @@ public:
     VkPipelineExecutableInternalRepresentationKHR s;
     MarshalVkPipelineExecutableInternalRepresentationKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutableInternalRepresentationKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineExecutableInternalRepresentationKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineExecutableInternalRepresentationKHR* s);
     ~MarshalVkPipelineExecutableInternalRepresentationKHR();
 };
 
@@ -4646,7 +4683,7 @@ public:
     VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures s;
     MarshalVkPhysicalDeviceShaderDemoteToHelperInvocationFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures* s);
     ~MarshalVkPhysicalDeviceShaderDemoteToHelperInvocationFeatures();
 };
 
@@ -4656,7 +4693,7 @@ public:
     VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT s;
     MarshalVkPhysicalDeviceTexelBufferAlignmentFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceTexelBufferAlignmentFeaturesEXT();
 };
 
@@ -4666,7 +4703,7 @@ public:
     VkPhysicalDeviceTexelBufferAlignmentProperties s;
     MarshalVkPhysicalDeviceTexelBufferAlignmentProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTexelBufferAlignmentProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTexelBufferAlignmentProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTexelBufferAlignmentProperties* s);
     ~MarshalVkPhysicalDeviceTexelBufferAlignmentProperties();
 };
 
@@ -4676,7 +4713,7 @@ public:
     VkPhysicalDeviceSubgroupSizeControlFeatures s;
     MarshalVkPhysicalDeviceSubgroupSizeControlFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubgroupSizeControlFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubgroupSizeControlFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSubgroupSizeControlFeatures* s);
     ~MarshalVkPhysicalDeviceSubgroupSizeControlFeatures();
 };
 
@@ -4686,7 +4723,7 @@ public:
     VkPhysicalDeviceSubgroupSizeControlProperties s;
     MarshalVkPhysicalDeviceSubgroupSizeControlProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubgroupSizeControlProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubgroupSizeControlProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSubgroupSizeControlProperties* s);
     ~MarshalVkPhysicalDeviceSubgroupSizeControlProperties();
 };
 
@@ -4696,7 +4733,7 @@ public:
     VkPipelineShaderStageRequiredSubgroupSizeCreateInfo s;
     MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineShaderStageRequiredSubgroupSizeCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineShaderStageRequiredSubgroupSizeCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineShaderStageRequiredSubgroupSizeCreateInfo* s);
     ~MarshalVkPipelineShaderStageRequiredSubgroupSizeCreateInfo();
 };
 
@@ -4706,7 +4743,7 @@ public:
     VkSubpassShadingPipelineCreateInfoHUAWEI s;
     MarshalVkSubpassShadingPipelineCreateInfoHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassShadingPipelineCreateInfoHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassShadingPipelineCreateInfoHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassShadingPipelineCreateInfoHUAWEI* s);
     ~MarshalVkSubpassShadingPipelineCreateInfoHUAWEI();
 };
 
@@ -4716,7 +4753,7 @@ public:
     VkPhysicalDeviceSubpassShadingPropertiesHUAWEI s;
     MarshalVkPhysicalDeviceSubpassShadingPropertiesHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubpassShadingPropertiesHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubpassShadingPropertiesHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSubpassShadingPropertiesHUAWEI* s);
     ~MarshalVkPhysicalDeviceSubpassShadingPropertiesHUAWEI();
 };
 
@@ -4726,7 +4763,7 @@ public:
     VkPhysicalDeviceClusterCullingShaderPropertiesHUAWEI s;
     MarshalVkPhysicalDeviceClusterCullingShaderPropertiesHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceClusterCullingShaderPropertiesHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceClusterCullingShaderPropertiesHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceClusterCullingShaderPropertiesHUAWEI* s);
     ~MarshalVkPhysicalDeviceClusterCullingShaderPropertiesHUAWEI();
 };
 
@@ -4736,7 +4773,7 @@ public:
     VkMemoryOpaqueCaptureAddressAllocateInfo s;
     MarshalVkMemoryOpaqueCaptureAddressAllocateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryOpaqueCaptureAddressAllocateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryOpaqueCaptureAddressAllocateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryOpaqueCaptureAddressAllocateInfo* s);
     ~MarshalVkMemoryOpaqueCaptureAddressAllocateInfo();
 };
 
@@ -4746,7 +4783,7 @@ public:
     VkDeviceMemoryOpaqueCaptureAddressInfo s;
     MarshalVkDeviceMemoryOpaqueCaptureAddressInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceMemoryOpaqueCaptureAddressInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceMemoryOpaqueCaptureAddressInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceMemoryOpaqueCaptureAddressInfo* s);
     ~MarshalVkDeviceMemoryOpaqueCaptureAddressInfo();
 };
 
@@ -4756,7 +4793,7 @@ public:
     VkPhysicalDeviceLineRasterizationFeatures s;
     MarshalVkPhysicalDeviceLineRasterizationFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLineRasterizationFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLineRasterizationFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLineRasterizationFeatures* s);
     ~MarshalVkPhysicalDeviceLineRasterizationFeatures();
 };
 
@@ -4766,7 +4803,7 @@ public:
     VkPhysicalDeviceLineRasterizationProperties s;
     MarshalVkPhysicalDeviceLineRasterizationProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLineRasterizationProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLineRasterizationProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLineRasterizationProperties* s);
     ~MarshalVkPhysicalDeviceLineRasterizationProperties();
 };
 
@@ -4776,7 +4813,7 @@ public:
     VkPipelineRasterizationLineStateCreateInfo s;
     MarshalVkPipelineRasterizationLineStateCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationLineStateCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationLineStateCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRasterizationLineStateCreateInfo* s);
     ~MarshalVkPipelineRasterizationLineStateCreateInfo();
 };
 
@@ -4786,7 +4823,7 @@ public:
     VkPhysicalDevicePipelineCreationCacheControlFeatures s;
     MarshalVkPhysicalDevicePipelineCreationCacheControlFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineCreationCacheControlFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineCreationCacheControlFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineCreationCacheControlFeatures* s);
     ~MarshalVkPhysicalDevicePipelineCreationCacheControlFeatures();
 };
 
@@ -4796,7 +4833,7 @@ public:
     VkPhysicalDeviceVulkan11Features s;
     MarshalVkPhysicalDeviceVulkan11Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan11Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan11Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan11Features* s);
     ~MarshalVkPhysicalDeviceVulkan11Features();
 };
 
@@ -4806,7 +4843,7 @@ public:
     VkPhysicalDeviceVulkan11Properties s;
     MarshalVkPhysicalDeviceVulkan11Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan11Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan11Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan11Properties* s);
     ~MarshalVkPhysicalDeviceVulkan11Properties();
 };
 
@@ -4816,7 +4853,7 @@ public:
     VkPhysicalDeviceVulkan12Features s;
     MarshalVkPhysicalDeviceVulkan12Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan12Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan12Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan12Features* s);
     ~MarshalVkPhysicalDeviceVulkan12Features();
 };
 
@@ -4826,7 +4863,7 @@ public:
     VkPhysicalDeviceVulkan12Properties s;
     MarshalVkPhysicalDeviceVulkan12Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan12Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan12Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan12Properties* s);
     ~MarshalVkPhysicalDeviceVulkan12Properties();
 };
 
@@ -4836,7 +4873,7 @@ public:
     VkPhysicalDeviceVulkan13Features s;
     MarshalVkPhysicalDeviceVulkan13Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan13Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan13Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan13Features* s);
     ~MarshalVkPhysicalDeviceVulkan13Features();
 };
 
@@ -4846,7 +4883,7 @@ public:
     VkPhysicalDeviceVulkan13Properties s;
     MarshalVkPhysicalDeviceVulkan13Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan13Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan13Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan13Properties* s);
     ~MarshalVkPhysicalDeviceVulkan13Properties();
 };
 
@@ -4856,7 +4893,7 @@ public:
     VkPhysicalDeviceVulkan14Features s;
     MarshalVkPhysicalDeviceVulkan14Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan14Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan14Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan14Features* s);
     ~MarshalVkPhysicalDeviceVulkan14Features();
 };
 
@@ -4866,7 +4903,7 @@ public:
     VkPhysicalDeviceVulkan14Properties s;
     MarshalVkPhysicalDeviceVulkan14Properties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan14Properties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVulkan14Properties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVulkan14Properties* s);
     ~MarshalVkPhysicalDeviceVulkan14Properties();
 };
 
@@ -4876,7 +4913,7 @@ public:
     VkPipelineCompilerControlCreateInfoAMD s;
     MarshalVkPipelineCompilerControlCreateInfoAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCompilerControlCreateInfoAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineCompilerControlCreateInfoAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineCompilerControlCreateInfoAMD* s);
     ~MarshalVkPipelineCompilerControlCreateInfoAMD();
 };
 
@@ -4886,7 +4923,7 @@ public:
     VkPhysicalDeviceCoherentMemoryFeaturesAMD s;
     MarshalVkPhysicalDeviceCoherentMemoryFeaturesAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCoherentMemoryFeaturesAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCoherentMemoryFeaturesAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCoherentMemoryFeaturesAMD* s);
     ~MarshalVkPhysicalDeviceCoherentMemoryFeaturesAMD();
 };
 
@@ -4896,7 +4933,7 @@ public:
     VkPhysicalDeviceToolProperties s;
     MarshalVkPhysicalDeviceToolProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceToolProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceToolProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceToolProperties* s);
     ~MarshalVkPhysicalDeviceToolProperties();
 };
 
@@ -4906,7 +4943,7 @@ public:
     VkSamplerCustomBorderColorCreateInfoEXT s;
     MarshalVkSamplerCustomBorderColorCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCustomBorderColorCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCustomBorderColorCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerCustomBorderColorCreateInfoEXT* s);
     ~MarshalVkSamplerCustomBorderColorCreateInfoEXT();
 };
 
@@ -4916,7 +4953,7 @@ public:
     VkPhysicalDeviceCustomBorderColorPropertiesEXT s;
     MarshalVkPhysicalDeviceCustomBorderColorPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCustomBorderColorPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCustomBorderColorPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCustomBorderColorPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceCustomBorderColorPropertiesEXT();
 };
 
@@ -4926,7 +4963,7 @@ public:
     VkPhysicalDeviceCustomBorderColorFeaturesEXT s;
     MarshalVkPhysicalDeviceCustomBorderColorFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCustomBorderColorFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCustomBorderColorFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCustomBorderColorFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceCustomBorderColorFeaturesEXT();
 };
 
@@ -4936,7 +4973,7 @@ public:
     VkSamplerBorderColorComponentMappingCreateInfoEXT s;
     MarshalVkSamplerBorderColorComponentMappingCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerBorderColorComponentMappingCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerBorderColorComponentMappingCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerBorderColorComponentMappingCreateInfoEXT* s);
     ~MarshalVkSamplerBorderColorComponentMappingCreateInfoEXT();
 };
 
@@ -4946,7 +4983,7 @@ public:
     VkPhysicalDeviceBorderColorSwizzleFeaturesEXT s;
     MarshalVkPhysicalDeviceBorderColorSwizzleFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBorderColorSwizzleFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceBorderColorSwizzleFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceBorderColorSwizzleFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceBorderColorSwizzleFeaturesEXT();
 };
 
@@ -4956,7 +4993,7 @@ public:
     VkAccelerationStructureGeometryTrianglesDataKHR s;
     MarshalVkAccelerationStructureGeometryTrianglesDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryTrianglesDataKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryTrianglesDataKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryTrianglesDataKHR* s);
     ~MarshalVkAccelerationStructureGeometryTrianglesDataKHR();
 };
 
@@ -4966,7 +5003,7 @@ public:
     VkAccelerationStructureGeometryAabbsDataKHR s;
     MarshalVkAccelerationStructureGeometryAabbsDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryAabbsDataKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryAabbsDataKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryAabbsDataKHR* s);
     ~MarshalVkAccelerationStructureGeometryAabbsDataKHR();
 };
 
@@ -4976,7 +5013,7 @@ public:
     VkAccelerationStructureGeometryInstancesDataKHR s;
     MarshalVkAccelerationStructureGeometryInstancesDataKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryInstancesDataKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryInstancesDataKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryInstancesDataKHR* s);
     ~MarshalVkAccelerationStructureGeometryInstancesDataKHR();
 };
 
@@ -4986,7 +5023,7 @@ public:
     VkAccelerationStructureGeometryKHR s;
     MarshalVkAccelerationStructureGeometryKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryKHR* s);
     ~MarshalVkAccelerationStructureGeometryKHR();
 };
 
@@ -4996,7 +5033,7 @@ public:
     VkAccelerationStructureBuildGeometryInfoKHR s;
     MarshalVkAccelerationStructureBuildGeometryInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildGeometryInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildGeometryInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureBuildGeometryInfoKHR* s);
     ~MarshalVkAccelerationStructureBuildGeometryInfoKHR();
 };
 
@@ -5014,7 +5051,7 @@ public:
     VkAccelerationStructureCreateInfoKHR s;
     MarshalVkAccelerationStructureCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureCreateInfoKHR* s);
     ~MarshalVkAccelerationStructureCreateInfoKHR();
 };
 
@@ -5024,7 +5061,7 @@ public:
     VkAccelerationStructureDeviceAddressInfoKHR s;
     MarshalVkAccelerationStructureDeviceAddressInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureDeviceAddressInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureDeviceAddressInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureDeviceAddressInfoKHR* s);
     ~MarshalVkAccelerationStructureDeviceAddressInfoKHR();
 };
 
@@ -5034,7 +5071,7 @@ public:
     VkAccelerationStructureVersionInfoKHR s;
     MarshalVkAccelerationStructureVersionInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureVersionInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureVersionInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureVersionInfoKHR* s);
     ~MarshalVkAccelerationStructureVersionInfoKHR();
 };
 
@@ -5044,7 +5081,7 @@ public:
     VkCopyAccelerationStructureInfoKHR s;
     MarshalVkCopyAccelerationStructureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyAccelerationStructureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyAccelerationStructureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyAccelerationStructureInfoKHR* s);
     ~MarshalVkCopyAccelerationStructureInfoKHR();
 };
 
@@ -5054,7 +5091,7 @@ public:
     VkCopyAccelerationStructureToMemoryInfoKHR s;
     MarshalVkCopyAccelerationStructureToMemoryInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyAccelerationStructureToMemoryInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyAccelerationStructureToMemoryInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyAccelerationStructureToMemoryInfoKHR* s);
     ~MarshalVkCopyAccelerationStructureToMemoryInfoKHR();
 };
 
@@ -5064,7 +5101,7 @@ public:
     VkCopyMemoryToAccelerationStructureInfoKHR s;
     MarshalVkCopyMemoryToAccelerationStructureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToAccelerationStructureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToAccelerationStructureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyMemoryToAccelerationStructureInfoKHR* s);
     ~MarshalVkCopyMemoryToAccelerationStructureInfoKHR();
 };
 
@@ -5074,7 +5111,7 @@ public:
     VkRayTracingPipelineInterfaceCreateInfoKHR s;
     MarshalVkRayTracingPipelineInterfaceCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingPipelineInterfaceCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRayTracingPipelineInterfaceCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRayTracingPipelineInterfaceCreateInfoKHR* s);
     ~MarshalVkRayTracingPipelineInterfaceCreateInfoKHR();
 };
 
@@ -5084,7 +5121,7 @@ public:
     VkPipelineLibraryCreateInfoKHR s;
     MarshalVkPipelineLibraryCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineLibraryCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineLibraryCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineLibraryCreateInfoKHR* s);
     ~MarshalVkPipelineLibraryCreateInfoKHR();
 };
 
@@ -5094,7 +5131,7 @@ public:
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT s;
     MarshalVkPhysicalDeviceExtendedDynamicStateFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicStateFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicStateFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExtendedDynamicStateFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceExtendedDynamicStateFeaturesEXT();
 };
 
@@ -5104,7 +5141,7 @@ public:
     VkPhysicalDeviceExtendedDynamicState2FeaturesEXT s;
     MarshalVkPhysicalDeviceExtendedDynamicState2FeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicState2FeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicState2FeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExtendedDynamicState2FeaturesEXT* s);
     ~MarshalVkPhysicalDeviceExtendedDynamicState2FeaturesEXT();
 };
 
@@ -5114,7 +5151,7 @@ public:
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT s;
     MarshalVkPhysicalDeviceExtendedDynamicState3FeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicState3FeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicState3FeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT* s);
     ~MarshalVkPhysicalDeviceExtendedDynamicState3FeaturesEXT();
 };
 
@@ -5124,7 +5161,7 @@ public:
     VkPhysicalDeviceExtendedDynamicState3PropertiesEXT s;
     MarshalVkPhysicalDeviceExtendedDynamicState3PropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicState3PropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedDynamicState3PropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExtendedDynamicState3PropertiesEXT* s);
     ~MarshalVkPhysicalDeviceExtendedDynamicState3PropertiesEXT();
 };
 
@@ -5150,7 +5187,7 @@ public:
     VkRenderPassTransformBeginInfoQCOM s;
     MarshalVkRenderPassTransformBeginInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassTransformBeginInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassTransformBeginInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassTransformBeginInfoQCOM* s);
     ~MarshalVkRenderPassTransformBeginInfoQCOM();
 };
 
@@ -5160,7 +5197,7 @@ public:
     VkCopyCommandTransformInfoQCOM s;
     MarshalVkCopyCommandTransformInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyCommandTransformInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyCommandTransformInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyCommandTransformInfoQCOM* s);
     ~MarshalVkCopyCommandTransformInfoQCOM();
 };
 
@@ -5170,7 +5207,7 @@ public:
     VkCommandBufferInheritanceRenderPassTransformInfoQCOM s;
     MarshalVkCommandBufferInheritanceRenderPassTransformInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceRenderPassTransformInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceRenderPassTransformInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferInheritanceRenderPassTransformInfoQCOM* s);
     ~MarshalVkCommandBufferInheritanceRenderPassTransformInfoQCOM();
 };
 
@@ -5180,7 +5217,7 @@ public:
     VkPhysicalDeviceDiagnosticsConfigFeaturesNV s;
     MarshalVkPhysicalDeviceDiagnosticsConfigFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDiagnosticsConfigFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDiagnosticsConfigFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDiagnosticsConfigFeaturesNV* s);
     ~MarshalVkPhysicalDeviceDiagnosticsConfigFeaturesNV();
 };
 
@@ -5190,7 +5227,7 @@ public:
     VkDeviceDiagnosticsConfigCreateInfoNV s;
     MarshalVkDeviceDiagnosticsConfigCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceDiagnosticsConfigCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceDiagnosticsConfigCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceDiagnosticsConfigCreateInfoNV* s);
     ~MarshalVkDeviceDiagnosticsConfigCreateInfoNV();
 };
 
@@ -5200,7 +5237,7 @@ public:
     VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures s;
     MarshalVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures* s);
     ~MarshalVkPhysicalDeviceZeroInitializeWorkgroupMemoryFeatures();
 };
 
@@ -5210,7 +5247,7 @@ public:
     VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR s;
     MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR();
 };
 
@@ -5220,7 +5257,7 @@ public:
     VkPhysicalDeviceRobustness2FeaturesEXT s;
     MarshalVkPhysicalDeviceRobustness2FeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRobustness2FeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRobustness2FeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRobustness2FeaturesEXT* s);
     ~MarshalVkPhysicalDeviceRobustness2FeaturesEXT();
 };
 
@@ -5230,7 +5267,7 @@ public:
     VkPhysicalDeviceRobustness2PropertiesEXT s;
     MarshalVkPhysicalDeviceRobustness2PropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRobustness2PropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRobustness2PropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRobustness2PropertiesEXT* s);
     ~MarshalVkPhysicalDeviceRobustness2PropertiesEXT();
 };
 
@@ -5240,7 +5277,7 @@ public:
     VkPhysicalDeviceImageRobustnessFeatures s;
     MarshalVkPhysicalDeviceImageRobustnessFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageRobustnessFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageRobustnessFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageRobustnessFeatures* s);
     ~MarshalVkPhysicalDeviceImageRobustnessFeatures();
 };
 
@@ -5250,7 +5287,7 @@ public:
     VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR s;
     MarshalVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceWorkgroupMemoryExplicitLayoutFeaturesKHR();
 };
 
@@ -5260,7 +5297,7 @@ public:
     VkPhysicalDevice4444FormatsFeaturesEXT s;
     MarshalVkPhysicalDevice4444FormatsFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevice4444FormatsFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevice4444FormatsFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevice4444FormatsFeaturesEXT* s);
     ~MarshalVkPhysicalDevice4444FormatsFeaturesEXT();
 };
 
@@ -5270,7 +5307,7 @@ public:
     VkPhysicalDeviceSubpassShadingFeaturesHUAWEI s;
     MarshalVkPhysicalDeviceSubpassShadingFeaturesHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubpassShadingFeaturesHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubpassShadingFeaturesHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSubpassShadingFeaturesHUAWEI* s);
     ~MarshalVkPhysicalDeviceSubpassShadingFeaturesHUAWEI();
 };
 
@@ -5280,7 +5317,7 @@ public:
     VkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI s;
     MarshalVkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI* s);
     ~MarshalVkPhysicalDeviceClusterCullingShaderFeaturesHUAWEI();
 };
 
@@ -5290,7 +5327,7 @@ public:
     VkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI s;
     MarshalVkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI* s);
     ~MarshalVkPhysicalDeviceClusterCullingShaderVrsFeaturesHUAWEI();
 };
 
@@ -5300,7 +5337,7 @@ public:
     VkBufferCopy2 s;
     MarshalVkBufferCopy2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCopy2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCopy2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferCopy2* s);
     ~MarshalVkBufferCopy2();
 };
 
@@ -5310,7 +5347,7 @@ public:
     VkImageCopy2 s;
     MarshalVkImageCopy2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCopy2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCopy2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageCopy2* s);
     ~MarshalVkImageCopy2();
 };
 
@@ -5320,7 +5357,7 @@ public:
     VkImageBlit2 s;
     MarshalVkImageBlit2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageBlit2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageBlit2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageBlit2* s);
     ~MarshalVkImageBlit2();
 };
 
@@ -5330,7 +5367,7 @@ public:
     VkBufferImageCopy2 s;
     MarshalVkBufferImageCopy2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferImageCopy2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferImageCopy2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferImageCopy2* s);
     ~MarshalVkBufferImageCopy2();
 };
 
@@ -5340,7 +5377,7 @@ public:
     VkImageResolve2 s;
     MarshalVkImageResolve2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageResolve2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageResolve2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageResolve2* s);
     ~MarshalVkImageResolve2();
 };
 
@@ -5350,7 +5387,7 @@ public:
     VkCopyBufferInfo2 s;
     MarshalVkCopyBufferInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyBufferInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyBufferInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyBufferInfo2* s);
     ~MarshalVkCopyBufferInfo2();
 };
 
@@ -5360,7 +5397,7 @@ public:
     VkCopyImageInfo2 s;
     MarshalVkCopyImageInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyImageInfo2* s);
     ~MarshalVkCopyImageInfo2();
 };
 
@@ -5370,7 +5407,7 @@ public:
     VkBlitImageInfo2 s;
     MarshalVkBlitImageInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBlitImageInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBlitImageInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBlitImageInfo2* s);
     ~MarshalVkBlitImageInfo2();
 };
 
@@ -5380,7 +5417,7 @@ public:
     VkCopyBufferToImageInfo2 s;
     MarshalVkCopyBufferToImageInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyBufferToImageInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyBufferToImageInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyBufferToImageInfo2* s);
     ~MarshalVkCopyBufferToImageInfo2();
 };
 
@@ -5390,7 +5427,7 @@ public:
     VkCopyImageToBufferInfo2 s;
     MarshalVkCopyImageToBufferInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageToBufferInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageToBufferInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyImageToBufferInfo2* s);
     ~MarshalVkCopyImageToBufferInfo2();
 };
 
@@ -5400,7 +5437,7 @@ public:
     VkResolveImageInfo2 s;
     MarshalVkResolveImageInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkResolveImageInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkResolveImageInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkResolveImageInfo2* s);
     ~MarshalVkResolveImageInfo2();
 };
 
@@ -5410,7 +5447,7 @@ public:
     VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT s;
     MarshalVkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT* s);
     ~MarshalVkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT();
 };
 
@@ -5420,7 +5457,7 @@ public:
     VkFragmentShadingRateAttachmentInfoKHR s;
     MarshalVkFragmentShadingRateAttachmentInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFragmentShadingRateAttachmentInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFragmentShadingRateAttachmentInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFragmentShadingRateAttachmentInfoKHR* s);
     ~MarshalVkFragmentShadingRateAttachmentInfoKHR();
 };
 
@@ -5430,7 +5467,7 @@ public:
     VkPipelineFragmentShadingRateStateCreateInfoKHR s;
     MarshalVkPipelineFragmentShadingRateStateCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineFragmentShadingRateStateCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineFragmentShadingRateStateCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineFragmentShadingRateStateCreateInfoKHR* s);
     ~MarshalVkPipelineFragmentShadingRateStateCreateInfoKHR();
 };
 
@@ -5440,7 +5477,7 @@ public:
     VkPhysicalDeviceFragmentShadingRateFeaturesKHR s;
     MarshalVkPhysicalDeviceFragmentShadingRateFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShadingRateFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceFragmentShadingRateFeaturesKHR();
 };
 
@@ -5450,7 +5487,7 @@ public:
     VkPhysicalDeviceFragmentShadingRatePropertiesKHR s;
     MarshalVkPhysicalDeviceFragmentShadingRatePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRatePropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRatePropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShadingRatePropertiesKHR* s);
     ~MarshalVkPhysicalDeviceFragmentShadingRatePropertiesKHR();
 };
 
@@ -5460,7 +5497,7 @@ public:
     VkPhysicalDeviceFragmentShadingRateKHR s;
     MarshalVkPhysicalDeviceFragmentShadingRateKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShadingRateKHR* s);
     ~MarshalVkPhysicalDeviceFragmentShadingRateKHR();
 };
 
@@ -5470,7 +5507,7 @@ public:
     VkPhysicalDeviceShaderTerminateInvocationFeatures s;
     MarshalVkPhysicalDeviceShaderTerminateInvocationFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderTerminateInvocationFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderTerminateInvocationFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderTerminateInvocationFeatures* s);
     ~MarshalVkPhysicalDeviceShaderTerminateInvocationFeatures();
 };
 
@@ -5480,7 +5517,7 @@ public:
     VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV s;
     MarshalVkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV* s);
     ~MarshalVkPhysicalDeviceFragmentShadingRateEnumsFeaturesNV();
 };
 
@@ -5490,7 +5527,7 @@ public:
     VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV s;
     MarshalVkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV* s);
     ~MarshalVkPhysicalDeviceFragmentShadingRateEnumsPropertiesNV();
 };
 
@@ -5500,7 +5537,7 @@ public:
     VkPipelineFragmentShadingRateEnumStateCreateInfoNV s;
     MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineFragmentShadingRateEnumStateCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineFragmentShadingRateEnumStateCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineFragmentShadingRateEnumStateCreateInfoNV* s);
     ~MarshalVkPipelineFragmentShadingRateEnumStateCreateInfoNV();
 };
 
@@ -5510,7 +5547,7 @@ public:
     VkAccelerationStructureBuildSizesInfoKHR s;
     MarshalVkAccelerationStructureBuildSizesInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildSizesInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureBuildSizesInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureBuildSizesInfoKHR* s);
     ~MarshalVkAccelerationStructureBuildSizesInfoKHR();
 };
 
@@ -5520,7 +5557,7 @@ public:
     VkPhysicalDeviceImage2DViewOf3DFeaturesEXT s;
     MarshalVkPhysicalDeviceImage2DViewOf3DFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImage2DViewOf3DFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImage2DViewOf3DFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImage2DViewOf3DFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceImage2DViewOf3DFeaturesEXT();
 };
 
@@ -5530,7 +5567,7 @@ public:
     VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT s;
     MarshalVkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceImageSlicedViewOf3DFeaturesEXT();
 };
 
@@ -5540,7 +5577,7 @@ public:
     VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT s;
     MarshalVkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceAttachmentFeedbackLoopDynamicStateFeaturesEXT();
 };
 
@@ -5550,7 +5587,7 @@ public:
     VkPhysicalDeviceLegacyVertexAttributesFeaturesEXT s;
     MarshalVkPhysicalDeviceLegacyVertexAttributesFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLegacyVertexAttributesFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLegacyVertexAttributesFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLegacyVertexAttributesFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceLegacyVertexAttributesFeaturesEXT();
 };
 
@@ -5560,7 +5597,7 @@ public:
     VkPhysicalDeviceLegacyVertexAttributesPropertiesEXT s;
     MarshalVkPhysicalDeviceLegacyVertexAttributesPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLegacyVertexAttributesPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLegacyVertexAttributesPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLegacyVertexAttributesPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceLegacyVertexAttributesPropertiesEXT();
 };
 
@@ -5570,7 +5607,7 @@ public:
     VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT s;
     MarshalVkPhysicalDeviceMutableDescriptorTypeFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMutableDescriptorTypeFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceMutableDescriptorTypeFeaturesEXT();
 };
 
@@ -5580,6 +5617,7 @@ public:
     VkMutableDescriptorTypeListEXT s;
     MarshalVkMutableDescriptorTypeListEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMutableDescriptorTypeListEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMutableDescriptorTypeListEXT* s);
     ~MarshalVkMutableDescriptorTypeListEXT();
 };
 
@@ -5589,7 +5627,7 @@ public:
     VkMutableDescriptorTypeCreateInfoEXT s;
     MarshalVkMutableDescriptorTypeCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMutableDescriptorTypeCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMutableDescriptorTypeCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMutableDescriptorTypeCreateInfoEXT* s);
     ~MarshalVkMutableDescriptorTypeCreateInfoEXT();
 };
 
@@ -5599,7 +5637,7 @@ public:
     VkPhysicalDeviceDepthClipControlFeaturesEXT s;
     MarshalVkPhysicalDeviceDepthClipControlFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClipControlFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClipControlFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDepthClipControlFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDepthClipControlFeaturesEXT();
 };
 
@@ -5609,7 +5647,7 @@ public:
     VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT s;
     MarshalVkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDeviceGeneratedCommandsFeaturesEXT();
 };
 
@@ -5619,7 +5657,7 @@ public:
     VkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT s;
     MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceDeviceGeneratedCommandsPropertiesEXT();
 };
 
@@ -5629,7 +5667,7 @@ public:
     VkGeneratedCommandsPipelineInfoEXT s;
     MarshalVkGeneratedCommandsPipelineInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsPipelineInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsPipelineInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeneratedCommandsPipelineInfoEXT* s);
     ~MarshalVkGeneratedCommandsPipelineInfoEXT();
 };
 
@@ -5639,7 +5677,7 @@ public:
     VkGeneratedCommandsShaderInfoEXT s;
     MarshalVkGeneratedCommandsShaderInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsShaderInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsShaderInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeneratedCommandsShaderInfoEXT* s);
     ~MarshalVkGeneratedCommandsShaderInfoEXT();
 };
 
@@ -5649,7 +5687,7 @@ public:
     VkGeneratedCommandsMemoryRequirementsInfoEXT s;
     MarshalVkGeneratedCommandsMemoryRequirementsInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsMemoryRequirementsInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsMemoryRequirementsInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeneratedCommandsMemoryRequirementsInfoEXT* s);
     ~MarshalVkGeneratedCommandsMemoryRequirementsInfoEXT();
 };
 
@@ -5659,7 +5697,7 @@ public:
     VkIndirectExecutionSetPipelineInfoEXT s;
     MarshalVkIndirectExecutionSetPipelineInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetPipelineInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetPipelineInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectExecutionSetPipelineInfoEXT* s);
     ~MarshalVkIndirectExecutionSetPipelineInfoEXT();
 };
 
@@ -5669,7 +5707,7 @@ public:
     VkIndirectExecutionSetShaderLayoutInfoEXT s;
     MarshalVkIndirectExecutionSetShaderLayoutInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetShaderLayoutInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetShaderLayoutInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectExecutionSetShaderLayoutInfoEXT* s);
     ~MarshalVkIndirectExecutionSetShaderLayoutInfoEXT();
 };
 
@@ -5679,7 +5717,7 @@ public:
     VkIndirectExecutionSetShaderInfoEXT s;
     MarshalVkIndirectExecutionSetShaderInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetShaderInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetShaderInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectExecutionSetShaderInfoEXT* s);
     ~MarshalVkIndirectExecutionSetShaderInfoEXT();
 };
 
@@ -5689,7 +5727,7 @@ public:
     VkIndirectExecutionSetCreateInfoEXT s;
     MarshalVkIndirectExecutionSetCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectExecutionSetCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectExecutionSetCreateInfoEXT* s);
     ~MarshalVkIndirectExecutionSetCreateInfoEXT();
 };
 
@@ -5699,7 +5737,7 @@ public:
     VkGeneratedCommandsInfoEXT s;
     MarshalVkGeneratedCommandsInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGeneratedCommandsInfoEXT* s);
     ~MarshalVkGeneratedCommandsInfoEXT();
 };
 
@@ -5709,7 +5747,7 @@ public:
     VkWriteIndirectExecutionSetPipelineEXT s;
     MarshalVkWriteIndirectExecutionSetPipelineEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteIndirectExecutionSetPipelineEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteIndirectExecutionSetPipelineEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkWriteIndirectExecutionSetPipelineEXT* s);
     ~MarshalVkWriteIndirectExecutionSetPipelineEXT();
 };
 
@@ -5719,7 +5757,7 @@ public:
     VkWriteIndirectExecutionSetShaderEXT s;
     MarshalVkWriteIndirectExecutionSetShaderEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteIndirectExecutionSetShaderEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkWriteIndirectExecutionSetShaderEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkWriteIndirectExecutionSetShaderEXT* s);
     ~MarshalVkWriteIndirectExecutionSetShaderEXT();
 };
 
@@ -5729,7 +5767,7 @@ public:
     VkIndirectCommandsLayoutCreateInfoEXT s;
     MarshalVkIndirectCommandsLayoutCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectCommandsLayoutCreateInfoEXT* s);
     ~MarshalVkIndirectCommandsLayoutCreateInfoEXT();
 };
 
@@ -5739,7 +5777,7 @@ public:
     VkIndirectCommandsLayoutTokenEXT s;
     MarshalVkIndirectCommandsLayoutTokenEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutTokenEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkIndirectCommandsLayoutTokenEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkIndirectCommandsLayoutTokenEXT* s);
     ~MarshalVkIndirectCommandsLayoutTokenEXT();
 };
 
@@ -5749,7 +5787,7 @@ public:
     VkPipelineViewportDepthClipControlCreateInfoEXT s;
     MarshalVkPipelineViewportDepthClipControlCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportDepthClipControlCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportDepthClipControlCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportDepthClipControlCreateInfoEXT* s);
     ~MarshalVkPipelineViewportDepthClipControlCreateInfoEXT();
 };
 
@@ -5759,7 +5797,7 @@ public:
     VkPhysicalDeviceDepthClampControlFeaturesEXT s;
     MarshalVkPhysicalDeviceDepthClampControlFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClampControlFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClampControlFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDepthClampControlFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDepthClampControlFeaturesEXT();
 };
 
@@ -5769,7 +5807,7 @@ public:
     VkPipelineViewportDepthClampControlCreateInfoEXT s;
     MarshalVkPipelineViewportDepthClampControlCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportDepthClampControlCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineViewportDepthClampControlCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineViewportDepthClampControlCreateInfoEXT* s);
     ~MarshalVkPipelineViewportDepthClampControlCreateInfoEXT();
 };
 
@@ -5779,7 +5817,7 @@ public:
     VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT s;
     MarshalVkPhysicalDeviceVertexInputDynamicStateFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVertexInputDynamicStateFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceVertexInputDynamicStateFeaturesEXT();
 };
 
@@ -5789,7 +5827,7 @@ public:
     VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR s;
     MarshalVkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceShaderRelaxedExtendedInstructionFeaturesKHR();
 };
 
@@ -5799,7 +5837,7 @@ public:
     VkVertexInputBindingDescription2EXT s;
     MarshalVkVertexInputBindingDescription2EXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVertexInputBindingDescription2EXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVertexInputBindingDescription2EXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVertexInputBindingDescription2EXT* s);
     ~MarshalVkVertexInputBindingDescription2EXT();
 };
 
@@ -5809,7 +5847,7 @@ public:
     VkVertexInputAttributeDescription2EXT s;
     MarshalVkVertexInputAttributeDescription2EXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVertexInputAttributeDescription2EXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVertexInputAttributeDescription2EXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVertexInputAttributeDescription2EXT* s);
     ~MarshalVkVertexInputAttributeDescription2EXT();
 };
 
@@ -5819,7 +5857,7 @@ public:
     VkPhysicalDeviceColorWriteEnableFeaturesEXT s;
     MarshalVkPhysicalDeviceColorWriteEnableFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceColorWriteEnableFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceColorWriteEnableFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceColorWriteEnableFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceColorWriteEnableFeaturesEXT();
 };
 
@@ -5829,7 +5867,7 @@ public:
     VkPipelineColorWriteCreateInfoEXT s;
     MarshalVkPipelineColorWriteCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorWriteCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineColorWriteCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineColorWriteCreateInfoEXT* s);
     ~MarshalVkPipelineColorWriteCreateInfoEXT();
 };
 
@@ -5839,7 +5877,7 @@ public:
     VkMemoryBarrier2 s;
     MarshalVkMemoryBarrier2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryBarrier2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryBarrier2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryBarrier2* s);
     ~MarshalVkMemoryBarrier2();
 };
 
@@ -5849,7 +5887,7 @@ public:
     VkImageMemoryBarrier2 s;
     MarshalVkImageMemoryBarrier2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageMemoryBarrier2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageMemoryBarrier2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageMemoryBarrier2* s);
     ~MarshalVkImageMemoryBarrier2();
 };
 
@@ -5859,7 +5897,7 @@ public:
     VkBufferMemoryBarrier2 s;
     MarshalVkBufferMemoryBarrier2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferMemoryBarrier2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferMemoryBarrier2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferMemoryBarrier2* s);
     ~MarshalVkBufferMemoryBarrier2();
 };
 
@@ -5869,7 +5907,7 @@ public:
     VkDependencyInfo s;
     MarshalVkDependencyInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDependencyInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDependencyInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDependencyInfo* s);
     ~MarshalVkDependencyInfo();
 };
 
@@ -5879,7 +5917,7 @@ public:
     VkSemaphoreSubmitInfo s;
     MarshalVkSemaphoreSubmitInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreSubmitInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSemaphoreSubmitInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSemaphoreSubmitInfo* s);
     ~MarshalVkSemaphoreSubmitInfo();
 };
 
@@ -5889,7 +5927,7 @@ public:
     VkCommandBufferSubmitInfo s;
     MarshalVkCommandBufferSubmitInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferSubmitInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferSubmitInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferSubmitInfo* s);
     ~MarshalVkCommandBufferSubmitInfo();
 };
 
@@ -5899,7 +5937,7 @@ public:
     VkSubmitInfo2 s;
     MarshalVkSubmitInfo2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubmitInfo2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubmitInfo2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubmitInfo2* s);
     ~MarshalVkSubmitInfo2();
 };
 
@@ -5909,7 +5947,7 @@ public:
     VkQueueFamilyCheckpointProperties2NV s;
     MarshalVkQueueFamilyCheckpointProperties2NV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyCheckpointProperties2NV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyCheckpointProperties2NV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueueFamilyCheckpointProperties2NV* s);
     ~MarshalVkQueueFamilyCheckpointProperties2NV();
 };
 
@@ -5919,7 +5957,7 @@ public:
     VkCheckpointData2NV s;
     MarshalVkCheckpointData2NV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCheckpointData2NV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCheckpointData2NV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCheckpointData2NV* s);
     ~MarshalVkCheckpointData2NV();
 };
 
@@ -5929,7 +5967,7 @@ public:
     VkPhysicalDeviceSynchronization2Features s;
     MarshalVkPhysicalDeviceSynchronization2Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSynchronization2Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSynchronization2Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSynchronization2Features* s);
     ~MarshalVkPhysicalDeviceSynchronization2Features();
 };
 
@@ -5939,7 +5977,7 @@ public:
     VkPhysicalDeviceHostImageCopyFeatures s;
     MarshalVkPhysicalDeviceHostImageCopyFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHostImageCopyFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHostImageCopyFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceHostImageCopyFeatures* s);
     ~MarshalVkPhysicalDeviceHostImageCopyFeatures();
 };
 
@@ -5949,7 +5987,7 @@ public:
     VkPhysicalDeviceHostImageCopyProperties s;
     MarshalVkPhysicalDeviceHostImageCopyProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHostImageCopyProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHostImageCopyProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceHostImageCopyProperties* s);
     ~MarshalVkPhysicalDeviceHostImageCopyProperties();
 };
 
@@ -5957,9 +5995,7 @@ class MarshalVkMemoryToImageCopy {
 public:
     MarshalVkMemoryToImageCopy() {}
     VkMemoryToImageCopy s;
-    MarshalVkMemoryToImageCopy(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
-    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryToImageCopy* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryToImageCopy* s);
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, VkImage image, U32 address, VkMemoryToImageCopy* s);
     ~MarshalVkMemoryToImageCopy();
 };
 
@@ -5967,9 +6003,7 @@ class MarshalVkImageToMemoryCopy {
 public:
     MarshalVkImageToMemoryCopy() {}
     VkImageToMemoryCopy s;
-    MarshalVkImageToMemoryCopy(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
-    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageToMemoryCopy* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageToMemoryCopy* s);
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, VkImage image, U32 address, VkImageToMemoryCopy* s);
     ~MarshalVkImageToMemoryCopy();
 };
 
@@ -5979,7 +6013,6 @@ public:
     VkCopyMemoryToImageInfo s;
     MarshalVkCopyMemoryToImageInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToImageInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToImageInfo* s);
     ~MarshalVkCopyMemoryToImageInfo();
 };
 
@@ -5989,7 +6022,6 @@ public:
     VkCopyImageToMemoryInfo s;
     MarshalVkCopyImageToMemoryInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageToMemoryInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageToMemoryInfo* s);
     ~MarshalVkCopyImageToMemoryInfo();
 };
 
@@ -5999,7 +6031,7 @@ public:
     VkCopyImageToImageInfo s;
     MarshalVkCopyImageToImageInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageToImageInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyImageToImageInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyImageToImageInfo* s);
     ~MarshalVkCopyImageToImageInfo();
 };
 
@@ -6009,7 +6041,7 @@ public:
     VkHostImageLayoutTransitionInfo s;
     MarshalVkHostImageLayoutTransitionInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHostImageLayoutTransitionInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHostImageLayoutTransitionInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkHostImageLayoutTransitionInfo* s);
     ~MarshalVkHostImageLayoutTransitionInfo();
 };
 
@@ -6019,7 +6051,7 @@ public:
     VkSubresourceHostMemcpySize s;
     MarshalVkSubresourceHostMemcpySize(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubresourceHostMemcpySize* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubresourceHostMemcpySize* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubresourceHostMemcpySize* s);
     ~MarshalVkSubresourceHostMemcpySize();
 };
 
@@ -6029,7 +6061,7 @@ public:
     VkHostImageCopyDevicePerformanceQuery s;
     MarshalVkHostImageCopyDevicePerformanceQuery(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHostImageCopyDevicePerformanceQuery* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkHostImageCopyDevicePerformanceQuery* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkHostImageCopyDevicePerformanceQuery* s);
     ~MarshalVkHostImageCopyDevicePerformanceQuery();
 };
 
@@ -6039,7 +6071,7 @@ public:
     VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT s;
     MarshalVkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT* s);
     ~MarshalVkPhysicalDevicePrimitivesGeneratedQueryFeaturesEXT();
 };
 
@@ -6049,7 +6081,7 @@ public:
     VkPhysicalDeviceLegacyDitheringFeaturesEXT s;
     MarshalVkPhysicalDeviceLegacyDitheringFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLegacyDitheringFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLegacyDitheringFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLegacyDitheringFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceLegacyDitheringFeaturesEXT();
 };
 
@@ -6059,7 +6091,7 @@ public:
     VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT s;
     MarshalVkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceMultisampledRenderToSingleSampledFeaturesEXT();
 };
 
@@ -6069,7 +6101,7 @@ public:
     VkSubpassResolvePerformanceQueryEXT s;
     MarshalVkSubpassResolvePerformanceQueryEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassResolvePerformanceQueryEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubpassResolvePerformanceQueryEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubpassResolvePerformanceQueryEXT* s);
     ~MarshalVkSubpassResolvePerformanceQueryEXT();
 };
 
@@ -6079,7 +6111,7 @@ public:
     VkMultisampledRenderToSingleSampledInfoEXT s;
     MarshalVkMultisampledRenderToSingleSampledInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultisampledRenderToSingleSampledInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultisampledRenderToSingleSampledInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMultisampledRenderToSingleSampledInfoEXT* s);
     ~MarshalVkMultisampledRenderToSingleSampledInfoEXT();
 };
 
@@ -6089,7 +6121,7 @@ public:
     VkPhysicalDevicePipelineProtectedAccessFeatures s;
     MarshalVkPhysicalDevicePipelineProtectedAccessFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineProtectedAccessFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineProtectedAccessFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineProtectedAccessFeatures* s);
     ~MarshalVkPhysicalDevicePipelineProtectedAccessFeatures();
 };
 
@@ -6099,7 +6131,7 @@ public:
     VkQueueFamilyVideoPropertiesKHR s;
     MarshalVkQueueFamilyVideoPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyVideoPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyVideoPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueueFamilyVideoPropertiesKHR* s);
     ~MarshalVkQueueFamilyVideoPropertiesKHR();
 };
 
@@ -6109,7 +6141,7 @@ public:
     VkQueueFamilyQueryResultStatusPropertiesKHR s;
     MarshalVkQueueFamilyQueryResultStatusPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyQueryResultStatusPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueueFamilyQueryResultStatusPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueueFamilyQueryResultStatusPropertiesKHR* s);
     ~MarshalVkQueueFamilyQueryResultStatusPropertiesKHR();
 };
 
@@ -6119,7 +6151,7 @@ public:
     VkVideoProfileListInfoKHR s;
     MarshalVkVideoProfileListInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoProfileListInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoProfileListInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoProfileListInfoKHR* s);
     ~MarshalVkVideoProfileListInfoKHR();
 };
 
@@ -6129,7 +6161,7 @@ public:
     VkPhysicalDeviceVideoFormatInfoKHR s;
     MarshalVkPhysicalDeviceVideoFormatInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoFormatInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoFormatInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVideoFormatInfoKHR* s);
     ~MarshalVkPhysicalDeviceVideoFormatInfoKHR();
 };
 
@@ -6139,7 +6171,7 @@ public:
     VkVideoFormatPropertiesKHR s;
     MarshalVkVideoFormatPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoFormatPropertiesKHR* s);
     ~MarshalVkVideoFormatPropertiesKHR();
 };
 
@@ -6149,7 +6181,7 @@ public:
     VkVideoEncodeQuantizationMapCapabilitiesKHR s;
     MarshalVkVideoEncodeQuantizationMapCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQuantizationMapCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQuantizationMapCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeQuantizationMapCapabilitiesKHR* s);
     ~MarshalVkVideoEncodeQuantizationMapCapabilitiesKHR();
 };
 
@@ -6159,7 +6191,7 @@ public:
     VkVideoEncodeH264QuantizationMapCapabilitiesKHR s;
     MarshalVkVideoEncodeH264QuantizationMapCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264QuantizationMapCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264QuantizationMapCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264QuantizationMapCapabilitiesKHR* s);
     ~MarshalVkVideoEncodeH264QuantizationMapCapabilitiesKHR();
 };
 
@@ -6169,7 +6201,7 @@ public:
     VkVideoEncodeH265QuantizationMapCapabilitiesKHR s;
     MarshalVkVideoEncodeH265QuantizationMapCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265QuantizationMapCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265QuantizationMapCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265QuantizationMapCapabilitiesKHR* s);
     ~MarshalVkVideoEncodeH265QuantizationMapCapabilitiesKHR();
 };
 
@@ -6179,7 +6211,7 @@ public:
     VkVideoEncodeAV1QuantizationMapCapabilitiesKHR s;
     MarshalVkVideoEncodeAV1QuantizationMapCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1QuantizationMapCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1QuantizationMapCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1QuantizationMapCapabilitiesKHR* s);
     ~MarshalVkVideoEncodeAV1QuantizationMapCapabilitiesKHR();
 };
 
@@ -6189,7 +6221,7 @@ public:
     VkVideoFormatQuantizationMapPropertiesKHR s;
     MarshalVkVideoFormatQuantizationMapPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatQuantizationMapPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatQuantizationMapPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoFormatQuantizationMapPropertiesKHR* s);
     ~MarshalVkVideoFormatQuantizationMapPropertiesKHR();
 };
 
@@ -6199,7 +6231,7 @@ public:
     VkVideoFormatH265QuantizationMapPropertiesKHR s;
     MarshalVkVideoFormatH265QuantizationMapPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatH265QuantizationMapPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatH265QuantizationMapPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoFormatH265QuantizationMapPropertiesKHR* s);
     ~MarshalVkVideoFormatH265QuantizationMapPropertiesKHR();
 };
 
@@ -6209,7 +6241,7 @@ public:
     VkVideoFormatAV1QuantizationMapPropertiesKHR s;
     MarshalVkVideoFormatAV1QuantizationMapPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatAV1QuantizationMapPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoFormatAV1QuantizationMapPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoFormatAV1QuantizationMapPropertiesKHR* s);
     ~MarshalVkVideoFormatAV1QuantizationMapPropertiesKHR();
 };
 
@@ -6219,7 +6251,7 @@ public:
     VkVideoProfileInfoKHR s;
     MarshalVkVideoProfileInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoProfileInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoProfileInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoProfileInfoKHR* s);
     ~MarshalVkVideoProfileInfoKHR();
 };
 
@@ -6229,7 +6261,7 @@ public:
     VkVideoCapabilitiesKHR s;
     MarshalVkVideoCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoCapabilitiesKHR* s);
     ~MarshalVkVideoCapabilitiesKHR();
 };
 
@@ -6239,7 +6271,7 @@ public:
     VkVideoSessionMemoryRequirementsKHR s;
     MarshalVkVideoSessionMemoryRequirementsKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionMemoryRequirementsKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionMemoryRequirementsKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoSessionMemoryRequirementsKHR* s);
     ~MarshalVkVideoSessionMemoryRequirementsKHR();
 };
 
@@ -6249,7 +6281,7 @@ public:
     VkBindVideoSessionMemoryInfoKHR s;
     MarshalVkBindVideoSessionMemoryInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindVideoSessionMemoryInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindVideoSessionMemoryInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindVideoSessionMemoryInfoKHR* s);
     ~MarshalVkBindVideoSessionMemoryInfoKHR();
 };
 
@@ -6259,7 +6291,7 @@ public:
     VkVideoPictureResourceInfoKHR s;
     MarshalVkVideoPictureResourceInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoPictureResourceInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoPictureResourceInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoPictureResourceInfoKHR* s);
     ~MarshalVkVideoPictureResourceInfoKHR();
 };
 
@@ -6269,7 +6301,7 @@ public:
     VkVideoReferenceSlotInfoKHR s;
     MarshalVkVideoReferenceSlotInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoReferenceSlotInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoReferenceSlotInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoReferenceSlotInfoKHR* s);
     ~MarshalVkVideoReferenceSlotInfoKHR();
 };
 
@@ -6279,7 +6311,7 @@ public:
     VkVideoDecodeCapabilitiesKHR s;
     MarshalVkVideoDecodeCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeCapabilitiesKHR* s);
     ~MarshalVkVideoDecodeCapabilitiesKHR();
 };
 
@@ -6289,7 +6321,7 @@ public:
     VkVideoDecodeUsageInfoKHR s;
     MarshalVkVideoDecodeUsageInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeUsageInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeUsageInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeUsageInfoKHR* s);
     ~MarshalVkVideoDecodeUsageInfoKHR();
 };
 
@@ -6299,7 +6331,7 @@ public:
     VkVideoDecodeInfoKHR s;
     MarshalVkVideoDecodeInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeInfoKHR* s);
     ~MarshalVkVideoDecodeInfoKHR();
 };
 
@@ -6309,7 +6341,7 @@ public:
     VkPhysicalDeviceVideoMaintenance1FeaturesKHR s;
     MarshalVkPhysicalDeviceVideoMaintenance1FeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoMaintenance1FeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoMaintenance1FeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVideoMaintenance1FeaturesKHR* s);
     ~MarshalVkPhysicalDeviceVideoMaintenance1FeaturesKHR();
 };
 
@@ -6319,7 +6351,7 @@ public:
     VkVideoInlineQueryInfoKHR s;
     MarshalVkVideoInlineQueryInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoInlineQueryInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoInlineQueryInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoInlineQueryInfoKHR* s);
     ~MarshalVkVideoInlineQueryInfoKHR();
 };
 
@@ -6329,6 +6361,7 @@ public:
     StdVideoDecodeH264PictureInfo s;
     MarshalStdVideoDecodeH264PictureInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoDecodeH264PictureInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH264PictureInfo* s);
 };
 
 class MarshalStdVideoDecodeH264ReferenceInfo {
@@ -6337,6 +6370,7 @@ public:
     StdVideoDecodeH264ReferenceInfo s;
     MarshalStdVideoDecodeH264ReferenceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoDecodeH264ReferenceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH264ReferenceInfo* s);
 };
 
 class MarshalVkVideoDecodeH264ProfileInfoKHR {
@@ -6345,7 +6379,7 @@ public:
     VkVideoDecodeH264ProfileInfoKHR s;
     MarshalVkVideoDecodeH264ProfileInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264ProfileInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264ProfileInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH264ProfileInfoKHR* s);
     ~MarshalVkVideoDecodeH264ProfileInfoKHR();
 };
 
@@ -6355,7 +6389,7 @@ public:
     VkVideoDecodeH264CapabilitiesKHR s;
     MarshalVkVideoDecodeH264CapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264CapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264CapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH264CapabilitiesKHR* s);
     ~MarshalVkVideoDecodeH264CapabilitiesKHR();
 };
 
@@ -6365,6 +6399,7 @@ public:
     StdVideoH264SequenceParameterSet s;
     MarshalStdVideoH264SequenceParameterSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH264SequenceParameterSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264SequenceParameterSet* s);
     ~MarshalStdVideoH264SequenceParameterSet();
 };
 
@@ -6374,6 +6409,7 @@ public:
     StdVideoH264PictureParameterSet s;
     MarshalStdVideoH264PictureParameterSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH264PictureParameterSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264PictureParameterSet* s);
     ~MarshalStdVideoH264PictureParameterSet();
 };
 
@@ -6383,7 +6419,7 @@ public:
     VkVideoDecodeH264SessionParametersAddInfoKHR s;
     MarshalVkVideoDecodeH264SessionParametersAddInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264SessionParametersAddInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264SessionParametersAddInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH264SessionParametersAddInfoKHR* s);
     ~MarshalVkVideoDecodeH264SessionParametersAddInfoKHR();
 };
 
@@ -6393,7 +6429,7 @@ public:
     VkVideoDecodeH264SessionParametersCreateInfoKHR s;
     MarshalVkVideoDecodeH264SessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264SessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264SessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH264SessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoDecodeH264SessionParametersCreateInfoKHR();
 };
 
@@ -6403,7 +6439,7 @@ public:
     VkVideoDecodeH264PictureInfoKHR s;
     MarshalVkVideoDecodeH264PictureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264PictureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264PictureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH264PictureInfoKHR* s);
     ~MarshalVkVideoDecodeH264PictureInfoKHR();
 };
 
@@ -6413,7 +6449,7 @@ public:
     VkVideoDecodeH264DpbSlotInfoKHR s;
     MarshalVkVideoDecodeH264DpbSlotInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264DpbSlotInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH264DpbSlotInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH264DpbSlotInfoKHR* s);
     ~MarshalVkVideoDecodeH264DpbSlotInfoKHR();
 };
 
@@ -6423,6 +6459,7 @@ public:
     StdVideoH265VideoParameterSet s;
     MarshalStdVideoH265VideoParameterSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265VideoParameterSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265VideoParameterSet* s);
     ~MarshalStdVideoH265VideoParameterSet();
 };
 
@@ -6432,6 +6469,7 @@ public:
     StdVideoH265SequenceParameterSet s;
     MarshalStdVideoH265SequenceParameterSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265SequenceParameterSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265SequenceParameterSet* s);
     ~MarshalStdVideoH265SequenceParameterSet();
 };
 
@@ -6441,6 +6479,7 @@ public:
     StdVideoH265PictureParameterSet s;
     MarshalStdVideoH265PictureParameterSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265PictureParameterSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265PictureParameterSet* s);
     ~MarshalStdVideoH265PictureParameterSet();
 };
 
@@ -6450,6 +6489,7 @@ public:
     StdVideoDecodeH265PictureInfo s;
     MarshalStdVideoDecodeH265PictureInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoDecodeH265PictureInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH265PictureInfo* s);
 };
 
 class MarshalStdVideoDecodeH265ReferenceInfo {
@@ -6458,6 +6498,7 @@ public:
     StdVideoDecodeH265ReferenceInfo s;
     MarshalStdVideoDecodeH265ReferenceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoDecodeH265ReferenceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeH265ReferenceInfo* s);
 };
 
 class MarshalVkVideoDecodeH265ProfileInfoKHR {
@@ -6466,7 +6507,7 @@ public:
     VkVideoDecodeH265ProfileInfoKHR s;
     MarshalVkVideoDecodeH265ProfileInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265ProfileInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265ProfileInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH265ProfileInfoKHR* s);
     ~MarshalVkVideoDecodeH265ProfileInfoKHR();
 };
 
@@ -6476,7 +6517,7 @@ public:
     VkVideoDecodeH265CapabilitiesKHR s;
     MarshalVkVideoDecodeH265CapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265CapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265CapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH265CapabilitiesKHR* s);
     ~MarshalVkVideoDecodeH265CapabilitiesKHR();
 };
 
@@ -6486,7 +6527,7 @@ public:
     VkVideoDecodeH265SessionParametersAddInfoKHR s;
     MarshalVkVideoDecodeH265SessionParametersAddInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265SessionParametersAddInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265SessionParametersAddInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH265SessionParametersAddInfoKHR* s);
     ~MarshalVkVideoDecodeH265SessionParametersAddInfoKHR();
 };
 
@@ -6496,7 +6537,7 @@ public:
     VkVideoDecodeH265SessionParametersCreateInfoKHR s;
     MarshalVkVideoDecodeH265SessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265SessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265SessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH265SessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoDecodeH265SessionParametersCreateInfoKHR();
 };
 
@@ -6506,7 +6547,7 @@ public:
     VkVideoDecodeH265PictureInfoKHR s;
     MarshalVkVideoDecodeH265PictureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265PictureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265PictureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH265PictureInfoKHR* s);
     ~MarshalVkVideoDecodeH265PictureInfoKHR();
 };
 
@@ -6516,7 +6557,7 @@ public:
     VkVideoDecodeH265DpbSlotInfoKHR s;
     MarshalVkVideoDecodeH265DpbSlotInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265DpbSlotInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeH265DpbSlotInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeH265DpbSlotInfoKHR* s);
     ~MarshalVkVideoDecodeH265DpbSlotInfoKHR();
 };
 
@@ -6526,6 +6567,7 @@ public:
     StdVideoAV1SequenceHeader s;
     MarshalStdVideoAV1SequenceHeader(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1SequenceHeader* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1SequenceHeader* s);
     ~MarshalStdVideoAV1SequenceHeader();
 };
 
@@ -6535,6 +6577,7 @@ public:
     StdVideoDecodeAV1PictureInfo s;
     MarshalStdVideoDecodeAV1PictureInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoDecodeAV1PictureInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeAV1PictureInfo* s);
     ~MarshalStdVideoDecodeAV1PictureInfo();
 };
 
@@ -6544,6 +6587,7 @@ public:
     StdVideoDecodeAV1ReferenceInfo s;
     MarshalStdVideoDecodeAV1ReferenceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoDecodeAV1ReferenceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoDecodeAV1ReferenceInfo* s);
 };
 
 class MarshalVkVideoDecodeAV1ProfileInfoKHR {
@@ -6552,7 +6596,7 @@ public:
     VkVideoDecodeAV1ProfileInfoKHR s;
     MarshalVkVideoDecodeAV1ProfileInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1ProfileInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1ProfileInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeAV1ProfileInfoKHR* s);
     ~MarshalVkVideoDecodeAV1ProfileInfoKHR();
 };
 
@@ -6562,7 +6606,7 @@ public:
     VkVideoDecodeAV1CapabilitiesKHR s;
     MarshalVkVideoDecodeAV1CapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1CapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1CapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeAV1CapabilitiesKHR* s);
     ~MarshalVkVideoDecodeAV1CapabilitiesKHR();
 };
 
@@ -6572,7 +6616,7 @@ public:
     VkVideoDecodeAV1SessionParametersCreateInfoKHR s;
     MarshalVkVideoDecodeAV1SessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1SessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1SessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeAV1SessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoDecodeAV1SessionParametersCreateInfoKHR();
 };
 
@@ -6582,7 +6626,7 @@ public:
     VkVideoDecodeAV1PictureInfoKHR s;
     MarshalVkVideoDecodeAV1PictureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1PictureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1PictureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeAV1PictureInfoKHR* s);
     ~MarshalVkVideoDecodeAV1PictureInfoKHR();
 };
 
@@ -6592,7 +6636,7 @@ public:
     VkVideoDecodeAV1DpbSlotInfoKHR s;
     MarshalVkVideoDecodeAV1DpbSlotInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1DpbSlotInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoDecodeAV1DpbSlotInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoDecodeAV1DpbSlotInfoKHR* s);
     ~MarshalVkVideoDecodeAV1DpbSlotInfoKHR();
 };
 
@@ -6602,7 +6646,7 @@ public:
     VkVideoSessionCreateInfoKHR s;
     MarshalVkVideoSessionCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoSessionCreateInfoKHR* s);
     ~MarshalVkVideoSessionCreateInfoKHR();
 };
 
@@ -6612,7 +6656,7 @@ public:
     VkVideoSessionParametersCreateInfoKHR s;
     MarshalVkVideoSessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoSessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoSessionParametersCreateInfoKHR();
 };
 
@@ -6622,7 +6666,7 @@ public:
     VkVideoSessionParametersUpdateInfoKHR s;
     MarshalVkVideoSessionParametersUpdateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionParametersUpdateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoSessionParametersUpdateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoSessionParametersUpdateInfoKHR* s);
     ~MarshalVkVideoSessionParametersUpdateInfoKHR();
 };
 
@@ -6632,7 +6676,7 @@ public:
     VkVideoEncodeSessionParametersGetInfoKHR s;
     MarshalVkVideoEncodeSessionParametersGetInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeSessionParametersGetInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeSessionParametersGetInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeSessionParametersGetInfoKHR* s);
     ~MarshalVkVideoEncodeSessionParametersGetInfoKHR();
 };
 
@@ -6642,7 +6686,7 @@ public:
     VkVideoEncodeSessionParametersFeedbackInfoKHR s;
     MarshalVkVideoEncodeSessionParametersFeedbackInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeSessionParametersFeedbackInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeSessionParametersFeedbackInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeSessionParametersFeedbackInfoKHR* s);
     ~MarshalVkVideoEncodeSessionParametersFeedbackInfoKHR();
 };
 
@@ -6652,7 +6696,7 @@ public:
     VkVideoBeginCodingInfoKHR s;
     MarshalVkVideoBeginCodingInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoBeginCodingInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoBeginCodingInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoBeginCodingInfoKHR* s);
     ~MarshalVkVideoBeginCodingInfoKHR();
 };
 
@@ -6662,7 +6706,7 @@ public:
     VkVideoEndCodingInfoKHR s;
     MarshalVkVideoEndCodingInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEndCodingInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEndCodingInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEndCodingInfoKHR* s);
     ~MarshalVkVideoEndCodingInfoKHR();
 };
 
@@ -6672,7 +6716,7 @@ public:
     VkVideoCodingControlInfoKHR s;
     MarshalVkVideoCodingControlInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoCodingControlInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoCodingControlInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoCodingControlInfoKHR* s);
     ~MarshalVkVideoCodingControlInfoKHR();
 };
 
@@ -6682,7 +6726,7 @@ public:
     VkVideoEncodeUsageInfoKHR s;
     MarshalVkVideoEncodeUsageInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeUsageInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeUsageInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeUsageInfoKHR* s);
     ~MarshalVkVideoEncodeUsageInfoKHR();
 };
 
@@ -6692,7 +6736,7 @@ public:
     VkVideoEncodeInfoKHR s;
     MarshalVkVideoEncodeInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeInfoKHR* s);
     ~MarshalVkVideoEncodeInfoKHR();
 };
 
@@ -6702,7 +6746,7 @@ public:
     VkVideoEncodeQuantizationMapInfoKHR s;
     MarshalVkVideoEncodeQuantizationMapInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQuantizationMapInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQuantizationMapInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeQuantizationMapInfoKHR* s);
     ~MarshalVkVideoEncodeQuantizationMapInfoKHR();
 };
 
@@ -6712,7 +6756,7 @@ public:
     VkVideoEncodeQuantizationMapSessionParametersCreateInfoKHR s;
     MarshalVkVideoEncodeQuantizationMapSessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQuantizationMapSessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQuantizationMapSessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeQuantizationMapSessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoEncodeQuantizationMapSessionParametersCreateInfoKHR();
 };
 
@@ -6722,7 +6766,7 @@ public:
     VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR s;
     MarshalVkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceVideoEncodeQuantizationMapFeaturesKHR();
 };
 
@@ -6732,7 +6776,7 @@ public:
     VkQueryPoolVideoEncodeFeedbackCreateInfoKHR s;
     MarshalVkQueryPoolVideoEncodeFeedbackCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolVideoEncodeFeedbackCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryPoolVideoEncodeFeedbackCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueryPoolVideoEncodeFeedbackCreateInfoKHR* s);
     ~MarshalVkQueryPoolVideoEncodeFeedbackCreateInfoKHR();
 };
 
@@ -6742,7 +6786,7 @@ public:
     VkVideoEncodeQualityLevelInfoKHR s;
     MarshalVkVideoEncodeQualityLevelInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQualityLevelInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQualityLevelInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeQualityLevelInfoKHR* s);
     ~MarshalVkVideoEncodeQualityLevelInfoKHR();
 };
 
@@ -6752,7 +6796,7 @@ public:
     VkPhysicalDeviceVideoEncodeQualityLevelInfoKHR s;
     MarshalVkPhysicalDeviceVideoEncodeQualityLevelInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoEncodeQualityLevelInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoEncodeQualityLevelInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVideoEncodeQualityLevelInfoKHR* s);
     ~MarshalVkPhysicalDeviceVideoEncodeQualityLevelInfoKHR();
 };
 
@@ -6762,7 +6806,7 @@ public:
     VkVideoEncodeQualityLevelPropertiesKHR s;
     MarshalVkVideoEncodeQualityLevelPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQualityLevelPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeQualityLevelPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeQualityLevelPropertiesKHR* s);
     ~MarshalVkVideoEncodeQualityLevelPropertiesKHR();
 };
 
@@ -6772,7 +6816,7 @@ public:
     VkVideoEncodeRateControlInfoKHR s;
     MarshalVkVideoEncodeRateControlInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeRateControlInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeRateControlInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeRateControlInfoKHR* s);
     ~MarshalVkVideoEncodeRateControlInfoKHR();
 };
 
@@ -6782,7 +6826,7 @@ public:
     VkVideoEncodeRateControlLayerInfoKHR s;
     MarshalVkVideoEncodeRateControlLayerInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeRateControlLayerInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeRateControlLayerInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeRateControlLayerInfoKHR* s);
     ~MarshalVkVideoEncodeRateControlLayerInfoKHR();
 };
 
@@ -6792,7 +6836,7 @@ public:
     VkVideoEncodeCapabilitiesKHR s;
     MarshalVkVideoEncodeCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeCapabilitiesKHR* s);
     ~MarshalVkVideoEncodeCapabilitiesKHR();
 };
 
@@ -6802,7 +6846,7 @@ public:
     VkVideoEncodeH264CapabilitiesKHR s;
     MarshalVkVideoEncodeH264CapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264CapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264CapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264CapabilitiesKHR* s);
     ~MarshalVkVideoEncodeH264CapabilitiesKHR();
 };
 
@@ -6812,7 +6856,7 @@ public:
     VkVideoEncodeH264QualityLevelPropertiesKHR s;
     MarshalVkVideoEncodeH264QualityLevelPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264QualityLevelPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264QualityLevelPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264QualityLevelPropertiesKHR* s);
     ~MarshalVkVideoEncodeH264QualityLevelPropertiesKHR();
 };
 
@@ -6822,6 +6866,7 @@ public:
     StdVideoEncodeH264SliceHeader s;
     MarshalStdVideoEncodeH264SliceHeader(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264SliceHeader* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264SliceHeader* s);
     ~MarshalStdVideoEncodeH264SliceHeader();
 };
 
@@ -6831,6 +6876,7 @@ public:
     StdVideoEncodeH264PictureInfo s;
     MarshalStdVideoEncodeH264PictureInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264PictureInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264PictureInfo* s);
     ~MarshalStdVideoEncodeH264PictureInfo();
 };
 
@@ -6840,6 +6886,7 @@ public:
     StdVideoEncodeH264ReferenceInfo s;
     MarshalStdVideoEncodeH264ReferenceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264ReferenceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264ReferenceInfo* s);
 };
 
 class MarshalVkVideoEncodeH264SessionCreateInfoKHR {
@@ -6848,7 +6895,7 @@ public:
     VkVideoEncodeH264SessionCreateInfoKHR s;
     MarshalVkVideoEncodeH264SessionCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264SessionCreateInfoKHR* s);
     ~MarshalVkVideoEncodeH264SessionCreateInfoKHR();
 };
 
@@ -6858,7 +6905,7 @@ public:
     VkVideoEncodeH264SessionParametersAddInfoKHR s;
     MarshalVkVideoEncodeH264SessionParametersAddInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersAddInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersAddInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264SessionParametersAddInfoKHR* s);
     ~MarshalVkVideoEncodeH264SessionParametersAddInfoKHR();
 };
 
@@ -6868,7 +6915,7 @@ public:
     VkVideoEncodeH264SessionParametersCreateInfoKHR s;
     MarshalVkVideoEncodeH264SessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264SessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoEncodeH264SessionParametersCreateInfoKHR();
 };
 
@@ -6878,7 +6925,7 @@ public:
     VkVideoEncodeH264SessionParametersGetInfoKHR s;
     MarshalVkVideoEncodeH264SessionParametersGetInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersGetInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersGetInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264SessionParametersGetInfoKHR* s);
     ~MarshalVkVideoEncodeH264SessionParametersGetInfoKHR();
 };
 
@@ -6888,7 +6935,7 @@ public:
     VkVideoEncodeH264SessionParametersFeedbackInfoKHR s;
     MarshalVkVideoEncodeH264SessionParametersFeedbackInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersFeedbackInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264SessionParametersFeedbackInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264SessionParametersFeedbackInfoKHR* s);
     ~MarshalVkVideoEncodeH264SessionParametersFeedbackInfoKHR();
 };
 
@@ -6898,7 +6945,7 @@ public:
     VkVideoEncodeH264DpbSlotInfoKHR s;
     MarshalVkVideoEncodeH264DpbSlotInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264DpbSlotInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264DpbSlotInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264DpbSlotInfoKHR* s);
     ~MarshalVkVideoEncodeH264DpbSlotInfoKHR();
 };
 
@@ -6908,7 +6955,7 @@ public:
     VkVideoEncodeH264PictureInfoKHR s;
     MarshalVkVideoEncodeH264PictureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264PictureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264PictureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264PictureInfoKHR* s);
     ~MarshalVkVideoEncodeH264PictureInfoKHR();
 };
 
@@ -6918,7 +6965,7 @@ public:
     VkVideoEncodeH264ProfileInfoKHR s;
     MarshalVkVideoEncodeH264ProfileInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264ProfileInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264ProfileInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264ProfileInfoKHR* s);
     ~MarshalVkVideoEncodeH264ProfileInfoKHR();
 };
 
@@ -6928,7 +6975,7 @@ public:
     VkVideoEncodeH264NaluSliceInfoKHR s;
     MarshalVkVideoEncodeH264NaluSliceInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264NaluSliceInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264NaluSliceInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264NaluSliceInfoKHR* s);
     ~MarshalVkVideoEncodeH264NaluSliceInfoKHR();
 };
 
@@ -6938,7 +6985,7 @@ public:
     VkVideoEncodeH264RateControlInfoKHR s;
     MarshalVkVideoEncodeH264RateControlInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264RateControlInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264RateControlInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264RateControlInfoKHR* s);
     ~MarshalVkVideoEncodeH264RateControlInfoKHR();
 };
 
@@ -6948,7 +6995,7 @@ public:
     VkVideoEncodeH264QpKHR s;
     MarshalVkVideoEncodeH264QpKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264QpKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264QpKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264QpKHR* s);
 };
 
 class MarshalVkVideoEncodeH264FrameSizeKHR {
@@ -6957,7 +7004,7 @@ public:
     VkVideoEncodeH264FrameSizeKHR s;
     MarshalVkVideoEncodeH264FrameSizeKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264FrameSizeKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264FrameSizeKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264FrameSizeKHR* s);
 };
 
 class MarshalVkVideoEncodeH264GopRemainingFrameInfoKHR {
@@ -6966,7 +7013,7 @@ public:
     VkVideoEncodeH264GopRemainingFrameInfoKHR s;
     MarshalVkVideoEncodeH264GopRemainingFrameInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264GopRemainingFrameInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264GopRemainingFrameInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264GopRemainingFrameInfoKHR* s);
     ~MarshalVkVideoEncodeH264GopRemainingFrameInfoKHR();
 };
 
@@ -6976,7 +7023,7 @@ public:
     VkVideoEncodeH264RateControlLayerInfoKHR s;
     MarshalVkVideoEncodeH264RateControlLayerInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264RateControlLayerInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH264RateControlLayerInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH264RateControlLayerInfoKHR* s);
     ~MarshalVkVideoEncodeH264RateControlLayerInfoKHR();
 };
 
@@ -6986,7 +7033,7 @@ public:
     VkVideoEncodeH265CapabilitiesKHR s;
     MarshalVkVideoEncodeH265CapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265CapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265CapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265CapabilitiesKHR* s);
     ~MarshalVkVideoEncodeH265CapabilitiesKHR();
 };
 
@@ -6996,7 +7043,7 @@ public:
     VkVideoEncodeH265QualityLevelPropertiesKHR s;
     MarshalVkVideoEncodeH265QualityLevelPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265QualityLevelPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265QualityLevelPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265QualityLevelPropertiesKHR* s);
     ~MarshalVkVideoEncodeH265QualityLevelPropertiesKHR();
 };
 
@@ -7006,6 +7053,7 @@ public:
     StdVideoEncodeH265PictureInfo s;
     MarshalStdVideoEncodeH265PictureInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265PictureInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265PictureInfo* s);
     ~MarshalStdVideoEncodeH265PictureInfo();
 };
 
@@ -7015,6 +7063,7 @@ public:
     StdVideoEncodeH265SliceSegmentHeader s;
     MarshalStdVideoEncodeH265SliceSegmentHeader(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265SliceSegmentHeader* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265SliceSegmentHeader* s);
     ~MarshalStdVideoEncodeH265SliceSegmentHeader();
 };
 
@@ -7024,6 +7073,7 @@ public:
     StdVideoEncodeH265ReferenceInfo s;
     MarshalStdVideoEncodeH265ReferenceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265ReferenceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265ReferenceInfo* s);
 };
 
 class MarshalVkVideoEncodeH265SessionCreateInfoKHR {
@@ -7032,7 +7082,7 @@ public:
     VkVideoEncodeH265SessionCreateInfoKHR s;
     MarshalVkVideoEncodeH265SessionCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265SessionCreateInfoKHR* s);
     ~MarshalVkVideoEncodeH265SessionCreateInfoKHR();
 };
 
@@ -7042,7 +7092,7 @@ public:
     VkVideoEncodeH265SessionParametersAddInfoKHR s;
     MarshalVkVideoEncodeH265SessionParametersAddInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersAddInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersAddInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265SessionParametersAddInfoKHR* s);
     ~MarshalVkVideoEncodeH265SessionParametersAddInfoKHR();
 };
 
@@ -7052,7 +7102,7 @@ public:
     VkVideoEncodeH265SessionParametersCreateInfoKHR s;
     MarshalVkVideoEncodeH265SessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265SessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoEncodeH265SessionParametersCreateInfoKHR();
 };
 
@@ -7062,7 +7112,7 @@ public:
     VkVideoEncodeH265SessionParametersGetInfoKHR s;
     MarshalVkVideoEncodeH265SessionParametersGetInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersGetInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersGetInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265SessionParametersGetInfoKHR* s);
     ~MarshalVkVideoEncodeH265SessionParametersGetInfoKHR();
 };
 
@@ -7072,7 +7122,7 @@ public:
     VkVideoEncodeH265SessionParametersFeedbackInfoKHR s;
     MarshalVkVideoEncodeH265SessionParametersFeedbackInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersFeedbackInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265SessionParametersFeedbackInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265SessionParametersFeedbackInfoKHR* s);
     ~MarshalVkVideoEncodeH265SessionParametersFeedbackInfoKHR();
 };
 
@@ -7082,7 +7132,7 @@ public:
     VkVideoEncodeH265PictureInfoKHR s;
     MarshalVkVideoEncodeH265PictureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265PictureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265PictureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265PictureInfoKHR* s);
     ~MarshalVkVideoEncodeH265PictureInfoKHR();
 };
 
@@ -7092,7 +7142,7 @@ public:
     VkVideoEncodeH265NaluSliceSegmentInfoKHR s;
     MarshalVkVideoEncodeH265NaluSliceSegmentInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265NaluSliceSegmentInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265NaluSliceSegmentInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265NaluSliceSegmentInfoKHR* s);
     ~MarshalVkVideoEncodeH265NaluSliceSegmentInfoKHR();
 };
 
@@ -7102,7 +7152,7 @@ public:
     VkVideoEncodeH265RateControlInfoKHR s;
     MarshalVkVideoEncodeH265RateControlInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265RateControlInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265RateControlInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265RateControlInfoKHR* s);
     ~MarshalVkVideoEncodeH265RateControlInfoKHR();
 };
 
@@ -7112,7 +7162,7 @@ public:
     VkVideoEncodeH265QpKHR s;
     MarshalVkVideoEncodeH265QpKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265QpKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265QpKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265QpKHR* s);
 };
 
 class MarshalVkVideoEncodeH265FrameSizeKHR {
@@ -7121,7 +7171,7 @@ public:
     VkVideoEncodeH265FrameSizeKHR s;
     MarshalVkVideoEncodeH265FrameSizeKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265FrameSizeKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265FrameSizeKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265FrameSizeKHR* s);
 };
 
 class MarshalVkVideoEncodeH265GopRemainingFrameInfoKHR {
@@ -7130,7 +7180,7 @@ public:
     VkVideoEncodeH265GopRemainingFrameInfoKHR s;
     MarshalVkVideoEncodeH265GopRemainingFrameInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265GopRemainingFrameInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265GopRemainingFrameInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265GopRemainingFrameInfoKHR* s);
     ~MarshalVkVideoEncodeH265GopRemainingFrameInfoKHR();
 };
 
@@ -7140,7 +7190,7 @@ public:
     VkVideoEncodeH265RateControlLayerInfoKHR s;
     MarshalVkVideoEncodeH265RateControlLayerInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265RateControlLayerInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265RateControlLayerInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265RateControlLayerInfoKHR* s);
     ~MarshalVkVideoEncodeH265RateControlLayerInfoKHR();
 };
 
@@ -7150,7 +7200,7 @@ public:
     VkVideoEncodeH265ProfileInfoKHR s;
     MarshalVkVideoEncodeH265ProfileInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265ProfileInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265ProfileInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265ProfileInfoKHR* s);
     ~MarshalVkVideoEncodeH265ProfileInfoKHR();
 };
 
@@ -7160,7 +7210,7 @@ public:
     VkVideoEncodeH265DpbSlotInfoKHR s;
     MarshalVkVideoEncodeH265DpbSlotInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265DpbSlotInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeH265DpbSlotInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeH265DpbSlotInfoKHR* s);
     ~MarshalVkVideoEncodeH265DpbSlotInfoKHR();
 };
 
@@ -7170,7 +7220,7 @@ public:
     VkVideoEncodeAV1CapabilitiesKHR s;
     MarshalVkVideoEncodeAV1CapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1CapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1CapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1CapabilitiesKHR* s);
     ~MarshalVkVideoEncodeAV1CapabilitiesKHR();
 };
 
@@ -7180,7 +7230,7 @@ public:
     VkVideoEncodeAV1QualityLevelPropertiesKHR s;
     MarshalVkVideoEncodeAV1QualityLevelPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1QualityLevelPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1QualityLevelPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1QualityLevelPropertiesKHR* s);
     ~MarshalVkVideoEncodeAV1QualityLevelPropertiesKHR();
 };
 
@@ -7190,6 +7240,7 @@ public:
     StdVideoEncodeAV1ExtensionHeader s;
     MarshalStdVideoEncodeAV1ExtensionHeader(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeAV1ExtensionHeader* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1ExtensionHeader* s);
 };
 
 class MarshalStdVideoEncodeAV1DecoderModelInfo {
@@ -7198,6 +7249,7 @@ public:
     StdVideoEncodeAV1DecoderModelInfo s;
     MarshalStdVideoEncodeAV1DecoderModelInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeAV1DecoderModelInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1DecoderModelInfo* s);
 };
 
 class MarshalStdVideoEncodeAV1OperatingPointInfo {
@@ -7206,6 +7258,7 @@ public:
     StdVideoEncodeAV1OperatingPointInfo s;
     MarshalStdVideoEncodeAV1OperatingPointInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeAV1OperatingPointInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1OperatingPointInfo* s);
 };
 
 class MarshalStdVideoEncodeAV1PictureInfo {
@@ -7214,6 +7267,7 @@ public:
     StdVideoEncodeAV1PictureInfo s;
     MarshalStdVideoEncodeAV1PictureInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeAV1PictureInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1PictureInfo* s);
     ~MarshalStdVideoEncodeAV1PictureInfo();
 };
 
@@ -7223,6 +7277,7 @@ public:
     StdVideoEncodeAV1ReferenceInfo s;
     MarshalStdVideoEncodeAV1ReferenceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeAV1ReferenceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeAV1ReferenceInfo* s);
     ~MarshalStdVideoEncodeAV1ReferenceInfo();
 };
 
@@ -7232,7 +7287,7 @@ public:
     VkPhysicalDeviceVideoEncodeAV1FeaturesKHR s;
     MarshalVkPhysicalDeviceVideoEncodeAV1FeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoEncodeAV1FeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVideoEncodeAV1FeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVideoEncodeAV1FeaturesKHR* s);
     ~MarshalVkPhysicalDeviceVideoEncodeAV1FeaturesKHR();
 };
 
@@ -7242,7 +7297,7 @@ public:
     VkVideoEncodeAV1SessionCreateInfoKHR s;
     MarshalVkVideoEncodeAV1SessionCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1SessionCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1SessionCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1SessionCreateInfoKHR* s);
     ~MarshalVkVideoEncodeAV1SessionCreateInfoKHR();
 };
 
@@ -7252,7 +7307,7 @@ public:
     VkVideoEncodeAV1SessionParametersCreateInfoKHR s;
     MarshalVkVideoEncodeAV1SessionParametersCreateInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1SessionParametersCreateInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1SessionParametersCreateInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1SessionParametersCreateInfoKHR* s);
     ~MarshalVkVideoEncodeAV1SessionParametersCreateInfoKHR();
 };
 
@@ -7262,7 +7317,7 @@ public:
     VkVideoEncodeAV1DpbSlotInfoKHR s;
     MarshalVkVideoEncodeAV1DpbSlotInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1DpbSlotInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1DpbSlotInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1DpbSlotInfoKHR* s);
     ~MarshalVkVideoEncodeAV1DpbSlotInfoKHR();
 };
 
@@ -7272,7 +7327,7 @@ public:
     VkVideoEncodeAV1PictureInfoKHR s;
     MarshalVkVideoEncodeAV1PictureInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1PictureInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1PictureInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1PictureInfoKHR* s);
     ~MarshalVkVideoEncodeAV1PictureInfoKHR();
 };
 
@@ -7282,7 +7337,7 @@ public:
     VkVideoEncodeAV1ProfileInfoKHR s;
     MarshalVkVideoEncodeAV1ProfileInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1ProfileInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1ProfileInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1ProfileInfoKHR* s);
     ~MarshalVkVideoEncodeAV1ProfileInfoKHR();
 };
 
@@ -7292,7 +7347,7 @@ public:
     VkVideoEncodeAV1RateControlInfoKHR s;
     MarshalVkVideoEncodeAV1RateControlInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1RateControlInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1RateControlInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1RateControlInfoKHR* s);
     ~MarshalVkVideoEncodeAV1RateControlInfoKHR();
 };
 
@@ -7302,7 +7357,7 @@ public:
     VkVideoEncodeAV1QIndexKHR s;
     MarshalVkVideoEncodeAV1QIndexKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1QIndexKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1QIndexKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1QIndexKHR* s);
 };
 
 class MarshalVkVideoEncodeAV1FrameSizeKHR {
@@ -7311,7 +7366,7 @@ public:
     VkVideoEncodeAV1FrameSizeKHR s;
     MarshalVkVideoEncodeAV1FrameSizeKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1FrameSizeKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1FrameSizeKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1FrameSizeKHR* s);
 };
 
 class MarshalVkVideoEncodeAV1GopRemainingFrameInfoKHR {
@@ -7320,7 +7375,7 @@ public:
     VkVideoEncodeAV1GopRemainingFrameInfoKHR s;
     MarshalVkVideoEncodeAV1GopRemainingFrameInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1GopRemainingFrameInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1GopRemainingFrameInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1GopRemainingFrameInfoKHR* s);
     ~MarshalVkVideoEncodeAV1GopRemainingFrameInfoKHR();
 };
 
@@ -7330,7 +7385,7 @@ public:
     VkVideoEncodeAV1RateControlLayerInfoKHR s;
     MarshalVkVideoEncodeAV1RateControlLayerInfoKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1RateControlLayerInfoKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkVideoEncodeAV1RateControlLayerInfoKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkVideoEncodeAV1RateControlLayerInfoKHR* s);
     ~MarshalVkVideoEncodeAV1RateControlLayerInfoKHR();
 };
 
@@ -7340,7 +7395,7 @@ public:
     VkPhysicalDeviceInheritedViewportScissorFeaturesNV s;
     MarshalVkPhysicalDeviceInheritedViewportScissorFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInheritedViewportScissorFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceInheritedViewportScissorFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceInheritedViewportScissorFeaturesNV* s);
     ~MarshalVkPhysicalDeviceInheritedViewportScissorFeaturesNV();
 };
 
@@ -7350,7 +7405,7 @@ public:
     VkCommandBufferInheritanceViewportScissorInfoNV s;
     MarshalVkCommandBufferInheritanceViewportScissorInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceViewportScissorInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceViewportScissorInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferInheritanceViewportScissorInfoNV* s);
     ~MarshalVkCommandBufferInheritanceViewportScissorInfoNV();
 };
 
@@ -7360,7 +7415,7 @@ public:
     VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT s;
     MarshalVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceYcbcr2Plane444FormatsFeaturesEXT();
 };
 
@@ -7370,7 +7425,7 @@ public:
     VkPhysicalDeviceProvokingVertexFeaturesEXT s;
     MarshalVkPhysicalDeviceProvokingVertexFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProvokingVertexFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProvokingVertexFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceProvokingVertexFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceProvokingVertexFeaturesEXT();
 };
 
@@ -7380,7 +7435,7 @@ public:
     VkPhysicalDeviceProvokingVertexPropertiesEXT s;
     MarshalVkPhysicalDeviceProvokingVertexPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProvokingVertexPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceProvokingVertexPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceProvokingVertexPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceProvokingVertexPropertiesEXT();
 };
 
@@ -7390,7 +7445,7 @@ public:
     VkPipelineRasterizationProvokingVertexStateCreateInfoEXT s;
     MarshalVkPipelineRasterizationProvokingVertexStateCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationProvokingVertexStateCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRasterizationProvokingVertexStateCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT* s);
     ~MarshalVkPipelineRasterizationProvokingVertexStateCreateInfoEXT();
 };
 
@@ -7400,7 +7455,7 @@ public:
     VkCuModuleCreateInfoNVX s;
     MarshalVkCuModuleCreateInfoNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuModuleCreateInfoNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuModuleCreateInfoNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCuModuleCreateInfoNVX* s);
     ~MarshalVkCuModuleCreateInfoNVX();
 };
 
@@ -7410,7 +7465,7 @@ public:
     VkCuModuleTexturingModeCreateInfoNVX s;
     MarshalVkCuModuleTexturingModeCreateInfoNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuModuleTexturingModeCreateInfoNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuModuleTexturingModeCreateInfoNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCuModuleTexturingModeCreateInfoNVX* s);
     ~MarshalVkCuModuleTexturingModeCreateInfoNVX();
 };
 
@@ -7420,7 +7475,7 @@ public:
     VkCuFunctionCreateInfoNVX s;
     MarshalVkCuFunctionCreateInfoNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuFunctionCreateInfoNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuFunctionCreateInfoNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCuFunctionCreateInfoNVX* s);
     ~MarshalVkCuFunctionCreateInfoNVX();
 };
 
@@ -7430,7 +7485,7 @@ public:
     VkCuLaunchInfoNVX s;
     MarshalVkCuLaunchInfoNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuLaunchInfoNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCuLaunchInfoNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCuLaunchInfoNVX* s);
     ~MarshalVkCuLaunchInfoNVX();
 };
 
@@ -7440,7 +7495,7 @@ public:
     VkPhysicalDeviceDescriptorBufferFeaturesEXT s;
     MarshalVkPhysicalDeviceDescriptorBufferFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorBufferFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorBufferFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDescriptorBufferFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDescriptorBufferFeaturesEXT();
 };
 
@@ -7450,7 +7505,7 @@ public:
     VkPhysicalDeviceDescriptorBufferPropertiesEXT s;
     MarshalVkPhysicalDeviceDescriptorBufferPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorBufferPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorBufferPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDescriptorBufferPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceDescriptorBufferPropertiesEXT();
 };
 
@@ -7460,7 +7515,7 @@ public:
     VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT s;
     MarshalVkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceDescriptorBufferDensityMapPropertiesEXT();
 };
 
@@ -7470,7 +7525,7 @@ public:
     VkDescriptorAddressInfoEXT s;
     MarshalVkDescriptorAddressInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorAddressInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorAddressInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorAddressInfoEXT* s);
     ~MarshalVkDescriptorAddressInfoEXT();
 };
 
@@ -7480,7 +7535,7 @@ public:
     VkDescriptorBufferBindingInfoEXT s;
     MarshalVkDescriptorBufferBindingInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorBufferBindingInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorBufferBindingInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorBufferBindingInfoEXT* s);
     ~MarshalVkDescriptorBufferBindingInfoEXT();
 };
 
@@ -7490,7 +7545,7 @@ public:
     VkDescriptorBufferBindingPushDescriptorBufferHandleEXT s;
     MarshalVkDescriptorBufferBindingPushDescriptorBufferHandleEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorBufferBindingPushDescriptorBufferHandleEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorBufferBindingPushDescriptorBufferHandleEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorBufferBindingPushDescriptorBufferHandleEXT* s);
     ~MarshalVkDescriptorBufferBindingPushDescriptorBufferHandleEXT();
 };
 
@@ -7500,7 +7555,7 @@ public:
     VkDescriptorGetInfoEXT s;
     MarshalVkDescriptorGetInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorGetInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorGetInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorGetInfoEXT* s);
     ~MarshalVkDescriptorGetInfoEXT();
 };
 
@@ -7510,7 +7565,7 @@ public:
     VkBufferCaptureDescriptorDataInfoEXT s;
     MarshalVkBufferCaptureDescriptorDataInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCaptureDescriptorDataInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCaptureDescriptorDataInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBufferCaptureDescriptorDataInfoEXT* s);
     ~MarshalVkBufferCaptureDescriptorDataInfoEXT();
 };
 
@@ -7520,7 +7575,7 @@ public:
     VkImageCaptureDescriptorDataInfoEXT s;
     MarshalVkImageCaptureDescriptorDataInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCaptureDescriptorDataInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCaptureDescriptorDataInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageCaptureDescriptorDataInfoEXT* s);
     ~MarshalVkImageCaptureDescriptorDataInfoEXT();
 };
 
@@ -7530,7 +7585,7 @@ public:
     VkImageViewCaptureDescriptorDataInfoEXT s;
     MarshalVkImageViewCaptureDescriptorDataInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewCaptureDescriptorDataInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewCaptureDescriptorDataInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewCaptureDescriptorDataInfoEXT* s);
     ~MarshalVkImageViewCaptureDescriptorDataInfoEXT();
 };
 
@@ -7540,7 +7595,7 @@ public:
     VkSamplerCaptureDescriptorDataInfoEXT s;
     MarshalVkSamplerCaptureDescriptorDataInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCaptureDescriptorDataInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCaptureDescriptorDataInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerCaptureDescriptorDataInfoEXT* s);
     ~MarshalVkSamplerCaptureDescriptorDataInfoEXT();
 };
 
@@ -7550,7 +7605,7 @@ public:
     VkAccelerationStructureCaptureDescriptorDataInfoEXT s;
     MarshalVkAccelerationStructureCaptureDescriptorDataInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureCaptureDescriptorDataInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureCaptureDescriptorDataInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureCaptureDescriptorDataInfoEXT* s);
     ~MarshalVkAccelerationStructureCaptureDescriptorDataInfoEXT();
 };
 
@@ -7560,7 +7615,7 @@ public:
     VkOpaqueCaptureDescriptorDataCreateInfoEXT s;
     MarshalVkOpaqueCaptureDescriptorDataCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpaqueCaptureDescriptorDataCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpaqueCaptureDescriptorDataCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOpaqueCaptureDescriptorDataCreateInfoEXT* s);
     ~MarshalVkOpaqueCaptureDescriptorDataCreateInfoEXT();
 };
 
@@ -7570,7 +7625,7 @@ public:
     VkPhysicalDeviceShaderIntegerDotProductFeatures s;
     MarshalVkPhysicalDeviceShaderIntegerDotProductFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderIntegerDotProductFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderIntegerDotProductFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderIntegerDotProductFeatures* s);
     ~MarshalVkPhysicalDeviceShaderIntegerDotProductFeatures();
 };
 
@@ -7580,7 +7635,7 @@ public:
     VkPhysicalDeviceShaderIntegerDotProductProperties s;
     MarshalVkPhysicalDeviceShaderIntegerDotProductProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderIntegerDotProductProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderIntegerDotProductProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderIntegerDotProductProperties* s);
     ~MarshalVkPhysicalDeviceShaderIntegerDotProductProperties();
 };
 
@@ -7590,7 +7645,7 @@ public:
     VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR s;
     MarshalVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR();
 };
 
@@ -7600,7 +7655,7 @@ public:
     VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR s;
     MarshalVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR* s);
     ~MarshalVkPhysicalDeviceFragmentShaderBarycentricPropertiesKHR();
 };
 
@@ -7610,7 +7665,7 @@ public:
     VkPhysicalDeviceRayTracingMotionBlurFeaturesNV s;
     MarshalVkPhysicalDeviceRayTracingMotionBlurFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingMotionBlurFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingMotionBlurFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingMotionBlurFeaturesNV* s);
     ~MarshalVkPhysicalDeviceRayTracingMotionBlurFeaturesNV();
 };
 
@@ -7620,7 +7675,7 @@ public:
     VkPhysicalDeviceRayTracingValidationFeaturesNV s;
     MarshalVkPhysicalDeviceRayTracingValidationFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingValidationFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingValidationFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingValidationFeaturesNV* s);
     ~MarshalVkPhysicalDeviceRayTracingValidationFeaturesNV();
 };
 
@@ -7630,7 +7685,7 @@ public:
     VkAccelerationStructureGeometryMotionTrianglesDataNV s;
     MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryMotionTrianglesDataNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureGeometryMotionTrianglesDataNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryMotionTrianglesDataNV* s);
     ~MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV();
 };
 
@@ -7640,7 +7695,7 @@ public:
     VkAccelerationStructureMotionInfoNV s;
     MarshalVkAccelerationStructureMotionInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureMotionInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureMotionInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureMotionInfoNV* s);
     ~MarshalVkAccelerationStructureMotionInfoNV();
 };
 
@@ -7650,7 +7705,7 @@ public:
     VkCudaModuleCreateInfoNV s;
     MarshalVkCudaModuleCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaModuleCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaModuleCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCudaModuleCreateInfoNV* s);
     ~MarshalVkCudaModuleCreateInfoNV();
 };
 
@@ -7660,7 +7715,7 @@ public:
     VkCudaFunctionCreateInfoNV s;
     MarshalVkCudaFunctionCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaFunctionCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaFunctionCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCudaFunctionCreateInfoNV* s);
     ~MarshalVkCudaFunctionCreateInfoNV();
 };
 
@@ -7670,7 +7725,7 @@ public:
     VkCudaLaunchInfoNV s;
     MarshalVkCudaLaunchInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaLaunchInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCudaLaunchInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCudaLaunchInfoNV* s);
     ~MarshalVkCudaLaunchInfoNV();
 };
 
@@ -7680,7 +7735,7 @@ public:
     VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT s;
     MarshalVkPhysicalDeviceRGBA10X6FormatsFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRGBA10X6FormatsFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceRGBA10X6FormatsFeaturesEXT();
 };
 
@@ -7690,7 +7745,7 @@ public:
     VkFormatProperties3 s;
     MarshalVkFormatProperties3(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFormatProperties3* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFormatProperties3* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFormatProperties3* s);
     ~MarshalVkFormatProperties3();
 };
 
@@ -7700,7 +7755,7 @@ public:
     VkPipelineRenderingCreateInfo s;
     MarshalVkPipelineRenderingCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRenderingCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRenderingCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRenderingCreateInfo* s);
     ~MarshalVkPipelineRenderingCreateInfo();
 };
 
@@ -7710,7 +7765,7 @@ public:
     VkRenderingInfo s;
     MarshalVkRenderingInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderingInfo* s);
     ~MarshalVkRenderingInfo();
 };
 
@@ -7720,7 +7775,7 @@ public:
     VkRenderingAttachmentInfo s;
     MarshalVkRenderingAttachmentInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingAttachmentInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingAttachmentInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderingAttachmentInfo* s);
     ~MarshalVkRenderingAttachmentInfo();
 };
 
@@ -7730,7 +7785,7 @@ public:
     VkRenderingFragmentDensityMapAttachmentInfoEXT s;
     MarshalVkRenderingFragmentDensityMapAttachmentInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingFragmentDensityMapAttachmentInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingFragmentDensityMapAttachmentInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderingFragmentDensityMapAttachmentInfoEXT* s);
     ~MarshalVkRenderingFragmentDensityMapAttachmentInfoEXT();
 };
 
@@ -7740,7 +7795,7 @@ public:
     VkPhysicalDeviceDynamicRenderingFeatures s;
     MarshalVkPhysicalDeviceDynamicRenderingFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDynamicRenderingFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDynamicRenderingFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDynamicRenderingFeatures* s);
     ~MarshalVkPhysicalDeviceDynamicRenderingFeatures();
 };
 
@@ -7750,7 +7805,7 @@ public:
     VkCommandBufferInheritanceRenderingInfo s;
     MarshalVkCommandBufferInheritanceRenderingInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceRenderingInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCommandBufferInheritanceRenderingInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCommandBufferInheritanceRenderingInfo* s);
     ~MarshalVkCommandBufferInheritanceRenderingInfo();
 };
 
@@ -7760,7 +7815,7 @@ public:
     VkAttachmentSampleCountInfoAMD s;
     MarshalVkAttachmentSampleCountInfoAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentSampleCountInfoAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAttachmentSampleCountInfoAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAttachmentSampleCountInfoAMD* s);
     ~MarshalVkAttachmentSampleCountInfoAMD();
 };
 
@@ -7770,7 +7825,7 @@ public:
     VkMultiviewPerViewAttributesInfoNVX s;
     MarshalVkMultiviewPerViewAttributesInfoNVX(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultiviewPerViewAttributesInfoNVX* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultiviewPerViewAttributesInfoNVX* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMultiviewPerViewAttributesInfoNVX* s);
     ~MarshalVkMultiviewPerViewAttributesInfoNVX();
 };
 
@@ -7780,7 +7835,7 @@ public:
     VkPhysicalDeviceImageViewMinLodFeaturesEXT s;
     MarshalVkPhysicalDeviceImageViewMinLodFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageViewMinLodFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageViewMinLodFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageViewMinLodFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceImageViewMinLodFeaturesEXT();
 };
 
@@ -7790,7 +7845,7 @@ public:
     VkImageViewMinLodCreateInfoEXT s;
     MarshalVkImageViewMinLodCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewMinLodCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewMinLodCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewMinLodCreateInfoEXT* s);
     ~MarshalVkImageViewMinLodCreateInfoEXT();
 };
 
@@ -7800,7 +7855,7 @@ public:
     VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT s;
     MarshalVkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceRasterizationOrderAttachmentAccessFeaturesEXT();
 };
 
@@ -7810,7 +7865,7 @@ public:
     VkPhysicalDeviceLinearColorAttachmentFeaturesNV s;
     MarshalVkPhysicalDeviceLinearColorAttachmentFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLinearColorAttachmentFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLinearColorAttachmentFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLinearColorAttachmentFeaturesNV* s);
     ~MarshalVkPhysicalDeviceLinearColorAttachmentFeaturesNV();
 };
 
@@ -7820,7 +7875,7 @@ public:
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT s;
     MarshalVkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT();
 };
 
@@ -7830,7 +7885,7 @@ public:
     VkPhysicalDevicePipelineBinaryFeaturesKHR s;
     MarshalVkPhysicalDevicePipelineBinaryFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineBinaryFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineBinaryFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineBinaryFeaturesKHR* s);
     ~MarshalVkPhysicalDevicePipelineBinaryFeaturesKHR();
 };
 
@@ -7840,7 +7895,7 @@ public:
     VkDevicePipelineBinaryInternalCacheControlKHR s;
     MarshalVkDevicePipelineBinaryInternalCacheControlKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDevicePipelineBinaryInternalCacheControlKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDevicePipelineBinaryInternalCacheControlKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDevicePipelineBinaryInternalCacheControlKHR* s);
     ~MarshalVkDevicePipelineBinaryInternalCacheControlKHR();
 };
 
@@ -7850,7 +7905,7 @@ public:
     VkPhysicalDevicePipelineBinaryPropertiesKHR s;
     MarshalVkPhysicalDevicePipelineBinaryPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineBinaryPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineBinaryPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineBinaryPropertiesKHR* s);
     ~MarshalVkPhysicalDevicePipelineBinaryPropertiesKHR();
 };
 
@@ -7860,7 +7915,7 @@ public:
     VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT s;
     MarshalVkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT();
 };
 
@@ -7870,7 +7925,7 @@ public:
     VkGraphicsPipelineLibraryCreateInfoEXT s;
     MarshalVkGraphicsPipelineLibraryCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsPipelineLibraryCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGraphicsPipelineLibraryCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGraphicsPipelineLibraryCreateInfoEXT* s);
     ~MarshalVkGraphicsPipelineLibraryCreateInfoEXT();
 };
 
@@ -7880,7 +7935,7 @@ public:
     VkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE s;
     MarshalVkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE* s);
     ~MarshalVkPhysicalDeviceDescriptorSetHostMappingFeaturesVALVE();
 };
 
@@ -7890,7 +7945,7 @@ public:
     VkDescriptorSetBindingReferenceVALVE s;
     MarshalVkDescriptorSetBindingReferenceVALVE(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetBindingReferenceVALVE* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetBindingReferenceVALVE* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetBindingReferenceVALVE* s);
     ~MarshalVkDescriptorSetBindingReferenceVALVE();
 };
 
@@ -7900,7 +7955,7 @@ public:
     VkDescriptorSetLayoutHostMappingInfoVALVE s;
     MarshalVkDescriptorSetLayoutHostMappingInfoVALVE(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutHostMappingInfoVALVE* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDescriptorSetLayoutHostMappingInfoVALVE* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDescriptorSetLayoutHostMappingInfoVALVE* s);
     ~MarshalVkDescriptorSetLayoutHostMappingInfoVALVE();
 };
 
@@ -7910,7 +7965,7 @@ public:
     VkPhysicalDeviceNestedCommandBufferFeaturesEXT s;
     MarshalVkPhysicalDeviceNestedCommandBufferFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceNestedCommandBufferFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceNestedCommandBufferFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceNestedCommandBufferFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceNestedCommandBufferFeaturesEXT();
 };
 
@@ -7920,7 +7975,7 @@ public:
     VkPhysicalDeviceNestedCommandBufferPropertiesEXT s;
     MarshalVkPhysicalDeviceNestedCommandBufferPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceNestedCommandBufferPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceNestedCommandBufferPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceNestedCommandBufferPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceNestedCommandBufferPropertiesEXT();
 };
 
@@ -7930,7 +7985,7 @@ public:
     VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT s;
     MarshalVkPhysicalDeviceShaderModuleIdentifierFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceShaderModuleIdentifierFeaturesEXT();
 };
 
@@ -7940,7 +7995,7 @@ public:
     VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT s;
     MarshalVkPhysicalDeviceShaderModuleIdentifierPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderModuleIdentifierPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceShaderModuleIdentifierPropertiesEXT();
 };
 
@@ -7950,7 +8005,7 @@ public:
     VkPipelineShaderStageModuleIdentifierCreateInfoEXT s;
     MarshalVkPipelineShaderStageModuleIdentifierCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineShaderStageModuleIdentifierCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineShaderStageModuleIdentifierCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineShaderStageModuleIdentifierCreateInfoEXT* s);
     ~MarshalVkPipelineShaderStageModuleIdentifierCreateInfoEXT();
 };
 
@@ -7960,7 +8015,7 @@ public:
     VkShaderModuleIdentifierEXT s;
     MarshalVkShaderModuleIdentifierEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderModuleIdentifierEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderModuleIdentifierEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkShaderModuleIdentifierEXT* s);
     ~MarshalVkShaderModuleIdentifierEXT();
 };
 
@@ -7970,7 +8025,7 @@ public:
     VkImageCompressionControlEXT s;
     MarshalVkImageCompressionControlEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCompressionControlEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCompressionControlEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageCompressionControlEXT* s);
     ~MarshalVkImageCompressionControlEXT();
 };
 
@@ -7980,7 +8035,7 @@ public:
     VkPhysicalDeviceImageCompressionControlFeaturesEXT s;
     MarshalVkPhysicalDeviceImageCompressionControlFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageCompressionControlFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageCompressionControlFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageCompressionControlFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceImageCompressionControlFeaturesEXT();
 };
 
@@ -7990,7 +8045,7 @@ public:
     VkImageCompressionPropertiesEXT s;
     MarshalVkImageCompressionPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCompressionPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageCompressionPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageCompressionPropertiesEXT* s);
     ~MarshalVkImageCompressionPropertiesEXT();
 };
 
@@ -8000,7 +8055,7 @@ public:
     VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT s;
     MarshalVkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceImageCompressionControlSwapchainFeaturesEXT();
 };
 
@@ -8010,7 +8065,7 @@ public:
     VkImageSubresource2 s;
     MarshalVkImageSubresource2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresource2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageSubresource2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageSubresource2* s);
     ~MarshalVkImageSubresource2();
 };
 
@@ -8020,7 +8075,7 @@ public:
     VkSubresourceLayout2 s;
     MarshalVkSubresourceLayout2(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubresourceLayout2* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSubresourceLayout2* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSubresourceLayout2* s);
     ~MarshalVkSubresourceLayout2();
 };
 
@@ -8030,7 +8085,7 @@ public:
     VkRenderPassCreationControlEXT s;
     MarshalVkRenderPassCreationControlEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreationControlEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreationControlEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassCreationControlEXT* s);
     ~MarshalVkRenderPassCreationControlEXT();
 };
 
@@ -8040,6 +8095,7 @@ public:
     VkRenderPassCreationFeedbackInfoEXT s;
     MarshalVkRenderPassCreationFeedbackInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreationFeedbackInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassCreationFeedbackInfoEXT* s);
 };
 
 class MarshalVkRenderPassCreationFeedbackCreateInfoEXT {
@@ -8048,7 +8104,7 @@ public:
     VkRenderPassCreationFeedbackCreateInfoEXT s;
     MarshalVkRenderPassCreationFeedbackCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreationFeedbackCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassCreationFeedbackCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassCreationFeedbackCreateInfoEXT* s);
     ~MarshalVkRenderPassCreationFeedbackCreateInfoEXT();
 };
 
@@ -8058,6 +8114,7 @@ public:
     VkRenderPassSubpassFeedbackInfoEXT s;
     MarshalVkRenderPassSubpassFeedbackInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassSubpassFeedbackInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassSubpassFeedbackInfoEXT* s);
 };
 
 class MarshalVkRenderPassSubpassFeedbackCreateInfoEXT {
@@ -8066,7 +8123,7 @@ public:
     VkRenderPassSubpassFeedbackCreateInfoEXT s;
     MarshalVkRenderPassSubpassFeedbackCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassSubpassFeedbackCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassSubpassFeedbackCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassSubpassFeedbackCreateInfoEXT* s);
     ~MarshalVkRenderPassSubpassFeedbackCreateInfoEXT();
 };
 
@@ -8076,7 +8133,7 @@ public:
     VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT s;
     MarshalVkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceSubpassMergeFeedbackFeaturesEXT();
 };
 
@@ -8086,7 +8143,7 @@ public:
     VkMicromapBuildInfoEXT s;
     MarshalVkMicromapBuildInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapBuildInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapBuildInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMicromapBuildInfoEXT* s);
     ~MarshalVkMicromapBuildInfoEXT();
 };
 
@@ -8096,7 +8153,7 @@ public:
     VkMicromapCreateInfoEXT s;
     MarshalVkMicromapCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMicromapCreateInfoEXT* s);
     ~MarshalVkMicromapCreateInfoEXT();
 };
 
@@ -8106,7 +8163,7 @@ public:
     VkMicromapVersionInfoEXT s;
     MarshalVkMicromapVersionInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapVersionInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapVersionInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMicromapVersionInfoEXT* s);
     ~MarshalVkMicromapVersionInfoEXT();
 };
 
@@ -8116,7 +8173,7 @@ public:
     VkCopyMicromapInfoEXT s;
     MarshalVkCopyMicromapInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMicromapInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMicromapInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyMicromapInfoEXT* s);
     ~MarshalVkCopyMicromapInfoEXT();
 };
 
@@ -8126,7 +8183,7 @@ public:
     VkCopyMicromapToMemoryInfoEXT s;
     MarshalVkCopyMicromapToMemoryInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMicromapToMemoryInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMicromapToMemoryInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyMicromapToMemoryInfoEXT* s);
     ~MarshalVkCopyMicromapToMemoryInfoEXT();
 };
 
@@ -8136,7 +8193,7 @@ public:
     VkCopyMemoryToMicromapInfoEXT s;
     MarshalVkCopyMemoryToMicromapInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToMicromapInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCopyMemoryToMicromapInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyMemoryToMicromapInfoEXT* s);
     ~MarshalVkCopyMemoryToMicromapInfoEXT();
 };
 
@@ -8146,7 +8203,7 @@ public:
     VkMicromapBuildSizesInfoEXT s;
     MarshalVkMicromapBuildSizesInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapBuildSizesInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMicromapBuildSizesInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMicromapBuildSizesInfoEXT* s);
     ~MarshalVkMicromapBuildSizesInfoEXT();
 };
 
@@ -8164,7 +8221,7 @@ public:
     VkPhysicalDeviceOpacityMicromapFeaturesEXT s;
     MarshalVkPhysicalDeviceOpacityMicromapFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpacityMicromapFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpacityMicromapFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceOpacityMicromapFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceOpacityMicromapFeaturesEXT();
 };
 
@@ -8174,7 +8231,7 @@ public:
     VkPhysicalDeviceOpacityMicromapPropertiesEXT s;
     MarshalVkPhysicalDeviceOpacityMicromapPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpacityMicromapPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpacityMicromapPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceOpacityMicromapPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceOpacityMicromapPropertiesEXT();
 };
 
@@ -8184,7 +8241,7 @@ public:
     VkAccelerationStructureTrianglesOpacityMicromapEXT s;
     MarshalVkAccelerationStructureTrianglesOpacityMicromapEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureTrianglesOpacityMicromapEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAccelerationStructureTrianglesOpacityMicromapEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureTrianglesOpacityMicromapEXT* s);
     ~MarshalVkAccelerationStructureTrianglesOpacityMicromapEXT();
 };
 
@@ -8194,7 +8251,7 @@ public:
     VkPipelinePropertiesIdentifierEXT s;
     MarshalVkPipelinePropertiesIdentifierEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelinePropertiesIdentifierEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelinePropertiesIdentifierEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelinePropertiesIdentifierEXT* s);
     ~MarshalVkPipelinePropertiesIdentifierEXT();
 };
 
@@ -8204,7 +8261,7 @@ public:
     VkPhysicalDevicePipelinePropertiesFeaturesEXT s;
     MarshalVkPhysicalDevicePipelinePropertiesFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelinePropertiesFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelinePropertiesFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelinePropertiesFeaturesEXT* s);
     ~MarshalVkPhysicalDevicePipelinePropertiesFeaturesEXT();
 };
 
@@ -8214,7 +8271,7 @@ public:
     VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD s;
     MarshalVkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD* s);
     ~MarshalVkPhysicalDeviceShaderEarlyAndLateFragmentTestsFeaturesAMD();
 };
 
@@ -8224,7 +8281,7 @@ public:
     VkExternalMemoryAcquireUnmodifiedEXT s;
     MarshalVkExternalMemoryAcquireUnmodifiedEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryAcquireUnmodifiedEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkExternalMemoryAcquireUnmodifiedEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkExternalMemoryAcquireUnmodifiedEXT* s);
     ~MarshalVkExternalMemoryAcquireUnmodifiedEXT();
 };
 
@@ -8234,7 +8291,7 @@ public:
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT s;
     MarshalVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT();
 };
 
@@ -8244,7 +8301,7 @@ public:
     VkPhysicalDevicePipelineRobustnessFeatures s;
     MarshalVkPhysicalDevicePipelineRobustnessFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineRobustnessFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineRobustnessFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineRobustnessFeatures* s);
     ~MarshalVkPhysicalDevicePipelineRobustnessFeatures();
 };
 
@@ -8254,7 +8311,7 @@ public:
     VkPipelineRobustnessCreateInfo s;
     MarshalVkPipelineRobustnessCreateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRobustnessCreateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineRobustnessCreateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineRobustnessCreateInfo* s);
     ~MarshalVkPipelineRobustnessCreateInfo();
 };
 
@@ -8264,7 +8321,7 @@ public:
     VkPhysicalDevicePipelineRobustnessProperties s;
     MarshalVkPhysicalDevicePipelineRobustnessProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineRobustnessProperties* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineRobustnessProperties* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineRobustnessProperties* s);
     ~MarshalVkPhysicalDevicePipelineRobustnessProperties();
 };
 
@@ -8274,7 +8331,7 @@ public:
     VkImageViewSampleWeightCreateInfoQCOM s;
     MarshalVkImageViewSampleWeightCreateInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewSampleWeightCreateInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageViewSampleWeightCreateInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageViewSampleWeightCreateInfoQCOM* s);
     ~MarshalVkImageViewSampleWeightCreateInfoQCOM();
 };
 
@@ -8284,7 +8341,7 @@ public:
     VkPhysicalDeviceImageProcessingFeaturesQCOM s;
     MarshalVkPhysicalDeviceImageProcessingFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessingFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessingFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageProcessingFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceImageProcessingFeaturesQCOM();
 };
 
@@ -8294,7 +8351,7 @@ public:
     VkPhysicalDeviceImageProcessingPropertiesQCOM s;
     MarshalVkPhysicalDeviceImageProcessingPropertiesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessingPropertiesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessingPropertiesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageProcessingPropertiesQCOM* s);
     ~MarshalVkPhysicalDeviceImageProcessingPropertiesQCOM();
 };
 
@@ -8304,7 +8361,7 @@ public:
     VkPhysicalDeviceTilePropertiesFeaturesQCOM s;
     MarshalVkPhysicalDeviceTilePropertiesFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTilePropertiesFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceTilePropertiesFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceTilePropertiesFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceTilePropertiesFeaturesQCOM();
 };
 
@@ -8314,7 +8371,7 @@ public:
     VkTilePropertiesQCOM s;
     MarshalVkTilePropertiesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkTilePropertiesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkTilePropertiesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkTilePropertiesQCOM* s);
     ~MarshalVkTilePropertiesQCOM();
 };
 
@@ -8324,7 +8381,7 @@ public:
     VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT s;
     MarshalVkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT();
 };
 
@@ -8334,7 +8391,7 @@ public:
     VkPhysicalDeviceDepthClampZeroOneFeaturesEXT s;
     MarshalVkPhysicalDeviceDepthClampZeroOneFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClampZeroOneFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthClampZeroOneFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDepthClampZeroOneFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDepthClampZeroOneFeaturesEXT();
 };
 
@@ -8344,7 +8401,7 @@ public:
     VkPhysicalDeviceAddressBindingReportFeaturesEXT s;
     MarshalVkPhysicalDeviceAddressBindingReportFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAddressBindingReportFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAddressBindingReportFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceAddressBindingReportFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceAddressBindingReportFeaturesEXT();
 };
 
@@ -8354,7 +8411,7 @@ public:
     VkDeviceAddressBindingCallbackDataEXT s;
     MarshalVkDeviceAddressBindingCallbackDataEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceAddressBindingCallbackDataEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceAddressBindingCallbackDataEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceAddressBindingCallbackDataEXT* s);
     ~MarshalVkDeviceAddressBindingCallbackDataEXT();
 };
 
@@ -8364,7 +8421,7 @@ public:
     VkPhysicalDeviceOpticalFlowFeaturesNV s;
     MarshalVkPhysicalDeviceOpticalFlowFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpticalFlowFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpticalFlowFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceOpticalFlowFeaturesNV* s);
     ~MarshalVkPhysicalDeviceOpticalFlowFeaturesNV();
 };
 
@@ -8374,7 +8431,7 @@ public:
     VkPhysicalDeviceOpticalFlowPropertiesNV s;
     MarshalVkPhysicalDeviceOpticalFlowPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpticalFlowPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceOpticalFlowPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceOpticalFlowPropertiesNV* s);
     ~MarshalVkPhysicalDeviceOpticalFlowPropertiesNV();
 };
 
@@ -8384,7 +8441,7 @@ public:
     VkOpticalFlowImageFormatInfoNV s;
     MarshalVkOpticalFlowImageFormatInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowImageFormatInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowImageFormatInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOpticalFlowImageFormatInfoNV* s);
     ~MarshalVkOpticalFlowImageFormatInfoNV();
 };
 
@@ -8394,7 +8451,7 @@ public:
     VkOpticalFlowImageFormatPropertiesNV s;
     MarshalVkOpticalFlowImageFormatPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowImageFormatPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowImageFormatPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOpticalFlowImageFormatPropertiesNV* s);
     ~MarshalVkOpticalFlowImageFormatPropertiesNV();
 };
 
@@ -8404,7 +8461,7 @@ public:
     VkOpticalFlowSessionCreateInfoNV s;
     MarshalVkOpticalFlowSessionCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowSessionCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowSessionCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOpticalFlowSessionCreateInfoNV* s);
     ~MarshalVkOpticalFlowSessionCreateInfoNV();
 };
 
@@ -8414,7 +8471,7 @@ public:
     VkOpticalFlowSessionCreatePrivateDataInfoNV s;
     MarshalVkOpticalFlowSessionCreatePrivateDataInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowSessionCreatePrivateDataInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowSessionCreatePrivateDataInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOpticalFlowSessionCreatePrivateDataInfoNV* s);
     ~MarshalVkOpticalFlowSessionCreatePrivateDataInfoNV();
 };
 
@@ -8424,7 +8481,7 @@ public:
     VkOpticalFlowExecuteInfoNV s;
     MarshalVkOpticalFlowExecuteInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowExecuteInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOpticalFlowExecuteInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOpticalFlowExecuteInfoNV* s);
     ~MarshalVkOpticalFlowExecuteInfoNV();
 };
 
@@ -8434,7 +8491,7 @@ public:
     VkPhysicalDeviceFaultFeaturesEXT s;
     MarshalVkPhysicalDeviceFaultFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFaultFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFaultFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFaultFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceFaultFeaturesEXT();
 };
 
@@ -8460,7 +8517,7 @@ public:
     VkDeviceFaultCountsEXT s;
     MarshalVkDeviceFaultCountsEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceFaultCountsEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceFaultCountsEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceFaultCountsEXT* s);
     ~MarshalVkDeviceFaultCountsEXT();
 };
 
@@ -8470,7 +8527,7 @@ public:
     VkDeviceFaultInfoEXT s;
     MarshalVkDeviceFaultInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceFaultInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceFaultInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceFaultInfoEXT* s);
     ~MarshalVkDeviceFaultInfoEXT();
 };
 
@@ -8480,7 +8537,7 @@ public:
     VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT s;
     MarshalVkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT* s);
     ~MarshalVkPhysicalDevicePipelineLibraryGroupHandlesFeaturesEXT();
 };
 
@@ -8490,7 +8547,7 @@ public:
     VkDepthBiasInfoEXT s;
     MarshalVkDepthBiasInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDepthBiasInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDepthBiasInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDepthBiasInfoEXT* s);
     ~MarshalVkDepthBiasInfoEXT();
 };
 
@@ -8500,7 +8557,7 @@ public:
     VkDepthBiasRepresentationInfoEXT s;
     MarshalVkDepthBiasRepresentationInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDepthBiasRepresentationInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDepthBiasRepresentationInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDepthBiasRepresentationInfoEXT* s);
     ~MarshalVkDepthBiasRepresentationInfoEXT();
 };
 
@@ -8518,7 +8575,7 @@ public:
     VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM s;
     MarshalVkPhysicalDeviceShaderCoreBuiltinsPropertiesARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderCoreBuiltinsPropertiesARM* s);
     ~MarshalVkPhysicalDeviceShaderCoreBuiltinsPropertiesARM();
 };
 
@@ -8528,7 +8585,7 @@ public:
     VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM s;
     MarshalVkPhysicalDeviceShaderCoreBuiltinsFeaturesARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderCoreBuiltinsFeaturesARM* s);
     ~MarshalVkPhysicalDeviceShaderCoreBuiltinsFeaturesARM();
 };
 
@@ -8538,7 +8595,7 @@ public:
     VkFrameBoundaryEXT s;
     MarshalVkFrameBoundaryEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFrameBoundaryEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkFrameBoundaryEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkFrameBoundaryEXT* s);
     ~MarshalVkFrameBoundaryEXT();
 };
 
@@ -8548,7 +8605,7 @@ public:
     VkPhysicalDeviceFrameBoundaryFeaturesEXT s;
     MarshalVkPhysicalDeviceFrameBoundaryFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFrameBoundaryFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceFrameBoundaryFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceFrameBoundaryFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceFrameBoundaryFeaturesEXT();
 };
 
@@ -8558,7 +8615,7 @@ public:
     VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT s;
     MarshalVkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT();
 };
 
@@ -8568,7 +8625,7 @@ public:
     VkSurfacePresentModeEXT s;
     MarshalVkSurfacePresentModeEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfacePresentModeEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfacePresentModeEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfacePresentModeEXT* s);
     ~MarshalVkSurfacePresentModeEXT();
 };
 
@@ -8578,7 +8635,7 @@ public:
     VkSurfacePresentScalingCapabilitiesEXT s;
     MarshalVkSurfacePresentScalingCapabilitiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfacePresentScalingCapabilitiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfacePresentScalingCapabilitiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfacePresentScalingCapabilitiesEXT* s);
     ~MarshalVkSurfacePresentScalingCapabilitiesEXT();
 };
 
@@ -8588,7 +8645,7 @@ public:
     VkSurfacePresentModeCompatibilityEXT s;
     MarshalVkSurfacePresentModeCompatibilityEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfacePresentModeCompatibilityEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSurfacePresentModeCompatibilityEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSurfacePresentModeCompatibilityEXT* s);
     ~MarshalVkSurfacePresentModeCompatibilityEXT();
 };
 
@@ -8598,7 +8655,7 @@ public:
     VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT s;
     MarshalVkPhysicalDeviceSwapchainMaintenance1FeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT* s);
     ~MarshalVkPhysicalDeviceSwapchainMaintenance1FeaturesEXT();
 };
 
@@ -8608,7 +8665,7 @@ public:
     VkSwapchainPresentFenceInfoEXT s;
     MarshalVkSwapchainPresentFenceInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentFenceInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentFenceInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainPresentFenceInfoEXT* s);
     ~MarshalVkSwapchainPresentFenceInfoEXT();
 };
 
@@ -8618,7 +8675,7 @@ public:
     VkSwapchainPresentModesCreateInfoEXT s;
     MarshalVkSwapchainPresentModesCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentModesCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentModesCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainPresentModesCreateInfoEXT* s);
     ~MarshalVkSwapchainPresentModesCreateInfoEXT();
 };
 
@@ -8628,7 +8685,7 @@ public:
     VkSwapchainPresentModeInfoEXT s;
     MarshalVkSwapchainPresentModeInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentModeInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentModeInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainPresentModeInfoEXT* s);
     ~MarshalVkSwapchainPresentModeInfoEXT();
 };
 
@@ -8638,7 +8695,7 @@ public:
     VkSwapchainPresentScalingCreateInfoEXT s;
     MarshalVkSwapchainPresentScalingCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentScalingCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainPresentScalingCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainPresentScalingCreateInfoEXT* s);
     ~MarshalVkSwapchainPresentScalingCreateInfoEXT();
 };
 
@@ -8648,7 +8705,7 @@ public:
     VkReleaseSwapchainImagesInfoEXT s;
     MarshalVkReleaseSwapchainImagesInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkReleaseSwapchainImagesInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkReleaseSwapchainImagesInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkReleaseSwapchainImagesInfoEXT* s);
     ~MarshalVkReleaseSwapchainImagesInfoEXT();
 };
 
@@ -8658,7 +8715,7 @@ public:
     VkPhysicalDeviceDepthBiasControlFeaturesEXT s;
     MarshalVkPhysicalDeviceDepthBiasControlFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthBiasControlFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDepthBiasControlFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDepthBiasControlFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceDepthBiasControlFeaturesEXT();
 };
 
@@ -8668,7 +8725,7 @@ public:
     VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV s;
     MarshalVkPhysicalDeviceRayTracingInvocationReorderFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingInvocationReorderFeaturesNV* s);
     ~MarshalVkPhysicalDeviceRayTracingInvocationReorderFeaturesNV();
 };
 
@@ -8678,7 +8735,7 @@ public:
     VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV s;
     MarshalVkPhysicalDeviceRayTracingInvocationReorderPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingInvocationReorderPropertiesNV* s);
     ~MarshalVkPhysicalDeviceRayTracingInvocationReorderPropertiesNV();
 };
 
@@ -8688,7 +8745,7 @@ public:
     VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV s;
     MarshalVkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV* s);
     ~MarshalVkPhysicalDeviceExtendedSparseAddressSpaceFeaturesNV();
 };
 
@@ -8698,7 +8755,7 @@ public:
     VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV s;
     MarshalVkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV* s);
     ~MarshalVkPhysicalDeviceExtendedSparseAddressSpacePropertiesNV();
 };
 
@@ -8708,7 +8765,7 @@ public:
     VkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM s;
     MarshalVkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM();
 };
 
@@ -8718,7 +8775,7 @@ public:
     VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR s;
     MarshalVkPhysicalDeviceRayTracingPositionFetchFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRayTracingPositionFetchFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceRayTracingPositionFetchFeaturesKHR();
 };
 
@@ -8728,7 +8785,7 @@ public:
     VkDeviceImageSubresourceInfo s;
     MarshalVkDeviceImageSubresourceInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceImageSubresourceInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceImageSubresourceInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceImageSubresourceInfo* s);
     ~MarshalVkDeviceImageSubresourceInfo();
 };
 
@@ -8738,7 +8795,7 @@ public:
     VkPhysicalDeviceShaderCorePropertiesARM s;
     MarshalVkPhysicalDeviceShaderCorePropertiesARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCorePropertiesARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderCorePropertiesARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderCorePropertiesARM* s);
     ~MarshalVkPhysicalDeviceShaderCorePropertiesARM();
 };
 
@@ -8748,7 +8805,7 @@ public:
     VkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM s;
     MarshalVkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceMultiviewPerViewRenderAreasFeaturesQCOM();
 };
 
@@ -8758,7 +8815,7 @@ public:
     VkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM s;
     MarshalVkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM* s);
     ~MarshalVkMultiviewPerViewRenderAreasRenderPassBeginInfoQCOM();
 };
 
@@ -8768,7 +8825,7 @@ public:
     VkQueryLowLatencySupportNV s;
     MarshalVkQueryLowLatencySupportNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryLowLatencySupportNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkQueryLowLatencySupportNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkQueryLowLatencySupportNV* s);
     ~MarshalVkQueryLowLatencySupportNV();
 };
 
@@ -8778,7 +8835,7 @@ public:
     VkMemoryMapInfo s;
     MarshalVkMemoryMapInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryMapInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryMapInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryMapInfo* s);
     ~MarshalVkMemoryMapInfo();
 };
 
@@ -8788,7 +8845,7 @@ public:
     VkMemoryUnmapInfo s;
     MarshalVkMemoryUnmapInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryUnmapInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryUnmapInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryUnmapInfo* s);
     ~MarshalVkMemoryUnmapInfo();
 };
 
@@ -8798,7 +8855,7 @@ public:
     VkPhysicalDeviceShaderObjectFeaturesEXT s;
     MarshalVkPhysicalDeviceShaderObjectFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderObjectFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderObjectFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderObjectFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceShaderObjectFeaturesEXT();
 };
 
@@ -8808,7 +8865,7 @@ public:
     VkPhysicalDeviceShaderObjectPropertiesEXT s;
     MarshalVkPhysicalDeviceShaderObjectPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderObjectPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderObjectPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderObjectPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceShaderObjectPropertiesEXT();
 };
 
@@ -8818,7 +8875,7 @@ public:
     VkShaderCreateInfoEXT s;
     MarshalVkShaderCreateInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderCreateInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkShaderCreateInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkShaderCreateInfoEXT* s);
     ~MarshalVkShaderCreateInfoEXT();
 };
 
@@ -8828,7 +8885,7 @@ public:
     VkPhysicalDeviceShaderTileImageFeaturesEXT s;
     MarshalVkPhysicalDeviceShaderTileImageFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderTileImageFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderTileImageFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderTileImageFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceShaderTileImageFeaturesEXT();
 };
 
@@ -8838,7 +8895,7 @@ public:
     VkPhysicalDeviceShaderTileImagePropertiesEXT s;
     MarshalVkPhysicalDeviceShaderTileImagePropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderTileImagePropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderTileImagePropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderTileImagePropertiesEXT* s);
     ~MarshalVkPhysicalDeviceShaderTileImagePropertiesEXT();
 };
 
@@ -8848,7 +8905,7 @@ public:
     VkPhysicalDeviceCooperativeMatrixFeaturesKHR s;
     MarshalVkPhysicalDeviceCooperativeMatrixFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCooperativeMatrixFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceCooperativeMatrixFeaturesKHR();
 };
 
@@ -8858,7 +8915,7 @@ public:
     VkCooperativeMatrixPropertiesKHR s;
     MarshalVkCooperativeMatrixPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCooperativeMatrixPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCooperativeMatrixPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCooperativeMatrixPropertiesKHR* s);
     ~MarshalVkCooperativeMatrixPropertiesKHR();
 };
 
@@ -8868,7 +8925,7 @@ public:
     VkPhysicalDeviceCooperativeMatrixPropertiesKHR s;
     MarshalVkPhysicalDeviceCooperativeMatrixPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrixPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCooperativeMatrixPropertiesKHR* s);
     ~MarshalVkPhysicalDeviceCooperativeMatrixPropertiesKHR();
 };
 
@@ -8878,7 +8935,7 @@ public:
     VkPhysicalDeviceAntiLagFeaturesAMD s;
     MarshalVkPhysicalDeviceAntiLagFeaturesAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAntiLagFeaturesAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceAntiLagFeaturesAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceAntiLagFeaturesAMD* s);
     ~MarshalVkPhysicalDeviceAntiLagFeaturesAMD();
 };
 
@@ -8888,7 +8945,7 @@ public:
     VkAntiLagDataAMD s;
     MarshalVkAntiLagDataAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAntiLagDataAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAntiLagDataAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAntiLagDataAMD* s);
     ~MarshalVkAntiLagDataAMD();
 };
 
@@ -8898,7 +8955,7 @@ public:
     VkAntiLagPresentationInfoAMD s;
     MarshalVkAntiLagPresentationInfoAMD(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAntiLagPresentationInfoAMD* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkAntiLagPresentationInfoAMD* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAntiLagPresentationInfoAMD* s);
     ~MarshalVkAntiLagPresentationInfoAMD();
 };
 
@@ -8908,7 +8965,7 @@ public:
     VkBindMemoryStatus s;
     MarshalVkBindMemoryStatus(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindMemoryStatus* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindMemoryStatus* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindMemoryStatus* s);
     ~MarshalVkBindMemoryStatus();
 };
 
@@ -8918,7 +8975,7 @@ public:
     VkBindDescriptorSetsInfo s;
     MarshalVkBindDescriptorSetsInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindDescriptorSetsInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindDescriptorSetsInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindDescriptorSetsInfo* s);
     ~MarshalVkBindDescriptorSetsInfo();
 };
 
@@ -8928,7 +8985,7 @@ public:
     VkPushConstantsInfo s;
     MarshalVkPushConstantsInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushConstantsInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushConstantsInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPushConstantsInfo* s);
     ~MarshalVkPushConstantsInfo();
 };
 
@@ -8938,7 +8995,7 @@ public:
     VkPushDescriptorSetInfo s;
     MarshalVkPushDescriptorSetInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushDescriptorSetInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushDescriptorSetInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPushDescriptorSetInfo* s);
     ~MarshalVkPushDescriptorSetInfo();
 };
 
@@ -8948,7 +9005,7 @@ public:
     VkPushDescriptorSetWithTemplateInfo s;
     MarshalVkPushDescriptorSetWithTemplateInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushDescriptorSetWithTemplateInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPushDescriptorSetWithTemplateInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPushDescriptorSetWithTemplateInfo* s);
     ~MarshalVkPushDescriptorSetWithTemplateInfo();
 };
 
@@ -8958,7 +9015,7 @@ public:
     VkSetDescriptorBufferOffsetsInfoEXT s;
     MarshalVkSetDescriptorBufferOffsetsInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSetDescriptorBufferOffsetsInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSetDescriptorBufferOffsetsInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSetDescriptorBufferOffsetsInfoEXT* s);
     ~MarshalVkSetDescriptorBufferOffsetsInfoEXT();
 };
 
@@ -8968,7 +9025,7 @@ public:
     VkBindDescriptorBufferEmbeddedSamplersInfoEXT s;
     MarshalVkBindDescriptorBufferEmbeddedSamplersInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindDescriptorBufferEmbeddedSamplersInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBindDescriptorBufferEmbeddedSamplersInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBindDescriptorBufferEmbeddedSamplersInfoEXT* s);
     ~MarshalVkBindDescriptorBufferEmbeddedSamplersInfoEXT();
 };
 
@@ -8978,7 +9035,7 @@ public:
     VkPhysicalDeviceCubicClampFeaturesQCOM s;
     MarshalVkPhysicalDeviceCubicClampFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCubicClampFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCubicClampFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCubicClampFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceCubicClampFeaturesQCOM();
 };
 
@@ -8988,7 +9045,7 @@ public:
     VkPhysicalDeviceYcbcrDegammaFeaturesQCOM s;
     MarshalVkPhysicalDeviceYcbcrDegammaFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceYcbcrDegammaFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceYcbcrDegammaFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceYcbcrDegammaFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceYcbcrDegammaFeaturesQCOM();
 };
 
@@ -8998,7 +9055,7 @@ public:
     VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM s;
     MarshalVkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM* s);
     ~MarshalVkSamplerYcbcrConversionYcbcrDegammaCreateInfoQCOM();
 };
 
@@ -9008,7 +9065,7 @@ public:
     VkPhysicalDeviceCubicWeightsFeaturesQCOM s;
     MarshalVkPhysicalDeviceCubicWeightsFeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCubicWeightsFeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCubicWeightsFeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCubicWeightsFeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceCubicWeightsFeaturesQCOM();
 };
 
@@ -9018,7 +9075,7 @@ public:
     VkSamplerCubicWeightsCreateInfoQCOM s;
     MarshalVkSamplerCubicWeightsCreateInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCubicWeightsCreateInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerCubicWeightsCreateInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerCubicWeightsCreateInfoQCOM* s);
     ~MarshalVkSamplerCubicWeightsCreateInfoQCOM();
 };
 
@@ -9028,7 +9085,7 @@ public:
     VkBlitImageCubicWeightsInfoQCOM s;
     MarshalVkBlitImageCubicWeightsInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBlitImageCubicWeightsInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBlitImageCubicWeightsInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkBlitImageCubicWeightsInfoQCOM* s);
     ~MarshalVkBlitImageCubicWeightsInfoQCOM();
 };
 
@@ -9038,7 +9095,7 @@ public:
     VkPhysicalDeviceImageProcessing2FeaturesQCOM s;
     MarshalVkPhysicalDeviceImageProcessing2FeaturesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessing2FeaturesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessing2FeaturesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageProcessing2FeaturesQCOM* s);
     ~MarshalVkPhysicalDeviceImageProcessing2FeaturesQCOM();
 };
 
@@ -9048,7 +9105,7 @@ public:
     VkPhysicalDeviceImageProcessing2PropertiesQCOM s;
     MarshalVkPhysicalDeviceImageProcessing2PropertiesQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessing2PropertiesQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageProcessing2PropertiesQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageProcessing2PropertiesQCOM* s);
     ~MarshalVkPhysicalDeviceImageProcessing2PropertiesQCOM();
 };
 
@@ -9058,7 +9115,7 @@ public:
     VkSamplerBlockMatchWindowCreateInfoQCOM s;
     MarshalVkSamplerBlockMatchWindowCreateInfoQCOM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerBlockMatchWindowCreateInfoQCOM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSamplerBlockMatchWindowCreateInfoQCOM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSamplerBlockMatchWindowCreateInfoQCOM* s);
     ~MarshalVkSamplerBlockMatchWindowCreateInfoQCOM();
 };
 
@@ -9068,7 +9125,7 @@ public:
     VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV s;
     MarshalVkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV* s);
     ~MarshalVkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV();
 };
 
@@ -9078,7 +9135,7 @@ public:
     VkPhysicalDeviceLayeredDriverPropertiesMSFT s;
     MarshalVkPhysicalDeviceLayeredDriverPropertiesMSFT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLayeredDriverPropertiesMSFT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceLayeredDriverPropertiesMSFT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceLayeredDriverPropertiesMSFT* s);
     ~MarshalVkPhysicalDeviceLayeredDriverPropertiesMSFT();
 };
 
@@ -9088,7 +9145,7 @@ public:
     VkPhysicalDevicePerStageDescriptorSetFeaturesNV s;
     MarshalVkPhysicalDevicePerStageDescriptorSetFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePerStageDescriptorSetFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePerStageDescriptorSetFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePerStageDescriptorSetFeaturesNV* s);
     ~MarshalVkPhysicalDevicePerStageDescriptorSetFeaturesNV();
 };
 
@@ -9098,7 +9155,7 @@ public:
     VkLatencySleepModeInfoNV s;
     MarshalVkLatencySleepModeInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySleepModeInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySleepModeInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLatencySleepModeInfoNV* s);
     ~MarshalVkLatencySleepModeInfoNV();
 };
 
@@ -9108,7 +9165,7 @@ public:
     VkLatencySleepInfoNV s;
     MarshalVkLatencySleepInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySleepInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySleepInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLatencySleepInfoNV* s);
     ~MarshalVkLatencySleepInfoNV();
 };
 
@@ -9118,7 +9175,7 @@ public:
     VkSetLatencyMarkerInfoNV s;
     MarshalVkSetLatencyMarkerInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSetLatencyMarkerInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSetLatencyMarkerInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSetLatencyMarkerInfoNV* s);
     ~MarshalVkSetLatencyMarkerInfoNV();
 };
 
@@ -9128,7 +9185,7 @@ public:
     VkGetLatencyMarkerInfoNV s;
     MarshalVkGetLatencyMarkerInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGetLatencyMarkerInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGetLatencyMarkerInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkGetLatencyMarkerInfoNV* s);
     ~MarshalVkGetLatencyMarkerInfoNV();
 };
 
@@ -9138,7 +9195,7 @@ public:
     VkLatencyTimingsFrameReportNV s;
     MarshalVkLatencyTimingsFrameReportNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencyTimingsFrameReportNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencyTimingsFrameReportNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLatencyTimingsFrameReportNV* s);
     ~MarshalVkLatencyTimingsFrameReportNV();
 };
 
@@ -9148,7 +9205,7 @@ public:
     VkOutOfBandQueueTypeInfoNV s;
     MarshalVkOutOfBandQueueTypeInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOutOfBandQueueTypeInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkOutOfBandQueueTypeInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkOutOfBandQueueTypeInfoNV* s);
     ~MarshalVkOutOfBandQueueTypeInfoNV();
 };
 
@@ -9158,7 +9215,7 @@ public:
     VkLatencySubmissionPresentIdNV s;
     MarshalVkLatencySubmissionPresentIdNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySubmissionPresentIdNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySubmissionPresentIdNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLatencySubmissionPresentIdNV* s);
     ~MarshalVkLatencySubmissionPresentIdNV();
 };
 
@@ -9168,7 +9225,7 @@ public:
     VkSwapchainLatencyCreateInfoNV s;
     MarshalVkSwapchainLatencyCreateInfoNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainLatencyCreateInfoNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkSwapchainLatencyCreateInfoNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkSwapchainLatencyCreateInfoNV* s);
     ~MarshalVkSwapchainLatencyCreateInfoNV();
 };
 
@@ -9178,7 +9235,7 @@ public:
     VkLatencySurfaceCapabilitiesNV s;
     MarshalVkLatencySurfaceCapabilitiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySurfaceCapabilitiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLatencySurfaceCapabilitiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLatencySurfaceCapabilitiesNV* s);
     ~MarshalVkLatencySurfaceCapabilitiesNV();
 };
 
@@ -9188,7 +9245,7 @@ public:
     VkPhysicalDeviceCudaKernelLaunchFeaturesNV s;
     MarshalVkPhysicalDeviceCudaKernelLaunchFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCudaKernelLaunchFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCudaKernelLaunchFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCudaKernelLaunchFeaturesNV* s);
     ~MarshalVkPhysicalDeviceCudaKernelLaunchFeaturesNV();
 };
 
@@ -9198,7 +9255,7 @@ public:
     VkPhysicalDeviceCudaKernelLaunchPropertiesNV s;
     MarshalVkPhysicalDeviceCudaKernelLaunchPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCudaKernelLaunchPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCudaKernelLaunchPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCudaKernelLaunchPropertiesNV* s);
     ~MarshalVkPhysicalDeviceCudaKernelLaunchPropertiesNV();
 };
 
@@ -9208,7 +9265,7 @@ public:
     VkDeviceQueueShaderCoreControlCreateInfoARM s;
     MarshalVkDeviceQueueShaderCoreControlCreateInfoARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueShaderCoreControlCreateInfoARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDeviceQueueShaderCoreControlCreateInfoARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDeviceQueueShaderCoreControlCreateInfoARM* s);
     ~MarshalVkDeviceQueueShaderCoreControlCreateInfoARM();
 };
 
@@ -9218,7 +9275,7 @@ public:
     VkPhysicalDeviceSchedulingControlsFeaturesARM s;
     MarshalVkPhysicalDeviceSchedulingControlsFeaturesARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSchedulingControlsFeaturesARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSchedulingControlsFeaturesARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSchedulingControlsFeaturesARM* s);
     ~MarshalVkPhysicalDeviceSchedulingControlsFeaturesARM();
 };
 
@@ -9228,7 +9285,7 @@ public:
     VkPhysicalDeviceSchedulingControlsPropertiesARM s;
     MarshalVkPhysicalDeviceSchedulingControlsPropertiesARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSchedulingControlsPropertiesARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceSchedulingControlsPropertiesARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceSchedulingControlsPropertiesARM* s);
     ~MarshalVkPhysicalDeviceSchedulingControlsPropertiesARM();
 };
 
@@ -9238,7 +9295,7 @@ public:
     VkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG s;
     MarshalVkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG* s);
     ~MarshalVkPhysicalDeviceRelaxedLineRasterizationFeaturesIMG();
 };
 
@@ -9248,7 +9305,7 @@ public:
     VkPhysicalDeviceRenderPassStripedFeaturesARM s;
     MarshalVkPhysicalDeviceRenderPassStripedFeaturesARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRenderPassStripedFeaturesARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRenderPassStripedFeaturesARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRenderPassStripedFeaturesARM* s);
     ~MarshalVkPhysicalDeviceRenderPassStripedFeaturesARM();
 };
 
@@ -9258,7 +9315,7 @@ public:
     VkPhysicalDeviceRenderPassStripedPropertiesARM s;
     MarshalVkPhysicalDeviceRenderPassStripedPropertiesARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRenderPassStripedPropertiesARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRenderPassStripedPropertiesARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRenderPassStripedPropertiesARM* s);
     ~MarshalVkPhysicalDeviceRenderPassStripedPropertiesARM();
 };
 
@@ -9268,7 +9325,7 @@ public:
     VkRenderPassStripeInfoARM s;
     MarshalVkRenderPassStripeInfoARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassStripeInfoARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassStripeInfoARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassStripeInfoARM* s);
     ~MarshalVkRenderPassStripeInfoARM();
 };
 
@@ -9278,7 +9335,7 @@ public:
     VkRenderPassStripeBeginInfoARM s;
     MarshalVkRenderPassStripeBeginInfoARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassStripeBeginInfoARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassStripeBeginInfoARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassStripeBeginInfoARM* s);
     ~MarshalVkRenderPassStripeBeginInfoARM();
 };
 
@@ -9288,7 +9345,7 @@ public:
     VkRenderPassStripeSubmitInfoARM s;
     MarshalVkRenderPassStripeSubmitInfoARM(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassStripeSubmitInfoARM* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderPassStripeSubmitInfoARM* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderPassStripeSubmitInfoARM* s);
     ~MarshalVkRenderPassStripeSubmitInfoARM();
 };
 
@@ -9298,7 +9355,7 @@ public:
     VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR s;
     MarshalVkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceShaderMaximalReconvergenceFeaturesKHR();
 };
 
@@ -9308,7 +9365,7 @@ public:
     VkPhysicalDeviceShaderSubgroupRotateFeatures s;
     MarshalVkPhysicalDeviceShaderSubgroupRotateFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSubgroupRotateFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderSubgroupRotateFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderSubgroupRotateFeatures* s);
     ~MarshalVkPhysicalDeviceShaderSubgroupRotateFeatures();
 };
 
@@ -9318,7 +9375,7 @@ public:
     VkPhysicalDeviceShaderExpectAssumeFeatures s;
     MarshalVkPhysicalDeviceShaderExpectAssumeFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderExpectAssumeFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderExpectAssumeFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderExpectAssumeFeatures* s);
     ~MarshalVkPhysicalDeviceShaderExpectAssumeFeatures();
 };
 
@@ -9328,7 +9385,7 @@ public:
     VkPhysicalDeviceShaderFloatControls2Features s;
     MarshalVkPhysicalDeviceShaderFloatControls2Features(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderFloatControls2Features* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderFloatControls2Features* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderFloatControls2Features* s);
     ~MarshalVkPhysicalDeviceShaderFloatControls2Features();
 };
 
@@ -9338,7 +9395,7 @@ public:
     VkPhysicalDeviceDynamicRenderingLocalReadFeatures s;
     MarshalVkPhysicalDeviceDynamicRenderingLocalReadFeatures(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDynamicRenderingLocalReadFeatures* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceDynamicRenderingLocalReadFeatures* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceDynamicRenderingLocalReadFeatures* s);
     ~MarshalVkPhysicalDeviceDynamicRenderingLocalReadFeatures();
 };
 
@@ -9348,7 +9405,7 @@ public:
     VkRenderingAttachmentLocationInfo s;
     MarshalVkRenderingAttachmentLocationInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingAttachmentLocationInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingAttachmentLocationInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderingAttachmentLocationInfo* s);
     ~MarshalVkRenderingAttachmentLocationInfo();
 };
 
@@ -9358,7 +9415,7 @@ public:
     VkRenderingInputAttachmentIndexInfo s;
     MarshalVkRenderingInputAttachmentIndexInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingInputAttachmentIndexInfo* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkRenderingInputAttachmentIndexInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkRenderingInputAttachmentIndexInfo* s);
     ~MarshalVkRenderingInputAttachmentIndexInfo();
 };
 
@@ -9368,7 +9425,7 @@ public:
     VkPhysicalDeviceShaderQuadControlFeaturesKHR s;
     MarshalVkPhysicalDeviceShaderQuadControlFeaturesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderQuadControlFeaturesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderQuadControlFeaturesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderQuadControlFeaturesKHR* s);
     ~MarshalVkPhysicalDeviceShaderQuadControlFeaturesKHR();
 };
 
@@ -9378,7 +9435,7 @@ public:
     VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV s;
     MarshalVkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV* s);
     ~MarshalVkPhysicalDeviceShaderAtomicFloat16VectorFeaturesNV();
 };
 
@@ -9388,7 +9445,7 @@ public:
     VkPhysicalDeviceMapMemoryPlacedFeaturesEXT s;
     MarshalVkPhysicalDeviceMapMemoryPlacedFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMapMemoryPlacedFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMapMemoryPlacedFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMapMemoryPlacedFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceMapMemoryPlacedFeaturesEXT();
 };
 
@@ -9398,7 +9455,7 @@ public:
     VkPhysicalDeviceMapMemoryPlacedPropertiesEXT s;
     MarshalVkPhysicalDeviceMapMemoryPlacedPropertiesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMapMemoryPlacedPropertiesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceMapMemoryPlacedPropertiesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceMapMemoryPlacedPropertiesEXT* s);
     ~MarshalVkPhysicalDeviceMapMemoryPlacedPropertiesEXT();
 };
 
@@ -9408,7 +9465,7 @@ public:
     VkMemoryMapPlacedInfoEXT s;
     MarshalVkMemoryMapPlacedInfoEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryMapPlacedInfoEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkMemoryMapPlacedInfoEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMemoryMapPlacedInfoEXT* s);
     ~MarshalVkMemoryMapPlacedInfoEXT();
 };
 
@@ -9418,7 +9475,7 @@ public:
     VkPhysicalDeviceRawAccessChainsFeaturesNV s;
     MarshalVkPhysicalDeviceRawAccessChainsFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRawAccessChainsFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceRawAccessChainsFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceRawAccessChainsFeaturesNV* s);
     ~MarshalVkPhysicalDeviceRawAccessChainsFeaturesNV();
 };
 
@@ -9428,7 +9485,7 @@ public:
     VkPhysicalDeviceCommandBufferInheritanceFeaturesNV s;
     MarshalVkPhysicalDeviceCommandBufferInheritanceFeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCommandBufferInheritanceFeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCommandBufferInheritanceFeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCommandBufferInheritanceFeaturesNV* s);
     ~MarshalVkPhysicalDeviceCommandBufferInheritanceFeaturesNV();
 };
 
@@ -9438,7 +9495,7 @@ public:
     VkPhysicalDeviceImageAlignmentControlFeaturesMESA s;
     MarshalVkPhysicalDeviceImageAlignmentControlFeaturesMESA(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageAlignmentControlFeaturesMESA* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageAlignmentControlFeaturesMESA* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageAlignmentControlFeaturesMESA* s);
     ~MarshalVkPhysicalDeviceImageAlignmentControlFeaturesMESA();
 };
 
@@ -9448,7 +9505,7 @@ public:
     VkPhysicalDeviceImageAlignmentControlPropertiesMESA s;
     MarshalVkPhysicalDeviceImageAlignmentControlPropertiesMESA(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageAlignmentControlPropertiesMESA* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceImageAlignmentControlPropertiesMESA* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceImageAlignmentControlPropertiesMESA* s);
     ~MarshalVkPhysicalDeviceImageAlignmentControlPropertiesMESA();
 };
 
@@ -9458,7 +9515,7 @@ public:
     VkImageAlignmentControlCreateInfoMESA s;
     MarshalVkImageAlignmentControlCreateInfoMESA(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageAlignmentControlCreateInfoMESA* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkImageAlignmentControlCreateInfoMESA* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkImageAlignmentControlCreateInfoMESA* s);
     ~MarshalVkImageAlignmentControlCreateInfoMESA();
 };
 
@@ -9468,7 +9525,7 @@ public:
     VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT s;
     MarshalVkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceShaderReplicatedCompositesFeaturesEXT();
 };
 
@@ -9478,7 +9535,7 @@ public:
     VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT s;
     MarshalVkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT* s);
     ~MarshalVkPhysicalDevicePresentModeFifoLatestReadyFeaturesEXT();
 };
 
@@ -9488,6 +9545,7 @@ public:
     VkDepthClampRangeEXT s;
     MarshalVkDepthClampRangeEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDepthClampRangeEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDepthClampRangeEXT* s);
 };
 
 class MarshalVkPhysicalDeviceCooperativeMatrix2FeaturesNV {
@@ -9496,7 +9554,7 @@ public:
     VkPhysicalDeviceCooperativeMatrix2FeaturesNV s;
     MarshalVkPhysicalDeviceCooperativeMatrix2FeaturesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrix2FeaturesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrix2FeaturesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCooperativeMatrix2FeaturesNV* s);
     ~MarshalVkPhysicalDeviceCooperativeMatrix2FeaturesNV();
 };
 
@@ -9506,7 +9564,7 @@ public:
     VkPhysicalDeviceCooperativeMatrix2PropertiesNV s;
     MarshalVkPhysicalDeviceCooperativeMatrix2PropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrix2PropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceCooperativeMatrix2PropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceCooperativeMatrix2PropertiesNV* s);
     ~MarshalVkPhysicalDeviceCooperativeMatrix2PropertiesNV();
 };
 
@@ -9516,7 +9574,7 @@ public:
     VkCooperativeMatrixFlexibleDimensionsPropertiesNV s;
     MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCooperativeMatrixFlexibleDimensionsPropertiesNV* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkCooperativeMatrixFlexibleDimensionsPropertiesNV* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCooperativeMatrixFlexibleDimensionsPropertiesNV* s);
     ~MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV();
 };
 
@@ -9526,7 +9584,7 @@ public:
     VkPhysicalDeviceHdrVividFeaturesHUAWEI s;
     MarshalVkPhysicalDeviceHdrVividFeaturesHUAWEI(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHdrVividFeaturesHUAWEI* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceHdrVividFeaturesHUAWEI* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceHdrVividFeaturesHUAWEI* s);
     ~MarshalVkPhysicalDeviceHdrVividFeaturesHUAWEI();
 };
 
@@ -9536,7 +9594,7 @@ public:
     VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT s;
     MarshalVkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT* s);
     ~MarshalVkPhysicalDeviceVertexAttributeRobustnessFeaturesEXT();
 };
 
@@ -9546,6 +9604,7 @@ public:
     StdVideoEncodeH264WeightTableFlags s;
     MarshalStdVideoEncodeH264WeightTableFlags(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264WeightTableFlags* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264WeightTableFlags* s);
 };
 
 class MarshalStdVideoEncodeH264WeightTable {
@@ -9554,6 +9613,7 @@ public:
     StdVideoEncodeH264WeightTable s;
     MarshalStdVideoEncodeH264WeightTable(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264WeightTable* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264WeightTable* s);
 };
 
 class MarshalStdVideoH265SubLayerHrdParameters {
@@ -9562,6 +9622,7 @@ public:
     StdVideoH265SubLayerHrdParameters s;
     MarshalStdVideoH265SubLayerHrdParameters(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265SubLayerHrdParameters* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265SubLayerHrdParameters* s);
 };
 
 class MarshalStdVideoH265DecPicBufMgr {
@@ -9570,6 +9631,7 @@ public:
     StdVideoH265DecPicBufMgr s;
     MarshalStdVideoH265DecPicBufMgr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265DecPicBufMgr* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265DecPicBufMgr* s);
 };
 
 class MarshalStdVideoH265HrdParameters {
@@ -9578,6 +9640,7 @@ public:
     StdVideoH265HrdParameters s;
     MarshalStdVideoH265HrdParameters(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265HrdParameters* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265HrdParameters* s);
     ~MarshalStdVideoH265HrdParameters();
 };
 
@@ -9587,6 +9650,7 @@ public:
     StdVideoH265ProfileTierLevel s;
     MarshalStdVideoH265ProfileTierLevel(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265ProfileTierLevel* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265ProfileTierLevel* s);
 };
 
 class MarshalStdVideoH265ScalingLists {
@@ -9595,6 +9659,7 @@ public:
     StdVideoH265ScalingLists s;
     MarshalStdVideoH265ScalingLists(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265ScalingLists* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265ScalingLists* s);
 };
 
 class MarshalStdVideoH265ShortTermRefPicSet {
@@ -9603,6 +9668,7 @@ public:
     StdVideoH265ShortTermRefPicSet s;
     MarshalStdVideoH265ShortTermRefPicSet(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265ShortTermRefPicSet* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265ShortTermRefPicSet* s);
 };
 
 class MarshalStdVideoH265LongTermRefPicsSps {
@@ -9611,6 +9677,7 @@ public:
     StdVideoH265LongTermRefPicsSps s;
     MarshalStdVideoH265LongTermRefPicsSps(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265LongTermRefPicsSps* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265LongTermRefPicsSps* s);
 };
 
 class MarshalStdVideoH265PredictorPaletteEntries {
@@ -9619,6 +9686,7 @@ public:
     StdVideoH265PredictorPaletteEntries s;
     MarshalStdVideoH265PredictorPaletteEntries(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265PredictorPaletteEntries* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265PredictorPaletteEntries* s);
 };
 
 class MarshalStdVideoH265SequenceParameterSetVui {
@@ -9627,6 +9695,7 @@ public:
     StdVideoH265SequenceParameterSetVui s;
     MarshalStdVideoH265SequenceParameterSetVui(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH265SequenceParameterSetVui* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH265SequenceParameterSetVui* s);
     ~MarshalStdVideoH265SequenceParameterSetVui();
 };
 
@@ -9636,6 +9705,7 @@ public:
     StdVideoEncodeH265WeightTableFlags s;
     MarshalStdVideoEncodeH265WeightTableFlags(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265WeightTableFlags* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265WeightTableFlags* s);
 };
 
 class MarshalStdVideoEncodeH265WeightTable {
@@ -9644,6 +9714,7 @@ public:
     StdVideoEncodeH265WeightTable s;
     MarshalStdVideoEncodeH265WeightTable(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265WeightTable* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265WeightTable* s);
 };
 
 class MarshalStdVideoEncodeH265ReferenceListsInfo {
@@ -9652,6 +9723,7 @@ public:
     StdVideoEncodeH265ReferenceListsInfo s;
     MarshalStdVideoEncodeH265ReferenceListsInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265ReferenceListsInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265ReferenceListsInfo* s);
 };
 
 class MarshalStdVideoEncodeH265LongTermRefPics {
@@ -9660,6 +9732,7 @@ public:
     StdVideoEncodeH265LongTermRefPics s;
     MarshalStdVideoEncodeH265LongTermRefPics(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH265LongTermRefPics* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH265LongTermRefPics* s);
 };
 
 class MarshalStdVideoH264ScalingLists {
@@ -9668,6 +9741,7 @@ public:
     StdVideoH264ScalingLists s;
     MarshalStdVideoH264ScalingLists(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH264ScalingLists* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264ScalingLists* s);
 };
 
 class MarshalStdVideoH264HrdParameters {
@@ -9676,6 +9750,7 @@ public:
     StdVideoH264HrdParameters s;
     MarshalStdVideoH264HrdParameters(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH264HrdParameters* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264HrdParameters* s);
 };
 
 class MarshalStdVideoH264SequenceParameterSetVui {
@@ -9684,6 +9759,7 @@ public:
     StdVideoH264SequenceParameterSetVui s;
     MarshalStdVideoH264SequenceParameterSetVui(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoH264SequenceParameterSetVui* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoH264SequenceParameterSetVui* s);
     ~MarshalStdVideoH264SequenceParameterSetVui();
 };
 
@@ -9693,6 +9769,7 @@ public:
     StdVideoEncodeH264RefListModEntry s;
     MarshalStdVideoEncodeH264RefListModEntry(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264RefListModEntry* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264RefListModEntry* s);
 };
 
 class MarshalStdVideoEncodeH264RefPicMarkingEntry {
@@ -9701,6 +9778,7 @@ public:
     StdVideoEncodeH264RefPicMarkingEntry s;
     MarshalStdVideoEncodeH264RefPicMarkingEntry(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264RefPicMarkingEntry* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264RefPicMarkingEntry* s);
 };
 
 class MarshalStdVideoEncodeH264ReferenceListsInfo {
@@ -9709,6 +9787,7 @@ public:
     StdVideoEncodeH264ReferenceListsInfo s;
     MarshalStdVideoEncodeH264ReferenceListsInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoEncodeH264ReferenceListsInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoEncodeH264ReferenceListsInfo* s);
     ~MarshalStdVideoEncodeH264ReferenceListsInfo();
 };
 
@@ -9718,6 +9797,7 @@ public:
     StdVideoAV1Quantization s;
     MarshalStdVideoAV1Quantization(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1Quantization* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1Quantization* s);
 };
 
 class MarshalStdVideoAV1TileInfo {
@@ -9726,6 +9806,7 @@ public:
     StdVideoAV1TileInfo s;
     MarshalStdVideoAV1TileInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1TileInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1TileInfo* s);
 };
 
 class MarshalStdVideoAV1LoopFilter {
@@ -9734,6 +9815,7 @@ public:
     StdVideoAV1LoopFilter s;
     MarshalStdVideoAV1LoopFilter(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1LoopFilter* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1LoopFilter* s);
 };
 
 class MarshalStdVideoAV1Segmentation {
@@ -9742,6 +9824,7 @@ public:
     StdVideoAV1Segmentation s;
     MarshalStdVideoAV1Segmentation(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1Segmentation* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1Segmentation* s);
 };
 
 class MarshalStdVideoAV1CDEF {
@@ -9750,6 +9833,7 @@ public:
     StdVideoAV1CDEF s;
     MarshalStdVideoAV1CDEF(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1CDEF* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1CDEF* s);
 };
 
 class MarshalStdVideoAV1LoopRestoration {
@@ -9758,6 +9842,7 @@ public:
     StdVideoAV1LoopRestoration s;
     MarshalStdVideoAV1LoopRestoration(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1LoopRestoration* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1LoopRestoration* s);
 };
 
 class MarshalStdVideoAV1GlobalMotion {
@@ -9766,6 +9851,7 @@ public:
     StdVideoAV1GlobalMotion s;
     MarshalStdVideoAV1GlobalMotion(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1GlobalMotion* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1GlobalMotion* s);
 };
 
 class MarshalStdVideoAV1TimingInfo {
@@ -9774,6 +9860,7 @@ public:
     StdVideoAV1TimingInfo s;
     MarshalStdVideoAV1TimingInfo(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1TimingInfo* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1TimingInfo* s);
 };
 
 class MarshalStdVideoAV1ColorConfig {
@@ -9782,6 +9869,7 @@ public:
     StdVideoAV1ColorConfig s;
     MarshalStdVideoAV1ColorConfig(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1ColorConfig* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1ColorConfig* s);
 };
 
 class MarshalStdVideoAV1FilmGrain {
@@ -9790,6 +9878,7 @@ public:
     StdVideoAV1FilmGrain s;
     MarshalStdVideoAV1FilmGrain(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, StdVideoAV1FilmGrain* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const StdVideoAV1FilmGrain* s);
 };
 
 class MarshalVkDisplayModePropertiesKHR {
@@ -9798,7 +9887,7 @@ public:
     VkDisplayModePropertiesKHR s;
     MarshalVkDisplayModePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModePropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModePropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayModePropertiesKHR* s);
 };
 
 class MarshalVkDisplayPropertiesKHR {
@@ -9807,7 +9896,7 @@ public:
     VkDisplayPropertiesKHR s;
     MarshalVkDisplayPropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPropertiesKHR* s);
     ~MarshalVkDisplayPropertiesKHR();
 };
 
@@ -9817,7 +9906,7 @@ public:
     VkDisplayPlaneCapabilitiesKHR s;
     MarshalVkDisplayPlaneCapabilitiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneCapabilitiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlaneCapabilitiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPlaneCapabilitiesKHR* s);
 };
 
 class MarshalVkDisplayPlanePropertiesKHR {
@@ -9826,7 +9915,7 @@ public:
     VkDisplayPlanePropertiesKHR s;
     MarshalVkDisplayPlanePropertiesKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlanePropertiesKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayPlanePropertiesKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayPlanePropertiesKHR* s);
 };
 
 class MarshalVkDisplayModeParametersKHR {
@@ -9835,6 +9924,6 @@ public:
     VkDisplayModeParametersKHR s;
     MarshalVkDisplayModeParametersKHR(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
     static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModeParametersKHR* s);
-    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkDisplayModeParametersKHR* s);
+    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkDisplayModeParametersKHR* s);
 };
 

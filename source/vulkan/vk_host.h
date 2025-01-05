@@ -6,6 +6,7 @@
 #ifndef BOXED_VK_EXTERN
 #define BOXED_VK_EXTERN extern
 #endif
+class MarshalVkImageCreateInfo;
 class BoxedVulkanInfo;
 VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);
@@ -1302,6 +1303,7 @@ public:
     std::unordered_map<U32, void*> rayTracingCaptureReplayShaderGroupHandles;
     std::unordered_map<U64, void*> debugReportCallbacks;
     std::unordered_map<U64, void*> debugUtilsCallbacks;
+    std::unordered_map<U64, std::shared_ptr<MarshalVkImageCreateInfo>> imageCreateInfo;
     VkDebugUtilsMessengerEXT debugMessenger;
 };
 #endif

@@ -37,7 +37,7 @@ public class VkHostMarshalInHandleArray extends VkHostMarshal {
         out.append(" + i*4));\n    }\n");
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    delete[] ");
         out.append(param.name);
         out.append(";\n");

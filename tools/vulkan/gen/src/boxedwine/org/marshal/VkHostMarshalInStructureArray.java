@@ -100,7 +100,7 @@ public class VkHostMarshalInStructureArray  extends VkHostMarshal {
         param.paramType.setNeedMarshalIn(data, true);
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    if (");
         out.append(param.name);
         out.append(") {\n");

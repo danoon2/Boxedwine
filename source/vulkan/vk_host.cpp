@@ -1677,13 +1677,16 @@ void vk_DestroyBufferView(CPU* cpu) {
 void vk_CreateImage(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    MarshalVkImageCreateInfo local_pCreateInfo(pBoxedInfo, cpu->memory, ARG2);
-    VkImageCreateInfo* pCreateInfo = &local_pCreateInfo.s;
+    std::shared_ptr<MarshalVkImageCreateInfo> local_pCreateInfo = std::make_shared<MarshalVkImageCreateInfo>(pBoxedInfo, cpu->memory, ARG2);
+    VkImageCreateInfo* pCreateInfo = &local_pCreateInfo->s;
     static bool shown; if (!shown && ARG3) { klog("vkCreateImage:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     VkImage tmp_pImage = (VkImage) cpu->memory->readq(ARG4);
     VkImage* pImage = &tmp_pImage;
     EAX = (U32)pBoxedInfo->pvkCreateImage(device, pCreateInfo, pAllocator, pImage);
+    if (!EAX && tmp_pImage) {
+        pBoxedInfo->imageCreateInfo[(U64)tmp_pImage] = local_pCreateInfo;
+    }
     cpu->memory->writeq(ARG4, (U64)tmp_pImage);
 }
 void vk_DestroyImage(CPU* cpu) {
@@ -1693,6 +1696,7 @@ void vk_DestroyImage(CPU* cpu) {
     static bool shown; if (!shown && ARG3) { klog("vkDestroyImage:VkAllocationCallbacks not implemented"); shown = true;}
     VkAllocationCallbacks* pAllocator = NULL;
     pBoxedInfo->pvkDestroyImage(device, image, pAllocator);
+    pBoxedInfo->imageCreateInfo.erase((U64)image);
 }
 void vk_GetImageSubresourceLayout(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -9831,11 +9835,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkPhysicalDeviceSchedulingControlsFeaturesARM::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
-            VkPhysicalDeviceCornerSampledImageFeaturesNV* p = new VkPhysicalDeviceCornerSampledImageFeaturesNV();
-            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: {
             VkDevicePrivateDataCreateInfo* p = new VkDevicePrivateDataCreateInfo();
             MarshalVkDevicePrivateDataCreateInfo::read(pBoxedInfo, memory, address, p);
@@ -9844,6 +9843,11 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES: {
             VkPhysicalDeviceMaintenance6Features* p = new VkPhysicalDeviceMaintenance6Features();
             MarshalVkPhysicalDeviceMaintenance6Features::read(pBoxedInfo, memory, address, p);
+            return (VkBaseOutStructure*)p;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
+            VkPhysicalDeviceCornerSampledImageFeaturesNV* p = new VkPhysicalDeviceCornerSampledImageFeaturesNV();
+            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
@@ -10001,11 +10005,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkMemoryDedicatedRequirements::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY: {
-            VkMemoryToImageCopy* p = new VkMemoryToImageCopy();
-            MarshalVkMemoryToImageCopy::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
             VkPhysicalDeviceVulkan14Features* p = new VkPhysicalDeviceVulkan14Features();
             MarshalVkPhysicalDeviceVulkan14Features::read(pBoxedInfo, memory, address, p);
@@ -10074,11 +10073,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
             VkPhysicalDeviceExtendedDynamicStateFeaturesEXT* p = new VkPhysicalDeviceExtendedDynamicStateFeaturesEXT();
             MarshalVkPhysicalDeviceExtendedDynamicStateFeaturesEXT::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY: {
-            VkImageToMemoryCopy* p = new VkImageToMemoryCopy();
-            MarshalVkImageToMemoryCopy::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM: {
@@ -11586,11 +11580,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             MarshalVkDescriptorSetBindingReferenceVALVE::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
-        case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO: {
-            VkCopyImageToMemoryInfo* p = new VkCopyImageToMemoryInfo();
-            MarshalVkCopyImageToMemoryInfo::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
             VkPhysicalDeviceRayQueryFeaturesKHR* p = new VkPhysicalDeviceRayQueryFeaturesKHR();
             MarshalVkPhysicalDeviceRayQueryFeaturesKHR::read(pBoxedInfo, memory, address, p);
@@ -12194,11 +12183,6 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHR: {
             VkDeviceGroupPresentCapabilitiesKHR* p = new VkDeviceGroupPresentCapabilitiesKHR();
             MarshalVkDeviceGroupPresentCapabilitiesKHR::read(pBoxedInfo, memory, address, p);
-            return (VkBaseOutStructure*)p;
-        }
-        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO: {
-            VkCopyMemoryToImageInfo* p = new VkCopyMemoryToImageInfo();
-            MarshalVkCopyMemoryToImageInfo::read(pBoxedInfo, memory, address, p);
             return (VkBaseOutStructure*)p;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT: {
@@ -13779,16 +13763,16 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkPhysicalDeviceSchedulingControlsFeaturesARM::write(pBoxedInfo, memory, address, (VkPhysicalDeviceSchedulingControlsFeaturesARM*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
-            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCornerSampledImageFeaturesNV*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO: {
             MarshalVkDevicePrivateDataCreateInfo::write(pBoxedInfo, memory, address, (VkDevicePrivateDataCreateInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES: {
             MarshalVkPhysicalDeviceMaintenance6Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceMaintenance6Features*)p);
+            break;
+        }
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CORNER_SAMPLED_IMAGE_FEATURES_NV: {
+            MarshalVkPhysicalDeviceCornerSampledImageFeaturesNV::write(pBoxedInfo, memory, address, (VkPhysicalDeviceCornerSampledImageFeaturesNV*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
@@ -13915,10 +13899,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkMemoryDedicatedRequirements::write(pBoxedInfo, memory, address, (VkMemoryDedicatedRequirements*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY: {
-            MarshalVkMemoryToImageCopy::write(pBoxedInfo, memory, address, (VkMemoryToImageCopy*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES: {
             MarshalVkPhysicalDeviceVulkan14Features::write(pBoxedInfo, memory, address, (VkPhysicalDeviceVulkan14Features*)p);
             break;
@@ -13973,10 +13953,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
             MarshalVkPhysicalDeviceExtendedDynamicStateFeaturesEXT::write(pBoxedInfo, memory, address, (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY: {
-            MarshalVkImageToMemoryCopy::write(pBoxedInfo, memory, address, (VkImageToMemoryCopy*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_RENDER_PASS_TRANSFORM_BEGIN_INFO_QCOM: {
@@ -15183,10 +15159,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             MarshalVkDescriptorSetBindingReferenceVALVE::write(pBoxedInfo, memory, address, (VkDescriptorSetBindingReferenceVALVE*)p);
             break;
         }
-        case VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO: {
-            MarshalVkCopyImageToMemoryInfo::write(pBoxedInfo, memory, address, (VkCopyImageToMemoryInfo*)p);
-            break;
-        }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_QUERY_FEATURES_KHR: {
             MarshalVkPhysicalDeviceRayQueryFeaturesKHR::write(pBoxedInfo, memory, address, (VkPhysicalDeviceRayQueryFeaturesKHR*)p);
             break;
@@ -15669,10 +15641,6 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
         }
         case VK_STRUCTURE_TYPE_DEVICE_GROUP_PRESENT_CAPABILITIES_KHR: {
             MarshalVkDeviceGroupPresentCapabilitiesKHR::write(pBoxedInfo, memory, address, (VkDeviceGroupPresentCapabilitiesKHR*)p);
-            break;
-        }
-        case VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO: {
-            MarshalVkCopyMemoryToImageInfo::write(pBoxedInfo, memory, address, (VkCopyMemoryToImageInfo*)p);
             break;
         }
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT: {

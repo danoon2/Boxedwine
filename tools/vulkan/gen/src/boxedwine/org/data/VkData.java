@@ -23,6 +23,8 @@ public class VkData {
 
     public Vector<String> ignoreStructTypes = new Vector<>();
 
+    public Hashtable<String, VkCopyData> copyData = new Hashtable<>();
+
     public VkFunction getFunctionByName(String name) {
         for (VkFunction fn : functions) {
             if (fn.name.equals(name)) {

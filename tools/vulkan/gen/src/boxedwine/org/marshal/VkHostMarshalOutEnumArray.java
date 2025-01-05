@@ -13,7 +13,7 @@ public class VkHostMarshalOutEnumArray extends VkHostMarshalInMemory {
         super.before(data, fn, out, param);
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
-        super.after(fn, out, param);
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+        super.after(data, fn, out, param);
     }
 }

@@ -22,7 +22,7 @@ public class VkHostMarshalOutStructure extends VkHostMarshal {
         param.paramType.setNeedMarshalIn(data, true);
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    Marshal");
         out.append(param.paramType.name);
         out.append("::write(pBoxedInfo, cpu->memory, ");

@@ -38,18 +38,23 @@ public class VkHostMarshalType {
         out.append(" s;\n");
 
         if (t.isNeedMarshalIn()) {
-            out.append("    Marshal");
-            out.append(t.name);
-            out.append("(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}\n");
-
-            out.append("    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, ");
+            if (!t.name.equals("VkMemoryToImageCopy") && !t.name.equals("VkImageToMemoryCopy")) {
+                out.append("    Marshal");
+                out.append(t.name);
+                out.append("(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}\n");
+            }
+            out.append("    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, ");
+            if (t.name.equals("VkMemoryToImageCopy") || t.name.equals("VkImageToMemoryCopy")) {
+                out.append("VkImage image, ");
+            }
+            out.append("U32 address, ");
             out.append(t.name);
             out.append("* s");
             out.append(");\n");
         }
 
         if (t.needMarshalOut) {
-            out.append("    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, ");
+            out.append("    static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const ");
             out.append(t.name);
             out.append("* s");
             out.append(");\n");
@@ -264,7 +269,13 @@ public class VkHostMarshalType {
 
         out.append("            Marshal");
         out.append(param.paramType.name);
-        out.append("::read(pBoxedInfo, memory, paramAddress + i");
+        out.append("::read(pBoxedInfo, memory, ");
+        if (param.paramType.name.equals("VkMemoryToImageCopy")) {
+            out.append("s->dstImage, ");
+        } else if (param.paramType.name.equals("VkImageToMemoryCopy")) {
+            out.append("s->srcImage, ");
+        }
+        out.append("paramAddress + i");
         out.append("*");
         out.append(param.paramType.sizeof);
         out.append(", &");
@@ -533,7 +544,11 @@ public class VkHostMarshalType {
     private static void marshalIn(VkData data, VkType t, StringBuilder out, Vector<MarshalParamData> paramsData) throws Exception {
         out.append("void Marshal");
         out.append(t.name);
-        out.append("::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, ");
+        out.append("::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, ");
+        if (t.name.equals("VkMemoryToImageCopy") || t.name.equals("VkImageToMemoryCopy")) {
+            out.append("VkImage image, ");
+        }
+        out.append("U32 address, ");
         out.append(t.name);
         out.append("* s");
         out.append(") {\n");
@@ -548,9 +563,6 @@ public class VkHostMarshalType {
         }
         int offset = 0;
         for (VkParam param : t.members) {
-            if (param.name.equals("displayProperties")) {
-                int ii=0;
-            }
             int alignment = param.getAlignment();
             if ((offset % alignment) != 0) {
                 out.append("    address+=");
@@ -687,12 +699,44 @@ public class VkHostMarshalType {
                 out.append("    pData->userData = memory->readd(address);address+=4;\n");
                 out.append("    s->pUserData = pData;\n");
                 break; // pfnCallback and pUserData were handled
+            } else if ((t.name.equals("VkMemoryToImageCopy") || t.name.equals("VkImageToMemoryCopy")) && param.name.equals("pHostPointer")) {
+                out.append("    paramAddress = memory->readd(address);address+=4;\n");
             } else if (param.isPointer) {
                 marshalInPointer(data, param, out, pointerData, paramsData);
             } else {
                 marshalInParam(data, param, out, paramsData);
             }
             offset += param.getSize();
+        }
+        for (VkParam param : t.members) {
+            if (t.name.equals("VkMemoryToImageCopy") && param.name.equals("pHostPointer")) {
+                out.append("    if (paramAddress == 0) {\n");
+                out.append("        s->pHostPointer = NULL;\n");
+                out.append("    } else {\n");
+                out.append("        uint64_t copy_size;\n");
+                out.append("        const uint32_t element_size = vkuFormatElementSize(pBoxedInfo->imageCreateInfo[(U64)image]->s.format);\n");
+                out.append("        if (s->memoryRowLength != 0 && s->memoryImageHeight != 0) {\n");
+                out.append("            copy_size = ((s->memoryRowLength * s->memoryImageHeight) * element_size);\n");
+                out.append("        } else {\n");
+                out.append("            copy_size = ((s->imageExtent.width * s->imageExtent.height * s->imageExtent.depth) * element_size);\n");
+                out.append("        }\n");
+                out.append("        s->pHostPointer = memory->lockReadOnlyMemory(paramAddress, copy_size);\n");
+                out.append("    }\n");
+            } else if (t.name.equals("VkImageToMemoryCopy") && param.name.equals("pHostPointer")) {
+                out.append("    if (paramAddress == 0) {\n");
+                out.append("        s->pHostPointer = NULL;\n");
+                out.append("    } else {\n");
+                out.append("        uint64_t copy_size;\n");
+                out.append("        const uint32_t element_size = vkuFormatElementSize(pBoxedInfo->imageCreateInfo[(U64)image]->s.format);\n");
+                out.append("        if (s->memoryRowLength != 0 && s->memoryImageHeight != 0) {\n");
+                out.append("            copy_size = ((s->memoryRowLength * s->memoryImageHeight) * element_size);\n");
+                out.append("        } else {\n");
+                out.append("            copy_size = ((s->imageExtent.width * s->imageExtent.height * s->imageExtent.depth) * element_size);\n");
+                out.append("        }\n");
+                out.append("        s->pHostPointer = new char[copy_size];\n");
+                out.append("        kpanic(\"need to sync image back to emulated memory\");\n");
+                out.append("    }\n");
+            }
         }
         out.append("}\n");
     }
@@ -708,25 +752,12 @@ public class VkHostMarshalType {
         if (param.name.equals("pNext")) {
             out.append("        vulkanWriteNextPtr(pBoxedInfo, memory, paramAddress, s->pNext);\n");
         } else if (param.paramType.getCategory().equals("struct")) {
-            param.paramType.setNeedMarshalIn(data, true);
-            out.append("        ");
-            out.append(param.paramType.name);
-            out.append("* ");
-            out.append(param.name);
-            out.append(" = new ");
-            paramData.add(new MarshalParamData("s."+param.name, false));
-            out.append(param.paramType.name);
-            out.append("();\n");
+            param.paramType.needMarshalOut = true;
             out.append("        Marshal");
             out.append(param.paramType.name);
-            out.append("::read(pBoxedInfo, memory, paramAddress, ");
+            out.append("::write(pBoxedInfo, memory, paramAddress, s->");
             out.append(param.name);
             out.append(");\n");
-            out.append("        s->");
-            out.append(param.name);
-            out.append(" = ");
-            out.append(param.name);
-            out.append(";\n");
         } else {
             out.append("        kpanic(\"Can't marshal void*\");\n");
         }
@@ -879,9 +910,13 @@ public class VkHostMarshalType {
                 }
                 out.append(");address+=8;\n");
             } else if (width == 4) {
-                if (param.paramType.name.equals("size_t") || param.paramType.name.equals("void")) {
+                if (param.paramType.name.equals("size_t") || param.paramType.name.equals("void") || param.paramType.getCategory().isEmpty()) {
                     // size_t is 32-bit on win32, but host might be 64-bit, this will remove the warning
-                    out.append("d(address, (U32)s->");
+                    if (param.paramType.getCategory().isEmpty()) {
+                        out.append("d(address, *(U32*)&s->");
+                    } else {
+                        out.append("d(address, (U32)s->");
+                    }
                 } else {
                     out.append("d(address, s->");
                 }
@@ -903,7 +938,7 @@ public class VkHostMarshalType {
     private static void marshalOut(VkData data, VkType t, StringBuilder out, Vector<MarshalParamData> paramsData) throws Exception {
         out.append("void Marshal");
         out.append(t.name);
-        out.append("::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, ");
+        out.append("::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const ");
         out.append(t.name);
         out.append("* s");
         out.append(") {\n");

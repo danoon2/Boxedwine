@@ -19,7 +19,7 @@ public class VkHostMarshalOutHandle extends VkHostMarshal {
         param.nameInFunction = (param.isPointer?"&":"")+param.name;
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
         out.append("    cpu->memory->writed(");
         out.append(param.paramArg);
         out.append(", createVulkanPtr(cpu->memory, ");

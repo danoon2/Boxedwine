@@ -24,8 +24,6 @@ public class VkParserRules {
         data.stubMarshalWrite.add("VkIndirectCommandsLayoutTokenEXT"); // I don't think this is possible
         data.stubMarshalWrite.add("VkDescriptorGetInfoEXT"); // I don't think this is possible
         data.stubMarshalWrite.add("VkImportMemoryHostPointerInfoEXT"); // used by allocators which I don't support
-        data.stubMarshalWrite.add("VkMemoryToImageCopy"); // :TODO: need to implement
-        data.stubMarshalWrite.add("VkImageToMemoryCopy"); // :TODO: need to implement
         data.stubMarshalWrite.add("VkCuLaunchInfoNVX"); // :TODO: need to implement
         data.stubMarshalWrite.add("VkOpaqueCaptureDescriptorDataCreateInfoEXT"); // :TODO: need to implement
         data.stubMarshalWrite.add("VkOpticalFlowSessionCreatePrivateDataInfoNV"); // :TODO: need to implement
@@ -48,8 +46,6 @@ public class VkParserRules {
         data.stubMarshalWrite.add("VkCopyMemoryToMicromapInfoEXT"); // :TODO: how to know if it is deviceAddress or hostAddress
         data.stubMarshalWrite.add("VkAccelerationStructureGeometryKHR"); // I don't think this is possible
 
-        data.stubMarshalRead.add("VkMemoryToImageCopy"); // :TODO: need to implement
-        data.stubMarshalRead.add("VkImageToMemoryCopy"); // :TODO: need to implement
         data.stubMarshalRead.add("StdVideoH264SequenceParameterSet"); // :TODO: need to implement
         data.stubMarshalRead.add("VkCuLaunchInfoNVX"); // :TODO: need to implement
         data.stubMarshalRead.add("VkOpaqueCaptureDescriptorDataCreateInfoEXT"); // :TODO: need to implement
@@ -85,6 +81,24 @@ public class VkParserRules {
         data.manuallyHandledFunctions.add("vkGetInstanceProcAddr");
 
         data.ignoreStructTypes.add("VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR");
+        data.ignoreStructTypes.add("VK_STRUCTURE_TYPE_MEMORY_TO_IMAGE_COPY");
+        data.ignoreStructTypes.add("VK_STRUCTURE_TYPE_COPY_MEMORY_TO_IMAGE_INFO");
+        data.ignoreStructTypes.add("VK_STRUCTURE_TYPE_IMAGE_TO_MEMORY_COPY");
+        data.ignoreStructTypes.add("VK_STRUCTURE_TYPE_COPY_IMAGE_TO_MEMORY_INFO");
+
+        VkCopyData copyData = new VkCopyData();
+        copyData.variableName = "imageCreateInfo";
+        copyData.createFunction = "vkCreateImage";
+        copyData.createParamName = "pCreateInfo";
+        copyData.createKey = "tmp_pImage";
+        copyData.destroyFunction = "vkDestroyImage";
+        copyData.destroyParamName = "image";
+        copyData.destroyKey = "image";
+        copyData.conditionToStore = "!EAX && tmp_pImage";
+        copyData.marshalType = "MarshalVkImageCreateInfo";
+        data.copyData.put("vkCreateImage", copyData);
+        data.copyData.put("vkDestroyImage", copyData);
+
         removeUnsupportedTypes(data);
         postParseParams(data); // will set isPointer, needed by setTypeEmulatedSizes
         postParseTypes(data);

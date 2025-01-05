@@ -12,7 +12,7 @@ public class VkHostMarshalOutEnum extends VkHostMarshal {
         throw new Exception("not implemented");
     }
 
-    public void after(VkFunction fn, StringBuilder out, VkParam param) throws Exception {
+    public void after(VkData data, VkFunction fn, StringBuilder out, VkParam param) throws Exception {
 
     }
 }

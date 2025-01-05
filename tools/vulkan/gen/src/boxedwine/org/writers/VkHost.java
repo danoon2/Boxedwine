@@ -1,13 +1,11 @@
 package boxedwine.org.writers;
 
-import boxedwine.org.data.VkData;
-import boxedwine.org.data.VkFunction;
-import boxedwine.org.data.VkParam;
-import boxedwine.org.data.VkType;
+import boxedwine.org.data.*;
 import boxedwine.org.marshal.VkHostMarshal;
 import boxedwine.org.marshal.VkHostMarshalType;
 
 import java.io.FileOutputStream;
+import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Vector;
 
@@ -145,7 +143,7 @@ public class VkHost {
             stackPos++;
         }
         stackPos = 1;
-        if (fn.name.equals("vkEnumerateDeviceExtensionProperties")) {
+        if (fn.name.equals("vkCopyMemoryToImage")) {
             int ii=0;
         }
         for (VkParam param : fn.params) {
@@ -169,8 +167,16 @@ public class VkHost {
         // make actual vulkan call on host
         hostCall(fn, out);
         // marshal data if needed from host system back to emulated 32-bit linux
+        VkCopyData copyData = data.copyData.get(fn.name);
         for (VkParam param : fn.params) {
-            paramMarshals.get(param.paramArg).after(fn, out, param);
+            paramMarshals.get(param.paramArg).after(data, fn, out, param);
+            if (copyData != null && copyData.destroyFunction.equals(fn.name) && copyData.destroyParamName.equals(param.name)) {
+                out.append("    pBoxedInfo->");
+                out.append(copyData.variableName);
+                out.append(".erase((U64)");
+                out.append(copyData.destroyKey);
+                out.append(");\n");
+            }
         }
         out.append("}\n");
     }
@@ -185,6 +191,7 @@ public class VkHost {
         out.append("#ifndef BOXED_VK_EXTERN\n");
         out.append("#define BOXED_VK_EXTERN extern\n");
         out.append("#endif\n");
+        out.append("class MarshalVkImageCreateInfo;\n");
         out.append("class BoxedVulkanInfo;\n");
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
@@ -222,6 +229,18 @@ public class VkHost {
         out.append("    std::unordered_map<U32, void*> rayTracingCaptureReplayShaderGroupHandles;\n");
         out.append("    std::unordered_map<U64, void*> debugReportCallbacks;\n");
         out.append("    std::unordered_map<U64, void*> debugUtilsCallbacks;\n");
+        HashSet<String> done = new HashSet<>();
+        for (VkCopyData copyData : data.copyData.values()) {
+            if (done.contains(copyData.variableName)) {
+                continue;
+            }
+            done.add(copyData.variableName);
+            out.append("    std::unordered_map<U64, std::shared_ptr<");
+            out.append(copyData.marshalType);
+            out.append(">> ");
+            out.append(copyData.variableName);
+            out.append(";\n");
+        }
         out.append("    VkDebugUtilsMessengerEXT debugMessenger;\n");
         out.append("};\n");
 
@@ -309,7 +328,8 @@ public class VkHost {
         outMarshal.append("#include \"vk/vulkan.h\"\n");
         outMarshal.append("#include \"vk/vulkan_core.h\"\n");
         outMarshal.append("#include \"vk_host.h\"\n\n");
-        outMarshal.append("#include \"vk_host_marshal.h\"\n\n");
+        outMarshal.append("#include \"vk_host_marshal.h\"\n");
+        outMarshal.append("#include \"vk_format_utils.h\"\n\n");
 
         outHeader.append("struct MarshalFloat {\n");
         outHeader.append("    union {\n");

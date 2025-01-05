@@ -691,7 +691,7 @@ U8* KMemory::lockReadOnlyMemory(U32 address, U32 len) {
 
     // if we cross a page boundry then we will need to make a copy
     if (len <= K_PAGE_SIZE - offset) {
-        return page->getReadPtr(this, address, true);
+        return page->getReadPtr(this, address, true) + (address & K_PAGE_MASK);
     }
     std::shared_ptr<U8[]> p = std::make_shared<U8[]>(len);
     memcpy(p.get(), address, len);

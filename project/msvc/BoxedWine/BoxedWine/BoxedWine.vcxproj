@@ -692,6 +692,7 @@
     <ClInclude Include="..\..\..\..\source\util\vectorutils.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vkdef.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vkfuncs.h" />
+    <ClInclude Include="..\..\..\..\source\vulkan\vk_format_utils.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host_marshal.h" />
     <ClInclude Include="..\..\..\..\source\x11\displaydata.h" />
