@@ -1096,6 +1096,10 @@ void vk_GetPhysicalDeviceQueueFamilyProperties(CPU* cpu) {
     VkQueueFamilyProperties* pQueueFamilyProperties = NULL;
     if (ARG3) {
         pQueueFamilyProperties = new VkQueueFamilyProperties[*pQueueFamilyPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+            MarshalVkQueueFamilyProperties::read(pBoxedInfo, cpu->memory, address + i*24, &pQueueFamilyProperties[i]);
+        }
     }
     pBoxedInfo->pvkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pQueueFamilyPropertyCount);
@@ -1177,6 +1181,10 @@ void vk_EnumerateInstanceLayerProperties(CPU* cpu) {
     VkLayerProperties* pProperties = NULL;
     if (ARG2) {
         pProperties = new VkLayerProperties[*pPropertyCount];
+        U32 address = ARG2;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkLayerProperties::read(nullptr, cpu->memory, address + i*520, &pProperties[i]);
+        }
     }
     EAX = (U32)pvkEnumerateInstanceLayerProperties(pPropertyCount, pProperties);
     cpu->memory->writed(ARG1, (U32)tmp_pPropertyCount);
@@ -1196,6 +1204,10 @@ void vk_EnumerateDeviceLayerProperties(CPU* cpu) {
     VkLayerProperties* pProperties = NULL;
     if (ARG3) {
         pProperties = new VkLayerProperties[*pPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkLayerProperties::read(pBoxedInfo, cpu->memory, address + i*520, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkEnumerateDeviceLayerProperties(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
@@ -1221,6 +1233,10 @@ void vk_EnumerateDeviceExtensionProperties(CPU* cpu) {
     VkExtensionProperties* pProperties = NULL;
     if (ARG4) {
         pProperties = new VkExtensionProperties[*pPropertyCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkExtensionProperties::read(pBoxedInfo, cpu->memory, address + i*260, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkEnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties);
     delete[] pLayerName;
@@ -1403,6 +1419,10 @@ void vk_GetImageSparseMemoryRequirements(CPU* cpu) {
     VkSparseImageMemoryRequirements* pSparseMemoryRequirements = NULL;
     if (ARG4) {
         pSparseMemoryRequirements = new VkSparseImageMemoryRequirements[*pSparseMemoryRequirementCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+            MarshalVkSparseImageMemoryRequirements::read(pBoxedInfo, cpu->memory, address + i*48, &pSparseMemoryRequirements[i]);
+        }
     }
     pBoxedInfo->pvkGetImageSparseMemoryRequirements(device, image, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
@@ -1426,6 +1446,10 @@ void vk_GetPhysicalDeviceSparseImageFormatProperties(CPU* cpu) {
     VkSparseImageFormatProperties* pProperties = NULL;
     if (ARG8) {
         pProperties = new VkSparseImageFormatProperties[*pPropertyCount];
+        U32 address = ARG8;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkSparseImageFormatProperties::read(pBoxedInfo, cpu->memory, address + i*20, &pProperties[i]);
+        }
     }
     pBoxedInfo->pvkGetPhysicalDeviceSparseImageFormatProperties(physicalDevice, format, type, samples, usage, tiling, pPropertyCount, pProperties);
     cpu->memory->writed(ARG7, (U32)tmp_pPropertyCount);
@@ -1932,6 +1956,10 @@ void vk_GetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(CPU* cpu) {
     VkExtent2D* pMaxWorkgroupSize = NULL;
     if (ARG3) {
         pMaxWorkgroupSize = new VkExtent2D[1];
+        U32 address = ARG3;
+        for (U32 i=0;i<1;i++) {
+            MarshalVkExtent2D::read(pBoxedInfo, cpu->memory, address + i*8, &pMaxWorkgroupSize[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(device, renderpass, pMaxWorkgroupSize);
     if (ARG3) {
@@ -3036,6 +3064,10 @@ void vk_GetPhysicalDeviceSurfaceFormatsKHR(CPU* cpu) {
     VkSurfaceFormatKHR* pSurfaceFormats = NULL;
     if (ARG4) {
         pSurfaceFormats = new VkSurfaceFormatKHR[*pSurfaceFormatCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pSurfaceFormatCount;i++) {
+            MarshalVkSurfaceFormatKHR::read(pBoxedInfo, cpu->memory, address + i*8, &pSurfaceFormats[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, pSurfaceFormatCount, pSurfaceFormats);
     cpu->memory->writed(ARG3, (U32)tmp_pSurfaceFormatCount);
@@ -3436,6 +3468,10 @@ void vk_GetPhysicalDeviceQueueFamilyProperties2(CPU* cpu) {
     VkQueueFamilyProperties2* pQueueFamilyProperties = NULL;
     if (ARG3) {
         pQueueFamilyProperties = new VkQueueFamilyProperties2[*pQueueFamilyPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+            MarshalVkQueueFamilyProperties2::read(pBoxedInfo, cpu->memory, address + i*32, &pQueueFamilyProperties[i]);
+        }
     }
     pBoxedInfo->pvkGetPhysicalDeviceQueueFamilyProperties2(physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pQueueFamilyPropertyCount);
@@ -3454,6 +3490,10 @@ void vk_GetPhysicalDeviceQueueFamilyProperties2KHR(CPU* cpu) {
     VkQueueFamilyProperties2* pQueueFamilyProperties = NULL;
     if (ARG3) {
         pQueueFamilyProperties = new VkQueueFamilyProperties2[*pQueueFamilyPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pQueueFamilyPropertyCount;i++) {
+            MarshalVkQueueFamilyProperties2::read(pBoxedInfo, cpu->memory, address + i*32, &pQueueFamilyProperties[i]);
+        }
     }
     pBoxedInfo->pvkGetPhysicalDeviceQueueFamilyProperties2KHR(physicalDevice, pQueueFamilyPropertyCount, pQueueFamilyProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pQueueFamilyPropertyCount);
@@ -3488,6 +3528,10 @@ void vk_GetPhysicalDeviceSparseImageFormatProperties2(CPU* cpu) {
     VkSparseImageFormatProperties2* pProperties = NULL;
     if (ARG4) {
         pProperties = new VkSparseImageFormatProperties2[*pPropertyCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkSparseImageFormatProperties2::read(pBoxedInfo, cpu->memory, address + i*28, &pProperties[i]);
+        }
     }
     pBoxedInfo->pvkGetPhysicalDeviceSparseImageFormatProperties2(physicalDevice, pFormatInfo, pPropertyCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
@@ -3508,6 +3552,10 @@ void vk_GetPhysicalDeviceSparseImageFormatProperties2KHR(CPU* cpu) {
     VkSparseImageFormatProperties2* pProperties = NULL;
     if (ARG4) {
         pProperties = new VkSparseImageFormatProperties2[*pPropertyCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkSparseImageFormatProperties2::read(pBoxedInfo, cpu->memory, address + i*28, &pProperties[i]);
+        }
     }
     pBoxedInfo->pvkGetPhysicalDeviceSparseImageFormatProperties2KHR(physicalDevice, pFormatInfo, pPropertyCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
@@ -3696,6 +3744,10 @@ void vk_EnumeratePhysicalDeviceGroups(CPU* cpu) {
     VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties = NULL;
     if (ARG3) {
         pPhysicalDeviceGroupProperties = new VkPhysicalDeviceGroupProperties[*pPhysicalDeviceGroupCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
+            MarshalVkPhysicalDeviceGroupProperties::read(pBoxedInfo, cpu->memory, address + i*144, &pPhysicalDeviceGroupProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceGroups(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceGroupCount);
@@ -3715,6 +3767,10 @@ void vk_EnumeratePhysicalDeviceGroupsKHR(CPU* cpu) {
     VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProperties = NULL;
     if (ARG3) {
         pPhysicalDeviceGroupProperties = new VkPhysicalDeviceGroupProperties[*pPhysicalDeviceGroupCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPhysicalDeviceGroupCount;i++) {
+            MarshalVkPhysicalDeviceGroupProperties::read(pBoxedInfo, cpu->memory, address + i*144, &pPhysicalDeviceGroupProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceGroupsKHR(instance, pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPhysicalDeviceGroupCount);
@@ -3888,6 +3944,10 @@ void vk_GetPhysicalDevicePresentRectanglesKHR(CPU* cpu) {
     VkRect2D* pRects = NULL;
     if (ARG4) {
         pRects = new VkRect2D[*pRectCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pRectCount;i++) {
+            MarshalVkRect2D::read(pBoxedInfo, cpu->memory, address + i*16, &pRects[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDevicePresentRectanglesKHR(physicalDevice, surface, pRectCount, pRects);
     cpu->memory->writed(ARG3, (U32)tmp_pRectCount);
@@ -4082,6 +4142,10 @@ void vk_GetPhysicalDeviceSurfaceFormats2KHR(CPU* cpu) {
     VkSurfaceFormat2KHR* pSurfaceFormats = NULL;
     if (ARG4) {
         pSurfaceFormats = new VkSurfaceFormat2KHR[*pSurfaceFormatCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pSurfaceFormatCount;i++) {
+            MarshalVkSurfaceFormat2KHR::read(pBoxedInfo, cpu->memory, address + i*16, &pSurfaceFormats[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSurfaceFormats2KHR(physicalDevice, pSurfaceInfo, pSurfaceFormatCount, pSurfaceFormats);
     cpu->memory->writed(ARG3, (U32)tmp_pSurfaceFormatCount);
@@ -4101,6 +4165,10 @@ void vk_GetPhysicalDeviceDisplayProperties2KHR(CPU* cpu) {
     VkDisplayProperties2KHR* pProperties = NULL;
     if (ARG3) {
         pProperties = new VkDisplayProperties2KHR[*pPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkDisplayProperties2KHR::read(pBoxedInfo, cpu->memory, address + i*48, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceDisplayProperties2KHR(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
@@ -4120,6 +4188,10 @@ void vk_GetPhysicalDeviceDisplayPlaneProperties2KHR(CPU* cpu) {
     VkDisplayPlaneProperties2KHR* pProperties = NULL;
     if (ARG3) {
         pProperties = new VkDisplayPlaneProperties2KHR[*pPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkDisplayPlaneProperties2KHR::read(pBoxedInfo, cpu->memory, address + i*20, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceDisplayPlaneProperties2KHR(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
@@ -4140,6 +4212,10 @@ void vk_GetDisplayModeProperties2KHR(CPU* cpu) {
     VkDisplayModeProperties2KHR* pProperties = NULL;
     if (ARG4) {
         pProperties = new VkDisplayModeProperties2KHR[*pPropertyCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkDisplayModeProperties2KHR::read(pBoxedInfo, cpu->memory, address + i*28, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetDisplayModeProperties2KHR(physicalDevice, display, pPropertyCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
@@ -4206,6 +4282,10 @@ void vk_GetImageSparseMemoryRequirements2(CPU* cpu) {
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
     if (ARG4) {
         pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+            MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
+        }
     }
     pBoxedInfo->pvkGetImageSparseMemoryRequirements2(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
@@ -4226,6 +4306,10 @@ void vk_GetImageSparseMemoryRequirements2KHR(CPU* cpu) {
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
     if (ARG4) {
         pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+            MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
+        }
     }
     pBoxedInfo->pvkGetImageSparseMemoryRequirements2KHR(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
@@ -4282,6 +4366,10 @@ void vk_GetDeviceImageSparseMemoryRequirements(CPU* cpu) {
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
     if (ARG4) {
         pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+            MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
+        }
     }
     pBoxedInfo->pvkGetDeviceImageSparseMemoryRequirements(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
@@ -4302,6 +4390,10 @@ void vk_GetDeviceImageSparseMemoryRequirementsKHR(CPU* cpu) {
     VkSparseImageMemoryRequirements2* pSparseMemoryRequirements = NULL;
     if (ARG4) {
         pSparseMemoryRequirements = new VkSparseImageMemoryRequirements2[*pSparseMemoryRequirementCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pSparseMemoryRequirementCount;i++) {
+            MarshalVkSparseImageMemoryRequirements2::read(pBoxedInfo, cpu->memory, address + i*56, &pSparseMemoryRequirements[i]);
+        }
     }
     pBoxedInfo->pvkGetDeviceImageSparseMemoryRequirementsKHR(device, pInfo, pSparseMemoryRequirementCount, pSparseMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pSparseMemoryRequirementCount);
@@ -4870,6 +4962,10 @@ void vk_GetQueueCheckpointDataNV(CPU* cpu) {
     VkCheckpointDataNV* pCheckpointData = NULL;
     if (ARG3) {
         pCheckpointData = new VkCheckpointDataNV[*pCheckpointDataCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pCheckpointDataCount;i++) {
+            MarshalVkCheckpointDataNV::read(pBoxedInfo, cpu->memory, address + i*16, &pCheckpointData[i]);
+        }
     }
     pBoxedInfo->pvkGetQueueCheckpointDataNV(queue, pCheckpointDataCount, pCheckpointData);
     cpu->memory->writed(ARG2, (U32)tmp_pCheckpointDataCount);
@@ -5469,6 +5565,10 @@ void vk_GetPhysicalDeviceCooperativeMatrixPropertiesNV(CPU* cpu) {
     VkCooperativeMatrixPropertiesNV* pProperties = NULL;
     if (ARG3) {
         pProperties = new VkCooperativeMatrixPropertiesNV[*pPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkCooperativeMatrixPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*40, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeMatrixPropertiesNV(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
@@ -5563,10 +5663,18 @@ void vk_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(CPU* cpu) 
     VkPerformanceCounterKHR* pCounters = NULL;
     if (ARG4) {
         pCounters = new VkPerformanceCounterKHR[*pCounterCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pCounterCount;i++) {
+            MarshalVkPerformanceCounterKHR::read(pBoxedInfo, cpu->memory, address + i*36, &pCounters[i]);
+        }
     }
     VkPerformanceCounterDescriptionKHR* pCounterDescriptions = NULL;
     if (ARG5) {
         pCounterDescriptions = new VkPerformanceCounterDescriptionKHR[*pCounterCount];
+        U32 address = ARG5;
+        for (U32 i=0;i<*pCounterCount;i++) {
+            MarshalVkPerformanceCounterDescriptionKHR::read(pBoxedInfo, cpu->memory, address + i*780, &pCounterDescriptions[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(physicalDevice, queueFamilyIndex, pCounterCount, pCounters, pCounterDescriptions);
     cpu->memory->writed(ARG3, (U32)tmp_pCounterCount);
@@ -5665,6 +5773,10 @@ void vk_GetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV(CPU* cpu
     VkFramebufferMixedSamplesCombinationNV* pCombinations = NULL;
     if (ARG3) {
         pCombinations = new VkFramebufferMixedSamplesCombinationNV[*pCombinationCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pCombinationCount;i++) {
+            MarshalVkFramebufferMixedSamplesCombinationNV::read(pBoxedInfo, cpu->memory, address + i*24, &pCombinations[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV(physicalDevice, pCombinationCount, pCombinations);
     cpu->memory->writed(ARG2, (U32)tmp_pCombinationCount);
@@ -5777,6 +5889,10 @@ void vk_GetPipelineExecutablePropertiesKHR(CPU* cpu) {
     VkPipelineExecutablePropertiesKHR* pProperties = NULL;
     if (ARG4) {
         pProperties = new VkPipelineExecutablePropertiesKHR[*pExecutableCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pExecutableCount;i++) {
+            MarshalVkPipelineExecutablePropertiesKHR::read(pBoxedInfo, cpu->memory, address + i*528, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineExecutablePropertiesKHR(device, pPipelineInfo, pExecutableCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pExecutableCount);
@@ -5798,6 +5914,10 @@ void vk_GetPipelineExecutableStatisticsKHR(CPU* cpu) {
     VkPipelineExecutableStatisticKHR* pStatistics = NULL;
     if (ARG4) {
         pStatistics = new VkPipelineExecutableStatisticKHR[*pStatisticCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pStatisticCount;i++) {
+            MarshalVkPipelineExecutableStatisticKHR::read(pBoxedInfo, cpu->memory, address + i*532, &pStatistics[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineExecutableStatisticsKHR(device, pExecutableInfo, pStatisticCount, pStatistics);
     cpu->memory->writed(ARG3, (U32)tmp_pStatisticCount);
@@ -5819,6 +5939,10 @@ void vk_GetPipelineExecutableInternalRepresentationsKHR(CPU* cpu) {
     VkPipelineExecutableInternalRepresentationKHR* pInternalRepresentations = NULL;
     if (ARG4) {
         pInternalRepresentations = new VkPipelineExecutableInternalRepresentationKHR[*pInternalRepresentationCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pInternalRepresentationCount;i++) {
+            MarshalVkPipelineExecutableInternalRepresentationKHR::read(pBoxedInfo, cpu->memory, address + i*532, &pInternalRepresentations[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineExecutableInternalRepresentationsKHR(device, pExecutableInfo, pInternalRepresentationCount, pInternalRepresentations);
     cpu->memory->writed(ARG3, (U32)tmp_pInternalRepresentationCount);
@@ -5859,6 +5983,10 @@ void vk_GetPhysicalDeviceToolProperties(CPU* cpu) {
     VkPhysicalDeviceToolProperties* pToolProperties = NULL;
     if (ARG3) {
         pToolProperties = new VkPhysicalDeviceToolProperties[*pToolCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pToolCount;i++) {
+            MarshalVkPhysicalDeviceToolProperties::read(pBoxedInfo, cpu->memory, address + i*1036, &pToolProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceToolProperties(physicalDevice, pToolCount, pToolProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pToolCount);
@@ -5878,6 +6006,10 @@ void vk_GetPhysicalDeviceToolPropertiesEXT(CPU* cpu) {
     VkPhysicalDeviceToolProperties* pToolProperties = NULL;
     if (ARG3) {
         pToolProperties = new VkPhysicalDeviceToolProperties[*pToolCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pToolCount;i++) {
+            MarshalVkPhysicalDeviceToolProperties::read(pBoxedInfo, cpu->memory, address + i*1036, &pToolProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceToolPropertiesEXT(physicalDevice, pToolCount, pToolProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pToolCount);
@@ -6830,6 +6962,10 @@ void vk_GetPhysicalDeviceFragmentShadingRatesKHR(CPU* cpu) {
     VkPhysicalDeviceFragmentShadingRateKHR* pFragmentShadingRates = NULL;
     if (ARG3) {
         pFragmentShadingRates = new VkPhysicalDeviceFragmentShadingRateKHR[*pFragmentShadingRateCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pFragmentShadingRateCount;i++) {
+            MarshalVkPhysicalDeviceFragmentShadingRateKHR::read(pBoxedInfo, cpu->memory, address + i*20, &pFragmentShadingRates[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceFragmentShadingRatesKHR(physicalDevice, pFragmentShadingRateCount, pFragmentShadingRates);
     cpu->memory->writed(ARG2, (U32)tmp_pFragmentShadingRateCount);
@@ -7064,6 +7200,10 @@ void vk_GetQueueCheckpointData2NV(CPU* cpu) {
     VkCheckpointData2NV* pCheckpointData = NULL;
     if (ARG3) {
         pCheckpointData = new VkCheckpointData2NV[*pCheckpointDataCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pCheckpointDataCount;i++) {
+            MarshalVkCheckpointData2NV::read(pBoxedInfo, cpu->memory, address + i*20, &pCheckpointData[i]);
+        }
     }
     pBoxedInfo->pvkGetQueueCheckpointData2NV(queue, pCheckpointDataCount, pCheckpointData);
     cpu->memory->writed(ARG2, (U32)tmp_pCheckpointDataCount);
@@ -7177,6 +7317,10 @@ void vk_GetPhysicalDeviceVideoFormatPropertiesKHR(CPU* cpu) {
     VkVideoFormatPropertiesKHR* pVideoFormatProperties = NULL;
     if (ARG4) {
         pVideoFormatProperties = new VkVideoFormatPropertiesKHR[*pVideoFormatPropertyCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pVideoFormatPropertyCount;i++) {
+            MarshalVkVideoFormatPropertiesKHR::read(pBoxedInfo, cpu->memory, address + i*44, &pVideoFormatProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceVideoFormatPropertiesKHR(physicalDevice, pVideoFormatInfo, pVideoFormatPropertyCount, pVideoFormatProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pVideoFormatPropertyCount);
@@ -7280,6 +7424,10 @@ void vk_GetVideoSessionMemoryRequirementsKHR(CPU* cpu) {
     VkVideoSessionMemoryRequirementsKHR* pMemoryRequirements = NULL;
     if (ARG4) {
         pMemoryRequirements = new VkVideoSessionMemoryRequirementsKHR[*pMemoryRequirementsCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pMemoryRequirementsCount;i++) {
+            MarshalVkVideoSessionMemoryRequirementsKHR::read(pBoxedInfo, cpu->memory, address + i*32, &pMemoryRequirements[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetVideoSessionMemoryRequirementsKHR(device, videoSession, pMemoryRequirementsCount, pMemoryRequirements);
     cpu->memory->writed(ARG3, (U32)tmp_pMemoryRequirementsCount);
@@ -7923,6 +8071,10 @@ void vk_GetFramebufferTilePropertiesQCOM(CPU* cpu) {
     VkTilePropertiesQCOM* pProperties = NULL;
     if (ARG4) {
         pProperties = new VkTilePropertiesQCOM[*pPropertiesCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pPropertiesCount;i++) {
+            MarshalVkTilePropertiesQCOM::read(pBoxedInfo, cpu->memory, address + i*36, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetFramebufferTilePropertiesQCOM(device, framebuffer, pPropertiesCount, pProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertiesCount);
@@ -7954,6 +8106,10 @@ void vk_GetPhysicalDeviceOpticalFlowImageFormatsNV(CPU* cpu) {
     VkOpticalFlowImageFormatPropertiesNV* pImageFormatProperties = NULL;
     if (ARG4) {
         pImageFormatProperties = new VkOpticalFlowImageFormatPropertiesNV[*pFormatCount];
+        U32 address = ARG4;
+        for (U32 i=0;i<*pFormatCount;i++) {
+            MarshalVkOpticalFlowImageFormatPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*12, &pImageFormatProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceOpticalFlowImageFormatsNV(physicalDevice, pOpticalFlowImageFormatInfo, pFormatCount, pImageFormatProperties);
     cpu->memory->writed(ARG3, (U32)tmp_pFormatCount);
@@ -8168,6 +8324,10 @@ void vk_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(CPU* cpu) {
     VkCooperativeMatrixPropertiesKHR* pProperties = NULL;
     if (ARG3) {
         pProperties = new VkCooperativeMatrixPropertiesKHR[*pPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkCooperativeMatrixPropertiesKHR::read(pBoxedInfo, cpu->memory, address + i*44, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeMatrixPropertiesKHR(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);
@@ -8334,6 +8494,10 @@ void vk_GetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV(CPU* cp
     VkCooperativeMatrixFlexibleDimensionsPropertiesNV* pProperties = NULL;
     if (ARG3) {
         pProperties = new VkCooperativeMatrixFlexibleDimensionsPropertiesNV[*pPropertyCount];
+        U32 address = ARG3;
+        for (U32 i=0;i<*pPropertyCount;i++) {
+            MarshalVkCooperativeMatrixFlexibleDimensionsPropertiesNV::read(pBoxedInfo, cpu->memory, address + i*48, &pProperties[i]);
+        }
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV(physicalDevice, pPropertyCount, pProperties);
     cpu->memory->writed(ARG2, (U32)tmp_pPropertyCount);

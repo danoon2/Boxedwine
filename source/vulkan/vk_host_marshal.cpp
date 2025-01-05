@@ -161,6 +161,12 @@ void MarshalVkExtensionProperties::write(BoxedVulkanInfo* pBoxedInfo, KMemory* m
     memory->memcpy(address, s->extensionName, 256); address+=256;
     memory->writed(address, s->specVersion);address+=4;
 }
+void MarshalVkLayerProperties::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLayerProperties* s) {
+    memory->memcpy(&s->layerName, address, 256);address+=256;
+    s->specVersion = (uint32_t)memory->readd(address);address+=4;
+    s->implementationVersion = (uint32_t)memory->readd(address);address+=4;
+    memory->memcpy(&s->description, address, 256);address+=256;
+}
 void MarshalVkLayerProperties::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLayerProperties* s) {
     memory->memcpy(address, s->layerName, 256); address+=256;
     memory->writed(address, s->specVersion);address+=4;
@@ -2796,9 +2802,7 @@ MarshalVkRenderPassBeginInfo::~MarshalVkRenderPassBeginInfo() {
     delete[] s.pClearValues;
 }
 void MarshalVkClearColorValue::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkClearColorValue* s) {
-    memory->memcpy(&s->float32, address, 16);address+=16;
-    memory->memcpy(&s->int32, address, 16);address+=16;
-    memory->memcpy(&s->uint32, address, 16);address+=16;
+    memory->memcpy(s, address, 16);
 }
 void MarshalVkClearDepthStencilValue::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkClearDepthStencilValue* s) {
     MarshalFloat depthFloat;

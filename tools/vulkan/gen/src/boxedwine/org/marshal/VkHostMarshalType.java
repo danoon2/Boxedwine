@@ -565,6 +565,14 @@ public class VkHostMarshalType {
             //out.append("}\n");
 
         }
+        if (t.getCategory().equals("union")) {
+            // at this point all members should be the same size and simple native types (no pointers)
+            out.append("    memory->memcpy(s, address, ");
+            out.append(t.sizeof);
+            out.append(");\n");
+            out.append("}\n");
+            return;
+        }
         int offset = 0;
         for (VkParam param : t.members) {
             int alignment = param.getAlignment();

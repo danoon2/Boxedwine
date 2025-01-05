@@ -114,6 +114,8 @@ class MarshalVkLayerProperties {
 public:
     MarshalVkLayerProperties() {}
     VkLayerProperties s;
+    MarshalVkLayerProperties(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address) {read(pBoxedInfo, memory, address, &this->s);}
+    static void read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkLayerProperties* s);
     static void write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkLayerProperties* s);
 };
 

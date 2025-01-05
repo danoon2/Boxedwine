@@ -70,7 +70,11 @@ public:
 	static U32 getNextId();
 
 	XWindowPtr inputFocus;
-	XWindowPtr fakeFullScreenWnd;
+	// the main sdl window is the emulated desktop
+	// in order to handle opengl or vulkan the main sdl window changes and emulates just that one window that is using opengl or vulkan
+	// so if that opengl/vulkan window is not full screen, then it will have a non zero x,y coord which will throw off the mouse
+	// to get around this, we track the current non full screen opengl/vulkan window and adjust the mouse pos using its x,y pos.
+	XWindowPtr fakeFullScreenWnd; 
 	U32 inputFocusRevertTo = 0;
 	XWindowPtr selectionWindow;
 	U32 selectionOwner = 0;
