@@ -326,6 +326,11 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         this->currentAppChanged = true;
         };
 
+    appEnableDXVKControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_DXVK_LABEL, Msg::CONTAINER_VIEW_DXVK_HELP, false);
+    appEnableDXVKControl->onChange = [this]() {
+        this->currentAppChanged = true;
+        };
+
     appDisableHideCursorControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_LABEL, Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_HELP, false);
     appDisableHideCursorControl->onChange = [this]() {
         this->currentAppChanged = true;
@@ -566,6 +571,7 @@ bool ContainersView::saveChanges() {
                 this->currentApp->dpiAware = this->appDpiAwareControl->isChecked();
             }
             this->currentApp->ddrawOverride = this->appDdrawOverrideControl->isChecked();
+            this->currentApp->enableDXVK = this->appEnableDXVKControl->isChecked();
             this->currentApp->disableHideCursor = this->appDisableHideCursorControl->isChecked();
             this->currentApp->autoRefresh = appDirectDrawAutoRefreshControl->isChecked();
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -616,6 +622,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appVSyncControl->setSelectionIntValue(app->vsync);
     appDpiAwareControl->setCheck(app->dpiAware);
     appDdrawOverrideControl->setCheck(app->ddrawOverride);
+    appEnableDXVKControl->setCheck(app->enableDXVK);
     appDisableHideCursorControl->setCheck(app->disableHideCursor);
     appPollRateControl->setText(BString::valueOf(app->pollRate));
     appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));

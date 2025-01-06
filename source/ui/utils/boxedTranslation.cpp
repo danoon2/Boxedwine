@@ -312,6 +312,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "CNC DDraw:";
     case Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_HELP:
         return "This uses cnc-ddraw (https://github.com/FunkyFr3sh/cnc-ddraw) which can help some direct draw games.";
+    case Msg::CONTAINER_VIEW_DXVK_LABEL:
+        return "Emulate D3D (DXVK):";
+    case Msg::CONTAINER_VIEW_DXVK_HELP:
+        return "This uses Dxvk (https://github.com/doitsujin/dxvk) to emulate Direct 3D 8/9/10/11 using Vulkan.";
     case Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_LABEL:
         return "Keep Cursor Visible:";
     case Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_HELP:

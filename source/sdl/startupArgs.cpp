@@ -242,6 +242,8 @@ std::vector<BString> StartUpArgs::buildArgs() {
         args.push_back(B("-ddrawOverride"));
         args.push_back(this->ddrawOverridePath);
     }
+    args.push_back(B("-dxvk"));
+    args.push_back(B(this->enableDXVK ? "1" : "0"));
     if (this->disableHideCursor) {
         args.push_back(B("-disableHideCursor"));
     }
@@ -378,6 +380,18 @@ bool StartUpArgs::apply() {
         if (parent && ddrawParent) {
             Fs::addFileNode(this->ddrawOverridePath + "/ddraw.dll", B("/home/username/.wine/drive_c/ddraw/ddraw.dll"), ddrawParent->nativePath.stringByApppendingPath("ddraw.dll"), false, parent);
             Fs::addFileNode(this->ddrawOverridePath + "/ddraw.ini", B("/home/username/.wine/drive_c/ddraw/ddraw.ini"), ddrawParent->nativePath.stringByApppendingPath("ddraw.ini"), false, parent);
+        }
+    }
+    if (this->enableDXVK) {
+        envValues.push_back(B("WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b"));
+        std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/EffectPools/Release"), true);
+        std::shared_ptr<FsNode> dxvkParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/dxvk"), true);
+        if (!dxvkParent) {
+            klog("-dxvk was enabled but not found in the file system");
+        } else {
+            for (const char* pName : { "d3d8.dll", "d3d9.dll", "d3d10core.dll", "d3d11.dll", "dxgi.dll" }) {
+               Fs::addFileNode(parent->path + "/" + pName, dxvkParent->path + "/" + pName, dxvkParent->nativePath + "/" + pName, false, parent);
+            }
         }
     }
 
@@ -754,6 +768,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-disableHideCursor")) {
             this->disableHideCursor = true;
+        } else if (!strcmp(argv[i], "-dxvk")) {
+            BString dxvk;
+            dxvk = argv[i + 1];
+            this->enableDXVK = dxvk.startsWith('t', true) || (dxvk == "1") || dxvk.startsWith('y', true);
         } else {
             break;
         }

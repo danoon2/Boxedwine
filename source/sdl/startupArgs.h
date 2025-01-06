@@ -93,6 +93,7 @@ public:
     BString runAutomation;
 
     BString ddrawOverridePath;
+    bool enableDXVK = false;
     bool disableHideCursor = false;
 
 private:
