@@ -383,8 +383,9 @@ bool StartUpArgs::apply() {
         }
     }
     if (this->enableDXVK) {
+        envValues.push_back(B("DXVK_LOG_LEVEL=warn"));
         envValues.push_back(B("WINEDLLOVERRIDES=d3d11,d3d10core,d3d9,d3d8,dxgi=n,b"));
-        std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/EffectPools/Release"), true);
+        std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/windows/system32"), true);
         std::shared_ptr<FsNode> dxvkParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/dxvk"), true);
         if (!dxvkParent) {
             klog("-dxvk was enabled but not found in the file system");

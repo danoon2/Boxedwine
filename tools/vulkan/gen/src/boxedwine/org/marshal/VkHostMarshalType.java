@@ -23,6 +23,7 @@ public class VkHostMarshalType {
         String name;
         boolean deleteItems = false;
         String itemCount;
+        boolean unlock = false;
     }
 
     public static void writeHeader(VkType t, StringBuilder out) throws Exception {
@@ -200,18 +201,8 @@ public class VkHostMarshalType {
         }
         out.append("        s->");
         out.append(param.name);
-        out.append(" = new ");
-        paramData.add(new MarshalParamData("s."+param.name, true));
-        if (param.paramType.name.equals("void")) {
-            if (param.isPointer) {
-                out.append("char");
-            } else {
-                throw new Exception("oops");
-            }
-        } else {
-            out.append(param.paramType.name);
-        }
-        out.append("[");
+        out.append(" = ");
+
         String size;
 
         if (param.arrayLen != 0) {
@@ -229,6 +220,42 @@ public class VkHostMarshalType {
             }
             size += String.valueOf(param.len);
         }
+
+        if (param.isConst) {
+            out.append("(");
+            if (param.paramType.name.equals("void")) {
+                out.append("char");
+            } else {
+                out.append(param.paramType.name);
+            }
+            out.append("*)memory->lockReadOnlyMemory(paramAddress, ");
+            if (param.paramType.name.equals("void")) {
+                size += " * sizeof(char)";
+            } else {
+                size += " * sizeof(";
+                size += param.paramType.name;
+                size += ")";
+            }
+            out.append(size);
+            out.append(");\n");
+            MarshalParamData data = new MarshalParamData("s."+param.name, true);
+            data.unlock = true;
+            paramData.add(data);
+            return;
+        }
+
+        out.append("new ");
+        paramData.add(new MarshalParamData("s."+param.name, true));
+        if (param.paramType.name.equals("void")) {
+            if (param.isPointer) {
+                out.append("char");
+            } else {
+                throw new Exception("oops");
+            }
+        } else {
+            out.append(param.paramType.name);
+        }
+        out.append("[");
 
         out.append(size);
         out.append("];\n");
@@ -1028,6 +1055,12 @@ public class VkHostMarshalType {
         }
         for (MarshalParamData data : paramsData) {
             if (alreadyAdded.contains(data.name)) {
+                continue;
+            }
+            if (data.unlock) {
+                out.append("    KThread::currentThread()->memory->unlockMemory((U8*)");
+                out.append(data.name);
+                out.append(");\n");
                 continue;
             }
             if (data.deleteItems) {

@@ -1224,9 +1224,7 @@ void vk_EnumerateDeviceExtensionProperties(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     char* pLayerName = nullptr;
     if (ARG2) {
-        U32 len = cpu->memory->strlen(ARG2);
-        pLayerName = new char[len];
-        cpu->memory->memcpy(pLayerName, ARG2, (U32)len * sizeof(char));
+        pLayerName = (char*)cpu->memory->lockReadOnlyMemory(ARG2, (U32)(cpu->memory->strlen(ARG2)+1) * sizeof(char));
     }
     uint32_t tmp_pPropertyCount = (uint32_t) cpu->memory->readd(ARG3);
     uint32_t* pPropertyCount = &tmp_pPropertyCount;
@@ -1239,7 +1237,7 @@ void vk_EnumerateDeviceExtensionProperties(CPU* cpu) {
         }
     }
     EAX = (U32)pBoxedInfo->pvkEnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties);
-    delete[] pLayerName;
+    cpu->memory->unlockMemory((U8*)pLayerName);
     cpu->memory->writed(ARG3, (U32)tmp_pPropertyCount);
     if (ARG4) {
         for (U32 i=0;i<*pPropertyCount;i++) {
@@ -1506,11 +1504,10 @@ void vk_ResetFences(CPU* cpu) {
     uint32_t fenceCount = (uint32_t)ARG2;
     VkFence* pFences = nullptr;
     if (ARG3) {
-        pFences = new VkFence[fenceCount];
-        cpu->memory->memcpy(pFences, ARG3, (U32)fenceCount * sizeof(VkFence));
+        pFences = (VkFence*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)fenceCount * sizeof(VkFence));
     }
     EAX = (U32)pBoxedInfo->pvkResetFences(device, fenceCount, pFences);
-    delete[] pFences;
+    cpu->memory->unlockMemory((U8*)pFences);
 }
 // return type: VkResult(4 bytes)
 void vk_GetFenceStatus(CPU* cpu) {
@@ -1526,13 +1523,12 @@ void vk_WaitForFences(CPU* cpu) {
     uint32_t fenceCount = (uint32_t)ARG2;
     VkFence* pFences = nullptr;
     if (ARG3) {
-        pFences = new VkFence[fenceCount];
-        cpu->memory->memcpy(pFences, ARG3, (U32)fenceCount * sizeof(VkFence));
+        pFences = (VkFence*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)fenceCount * sizeof(VkFence));
     }
     VkBool32 waitAll = (VkBool32)ARG4;
     uint64_t timeout = (uint64_t)cpu->memory->readq(ARG5);
     EAX = (U32)pBoxedInfo->pvkWaitForFences(device, fenceCount, pFences, waitAll, timeout);
-    delete[] pFences;
+    cpu->memory->unlockMemory((U8*)pFences);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateSemaphore(CPU* cpu) {
@@ -1628,16 +1624,12 @@ void vk_GetQueryPoolResults(CPU* cpu) {
     size_t dataSize = (size_t)ARG5;
     void* pData = nullptr;
     if (ARG6) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG6, (U32)dataSize * sizeof(char));
     }
     VkDeviceSize stride = (VkDeviceSize)cpu->memory->readq(ARG7);
     VkQueryResultFlags flags = (VkQueryResultFlags)ARG8;
     EAX = (U32)pBoxedInfo->pvkGetQueryPoolResults(device, queryPool, firstQuery, queryCount, dataSize, pData, stride, flags);
-    if (pData) {
-        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_ResetQueryPool(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -1804,15 +1796,11 @@ void vk_GetPipelineCacheData(CPU* cpu) {
     size_t* pDataSize = &tmp_pDataSize;
     void* pData = nullptr;
     if (ARG4) {
-        pData = new char[*pDataSize];
-        cpu->memory->memcpy(pData, ARG4, (U32)*pDataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG4, (U32)*pDataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineCacheData(device, pipelineCache, pDataSize, pData);
     cpu->memory->writed(ARG3, (U32)tmp_pDataSize);
-    if (pData) {
-        cpu->memory->memcpy(ARG4, pData, (U32)*pDataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 // return type: VkResult(4 bytes)
 void vk_MergePipelineCaches(CPU* cpu) {
@@ -1822,11 +1810,10 @@ void vk_MergePipelineCaches(CPU* cpu) {
     uint32_t srcCacheCount = (uint32_t)ARG3;
     VkPipelineCache* pSrcCaches = nullptr;
     if (ARG4) {
-        pSrcCaches = new VkPipelineCache[srcCacheCount];
-        cpu->memory->memcpy(pSrcCaches, ARG4, (U32)srcCacheCount * sizeof(VkPipelineCache));
+        pSrcCaches = (VkPipelineCache*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)srcCacheCount * sizeof(VkPipelineCache));
     }
     EAX = (U32)pBoxedInfo->pvkMergePipelineCaches(device, dstCache, srcCacheCount, pSrcCaches);
-    delete[] pSrcCaches;
+    cpu->memory->unlockMemory((U8*)pSrcCaches);
 }
 // return type: VkResult(4 bytes)
 void vk_CreatePipelineBinariesKHR(CPU* cpu) {
@@ -1869,16 +1856,12 @@ void vk_GetPipelineBinaryDataKHR(CPU* cpu) {
     size_t* pPipelineBinaryDataSize = &tmp_pPipelineBinaryDataSize;
     void* pPipelineBinaryData = nullptr;
     if (ARG5) {
-        pPipelineBinaryData = new char[*pPipelineBinaryDataSize];
-        cpu->memory->memcpy(pPipelineBinaryData, ARG5, (U32)*pPipelineBinaryDataSize * sizeof(char));
+        pPipelineBinaryData = (char*)cpu->memory->lockReadWriteMemory(ARG5, (U32)*pPipelineBinaryDataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetPipelineBinaryDataKHR(device, pInfo, &pPipelineBinaryKey.s, pPipelineBinaryDataSize, pPipelineBinaryData);
     MarshalVkPipelineBinaryKeyKHR::write(pBoxedInfo, cpu->memory, ARG3, &pPipelineBinaryKey.s);
     cpu->memory->writed(ARG4, (U32)tmp_pPipelineBinaryDataSize);
-    if (pPipelineBinaryData) {
-        cpu->memory->memcpy(ARG5, pPipelineBinaryData, (U32)*pPipelineBinaryDataSize * sizeof(char));
-    }
-    delete[] pPipelineBinaryData;
+    cpu->memory->unlockMemory((U8*)pPipelineBinaryData);
 }
 // return type: VkResult(4 bytes)
 void vk_ReleaseCapturedPipelineDataKHR(CPU* cpu) {
@@ -1907,17 +1890,13 @@ void vk_CreateGraphicsPipelines(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPipeline* pPipelines = nullptr;
     if (ARG6) {
-        pPipelines = new VkPipeline[createInfoCount];
-        cpu->memory->memcpy(pPipelines, ARG6, (U32)createInfoCount * sizeof(VkPipeline));
+        pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG6, (U32)createInfoCount * sizeof(VkPipeline));
     }
     EAX = (U32)pBoxedInfo->pvkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    if (pPipelines) {
-        cpu->memory->memcpy(ARG6, pPipelines, (U32)createInfoCount * sizeof(VkPipeline));
-    }
-    delete[] pPipelines;
+    cpu->memory->unlockMemory((U8*)pPipelines);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateComputePipelines(CPU* cpu) {
@@ -1936,17 +1915,13 @@ void vk_CreateComputePipelines(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPipeline* pPipelines = nullptr;
     if (ARG6) {
-        pPipelines = new VkPipeline[createInfoCount];
-        cpu->memory->memcpy(pPipelines, ARG6, (U32)createInfoCount * sizeof(VkPipeline));
+        pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG6, (U32)createInfoCount * sizeof(VkPipeline));
     }
     EAX = (U32)pBoxedInfo->pvkCreateComputePipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    if (pPipelines) {
-        cpu->memory->memcpy(ARG6, pPipelines, (U32)createInfoCount * sizeof(VkPipeline));
-    }
-    delete[] pPipelines;
+    cpu->memory->unlockMemory((U8*)pPipelines);
 }
 // return type: VkResult(4 bytes)
 void vk_GetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI(CPU* cpu) {
@@ -2077,14 +2052,10 @@ void vk_AllocateDescriptorSets(CPU* cpu) {
     VkDescriptorSetAllocateInfo* pAllocateInfo = &local_pAllocateInfo.s;
     VkDescriptorSet* pDescriptorSets = nullptr;
     if (ARG3) {
-        pDescriptorSets = new VkDescriptorSet[pAllocateInfo->descriptorSetCount];
-        cpu->memory->memcpy(pDescriptorSets, ARG3, (U32)pAllocateInfo->descriptorSetCount * sizeof(VkDescriptorSet));
+        pDescriptorSets = (VkDescriptorSet*)cpu->memory->lockReadWriteMemory(ARG3, (U32)pAllocateInfo->descriptorSetCount * sizeof(VkDescriptorSet));
     }
     EAX = (U32)pBoxedInfo->pvkAllocateDescriptorSets(device, pAllocateInfo, pDescriptorSets);
-    if (pDescriptorSets) {
-        cpu->memory->memcpy(ARG3, pDescriptorSets, (U32)pAllocateInfo->descriptorSetCount * sizeof(VkDescriptorSet));
-    }
-    delete[] pDescriptorSets;
+    cpu->memory->unlockMemory((U8*)pDescriptorSets);
 }
 // return type: VkResult(4 bytes)
 void vk_FreeDescriptorSets(CPU* cpu) {
@@ -2094,11 +2065,10 @@ void vk_FreeDescriptorSets(CPU* cpu) {
     uint32_t descriptorSetCount = (uint32_t)ARG3;
     VkDescriptorSet* pDescriptorSets = nullptr;
     if (ARG4) {
-        pDescriptorSets = new VkDescriptorSet[descriptorSetCount];
-        cpu->memory->memcpy(pDescriptorSets, ARG4, (U32)descriptorSetCount * sizeof(VkDescriptorSet));
+        pDescriptorSets = (VkDescriptorSet*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)descriptorSetCount * sizeof(VkDescriptorSet));
     }
     EAX = (U32)pBoxedInfo->pvkFreeDescriptorSets(device, descriptorPool, descriptorSetCount, pDescriptorSets);
-    delete[] pDescriptorSets;
+    cpu->memory->unlockMemory((U8*)pDescriptorSets);
 }
 void vk_UpdateDescriptorSets(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -2349,11 +2319,10 @@ void vk_CmdSetBlendConstants(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     float* blendConstants = nullptr;
     if (ARG2) {
-        blendConstants = new float[4];
-        cpu->memory->memcpy(blendConstants, ARG2, (U32)4 * sizeof(float));
+        blendConstants = (float*)cpu->memory->lockReadOnlyMemory(ARG2, (U32)4 * sizeof(float));
     }
     pBoxedInfo->pvkCmdSetBlendConstants(commandBuffer, blendConstants);
-    delete[] blendConstants;
+    cpu->memory->unlockMemory((U8*)blendConstants);
 }
 void vk_CmdSetDepthBounds(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -2396,18 +2365,16 @@ void vk_CmdBindDescriptorSets(CPU* cpu) {
     uint32_t descriptorSetCount = (uint32_t)ARG5;
     VkDescriptorSet* pDescriptorSets = nullptr;
     if (ARG6) {
-        pDescriptorSets = new VkDescriptorSet[descriptorSetCount];
-        cpu->memory->memcpy(pDescriptorSets, ARG6, (U32)descriptorSetCount * sizeof(VkDescriptorSet));
+        pDescriptorSets = (VkDescriptorSet*)cpu->memory->lockReadOnlyMemory(ARG6, (U32)descriptorSetCount * sizeof(VkDescriptorSet));
     }
     uint32_t dynamicOffsetCount = (uint32_t)ARG7;
     uint32_t* pDynamicOffsets = nullptr;
     if (ARG8) {
-        pDynamicOffsets = new uint32_t[dynamicOffsetCount];
-        cpu->memory->memcpy(pDynamicOffsets, ARG8, (U32)dynamicOffsetCount * sizeof(uint32_t));
+        pDynamicOffsets = (uint32_t*)cpu->memory->lockReadOnlyMemory(ARG8, (U32)dynamicOffsetCount * sizeof(uint32_t));
     }
     pBoxedInfo->pvkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, layout, firstSet, descriptorSetCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
-    delete[] pDescriptorSets;
-    delete[] pDynamicOffsets;
+    cpu->memory->unlockMemory((U8*)pDescriptorSets);
+    cpu->memory->unlockMemory((U8*)pDynamicOffsets);
 }
 void vk_CmdBindIndexBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -2424,17 +2391,15 @@ void vk_CmdBindVertexBuffers(CPU* cpu) {
     uint32_t bindingCount = (uint32_t)ARG3;
     VkBuffer* pBuffers = nullptr;
     if (ARG4) {
-        pBuffers = new VkBuffer[bindingCount];
-        cpu->memory->memcpy(pBuffers, ARG4, (U32)bindingCount * sizeof(VkBuffer));
+        pBuffers = (VkBuffer*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)bindingCount * sizeof(VkBuffer));
     }
     VkDeviceSize* pOffsets = nullptr;
     if (ARG5) {
-        pOffsets = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pOffsets, ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
+        pOffsets = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     pBoxedInfo->pvkCmdBindVertexBuffers(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets);
-    delete[] pBuffers;
-    delete[] pOffsets;
+    cpu->memory->unlockMemory((U8*)pBuffers);
+    cpu->memory->unlockMemory((U8*)pOffsets);
 }
 void vk_CmdDraw(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -2492,14 +2457,13 @@ void vk_CmdDrawMultiIndexedEXT(CPU* cpu) {
     uint32_t firstInstance = (uint32_t)ARG5;
     int32_t* pVertexOffset = nullptr;
     if (ARG7) {
-        pVertexOffset = new int32_t[drawCount];
-        cpu->memory->memcpy(pVertexOffset, ARG7, (U32)drawCount * sizeof(int32_t));
+        pVertexOffset = (int32_t*)cpu->memory->lockReadOnlyMemory(ARG7, (U32)drawCount * sizeof(int32_t));
     }
     pBoxedInfo->pvkCmdDrawMultiIndexedEXT(commandBuffer, drawCount, pIndexInfo, instanceCount, firstInstance, stride, pVertexOffset);
     if (pIndexInfo) {
         delete[] pIndexInfo;
     }
-    delete[] pVertexOffset;
+    cpu->memory->unlockMemory((U8*)pVertexOffset);
 }
 void vk_CmdDrawIndirect(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -2694,11 +2658,10 @@ void vk_CmdUpdateBuffer(CPU* cpu) {
     VkDeviceSize dataSize = (VkDeviceSize)cpu->memory->readq(ARG4);
     void* pData = nullptr;
     if (ARG5) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG5, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)dataSize * sizeof(char));
     }
     pBoxedInfo->pvkCmdUpdateBuffer(commandBuffer, dstBuffer, dstOffset, dataSize, pData);
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_CmdFillBuffer(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -2816,8 +2779,7 @@ void vk_CmdWaitEvents(CPU* cpu) {
     uint32_t eventCount = (uint32_t)ARG2;
     VkEvent* pEvents = nullptr;
     if (ARG3) {
-        pEvents = new VkEvent[eventCount];
-        cpu->memory->memcpy(pEvents, ARG3, (U32)eventCount * sizeof(VkEvent));
+        pEvents = (VkEvent*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)eventCount * sizeof(VkEvent));
     }
     VkPipelineStageFlags srcStageMask = (VkPipelineStageFlags)ARG4;
     VkPipelineStageFlags dstStageMask = (VkPipelineStageFlags)ARG5;
@@ -2846,7 +2808,7 @@ void vk_CmdWaitEvents(CPU* cpu) {
         }
     }
     pBoxedInfo->pvkCmdWaitEvents(commandBuffer, eventCount, pEvents, srcStageMask, dstStageMask, memoryBarrierCount, pMemoryBarriers, bufferMemoryBarrierCount, pBufferMemoryBarriers, imageMemoryBarrierCount, pImageMemoryBarriers);
-    delete[] pEvents;
+    cpu->memory->unlockMemory((U8*)pEvents);
     if (pMemoryBarriers) {
         delete[] pMemoryBarriers;
     }
@@ -2962,11 +2924,10 @@ void vk_CmdPushConstants(CPU* cpu) {
     uint32_t size = (uint32_t)ARG5;
     void* pValues = nullptr;
     if (ARG6) {
-        pValues = new char[size];
-        cpu->memory->memcpy(pValues, ARG6, (U32)size * sizeof(char));
+        pValues = (char*)cpu->memory->lockReadOnlyMemory(ARG6, (U32)size * sizeof(char));
     }
     pBoxedInfo->pvkCmdPushConstants(commandBuffer, layout, stageFlags, offset, size, pValues);
-    delete[] pValues;
+    cpu->memory->unlockMemory((U8*)pValues);
 }
 void vk_CmdBeginRenderPass(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -3014,17 +2975,13 @@ void vk_CreateSharedSwapchainsKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkSwapchainKHR* pSwapchains = nullptr;
     if (ARG5) {
-        pSwapchains = new VkSwapchainKHR[swapchainCount];
-        cpu->memory->memcpy(pSwapchains, ARG5, (U32)swapchainCount * sizeof(VkSwapchainKHR));
+        pSwapchains = (VkSwapchainKHR*)cpu->memory->lockReadWriteMemory(ARG5, (U32)swapchainCount * sizeof(VkSwapchainKHR));
     }
     EAX = (U32)pBoxedInfo->pvkCreateSharedSwapchainsKHR(device, swapchainCount, pCreateInfos, pAllocator, pSwapchains);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    if (pSwapchains) {
-        cpu->memory->memcpy(ARG5, pSwapchains, (U32)swapchainCount * sizeof(VkSwapchainKHR));
-    }
-    delete[] pSwapchains;
+    cpu->memory->unlockMemory((U8*)pSwapchains);
 }
 void vk_DestroySurfaceKHR(CPU* cpu) {
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
@@ -3088,15 +3045,11 @@ void vk_GetPhysicalDeviceSurfacePresentModesKHR(CPU* cpu) {
     static_assert (sizeof(VkPresentModeKHR) == 4, "unhandled enum size");
     VkPresentModeKHR* pPresentModes = nullptr;
     if (ARG4) {
-        pPresentModes = new VkPresentModeKHR[*pPresentModeCount];
-        cpu->memory->memcpy(pPresentModes, ARG4, (U32)*pPresentModeCount * sizeof(VkPresentModeKHR));
+        pPresentModes = (VkPresentModeKHR*)cpu->memory->lockReadWriteMemory(ARG4, (U32)*pPresentModeCount * sizeof(VkPresentModeKHR));
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, pPresentModeCount, pPresentModes);
     cpu->memory->writed(ARG3, (U32)tmp_pPresentModeCount);
-    if (pPresentModes) {
-        cpu->memory->memcpy(ARG4, pPresentModes, (U32)*pPresentModeCount * sizeof(VkPresentModeKHR));
-    }
-    delete[] pPresentModes;
+    cpu->memory->unlockMemory((U8*)pPresentModes);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateSwapchainKHR(CPU* cpu) {
@@ -3128,15 +3081,11 @@ void vk_GetSwapchainImagesKHR(CPU* cpu) {
     uint32_t* pSwapchainImageCount = &tmp_pSwapchainImageCount;
     VkImage* pSwapchainImages = nullptr;
     if (ARG4) {
-        pSwapchainImages = new VkImage[*pSwapchainImageCount];
-        cpu->memory->memcpy(pSwapchainImages, ARG4, (U32)*pSwapchainImageCount * sizeof(VkImage));
+        pSwapchainImages = (VkImage*)cpu->memory->lockReadWriteMemory(ARG4, (U32)*pSwapchainImageCount * sizeof(VkImage));
     }
     EAX = (U32)pBoxedInfo->pvkGetSwapchainImagesKHR(device, swapchain, pSwapchainImageCount, pSwapchainImages);
     cpu->memory->writed(ARG3, (U32)tmp_pSwapchainImageCount);
-    if (pSwapchainImages) {
-        cpu->memory->memcpy(ARG4, pSwapchainImages, (U32)*pSwapchainImageCount * sizeof(VkImage));
-    }
-    delete[] pSwapchainImages;
+    cpu->memory->unlockMemory((U8*)pSwapchainImages);
 }
 // return type: VkResult(4 bytes)
 void vk_AcquireNextImageKHR(CPU* cpu) {
@@ -3193,19 +3142,15 @@ void vk_DebugReportMessageEXT(CPU* cpu) {
     int32_t messageCode = (int32_t)ARG6;
     char* pLayerPrefix = nullptr;
     if (ARG7) {
-        U32 len = cpu->memory->strlen(ARG7);
-        pLayerPrefix = new char[len];
-        cpu->memory->memcpy(pLayerPrefix, ARG7, (U32)len * sizeof(char));
+        pLayerPrefix = (char*)cpu->memory->lockReadOnlyMemory(ARG7, (U32)(cpu->memory->strlen(ARG7)+1) * sizeof(char));
     }
     char* pMessage = nullptr;
     if (ARG8) {
-        U32 len = cpu->memory->strlen(ARG8);
-        pMessage = new char[len];
-        cpu->memory->memcpy(pMessage, ARG8, (U32)len * sizeof(char));
+        pMessage = (char*)cpu->memory->lockReadOnlyMemory(ARG8, (U32)(cpu->memory->strlen(ARG8)+1) * sizeof(char));
     }
     pBoxedInfo->pvkDebugReportMessageEXT(instance, flags, objectType, object, location, messageCode, pLayerPrefix, pMessage);
-    delete[] pLayerPrefix;
-    delete[] pMessage;
+    cpu->memory->unlockMemory((U8*)pLayerPrefix);
+    cpu->memory->unlockMemory((U8*)pMessage);
 }
 // return type: VkResult(4 bytes)
 void vk_DebugMarkerSetObjectNameEXT(CPU* cpu) {
@@ -4054,8 +3999,7 @@ void vk_SetHdrMetadataEXT(CPU* cpu) {
     uint32_t swapchainCount = (uint32_t)ARG2;
     VkSwapchainKHR* pSwapchains = nullptr;
     if (ARG3) {
-        pSwapchains = new VkSwapchainKHR[swapchainCount];
-        cpu->memory->memcpy(pSwapchains, ARG3, (U32)swapchainCount * sizeof(VkSwapchainKHR));
+        pSwapchains = (VkSwapchainKHR*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)swapchainCount * sizeof(VkSwapchainKHR));
     }
     VkHdrMetadataEXT* pMetadata = NULL;
     if (ARG4) {
@@ -4065,7 +4009,7 @@ void vk_SetHdrMetadataEXT(CPU* cpu) {
         }
     }
     pBoxedInfo->pvkSetHdrMetadataEXT(device, swapchainCount, pSwapchains, pMetadata);
-    delete[] pSwapchains;
+    cpu->memory->unlockMemory((U8*)pSwapchains);
     if (pMetadata) {
         delete[] pMetadata;
     }
@@ -4495,15 +4439,11 @@ void vk_GetValidationCacheDataEXT(CPU* cpu) {
     size_t* pDataSize = &tmp_pDataSize;
     void* pData = nullptr;
     if (ARG4) {
-        pData = new char[*pDataSize];
-        cpu->memory->memcpy(pData, ARG4, (U32)*pDataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG4, (U32)*pDataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetValidationCacheDataEXT(device, validationCache, pDataSize, pData);
     cpu->memory->writed(ARG3, (U32)tmp_pDataSize);
-    if (pData) {
-        cpu->memory->memcpy(ARG4, pData, (U32)*pDataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 // return type: VkResult(4 bytes)
 void vk_MergeValidationCachesEXT(CPU* cpu) {
@@ -4513,11 +4453,10 @@ void vk_MergeValidationCachesEXT(CPU* cpu) {
     uint32_t srcCacheCount = (uint32_t)ARG3;
     VkValidationCacheEXT* pSrcCaches = nullptr;
     if (ARG4) {
-        pSrcCaches = new VkValidationCacheEXT[srcCacheCount];
-        cpu->memory->memcpy(pSrcCaches, ARG4, (U32)srcCacheCount * sizeof(VkValidationCacheEXT));
+        pSrcCaches = (VkValidationCacheEXT*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)srcCacheCount * sizeof(VkValidationCacheEXT));
     }
     EAX = (U32)pBoxedInfo->pvkMergeValidationCachesEXT(device, dstCache, srcCacheCount, pSrcCaches);
-    delete[] pSrcCaches;
+    cpu->memory->unlockMemory((U8*)pSrcCaches);
 }
 void vk_GetDescriptorSetLayoutSupport(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -4548,15 +4487,11 @@ void vk_GetShaderInfoAMD(CPU* cpu) {
     size_t* pInfoSize = &tmp_pInfoSize;
     void* pInfo = nullptr;
     if (ARG6) {
-        pInfo = new char[*pInfoSize];
-        cpu->memory->memcpy(pInfo, ARG6, (U32)*pInfoSize * sizeof(char));
+        pInfo = (char*)cpu->memory->lockReadWriteMemory(ARG6, (U32)*pInfoSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetShaderInfoAMD(device, pipeline, shaderStage, infoType, pInfoSize, pInfo);
     cpu->memory->writed(ARG5, (U32)tmp_pInfoSize);
-    if (pInfo) {
-        cpu->memory->memcpy(ARG6, pInfo, (U32)*pInfoSize * sizeof(char));
-    }
-    delete[] pInfo;
+    cpu->memory->unlockMemory((U8*)pInfo);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceCalibrateableTimeDomainsKHR(CPU* cpu) {
@@ -4567,15 +4502,11 @@ void vk_GetPhysicalDeviceCalibrateableTimeDomainsKHR(CPU* cpu) {
     static_assert (sizeof(VkTimeDomainKHR) == 4, "unhandled enum size");
     VkTimeDomainKHR* pTimeDomains = nullptr;
     if (ARG3) {
-        pTimeDomains = new VkTimeDomainKHR[*pTimeDomainCount];
-        cpu->memory->memcpy(pTimeDomains, ARG3, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
+        pTimeDomains = (VkTimeDomainKHR*)cpu->memory->lockReadWriteMemory(ARG3, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCalibrateableTimeDomainsKHR(physicalDevice, pTimeDomainCount, pTimeDomains);
     cpu->memory->writed(ARG2, (U32)tmp_pTimeDomainCount);
-    if (pTimeDomains) {
-        cpu->memory->memcpy(ARG3, pTimeDomains, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
-    }
-    delete[] pTimeDomains;
+    cpu->memory->unlockMemory((U8*)pTimeDomains);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(CPU* cpu) {
@@ -4586,15 +4517,11 @@ void vk_GetPhysicalDeviceCalibrateableTimeDomainsEXT(CPU* cpu) {
     static_assert (sizeof(VkTimeDomainKHR) == 4, "unhandled enum size");
     VkTimeDomainKHR* pTimeDomains = nullptr;
     if (ARG3) {
-        pTimeDomains = new VkTimeDomainKHR[*pTimeDomainCount];
-        cpu->memory->memcpy(pTimeDomains, ARG3, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
+        pTimeDomains = (VkTimeDomainKHR*)cpu->memory->lockReadWriteMemory(ARG3, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
     }
     EAX = (U32)pBoxedInfo->pvkGetPhysicalDeviceCalibrateableTimeDomainsEXT(physicalDevice, pTimeDomainCount, pTimeDomains);
     cpu->memory->writed(ARG2, (U32)tmp_pTimeDomainCount);
-    if (pTimeDomains) {
-        cpu->memory->memcpy(ARG3, pTimeDomains, (U32)*pTimeDomainCount * sizeof(VkTimeDomainKHR));
-    }
-    delete[] pTimeDomains;
+    cpu->memory->unlockMemory((U8*)pTimeDomains);
 }
 // return type: VkResult(4 bytes)
 void vk_GetCalibratedTimestampsKHR(CPU* cpu) {
@@ -4610,8 +4537,7 @@ void vk_GetCalibratedTimestampsKHR(CPU* cpu) {
     }
     uint64_t* pTimestamps = nullptr;
     if (ARG4) {
-        pTimestamps = new uint64_t[timestampCount];
-        cpu->memory->memcpy(pTimestamps, ARG4, (U32)timestampCount * sizeof(uint64_t));
+        pTimestamps = (uint64_t*)cpu->memory->lockReadWriteMemory(ARG4, (U32)timestampCount * sizeof(uint64_t));
     }
     uint64_t tmp_pMaxDeviation = (uint64_t) cpu->memory->readq(ARG5);
     uint64_t* pMaxDeviation = &tmp_pMaxDeviation;
@@ -4619,10 +4545,7 @@ void vk_GetCalibratedTimestampsKHR(CPU* cpu) {
     if (pTimestampInfos) {
         delete[] pTimestampInfos;
     }
-    if (pTimestamps) {
-        cpu->memory->memcpy(ARG4, pTimestamps, (U32)timestampCount * sizeof(uint64_t));
-    }
-    delete[] pTimestamps;
+    cpu->memory->unlockMemory((U8*)pTimestamps);
     cpu->memory->writeq(ARG5, (U64)tmp_pMaxDeviation);
 }
 // return type: VkResult(4 bytes)
@@ -4639,8 +4562,7 @@ void vk_GetCalibratedTimestampsEXT(CPU* cpu) {
     }
     uint64_t* pTimestamps = nullptr;
     if (ARG4) {
-        pTimestamps = new uint64_t[timestampCount];
-        cpu->memory->memcpy(pTimestamps, ARG4, (U32)timestampCount * sizeof(uint64_t));
+        pTimestamps = (uint64_t*)cpu->memory->lockReadWriteMemory(ARG4, (U32)timestampCount * sizeof(uint64_t));
     }
     uint64_t tmp_pMaxDeviation = (uint64_t) cpu->memory->readq(ARG5);
     uint64_t* pMaxDeviation = &tmp_pMaxDeviation;
@@ -4648,10 +4570,7 @@ void vk_GetCalibratedTimestampsEXT(CPU* cpu) {
     if (pTimestampInfos) {
         delete[] pTimestampInfos;
     }
-    if (pTimestamps) {
-        cpu->memory->memcpy(ARG4, pTimestamps, (U32)timestampCount * sizeof(uint64_t));
-    }
-    delete[] pTimestamps;
+    cpu->memory->unlockMemory((U8*)pTimestamps);
     cpu->memory->writeq(ARG5, (U64)tmp_pMaxDeviation);
 }
 // return type: VkResult(4 bytes)
@@ -4993,23 +4912,20 @@ void vk_CmdBindTransformFeedbackBuffersEXT(CPU* cpu) {
     uint32_t bindingCount = (uint32_t)ARG3;
     VkBuffer* pBuffers = nullptr;
     if (ARG4) {
-        pBuffers = new VkBuffer[bindingCount];
-        cpu->memory->memcpy(pBuffers, ARG4, (U32)bindingCount * sizeof(VkBuffer));
+        pBuffers = (VkBuffer*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)bindingCount * sizeof(VkBuffer));
     }
     VkDeviceSize* pOffsets = nullptr;
     if (ARG5) {
-        pOffsets = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pOffsets, ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
+        pOffsets = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     VkDeviceSize* pSizes = nullptr;
     if (ARG6) {
-        pSizes = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pSizes, ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
+        pSizes = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     pBoxedInfo->pvkCmdBindTransformFeedbackBuffersEXT(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes);
-    delete[] pBuffers;
-    delete[] pOffsets;
-    delete[] pSizes;
+    cpu->memory->unlockMemory((U8*)pBuffers);
+    cpu->memory->unlockMemory((U8*)pOffsets);
+    cpu->memory->unlockMemory((U8*)pSizes);
 }
 void vk_CmdBeginTransformFeedbackEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -5018,17 +4934,15 @@ void vk_CmdBeginTransformFeedbackEXT(CPU* cpu) {
     uint32_t counterBufferCount = (uint32_t)ARG3;
     VkBuffer* pCounterBuffers = nullptr;
     if (ARG4) {
-        pCounterBuffers = new VkBuffer[counterBufferCount];
-        cpu->memory->memcpy(pCounterBuffers, ARG4, (U32)counterBufferCount * sizeof(VkBuffer));
+        pCounterBuffers = (VkBuffer*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)counterBufferCount * sizeof(VkBuffer));
     }
     VkDeviceSize* pCounterBufferOffsets = nullptr;
     if (ARG5) {
-        pCounterBufferOffsets = new VkDeviceSize[counterBufferCount];
-        cpu->memory->memcpy(pCounterBufferOffsets, ARG5, (U32)counterBufferCount * sizeof(VkDeviceSize));
+        pCounterBufferOffsets = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)counterBufferCount * sizeof(VkDeviceSize));
     }
     pBoxedInfo->pvkCmdBeginTransformFeedbackEXT(commandBuffer, firstCounterBuffer, counterBufferCount, pCounterBuffers, pCounterBufferOffsets);
-    delete[] pCounterBuffers;
-    delete[] pCounterBufferOffsets;
+    cpu->memory->unlockMemory((U8*)pCounterBuffers);
+    cpu->memory->unlockMemory((U8*)pCounterBufferOffsets);
 }
 void vk_CmdEndTransformFeedbackEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -5037,17 +4951,15 @@ void vk_CmdEndTransformFeedbackEXT(CPU* cpu) {
     uint32_t counterBufferCount = (uint32_t)ARG3;
     VkBuffer* pCounterBuffers = nullptr;
     if (ARG4) {
-        pCounterBuffers = new VkBuffer[counterBufferCount];
-        cpu->memory->memcpy(pCounterBuffers, ARG4, (U32)counterBufferCount * sizeof(VkBuffer));
+        pCounterBuffers = (VkBuffer*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)counterBufferCount * sizeof(VkBuffer));
     }
     VkDeviceSize* pCounterBufferOffsets = nullptr;
     if (ARG5) {
-        pCounterBufferOffsets = new VkDeviceSize[counterBufferCount];
-        cpu->memory->memcpy(pCounterBufferOffsets, ARG5, (U32)counterBufferCount * sizeof(VkDeviceSize));
+        pCounterBufferOffsets = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)counterBufferCount * sizeof(VkDeviceSize));
     }
     pBoxedInfo->pvkCmdEndTransformFeedbackEXT(commandBuffer, firstCounterBuffer, counterBufferCount, pCounterBuffers, pCounterBufferOffsets);
-    delete[] pCounterBuffers;
-    delete[] pCounterBufferOffsets;
+    cpu->memory->unlockMemory((U8*)pCounterBuffers);
+    cpu->memory->unlockMemory((U8*)pCounterBufferOffsets);
 }
 void vk_CmdBeginQueryIndexedEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -5101,11 +5013,10 @@ void vk_CmdSetExclusiveScissorEnableNV(CPU* cpu) {
     uint32_t exclusiveScissorCount = (uint32_t)ARG3;
     VkBool32* pExclusiveScissorEnables = nullptr;
     if (ARG4) {
-        pExclusiveScissorEnables = new VkBool32[exclusiveScissorCount];
-        cpu->memory->memcpy(pExclusiveScissorEnables, ARG4, (U32)exclusiveScissorCount * sizeof(VkBool32));
+        pExclusiveScissorEnables = (VkBool32*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)exclusiveScissorCount * sizeof(VkBool32));
     }
     pBoxedInfo->pvkCmdSetExclusiveScissorEnableNV(commandBuffer, firstExclusiveScissor, exclusiveScissorCount, pExclusiveScissorEnables);
-    delete[] pExclusiveScissorEnables;
+    cpu->memory->unlockMemory((U8*)pExclusiveScissorEnables);
 }
 void vk_CmdBindShadingRateImageNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -5335,14 +5246,13 @@ void vk_CmdWriteAccelerationStructuresPropertiesKHR(CPU* cpu) {
     uint32_t accelerationStructureCount = (uint32_t)ARG2;
     VkAccelerationStructureKHR* pAccelerationStructures = nullptr;
     if (ARG3) {
-        pAccelerationStructures = new VkAccelerationStructureKHR[accelerationStructureCount];
-        cpu->memory->memcpy(pAccelerationStructures, ARG3, (U32)accelerationStructureCount * sizeof(VkAccelerationStructureKHR));
+        pAccelerationStructures = (VkAccelerationStructureKHR*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)accelerationStructureCount * sizeof(VkAccelerationStructureKHR));
     }
     VkQueryType queryType = (VkQueryType)ARG4;
     VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG5);
     uint32_t firstQuery = (uint32_t)ARG6;
     pBoxedInfo->pvkCmdWriteAccelerationStructuresPropertiesKHR(commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
-    delete[] pAccelerationStructures;
+    cpu->memory->unlockMemory((U8*)pAccelerationStructures);
 }
 void vk_CmdWriteAccelerationStructuresPropertiesNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -5350,14 +5260,13 @@ void vk_CmdWriteAccelerationStructuresPropertiesNV(CPU* cpu) {
     uint32_t accelerationStructureCount = (uint32_t)ARG2;
     VkAccelerationStructureNV* pAccelerationStructures = nullptr;
     if (ARG3) {
-        pAccelerationStructures = new VkAccelerationStructureNV[accelerationStructureCount];
-        cpu->memory->memcpy(pAccelerationStructures, ARG3, (U32)accelerationStructureCount * sizeof(VkAccelerationStructureNV));
+        pAccelerationStructures = (VkAccelerationStructureNV*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)accelerationStructureCount * sizeof(VkAccelerationStructureNV));
     }
     VkQueryType queryType = (VkQueryType)ARG4;
     VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG5);
     uint32_t firstQuery = (uint32_t)ARG6;
     pBoxedInfo->pvkCmdWriteAccelerationStructuresPropertiesNV(commandBuffer, accelerationStructureCount, pAccelerationStructures, queryType, queryPool, firstQuery);
-    delete[] pAccelerationStructures;
+    cpu->memory->unlockMemory((U8*)pAccelerationStructures);
 }
 void vk_CmdBuildAccelerationStructureNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -5380,23 +5289,18 @@ void vk_WriteAccelerationStructuresPropertiesKHR(CPU* cpu) {
     uint32_t accelerationStructureCount = (uint32_t)ARG2;
     VkAccelerationStructureKHR* pAccelerationStructures = nullptr;
     if (ARG3) {
-        pAccelerationStructures = new VkAccelerationStructureKHR[accelerationStructureCount];
-        cpu->memory->memcpy(pAccelerationStructures, ARG3, (U32)accelerationStructureCount * sizeof(VkAccelerationStructureKHR));
+        pAccelerationStructures = (VkAccelerationStructureKHR*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)accelerationStructureCount * sizeof(VkAccelerationStructureKHR));
     }
     VkQueryType queryType = (VkQueryType)ARG4;
     size_t dataSize = (size_t)ARG5;
     void* pData = nullptr;
     if (ARG6) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG6, (U32)dataSize * sizeof(char));
     }
     size_t stride = (size_t)ARG7;
     EAX = (U32)pBoxedInfo->pvkWriteAccelerationStructuresPropertiesKHR(device, accelerationStructureCount, pAccelerationStructures, queryType, dataSize, pData, stride);
-    delete[] pAccelerationStructures;
-    if (pData) {
-        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pAccelerationStructures);
+    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_CmdTraceRaysKHR(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -5443,14 +5347,10 @@ void vk_GetRayTracingShaderGroupHandlesKHR(CPU* cpu) {
     size_t dataSize = (size_t)ARG5;
     void* pData = nullptr;
     if (ARG6) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG6, (U32)dataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetRayTracingShaderGroupHandlesKHR(device, pipeline, firstGroup, groupCount, dataSize, pData);
-    if (pData) {
-        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 // return type: VkResult(4 bytes)
 void vk_GetRayTracingShaderGroupHandlesNV(CPU* cpu) {
@@ -5462,14 +5362,10 @@ void vk_GetRayTracingShaderGroupHandlesNV(CPU* cpu) {
     size_t dataSize = (size_t)ARG5;
     void* pData = nullptr;
     if (ARG6) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG6, (U32)dataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetRayTracingShaderGroupHandlesNV(device, pipeline, firstGroup, groupCount, dataSize, pData);
-    if (pData) {
-        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 // return type: VkResult(4 bytes)
 void vk_GetRayTracingCaptureReplayShaderGroupHandlesKHR(CPU* cpu) {
@@ -5481,14 +5377,10 @@ void vk_GetRayTracingCaptureReplayShaderGroupHandlesKHR(CPU* cpu) {
     size_t dataSize = (size_t)ARG5;
     void* pData = nullptr;
     if (ARG6) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG6, (U32)dataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetRayTracingCaptureReplayShaderGroupHandlesKHR(device, pipeline, firstGroup, groupCount, dataSize, pData);
-    if (pData) {
-        pBoxedInfo->rayTracingCaptureReplayShaderGroupHandles[ARG6] = pData;
-        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
-    }
+    cpu->memory->unlockMemory((U8*)pData);
 }
 // return type: VkResult(4 bytes)
 void vk_GetAccelerationStructureHandleNV(CPU* cpu) {
@@ -5498,14 +5390,10 @@ void vk_GetAccelerationStructureHandleNV(CPU* cpu) {
     size_t dataSize = (size_t)ARG3;
     void* pData = nullptr;
     if (ARG4) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG4, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG4, (U32)dataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetAccelerationStructureHandleNV(device, accelerationStructure, dataSize, pData);
-    if (pData) {
-        cpu->memory->memcpy(ARG4, pData, (U32)dataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
@@ -5524,17 +5412,13 @@ void vk_CreateRayTracingPipelinesNV(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPipeline* pPipelines = nullptr;
     if (ARG6) {
-        pPipelines = new VkPipeline[createInfoCount];
-        cpu->memory->memcpy(pPipelines, ARG6, (U32)createInfoCount * sizeof(VkPipeline));
+        pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG6, (U32)createInfoCount * sizeof(VkPipeline));
     }
     EAX = (U32)pBoxedInfo->pvkCreateRayTracingPipelinesNV(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    if (pPipelines) {
-        cpu->memory->memcpy(ARG6, pPipelines, (U32)createInfoCount * sizeof(VkPipeline));
-    }
-    delete[] pPipelines;
+    cpu->memory->unlockMemory((U8*)pPipelines);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateRayTracingPipelinesKHR(CPU* cpu) {
@@ -5554,17 +5438,13 @@ void vk_CreateRayTracingPipelinesKHR(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkPipeline* pPipelines = nullptr;
     if (ARG7) {
-        pPipelines = new VkPipeline[createInfoCount];
-        cpu->memory->memcpy(pPipelines, ARG7, (U32)createInfoCount * sizeof(VkPipeline));
+        pPipelines = (VkPipeline*)cpu->memory->lockReadWriteMemory(ARG7, (U32)createInfoCount * sizeof(VkPipeline));
     }
     EAX = (U32)pBoxedInfo->pvkCreateRayTracingPipelinesKHR(device, deferredOperation, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    if (pPipelines) {
-        cpu->memory->memcpy(ARG7, pPipelines, (U32)createInfoCount * sizeof(VkPipeline));
-    }
-    delete[] pPipelines;
+    cpu->memory->unlockMemory((U8*)pPipelines);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceCooperativeMatrixPropertiesNV(CPU* cpu) {
@@ -6089,13 +5969,11 @@ void vk_CmdBuildAccelerationStructuresIndirectKHR(CPU* cpu) {
     }
     VkDeviceAddress* pIndirectDeviceAddresses = nullptr;
     if (ARG4) {
-        pIndirectDeviceAddresses = new VkDeviceAddress[infoCount];
-        cpu->memory->memcpy(pIndirectDeviceAddresses, ARG4, (U32)infoCount * sizeof(VkDeviceAddress));
+        pIndirectDeviceAddresses = (VkDeviceAddress*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)infoCount * sizeof(VkDeviceAddress));
     }
     uint32_t* pIndirectStrides = nullptr;
     if (ARG5) {
-        pIndirectStrides = new uint32_t[infoCount];
-        cpu->memory->memcpy(pIndirectStrides, ARG5, (U32)infoCount * sizeof(uint32_t));
+        pIndirectStrides = (uint32_t*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)infoCount * sizeof(uint32_t));
     }
     uint32_t** ppMaxPrimitiveCounts = nullptr;
     if (ARG6) {
@@ -6111,8 +5989,8 @@ void vk_CmdBuildAccelerationStructuresIndirectKHR(CPU* cpu) {
     if (pInfos) {
         delete[] pInfos;
     }
-    delete[] pIndirectDeviceAddresses;
-    delete[] pIndirectStrides;
+    cpu->memory->unlockMemory((U8*)pIndirectDeviceAddresses);
+    cpu->memory->unlockMemory((U8*)pIndirectStrides);
     if (ppMaxPrimitiveCounts) {
         for (U32 i = 0; i < infoCount; i++) {
             delete[] ppMaxPrimitiveCounts[i];
@@ -6356,29 +6234,25 @@ void vk_CmdBindVertexBuffers2(CPU* cpu) {
     uint32_t bindingCount = (uint32_t)ARG3;
     VkBuffer* pBuffers = nullptr;
     if (ARG4) {
-        pBuffers = new VkBuffer[bindingCount];
-        cpu->memory->memcpy(pBuffers, ARG4, (U32)bindingCount * sizeof(VkBuffer));
+        pBuffers = (VkBuffer*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)bindingCount * sizeof(VkBuffer));
     }
     VkDeviceSize* pOffsets = nullptr;
     if (ARG5) {
-        pOffsets = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pOffsets, ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
+        pOffsets = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     VkDeviceSize* pSizes = nullptr;
     if (ARG6) {
-        pSizes = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pSizes, ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
+        pSizes = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     VkDeviceSize* pStrides = nullptr;
     if (ARG7) {
-        pStrides = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pStrides, ARG7, (U32)bindingCount * sizeof(VkDeviceSize));
+        pStrides = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG7, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     pBoxedInfo->pvkCmdBindVertexBuffers2(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes, pStrides);
-    delete[] pBuffers;
-    delete[] pOffsets;
-    delete[] pSizes;
-    delete[] pStrides;
+    cpu->memory->unlockMemory((U8*)pBuffers);
+    cpu->memory->unlockMemory((U8*)pOffsets);
+    cpu->memory->unlockMemory((U8*)pSizes);
+    cpu->memory->unlockMemory((U8*)pStrides);
 }
 void vk_CmdBindVertexBuffers2EXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -6387,29 +6261,25 @@ void vk_CmdBindVertexBuffers2EXT(CPU* cpu) {
     uint32_t bindingCount = (uint32_t)ARG3;
     VkBuffer* pBuffers = nullptr;
     if (ARG4) {
-        pBuffers = new VkBuffer[bindingCount];
-        cpu->memory->memcpy(pBuffers, ARG4, (U32)bindingCount * sizeof(VkBuffer));
+        pBuffers = (VkBuffer*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)bindingCount * sizeof(VkBuffer));
     }
     VkDeviceSize* pOffsets = nullptr;
     if (ARG5) {
-        pOffsets = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pOffsets, ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
+        pOffsets = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG5, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     VkDeviceSize* pSizes = nullptr;
     if (ARG6) {
-        pSizes = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pSizes, ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
+        pSizes = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG6, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     VkDeviceSize* pStrides = nullptr;
     if (ARG7) {
-        pStrides = new VkDeviceSize[bindingCount];
-        cpu->memory->memcpy(pStrides, ARG7, (U32)bindingCount * sizeof(VkDeviceSize));
+        pStrides = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG7, (U32)bindingCount * sizeof(VkDeviceSize));
     }
     pBoxedInfo->pvkCmdBindVertexBuffers2EXT(commandBuffer, firstBinding, bindingCount, pBuffers, pOffsets, pSizes, pStrides);
-    delete[] pBuffers;
-    delete[] pOffsets;
-    delete[] pSizes;
-    delete[] pStrides;
+    cpu->memory->unlockMemory((U8*)pBuffers);
+    cpu->memory->unlockMemory((U8*)pOffsets);
+    cpu->memory->unlockMemory((U8*)pSizes);
+    cpu->memory->unlockMemory((U8*)pStrides);
 }
 void vk_CmdSetDepthTestEnable(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -6596,11 +6466,10 @@ void vk_CmdSetColorBlendEnableEXT(CPU* cpu) {
     uint32_t attachmentCount = (uint32_t)ARG3;
     VkBool32* pColorBlendEnables = nullptr;
     if (ARG4) {
-        pColorBlendEnables = new VkBool32[attachmentCount];
-        cpu->memory->memcpy(pColorBlendEnables, ARG4, (U32)attachmentCount * sizeof(VkBool32));
+        pColorBlendEnables = (VkBool32*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)attachmentCount * sizeof(VkBool32));
     }
     pBoxedInfo->pvkCmdSetColorBlendEnableEXT(commandBuffer, firstAttachment, attachmentCount, pColorBlendEnables);
-    delete[] pColorBlendEnables;
+    cpu->memory->unlockMemory((U8*)pColorBlendEnables);
 }
 void vk_CmdSetColorBlendEquationEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -6626,11 +6495,10 @@ void vk_CmdSetColorWriteMaskEXT(CPU* cpu) {
     uint32_t attachmentCount = (uint32_t)ARG3;
     VkColorComponentFlags* pColorWriteMasks = nullptr;
     if (ARG4) {
-        pColorWriteMasks = new VkColorComponentFlags[attachmentCount];
-        cpu->memory->memcpy(pColorWriteMasks, ARG4, (U32)attachmentCount * sizeof(VkColorComponentFlags));
+        pColorWriteMasks = (VkColorComponentFlags*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)attachmentCount * sizeof(VkColorComponentFlags));
     }
     pBoxedInfo->pvkCmdSetColorWriteMaskEXT(commandBuffer, firstAttachment, attachmentCount, pColorWriteMasks);
-    delete[] pColorWriteMasks;
+    cpu->memory->unlockMemory((U8*)pColorWriteMasks);
 }
 void vk_CmdSetRasterizationStreamEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -6758,11 +6626,10 @@ void vk_CmdSetCoverageModulationTableNV(CPU* cpu) {
     uint32_t coverageModulationTableCount = (uint32_t)ARG2;
     float* pCoverageModulationTable = nullptr;
     if (ARG3) {
-        pCoverageModulationTable = new float[coverageModulationTableCount];
-        cpu->memory->memcpy(pCoverageModulationTable, ARG3, (U32)coverageModulationTableCount * sizeof(float));
+        pCoverageModulationTable = (float*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)coverageModulationTableCount * sizeof(float));
     }
     pBoxedInfo->pvkCmdSetCoverageModulationTableNV(commandBuffer, coverageModulationTableCount, pCoverageModulationTable);
-    delete[] pCoverageModulationTable;
+    cpu->memory->unlockMemory((U8*)pCoverageModulationTable);
 }
 void vk_CmdSetShadingRateImageEnableNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -6958,8 +6825,7 @@ void vk_CmdSetFragmentShadingRateKHR(CPU* cpu) {
     static_assert (sizeof(VkFragmentShadingRateCombinerOpKHR) == 4, "unhandled enum size");
     VkFragmentShadingRateCombinerOpKHR* combinerOps = nullptr;
     if (ARG3) {
-        combinerOps = new VkFragmentShadingRateCombinerOpKHR[2];
-        cpu->memory->memcpy(combinerOps, ARG3, (U32)2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
+        combinerOps = (VkFragmentShadingRateCombinerOpKHR*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
     }
     pBoxedInfo->pvkCmdSetFragmentShadingRateKHR(commandBuffer, pFragmentSize, combinerOps);
 }
@@ -6993,8 +6859,7 @@ void vk_CmdSetFragmentShadingRateEnumNV(CPU* cpu) {
     static_assert (sizeof(VkFragmentShadingRateCombinerOpKHR) == 4, "unhandled enum size");
     VkFragmentShadingRateCombinerOpKHR* combinerOps = nullptr;
     if (ARG3) {
-        combinerOps = new VkFragmentShadingRateCombinerOpKHR[2];
-        cpu->memory->memcpy(combinerOps, ARG3, (U32)2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
+        combinerOps = (VkFragmentShadingRateCombinerOpKHR*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)2 * sizeof(VkFragmentShadingRateCombinerOpKHR));
     }
     pBoxedInfo->pvkCmdSetFragmentShadingRateEnumNV(commandBuffer, shadingRate, combinerOps);
 }
@@ -7006,12 +6871,11 @@ void vk_GetAccelerationStructureBuildSizesKHR(CPU* cpu) {
     VkAccelerationStructureBuildGeometryInfoKHR* pBuildInfo = &local_pBuildInfo.s;
     uint32_t* pMaxPrimitiveCounts = nullptr;
     if (ARG4) {
-        pMaxPrimitiveCounts = new uint32_t[pBuildInfo->geometryCount];
-        cpu->memory->memcpy(pMaxPrimitiveCounts, ARG4, (U32)pBuildInfo->geometryCount * sizeof(uint32_t));
+        pMaxPrimitiveCounts = (uint32_t*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)pBuildInfo->geometryCount * sizeof(uint32_t));
     }
     MarshalVkAccelerationStructureBuildSizesInfoKHR pSizeInfo(pBoxedInfo, cpu->memory, ARG5);
     pBoxedInfo->pvkGetAccelerationStructureBuildSizesKHR(device, buildType, pBuildInfo, pMaxPrimitiveCounts, &pSizeInfo.s);
-    delete[] pMaxPrimitiveCounts;
+    cpu->memory->unlockMemory((U8*)pMaxPrimitiveCounts);
     MarshalVkAccelerationStructureBuildSizesInfoKHR::write(pBoxedInfo, cpu->memory, ARG5, &pSizeInfo.s);
 }
 void vk_CmdSetVertexInputEXT(CPU* cpu) {
@@ -7047,11 +6911,10 @@ void vk_CmdSetColorWriteEnableEXT(CPU* cpu) {
     uint32_t attachmentCount = (uint32_t)ARG2;
     VkBool32* pColorWriteEnables = nullptr;
     if (ARG3) {
-        pColorWriteEnables = new VkBool32[attachmentCount];
-        cpu->memory->memcpy(pColorWriteEnables, ARG3, (U32)attachmentCount * sizeof(VkBool32));
+        pColorWriteEnables = (VkBool32*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)attachmentCount * sizeof(VkBool32));
     }
     pBoxedInfo->pvkCmdSetColorWriteEnableEXT(commandBuffer, attachmentCount, pColorWriteEnables);
-    delete[] pColorWriteEnables;
+    cpu->memory->unlockMemory((U8*)pColorWriteEnables);
 }
 void vk_CmdSetEvent2(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -7089,8 +6952,7 @@ void vk_CmdWaitEvents2(CPU* cpu) {
     uint32_t eventCount = (uint32_t)ARG2;
     VkEvent* pEvents = nullptr;
     if (ARG3) {
-        pEvents = new VkEvent[eventCount];
-        cpu->memory->memcpy(pEvents, ARG3, (U32)eventCount * sizeof(VkEvent));
+        pEvents = (VkEvent*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)eventCount * sizeof(VkEvent));
     }
     VkDependencyInfo* pDependencyInfos = NULL;
     if (ARG4) {
@@ -7100,7 +6962,7 @@ void vk_CmdWaitEvents2(CPU* cpu) {
         }
     }
     pBoxedInfo->pvkCmdWaitEvents2(commandBuffer, eventCount, pEvents, pDependencyInfos);
-    delete[] pEvents;
+    cpu->memory->unlockMemory((U8*)pEvents);
     if (pDependencyInfos) {
         delete[] pDependencyInfos;
     }
@@ -7111,8 +6973,7 @@ void vk_CmdWaitEvents2KHR(CPU* cpu) {
     uint32_t eventCount = (uint32_t)ARG2;
     VkEvent* pEvents = nullptr;
     if (ARG3) {
-        pEvents = new VkEvent[eventCount];
-        cpu->memory->memcpy(pEvents, ARG3, (U32)eventCount * sizeof(VkEvent));
+        pEvents = (VkEvent*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)eventCount * sizeof(VkEvent));
     }
     VkDependencyInfo* pDependencyInfos = NULL;
     if (ARG4) {
@@ -7122,7 +6983,7 @@ void vk_CmdWaitEvents2KHR(CPU* cpu) {
         }
     }
     pBoxedInfo->pvkCmdWaitEvents2KHR(commandBuffer, eventCount, pEvents, pDependencyInfos);
-    delete[] pEvents;
+    cpu->memory->unlockMemory((U8*)pEvents);
     if (pDependencyInfos) {
         delete[] pDependencyInfos;
     }
@@ -7405,16 +7266,12 @@ void vk_GetEncodedVideoSessionParametersKHR(CPU* cpu) {
     size_t* pDataSize = &tmp_pDataSize;
     void* pData = nullptr;
     if (ARG5) {
-        pData = new char[*pDataSize];
-        cpu->memory->memcpy(pData, ARG5, (U32)*pDataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG5, (U32)*pDataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetEncodedVideoSessionParametersKHR(device, pVideoSessionParametersInfo, &pFeedbackInfo.s, pDataSize, pData);
     MarshalVkVideoEncodeSessionParametersFeedbackInfoKHR::write(pBoxedInfo, cpu->memory, ARG3, &pFeedbackInfo.s);
     cpu->memory->writed(ARG4, (U32)tmp_pDataSize);
-    if (pData) {
-        cpu->memory->memcpy(ARG5, pData, (U32)*pDataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_DestroyVideoSessionParametersKHR(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -7601,14 +7458,10 @@ void vk_GetDescriptorEXT(CPU* cpu) {
     size_t dataSize = (size_t)ARG3;
     void* pDescriptor = nullptr;
     if (ARG4) {
-        pDescriptor = new char[dataSize];
-        cpu->memory->memcpy(pDescriptor, ARG4, (U32)dataSize * sizeof(char));
+        pDescriptor = (char*)cpu->memory->lockReadWriteMemory(ARG4, (U32)dataSize * sizeof(char));
     }
     pBoxedInfo->pvkGetDescriptorEXT(device, pDescriptorInfo, dataSize, pDescriptor);
-    if (pDescriptor) {
-        cpu->memory->memcpy(ARG4, pDescriptor, (U32)dataSize * sizeof(char));
-    }
-    delete[] pDescriptor;
+    cpu->memory->unlockMemory((U8*)pDescriptor);
 }
 void vk_CmdBindDescriptorBuffersEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -7635,17 +7488,15 @@ void vk_CmdSetDescriptorBufferOffsetsEXT(CPU* cpu) {
     uint32_t setCount = (uint32_t)ARG5;
     uint32_t* pBufferIndices = nullptr;
     if (ARG6) {
-        pBufferIndices = new uint32_t[setCount];
-        cpu->memory->memcpy(pBufferIndices, ARG6, (U32)setCount * sizeof(uint32_t));
+        pBufferIndices = (uint32_t*)cpu->memory->lockReadOnlyMemory(ARG6, (U32)setCount * sizeof(uint32_t));
     }
     VkDeviceSize* pOffsets = nullptr;
     if (ARG7) {
-        pOffsets = new VkDeviceSize[setCount];
-        cpu->memory->memcpy(pOffsets, ARG7, (U32)setCount * sizeof(VkDeviceSize));
+        pOffsets = (VkDeviceSize*)cpu->memory->lockReadOnlyMemory(ARG7, (U32)setCount * sizeof(VkDeviceSize));
     }
     pBoxedInfo->pvkCmdSetDescriptorBufferOffsetsEXT(commandBuffer, pipelineBindPoint, layout, firstSet, setCount, pBufferIndices, pOffsets);
-    delete[] pBufferIndices;
-    delete[] pOffsets;
+    cpu->memory->unlockMemory((U8*)pBufferIndices);
+    cpu->memory->unlockMemory((U8*)pOffsets);
 }
 void vk_CmdBindDescriptorBufferEmbeddedSamplersEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -7764,15 +7615,11 @@ void vk_GetCudaModuleCacheNV(CPU* cpu) {
     size_t* pCacheSize = &tmp_pCacheSize;
     void* pCacheData = nullptr;
     if (ARG4) {
-        pCacheData = new char[*pCacheSize];
-        cpu->memory->memcpy(pCacheData, ARG4, (U32)*pCacheSize * sizeof(char));
+        pCacheData = (char*)cpu->memory->lockReadWriteMemory(ARG4, (U32)*pCacheSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetCudaModuleCacheNV(device, module, pCacheSize, pCacheData);
     cpu->memory->writed(ARG3, (U32)tmp_pCacheSize);
-    if (pCacheData) {
-        cpu->memory->memcpy(ARG4, pCacheData, (U32)*pCacheSize * sizeof(char));
-    }
-    delete[] pCacheData;
+    cpu->memory->unlockMemory((U8*)pCacheData);
 }
 // return type: VkResult(4 bytes)
 void vk_CreateCudaFunctionNV(CPU* cpu) {
@@ -7960,14 +7807,13 @@ void vk_CmdWriteMicromapsPropertiesEXT(CPU* cpu) {
     uint32_t micromapCount = (uint32_t)ARG2;
     VkMicromapEXT* pMicromaps = nullptr;
     if (ARG3) {
-        pMicromaps = new VkMicromapEXT[micromapCount];
-        cpu->memory->memcpy(pMicromaps, ARG3, (U32)micromapCount * sizeof(VkMicromapEXT));
+        pMicromaps = (VkMicromapEXT*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)micromapCount * sizeof(VkMicromapEXT));
     }
     VkQueryType queryType = (VkQueryType)ARG4;
     VkQueryPool queryPool = (VkQueryPool)cpu->memory->readq(ARG5);
     uint32_t firstQuery = (uint32_t)ARG6;
     pBoxedInfo->pvkCmdWriteMicromapsPropertiesEXT(commandBuffer, micromapCount, pMicromaps, queryType, queryPool, firstQuery);
-    delete[] pMicromaps;
+    cpu->memory->unlockMemory((U8*)pMicromaps);
 }
 // return type: VkResult(4 bytes)
 void vk_WriteMicromapsPropertiesEXT(CPU* cpu) {
@@ -7976,23 +7822,18 @@ void vk_WriteMicromapsPropertiesEXT(CPU* cpu) {
     uint32_t micromapCount = (uint32_t)ARG2;
     VkMicromapEXT* pMicromaps = nullptr;
     if (ARG3) {
-        pMicromaps = new VkMicromapEXT[micromapCount];
-        cpu->memory->memcpy(pMicromaps, ARG3, (U32)micromapCount * sizeof(VkMicromapEXT));
+        pMicromaps = (VkMicromapEXT*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)micromapCount * sizeof(VkMicromapEXT));
     }
     VkQueryType queryType = (VkQueryType)ARG4;
     size_t dataSize = (size_t)ARG5;
     void* pData = nullptr;
     if (ARG6) {
-        pData = new char[dataSize];
-        cpu->memory->memcpy(pData, ARG6, (U32)dataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG6, (U32)dataSize * sizeof(char));
     }
     size_t stride = (size_t)ARG7;
     EAX = (U32)pBoxedInfo->pvkWriteMicromapsPropertiesEXT(device, micromapCount, pMicromaps, queryType, dataSize, pData, stride);
-    delete[] pMicromaps;
-    if (pData) {
-        cpu->memory->memcpy(ARG6, pData, (U32)dataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pMicromaps);
+    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_GetDeviceMicromapCompatibilityEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -8268,17 +8109,13 @@ void vk_CreateShadersEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkShaderEXT* pShaders = nullptr;
     if (ARG5) {
-        pShaders = new VkShaderEXT[createInfoCount];
-        cpu->memory->memcpy(pShaders, ARG5, (U32)createInfoCount * sizeof(VkShaderEXT));
+        pShaders = (VkShaderEXT*)cpu->memory->lockReadWriteMemory(ARG5, (U32)createInfoCount * sizeof(VkShaderEXT));
     }
     EAX = (U32)pBoxedInfo->pvkCreateShadersEXT(device, createInfoCount, pCreateInfos, pAllocator, pShaders);
     if (pCreateInfos) {
         delete[] pCreateInfos;
     }
-    if (pShaders) {
-        cpu->memory->memcpy(ARG5, pShaders, (U32)createInfoCount * sizeof(VkShaderEXT));
-    }
-    delete[] pShaders;
+    cpu->memory->unlockMemory((U8*)pShaders);
 }
 void vk_DestroyShaderEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
@@ -8297,15 +8134,11 @@ void vk_GetShaderBinaryDataEXT(CPU* cpu) {
     size_t* pDataSize = &tmp_pDataSize;
     void* pData = nullptr;
     if (ARG4) {
-        pData = new char[*pDataSize];
-        cpu->memory->memcpy(pData, ARG4, (U32)*pDataSize * sizeof(char));
+        pData = (char*)cpu->memory->lockReadWriteMemory(ARG4, (U32)*pDataSize * sizeof(char));
     }
     EAX = (U32)pBoxedInfo->pvkGetShaderBinaryDataEXT(device, shader, pDataSize, pData);
     cpu->memory->writed(ARG3, (U32)tmp_pDataSize);
-    if (pData) {
-        cpu->memory->memcpy(ARG4, pData, (U32)*pDataSize * sizeof(char));
-    }
-    delete[] pData;
+    cpu->memory->unlockMemory((U8*)pData);
 }
 void vk_CmdBindShadersEXT(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
@@ -8314,16 +8147,14 @@ void vk_CmdBindShadersEXT(CPU* cpu) {
     static_assert (sizeof(VkShaderStageFlagBits) == 4, "unhandled enum size");
     VkShaderStageFlagBits* pStages = nullptr;
     if (ARG3) {
-        pStages = new VkShaderStageFlagBits[stageCount];
-        cpu->memory->memcpy(pStages, ARG3, (U32)stageCount * sizeof(VkShaderStageFlagBits));
+        pStages = (VkShaderStageFlagBits*)cpu->memory->lockReadOnlyMemory(ARG3, (U32)stageCount * sizeof(VkShaderStageFlagBits));
     }
     VkShaderEXT* pShaders = nullptr;
     if (ARG4) {
-        pShaders = new VkShaderEXT[stageCount];
-        cpu->memory->memcpy(pShaders, ARG4, (U32)stageCount * sizeof(VkShaderEXT));
+        pShaders = (VkShaderEXT*)cpu->memory->lockReadOnlyMemory(ARG4, (U32)stageCount * sizeof(VkShaderEXT));
     }
     pBoxedInfo->pvkCmdBindShadersEXT(commandBuffer, stageCount, pStages, pShaders);
-    delete[] pShaders;
+    cpu->memory->unlockMemory((U8*)pShaders);
 }
 // return type: VkResult(4 bytes)
 void vk_GetPhysicalDeviceCooperativeMatrixPropertiesKHR(CPU* cpu) {

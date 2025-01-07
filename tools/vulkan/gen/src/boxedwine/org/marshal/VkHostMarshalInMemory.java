@@ -18,7 +18,7 @@ public class VkHostMarshalInMemory extends VkHostMarshal {
         }
         if (param.paramType.getType().equals("char") && param.len.equals("null-terminated")) {
             len = "len";
-            getLen = "U32 len = cpu->memory->strlen("+param.paramArg+")";
+            getLen = "U32 len = cpu->memory->strlen("+param.paramArg+")+1";
         } else if (param.arrayLen == 0 && param.countParam != null) {
             len = param.len;
             if (!param.countInStructure && param.countParam.isPointer) {
@@ -28,7 +28,43 @@ public class VkHostMarshalInMemory extends VkHostMarshal {
             len = String.valueOf(param.arrayLen);
         }
 
-        if (len != null) {
+        if (len != null && !param.isDoublePointer) {
+            out.append("    ");
+            out.append(param.paramType.name);
+            out.append("* ");
+            out.append(param.name);
+            out.append(" = nullptr;\n");
+            out.append("    if (");
+            out.append(param.paramArg);
+            out.append(") {\n");
+            out.append("        ");
+            out.append(param.name);
+            out.append(" = (");
+            if (param.paramType.name.equals("void")) {
+                out.append("char");
+            } else {
+                out.append(param.paramType.name);
+            }
+            if (param.isConst) {
+                out.append("*)cpu->memory->lockReadOnlyMemory(");
+            } else {
+                out.append("*)cpu->memory->lockReadWriteMemory(");
+            }
+            out.append(param.paramArg);
+            out.append(", (U32)");
+            if (getLen != null) {
+                out.append("(cpu->memory->strlen("+param.paramArg+")+1)");
+            } else {
+                out.append(len);
+            }
+            out.append(" * sizeof(");
+            if (param.paramType.name.equals("void")) {
+                out.append("char");
+            } else {
+                out.append(param.paramType.name);
+            }
+            out.append("));\n    }\n");
+        } else if (len != null) {
             out.append("    ");
             out.append(param.paramType.name);
             if (param.isDoublePointer) {
@@ -214,7 +250,11 @@ public class VkHostMarshalInMemory extends VkHostMarshal {
             len = String.valueOf(param.arrayLen);
         }
 
-        if (len != null) {
+        if (len != null && !param.isDoublePointer) {
+            out.append("    cpu->memory->unlockMemory((U8*)");
+            out.append(param.name);
+            out.append(");\n");
+        } else if (len != null) {
             boolean skipDelete = false;
             if (!param.isConst) {
                 if (param.isDoublePointer) {

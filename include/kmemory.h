@@ -88,6 +88,7 @@ public:
     //
     // it is prefered to use performOnLocked Memory since that won't make any copies of data
     U8* lockReadOnlyMemory(U32 address, U32 len);
+    U8* lockReadWriteMemory(U32 address, U32 len);
     void unlockMemory(U8* lockedPointer);
 
     U8* getIntPtr(U32 address, bool write = false);
@@ -124,7 +125,21 @@ private:
 
     KMemoryData* data;
     KProcess* process;
-    BHashTable< U8*, std::shared_ptr<U8[]>> lockedMemory;
+
+    class LockedMemory {
+    public:
+        ~LockedMemory() {
+            if (p) {
+                delete[] p;
+            }
+        }
+        U8* p = nullptr;
+        U32 len = 0;
+        U32 address = 0;
+        bool readOnly = true;;
+    };
+
+    BHashTable< U8*, std::shared_ptr<LockedMemory>> lockedMemory;
 };
 
 #endif

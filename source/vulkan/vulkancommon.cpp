@@ -73,7 +73,7 @@ U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
         }
 #undef VKFUNC
 #undef VKFUNC_INSTANCE
-#define VKFUNC_INSTANCE(f) info->pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr((VkInstance)value, "vk"#f); if (!info->pvk##f) {kwarn("Failed to load vk"#f);} else {info->functionAddressByName[B("vk"#f)]=1;}
+#define VKFUNC_INSTANCE(f) info->pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr((VkInstance)value, "vk"#f); if (!info->pvk##f) {kwarn("Boxedwine: Failed to load vk"#f);} else {info->functionAddressByName[B("vk"#f)]=1;}
 #define VKFUNC(f)
 #include "vkfuncs.h" 
         info->instance = (VkInstance)value;
@@ -292,6 +292,9 @@ void vk_CreateInstance(CPU* cpu) {
 }
 
 void vk_DestroyInstance2(CPU* cpu) {
+    if (!ARG1) {
+        return;
+    }
     VkInstance instance = (VkInstance)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     static bool shown; if (!shown && ARG2) { klog("vkDestroyInstance:VkAllocationCallbacks not implemented"); shown = true; }
@@ -444,7 +447,7 @@ void initVulkan() {
 #undef VKFUNC_INSTANCE
 #define VKFUNC_INSTANCE(f)
 #undef VKFUNC
-#define VKFUNC(f) pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vk"#f); if (!pvk##f) {kwarn("Failed to load vk"#f);}
+#define VKFUNC(f) pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vk"#f); if (!pvk##f) {kwarn("Boxedwine: Failed to load vk"#f);}
 #include "../vulkan/vkfuncs.h"
 #undef LOAD_FUNCPTR
     }
