@@ -340,14 +340,15 @@ void X64Asm::shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpR
         kpanic("X64Asm::shiftRightNoFlags logic error");
     }
     if (x64CPU::hasBMI2) {
-        writeToRegFromValue(tmpReg, true, K_PAGE_SHIFT, 4);
+        writeToRegFromValue(tmpReg, true, value, 4);
         bmi2ShiftRightReg(dst, src, isSrcRex, tmpReg);
     } else {
         if (dst != src) {
             writeToRegFromReg(dst, true, src, isSrcRex, 4);
         }
         pushFlagsToReg(tmpReg, true, true); // since shiftRightReg will change flags
-        shiftRightReg(dst, true, K_PAGE_SHIFT); // get page
+        writeToRegFromReg(dst, true, src, isSrcRex, 4);
+        shiftRightReg(dst, true, value);
         popFlagsFromReg(tmpReg, true, true);
     }
 }
@@ -2914,14 +2915,22 @@ void X64Asm::loop(U32 eip, bool ea16) {
         write8(0x74);
         U32 pos = this->bufferPos;
         write8(0);
-        popFlagsFromReg(tmpReg, true, true);
-        releaseTmpReg(tmpReg);
+        popFlagsFromReg(tmpReg, true, true);        
         jumpTo(eip);
-        if (this->bufferPos-pos-1>127) {
-            kpanic("X64Asm::loop tried to jump too far");
-        }
-        this->buffer[pos] = this->bufferPos-pos-1;
-        popFlagsFromReg(tmpReg, true, true);
+        if (this->bufferPos - pos - 1 <= 127) {
+            this->buffer[pos] = this->bufferPos - pos - 1;
+        } else {
+            bufferPos = pos - 1;
+            // 32-bit jz
+            write8(0x0f);
+            write8(0x84);
+            U32 pos = this->bufferPos;
+            write32(0);
+            popFlagsFromReg(tmpReg, true, true);
+            jumpTo(eip);
+            write32Buffer(this->buffer + pos, this->bufferPos - pos - 4);
+        } 
+        releaseTmpReg(tmpReg);        
     }
 }
 
