@@ -286,8 +286,6 @@ pipeline {
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=ARM64"
                         bat '''
                             move project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe project\\msvc\\Deploy\\WinARM64\\
-                            copy project\\msvc\\Deploy\\Win64\\Boxedwine.exe project\\msvc\\Deploy\\WinARM64\\Boxedwine_console.exe
-                            editbin.exe /subsystem:console project\\msvc\\Deploy\\Win64\\Boxedwine_console.exe
                         '''
                         dir("project/msvc") {
                             stash includes: 'Deploy/**/*', name: 'windowsARM64'
