@@ -280,7 +280,7 @@ pipeline {
                             gitCheckout() 
                         }
                         bat '''
-                            IF EXIST "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe"
+                            IF EXIST "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe"
                             if NOT EXIST "project\\msvc\\Deploy\\WinARM64" mkdir "project\\msvc\\Deploy\\WinARM64"
                         '''
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=ARM64"
