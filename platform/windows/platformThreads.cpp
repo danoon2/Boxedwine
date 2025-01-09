@@ -205,9 +205,11 @@ static PVOID pHandler;
 
 #ifdef __TEST
 void initThreadForTesting() {
+#ifdef BOXEDWINE_X64
     if (!pHandler) {
-        //pHandler = AddVectoredExceptionHandler(1, seh_filter);
+        pHandler = AddVectoredExceptionHandler(1, seh_filter);
     }
+#endif
 }
 #endif
 DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
