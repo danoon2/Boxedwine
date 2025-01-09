@@ -352,7 +352,9 @@ U8* Platform::alloc64kBlock(U32 count, bool executable) {
 
 
 void Platform::clearInstructionCache(void* address, U32 len) {
+#ifndef __EMSCRIPTEN__
     __builtin___clear_cache((char*)address, ((char*)address) + len);
+#endif
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED
