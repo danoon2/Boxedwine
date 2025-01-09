@@ -97,7 +97,19 @@ pipeline {
                         bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=x64"
                         bat "project\\msvc\\BoxedWine\\x64\\Test\\BoxedWine.exe"
                     }
-                }                    
+                }
+                stage ('Test Windows ARM64') {
+                    agent {
+                        label "windowsARM64"
+                    }
+                    steps {
+                        script { 
+                            gitCheckout() 
+                        }
+                        bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Test;Platform=ARM64"
+                        bat "project\\msvc\\BoxedWine\\ARM64\\Test\\BoxedWine.exe"
+                    }
+                }  
             }
         }
         stage ('Build') {
@@ -258,7 +270,30 @@ pipeline {
                             stash includes: 'Deploy/**/*', name: 'windows'
                         }
                     }
-                }      
+                } 
+                stage ('Build Windows ARM64') {
+                    agent {
+                        label "windowsARM64"
+                    }
+                    steps {
+                        script { 
+                            gitCheckout() 
+                        }
+                        bat '''
+                            IF EXIST "project\\msvc\\Boxedwine\\ARM64\\Release\\Boxedwine.exe" DEL "project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe"
+                            if NOT EXIST "project\\msvc\\Deploy\\WinARM64" mkdir "project\\msvc\\Deploy\\WinARM64"
+                        '''
+                        bat "\"${env.MSBUILD}\" \"project/msvc/BoxedWine/BoxedWine.sln\" /p:Configuration=Release;Platform=ARM64"
+                        bat '''
+                            move project\\msvc\\Boxedwine\\x64\\Release\\Boxedwine.exe project\\msvc\\Deploy\\WinARM64\\
+                            copy project\\msvc\\Deploy\\Win64\\Boxedwine.exe project\\msvc\\Deploy\\WinARM64\\Boxedwine_console.exe
+                            editbin.exe /subsystem:console project\\msvc\\Deploy\\Win64\\Boxedwine_console.exe
+                        '''
+                        dir("project/msvc") {
+                            stash includes: 'Deploy/**/*', name: 'windowsARM64'
+                        }
+                    }
+                } 
             }
         }
         stage ('Automation') {
@@ -372,6 +407,26 @@ pipeline {
                         }
                     }
                 } 
+                stage ('Windows ARM64 Automation') {
+                    agent {
+                        label "windowsARM64"
+                    }
+                    steps {
+                        bat '''
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
+                            IF EXIST "automation" rmdir /q /s "automation"
+                            tar -xf automation3.zip
+                        '''
+                        dir("automation") {
+                            unstash "windowsARM64"
+                            retry(3) {
+                                bat '''
+                                    java -jar bin\\BoxedWineRunner.jar \"%WORKSPACE%\\automation\\fs\\fs.zip\" \"%WORKSPACE%\\automation\\scripts\" \"%WORKSPACE%\\automation\\Deploy\\WinARM64\\Boxedwine.exe\" -nosound -novideo
+                                '''
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -388,6 +443,7 @@ pipeline {
                     unstash "macArmv8"
                     unstash "linuxArm64"
                     unstash "windows"
+                    unstash "windowsARM64"
                     dir('Deploy') {
                         sh '''
                         echo "Linux64, LinuxArm64 and Win64 use the binary translator CPU core and are much faster.  The others use the normal core or normal core + JIT." > readme.txt
