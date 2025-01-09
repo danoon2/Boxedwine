@@ -350,6 +350,11 @@ U8* Platform::alloc64kBlock(U32 count, bool executable) {
     return result;
 }
 
+
+void Platform::clearInstructionCache(void* address, U32 len) {
+    __builtin___clear_cache((char*)address, ((char*)address) + len);
+}
+
 #ifdef BOXEDWINE_MULTI_THREADED
 #ifdef __MACH__
 #include <mach/mach.h>

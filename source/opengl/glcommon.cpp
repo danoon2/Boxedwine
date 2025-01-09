@@ -294,7 +294,7 @@ void glcommon_glGetString(CPU* cpu) {
         }
     }
     U32 previousAddress = 0;
-    if (process->glStrings.get(name, previousAddress)) {
+    if (result && process->glStrings.get(name, previousAddress)) {
         if (process->memory->memcmp(previousAddress, result, (U32)strlen(result)+1) == 0) {
             EAX = previousAddress;
             return;

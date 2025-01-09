@@ -3063,14 +3063,6 @@ void opStd(Armv8btAsm* data) {
     data->orValue32(xFLAGS, xFLAGS, DF);
 }
 
-static void getRdtsc(CPU* cpu) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-    uint64_t result = (uint64_t)(ts.tv_sec) * 1000000000LL + ts.tv_nsec;
-    EAX = (U32)result;
-    EDX = (U32)(result >> 32);
-}
-
 void opRdtsc(Armv8btAsm* data) {
     // U64 t = cpu->instructionCount + cpu->blockInstructionCount + op->imm;
     // EAX = (U32)t;
@@ -3082,13 +3074,6 @@ void opRdtsc(Armv8btAsm* data) {
     data->movRegToReg(xEAX, tmpReg, 32, false);
     data->shiftRegRightWithValue64(xEDX, tmpReg, 32);
     data->releaseTmpReg(tmpReg);
-
-    /*
-    data->syncRegsFromHost();
-    data->mov64(0, xCPU); // param 1 (CPU)
-    data->callHost((void*)getRdtsc);
-    data->syncRegsToHost();
-    */
 }
 void opCPUID(Armv8btAsm* data) {   
     // kpanic("Need to test");

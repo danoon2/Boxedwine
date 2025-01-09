@@ -3,10 +3,11 @@
 #include "../source/emulation/softmmu/kmemory_soft.h"
 #include "../source/emulation/cpu/normal/normalCPU.h"
 #include "ksignal.h"
-#include "../source/emulation/cpu/x64/x64CPU.h"
+#include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR)
-
+#include "../source/emulation/cpu/x64/x64CPU.h"
+#ifdef BOXEDWINE_X64
 void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     EAX = (U32)ep->ContextRecord->Rax;
@@ -197,7 +198,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
-
+#endif
 std::atomic<int> platformThreadCount = 0;
 
 static PVOID pHandler;
@@ -205,7 +206,7 @@ static PVOID pHandler;
 #ifdef __TEST
 void initThreadForTesting() {
     if (!pHandler) {
-        pHandler = AddVectoredExceptionHandler(1, seh_filter);
+        //pHandler = AddVectoredExceptionHandler(1, seh_filter);
     }
 }
 #endif
@@ -213,9 +214,11 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     KThread* thread = (KThread*)lpThreadParameter;
     BtCPU* cpu = (BtCPU*)thread->cpu;
 
+#ifdef BOXEDWINE_X64
     if (!pHandler) {
         pHandler = AddVectoredExceptionHandler(1, seh_filter);
     }
+#endif
     cpu->startThread();
     return 0;
 }
