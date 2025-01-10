@@ -13,7 +13,9 @@ void gitCheckout() {
 pipeline {
     agent none
     options { 
-        skipDefaultCheckout(true) 
+        skipDefaultCheckout(true)
+        // emscripten unit tests require this
+        disableConcurrentBuilds()
     }
     stages {
         stage ('Test') {
