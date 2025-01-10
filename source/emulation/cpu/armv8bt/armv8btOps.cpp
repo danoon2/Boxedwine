@@ -4886,6 +4886,7 @@ void opCmpssXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     fcmp(data, vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), S_scaler);
     data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
+    data->vReleaseTmpReg(vTmpReg);
 }
 void opCmpssXmmE32(Armv8btAsm* data) {
     U8 addressReg = data->getAddressReg();
@@ -5623,6 +5624,7 @@ void opCmpsdXmmXmm(Armv8btAsm* data) {
     U8 vTmpReg = data->vGetTmpReg();
     fcmp(data, vTmpReg, data->getNativeSseReg(data->currentOp->reg), data->getNativeSseReg(data->currentOp->rm), D2);
     data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg, 0);
+    data->vReleaseTmpReg(vTmpReg);
 }
 void opCmpsdXmmE64(Armv8btAsm* data) {    
     U8 addressReg = data->getAddressReg();

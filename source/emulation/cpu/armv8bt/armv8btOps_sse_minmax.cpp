@@ -88,6 +88,7 @@ void opMaxssE32(Armv8btAsm* data) {
     data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg2, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
+    data->vReleaseTmpReg(vTmpReg2);
 }
 
 void opMinpsXmm(Armv8btAsm* data) {
@@ -127,6 +128,7 @@ void opMinssE32(Armv8btAsm* data) {
     data->vMov32(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg2, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
+    data->vReleaseTmpReg(vTmpReg2);
 }
 
 void opMaxpdXmmXmm(Armv8btAsm* data) {
@@ -165,6 +167,7 @@ void opMaxsdXmmE64(Armv8btAsm* data) {
     data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg2, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
+    data->vReleaseTmpReg(vTmpReg2);
 }
 
 void opMinpdXmmXmm(Armv8btAsm* data) {
@@ -203,6 +206,7 @@ void opMinsdXmmE64(Armv8btAsm* data) {
     data->vMov64(data->getNativeSseReg(data->currentOp->reg), 0, vTmpReg2, 0);
     data->releaseTmpReg(addressReg);
     data->vReleaseTmpReg(vTmpReg);
+    data->vReleaseTmpReg(vTmpReg2);
 }
 
 #endif

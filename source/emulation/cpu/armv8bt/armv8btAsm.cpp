@@ -4821,6 +4821,11 @@ void Armv8btAsm::translateInstruction() {
             kpanic("op(%x) leaked tmp reg", this->currentOp->originalOp);
         }
     }
+    for (int i = 0; i < vNumberOfTmpRegs; i++) {
+        if (this->vTmpRegInUse[i]) {
+            kpanic("op(%x) leaked vtmp reg", this->currentOp->originalOp);
+        }
+    }
 }
 
 #ifdef __TEST
