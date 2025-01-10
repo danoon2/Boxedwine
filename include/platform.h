@@ -116,6 +116,7 @@ public:
     static BString getResourceFilePath(BString location);
     static void setCurrentThreadPriorityHigh();
     static void writeCodeToMemory(void* address, U32 len, std::function<void()> callback);
+    static void clearInstructionCache(void* address, U32 len);
     static U32 nanoSleep(U64 nano);
     static U32 getPageAllocationGranularity();
     static U32 getPagePermissionGranularity(); // assumed to be smaller or equal to getPageAllocationGranularity and that getPageAllocationGranularity / getPagePermissionGranularity is a whole number

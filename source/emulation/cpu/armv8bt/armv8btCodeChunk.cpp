@@ -32,8 +32,8 @@ bool Armv8CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, U8* address) {
     return false;
 }
 
-void Armv8CodeChunk::clearInstructionCache(U8* hostAddress, U32 len) {
-    __builtin___clear_cache((char*)hostAddress, ((char*)hostAddress) + len);
+void Armv8CodeChunk::clearInstructionCache(U8* hostAddress, U32 len) {    
+    Platform::clearInstructionCache(hostAddress, len);
 }
 
 #endif

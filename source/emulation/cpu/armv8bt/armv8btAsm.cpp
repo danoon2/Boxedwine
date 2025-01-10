@@ -165,8 +165,14 @@ void Armv8btAsm::reverseBytes32(U8 dst, U8 src) {
     write8(0x5a);
 }
 
-void Armv8btAsm::loadConst(U8 reg, U64 value) {
+void Armv8btAsm::loadConst(U8 reg, U64 value) {    
+#ifdef BOXEDWINE_MSVC
+    unsigned long shift;
+    unsigned char is_nonzero = _BitScanForward64(&shift, value);
+#else
     U32 shift = __builtin_ctzll(value);
+#endif
+
     if (shift < 16) {
         shift = 0;
     } else if (shift < 32) {
@@ -2093,12 +2099,14 @@ void Armv8btAsm::emulateSingleOp(DecodedOp* op) {
 
 void signalHandler();
 
+#ifdef BOXEDWINE_POSIX
 void Armv8btAsm::createCodeForRunSignal() {
     callHost((void*)signalHandler);
     syncRegsToHost();
     readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(BtCPU, returnHostAddress)));
     branchNativeRegister(xBranch);
 }
+#endif
 
 void Armv8btAsm::write64Buffer(U8* buffer, U64 value) {
     buffer[0] = (U8)value;
@@ -4811,6 +4819,11 @@ void Armv8btAsm::translateInstruction() {
     for (int i = 0; i < xNumberOfTmpRegs; i++) {
         if (this->tmpRegInUse[i]) {
             kpanic("op(%x) leaked tmp reg", this->currentOp->originalOp);
+        }
+    }
+    for (int i = 0; i < vNumberOfTmpRegs; i++) {
+        if (this->vTmpRegInUse[i]) {
+            kpanic("op(%x) leaked vtmp reg", this->currentOp->originalOp);
         }
     }
 }

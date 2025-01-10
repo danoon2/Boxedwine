@@ -24,7 +24,7 @@
 #include "../emulation/cpu/binaryTranslation/btCpu.h"
 #include "knativethread.h"
 
-#ifdef BOXEDWINE_MSVC
+#if defined(BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
 #include <nmmintrin.h>
 #endif
 

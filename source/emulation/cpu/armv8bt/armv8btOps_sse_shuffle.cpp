@@ -42,7 +42,7 @@ static void interleave_shufd(Armv8btAsm* data, U8 dst, U8 src1, U8 src2, U8 mask
             data->vMov32(tmp, 0, src1, index1);
             data->vMov32(dst, 1, src1, index2);
             data->vMov32(dst, 0, tmp, 0);
-            data->releaseTmpReg(tmp);
+            data->vReleaseTmpReg(tmp);
         } else {
             data->vMov32(dst, 1, src1, index2);
             data->vMov32(dst, 0, src1, index1);

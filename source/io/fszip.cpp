@@ -338,6 +338,11 @@ BString FsZip::unzip(BString zipFile, BString path, std::function<void(U32, BStr
         unzOpenCurrentFile(z);        
         percentDone((U32)(compressedFileSizeProcessed * 100 / fileSize), fileName);
         BString outPath = path.stringByApppendingPath(fileName);
+#ifdef BOXEDWINE_MSVC
+        if (outPath.length() > 255) {
+            outPath = "\\\\?\\" + outPath;
+        }
+#endif
         FILE* f = fopen(outPath.c_str(), "wb");
         if (f) {
             U32 totalRead = 0;

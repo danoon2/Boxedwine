@@ -32,7 +32,6 @@ typedef enum {
 // must be at know location for exception handler
 #define xBranch 9
 #define xTmp2 10
-#define xBranchLargeAddressOffset 10
 #define xTmp3 11
 #define xTmp4 12
 #define xTmp5 13

@@ -3,10 +3,12 @@
 #include "../source/emulation/softmmu/kmemory_soft.h"
 #include "../source/emulation/cpu/normal/normalCPU.h"
 #include "ksignal.h"
-#include "../source/emulation/cpu/x64/x64CPU.h"
+#include "../source/emulation/cpu/binaryTranslation/btCpu.h"
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR)
-
+#include "../source/emulation/cpu/x64/x64CPU.h"
+#include "../source/emulation/cpu/armv8bt/armv8btCPU.h"
+#ifdef BOXEDWINE_X64
 void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     EAX = (U32)ep->ContextRecord->Rax;
@@ -197,7 +199,132 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     }
     return EXCEPTION_CONTINUE_SEARCH;
 }
+#else
+void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
+    Armv8btCPU* cpu = (Armv8btCPU*)KThread::currentThread()->cpu;
+    EAX = (U32)ep->ContextRecord->X0;
+    ECX = (U32)ep->ContextRecord->X1;
+    EDX = (U32)ep->ContextRecord->X2;
+    EBX = (U32)ep->ContextRecord->X3;
+    ESP = (U32)ep->ContextRecord->X4;
+    EBP = (U32)ep->ContextRecord->X5;
+    ESI = (U32)ep->ContextRecord->X6;
+    EDI = (U32)ep->ContextRecord->X7;
 
+    cpu->flags = (ep->ContextRecord->X8 & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
+    cpu->lazyFlags = FLAGS_NONE;
+
+    if (cpu->thread->process->emulateFPU) {
+        for (int i = 0; i < 8; i++) {
+            cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
+            cpu->xmm[i].pi.u64[1] = ep->ContextRecord->V[i].High;
+            cpu->reg_mmx[i].q = ep->ContextRecord->V[i + 8].Low;
+        }
+    }
+}
+
+void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
+    BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
+    ep->ContextRecord->X0 = EAX;
+    ep->ContextRecord->X1 = ECX;
+    ep->ContextRecord->X2 = EDX;
+    ep->ContextRecord->X3 = EBX;
+    ep->ContextRecord->X4 = ESP;
+    ep->ContextRecord->X5 = EBP;
+    ep->ContextRecord->X6 = ESI;
+    ep->ContextRecord->X7 = EDI;
+    cpu->fillFlags();
+    ep->ContextRecord->X8 &= ~(AF | CF | OF | SF | PF | ZF);
+    ep->ContextRecord->X8 |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
+
+    if (includeFPU) {
+        for (int i = 0; i < 8; i++) {
+            ep->ContextRecord->V[i].Low = cpu->xmm[i].pi.u64[0];
+            ep->ContextRecord->V[i].High = cpu->xmm[i].pi.u64[1];
+            ep->ContextRecord->V[i+8].Low = cpu->reg_mmx[i].q;
+        }
+    }
+}
+
+class InException {
+public:
+    InException(BtCPU* cpu) : cpu(cpu) { this->cpu->inException = true; }
+    ~InException() { this->cpu->inException = false; }
+    BtCPU* cpu;
+};
+
+U32 exceptionCount;
+
+int getFpuException(int control, int status) {
+    if ((status & 0x02) && (control & 0x02)) return EXCEPTION_FLT_DENORMAL_OPERAND;  /* DE flag */
+    if ((status & 0x04) && (control & 0x04)) return K_FPE_FLTDIV;    /* ZE flag */
+    if ((status & 0x08) && (control & 0x08)) return K_FPE_FLTOVF;          /* OE flag */
+    if ((status & 0x10) && (control & 0x10)) return K_FPE_FLTUND;         /* UE flag */
+    if ((status & 0x20) && (control & 0x20)) return K_FPE_FLTRES;    /* PE flag */
+    return K_FPE_FLTINV;
+}
+
+extern bool writesFlags[InstructionCount];
+
+LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
+    BOXEDWINE_CRITICAL_SECTION;
+    exceptionCount++;
+    KThread* currentThread = KThread::currentThread();
+    if (!currentThread) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    Armv8btCPU* cpu = (Armv8btCPU*)currentThread->cpu;
+    if (cpu != (BtCPU*)ep->ContextRecord->X19) {
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    KMemoryData* mem = getMemData(cpu->memory);
+    bool inBinaryTranslator = mem->isAddressExecutable((U8*)ep->ContextRecord->Pc);
+
+    if (!inBinaryTranslator) {
+        // might be in a c++ exception
+        //
+        // motorhead installer will trigger this a few time
+        // caesar 3 installer will trigger this when it exits
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+    syncFromException(ep, true);
+    U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0] == 0);
+    if (result) {
+        syncToException(ep, true);
+        ep->ContextRecord->Pc = result;
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+
+    InException inException(cpu);
+
+    if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_STACK_CHECK) {
+        kpanic("EXCEPTION_FLT_STACK_CHECK");
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_DIVIDE_BY_ZERO) {
+        ep->ContextRecord->Pc = cpu->handleFpuException(K_FPE_FLTDIV);
+        syncToException(ep, true);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_INEXACT_RESULT) {
+        ep->ContextRecord->Pc = cpu->handleFpuException(K_FPE_FLTRES);
+        syncToException(ep, true);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    } else if (ep->ExceptionRecord->ExceptionCode == STATUS_INTEGER_DIVIDE_BY_ZERO) {
+        ep->ContextRecord->Pc = cpu->handleFpuException(K_FPE_INTDIV);
+        syncToException(ep, true);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
+        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        ep->ContextRecord->Pc = cpu->handleAccessException(op);
+        op->dealloc(true);
+        syncToException(ep, true);
+        return EXCEPTION_CONTINUE_EXECUTION;
+    } else if (ep->ExceptionRecord->ExceptionCode == STATUS_ILLEGAL_INSTRUCTION) {
+        // this is weird, so far I have only seen it on the first instruction of a block, which is an instruction that shouldn't fail, maybe the clearCache wasn't done in time and another thread starting using it?
+        klog("Instruction cache miss?");
+        return EXCEPTION_CONTINUE_EXECUTION;
+    }
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
 std::atomic<int> platformThreadCount = 0;
 
 static PVOID pHandler;

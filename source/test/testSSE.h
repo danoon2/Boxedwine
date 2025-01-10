@@ -18,7 +18,7 @@ void testSse128E64r(U8 preOp1, U8 preOp2, U8 op, U64 value1l, U64 value1h, U64 v
 void initSseTest();
 void loadSSE(U8 reg, U32 index, U64 value1l, U64 value1h);
 
-#ifdef _MSC_VER // if Visual C/C++
+#if defined(_MSC_VER) && !defined(BOXEDWINE_64) // if Visual C/C++
 __inline __m64 _mm_set_pi64x (const __int64 i) {
     union {
         __int64 i;
