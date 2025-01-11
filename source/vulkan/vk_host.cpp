@@ -12572,6 +12572,7 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         }
        default:
             kpanic("vulkanGetNextPtr not implemented for %d", type);
+            return nullptr;
     }
     return nullptr;
 }

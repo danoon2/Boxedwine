@@ -367,7 +367,7 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
     case Msg::CONTAINER_VIEW_RENDERER_LABEL:
         return "Renderer:";
     case Msg::CONTAINER_VIEW_RENDERER_HELP:
-        return "This requires Wine 6.0 or higher.  DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.  Vulkan is considered experimental.";
+        return "DirectDraw will be converted to Direct3D by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.  Vulkan is considered experimental.  You might also have better luck using DXVK, A Vulkan-based translation layer for Direct3D 8/9/10/11 which allows running 3D applications on Linux using Wine.  To use DXVK just select the checkbox on this screen below.";
     case Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_LABEL:
         return "Video Memory Size (MB):";
     case Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_HELP:

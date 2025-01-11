@@ -384,6 +384,7 @@ public class VkHost {
         }
         part2.append("       default:\n");
         part2.append("            kpanic(\"vulkanGetNextPtr not implemented for %d\", type);\n");
+        part2.append("            return nullptr;\n");
         part2.append("    }\n");
         part2.append("}\n");
 
