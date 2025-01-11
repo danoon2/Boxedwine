@@ -1354,6 +1354,14 @@
 		718B713F267EB86500CDBC74 /* libc++.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B713B267EB86500CDBC74 /* libc++.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7143267F883900CDBC74 /* libOSMesa.8.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7144267F883900CDBC74 /* libglapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		718F07632D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
+		718F07642D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
+		718F07652D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
+		718F07662D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
+		718F07672D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
+		718F07682D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
+		718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 718F07692D31C20F00D41270 /* libMoltenVK.dylib */; };
+		718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718F07772D31C23F00D41270 /* libMoltenVK.dylib */; };
 		71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
 		71B2D2FE2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
 		71B2D2FF2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
@@ -1606,8 +1614,9 @@
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
-			dstSubfolderSpec = 6;
+			dstSubfolderSpec = 10;
 			files = (
+				718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */,
 				718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */,
 				718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */,
 				718B713D267EB86500CDBC74 /* libc++abi.1.dylib in CopyFiles */,
@@ -1892,6 +1901,16 @@
 		718B713B267EB86500CDBC74 /* libc++.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++.1.dylib"; sourceTree = "<group>"; };
 		718B7143267F883900CDBC74 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
 		718B7144267F883900CDBC74 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
+		718F07612D31C1C600D41270 /* kvulkanSDL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = kvulkanSDL.h; path = /Users/james/Boxedwine2/platform/sdl/kvulkanSDL.h; sourceTree = "<absolute>"; };
+		718F07622D31C1C600D41270 /* kvulkanSDL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = kvulkanSDL.cpp; path = /Users/james/Boxedwine2/platform/sdl/kvulkanSDL.cpp; sourceTree = "<absolute>"; };
+		718F07692D31C20F00D41270 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../lib/mac/vulkan/lib/libMoltenVK.dylib; sourceTree = "<group>"; };
+		718F076B2D31C21600D41270 /* libvulkan.1.3.296.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.3.296.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.3.296.dylib; sourceTree = "<group>"; };
+		718F076D2D31C21B00D41270 /* libvulkan.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.dylib; sourceTree = "<group>"; };
+		718F076F2D31C21E00D41270 /* libvulkan.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.dylib; sourceTree = "<group>"; };
+		718F07712D31C22A00D41270 /* libvulkan.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.dylib; sourceTree = "<group>"; };
+		718F07732D31C23200D41270 /* libvulkan.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.dylib; sourceTree = "<group>"; };
+		718F07752D31C23800D41270 /* libvulkan.1.3.296.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.3.296.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.3.296.dylib; sourceTree = "<group>"; };
+		718F07772D31C23F00D41270 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../lib/mac/vulkan/lib/libMoltenVK.dylib; sourceTree = "<group>"; };
 		71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
 		71B2D2FC2668178700010AB6 /* osmesa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = osmesa.cpp; path = osmesa/osmesa.cpp; sourceTree = "<group>"; };
 		71B2D30926681CCA00010AB6 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
@@ -2296,6 +2315,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */,
 				1A5405262A04AB4E0061653D /* libcurl.4.tbd in Frameworks */,
 				71222C7424351CBA00CDBABD /* OpenGL.framework in Frameworks */,
 				71222C7524351CBA00CDBABD /* Carbon.framework in Frameworks */,
@@ -2589,6 +2609,8 @@
 		710091332644D416003413C3 /* sdl */ = {
 			isa = PBXGroup;
 			children = (
+				718F07612D31C1C600D41270 /* kvulkanSDL.h */,
+				718F07622D31C1C600D41270 /* kvulkanSDL.cpp */,
 				1A0F95572C912BD100E5A9BF /* knativeinputSDL.cpp */,
 				1A0F95532C912BD000E5A9BF /* knativeinputSDL.h */,
 				1A0F95542C912BD000E5A9BF /* knativescreenGL.cpp */,
@@ -2619,6 +2641,10 @@
 		712227752433E8C400CDBABD /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				718F076F2D31C21E00D41270 /* libvulkan.dylib */,
+				718F076D2D31C21B00D41270 /* libvulkan.1.dylib */,
+				718F076B2D31C21600D41270 /* libvulkan.1.3.296.dylib */,
+				718F07692D31C20F00D41270 /* libMoltenVK.dylib */,
 				1A5405252A04AB4E0061653D /* libcurl.4.tbd */,
 				718B7125267EA77000CDBC74 /* libc++.1.dylib */,
 				718B7124267EA76F00CDBC74 /* libc++abi.1.dylib */,
@@ -2704,6 +2730,10 @@
 		71FBFCA42433B815003F17F1 = {
 			isa = PBXGroup;
 			children = (
+				718F07772D31C23F00D41270 /* libMoltenVK.dylib */,
+				718F07752D31C23800D41270 /* libvulkan.1.3.296.dylib */,
+				718F07732D31C23200D41270 /* libvulkan.1.dylib */,
+				718F07712D31C22A00D41270 /* libvulkan.dylib */,
 				718B7144267F883900CDBC74 /* libglapi.0.dylib */,
 				718B7143267F883900CDBC74 /* libOSMesa.8.dylib */,
 				718B713B267EB86500CDBC74 /* libc++.1.dylib */,
@@ -3784,6 +3814,7 @@
 				1A80EF28276EBCC70032A70A /* MacPlatform.m in Sources */,
 				1AC5F2E32772D957001D0FCA /* armv8btOps.cpp in Sources */,
 				1AC5F2E92772D957001D0FCA /* armv8btAsm.cpp in Sources */,
+				718F07642D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				1AC5F2F52772D957001D0FCA /* armv8btCPU.cpp in Sources */,
 				1A80EF2F276EBCC70032A70A /* glMarshal.cpp in Sources */,
 				1A80EF30276EBCC70032A70A /* cpuonline.cpp in Sources */,
@@ -4046,6 +4077,7 @@
 				1A80F168276EBF170032A70A /* testSSE.cpp in Sources */,
 				1A80F16C276EBF170032A70A /* soft_ro_page.cpp in Sources */,
 				1AA711C32B505C9A008704E2 /* kmemory_soft.cpp in Sources */,
+				718F07632D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				1A55D6622A08428F002B7021 /* uncompr.c in Sources */,
 				1A80F172276EBF170032A70A /* MacPlatform.m in Sources */,
 				1A80F176276EBF170032A70A /* platform.cpp in Sources */,
@@ -4250,6 +4282,7 @@
 				71222B672435169100CDBABD /* common_arith.cpp in Sources */,
 				71222B1D2435140100CDBABD /* AppDelegate.m in Sources */,
 				71222BA92435169100CDBABD /* devnull.cpp in Sources */,
+				718F07652D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				1AC5F2A92772D957001D0FCA /* armv8btOps_string.cpp in Sources */,
 				71222B6F2435169100CDBABD /* cpu.cpp in Sources */,
 				71222BC42435169100CDBABD /* glMarshalSize.cpp in Sources */,
@@ -4569,6 +4602,7 @@
 				71222C2724351CBA00CDBABD /* common_mmx.cpp in Sources */,
 				71222C2824351CBA00CDBABD /* recorder.cpp in Sources */,
 				71222C2A24351CBA00CDBABD /* testMMX.cpp in Sources */,
+				718F07662D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				1AC5F2D02772D957001D0FCA /* armv8btOps_sse_convert.cpp in Sources */,
 				71222C2B24351CBA00CDBABD /* threadedMainloop.cpp in Sources */,
 				1AC5F2BE2772D957001D0FCA /* armv8btData.cpp in Sources */,
@@ -4711,6 +4745,7 @@
 				1AC5F2CE2772D957001D0FCA /* armv8btOps_mmx.cpp in Sources */,
 				7135DC1E264EBCD0005D6AA6 /* common_arith.cpp in Sources */,
 				7135DC1F264EBCD0005D6AA6 /* AppDelegate.m in Sources */,
+				718F07672D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				7135DC20264EBCD0005D6AA6 /* devnull.cpp in Sources */,
 				7135DC21264EBCD0005D6AA6 /* cpu.cpp in Sources */,
 				7135DC22264EBCD0005D6AA6 /* glMarshalSize.cpp in Sources */,
@@ -5030,6 +5065,7 @@
 				71FBFE982433BBBE003F17F1 /* soft_code_page.cpp in Sources */,
 				71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */,
 				711F834924527273008E6A0C /* boxedTexture.cpp in Sources */,
+				718F07682D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				71FBFE6A2433BBBE003F17F1 /* containersView.cpp in Sources */,
 				71FBFE8D2433BBBE003F17F1 /* cpu.cpp in Sources */,
 				712228CE2433EE5300CDBABD /* imgui_impl_opengl3.cpp in Sources */,
@@ -5556,6 +5592,7 @@
 					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_OPENGL_OSMESA,
 					__MACOSX_CORE__,
+					BOXEDWINE_VULKAN,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5563,7 +5600,10 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
@@ -5606,6 +5646,7 @@
 					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_OPENGL_OSMESA,
 					__MACOSX_CORE__,
+					BOXEDWINE_VULKAN,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
@@ -5613,7 +5654,10 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = "$(inherited)";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../../../lib/mac/vulkan/lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";

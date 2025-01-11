@@ -729,21 +729,23 @@ void KNativeScreenSDL::recreateMainWindow() {
         if (!window) {
             klog("SDL_CreateWindow failed: %s", SDL_GetError());
         }
+        if (!(flags & SDL_WINDOW_VULKAN)) {
 #ifdef BOXEDWINE_LINUX
-        // NVidia drivers need this
-        flags = SDL_RENDERER_SOFTWARE;
+            // NVidia drivers need this
+            flags = SDL_RENDERER_SOFTWARE;
 #else
-        flags = SDL_RENDERER_ACCELERATED;
+            flags = SDL_RENDERER_ACCELERATED;
 #endif
-        if (this->vsync != VSYNC_DISABLED) {
-            flags |= SDL_RENDERER_PRESENTVSYNC;
-        }
-        renderer = SDL_CreateRenderer(window, -1, flags);
-        if (!renderer) {
-            klog("Failed to create SDL accelerated renderer, will try software");
-            flags &= ~SDL_RENDERER_ACCELERATED;
-            flags |= SDL_RENDERER_SOFTWARE;
+            if (this->vsync != VSYNC_DISABLED) {
+                flags |= SDL_RENDERER_PRESENTVSYNC;
+            }
             renderer = SDL_CreateRenderer(window, -1, flags);
+            if (!renderer) {
+                klog("Failed to create SDL accelerated renderer, will try software");
+                flags &= ~SDL_RENDERER_ACCELERATED;
+                flags |= SDL_RENDERER_SOFTWARE;
+                renderer = SDL_CreateRenderer(window, -1, flags);
+            }
         }
     }
 }

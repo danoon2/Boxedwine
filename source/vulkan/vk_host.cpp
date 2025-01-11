@@ -12573,6 +12573,7 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
        default:
             kpanic("vulkanGetNextPtr not implemented for %d", type);
     }
+    return nullptr;
 }
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* p) {
     if (address == 0) {

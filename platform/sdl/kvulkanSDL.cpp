@@ -15,20 +15,40 @@ public:
 };
 
 void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance) {
-	VkSurfaceKHR result;
+    VkSurfaceKHR result = {0};
 
-	DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+#ifdef __MACH__
+    // if SDL_Vulkan_CreateSurface isn't on the main there, then it won't draw on Mac
+    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN_WITH_ARG2(=, &result)
 	if (!screen->additionalSDLWindowFlags) {
 		screen->additionalSDLWindowFlags = SDL_WINDOW_VULKAN;
 		screen->recreateMainWindow();		
 	}
 	screen->setScreenSize(wnd->width(), wnd->height());
 	screen->showWindow(true);
-	DISPATCH_MAIN_THREAD_BLOCK_END
-	if (SDL_Vulkan_CreateSurface(screen->window, (VkInstance)instance, &result)) {
-		return (void*)result;
+	
+	if (!SDL_Vulkan_CreateSurface(screen->window, (VkInstance)instance, &result)) {
+        result = 0;
 	}
-	return nullptr;
+    DISPATCH_MAIN_THREAD_BLOCK_END
+#else
+    DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
+    if (!screen->additionalSDLWindowFlags) {
+        screen->additionalSDLWindowFlags = SDL_WINDOW_VULKAN;
+        screen->recreateMainWindow();
+    }
+    screen->setScreenSize(wnd->width(), wnd->height());
+    screen->showWindow(true);
+    DISPATCH_MAIN_THREAD_BLOCK_END
+    
+    if (!SDL_Vulkan_CreateSurface(screen->window, (VkInstance)instance, &result)) {
+        result = 0;
+    }
+#endif
+    if (!result) {
+        kwarn("Failed to create vulkan surface: %s\n", SDL_GetError());
+    }
+	return (void*)result;
 }
 
 KVulkanPtr KVulkanSDL::create(const KNativeScreenSDLPtr& screen) {

@@ -260,7 +260,11 @@ void vk_CreateInstance(CPU* cpu) {
             containsDebug = true;
         } else if (strstr(pCreateInfo->ppEnabledExtensionNames[i], "VK_KHR_xlib_surface")) {
             delete[] pCreateInfo->ppEnabledExtensionNames[i];
+#ifdef __MACH__
+            const char* platformSurface = "VK_MVK_macos_surface";
+#else
             const char* platformSurface = "VK_KHR_win32_surface";
+#endif
             char** p = new char* [pCreateInfo->enabledExtensionCount];
             memcpy(p, pCreateInfo->ppEnabledExtensionNames, sizeof(char*) * (pCreateInfo->enabledExtensionCount));
             p[i] = new char[strlen(platformSurface) + 1];
@@ -439,7 +443,7 @@ void initVulkan() {
         vulkanInitialized = true;
 
         if (SDL_Vulkan_LoadLibrary(NULL)) {
-            kpanic("Failed to load vulkan: %d\n", SDL_GetError());
+            kpanic("Failed to load vulkan: %s\n", SDL_GetError());
         }
         pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
         pvkCreateInstance = (PFN_vkCreateInstance)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
