@@ -2580,7 +2580,8 @@ static void x11_XRRRates(CPU* cpu) {
 
 // Status XRRSetScreenConfig(Display* dpy, XRRScreenConfiguration* config, Drawable draw, int size_index, Rotation rotation, Time timestamp)
 static void x11_XRRSetScreenConfig(CPU* cpu) {
-    kpanic("x11_XRRSetScreenConfig");
+    //kpanic("x11_XRRSetScreenConfig");
+    EAX = RRSetConfigSuccess;  // emscripten gets here
 }
 
 // Status XRRSetScreenConfigAndRate(Display* dpy, XRRScreenConfiguration* config, Drawable draw, int size_index, Rotation rotation, short rate, Time timestamp)

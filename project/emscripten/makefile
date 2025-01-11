@@ -6,16 +6,23 @@ default all: release
 
 release: export BUILD_DIR := Build/Release
 release: export EXTRA_CPP_FLAGS := $(RELEASE_FLAGS)
-release: export SHELL_FILE := shellfs.html
-test:   export BUILD_DIR := Build/Test
+release: export SHELL_FILE := shell.html
+test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST
 test: export SHELL_FILE := shelltest.html
+test: export EXTRA_LD_FLAGS := --emrun
 multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread -DBOXEDWINE_NEED_ATOMIC_REF
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
-multiThreaded: export SHELL_FILE := shellfs.html
-multiThreaded: export EXTRA_LDFLAGS := -s PROXY_TO_PTHREAD
+multiThreaded: export SHELL_FILE := shell.html
+multiThreaded: export EXTRA_LD_FLAGS := -s PROXY_TO_PTHREAD
 
+uname_s  :=$(shell uname -s)
+ifeq ($(uname_s),Darwin)
+cpus  := $(shell sysctl -a | grep  machdep.cpu.core_count: |  tr -d 'machdep.cpu.core_count: ')
+else
 cpus  := $(shell grep -c ^processor /proc/cpuinfo)
+endif
+
 ifeq ($(cpus), 0)
 else ifeq ($(cpus), 1)
 else ifeq ($(cpus), 2)
@@ -90,7 +97,7 @@ INCLUDES += -I../../lib/simde
 CXXFLAGS ?= -std=c++20
 CPPFLAGS ?= -O3 -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
 
-LDFLAGS = -s USE_SDL=2 -s USE_ZLIB=1 -fwasm-exceptions -s TOTAL_MEMORY=536870912 -s FS_DEBUG=1 --shell-file $(SHELL_FILE) -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE='["$$ERRNO_CODES"]' -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency"]' $(EXTRA_LD_FLAGS)
+LDFLAGS = -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -fwasm-exceptions -s TOTAL_MEMORY=536870912 --shell-file $(SHELL_FILE) -s EXPORTED_RUNTIME_METHODS='["addRunDependency", "removeRunDependency","ERRNO_CODES"]' $(EXTRA_LD_FLAGS)
 
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)
