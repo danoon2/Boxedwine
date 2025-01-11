@@ -527,10 +527,14 @@ BString BoxedContainer::getWindowsVersion() {
     }
     for (auto& winVer : BoxedwineData::getWinVersions()) {
         if ((int)winVer.dwPlatformId != platform) continue;
-        if ((int)winVer.dwMajorVersion != major) continue;
+        if (winVer.szCurrentVersion && ver != winVer.szCurrentVersion) continue;
+        if (!winVer.szCurrentVersion && (int)winVer.dwMajorVersion != major) continue;
         if (type.length() && type != winVer.szProductType) continue;
         best = winVer.szDescription;
-        if (((int)winVer.dwMinorVersion == minor) && ((int)winVer.dwBuildNumber == build)) {
+        if (build && (int)winVer.dwBuildNumber == build) {
+            return B(winVer.szDescription);
+        }
+        if (platform == VER_PLATFORM_WIN32_WINDOWS && ((int)winVer.dwMinorVersion == minor)) {
             return B(winVer.szDescription);
         }
     }
@@ -552,8 +556,8 @@ void BoxedContainer::setWindowsVersion(const BoxedWinVersion& version) {
 
         systemReg.writeKey(szKeyNT, "CurrentVersion", ver.c_str());
         systemReg.writeKey(szKeyNT, "CSDVersion", version.szCSDVersion);
-        systemReg.writeKey(szKeyNT, "CurrentMajorVersionNumber", BString::valueOf(version.dwMajorVersion).c_str());
-        systemReg.writeKey(szKeyNT, "CurrentMinorVersionNumber", BString::valueOf(version.dwMinorVersion).c_str());
+        systemReg.writeKeyDword(szKeyNT, "CurrentMajorVersionNumber", version.dwMajorVersion);
+        systemReg.writeKeyDword(szKeyNT, "CurrentMinorVersionNumber", version.dwMinorVersion);
         systemReg.writeKey(szKeyNT, "CurrentBuild", build.c_str());
         systemReg.writeKey(szKeyNT, "CurrentBuildNumber", build.c_str());
         systemReg.writeKey(szKeyNT, "ProductName", product.c_str());
