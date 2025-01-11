@@ -910,6 +910,16 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 		DisplayDataPtr grabbedDisplay = getDisplayDataById(grabbedDisplayId);
 
 		if (grabbed && grabbedDisplay) {
+			if (grabbedDisplay->getInput2Mask(root->id) & XI_RawMotionMask) {
+				S32 midX = root->width() / 2;
+				S32 midY = root->height() / 2;
+				x = x - midX;
+				y = y - midY;
+				KNativeSystem::getCurrentInput()->setMousePos(midX, midY);
+				// :TODO: I'm not really sure how realitive mouse is supposed to work, it was just trial and error with vkQuake
+				//grabbed->input2MotionNotify(grabbedDisplay, x, y);
+				//return;
+			}
 			if (!(grabbedMask & PointerMotionMask)) {
 				return;
 			}
@@ -948,8 +958,12 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 			if (!(grabbedMask & mask)) {
 				return;
 			}
-			if (grabbedConfinedId) {
-				int ii = 0;
+			if (grabbedDisplay->getInput2Mask(root->id) & XI_RawMotionMask) {
+				S32 midX = root->width() / 2;
+				S32 midY = root->height() / 2;
+				x = x - midX;
+				y = y - midY;
+				KNativeSystem::getCurrentInput()->setMousePos(midX, midY);
 			}
 			grabbed->buttonNotify(grabbedDisplay, button, x, y, pressed);
 			return;
