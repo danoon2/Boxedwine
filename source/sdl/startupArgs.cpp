@@ -247,6 +247,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->disableHideCursor) {
         args.push_back(B("-disableHideCursor"));
     }
+    if (this->forceRelativeMouse) {
+        args.push_back(B("-forceRelativeMouse"));
+    }
     return args;
 }
 
@@ -259,6 +262,7 @@ bool StartUpArgs::apply() {
     }
 #endif
     KSystem::disableHideCursor = this->disableHideCursor;
+    KSystem::forceRelativeMouse = this->forceRelativeMouse;
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     if (KSystem::pollRate < 0) {
@@ -769,6 +773,8 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         } else if (!strcmp(argv[i], "-disableHideCursor")) {
             this->disableHideCursor = true;
+        } else if (!strcmp(argv[i], "-forceRelativeMouse")) {
+            this->forceRelativeMouse = true;
         } else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;
             dxvk = argv[i + 1];

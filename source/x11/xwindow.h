@@ -172,7 +172,7 @@ public:
 	void keyNotify(const DisplayDataPtr& data, U32 key, S32 x, S32 y, bool pressed);
 	void crossingNotify(const DisplayDataPtr& data, bool in, S32 x, S32 y, S32 mode, S32 detail);
 	
-	void input2MotionNotify(const DisplayDataPtr& data, S32 x, S32 y);
+	void input2Notify(const DisplayDataPtr& data, S32 x, S32 y, U32 type);
 
 	XWindowPtr getParent() {return parent;}
 	bool mapped() {return this->isMapped;}

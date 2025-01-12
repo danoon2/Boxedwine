@@ -336,6 +336,11 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         this->currentAppChanged = true;
         };
 
+    appForceRelativeMouseControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_FORCE_RELATIVE_MOUSE_LABEL, Msg::CONTAINER_VIEW_FORCE_RELATIVE_MOUSE_HELP, false);
+    appForceRelativeMouseControl->onChange = [this]() {
+        this->currentAppChanged = true;
+        };
+
     appPollRateControl = appSection->addTextInputRow(Msg::CONTAINER_VIEW_POLL_RATE_LABEL, Msg::CONTAINER_VIEW_POLL_RATE_HELP);
     appPollRateControl->onChange = [this]() {
         this->currentApp->pollRate = atoi(appPollRateControl->getText().c_str());
@@ -573,6 +578,7 @@ bool ContainersView::saveChanges() {
             this->currentApp->ddrawOverride = this->appDdrawOverrideControl->isChecked();
             this->currentApp->enableDXVK = this->appEnableDXVKControl->isChecked();
             this->currentApp->disableHideCursor = this->appDisableHideCursorControl->isChecked();
+            this->currentApp->forceRelativeMouse = this->appForceRelativeMouseControl->isChecked();
             this->currentApp->autoRefresh = appDirectDrawAutoRefreshControl->isChecked();
 #ifdef BOXEDWINE_MULTI_THREADED
             this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
@@ -624,6 +630,7 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appDdrawOverrideControl->setCheck(app->ddrawOverride);
     appEnableDXVKControl->setCheck(app->enableDXVK);
     appDisableHideCursorControl->setCheck(app->disableHideCursor);
+    appForceRelativeMouseControl->setCheck(app->forceRelativeMouse);
     appPollRateControl->setText(BString::valueOf(app->pollRate));
     appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));
     appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);

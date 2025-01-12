@@ -64,6 +64,10 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             if (app) {
                 app->disableHideCursor = true;
             }
+        } else if (option == "ForceRelativeMouse") {
+            if (app) {
+                app->forceRelativeMouse = true;
+            }
         } else if (option.startsWith("glext=")) {
             if (app) {
                 app->glExt = option.substr(6);

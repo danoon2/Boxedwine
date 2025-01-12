@@ -68,6 +68,7 @@ private:
     bool ddrawOverride = false;
     bool enableDXVK = false;
     bool disableHideCursor = false;
+    bool forceRelativeMouse = false;
     bool autoRefresh = false;
     BString glExt;
     int scale = 0;

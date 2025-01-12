@@ -147,7 +147,7 @@ void KNativeInputSDL::setMousePos(int x, int y) {
 #endif
 
     if (XServer::getServer(true) && XServer::getServer()->fakeFullScreenWnd) {
-        XServer::getServer()->fakeFullScreenWnd->windowToScreen(x, y);
+        XServer::getServer()->fakeFullScreenWnd->screenToWindow(x, y);
     }
     x = xToScreen(x);
     y = yToScreen(y);

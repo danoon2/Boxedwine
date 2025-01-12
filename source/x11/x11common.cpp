@@ -2725,7 +2725,7 @@ static void x11_XIQueryDevice(CPU* cpu) {
     // wine will interpret min/max=0 to have a scale of 1
     XIValuatorClassInfo::write(memory, classAddress, XIValuatorClass, XI_DEVICE_ID, 0, 0, 0, 0, 0, 300, XIModeRelative);
     XIValuatorClassInfo::write(memory, classAddress2, XIValuatorClass, XI_DEVICE_ID, 1, 0, 0, 0, 0, 300, XIModeRelative);
-    XIDeviceInfo::write(memory, deviceAddress, XI_DEVICE_ID, nameAddress, XIMasterPointer, 0, True, 2, listAddress);
+    XIDeviceInfo::write(memory, deviceAddress, XI_DEVICE_ID, nameAddress, XISlavePointer, 1, True, 2, listAddress);
     memory->writed(listAddress, classAddress);
     memory->writed(listAddress + 4, classAddress2);
     EAX = deviceAddress;
@@ -2789,10 +2789,12 @@ void x11_GetEventData(CPU* cpu) {
     if (type == GenericEvent && evtype == XI_RawMotion && extension == server->getExtensionInput2()) {
         // seems a bit bad to assume this, but wine passes in the entire event, so we will just assume our data is there in the padding
         U32 rawAddress = cookieAddress + 32;
+        U32 mask = X11_READD(XGenericEventCookie, cookieAddress, cookie);
         S32 x = X11_READD(XIRawEvent, rawAddress, valuators.maskAddress);
         S32 y = X11_READD(XIRawEvent, rawAddress, valuators.valuesAddress);
         X11_WRITED(XGenericEventCookie, cookieAddress, data, rawAddress);
-        X11_WRITED(XIRawEvent, rawAddress, valuators.maskAddress, rawAddress + 24);
+        X11_WRITED(XIRawEvent, rawAddress, valuators.maskAddress, rawAddress + 60);
+        memory->writed(rawAddress + 60, mask);
 
         U32 values = thread->process->alloc(thread, 16); // 16 = 2x doubles
         double dx = x;
@@ -2820,6 +2822,7 @@ void x11_FreeEventData(CPU* cpu) {
         U32 rawAddress = cookieAddress + 32;
         U32 values = X11_READD(XIRawEvent, rawAddress, valuators.valuesAddress);
         thread->process->free(values);
+        // mask address is at the end of values, so it was free'd above
     }
 }
 

@@ -900,28 +900,29 @@ int XServer::unmapWindow(const DisplayDataPtr& data, const XWindowPtr& window) {
 	return result;
 }
 
-void XServer::mouseMove(S32 x, S32 y, bool relative) {
-	if (fakeFullScreenWnd) {
-		fakeFullScreenWnd->windowToScreen(x, y);
-	}
+void XServer::mouseMove(S32 x, S32 y, bool relative) {	
 	if (isGrabbed) {
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(grabbedMutex);
 		XWindowPtr grabbed = getWindow(grabbedId);
 		DisplayDataPtr grabbedDisplay = getDisplayDataById(grabbedDisplayId);
 
 		if (grabbed && grabbedDisplay) {
-			if (grabbedDisplay->getInput2Mask(root->id) & XI_RawMotionMask) {
-				S32 midX = root->width() / 2;
-				S32 midY = root->height() / 2;
+			if ((grabbedDisplay->getInput2Mask(root->id) & XI_RawMotionMask) && KSystem::forceRelativeMouse) {
+				KNativeInputPtr input = KNativeSystem::getCurrentInput();
+				S32 midX = input->screenWidth() / 2;
+				S32 midY = input->screenHeight() / 2;
 				x = x - midX;
 				y = y - midY;
-				KNativeSystem::getCurrentInput()->setMousePos(midX, midY);
+				KNativeSystem::warpMouse(midX, midY);
 				// :TODO: I'm not really sure how realitive mouse is supposed to work, it was just trial and error with vkQuake
-				//grabbed->input2MotionNotify(grabbedDisplay, x, y);
-				//return;
+				grabbed->input2Notify(grabbedDisplay, x, y, XI_RawMotion);
+				return;
 			}
 			if (!(grabbedMask & PointerMotionMask)) {
 				return;
+			}
+			if (fakeFullScreenWnd) {
+				fakeFullScreenWnd->windowToScreen(x, y);
 			}
 			grabbed->motionNotify(grabbedDisplay, x, y);
 			return;
@@ -932,6 +933,9 @@ void XServer::mouseMove(S32 x, S32 y, bool relative) {
 	if (root) { // might not be set at the very start
 		XWindowPtr wnd = root->getWindowFromPoint(x, y);
 		if (wnd) {
+			if (fakeFullScreenWnd) {
+				fakeFullScreenWnd->windowToScreen(x, y);
+			}
 			if (wnd != pointerWindow) {
 				pointerMoved(pointerWindow, wnd, x, y, NotifyNormal);
 				pointerWindow = wnd;
@@ -958,12 +962,13 @@ void XServer::mouseButton(U32 button, S32 x, S32 y, bool pressed) {
 			if (!(grabbedMask & mask)) {
 				return;
 			}
-			if (grabbedDisplay->getInput2Mask(root->id) & XI_RawMotionMask) {
-				S32 midX = root->width() / 2;
-				S32 midY = root->height() / 2;
-				x = x - midX;
-				y = y - midY;
-				KNativeSystem::getCurrentInput()->setMousePos(midX, midY);
+			if ((grabbedDisplay->getInput2Mask(root->id) & XI_RawMotionMask) && KSystem::forceRelativeMouse) {
+				KNativeInputPtr input = KNativeSystem::getCurrentInput();
+				S32 midX = input->screenWidth() / 2;
+				S32 midY = input->screenHeight() / 2;
+				x = 0;
+				y = 0;
+				KNativeSystem::warpMouse(midX, midY);
 			}
 			grabbed->buttonNotify(grabbedDisplay, button, x, y, pressed);
 			return;

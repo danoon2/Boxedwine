@@ -320,6 +320,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "Keep Cursor Visible:";
     case Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_HELP:
         return "This will prevent the app/game from hiding the cursor.";
+    case Msg::CONTAINER_VIEW_FORCE_RELATIVE_MOUSE_LABEL:
+        return "Force Relative Mouse:";
+    case Msg::CONTAINER_VIEW_FORCE_RELATIVE_MOUSE_HELP:
+        return "If the mouse is behaving badly, for example, small mouse movements result in wild results, then this might help";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL:
         return "Direct Draw Auto Refresh:";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP:

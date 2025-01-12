@@ -108,6 +108,7 @@ public:
     static bool ttyPrepend;
     static BString exePath;
     static bool disableHideCursor;
+    static bool forceRelativeMouse;
 
     static void init();
 	static void destroy();

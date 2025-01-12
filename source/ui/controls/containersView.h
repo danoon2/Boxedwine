@@ -59,6 +59,7 @@ private:
     std::shared_ptr<LayoutCheckboxControl> appDdrawOverrideControl;
     std::shared_ptr<LayoutCheckboxControl> appEnableDXVKControl;
     std::shared_ptr<LayoutCheckboxControl> appDisableHideCursorControl;
+    std::shared_ptr<LayoutCheckboxControl> appForceRelativeMouseControl;
     std::shared_ptr<LayoutTextInputControl> appPollRateControl;
     std::shared_ptr<LayoutTextInputControl> appSkipFramesControl;
 #ifdef BOXEDWINE_MULTI_THREADED

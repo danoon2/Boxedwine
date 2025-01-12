@@ -27,6 +27,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -dpiAware: will prevent Windows from scaling the screen if you are using display scaling.
 
+-forceRelativeMouse : will force mouse capture and relative mouse input.  This is useful if the mouse doesn't work right in some games.
+
 -fullscreen : if no resolution is passed in via the resolution command line argument then the resolution will be the same as the monitor
 
 -fullscreenAspect : same as -fullscreen, but will show in letterbox format in order to maintain the aspect ratio

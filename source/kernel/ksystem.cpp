@@ -66,6 +66,7 @@ BString KSystem::exePath;
 std::shared_ptr<FsNode> KSystem::procNode;
 U32 KSystem::wineMajorVersion;
 bool KSystem::disableHideCursor = false;
+bool KSystem::forceRelativeMouse = false;
 
 BOXEDWINE_CONDITION KSystem::processesCond(std::make_shared<BoxedWineCondition>(B("KSystem::processesCond")));
 
