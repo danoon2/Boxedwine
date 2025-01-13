@@ -274,7 +274,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -338,13 +338,12 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <ExceptionHandling>Sync</ExceptionHandling>
       <BasicRuntimeChecks>Default</BasicRuntimeChecks>
-      <BufferSecurityCheck>false</BufferSecurityCheck>
       <PrecompiledHeaderFile>boxedwine.h</PrecompiledHeaderFile>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <UndefinePreprocessorDefinitions>BOXEDWINE_64BIT_MMU</UndefinePreprocessorDefinitions>
@@ -707,10 +706,12 @@
     <ClInclude Include="..\..\..\..\include\ktimer.h" />
     <ClInclude Include="..\..\..\..\include\ktimercallback.h" />
     <ClInclude Include="..\..\..\..\include\kunixsocket.h" />
+    <ClInclude Include="..\..\..\..\include\kvulkan.h" />
     <ClInclude Include="..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\include\meminfo.h" />
     <ClInclude Include="..\..\..\..\include\mixer.h" />
+    <ClInclude Include="..\..\..\..\include\page.h" />
     <ClInclude Include="..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\include\platformOpenGL.h" />
     <ClInclude Include="..\..\..\..\include\player.h" />
@@ -743,6 +744,7 @@
     <ClInclude Include="..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativescreenSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativeinputSDL.h" />
+    <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.h" />
@@ -922,6 +924,7 @@
     <ClInclude Include="..\..\..\..\source\util\vectorutils.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vkdef.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vkfuncs.h" />
+    <ClInclude Include="..\..\..\..\source\vulkan\vk_format_utils.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host.h" />
     <ClInclude Include="..\..\..\..\source\vulkan\vk_host_marshal.h" />
     <ClInclude Include="..\..\..\..\source\x11\displaydata.h" />
@@ -1105,6 +1108,7 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\platform\sdl\kdspaudio.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativeaudio.cpp" />
+    <ClCompile Include="..\..\..\..\platform\sdl\kvulkanSDL.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativethread.cpp" />
     <ClCompile Include="..\..\..\..\platform\sdl\knativeinputSDL.cpp" />

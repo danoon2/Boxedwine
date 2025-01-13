@@ -1101,11 +1101,7 @@ XWindowPtr XWindow::getWindowFromPoint(S32 screenX, S32 screenY) {
 	return shared_from_this();
 }
 
-void XWindow::input2MotionNotify(const DisplayDataPtr& data, S32 x, S32 y) {
-	S32 window_x = x;
-	S32 window_y = y;
-	screenToWindow(window_x, window_y);
-
+void XWindow::input2Notify(const DisplayDataPtr& data, S32 dx, S32 dy, U32 type) {
 	XEvent event = {};
 	event.type = GenericEvent;
 	event.xcookie.serial = data->getNextEventSerial();
@@ -1127,10 +1123,11 @@ void XWindow::input2MotionNotify(const DisplayDataPtr& data, S32 x, S32 y) {
 	raw.serial = event.xcookie.serial;
 	raw.time = XServer::getServer()->getEventTime();
 	raw.valuators.mask_len = 1;
-	raw.valuators.maskAddress = x;
-	raw.valuators.valuesAddress = y;
+	raw.valuators.maskAddress = dx;
+	raw.valuators.valuesAddress = dy;
 	event.xcookie.cookie = 0x3; // mask
 
+	// event.xcookie.data will be set to raw in x11_GetEventData
 	raw.serialize((U32*)&(event.pad[8])); // XGenericEventCookie is 8 U32's long
 
 	data->putEvent(event);
@@ -1164,7 +1161,7 @@ bool XWindow::mouseMoveScreenCoords(S32 x, S32 y) {
 	bool found = false;
 
 	XServer::getServer()->iterateInput2Mask(id, XI_RawMotionMask, [&found, this, x, y](const DisplayDataPtr& data) {
-		input2MotionNotify(data, x, y);
+		input2Notify(data, x, y, XI_RawMotionMask);
 		found = true;
 		});
 

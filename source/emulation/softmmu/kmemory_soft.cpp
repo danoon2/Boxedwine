@@ -691,16 +691,48 @@ U8* KMemory::lockReadOnlyMemory(U32 address, U32 len) {
 
     // if we cross a page boundry then we will need to make a copy
     if (len <= K_PAGE_SIZE - offset) {
-        return page->getReadPtr(this, address, true);
+        return page->getReadPtr(this, address, true) + (address & K_PAGE_MASK);
     }
-    std::shared_ptr<U8[]> p = std::make_shared<U8[]>(len);
-    memcpy(p.get(), address, len);
-    lockedMemory.set(p.get(), p);    
-    return p.get();
+    std::shared_ptr<LockedMemory> p = std::make_shared<LockedMemory>();
+    p->p = new U8[len];
+    p->len = len;
+    p->address = address;
+    p->readOnly = true;
+    memcpy(p->p, address, len);
+    lockedMemory.set(p->p, p);    
+    return p->p;
 }
 
 void KMemory::unlockMemory(U8 * lockedPointer) {
-    lockedMemory.remove(lockedPointer);
+    std::shared_ptr<LockedMemory> p = lockedMemory.get(lockedPointer);
+    if (p) {
+        if (!p->readOnly) {
+            memcpy(p->address, p->p, p->len);
+        }
+        lockedMemory.remove(lockedPointer);
+    }
+}
+
+U8* KMemory::lockReadWriteMemory(U32 address, U32 len) {
+    U32 pageIndex = address >> K_PAGE_SHIFT;
+    Page* page = data->getPage(pageIndex);
+    U32 offset = address & K_PAGE_MASK;
+
+    // if we cross a page boundry then we will need to make a copy
+    if (len <= K_PAGE_SIZE - offset) {
+        U8* result = page->getWritePtr(this, address, true) + (address & K_PAGE_MASK);
+        if (result) {
+            return result;
+        }
+    }
+    std::shared_ptr<LockedMemory> p = std::make_shared<LockedMemory>();
+    p->p = new U8[len];
+    p->len = len;
+    p->address = address;
+    p->readOnly = false;
+    memcpy(p->p, address, len);
+    lockedMemory.set(p->p, p);
+    return p->p;
 }
 
 void KMemory::unmapNativeMemory(U32 address, U32 size) {
@@ -714,7 +746,7 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount+2, &result, false, true, PAGE_MAPPED)) {
         return 0;
     }
-    result++;
+    result++; // guard page
     for (U32 i = 0; i < pageCount; i++) {
         data->flags[result + i] = PAGE_MAPPED | PAGE_READ | PAGE_WRITE;
         getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i));

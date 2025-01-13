@@ -2,6 +2,7 @@
 #include "knativesystem.h"
 #include <SDL.h>
 #include "knativescreenSDL.h"
+#include "kvulkanSDL.h"
 #include "../../source/x11/x11.h"
 #include "../../source/util/threadutils.h"
 
@@ -24,6 +25,7 @@ int main(int argc, char** argv) {
 
 static KNativeScreenSDLPtr screen;
 static KOpenGLPtr opengl;
+static KVulkanPtr vulkan;
 
 bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
     U32 flags = SDL_INIT_EVENTS;
@@ -91,6 +93,15 @@ KOpenGLPtr KNativeSystem::getOpenGL() {
         klog("Failed to load OpenGL, will probably crash");
     }
     return opengl;
+}
+
+KVulkanPtr KNativeSystem::getVulkan() {
+    if (!vulkan) {
+#ifdef BOXEDWINE_VULKAN
+        vulkan = KVulkanSDL::create(screen);
+#endif
+    }
+    return vulkan;
 }
 
 void KNativeSystem::changeScreenSize(U32 cx, U32 cy) {

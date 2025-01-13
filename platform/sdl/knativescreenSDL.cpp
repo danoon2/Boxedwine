@@ -311,6 +311,10 @@ void KNativeScreenSDL::clearTextureCache(U32 id) {
     wndCache.clear();
 }
 
+bool KNativeScreenSDL::canBltToScreen() {
+    return additionalSDLWindowFlags == 0;
+}
+
 void KNativeScreenSDL::warpMouse(int x, int y) {
     DISPATCH_MAIN_THREAD_BLOCK_THIS_BEGIN
         if (window) {
@@ -663,9 +667,11 @@ void KNativeScreenSDL::destroyMainWindow() {
 
     if (renderer) {
         SDL_DestroyRenderer(renderer);
+        renderer = nullptr;
     }
     if (window) {
         SDL_DestroyWindow(window);
+        window = nullptr;
     }
 }
 
@@ -676,8 +682,10 @@ void KNativeScreenSDL::recreateMainWindow() {
 
         int cx = input->width * input->scaleX / 100;
         int cy = input->height * input->scaleY / 100;
-        int flags = SDL_WINDOW_HIDDEN;
+        int flags = SDL_WINDOW_HIDDEN | additionalSDLWindowFlags;
         
+        visible = false;
+
         SDL_DisplayMode dm;
 
         if (SDL_GetDesktopDisplayMode(0, &dm) != 0) {
@@ -721,21 +729,23 @@ void KNativeScreenSDL::recreateMainWindow() {
         if (!window) {
             klog("SDL_CreateWindow failed: %s", SDL_GetError());
         }
+        if (!(flags & SDL_WINDOW_VULKAN)) {
 #ifdef BOXEDWINE_LINUX
-        // NVidia drivers need this
-        flags = SDL_RENDERER_SOFTWARE;
+            // NVidia drivers need this
+            flags = SDL_RENDERER_SOFTWARE;
 #else
-        flags = SDL_RENDERER_ACCELERATED;
+            flags = SDL_RENDERER_ACCELERATED;
 #endif
-        if (this->vsync != VSYNC_DISABLED) {
-            flags |= SDL_RENDERER_PRESENTVSYNC;
-        }
-        renderer = SDL_CreateRenderer(window, -1, flags);
-        if (!renderer) {
-            klog("Failed to create SDL accelerated renderer, will try software");
-            flags &= ~SDL_RENDERER_ACCELERATED;
-            flags |= SDL_RENDERER_SOFTWARE;
+            if (this->vsync != VSYNC_DISABLED) {
+                flags |= SDL_RENDERER_PRESENTVSYNC;
+            }
             renderer = SDL_CreateRenderer(window, -1, flags);
+            if (!renderer) {
+                klog("Failed to create SDL accelerated renderer, will try software");
+                flags &= ~SDL_RENDERER_ACCELERATED;
+                flags |= SDL_RENDERER_SOFTWARE;
+                renderer = SDL_CreateRenderer(window, -1, flags);
+            }
         }
     }
 }

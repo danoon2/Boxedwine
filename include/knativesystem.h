@@ -6,6 +6,7 @@
 #include "knativeinput.h"
 #include "knativescreen.h"
 #include "kopengl.h"
+#include "kvulkan.h"
 
 class XWindow;
 
@@ -31,6 +32,7 @@ public:
 	static KNativeInputPtr getCurrentInput();
 	static KNativeScreenPtr getScreen();
 	static KOpenGLPtr getOpenGL();
+	static KVulkanPtr getVulkan();
 	static void showScreen(bool show);
 	static void tick();
 	static void warpMouse(S32 x, S32 y);

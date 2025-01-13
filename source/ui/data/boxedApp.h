@@ -66,7 +66,9 @@ private:
     U32 vsync = VSYNC_NOT_SET;
     bool dpiAware = false;
     bool ddrawOverride = false;
+    bool enableDXVK = false;
     bool disableHideCursor = false;
+    bool forceRelativeMouse = false;
     bool autoRefresh = false;
     BString glExt;
     int scale = 0;

@@ -218,6 +218,8 @@ void InstallView::setWindowsVersionDefault() {
             BString minor = parts[1];
             if (major < "2" || (major == "2" && minor < "2")) {
                 windowsVersionControl->setSelectionStringValue(B("Windows XP"));
+            } else if (major > "8" || (major == "8" && minor > "0")) {
+                windowsVersionControl->setSelectionStringValue(B("Windows 10"));
             } else {
                 windowsVersionControl->setSelectionStringValue(B("Windows 7"));
             }

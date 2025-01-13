@@ -661,6 +661,12 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\platform\sdl\kvulkanSDL.cpp">
+      <Filter>platform\sdl</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp">
+      <Filter>source\emulation\cpu\armv8</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
@@ -702,9 +708,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp">
-      <Filter>source\emulation\cpu\armv8</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1506,6 +1509,21 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops_fpu.h">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\include\kvulkan.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h">
+      <Filter>platform\sdl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\page.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\vulkan\vk_format_utils.h">
+      <Filter>vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h">
+      <Filter>source\emulation\cpu\armv8</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
@@ -1547,9 +1565,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h">
-      <Filter>source\emulation\cpu\armv8</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -1676,11 +1691,11 @@
     <Filter Include="source\x11">
       <UniqueIdentifier>{69091852-62d4-4cf9-ac9e-8e2cf901e390}</UniqueIdentifier>
     </Filter>
-    <Filter Include="source\emulation\cpu\armv8bt">
-      <UniqueIdentifier>{796d6a8e-0647-4b80-b932-7d24e231d84f}</UniqueIdentifier>
-    </Filter>
     <Filter Include="source\emulation\cpu\armv8">
-      <UniqueIdentifier>{edccafe3-4c5c-4ae0-a303-291d7423536e}</UniqueIdentifier>
+      <UniqueIdentifier>{6c8a2b3b-784e-4a4b-8977-c5adce9d43e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="source\emulation\cpu\armv8bt">
+      <UniqueIdentifier>{342d7025-9a61-4029-bf27-04ee5aced917}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

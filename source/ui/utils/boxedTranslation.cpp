@@ -312,10 +312,18 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "CNC DDraw:";
     case Msg::CONTAINER_VIEW_DDRAW_OVERRIDE_HELP:
         return "This uses cnc-ddraw (https://github.com/FunkyFr3sh/cnc-ddraw) which can help some direct draw games.";
+    case Msg::CONTAINER_VIEW_DXVK_LABEL:
+        return "Emulate D3D (DXVK):";
+    case Msg::CONTAINER_VIEW_DXVK_HELP:
+        return "This uses Dxvk (https://github.com/doitsujin/dxvk) to emulate Direct 3D 8/9/10/11 using Vulkan.";
     case Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_LABEL:
         return "Keep Cursor Visible:";
     case Msg::CONTAINER_VIEW_DISABLE_HIDE_CURSOR_HELP:
         return "This will prevent the app/game from hiding the cursor.";
+    case Msg::CONTAINER_VIEW_FORCE_RELATIVE_MOUSE_LABEL:
+        return "Force Relative Mouse:";
+    case Msg::CONTAINER_VIEW_FORCE_RELATIVE_MOUSE_HELP:
+        return "If the mouse is behaving badly, for example, small mouse movements result in wild results, then this might help";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL:
         return "Direct Draw Auto Refresh:";
     case Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP:
@@ -363,7 +371,7 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
     case Msg::CONTAINER_VIEW_RENDERER_LABEL:
         return "Renderer:";
     case Msg::CONTAINER_VIEW_RENDERER_HELP:
-        return "This requires Wine 6.0 or higher.  DirectDraw will use OpenGL by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.  Vulkan is considered experimental.";
+        return "DirectDraw will be converted to Direct3D by default.  But a few games, like Diable and Startcraft, may have graphical issues.  Sometimes changing the renderer to GDI can help.  Vulkan is considered experimental.  You might also have better luck using DXVK, A Vulkan-based translation layer for Direct3D 8/9/10/11 which allows running 3D applications on Linux using Wine.  To use DXVK just select the checkbox on this screen below.";
     case Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_LABEL:
         return "Video Memory Size (MB):";
     case Msg::CONTAINER_VIEW_VIDEO_MEMORY_SIZE_HELP:

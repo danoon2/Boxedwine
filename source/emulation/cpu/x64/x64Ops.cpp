@@ -2286,6 +2286,12 @@ static U32 sseDsEdiMmxOrSSE(X64Asm* data) {
     return 0;
 }
 
+static U32 nopRm(X64Asm* data) {
+    U8 rm = data->fetch8();
+    data->translateRM(rm, false, true, false, false, 0);
+    return 0;
+}
+
 static U32 sseOp318(X64Asm* data) {
     U8 rm = data->fetch8();
     switch (G(rm)) {
@@ -2533,7 +2539,7 @@ X64Decoder x64Decoder[1024] = {
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     // 310
     sseXmmEx, sseExXmm, sseXmmEx, sseExXmm, sseXmmEx, sseXmmEx, sseXmmEx, sseExXmm,
-    sseOp318, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, &op1f,
+    sseOp318, &nopRm, &nopRm, &nopRm, &nopRm, &nopRm, &nopRm, &op1f,
     // 320
     movRdCrx, invalidOp, movCrxRd, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp,
     sseXmmEx, sseExXmm, sseOp32a, sseExXmm, sseOp32c, sseOp32d, sseXmmEx, sseXmmEx,

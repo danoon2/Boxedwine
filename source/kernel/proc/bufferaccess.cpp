@@ -87,7 +87,7 @@ bool BufferAccess::isAsync() {
 }
 
 void BufferAccess::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
-    kpanic("BufferAccess::waitForEvents not implemented");
+    //kpanic("BufferAccess::waitForEvents not implemented");
 }
 
 U32 BufferAccess::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {

@@ -29,6 +29,7 @@ public:
 	virtual void present() = 0;
 	virtual bool presentedSinceLastCheck() = 0;
 	virtual void clearTextureCache(U32 id) = 0;	
+	virtual bool canBltToScreen() = 0;
 
 #ifdef BOXEDWINE_RECORDER
 	virtual void startRecorderScreenShot() = 0;

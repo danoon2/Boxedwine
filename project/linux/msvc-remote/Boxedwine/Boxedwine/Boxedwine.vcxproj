@@ -171,6 +171,7 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativescreenSDL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativesystem.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\knativethread.cpp" />
+    <ClCompile Include="..\..\..\..\..\platform\sdl\kvulkanSDL.cpp" />
     <ClCompile Include="..\..\..\..\..\platform\sdl\sdlcallback.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
@@ -516,6 +517,7 @@
     <ClCompile Include="..\..\..\..\..\source\util\synchronization.cpp" />
     <ClCompile Include="..\..\..\..\..\source\util\threadutils.cpp" />
     <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\vulkan\vk_host_marshal.cpp" />
     <ClCompile Include="..\..\..\..\..\source\vulkan\vulkancommon.cpp" />
     <ClCompile Include="..\..\..\..\..\source\x11\displaydata.cpp" />
     <ClCompile Include="..\..\..\..\..\source\x11\x11.cpp" />
@@ -588,6 +590,7 @@
     <ClInclude Include="..\..\..\..\..\include\ktimer.h" />
     <ClInclude Include="..\..\..\..\..\include\ktimercallback.h" />
     <ClInclude Include="..\..\..\..\..\include\kunixsocket.h" />
+    <ClInclude Include="..\..\..\..\..\include\kvulkan.h" />
     <ClInclude Include="..\..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\..\include\meminfo.h" />
@@ -735,6 +738,7 @@
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeaudiosdl.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeinputSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativescreenSDL.h" />
+    <ClInclude Include="..\..\..\..\..\platform\sdl\kvulkanSDL.h" />
     <ClInclude Include="..\..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv7\armv7CPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
@@ -1094,6 +1098,23 @@
     <ClInclude Include="..\..\..\..\..\source\util\synchronization.h" />
     <ClInclude Include="..\..\..\..\..\source\util\threadutils.h" />
     <ClInclude Include="..\..\..\..\..\source\util\vectorutils.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vkdef.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vkfuncs.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_platform.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codecs_common.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std_decode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_av1std_encode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std_decode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h264std_encode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std_decode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vk_video\vulkan_video_codec_h265std_encode.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vulkan.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk\vulkan_core.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host.h" />
+    <ClInclude Include="..\..\..\..\..\source\vulkan\vk_host_marshal.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\displaydata.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\x11.h" />
     <ClInclude Include="..\..\..\..\..\source\x11\xcolor.h" />
@@ -1241,7 +1262,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x86'">
     <ClCompile>
-      <PreprocessorDefinitions>BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_POSIX;SIMDE_SSE2_NO_NATIVE;BOXEDWINE_ZLIB;GLH=&lt;SDL_opengl.h&gt;;SDL2=1;BOXEDWINE_HAS_SETJMP;BOXEDWINE_OPENGL_SDL;BOXEDWINE_UI_LAUNCH_IN_PROCESS</PreprocessorDefinitions>
       <CppLanguageStandard>c++20</CppLanguageStandard>
       <CppAdditionalWarning>no-conversion;switch;no-deprecated-declarations;empty-body;return-type;parentheses;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CppAdditionalWarning)</CppAdditionalWarning>
       <CAdditionalWarning>switch;no-deprecated-declarations;empty-body;no-conversion;return-type;parentheses;no-pointer-sign;no-format;uninitialized;unreachable-code;unused-function;unused-value;unused-variable;%(CAdditionalWarning)</CAdditionalWarning>

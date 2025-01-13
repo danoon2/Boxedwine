@@ -42,6 +42,7 @@ public:
 };
 
 typedef std::shared_ptr<WndCache> WndCachePtr;
+class KVulkdanSDLImpl;
 
 class KNativeScreenSDL : public KNativeScreen {
 public:
@@ -68,6 +69,7 @@ public:
     void present() override;
     bool presentedSinceLastCheck() override;
     void clearTextureCache(U32 id) override;
+    bool canBltToScreen() override;
 
     void warpMouse(int x, int y) override;
     bool isVisible() override;
@@ -91,8 +93,10 @@ public:
     void buildCursor(KThread* thread, const std::shared_ptr<XCursor>& cursor, U32 pixelsAddress, U32 width, U32 height, S32 xHot, S32 yHot) override;
 
     KNativeInputSDLPtr input;
-
+    
 private:
+    friend class KVulkdanSDLImpl;
+
     bool visible = false;
     bool showOnDraw = true;
     bool presented = false;
@@ -106,6 +110,7 @@ private:
     U32 lastUpdateTime = 0;
     SDL_Window* window = nullptr;
     SDL_Renderer* renderer = nullptr;
+    U32 additionalSDLWindowFlags = 0;
 
     void recreateMainWindow();
     void destroyMainWindow();
