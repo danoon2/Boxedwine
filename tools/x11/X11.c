@@ -239,6 +239,10 @@ Status XSendEvent(Display* display, Window w, Bool propagate, long event_mask, X
 	CALL_5_R(X11_SEND_EVENT, display, w, propagate, event_mask, event_send);
 }
 
+int XPutBackEvent(Display* display, XEvent* event) {
+	CALL_2_R(X11_PUT_BACK_EVENT, display, event);
+}
+
 Bool XFilterEvent(XEvent* event, Window window) {
 	CALL_2_R(X11_FILTER_EVENT, event, window);
 }

@@ -34,7 +34,7 @@ public:
 	void close(KThread* thread);
 
 	bool findAndRemoveEvent(U32 window, U32 type, XEvent& event);
-	void putEvent(const XEvent& event);
+	void putEvent(const XEvent& event, bool inFront = false);
 	U32 lockEvents();
 	XEvent* getEvent(U32 index); // only call between lockEvents/unlockEvents
 	void removeEvent(U32 index); // only call between lockEvents/unlockEvents

@@ -143,6 +143,7 @@ void KNativeInputSDL::setMousePos(int x, int y) {
     if (Player::instance) {
         lastX = x;
         lastY = y;
+        return;
     }
 #endif
 

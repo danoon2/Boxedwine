@@ -654,6 +654,26 @@ static void x11_UnlockEvents(CPU* cpu) {
 #endif
 }
 
+// int XPutBackEvent(Display* display, XEvent* event)
+static void x11_PutBackEvent(CPU* cpu) {
+    KMemory* memory = cpu->memory;
+    XServer* server = XServer::getServer();
+    DisplayDataPtr display = server->getDisplayDataById(ARG1);
+    if (!display) {
+        EAX = BadValue;
+        return;
+    }
+    XEvent event = {};
+#ifdef UNALIGNED_MEMORY
+    // :TODO: properly marshal
+    oops
+#else
+    memory->memcpy(&event, ARG5, sizeof(XEvent));
+#endif
+    display->putEvent(event, true);
+    EAX = Success;
+}
+
 // Status XSendEvent(Display* display, Window w, Bool propagate, long event_mask, XEvent* event_send)
 static void x11_SendEvent(CPU* cpu) {
     KMemory* memory = cpu->memory;
@@ -3159,6 +3179,8 @@ void x11_init() {
     int9BCallback[X11_CURSOR_IMAGES_DESTROY] = x11_CursorImagesDestroy;
     int9BCallback[X11_CURSOR_IMAGES_LOAD_CURSOR] = x11_CursorImagesLoadCursor;
     int9BCallback[X11_CURSOR_LIBRARY_LOAD_CURSOR] = x11_CursorLibraryLoadCursor;
+
+    int9BCallback[X11_PUT_BACK_EVENT] = x11_PutBackEvent;
 }
 
 void callX11(CPU* cpu, U32 index) {

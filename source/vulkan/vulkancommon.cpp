@@ -440,7 +440,10 @@ static bool vulkanInitialized;
 
 void initVulkan() {
     if (!vulkanInitialized) {
-        vulkanInitialized = true;
+        BOXEDWINE_CRITICAL_SECTION;
+        if (vulkanInitialized) {
+            return;
+        }        
 
         if (SDL_Vulkan_LoadLibrary(NULL)) {
             kpanic("Failed to load vulkan: %s\n", SDL_GetError());
@@ -454,6 +457,7 @@ void initVulkan() {
 #define VKFUNC(f) pvk##f = (PFN_vk##f)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vk"#f); if (!pvk##f) {kwarn("Boxedwine: Failed to load vk"#f);}
 #include "../vulkan/vkfuncs.h"
 #undef LOAD_FUNCPTR
+        vulkanInitialized = true;
     }
 }
 

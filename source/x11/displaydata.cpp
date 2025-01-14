@@ -10,11 +10,14 @@ DisplayData::DisplayData()
 {
 }
 
-void DisplayData::putEvent(const XEvent& event) {
+void DisplayData::putEvent(const XEvent& event, bool inFront) {
 	{
 		BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMutex);
-		eventQueue.push_back(event);
-
+		if (inFront) {
+			eventQueue.push_front(event);
+		} else {
+			eventQueue.push_back(event);
+		}
 		KProcessPtr process = this->process.lock();
 		if (!process) {
 			return;
