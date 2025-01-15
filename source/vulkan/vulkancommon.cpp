@@ -26,12 +26,8 @@
 
 static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = nullptr;
 
-static U32 freePtrMaps;
 static U32 vulkanPtrCount;
 static U32 vulkanPtrHighMark;
-
-BOXEDWINE_MUTEX freeVulkanPtrMutex;
-BHashTable<void*, U32> vulkanPtrMap;
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -45,25 +41,26 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 }
 
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
+    KProcessPtr process = KThread::currentThread()->process;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->freeVulkanPtrMutex);
     U32 result = 0;
 
     if (value == nullptr) {
         return 0;
     }
-    if (vulkanPtrMap.get(value, result)) {
+    if (process->vulkanPtrMap.get(value, result)) {
         return result;
     }
-    if (!freePtrMaps) {
+    if (!process->vulkanFreePtrAddress) {
         KThread* thread = KThread::currentThread();
-        U32 address = thread->memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE, -1, 0);
+        U32 address = thread->memory->mmap(thread, 0, K_PAGE_SIZE, K_PROT_READ | K_PROT_WRITE, K_MAP_ANONYMOUS | K_MAP_PRIVATE | K_MAP_BOXEDWINE, -1, 0);
         for (U32 i = 0; i < K_PAGE_SIZE; i += 16) {
-            memory->writed(address + i, freePtrMaps);
-            freePtrMaps = address + i;
+            memory->writed(address + i, process->vulkanFreePtrAddress);
+            process->vulkanFreePtrAddress = address + i;
         }
     }
-    result = freePtrMaps;
-    freePtrMaps = memory->readd(freePtrMaps);
+    result = process->vulkanFreePtrAddress;
+    process->vulkanFreePtrAddress = memory->readd(process->vulkanFreePtrAddress);
     memory->writeq(result, (U64)value);
 
     if (!info) {
@@ -99,7 +96,7 @@ U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
     memory->writeq(result + 8, (U64)info);
     vulkanPtrCount++;
     vulkanPtrHighMark = std::max(vulkanPtrHighMark, vulkanPtrCount);
-    vulkanPtrMap.set(value, result);
+    process->vulkanPtrMap.set(value, result);
     return result;
 }
 
@@ -127,11 +124,12 @@ static void hasProcAddress(CPU* cpu) {
 }
 
 void freeVulkanPtr(KMemory* memory, U32 p) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeVulkanPtrMutex);
+    KProcessPtr process = KThread::currentThread()->process;
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(process->freeVulkanPtrMutex);
     void* address = getVulkanPtr(memory, p);
-    vulkanPtrMap.remove(address);
-    memory->writed(p, freePtrMaps);
-    freePtrMaps = p;
+    process->vulkanPtrMap.remove(address);
+    memory->writed(p, process->vulkanFreePtrAddress);
+    process->vulkanFreePtrAddress = p;
     vulkanPtrCount--;
 }
 

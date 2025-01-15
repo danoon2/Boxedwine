@@ -314,6 +314,12 @@ private:
 public:
     KThread* getThread() {return threads.begin()->value;}
     BOXEDWINE_CONDITION threadRemovedCondition; // will signal when a thread is removed
+
+#ifdef BOXEDWINE_VULKAN
+    U32 vulkanFreePtrAddress = 0;
+    BOXEDWINE_MUTEX freeVulkanPtrMutex;
+    BHashTable<void*, U32> vulkanPtrMap;
+#endif
 private:
 
     U32 usedTLS[TLS_ENTRIES] = { 0 };

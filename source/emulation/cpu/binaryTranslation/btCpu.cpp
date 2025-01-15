@@ -187,16 +187,21 @@ U64 BtCPU::handleAccessException(DecodedOp* op) {
         block->exceptionCount = 0;
     }
     Page* page = getMemData(memory)->getPage(address >> K_PAGE_SHIFT);
-    if (page->getType() == Page::Type::Native_Page || page->getType() == Page::Type::Code_Page) {
-        block->exceptionCount++;
-    }
-    if (block->exceptionCount > 1000) {
+    block->exceptionCount++;
+    if (block->exceptionCount > 1000 && !block->retranslatedForException) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(getMemData(memory)->executableMemoryMutex);
         if (!block->retranslatedForException) {
             use4kMemCheck = false;
             block->releaseAndRetranslate();
             block = getMemData(memory)->getCodeChunkContainingEip(address);
-            block->retranslatedForException = true;
+            if (!block) {
+                // the above block might have been retranslated into a smaller block that no longer contains address
+                this->translateEip(this->eip.u32);
+                block = getMemData(memory)->getCodeChunkContainingEip(address);
+            }
+            if (block) {
+                block->retranslatedForException = true;
+            }
             use4kMemCheck = true;
         }
     }

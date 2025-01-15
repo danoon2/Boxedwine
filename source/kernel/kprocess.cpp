@@ -164,6 +164,11 @@ void KProcess::onExec(KThread* thread) {
     runSignalAddress = nullptr;
 #endif
 #endif
+
+#ifdef BOXEDWINE_VULKAN
+    vulkanFreePtrAddress = 0;
+    vulkanPtrMap.clear();
+#endif
 }
 
 KProcess::~KProcess() {

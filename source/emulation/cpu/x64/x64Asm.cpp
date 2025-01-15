@@ -973,17 +973,6 @@ void X64Asm::getRamPage(U8 memReg, U8 pageReg, bool isWrite) {
 
 #ifdef BOXEDWINE_4K_PAGE_SIZE
 void X64Asm::checkMemory4k(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
-    bool needFlags = false;
-
-    if (!flagsWrittenToInstructionStoredFlags && !x64CPU::hasBMI2) {
-        needFlags = currentOp ? (DecodedOp::getNeededFlags(currentBlock, currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;        
-    }
-    if (needFlags) {
-        U8 flagsReg = getTmpReg();
-        pushFlagsToReg(flagsReg, true, true);
-        writeToMemFromReg(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
-        releaseTmpReg(flagsReg);
-    }
     // the exception handler will need this
     writeToMemFromValue(startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 
@@ -997,13 +986,6 @@ void X64Asm::checkMemory4k(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 
 
     getRamPage(memReg, pageReg, isWrite);
     releaseTmpReg(pageReg);
-
-    if (needFlags) {
-        U8 flagsReg = getTmpReg();
-        writeToRegFromMem(flagsReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_INSTRUCTION_FLAGS, 4, false);
-        popFlagsFromReg(flagsReg, true, true);
-        releaseTmpReg(flagsReg);
-    }
 }
 #endif
 void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
@@ -4986,12 +4968,6 @@ void X64Asm::fpu7(U8 rm) {
 void X64Asm::translateInstruction() {
     KMemoryData* mem = getMemData(cpu->memory);
     this->startOfOpIp = this->ip;
-    if (ip == 0x4049DF) {
-        int ii = 0;
-        if (!cpu->logFile.isOpen()) {
-           //cpu->logFile.createNew("2.txt");
-        }
-    }
 #ifdef _DEBUG
     if (cpu->thread->process->id == 0xa) {
         //this->logOp(this->ip);

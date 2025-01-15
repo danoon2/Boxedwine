@@ -1378,7 +1378,12 @@ static U32 movAxOw(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
+    if ((disp & 1) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 2);
+    }
     return 0;
 }
 
@@ -1390,7 +1395,12 @@ static U32 movEaxOd(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
+    if ((disp & 3) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToRegFromMemAddress(data->ds, 0, false, disp, 4);
+    }
     return 0;
 }
 
@@ -1414,7 +1424,12 @@ static U32 movOwAx(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
+    if ((disp & 1) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 2);
+    }
     return 0;
 }
 
@@ -1426,7 +1441,12 @@ static U32 movOdEax(X64Asm* data) {
     } else {
         disp = data->fetch32();
     }
-    data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
+    if ((disp & 3) != 0) {
+        data->emulateSingleOp(data->currentOp);
+        data->done = true;
+    } else {
+        data->writeToMemAddressFromReg(data->ds, 0, false, disp, 4);
+    }
     return 0;
 }
 

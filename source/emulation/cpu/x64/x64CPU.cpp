@@ -308,7 +308,11 @@ void common_runSingleOp(x64CPU* cpu) {
     bool deallocOp = false;
     bool dynamic = cpu->arg5 != 0;
     if (dynamic) {
-        op = NormalCPU::decodeSingleOp(cpu, address);
+        try {
+            op = NormalCPU::decodeSingleOp(cpu, address);
+        } catch (...) {
+            op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        }
         deallocOp = true;
     } else if (!op) {
         kpanic("common_runSingleOp oops");

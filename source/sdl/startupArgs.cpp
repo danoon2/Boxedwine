@@ -234,10 +234,7 @@ std::vector<BString> StartUpArgs::buildArgs() {
         }
         args.push_back(m.nativePath);
         args.push_back(m.localPath);
-    }
-    for (auto& a : this->args) {
-        args.push_back(a);
-    }
+    }    
     if (!this->ddrawOverridePath.isEmpty()) {
         args.push_back(B("-ddrawOverride"));
         args.push_back(this->ddrawOverridePath);
@@ -249,6 +246,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     }
     if (this->forceRelativeMouse) {
         args.push_back(B("-forceRelativeMouse"));
+    }
+    for (auto& a : this->args) {
+        args.push_back(a);
     }
     return args;
 }
@@ -786,6 +786,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             BString dxvk;
             dxvk = argv[i + 1];
             this->enableDXVK = dxvk.startsWith('t', true) || (dxvk == "1") || dxvk.startsWith('y', true);
+            i++;
         } else {
             break;
         }

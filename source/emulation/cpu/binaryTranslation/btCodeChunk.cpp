@@ -190,6 +190,9 @@ void BtCodeChunk::releaseAndRetranslate() {
             }
         }
     };
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    chunk->exceptionCount = this->exceptionCount;
+#endif
     chunk->makeLive();
 
     this->internalDealloc(); // don't call dealloc() because the new chunk occupies the memory cache and we don't want to mess with it
