@@ -281,7 +281,17 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
 #ifndef __TEST
         KMemoryData* mem = getMemData(memory);
         if (mem->isAddressDynamic(address, data->currentOp->len)) {
-            ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
+            if (data->startOfDataIp == data->startOfOpIp) {
+                data->mapAddress(address, data->bufferPos);
+
+                data->translateInstruction();
+                U32 savedIp = data->ip;
+                data->ip = data->startOfOpIp;
+                ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
+                data->ip = savedIp; // so that emulatedLen in chunk is correct
+            } else {
+                ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
+            }
             break;
         }
 #endif

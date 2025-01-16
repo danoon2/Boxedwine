@@ -1390,7 +1390,7 @@ void X64Asm::writeToMemAddressFromReg(U8 seg, U8 reg, bool isRegRex, U32 disp, U
     } else if (bytes == 2 && (disp & 1)) {
         skipAlignment = false;
     }
-    checkMemory(addressReg, true, false, bytes, memReg, skipAlignment);
+    checkMemory(addressReg, true, true, bytes, memReg, skipAlignment);
 
     writeToMemFromReg(reg, isRegRex, memReg, true, addressReg, true, 0, 0, bytes, false);
 
@@ -4298,23 +4298,12 @@ static void x64_jmpAndTranslateIfNecessary() {
         while (true) {
             U32 address = cpu->eip.u32 + cpu->seg[CS].address;
             DecodedOp* op = NormalCPU::decodeSingleOp(cpu, address);
-            bool wasDynamic = false;
-            if (mem->isAddressDynamic(cpu->eip.u32, op->len)) {
-                cpu->arg5 = 1; // signal to runSingleOp that it is dynamic
-                common_runSingleOp(cpu);
-                wasDynamic = true;
-            } else {
-                CodeBlock block = cpu->memory->findCodeBlockContaining(address, op->len);
-                if (block) {
-                    if (block->getEip() == address + 1 && op->lock != 0) {
-                        // the current block was created by skipping the lock, lets replace it
-                        cpu->memory->removeCodeBlock(block->getEip(), block->getEipLen());
-                    }
+            CodeBlock block = cpu->memory->findCodeBlockContaining(address, op->len);
+            if (block) {
+                if (block->getEip() == address + 1 && op->lock != 0) {
+                    // the current block was created by skipping the lock, lets replace it
+                    cpu->memory->removeCodeBlock(block->getEip(), block->getEipLen());
                 }
-            }
-            op->dealloc(true);
-            if (wasDynamic) {
-                continue;
             }
             break;
         }

@@ -99,6 +99,7 @@ private:
     void removeEntry(CodePageEntry* entry, U32 offset);
     CodePage::CodePageEntry* findEntry(U32 start, U32 stop);
     void addEntry(U32 start, U32 stop, CodePageEntry* entry);
+    void nolock_removeBlockAt(U32 address, U32 len);
 
     CodePageEntry* entries[CODE_ENTRIES];
     BOXEDWINE_MUTEX mutex;

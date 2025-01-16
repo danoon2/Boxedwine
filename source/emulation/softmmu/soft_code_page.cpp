@@ -175,6 +175,10 @@ void CodePage::addEntry(U32 start, U32 stop, CodePageEntry* entry) {
 
 void CodePage::removeBlockAt(U32 address, U32 len) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    nolock_removeBlockAt(address, len);
+}
+
+void CodePage::nolock_removeBlockAt(U32 address, U32 len) {    
     U32 offset = address & K_PAGE_MASK;
     CodePageEntry* entry = findEntry(offset, offset + len - 1);
 
@@ -291,21 +295,23 @@ void CodePage::copyOnWrite() {
     }
 }
 
-void CodePage::writeb(U32 address, U8 value) {    
+void CodePage::writeb(U32 address, U8 value) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (value!=this->readb(address)) {
-        removeBlockAt(address, 1);
+        nolock_removeBlockAt(address, 1);
         copyOnWrite();
         RWPage::writeb(address, value);
     }
 }
 
 void CodePage::writew(U32 address, U16 value) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (value!=this->readw(address)) {
         if (readb(address) != (U8)value) {
-            removeBlockAt(address, 1);
+            nolock_removeBlockAt(address, 1);
         }
         if (readb(address+1) != (U8)(value >> 8)) {
-            removeBlockAt(address+1, 1);
+            nolock_removeBlockAt(address+1, 1);
         }
         copyOnWrite();
         RWPage::writew(address, value);
@@ -313,18 +319,19 @@ void CodePage::writew(U32 address, U16 value) {
 }
 
 void CodePage::writed(U32 address, U32 value) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (value!=this->readd(address)) {
         if (readb(address) != (U8)value) {
-            removeBlockAt(address, 1);
+            nolock_removeBlockAt(address, 1);
         }
         if (readb(address + 1) != (U8)(value >> 8)) {
-            removeBlockAt(address + 1, 1);
+            nolock_removeBlockAt(address + 1, 1);
         }
         if (readb(address + 2) != (U8)(value >> 16)) {
-            removeBlockAt(address + 2, 1);
+            nolock_removeBlockAt(address + 2, 1);
         }
         if (readb(address + 3) != (U8)(value >> 24)) {
-            removeBlockAt(address + 3, 1);
+            nolock_removeBlockAt(address + 3, 1);
         }
         copyOnWrite();
         RWPage::writed(address, value);

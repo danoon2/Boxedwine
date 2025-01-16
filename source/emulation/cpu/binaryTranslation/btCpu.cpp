@@ -40,11 +40,13 @@ std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
     BtData* firstPass = getData1();
     firstPass->ip = ip;
     firstPass->startOfDataIp = ip;
+    firstPass->startOfOpIp = ip; // in case first op is dynamic (F-16 on x64 with 4k page option can trigger this)
     translateData(firstPass);
 
     BtData* secondPass = getData2();
     secondPass->ip = ip;
     secondPass->startOfDataIp = ip;
+    secondPass->startOfOpIp = ip;
     secondPass->calculatedEipLen = firstPass->ip - firstPass->startOfDataIp;
     translateData(secondPass, firstPass);
     S32 failedJumpOpIndex = this->preLinkCheck(secondPass);
