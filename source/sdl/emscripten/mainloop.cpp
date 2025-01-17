@@ -59,9 +59,9 @@ void mainloop() {
             title.append(" ");
             title.append(getSize(allocatedRamPages));
 
-            EM_ASM_INT(
-                document.title = title;
-                );
+            //EM_ASM_INT(
+            //    document.title = title;
+            //    );
         }
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();

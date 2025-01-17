@@ -1063,7 +1063,7 @@ BString BString::valueOf(S64 i, int base) {
     return BString::copy(tmp);
 }
 
-BString operator+(const char* s1, BString s2) {
+BString operator+(const char* s1, const BString& s2) {
     return B(s1) + s2;
 }
 

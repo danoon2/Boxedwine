@@ -11,10 +11,10 @@ test: export BUILD_DIR := Build/Test
 test: export EXTRA_CPP_FLAGS := -D__TEST
 test: export SHELL_FILE := shelltest.html
 test: export EXTRA_LD_FLAGS := --emrun
-multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread -DBOXEDWINE_NEED_ATOMIC_REF
+multiThreaded: export EXTRA_CPP_FLAGS := -DBOXEDWINE_MULTI_THREADED -pthread
 multiThreaded: export BUILD_DIR := Build/MultiThreaded
 multiThreaded: export SHELL_FILE := shell.html
-multiThreaded: export EXTRA_LD_FLAGS := -s PROXY_TO_PTHREAD
+multiThreaded: export EXTRA_LD_FLAGS := -sPROXY_TO_PTHREAD -pthread -sPTHREAD_POOL_SIZE=100
 
 uname_s  :=$(shell uname -s)
 ifeq ($(uname_s),Darwin)

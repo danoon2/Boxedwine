@@ -730,7 +730,7 @@ void KNativeScreenSDL::recreateMainWindow() {
             klog("SDL_CreateWindow failed: %s", SDL_GetError());
         }
         if (!(flags & SDL_WINDOW_VULKAN)) {
-#ifdef BOXEDWINE_LINUX
+#if defined(BOXEDWINE_LINUX) || defined(__EMSCRIPTEN__)
             // NVidia drivers need this
             flags = SDL_RENDERER_SOFTWARE;
 #else

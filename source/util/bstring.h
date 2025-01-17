@@ -189,7 +189,7 @@ namespace std {
 	};
 }
 
-BString operator+(const char* s1, BString s2);
+BString operator+(const char* s1, const BString& s2);
 bool operator==(const BString& s2, const BString& s1);
 bool operator==(const BString& s2, const char* s1);
 bool operator!=(const BString& s2, const BString& s1);
