@@ -1456,6 +1456,7 @@ public:
     void log(CPU* cpu);
     bool needsToSetFlags();
     bool isFpuOp();
+    bool isMmxOp();
     bool isStringOp();
     const char* name();
 

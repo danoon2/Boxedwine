@@ -4240,7 +4240,10 @@ void opBswap32(Armv8btAsm* data) {
     data->reverseBytes32(data->getNativeReg(data->currentOp->reg), data->getNativeReg(data->currentOp->reg));
 }
 
-void opEmms(Armv8btAsm* data) {}
+void opEmms(Armv8btAsm* data) {
+    data->emulateSingleOp(data->currentOp);
+}
+
 void opFxsave(Armv8btAsm* data) {
     data->emulateSingleOp(data->currentOp);
 }

@@ -6073,6 +6073,10 @@ bool DecodedOp::isFpuOp() {
    return (this->inst>=FADD_ST0_STj && this->inst<=FISTP_QWORD_INTEGER);
 }
 
+bool DecodedOp::isMmxOp() {
+    return (this->inst >= PunpcklbwMmx && this->inst <= PadddE64);
+}
+
 bool DecodedOp::needsToSetFlags() {
     U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
     return DecodedOp::getNeededFlags(DecodedBlock::currentBlock, this, needsToSet)!=0;

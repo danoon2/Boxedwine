@@ -43,13 +43,11 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
             for (U32 i = 0; i < 8; i++) {
                 cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
                 cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
-                if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
-                    cpu->fpu.setReg(i, 0.0);
-                } else {
-                    U32 index = (i - cpu->fpu.GetTop()) & 7;
-                    double d = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
-                    cpu->fpu.setReg(i, d);
-                }
+                cpu->reg_mmx[i].q = ep->ContextRecord->FltSave.FloatRegisters[i].Low;
+
+                U32 index = (i - cpu->fpu.GetTop()) & 7;
+                double d = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
+                cpu->fpu.setReg(i, d);
             }
         }
 #endif
@@ -76,6 +74,7 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
             ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
             ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
             ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->reg_mmx[i].q;
+            ep->ContextRecord->FltSave.FloatRegisters[i].High = 0xffff;
         }
 #else
         if (cpu->thread->process->emulateFPU) {
@@ -92,11 +91,26 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
                 ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
                 ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
                 U32 index = (i - cpu->fpu.GetTop()) & 7;
-                if (!(ep->ContextRecord->FltSave.TagWord & (1 << i))) {
-                    ep->ContextRecord->FltSave.FloatRegisters[index].Low = 0;
-                    ep->ContextRecord->FltSave.FloatRegisters[index].High = 0;
-                } else {
-                    cpu->fpu.ST80(i, &ep->ContextRecord->FltSave.FloatRegisters[index].Low, (ULONGLONG*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
+
+                U64 emulatedLow;
+                U64 emulatedHigh;
+                double originalValue = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
+                cpu->fpu.ST80(i, &emulatedLow, &emulatedHigh);
+                double emulatedValue = cpu->fpu.FLD80(emulatedLow, (S16)emulatedHigh);
+                if (originalValue != emulatedValue) {
+                    // for f-22, when starting a game the originalValue and emulatedValue will be the same, but their bit values are different and this causes a crash
+                    // 
+                    // double value = -1.0198974609421327
+                    // 
+                    // before conversion
+                    // low = 0x028c0000028c0000
+                    // heigh = 0x000000000000ffff
+                    // 
+                    // after conversion
+                    // low = 0x828c0000028c0000
+                    // heigh = 0x000000000000bfff
+                    ep->ContextRecord->FltSave.FloatRegisters[index].Low = emulatedLow;
+                    ep->ContextRecord->FltSave.FloatRegisters[index].High = emulatedHigh;
                 }
             }
         }

@@ -216,7 +216,7 @@ void common_fxsave(CPU* cpu, U32 address) {
     cpu->memory->writed(address + 24, 0x1F80); // mxcsr
     cpu->memory->writed(address + 28, 0xFFFF); // mxcsr mask
 
-    if (cpu->isMMXinUse()) {
+    if (0) {
         for (int i=0;i<8;i++) {
             cpu->memory->writeq(address+32+i*16, cpu->reg_mmx[i].q);
             cpu->memory->writeq(address+40+i*16, 0);

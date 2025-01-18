@@ -336,8 +336,6 @@ public:
     void verw(U32 selector);
     U32 readCrx(U32 which, U32 reg);
     U32 writeCrx(U32 which, U32 value);
-    void resetMMX();
-    bool isMMXinUse();
 
     U32 getEipAddress();
 

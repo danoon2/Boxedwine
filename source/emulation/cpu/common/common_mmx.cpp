@@ -52,8 +52,7 @@ U16 SaturateDwordSToWordU(S32 value)
 
 // EMMS
 void common_emms(CPU* cpu) {
-    cpu->fpu.reset();
-    cpu->resetMMX();
+    cpu->fpu.SetTag(TAG_Empty);
 }
 
 /* Data Movement */
