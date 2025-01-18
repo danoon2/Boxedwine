@@ -212,7 +212,7 @@ void x64CPU::saveToFxState(U32 inst) {
     if (!this->thread->process->emulateFPU && inst >= FADD_ST0_STj && inst <= FISTP_QWORD_INTEGER) {
         this->fpuState.fcw = this->fpu.CW();
         this->fpuState.fsw = this->fpu.SW();
-        this->fpuState.ftw = this->fpu.GetAbridgedTag();
+        this->fpuState.ftw = this->fpu.GetAbridgedTag(this);
         U8 tag = this->fpuState.ftw;
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - this->fpu.GetTop()) & 7;
