@@ -4816,6 +4816,12 @@ void Armv8btAsm::translateInstruction() {
 #endif
     armv8btEncoder[this->currentOp->inst](this);
 
+    if (instructionInfo[this->currentOp->inst].extra & INST_STARTS_MMX) {
+        U8 tmp = getRegWithConst(1);
+        writeMem8ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.isMMXInUse)));
+        releaseTmpReg(tmp);
+    }
+
     for (int i = 0; i < xNumberOfTmpRegs; i++) {
         if (this->tmpRegInUse[i]) {
             kpanic("op(%x) leaked tmp reg", this->currentOp->originalOp);

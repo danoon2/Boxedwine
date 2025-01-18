@@ -906,10 +906,10 @@ const InstructionInfo instructionInfo[] = {
     {0, 64, 0, 0, 0, 0, 0}, // PunpckhdqE64
     {0, 0, 0, 0, 0, 0, 0}, // PackssdwMmx 
     {0, 64, 0, 0, 0, 0, 0}, // PackssdwE64
-    {0, 0, 0, 0, 0, 0, 0}, // MovPqR32, 
-    {0, 32, 0, 0, 0, 0, 0}, // MovPqE32,
+    {0, 0, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // MovPqR32, 
+    {0, 32, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // MovPqE32,
     {0, 0, 0, 0, 0, 0, 0}, // MovPqMmx, 
-    {0, 64, 0, 0, 0, 0, 0}, // MovPqE64,
+    {0, 64, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // MovPqE64,
     {0, 0, 0, 0, 0, 0, 0}, // Psrlw 
     {0, 0, 0, 0, 0, 0, 0}, // Psraw 
     {0, 0, 0, 0, 0, 0, 0}, // Psllw
@@ -1090,14 +1090,14 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // XorpsXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvtpi2psXmmMmx
     {0, 64, 0, 0, 0, 0}, // Cvtpi2psXmmE64
-    {0, 0, 0, 0, 0, 0}, // Cvtps2piMmxXmm
-    {0, 64, 0, 0, 0, 0}, // Cvtps2piMmxE64
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvtps2piMmxXmm
+    {0, 64, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvtps2piMmxE64
     {0, 0, 0, 0, 0, 0}, // Cvtsi2ssXmmR32
     {0, 32, 0, 0, 0, 0}, // Cvtsi2ssXmmE32
     {0, 0, 0, 0, 0, 0}, // Cvtss2siR32Xmm
     {0, 32, 0, 0, 0, 0}, // Cvtss2siR32E32
-    {0, 0, 0, 0, 0, 0}, // Cvttps2piMmxXmm
-    {0, 64, 0, 0, 0, 0}, // Cvttps2piMmxE64
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvttps2piMmxXmm
+    {0, 64, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvttps2piMmxE64
     {0, 0, 0, 0, 0, 0}, // Cvttss2siR32Xmm
     {0, 32, 0, 0, 0, 0}, // Cvttss2siR32E32
     {0, 0, 0, 0, 0, 0}, // MovapsXmmXmm
@@ -1278,8 +1278,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // Cvtdq2pdXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvtdq2psXmmXmm
     {0, 128, 0, 0, 0, 0}, // Cvtdq2psXmmE128
-    {0, 0, 0, 0, 0, 0}, // Cvtpd2piMmxXmm
-    {0, 128, 0, 0, 0, 0}, // Cvtpd2piMmxE128
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvtpd2piMmxXmm
+    {0, 128, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvtpd2piMmxE128
     {0, 0, 0, 0, 0, 0}, // Cvtpd2dqXmmXmm
     {0, 128, 0, 0, 0, 0}, // Cvtpd2dqXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvtpd2psXmmXmm
@@ -1298,8 +1298,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 32, 0, 0, 0, 0}, // Cvtsi2sdXmmE32
     {0, 0, 0, 0, 0, 0}, // Cvtss2sdXmmXmm
     {0, 32, 0, 0, 0, 0}, // Cvtss2sdXmmE32
-    {0, 0, 0, 0, 0, 0}, // Cvttpd2piMmxXmm
-    {0, 128, 0, 0, 0, 0}, // Cvttpd2piMmE128
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvttpd2piMmxXmm
+    {0, 128, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvttpd2piMmE128
     {0, 0, 0, 0, 0, 0}, // Cvttpd2dqXmmXmm
     {0, 128, 0, 0, 0, 0}, // Cvttpd2dqXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvttps2dqXmmXmm
@@ -1333,7 +1333,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // MovdquXmmXmm
     {0, 128, 0, 0, 0, 0}, // MovdquXmmE128
     {0, 0, 128, 0, 0, 0}, // MovdquE128Xmm    
-    {0, 0, 0, 0, 0, 0}, // Movdq2qMmxXmm
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Movdq2qMmxXmm
     {0, 0, 0, 0, 0, 0}, // Movq2dqXmmMmx
     {0, 0, 128, 0, 0, 0}, // MovntpdE128Xmm
     {0, 0, 128, 0, 0, 0}, // MovntdqE128Xmm

@@ -31,7 +31,7 @@ void common_FMUL_SINGLE_REAL(CPU* cpu, U32 address) {
 
 void common_FCOM_SINGLE_REAL(CPU* cpu, U32 address) {
     cpu->fpu.FLD_F32_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FCOM %f  %f", cpu->fpu.regs[8].d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
@@ -40,7 +40,7 @@ void common_FCOM_SINGLE_REAL(CPU* cpu, U32 address) {
 
 void common_FCOM_SINGLE_REAL_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FLD_F32_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FCOMP %f  %f", cpu->fpu.regs[8].d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
 #endif
@@ -127,7 +127,7 @@ void common_FCOM_STi(CPU* cpu, U32 reg) {
     double d1 = cpu->fpu.regs[cpu->fpu.STV(0)].d;
     double d2 = cpu->fpu.regs[cpu->fpu.STV(reg)].d;
 #endif
-    cpu->fpu.FCOM(cpu->fpu.STV(0), cpu->fpu.STV(reg));
+    cpu->fpu.FCOM(cpu, cpu->fpu.STV(0), cpu->fpu.STV(reg));
 #ifdef LOG_FPU
     flog("FCOM %f %f", d1, d2);
     cpu->fpu.LOG_STACK();
@@ -139,7 +139,7 @@ void common_FCOM_STi_Pop(CPU* cpu, U32 reg) {
     double d1 = cpu->fpu.regs[cpu->fpu.STV(0)].d;
     double d2 = cpu->fpu.regs[cpu->fpu.STV(reg)].d;
 #endif
-    cpu->fpu.FCOM(cpu->fpu.STV(0), cpu->fpu.STV(reg));
+    cpu->fpu.FCOM(cpu, cpu->fpu.STV(0), cpu->fpu.STV(reg));
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
     flog("FCOMP %f %f", d1, d2);
@@ -293,7 +293,7 @@ void common_FABS(CPU* cpu) {
 }
 
 void common_FTST(CPU* cpu) {
-    cpu->fpu.FTST();
+    cpu->fpu.FTST(cpu);
 #ifdef LOG_FPU
     flog("FTST = FCOM ST(0), 0.0");
     cpu->fpu.LOG_STACK();
@@ -535,7 +535,7 @@ void common_FIMUL_DWORD_INTEGER(CPU* cpu, U32 address) {
 
 void common_FICOM_DWORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FICOM %f  %f (%X)", cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
@@ -544,7 +544,7 @@ void common_FICOM_DWORD_INTEGER(CPU* cpu, U32 address) {
 
 void common_FICOM_DWORD_INTEGER_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I32_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FICOMP %f  %f (%X)", cpu->fpu.regs[8].d, cpu->memory->readd(address), cpu->fpu.regs[cpu->fpu.STV(0)].d);
 #endif
@@ -702,7 +702,7 @@ void common_FUCOMPP(CPU* cpu) {
 #ifdef LOG_FPU
     flog("FUCOMPP %f %f", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[cpu->fpu.STV(1)].d);
 #endif
-    cpu->fpu.FUCOM(cpu->fpu.STV(0), cpu->fpu.STV(1));
+    cpu->fpu.FUCOM(cpu, cpu->fpu.STV(0), cpu->fpu.STV(1));
     cpu->fpu.FPOP();
     cpu->fpu.FPOP();
 #ifdef LOG_FPU
@@ -852,7 +852,7 @@ void common_FMUL_DOUBLE_REAL(CPU* cpu, U32 address) {
 
 void common_FCOM_DOUBLE_REAL(CPU* cpu, U32 address) {
     cpu->fpu.FLD_F64_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FCOM %f %f", cpu->fpu.regs[8].d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
     cpu->fpu.LOG_STACK();
@@ -861,7 +861,7 @@ void common_FCOM_DOUBLE_REAL(CPU* cpu, U32 address) {
 
 void common_FCOM_DOUBLE_REAL_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FLD_F64_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FCOMP %f %f", cpu->fpu.regs[8].d, cpu->fpu.regs[cpu->fpu.STV(0)].d);
 #endif
@@ -1143,7 +1143,7 @@ void common_FFREE_STi(CPU* cpu, U32 reg) {
 }
 
 void common_FUCOM_STi(CPU* cpu, U32 reg) {
-    cpu->fpu.FUCOM(cpu->fpu.STV(0), cpu->fpu.STV(reg));    
+    cpu->fpu.FUCOM(cpu, cpu->fpu.STV(0), cpu->fpu.STV(reg));    
 #ifdef LOG_FPU
     flog("FUCOM ST(%d) %f %f", reg, cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[cpu->fpu.STV(reg)].d);
     cpu->fpu.LOG_STACK();
@@ -1151,7 +1151,7 @@ void common_FUCOM_STi(CPU* cpu, U32 reg) {
 }
 
 void common_FUCOM_STi_Pop(CPU* cpu, U32 reg) {
-    cpu->fpu.FUCOM(cpu->fpu.STV(0), cpu->fpu.STV(reg));
+    cpu->fpu.FUCOM(cpu, cpu->fpu.STV(0), cpu->fpu.STV(reg));
 #ifdef LOG_FPU
     flog("FUCOMP ST(%d) %f %f", reg, cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[cpu->fpu.STV(reg)].d);
 #endif
@@ -1187,7 +1187,7 @@ void common_FIMUL_WORD_INTEGER(CPU* cpu, U32 address) {
 
 void common_FICOM_WORD_INTEGER(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FICOM %f %f (%X)", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[8].d, cpu->memory->readw(address));
     cpu->fpu.LOG_STACK();
@@ -1196,7 +1196,7 @@ void common_FICOM_WORD_INTEGER(CPU* cpu, U32 address) {
 
 void common_FICOM_WORD_INTEGER_Pop(CPU* cpu, U32 address) {
     cpu->fpu.FLD_I16_EA(cpu, address);
-    cpu->fpu.FCOM_EA();
+    cpu->fpu.FCOM_EA(cpu);
 #ifdef LOG_FPU
     flog("FICOM %f %f (%X)", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[8].d, cpu->memory->readw(address));
 #endif
@@ -1255,7 +1255,7 @@ void common_FIDIVR_WORD_INTEGER(CPU* cpu, U32 address) {
 }
 
 void common_FCOMPP(CPU* cpu) {
-    cpu->fpu.FCOM(cpu->fpu.STV(0), cpu->fpu.STV(1));
+    cpu->fpu.FCOM(cpu, cpu->fpu.STV(0), cpu->fpu.STV(1));
 #ifdef LOG_FPU
     flog("FCOMPP %f  %f", cpu->fpu.regs[cpu->fpu.STV(0)].d, cpu->fpu.regs[cpu->fpu.STV(1)].d);
 #endif

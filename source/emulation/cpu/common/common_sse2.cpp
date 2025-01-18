@@ -820,6 +820,7 @@ void common_cvtdq2psXmmE128(CPU* cpu, U32 reg, U32 address) {
 
 void common_cvtpd2piMmxXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->reg_mmx[r1].q = simde_mm_cvtpd_pi32(cpu->xmm[r2].pd).u64[0];
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_cvtpd2piMmxE128(CPU* cpu, U32 reg, U32 address) {
@@ -827,6 +828,7 @@ void common_cvtpd2piMmxE128(CPU* cpu, U32 reg, U32 address) {
     value.u64[0] = cpu->memory->readq(address);
     value.u64[1] = cpu->memory->readq(address+8);
     cpu->reg_mmx[reg].q = simde_mm_cvtpd_pi32(value).u64[0];
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_cvtpd2dqXmmXmm(CPU* cpu, U32 r1, U32 r2) {
@@ -926,6 +928,7 @@ void common_cvtss2sdXmmE32(CPU* cpu, U32 reg, U32 address) {
 
 void common_cvttpd2piMmxXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->reg_mmx[r1].q = simde_mm_cvttpd_pi32(cpu->xmm[r2].pd).u64[0];
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_cvttpd2piMmE128(CPU* cpu, U32 reg, U32 address) {
@@ -933,6 +936,7 @@ void common_cvttpd2piMmE128(CPU* cpu, U32 reg, U32 address) {
     value.u64[0] = cpu->memory->readq(address);
     value.u64[1] = cpu->memory->readq(address+8);
     cpu->reg_mmx[reg].q = simde_mm_cvttpd_pi32(value).u64[0];
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_cvttpd2dqXmmXmm(CPU* cpu, U32 r1, U32 r2) {
@@ -1088,6 +1092,7 @@ void common_movdquE128Xmm(CPU* cpu, U32 reg, U32 address) {
 
 void common_movdq2qMmxXmm(CPU* cpu, U32 r1, U32 r2) {
     cpu->reg_mmx[r1].q = simde_mm_movepi64_pi64(cpu->xmm[r2].pi).u64[0];
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_movq2dqXmmMmx(CPU* cpu, U32 r1, U32 r2) {

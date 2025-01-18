@@ -1130,9 +1130,19 @@ void opFNINIT(Armv8btAsm* data) {
 #else
 	data->fpuTopRegSet = true;
 	data->clearCachedFpuRegs();
+
+	data->loadConst(xFpuTop, 0x37f);
+	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, cw)));
+
+	data->loadConst(xFpuTop, TAG_Empty);
+	for (int i = 0; i < 8; i++) {
+		data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, tags[0])) + i * sizeof(U32));
+	}
+
 	data->zeroReg(xFpuTop);
-	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, top)));
-	// :TODO: clear tags
+	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, top)));	
+	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
+	data->writeMem8ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, isMMXInUse)));
 #endif
 }
 void opFUCOMI_ST0_STj(Armv8btAsm* data) {

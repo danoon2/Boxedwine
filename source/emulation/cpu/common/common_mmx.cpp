@@ -53,6 +53,7 @@ U16 SaturateDwordSToWordU(S32 value)
 // EMMS
 void common_emms(CPU* cpu) {
     cpu->fpu.SetTag(TAG_Empty);
+    cpu->fpu.isMMXInUse = false;
 }
 
 /* Data Movement */
@@ -61,12 +62,14 @@ void common_movPqR32(CPU* cpu, U32 r1, U32 r2) {
     MMX_reg* rmrq=&cpu->reg_mmx[r1];
     rmrq->ud.d0 = cpu->reg[r2].u32;
     rmrq->ud.d1 = 0;
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_movPqE32(CPU* cpu, U32 reg, U32 address) {
     MMX_reg* rmrq=&cpu->reg_mmx[reg];
     rmrq->ud.d0 = cpu->memory->readd(address);
     rmrq->ud.d1 = 0;
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_movR32Pq(CPU* cpu, U32 r1, U32 r2) {
@@ -83,6 +86,7 @@ void common_movPqMmx(CPU* cpu, U32 r1, U32 r2) {
 
 void common_movPqE64(CPU* cpu, U32 reg, U32 address) {
     cpu->reg_mmx[reg].q = cpu->memory->readq(address);
+    cpu->fpu.isMMXInUse = true;
 }
 
 void common_movE64Pq(CPU* cpu, U32 reg, U32 address) {
