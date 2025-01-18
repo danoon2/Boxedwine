@@ -79,6 +79,8 @@ public:
     void updateFlagsFromX64() {
         this->flags = ((this->currentHostFlags >> 8) & 0xFF) | (this->flags & DF) | ((this->currentHostFlags & 0xFF) ? OF : 0);
     }
+    void loadFxState(U32 inst);
+    void saveToFxState(U32 inst);
 
     U32 negSegAddress[6] = { 0 };
 	U8*** eipToHostInstructionPages = nullptr;
