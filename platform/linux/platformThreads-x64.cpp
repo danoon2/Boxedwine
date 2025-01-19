@@ -205,6 +205,7 @@ void signalHandler() {
     KThread* currentThread = KThread::currentThread();
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
     KMemoryData* mem = getMemData(currentThread->memory);
+    U64 fpu[8];
 
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
     if (result) {
@@ -222,8 +223,8 @@ void signalHandler() {
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
-#if defined(BOXEDWINE_X64) && !defined(BOXEDWINE_USE_SSE_FOR_FPU)
-        cpu->loadFxState(op->inst);        
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+        cpu->loadFxState(op->inst, fpu);        
 #endif
         bool saveFxState = true;
         bool inSignal = cpu->thread->inSignal;
@@ -239,13 +240,11 @@ void signalHandler() {
             }
         }
         cpu->fillFlags();        
-#ifdef BOXEDWINE_X64
         cpu->updateX64Flags();
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
         if (saveFxState) {
-            cpu->saveToFxState(op->inst);
+            cpu->saveToFxState(op->inst, fpu);
         }
-#endif
 #endif
         op->dealloc(true);
         return;

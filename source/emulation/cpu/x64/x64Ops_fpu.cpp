@@ -1456,7 +1456,7 @@ void opFNINIT(X64Asm* data) {
 	for (int i = 0; i < 8; i++) {
 		data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_TAG + i*sizeof(U32), 4, false);
 	}
-	writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 4, false);
+	data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 4, false);
 }
 void opFUCOMI_ST0_STj(X64Asm* data, U8 reg) {
 	U8 topReg = getTopReg(data);
