@@ -52,16 +52,12 @@ void mainloop() {
             if (KSystem::title.length()) {
                 title = KSystem::title;
             } else {
-                title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY " ");
-                title.append(getSize(allocatedRamPages));
+                title = B("BoxedWine " BOXEDWINE_VERSION_DISPLAY);
             }
 
             title.append(" ");
             title.append(getSize(allocatedRamPages));
-
-            //EM_ASM_INT(
-            //    document.title = title;
-            //    );
+			emscripten_set_window_title(title.c_str());
         }
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
@@ -106,9 +102,11 @@ void mainloop() {
         t = KSystem::getMilliesSinceStart();                
         if (lastTitleUpdate+1000 < t) {
             lastTitleUpdate = t;
-            EM_ASM_INT({
-                document.title="BoxedWine " + $0 + " MIPS";
-            }, getMIPS());
+            //BString mipsTitle = B("BoxedWine " getMIPS() " MIPS");
+            //emscripten_set_window_title(mipsTitle.c_str());
+            //EM_ASM_INT({
+            //    document.title="BoxedWine " + $0 + " MIPS";
+            //}, getMIPS());
         }
         if (!ran) {
             break;
