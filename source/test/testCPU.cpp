@@ -8469,7 +8469,7 @@ PACKED(
         U64 q;
         U8 b[10];
     };
-};
+}
 );
 
 struct FSaveState {
@@ -8503,7 +8503,7 @@ void testFSAVE() {
     float f1 = 1;
     float f2 = 0;
     float f3 = -1;
-    float f4 = .001;
+    float f4 = .001f;
     struct FSaveState state;
     struct FSaveState16 state16;
 
@@ -8553,7 +8553,7 @@ void testFSAVEMmx() {
     float f1 = 1;
     float f2 = 0;
     float f3 = -1;
-    float f4 = .001;
+    float f4 = .001f;
     struct FSaveState state;
     U64 data = 0x123456789abcdef0l;
 
