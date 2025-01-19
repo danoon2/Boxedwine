@@ -33,7 +33,7 @@ KRamPtr ramPageAlloc() {
     U8* pages = (U8*)Platform::reserveNativeMemory64k(8);
 
     U32 count = (8 * 16 / 2) - 1; // -1 so that there is an uncommitted page at the end
-    for (int i = 0; i < count; i++) {
+    for (U32 i = 0; i < count; i++) {
         pages += K_PAGE_SIZE; // keep uncommitted page between each committed so that if a read/write crosses a page boundry it will generate an exception
         Platform::commitNativeMemoryPage(pages);
         freeRamPages.put(pages);

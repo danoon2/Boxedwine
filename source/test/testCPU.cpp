@@ -8463,12 +8463,150 @@ void testFPUDA() {
     testFMemInt(0xda, 7, 2.0f, 202020, 101010.0f);
 }
 
+PACKED(
+    struct X87Register {
+    union {
+        U64 q;
+        U8 b[10];
+    };
+}
+);
+
+struct FSaveState {
+    U16 fcw;
+    U16 reserved_1;
+    U16 fsw;
+    U16 reserved_2;
+    U16 ftw;
+    U16 reserved_3;
+    U32 fip;
+    U32 fop;
+    U32 fd;
+    U32 fds;
+    X87Register st[8];
+};
+
+struct FSaveState16 {
+    U16 fcw;
+    U16 fsw;
+    U16 ftw;
+    U16 fpu_ip;
+    U16 fop;
+    U16 fpu_dp;
+    U16 fpu_ds;
+    X87Register st[8];
+};
+
+#define FPU_GET_TOP(sw) ((sw & 0x3800) >> 11)
+
+void testFSAVE() {
+    float f1 = 1;
+    float f2 = 0;
+    float f3 = -1;
+    float f4 = .001f;
+    struct FSaveState state;
+    struct FSaveState16 state16;
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {                
+        __asm {
+            finit;
+            fld f1;
+            fld f2;
+            fld f3;
+            fld f4;
+            fsave [state];
+        }
+        U32 top = FPU_GET_TOP(state.fsw);
+        assertTrue(top == 4);
+        assertTrue(state.ftw == 0x10ff); // TAG_Valid << 14 | TAG_Zero << 12 || TAG_Valid << 10 |  || TAG_Valid << 8 (0xff for 4 TAG_Empty)
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fldf32(f1, 1);
+    fldf32(f2, 2);
+    fldf32(f3, 3);
+    fldf32(f4, 4);
+    pushCode8(0xdd);
+    pushCode8(rm(true, 6, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(0);
+    } else {
+        pushCode16(0);
+    }
+    runTestCPU();
+    if (cpu->isBig()) {
+        cpu->memory->memcpy(&state, HEAP_ADDRESS, sizeof(state));
+        U32 top = FPU_GET_TOP(state.fsw);
+        assertTrue(top == 4);
+        assertTrue(state.ftw == 0x10ff);
+    } else {
+        cpu->memory->memcpy(&state16, HEAP_ADDRESS, sizeof(state16));
+        U32 top = FPU_GET_TOP(state16.fsw);
+        assertTrue(top == 4);
+        assertTrue(state16.ftw == 0x10ff);
+    }
+}
+
+void testFSAVEMmx() {
+    float f1 = 1;
+    float f2 = 0;
+    float f3 = -1;
+    float f4 = .001f;
+    struct FSaveState state;
+    U64 data = 0x123456789abcdef0l;
+
+    if (!cpu->isBig()) {
+        return;
+    }
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {        
+        __asm {
+            finit;
+            fld f1;
+            fld f2;
+            fld f3;
+            fld f4;
+            movq mm0, data
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0);
+        assertTrue(state.st[0].q == data);
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fldf32(f1, 1);
+    fldf32(f2, 2);
+    fldf32(f3, 3);
+    fldf32(f4, 4);
+    loadMMX(0, 0, data);
+    pushCode8(0xdd);
+    pushCode8(rm(true, 6, cpu->big ? 5 : 6));
+    pushCode32(0);
+    runTestCPU();
+    cpu->memory->memcpy(&state, HEAP_ADDRESS, sizeof(state));
+    assertTrue(state.fsw == 0);
+    assertTrue(state.st[0].q == data);
+}
+
+void testFPUDD() {
+    // MEMORY
+
+    // 6 FSAVE
+    testFSAVE();
+    testFSAVEMmx();
+}
+
 void testFPU0x0d8() {cpu->big=false;testFPUD8();}
 void testFPU0x2d8() {cpu->big=true;testFPUD8();}
 void testFPU0x0d9() {cpu->big=false;testFPUD9();}
 void testFPU0x2d9() {cpu->big=true;testFPUD9();}
 void testFPU0x0da() { cpu->big = false; testFPUDA(); }
 void testFPU0x2da() { cpu->big = true; testFPUDA(); }
+void testFPU0x0dd() { cpu->big = false; testFPUDD(); }
+void testFPU0x2dd() { cpu->big = true; testFPUDD(); }
 
 void doLoopZ(U32 instruction, bool big, bool neg) {
     cpu->big = big;
@@ -12020,6 +12158,8 @@ int runCpuTests() {
     run(testFPU0x2d9, "FPU 2d9");    
     run(testFPU0x0da, "FPU 0da");
     run(testFPU0x2da, "FPU 2da");
+    run(testFPU0x0dd, "FPU 0dd");
+    run(testFPU0x2dd, "FPU 2dd");
 
     run(testLoopNZ0x0e0, "LoopNZ 0e0");
     run(testLoopNZ0x2e0, "LoopNZ 2e0");

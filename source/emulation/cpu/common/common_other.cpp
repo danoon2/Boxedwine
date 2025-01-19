@@ -204,7 +204,7 @@ void common_cmpxchg8b(CPU* cpu, U32 address){
 void common_fxsave(CPU* cpu, U32 address) {
     cpu->memory->writew(address + 0, (U16)cpu->fpu.CW());
     cpu->memory->writew(address + 2, (U16)cpu->fpu.SW());
-    cpu->memory->writeb(address + 4, cpu->fpu.GetAbridgedTag());
+    cpu->memory->writeb(address + 4, cpu->fpu.GetAbridgedTag(cpu));
     cpu->memory->writeb(address + 5, 0);
     cpu->memory->writew(address + 6, 0); // fop
     cpu->memory->writed(address + 8, 0); // fip
@@ -216,10 +216,10 @@ void common_fxsave(CPU* cpu, U32 address) {
     cpu->memory->writed(address + 24, 0x1F80); // mxcsr
     cpu->memory->writed(address + 28, 0xFFFF); // mxcsr mask
 
-    if (cpu->isMMXinUse()) {
+    if (cpu->fpu.isMMXInUse) {
         for (int i=0;i<8;i++) {
             cpu->memory->writeq(address+32+i*16, cpu->reg_mmx[i].q);
-            cpu->memory->writeq(address+40+i*16, 0);
+            cpu->memory->writeq(address+40+i*16, 0xffff);
         }
     } else {
         for (int i=0;i<8;i++) {
@@ -240,7 +240,7 @@ void common_fxrstor(CPU* cpu, U32 address) {
     for (int i=0;i<8;i++) {
         cpu->reg_mmx[i].q = cpu->memory->readq(address+32+i*16);
         U32 index = (i - cpu->fpu.GetTop()) & 7;
-        cpu->fpu.regs[i].d = cpu->fpu.FLD80(cpu->memory->readq(address+32+index*16), (S16)cpu->memory->readw(address+40+index*16));
+        cpu->fpu.regs[i].d = cpu->fpu.FLD80(cpu->reg_mmx[i].q, (S16)cpu->memory->readw(address+40+index*16));
     }
     for (int i=0;i<8;i++) {
         cpu->xmm[i].pi.u64[0] = cpu->memory->readq(address+160+i*16);

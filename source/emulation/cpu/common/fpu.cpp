@@ -94,6 +94,7 @@ void FPU::LOG_STACK() {
 void FPU::setReg(U32 index, double value) {
     this->regs[index].d = value;
     this->isIntegerLoaded[index] = false;
+    this->isMMXInUse = false;
 }
 
 void FPU::SetTagFromAbridged(U8 tag) {
@@ -106,10 +107,10 @@ void FPU::SetTagFromAbridged(U8 tag) {
     }
 }
 
-U8 FPU::GetAbridgedTag() {
+U8 FPU::GetAbridgedTag(CPU* cpu) {
     U8 tag = 0;
     for(U32 i = 0; i < 8; i++) {
-        if (this->tags[i] != TAG_Empty) {
+        if (GetTag(cpu, i) != TAG_Empty) {
             tag |= (1 << i);
         }
     }
@@ -179,6 +180,7 @@ void FPU::FINIT() {
     this->tags[6] = TAG_Empty;
     this->tags[7] = TAG_Empty;
     this->tags[8] = TAG_Valid; // is only used by us
+    this->isMMXInUse = false;
 }
 
 void FPU::FCLEX() {
@@ -189,8 +191,7 @@ void FPU::PUSH(double in) {
     this->top = (this->top - 1) & 7;
     //actually check if empty
     this->tags[this->top] = TAG_Valid;
-    this->regs[this->top].d = in;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, in);
 }
 
 void FPU::PREP_PUSH() {
@@ -290,31 +291,29 @@ void FPU::ST80(U32 reg, U64* pLow, U64* pHigh) {
 void FPU::FLD_F32(U32 value, int store_to) {
     struct FPU_Float f;
     f.i = value;
-    this->regs[store_to].d = f.f;
-    this->isIntegerLoaded[store_to] = 0;
+    setReg(store_to, f.f);
 }
 
 void FPU::FLD_F64(U64 value, int store_to) {
     this->regs[store_to].l = value;
+    this->isIntegerLoaded[store_to] = 0;
+    this->isMMXInUse = false;
 }
 
 void FPU::FLD_F80(U64 low, S16 high) {
-    this->regs[this->top].d = FLD80(low, high);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, FLD80(low, high));
 }
 
 void FPU::FLD_I16(S16 value, int store_to) {
-    this->regs[store_to].d = value;
-    this->isIntegerLoaded[store_to] = 0;
+    setReg(store_to, (double)value);
 }
 
 void FPU::FLD_I32(S32 value, int store_to) {
-    this->regs[store_to].d = value;
-    this->isIntegerLoaded[store_to] = 0;
+    setReg(store_to, (double)value);
 }
 
 void FPU::FLD_I64(S64 value, int store_to) {
-    this->regs[store_to].d = (double)value;
+    setReg(store_to, (double)value);
     this->loadedInteger[store_to] = value;
     this->isIntegerLoaded[store_to] = 1;
 }
@@ -337,8 +336,7 @@ void FPU::FBLD(U8 data[], int store_to) {
     in = data[9];
     temp += ( (in&0xf) * base );
     if(in&0x80) temp *= -1.0;
-    this->regs[store_to].d = temp; 
-    this->isIntegerLoaded[store_to] = 0;
+    setReg(store_to, temp); 
 }
 
 void FPU::FLD_F32_EA(CPU* cpu, U32 address) {
@@ -434,38 +432,32 @@ void FPU::FBST(CPU* cpu, U32 addr) {
 }
 
 void FPU::FADD(int op1, int op2) {
-    this->regs[op1].d += this->regs[op2].d;
-    this->isIntegerLoaded[op1] = 0;
+    setReg(op1, this->regs[op1].d + this->regs[op2].d);
     //flags and such :)
 }
 
 void FPU::FDIV(int st, int other) {
-    this->regs[st].d = this->regs[st].d / this->regs[other].d;
-    this->isIntegerLoaded[st] = 0;
+    setReg(st, this->regs[st].d / this->regs[other].d);
     //flags and such :)
 }
 
 void FPU::FDIVR(int st, int other) {
-    this->regs[st].d = this->regs[other].d / this->regs[st].d;
-    this->isIntegerLoaded[st] = 0;
+    setReg(st, this->regs[other].d / this->regs[st].d);
     // flags and such :)
 }
 
 void FPU::FMUL(int st, int other) {
-    this->regs[st].d *= this->regs[other].d;
-    this->isIntegerLoaded[st] = 0;
+    setReg(st, this->regs[st].d * this->regs[other].d);
     //flags and such :)
 }
 
 void FPU::FSUB(int st, int other) {
-    this->regs[st].d = this->regs[st].d - this->regs[other].d;
-    this->isIntegerLoaded[st] = 0;
+    setReg(st, this->regs[st].d - this->regs[other].d);
     //flags and such :)
 }
 
 void FPU::FSUBR(int st, int other) {
-    this->regs[st].d = this->regs[other].d - this->regs[st].d;
-    this->isIntegerLoaded[st] = 0;
+    setReg(st, this->regs[other].d - this->regs[st].d);
     //flags and such :)
 }
 
@@ -476,11 +468,13 @@ void FPU::FXCH(int st, int other) {
     this->regs[other] = this->regs[st];
     this->tags[st] = tag;
     this->regs[st] = reg;
+    this->isMMXInUse = false;
 }
 
 void FPU::FST(int st, int other) {
     this->tags[other] = this->tags[st];
     this->regs[other] = this->regs[st];
+    this->isMMXInUse = false;
 }
 
 static void setFlags(CPU* cpu, int newFlags) {
@@ -490,8 +484,11 @@ static void setFlags(CPU* cpu, int newFlags) {
 }
 
 void FPU::FCOMI(CPU* cpu, int st, int other) {
-    if (((this->tags[st] != TAG_Valid) && (this->tags[st] != TAG_Zero)) ||
-            ((this->tags[other] != TAG_Valid) && (this->tags[other] != TAG_Zero)) || isnan(this->regs[st].d) || isnan(this->regs[other].d)) {
+    U32 stTag = GetTag(cpu, st);
+    U32 otherTag = GetTag(cpu, other);
+
+    if (((stTag != TAG_Valid) && (stTag != TAG_Zero)) ||
+            ((otherTag != TAG_Valid) && (otherTag != TAG_Zero)) || isnan(this->regs[st].d) || isnan(this->regs[other].d)) {
         setFlags(cpu, ZF | PF | CF);
         return;
     }
@@ -507,9 +504,12 @@ void FPU::FCOMI(CPU* cpu, int st, int other) {
     setFlags(cpu, 0);
 }
 
-void FPU::FCOM(int st, int other) {
-    if (((this->tags[st] != TAG_Valid) && (this->tags[st] != TAG_Zero)) ||
-            ((this->tags[other] != TAG_Valid) && (this->tags[other] != TAG_Zero)) || isnan(this->regs[st].d) || isnan(this->regs[other].d)) {
+void FPU::FCOM(CPU* cpu, int st, int other) {
+    U32 stTag = GetTag(cpu, st);
+    U32 otherTag = GetTag(cpu, other);
+
+    if (((stTag != TAG_Valid) && (stTag != TAG_Zero)) ||
+            ((otherTag != TAG_Valid) && (otherTag != TAG_Zero)) || isnan(this->regs[st].d) || isnan(this->regs[other].d)) {
         FPU_SET_C3(this, 1);
         FPU_SET_C2(this, 1);
         FPU_SET_C0(this, 1);
@@ -533,16 +533,15 @@ void FPU::FCOM(int st, int other) {
     FPU_SET_C0(this, 0);
 }
 
-void FPU::FUCOM(int st, int other) {
+void FPU::FUCOM(CPU* cpu, int st, int other) {
     //does atm the same as fcom
-    FCOM(st, other);
+    FCOM(cpu, st, other);
 }
 
 void FPU::FRNDINT() {        
     double value = this->regs[this->top].d;
     S64 temp = (S64)FROUND(value);
-    this->regs[this->top].d = (double) (temp);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, (double) (temp));
 }
 
 void FPU::FPREM() {        
@@ -552,8 +551,7 @@ void FPU::FPREM() {
     // Some backups
     // Real64 res=valtop - ressaved*valdiv;
     // res= fmod(valtop,valdiv);
-    this->regs[this->top].d = valtop - ressaved*valdiv;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, valtop - ressaved*valdiv);
     FPU_SET_C0(this, (int)(ressaved & 4));
     FPU_SET_C3(this, (int)(ressaved & 2));
     FPU_SET_C1(this, (int)(ressaved & 1));
@@ -569,8 +567,7 @@ void FPU::FPREM1() {
     if (quot-quotf>0.5) ressaved = (S64)(quotf+1);
     else if (quot-quotf<0.5) ressaved = (S64)(quotf);
     else ressaved = (S64)(((((S64)(quotf))&1)!=0)?(quotf+1):(quotf));
-    this->regs[this->top].d = valtop - ressaved*valdiv;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, valtop - ressaved*valdiv);
     FPU_SET_C0(this, (int)(ressaved&4));
     FPU_SET_C3(this, (int)(ressaved&2));
     FPU_SET_C1(this, (int)(ressaved&1));
@@ -615,47 +612,40 @@ void FPU::FXAM() {
 
 
 void FPU::F2XM1() {
-    this->regs[this->top].d = pow(2.0, this->regs[this->top].d) - 1;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, pow(2.0, this->regs[this->top].d) - 1);
 }
 
 void FPU::FYL2X() {
-    this->regs[STV(1)].d *= log(this->regs[this->top].d) / log(2.0);
-    this->isIntegerLoaded[STV(1)] = 0;
+    setReg(STV(1), this->regs[STV(1)].d * log(this->regs[this->top].d) / log(2.0));
     FPOP();
 }
 
 void FPU::FPTAN() {
-    this->regs[this->top].d = tan(this->regs[this->top].d);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, tan(this->regs[this->top].d));
     PUSH(1.0);
     FPU_SET_C2(this, 0);
     //flags and such :)
 }
 
 void FPU::FPATAN() {
-    this->regs[STV(1)].d = atan2(this->regs[STV(1)].d, this->regs[this->top].d);
-    this->isIntegerLoaded[STV(1)] = 0;
+    setReg(STV(1), atan2(this->regs[STV(1)].d, this->regs[this->top].d));
     FPOP();
     //flags and such :)
 }
 
 void FPU::FYL2XP1() {
-    this->regs[STV(1)].d *= log(this->regs[this->top].d + 1.0) / log(2.0);
-    this->isIntegerLoaded[STV(1)] = 0;
+    setReg(STV(1), this->regs[STV(1)].d * log(this->regs[this->top].d + 1.0) / log(2.0));
     FPOP();
 }
 
 void FPU::FSQRT() {
-    this->regs[this->top].d = sqrt(this->regs[this->top].d);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, sqrt(this->regs[this->top].d));
     //flags and such :)
 }
 
 void FPU::FSINCOS() {
     double temp = this->regs[this->top].d;
-    this->regs[this->top].d = sin(temp);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, sin(temp));
     PUSH(cos(temp));
     FPU_SET_C2(this, 0);
     //flags and such :)
@@ -678,6 +668,7 @@ static const U64 DOUBLE_QUIET_NAN_BITS = 0x7FF8000000000000;
 void FPU::FSCALE() {
     double value = this->regs[STV(1)].d;
     S64 chopped = (S64)value;
+    this->isMMXInUse = false;
     if (this->regs[this->top].l == DOUBLE_NEGATIVE_INFINITY_BITS || this->regs[this->top].l == DOUBLE_POSITIVE_INFINITY_BITS) {
         if (this->regs[STV(1)].l == DOUBLE_POSITIVE_INFINITY_BITS) {
             return; // keep top at DOUBLE_NEGATIVE_INFINITY_BITS/DOUBLE_POSITIVE_INFINITY_BITS
@@ -714,34 +705,50 @@ void FPU::FSCALE() {
         this->isIntegerLoaded[this->top] = 0;
         return;
     }
-    this->regs[this->top].d *= pow(2.0, (double)chopped);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, this->regs[this->top].d * pow(2.0, (double)chopped));
     //2^x where x is chopped.
 }
 
 void FPU::FSIN() {
-    this->regs[this->top].d = sin(this->regs[this->top].d);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, sin(this->regs[this->top].d));
     FPU_SET_C2(this, 0);
 }
 
 void FPU::FCOS() {
-    this->regs[this->top].d = cos(this->regs[this->top].d);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, cos(this->regs[this->top].d));
     FPU_SET_C2(this, 0);
     //flags and such :)
 }
 
-int FPU::GetTag() {        
-    int tag = 0;
-    int i;
-
-    for (i = 0; i < 8; i++)
-        tag |= ((this->tags[i] & 3) << (2 * i));
+int FPU::GetTag(CPU* cpu, U32 index) {
+    if (isMMXInUse) {
+        if (cpu->reg_mmx[index].q == 0) {
+            return TAG_Zero;
+        }
+        return TAG_Valid;
+    }
+    U32 tag = this->tags[index] & 3;
+    if (tag != TAG_Empty) {
+        if (regs[index].l == 0) {
+            tag = TAG_Zero;
+        }
+    }
     return tag;
 }
 
+int FPU::GetTag(CPU* cpu) {
+    int tags = 0;
+
+    for (U32 i = 0; i < 8; i++) {
+        tags |= (GetTag(cpu, i) << (2 * i));
+    }
+    return tags;
+}
+
 U32 FPU::SW() {
+    if (isMMXInUse) {
+        return 0;
+    }
     FPU_SET_TOP(this, this->top); 
     return this->sw;
 }
@@ -750,16 +757,16 @@ void FPU::FSTENV(CPU* cpu, U32 addr) {
     FPU_SET_TOP(this, this->top);
     if (!cpu->isBig()) {
         cpu->memory->writew(addr + 0, this->cw);
-        cpu->memory->writew(addr + 2, this->sw);
-        cpu->memory->writew(addr + 4, GetTag());
+        cpu->memory->writew(addr + 2, SW());
+        cpu->memory->writew(addr + 4, GetTag(cpu));
         cpu->memory->writew(addr + 6, envData[0]); // instruction pointer
         cpu->memory->writew(addr + 8, envData[1]); // op code
         cpu->memory->writew(addr + 10, envData[2]); // data pointer
         cpu->memory->writew(addr + 12, envData[3]); // data pointer selector
     } else {
         cpu->memory->writed(addr + 0, this->cw);
-        cpu->memory->writed(addr + 4, this->sw);
-        cpu->memory->writed(addr + 8, GetTag());
+        cpu->memory->writed(addr + 4, SW());
+        cpu->memory->writed(addr + 8, GetTag(cpu));
         cpu->memory->writed(addr + 12, envData[0]);
         cpu->memory->writed(addr + 16, envData[1]);
         cpu->memory->writed(addr + 20, envData[2]);
@@ -796,10 +803,18 @@ void FPU::FSAVE(CPU* cpu, U32 addr) {
     int i;
 
     FSTENV(cpu, addr);
-            
-    for (i = 0; i < 8; i++) {
-        ST80(cpu, addr + start, STV(i));
-        start += 10;
+           
+    if (isMMXInUse) {
+        for (i = 0; i < 8; i++) {
+            cpu->memory->writeq(addr + start, cpu->reg_mmx[i].q);
+            cpu->memory->writew(addr + start + 8, 0xffff);
+            start += 10;
+        }
+    } else {
+        for (i = 0; i < 8; i++) {
+            ST80(cpu, addr + start, STV(i));
+            start += 10;
+        }
     }
     FINIT();
 }
@@ -811,8 +826,8 @@ void FPU::FRSTOR(CPU* cpu, U32 addr) {
     FLDENV(cpu, addr);
             
     for (i = 0; i < 8; i++) {
-        this->regs[STV(i)].d = FLD80(cpu->memory->readq(addr + start), cpu->memory->readw(addr + start + 8));
-        this->isIntegerLoaded[STV(i)] = 0;
+        cpu->reg_mmx[i].q = cpu->memory->readq(addr + start);
+        setReg(STV(i), FLD80(cpu->reg_mmx[i].q, cpu->memory->readw(addr + start + 8)));
         start += 10;
     }
 }
@@ -826,68 +841,56 @@ void FPU::FXTRACT() {
     S64 exp80final = (exp80 >> 52) - BIAS64;        
     double mant = tmp.d / (pow(2.0, (double) (exp80final)));
         
-    this->regs[this->top].d = (double) (exp80final);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, (double) (exp80final));
     PUSH(mant);
 }
 
 void FPU::FCHS() {
-    this->regs[this->top].d = -1.0 * (this->regs[this->top].d);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, -1.0 * (this->regs[this->top].d));
 }
 
 void FPU::FABS() {
-    this->regs[this->top].d = fabs(this->regs[this->top].d);
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, fabs(this->regs[this->top].d));
 }
 
-void FPU::FTST() {
+void FPU::FTST(CPU* cpu) {
     this->regs[8].d = 0.0;
-    this->isIntegerLoaded[this->top] = 0;
-    FCOM(this->top, 8);
+    FCOM(cpu, this->top, 8);
 }
 
 void FPU::FLD1() {
     PREP_PUSH();
-    this->regs[this->top].d = 1.0;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, 1.0);
 }
 
 void FPU::FLDL2T() {
     PREP_PUSH();
-    this->regs[this->top].d = L2T;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, L2T);
 }
 
 void FPU::FLDL2E() {
     PREP_PUSH();
-    this->regs[this->top].d = L2E;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, L2E);
 }
 
 void FPU::FLDPI() {
     PREP_PUSH();
-    this->regs[this->top].d = PI;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, PI);
 }
 
 void FPU::FLDLG2() {
     PREP_PUSH();
-    this->regs[this->top].d = LG2;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, LG2);
 }
 
 void FPU::FLDLN2() {
     PREP_PUSH();
-    this->regs[this->top].d = LN2;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, LN2);
 }
 
 void FPU::FLDZ() {
     PREP_PUSH();
-    this->regs[this->top].d = 0.0;
-    this->tags[this->top] = TAG_Zero;
-    this->isIntegerLoaded[this->top] = 0;
+    setReg(this->top, 0.0);
 }
 
 
@@ -915,8 +918,8 @@ void FPU::FDIVR_EA() {
     FDIVR(this->top, 8);
 }
 
-void FPU::FCOM_EA() {
-    FCOM(this->top, 8);
+void FPU::FCOM_EA(CPU* cpu) {
+    FCOM(cpu, this->top, 8);
 }
 
 void FPU::FLDCW(CPU* cpu, U32 addr) {
@@ -937,8 +940,6 @@ void FPU::FFREE_STi(U32 st) {
 }
 
 void FPU::reset() {
-	FPU_SET_TOP(this, 0);
-	this->top=0;
-	SetTag(TAG_Empty);
-    memset(envData, 0, sizeof(envData));
+    memset(this, 0, sizeof(FPU));
+    SetTag(TAG_Empty);
 }

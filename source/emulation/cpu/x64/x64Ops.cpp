@@ -1270,6 +1270,12 @@ static U32 keepSame(X64Asm* data) {
     return 0;
 }
 
+static U32 opEmms(X64Asm* data) {
+    data->writeOp();
+    data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 4, false);
+    return 0;
+}
+
 static U32 rdtsc(X64Asm* data) {
 #ifdef LOG_OPS
     x64_writeToRegFromValue(data, 0, FALSE, 1, 4);
@@ -2556,7 +2562,7 @@ X64Decoder x64Decoder[1024] = {
     mmx, mmx, mmx, mmx, mmx, mmx, mmx, mmx,
     mmx, mmx, mmx, mmx, invalidOp, invalidOp, mmxRegE, mmx,
     // 370
-    sseXmmExI8, mmxImm8, mmxImm8, mmxImm8, mmx, mmx, mmx, keepSame,
+    sseXmmExI8, mmxImm8, mmxImm8, mmxImm8, mmx, mmx, mmx, opEmms,
     invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, invalidOp, sseOp7e, mmx,
     // 380
     jump32, jump32, jump32, jump32, jump32, jump32, jump32, jump32,

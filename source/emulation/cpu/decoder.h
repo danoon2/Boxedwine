@@ -1427,6 +1427,8 @@ enum Instruction {
 // jump location is not at a fixed offset
 #define DECODE_BRANCH_NO_CACHE 0x04
 
+#define INST_STARTS_MMX 1
+
 class InstructionInfo {
 public:    
     U32  branch;
@@ -1436,6 +1438,7 @@ public:
     U32 flagsUsed;
     U32 flagsUndefined;
     U32 throwsException;
+    U32 extra;
 };
 
 extern const InstructionInfo instructionInfo[];
@@ -1456,6 +1459,7 @@ public:
     void log(CPU* cpu);
     bool needsToSetFlags();
     bool isFpuOp();
+    bool isMmxOp();
     bool isStringOp();
     const char* name();
 

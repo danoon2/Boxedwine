@@ -429,7 +429,7 @@ U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo
             }
         }
     }
-    return size;
+    return (U32)size;
 }
 
 #include "../vulkan/vk_host.h"

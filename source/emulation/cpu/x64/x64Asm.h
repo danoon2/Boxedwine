@@ -32,6 +32,7 @@
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
 #define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(x64CPU, returnToLoopAddress))
 #define CPU_OFFSET_FPU_TOP (U32)(offsetof(CPU, fpu.top))
+#define CPU_OFFSET_FPU_IS_MMX (U32)(offsetof(CPU, fpu.isMMXInUse))
 #define CPU_OFFSET_FPU_TAG (U32)(offsetof(CPU, fpu.tags[0]))
 #define CPU_OFFSET_INSTRUCTION_FLAGS (U32)(offsetof(x64CPU, instructionStoredFlags))
 

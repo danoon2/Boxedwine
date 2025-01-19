@@ -49,7 +49,7 @@ struct FPU_Reg {
 
 #define TAG_Valid 0
 #define TAG_Zero 1
-#define TAG_Empty 2
+#define TAG_Empty 3
 
 // binary translator assumes FPU->regs will be at offset 0
 class FPU {
@@ -95,8 +95,8 @@ public:
     void FXCH(int st, int other);
     void FST(int st, int other);
     void FCOMI(CPU* cpu, int st, int other);
-    void FCOM(int st, int other);
-    void FUCOM(int st, int other);
+    void FCOM(CPU* cpu, int st, int other);
+    void FUCOM(CPU* cpu, int st, int other);
     void FRNDINT();
     void FPREM();
     void FPREM1();
@@ -118,7 +118,7 @@ public:
     void FXTRACT();
     void FCHS();
     void FABS();
-    void FTST();
+    void FTST(CPU* cpu);
     void FLD1();
     void FLDL2T();
     void FLDL2E();
@@ -132,7 +132,7 @@ public:
     void FSUBR_EA();
     void FDIV_EA();
     void FDIVR_EA();
-    void FCOM_EA();
+    void FCOM_EA(CPU* cpu);
     void FLDCW(CPU* cpu, U32 addr);  
     void FFREE_STi(U32 st);
 
@@ -148,16 +148,18 @@ public:
     void SetTag(U32 tag);
 
     void SetTagFromAbridged(U8 tag);
-    U8 GetAbridgedTag();
+    U8 GetAbridgedTag(CPU* cpu);
     void setReg(U32 index, double value);
     inline U32 GetTop() {return this->top;}
 
-    int GetTag();
+    int GetTag(CPU* cpu);
+    int GetTag(CPU* cpu, U32 index);
     void LOG_STACK();
 
     struct FPU_Reg regs[9];
     U64 loadedInteger[9]; // moved out of FPU_Reg to make it easier for the binary translators to address
     U8 isIntegerLoaded[9];
+    bool isMMXInUse;
 
     U32 tags[9];
     U32 cw;

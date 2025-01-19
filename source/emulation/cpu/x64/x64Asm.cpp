@@ -4978,6 +4978,9 @@ void X64Asm::translateInstruction() {
         this->op = this->fetch8();
         this->inst = this->baseOp + this->op;
         if (!x64Decoder[this->inst](this)) {
+            if (instructionInfo[this->currentOp->inst].extra & INST_STARTS_MMX) {
+                writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 4, false);
+            }
             break;
         }
     }    
