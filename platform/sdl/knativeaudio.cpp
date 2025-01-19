@@ -15,43 +15,43 @@ bool KNativeAudioSDL::load() {
 	return true;
 }
 U32 KNativeAudioSDL::midiOutOpen(U32 wDevID) {
-	return E_FAIL;
-}
-
-U32 KNativeAudioSDL::midiOutClose(U32 wDevID) {
-	return E_FAIL;
-}
-
-U32 KNativeAudioSDL::midiOutData(U32 wDevID, U8* buffer, U32 len) {
-	return E_FAIL;
-}
-
-U32 KNativeAudioSDL::midiOutLongData(U32 wDevID, U8* buffer, U32 len) {
-	return E_FAIL;
-}
-
-U32 KNativeAudioSDL::midiOutGetNumDevs() {
 	return 0;
 }
 
+U32 KNativeAudioSDL::midiOutClose(U32 wDevID) {
+	return 0;
+}
+
+U32 KNativeAudioSDL::midiOutData(U32 wDevID, U8* buffer, U32 len) {
+	return 0;
+}
+
+U32 KNativeAudioSDL::midiOutLongData(U32 wDevID, U8* buffer, U32 len) {
+	return 0;
+}
+
+U32 KNativeAudioSDL::midiOutGetNumDevs() {
+	return 1;
+}
+
 U32 KNativeAudioSDL::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) {
-	return E_FAIL;
+	return 0;
 }
 
 U32 KNativeAudioSDL::midiOutSetVolume(U32 wDevID, U32 dwVolume) {
-	return E_FAIL;
+	return 0;
 }
 
 U32 KNativeAudioSDL::midiOutReset(U32 wDevID) {
-	return E_FAIL;
+	return 0;
 }
 
 BString KNativeAudioSDL::midiOutGetName(U32 wDevID) {
-    return BString::empty;
+    return B("Fake Midi");
 }
 
 bool KNativeAudioSDL::midiOutIsOpen(U32 wDevID) {
-    return false;
+    return true;
 }
 
 
