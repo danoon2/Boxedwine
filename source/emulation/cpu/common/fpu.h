@@ -49,7 +49,7 @@ struct FPU_Reg {
 
 #define TAG_Valid 0
 #define TAG_Zero 1
-#define TAG_Empty 2
+#define TAG_Empty 3
 
 // binary translator assumes FPU->regs will be at offset 0
 class FPU {

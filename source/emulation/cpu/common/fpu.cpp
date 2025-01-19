@@ -757,7 +757,7 @@ void FPU::FSTENV(CPU* cpu, U32 addr) {
     FPU_SET_TOP(this, this->top);
     if (!cpu->isBig()) {
         cpu->memory->writew(addr + 0, this->cw);
-        cpu->memory->writew(addr + 2, this->sw);
+        cpu->memory->writew(addr + 2, SW());
         cpu->memory->writew(addr + 4, GetTag(cpu));
         cpu->memory->writew(addr + 6, envData[0]); // instruction pointer
         cpu->memory->writew(addr + 8, envData[1]); // op code
@@ -765,7 +765,7 @@ void FPU::FSTENV(CPU* cpu, U32 addr) {
         cpu->memory->writew(addr + 12, envData[3]); // data pointer selector
     } else {
         cpu->memory->writed(addr + 0, this->cw);
-        cpu->memory->writed(addr + 4, this->sw);
+        cpu->memory->writed(addr + 4, SW());
         cpu->memory->writed(addr + 8, GetTag(cpu));
         cpu->memory->writed(addr + 12, envData[0]);
         cpu->memory->writed(addr + 16, envData[1]);
