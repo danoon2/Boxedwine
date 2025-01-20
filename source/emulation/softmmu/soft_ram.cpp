@@ -49,6 +49,20 @@ KRamPtr ramPageAlloc() {
     return ramPageAlloc();
 }
 
+#elif defined(BOXEDWINE_MULTI_THREADED)
+KRamPtr ramPageAlloc() {
+    std::align_val_t align = (std::align_val_t)16;
+    U8* result = (U8*)operator new(K_PAGE_SIZE, align);
+    memset(result, 0, K_PAGE_SIZE);
+    KRamPtr ram(result, [align](U8* p) {
+        allocatedRamPages--;
+        operator delete(p, align);
+        });
+    allocatedRamPages++;
+    return ram;
+}
+void shutdownRam() {
+}
 #else
 KRamPtr ramPageAlloc() {
     U8* result = new U8[K_PAGE_SIZE];
@@ -60,8 +74,6 @@ KRamPtr ramPageAlloc() {
     allocatedRamPages++;
     return ram;
 }
-
 void shutdownRam() {
 }
-
 #endif

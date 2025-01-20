@@ -37,6 +37,20 @@ class KMemoryData;
 class KProcess;
 class BtMemory;
 
+#ifdef BOXEDWINE_MULTI_THREADED   
+struct LockData8 {
+    U8 data;
+};
+struct LockData16 {
+    U16 data;
+};
+struct LockData32 {
+    U32 data;
+};
+struct LockData64 {
+    U64 data;
+};
+#endif
 class KMemory {
 private:
     KMemory(KProcess* process);

@@ -267,8 +267,8 @@ void OPCALL lockOp8(CPU* cpu, DecodedOp* op) {
     lockedOp.disp = cpu->tmpLockAddress;
     lockedOp.ea16 = 0;
 
-    U8& ram = *(U8*)cpu->memory->getIntPtr(address, true);
-    std::atomic_ref<U8> mem(ram);
+    LockData8* p = (LockData8*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U8> mem(p->data);
     Reg savedRegs[8];
     U32 savedEip = cpu->eip.u32;
 
@@ -311,8 +311,8 @@ void OPCALL lockOp16(CPU* cpu, DecodedOp* op) {
     lockedOp.disp = cpu->tmpLockAddress;
     lockedOp.ea16 = 0;
 
-    U16& ram = *(U16*)cpu->memory->getIntPtr(address, true);
-    std::atomic_ref<U16> mem(ram);
+    LockData16* p= (LockData16*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U16> mem(p->data);
     Reg savedRegs[8];
     U32 savedEip = cpu->eip.u32;
 
@@ -355,8 +355,8 @@ void OPCALL lockOp32(CPU* cpu, DecodedOp* op) {
     lockedOp.disp = cpu->tmpLockAddress;
     lockedOp.ea16 = 0;
 
-    U32& ram = *(U32*)cpu->memory->getIntPtr(address, true);
-    std::atomic_ref<U32> mem(ram);
+    LockData32* p = (LockData32*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U32> mem(p->data);
     Reg savedRegs[8];
     U32 savedEip = cpu->eip.u32;
 
@@ -370,7 +370,7 @@ void OPCALL lockOp32(CPU* cpu, DecodedOp* op) {
         U32 oldValue = cpu->memory->readd(address);   
         cpu->memory->writed(cpu->tmpLockAddress, oldValue);
 
-        normalOps[op->inst](cpu, &lockedOp);        
+        normalOps[op->inst](cpu, &lockedOp);
 
         U32 newValue = cpu->memory->readd(cpu->tmpLockAddress);
 

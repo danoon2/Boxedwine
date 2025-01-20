@@ -173,8 +173,8 @@ void common_cmpxchg8b_lock(CPU* cpu, U32 address) {
 
     cpu->fillFlags();
 
-    U64& ram = *(U64*)cpu->memory->getIntPtr(address, true);
-    std::atomic_ref<U64> mem(ram);
+    LockData64* p = (LockData64*)cpu->memory->getIntPtr(address, true);
+    std::atomic_ref<U64> mem(p->data);
 
     if (mem.compare_exchange_strong(expected, value)) {
         cpu->addZF();
