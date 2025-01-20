@@ -6077,9 +6077,9 @@ bool DecodedOp::isMmxOp() {
     return (this->inst >= PunpcklbwMmx && this->inst <= PadddE64);
 }
 
-bool DecodedOp::needsToSetFlags() {
+bool DecodedOp::needsToSetFlags(CPU* cpu) {
     U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
-    return DecodedOp::getNeededFlags(DecodedBlock::currentBlock, this, needsToSet)!=0;
+    return DecodedOp::getNeededFlags(cpu->currentBlock, this, needsToSet)!=0;
 }
 
 U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth) {
@@ -6204,8 +6204,6 @@ void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
 		from = from->next;
 	}
 }
-
-thread_local DecodedBlock* DecodedBlock::currentBlock;
 
 void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
     DecodeData d;    

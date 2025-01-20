@@ -1457,7 +1457,7 @@ public:
 
     void dealloc(bool deallocNext);    
     void log(CPU* cpu);
-    bool needsToSetFlags();
+    bool needsToSetFlags(CPU* cpu);
     bool isFpuOp();
     bool isMmxOp();
     bool isStringOp();
@@ -1510,7 +1510,6 @@ public:
 
 class DecodedBlock {
 public:       
-    thread_local static DecodedBlock* currentBlock;
     virtual ~DecodedBlock() {}
 
     DecodedBlock() = default;
