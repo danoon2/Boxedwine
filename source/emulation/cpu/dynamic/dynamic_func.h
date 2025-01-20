@@ -77,7 +77,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
     bool isSet = op->next->inst == SetZ_E8 || op->next->inst == SetZ_R8 || op->next->inst == SetNZ_E8 || op->next->inst == SetNZ_R8;
     bool needResultReg = isJump || isSet;
     DynReg jmpReg = DYN_NOT_SET;
-    bool needsToSetFlags = op->needsToSetFlags();
+    bool needsToSetFlags = op->needsToSetFlags(data->cpu);
 
     if (cf) {
         dynamic_getCF(data);

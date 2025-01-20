@@ -2051,9 +2051,9 @@ void blockDone() {
 }
 
 static DecodedBlock* updateNext1(CPU* cpu) {
-    DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); 
-    DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);
-    return DecodedBlock::currentBlock->next1;
+    cpu->currentBlock->next1 = cpu->getNextBlock(); 
+    cpu->currentBlock->next1->addReferenceFrom(cpu->currentBlock);
+    return cpu->currentBlock->next1;
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
@@ -2064,10 +2064,7 @@ void blockNext1() {
     // } 
     // cpu->nextBlock = DecodedBlock::currentBlock->next1
     
-    // mov edx, DecodedBlock::currentBlock
-    outb(0x8b);
-    outb(0x15);
-    outd((U32)&DecodedBlock::currentBlock);
+    movToRegFromCpu(DYN_EDX, offsetof(CPU, currentBlock), DYN_32bit);
 
     // mov eax, DecodedBlock::currentBlock->next1
     outb(0x8b);    
@@ -2098,9 +2095,9 @@ void blockNext1() {
 }
 
 static DecodedBlock* updateNext2(CPU* cpu) {
-    DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); 
-    DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);
-    return DecodedBlock::currentBlock->next2;
+    cpu->currentBlock->next2 = cpu->getNextBlock(); 
+    cpu->currentBlock->next2->addReferenceFrom(cpu->currentBlock);
+    return cpu->currentBlock->next2;
 }
 
 void blockNext2() {
@@ -2110,10 +2107,7 @@ void blockNext2() {
     // } 
     // cpu->nextBlock = DecodedBlock::currentBlock->next2
     
-    // mov edx, DecodedBlock::currentBlock
-    outb(0x8b);
-    outb(0x15);
-    outd((U32)&DecodedBlock::currentBlock);
+    movToRegFromCpu(DYN_EDX, offsetof(CPU, currentBlock), DYN_32bit);
 
     // mov eax, DecodedBlock::currentBlock->next1
     outb(0x8b);    
@@ -2212,99 +2206,107 @@ static void initX32Ops() {
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
-    if (DecodedBlock::currentBlock->runCount == 0) {
+    if (cpu->currentBlock->runCount == 0) {
 #else
-    if (DecodedBlock::currentBlock->runCount == 50) {
+    if (cpu->currentBlock->runCount == 50) {
 #endif
-        DynamicData data;
-        data.cpu = cpu;
-        data.block = DecodedBlock::currentBlock;
+        {
+            BOXEDWINE_CRITICAL_SECTION;
 
-        initX32Ops();
-        DecodedOp* o = op->next;
-        outBufferPos = 0;
-        patch.clear();
-        outb(0x53); // push ebx
-        outb(0x57); // push edi , will hold cpu
-        // on win32 ecx contains cpu
-        // mov edi, ecx
-        outb(0x89);
-        outb(0xcf);
-        while (o) {
-            memset(regUsed, 0, sizeof(regUsed));
+            if (op->pfn != firstDynamicOp) {
+                op->pfn(cpu, op);
+                return;
+            }
+            DynamicData data;
+            data.cpu = cpu;
+            data.block = cpu->currentBlock;
+
+            initX32Ops();
+            DecodedOp* o = op->next;
+            outBufferPos = 0;
+            patch.clear();
+            outb(0x53); // push ebx
+            outb(0x57); // push edi , will hold cpu
+            // on win32 ecx contains cpu
+            // mov edi, ecx
+            outb(0x89);
+            outb(0xcf);
+            while (o) {
+                memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
-            callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
+                callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
-            x32Ops[o->inst](&data, o); 
-            if (ifJump.size()) {
-                kpanic("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
-            }
-            if (data.skipToOp) {
-                o = data.skipToOp;
-                data.skipToOp = NULL;
-            } else if (data.done) {
+                x32Ops[o->inst](&data, o);
+                if (ifJump.size()) {
+                    kpanic("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
+                }
+                if (data.skipToOp) {
+                    o = data.skipToOp;
+                    data.skipToOp = NULL;
+                } else if (data.done) {
 #ifndef __TEST
 #ifdef _DEBUG
-                if (o->next)
-                    callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
+                    if (o->next)
+                        callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
-                break;
-            } else {
-                o = o->next;
+                    break;
+                } else {
+                    o = o->next;
+                }
             }
-        }
-        outb(0x5f); // pop edi
-        outb(0x5b); // pop ebx
-        outb(0xc3); // ret
-        DynamicMemory* memory = getMemData(cpu->memory)->dynamicMemory;
-        if (!memory) {
-            memory = new DynamicMemory();
-            getMemData(cpu->memory)->dynamicMemory = memory;
-        }
-        void* mem = NULL;
+            outb(0x5f); // pop edi
+            outb(0x5b); // pop ebx
+            outb(0xc3); // ret
+            DynamicMemory* memory = getMemData(cpu->memory)->dynamicMemory;
+            if (!memory) {
+                memory = new DynamicMemory();
+                getMemData(cpu->memory)->dynamicMemory = memory;
+            }
+            void* mem = NULL;
 
-        if (memory->dynamicExecutableMemory.size()==0) {
-            int blocks = (outBufferPos+0xffff)/0x10000;
-            memory->dynamicExecutableMemoryLen = blocks*0x10000;
-            mem = Platform::alloc64kBlock(blocks, true);
-            memory->dynamicExecutableMemoryPos = 0;
-            memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
-        } else {
-            mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size()-1].p;
-            if (memory->dynamicExecutableMemoryPos+outBufferPos>=memory->dynamicExecutableMemoryLen) {
-                int blocks = (outBufferPos+0xffff)/0x10000;
-                memory->dynamicExecutableMemoryLen = blocks*0x10000;
+            if (memory->dynamicExecutableMemory.size() == 0) {
+                int blocks = (outBufferPos + 0xffff) / 0x10000;
+                memory->dynamicExecutableMemoryLen = blocks * 0x10000;
                 mem = Platform::alloc64kBlock(blocks, true);
                 memory->dynamicExecutableMemoryPos = 0;
                 memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
+            } else {
+                mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size() - 1].p;
+                if (memory->dynamicExecutableMemoryPos + outBufferPos >= memory->dynamicExecutableMemoryLen) {
+                    int blocks = (outBufferPos + 0xffff) / 0x10000;
+                    memory->dynamicExecutableMemoryLen = blocks * 0x10000;
+                    mem = Platform::alloc64kBlock(blocks, true);
+                    memory->dynamicExecutableMemoryPos = 0;
+                    memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
+                }
             }
-        }
-        U8* begin = (U8*)mem+memory->dynamicExecutableMemoryPos;
-        memcpy(begin, outBuffer, outBufferPos);
-        memory->dynamicExecutableMemoryPos+=outBufferPos;
-        
-        for (U32 i=0;i<patch.size();i++) {
-            U32 pos = patch[i];
-            U32* value = (U32*)(&begin[pos]);
-            *value = *value - (U32)(begin+pos+4);
-        }
-        bool b = false;
-        if (b) {
-            printf("\n");
-            for (U32 i=0;i<outBufferPos;i++) {
-                printf("%0.2X ", outBuffer[i]);
+            U8* begin = (U8*)mem + memory->dynamicExecutableMemoryPos;
+            memcpy(begin, outBuffer, outBufferPos);
+            memory->dynamicExecutableMemoryPos += outBufferPos;
+
+            for (U32 i = 0; i < patch.size(); i++) {
+                U32 pos = patch[i];
+                U32* value = (U32*)(&begin[pos]);
+                *value = *value - (U32)(begin + pos + 4);
             }
-            printf("\n");
-        }
+            bool b = false;
+            if (b) {
+                printf("\n");
+                for (U32 i = 0; i < outBufferPos; i++) {
+                    printf("%0.2X ", outBuffer[i]);
+                }
+                printf("\n");
+            }
 #ifndef _DEBUG
-        //op->next->dealloc(true);
-        //op->next = NULL;
+            //op->next->dealloc(true);
+            //op->next = NULL;
 #endif
-        op->pfn = (OpCallback)begin; // :TODO: if function is expected to pop stack because of the two passed params, then this will not work        
-        op->pfn(cpu, op);
+            op->pfn = (OpCallback)begin; // :TODO: if function is expected to pop stack because of the two passed params, then this will not work        
+        }
+        op->pfn(cpu, op);        
     } else {
         op->next->pfn(cpu, op->next);
     }

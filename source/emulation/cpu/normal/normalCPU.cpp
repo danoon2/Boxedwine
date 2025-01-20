@@ -22,8 +22,8 @@
 #else
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next)
 #define NEXT_DONE() cpu->nextBlock = cpu->getNextBlock();
-#define NEXT_BRANCH1() cpu->eip.u32+=op->len; if (!DecodedBlock::currentBlock->next1) {DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next1
-#define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!DecodedBlock::currentBlock->next2) {DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next2
+#define NEXT_BRANCH1() cpu->eip.u32+=op->len; if (!cpu->currentBlock->next1) {cpu->currentBlock->next1 = cpu->getNextBlock(); cpu->currentBlock->next1->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next1
+#define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!cpu->currentBlock->next2) {cpu->currentBlock->next2 = cpu->getNextBlock(); cpu->currentBlock->next2->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next2
 #endif
 
 #include "instructions.h"
@@ -174,12 +174,12 @@ void NormalBlock::dealloc(bool delayed) {
     bool doDelete = false;
     if (thread) {
         CPU* cpu = thread->cpu;
-        if (cpu && cpu->delayedFreeBlock && cpu->delayedFreeBlock != DecodedBlock::currentBlock) {
+        if (cpu && cpu->delayedFreeBlock && cpu->delayedFreeBlock != cpu->currentBlock) {
             DecodedBlock* b = cpu->delayedFreeBlock;
             cpu->delayedFreeBlock = nullptr;
             b->dealloc(false);
         }
-        if (cpu && ((delayed && !cpu->delayedFreeBlock) || this == DecodedBlock::currentBlock)) {
+        if (cpu && ((delayed && !cpu->delayedFreeBlock) || this == cpu->currentBlock)) {
             cpu->delayedFreeBlock = this;
         } else {
             if (op) {
@@ -414,6 +414,40 @@ void OPCALL lockCmpXchg8(CPU* cpu, DecodedOp* op) {
 }
 #endif
 
+bool setNormalFunction(DecodedOp* op) {
+    bool usesLock = false;
+#ifdef BOXEDWINE_MULTI_THREADED
+    // abiword has a lock test reg, value
+    if (op->lock && instructionInfo[op->inst].writeMemWidth != 0 && instructionInfo[op->inst].readMemWidth != 0) {
+        emptyOp.next = nullptr;
+        emptyOp.pfn = emptyInst;
+
+        usesLock = true;
+        if (op->inst == CmpXchgE8R8) {
+            op->pfn = lockCmpXchg8;
+        } else if (op->inst == CmpXchgE16R16) {
+            op->pfn = lockCmpXchg16;
+        } else if (op->inst == CmpXchgE32R32) {
+            op->pfn = lockCmpXchg32;
+        } else if (op->inst == CmpXchg8b) {
+            op->pfn = lockCmpXchg8b;
+        } else if (instructionInfo[op->inst].readMemWidth == 8) {
+            op->pfn = lockOp8;
+        } else if (instructionInfo[op->inst].readMemWidth == 16) {
+            op->pfn = lockOp16;
+        } else if (instructionInfo[op->inst].readMemWidth == 32) {
+            op->pfn = lockOp32;
+        } else {
+            kpanic("Unexepected memory width for locked instruction: %d", instructionInfo[op->inst].readMemWidth);
+        }
+    } else
+#endif
+        if (!op->pfn) { // callback will be set by decoder
+            op->pfn = normalOps[op->inst];
+        }
+    return usesLock;
+}
+
 DecodedBlock* NormalCPU::getNextBlock() {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     return nullptr;
@@ -436,41 +470,14 @@ DecodedBlock* NormalCPU::getNextBlock() {
                 block->address = startIp;
 
                 DecodedOp* op = block->op;
-                bool excludeFromJIT = true;
+                bool excludeFromJIT = false;
                 while (op) {
-#ifdef BOXEDWINE_MULTI_THREADED
-                    // abiword has a lock test reg, value
-                    if (op->lock && instructionInfo[op->inst].writeMemWidth != 0 && instructionInfo[op->inst].readMemWidth != 0) {
-                        emptyOp.next = nullptr;
-                        emptyOp.pfn = emptyInst;
-
-                        excludeFromJIT = true;
-                        if (op->inst == CmpXchgE8R8) {
-                            op->pfn = lockCmpXchg8;
-                            //excludeFromJIT = false;
-                        } else if (op->inst == CmpXchgE16R16) {
-                            op->pfn = lockCmpXchg16;
-                            //excludeFromJIT = false;
-                        } else if (op->inst == CmpXchgE32R32) {
-                            op->pfn = lockCmpXchg32;
-                            //excludeFromJIT = false;
-                        } else if (op->inst == CmpXchg8b) {
-                            op->pfn = lockCmpXchg8b;
-                            //excludeFromJIT = false;
-                        } else if (instructionInfo[op->inst].readMemWidth == 8) {
-                            op->pfn = lockOp8;
-                        } else if (instructionInfo[op->inst].readMemWidth == 16) {
-                            op->pfn = lockOp16;
-                        } else if (instructionInfo[op->inst].readMemWidth == 32) {
-                            op->pfn = lockOp32;
-                        } else {
-                            kpanic("Unexepected memory width for locked instruction: %d", instructionInfo[op->inst].readMemWidth);
+                    if (setNormalFunction(op)) {
+                        // these 4 will call the appropriate lock function
+                        if (op->inst != CmpXchgE8R8 && op->inst != CmpXchgE16R16 && op->inst != CmpXchgE32R32 && op->inst != CmpXchg8b) {
+                            excludeFromJIT = true;
                         }                        
-                    } else
-#endif
-                        if (!op->pfn) { // callback will be set by decoder
-                            op->pfn = normalOps[op->inst];
-                        }
+                    }
                     op = op->next;
                 }
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -494,13 +501,13 @@ DecodedBlock* NormalCPU::getNextBlock() {
 }
 
 void NormalCPU::run() {    
-    DecodedBlock::currentBlock = this->nextBlock;
-    DecodedBlock::currentBlock->run(this);    
+    currentBlock = this->nextBlock;
+    currentBlock->run(this);    
 #ifdef _DEBUG
     if (!this->nextBlock && !this->yield && !this->thread->terminating) {
         kpanic("NormalCPU::run no block set");
     }
-    DecodedBlock::currentBlock = nullptr;
+    currentBlock = nullptr;
 #endif
 }
 

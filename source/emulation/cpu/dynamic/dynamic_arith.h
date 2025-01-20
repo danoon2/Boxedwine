@@ -422,7 +422,7 @@ void dynamic_note32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_negr8(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPU('-', CPU::offsetofReg8(op->reg), DYN_8bit);
     } else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u8), CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST, false);
@@ -436,7 +436,7 @@ void dynamic_negr8(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_nege8(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instMem('-', DYN_ADDRESS, DYN_8bit, true);
     } else {
         movToCpuFromMem(CPU_OFFSET_OF(src.u8), DYN_8bit, DYN_ADDRESS, false, false);
@@ -449,7 +449,7 @@ void dynamic_nege8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_negr16(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPU('-', CPU::offsetofReg16(op->reg), DYN_16bit);
     } else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST, false);
@@ -463,7 +463,7 @@ void dynamic_negr16(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_nege16(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instMem('-', DYN_ADDRESS, DYN_16bit, true);
     } else {
         movToCpuFromMem(CPU_OFFSET_OF(src.u16), DYN_16bit, DYN_ADDRESS, false, false);
@@ -476,7 +476,7 @@ void dynamic_nege16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_negr32(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPU('-', CPU::offsetofReg32(op->reg), DYN_32bit);
     } else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST, false);
@@ -490,7 +490,7 @@ void dynamic_negr32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_nege32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instMem('-', DYN_ADDRESS, DYN_32bit, true);
     } else {
         movToCpuFromMem(CPU_OFFSET_OF(src.u32), DYN_32bit, DYN_ADDRESS, false, false);

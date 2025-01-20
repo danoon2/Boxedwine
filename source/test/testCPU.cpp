@@ -8570,6 +8570,7 @@ void testFSAVEMmx() {
             fld f4;
             movq mm0, data
             fsave[state];
+            emms;
         }
         assertTrue(state.fsw == 0);
         assertTrue(state.st[0].q == data);

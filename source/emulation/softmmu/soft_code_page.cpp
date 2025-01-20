@@ -38,7 +38,8 @@ static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
 
 void CodePage::removeEntry(CodePageEntry* entry, U32 offset) {
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
-    if (entry->block == DecodedBlock::currentBlock) {
+    DecodedBlock* currentBlock = KThread::currentThread()->cpu->currentBlock;
+    if (entry->block == currentBlock) {
         KThread* thread = KThread::currentThread();
         U32 ip;
 
@@ -48,7 +49,7 @@ void CodePage::removeEntry(CodePageEntry* entry, U32 offset) {
             ip = thread->cpu->seg[CS].address + thread->cpu->eip.u16;
         if (entry->block->address + offset >= ip) {
             // we don't have a pointer to the current op, so just set them all
-            DecodedOp* op = DecodedBlock::currentBlock->op;
+            DecodedOp* op = currentBlock->op;
             while (op) {
                 op->pfn = emptyOp; // This will cause the current block to return
                 op = op->next;

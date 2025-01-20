@@ -277,6 +277,7 @@ public:
 
     DecodedBlock* nextBlock = nullptr;
     DecodedBlock* delayedFreeBlock = nullptr;
+    DecodedBlock* currentBlock = nullptr;
 
     bool getCF();
     bool getSF();
