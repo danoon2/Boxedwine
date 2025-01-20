@@ -385,6 +385,6 @@ void common_runSingleOp(x64CPU* cpu) {
     if (deallocOp) {
         op->dealloc(true);
     }
-    DecodedBlock::currentBlock = nullptr;
+    cpu->currentBlock = nullptr;
 }
 #endif
