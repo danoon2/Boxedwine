@@ -57,7 +57,7 @@ void mainloop() {
 
             title.append(" ");
             title.append(getSize(allocatedRamPages));
-			emscripten_set_window_title(title.c_str());
+	    emscripten_set_window_title(title.c_str());
         }
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
@@ -91,6 +91,7 @@ void mainloop() {
     U32 startTime = KNativeSystem::getTicks();
     U32 t;
     U32 count=0;
+    BString mipsTitle;
     while (1) {
         bool ran = runSlice();
 
@@ -102,11 +103,10 @@ void mainloop() {
         t = KSystem::getMilliesSinceStart();                
         if (lastTitleUpdate+1000 < t) {
             lastTitleUpdate = t;
-            //BString mipsTitle = B("BoxedWine " getMIPS() " MIPS");
-            //emscripten_set_window_title(mipsTitle.c_str());
-            //EM_ASM_INT({
-            //    document.title="BoxedWine " + $0 + " MIPS";
-            //}, getMIPS());
+	    mipsTitle = B("BoxedWine ");
+	    mipsTitle.append(getMIPS());
+	    mipsTitle.append(" MIPS");
+	    emscripten_set_window_title(mipsTitle.c_str());           
         }
         if (!ran) {
             break;
