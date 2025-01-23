@@ -920,8 +920,20 @@ struct ucontext_ia32 {
 */
   
 #define INFO_SIZE 128
-#define CONTEXT_SIZE 128
+#define CONTEXT_SIZE 768
 
+struct FpuState {
+    U32   ControlWord;
+    U32   StatusWord;
+    U32   TagWord;
+    U32   ErrorOffset;
+    U32   ErrorSelector;
+    U32   DataOffset;
+    U32   DataSelector;
+    U8    RegisterArea[80];
+    U32   Cr0NpxState;
+};
+void common_fxsave(CPU* cpu, U32 address);
 void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 trapNo, U32 errorNo) {	
     CPU* cpu = thread->cpu;
     KMemory* memory = thread->memory;
@@ -954,9 +966,39 @@ void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 
     memory->writed(context+0x54, cpu->flags);
     memory->writed(context+0x58, 0); // REG_UESP
     memory->writed(context+0x5C, cpu->seg[SS].value);
-    memory->writed(context+0x60, 0); // fpu save state
+    memory->writed(context+0x60, 0); // sigset_t uc_sigmask;
+    memory->writed(context+0x64, 0); // cr2
+    memory->writed(context+0x68, context + 0x70); // fpu save state
+    // sizeof(struct _fpstate) = 624 (0x270) on 32-bit debian 11
+    memory->writed(context+0x70, cpu->fpu.CW());
+    memory->writed(context+0x74, cpu->fpu.SW());
+    memory->writed(context+0x78, cpu->fpu.GetTag(cpu));
+    memory->writed(context+0x7C, 0);
+    memory->writed(context+0x80, 0);
+    memory->writed(context+0x84, 0);
+    memory->writed(context+0x88, 0);
+    for (U32 i = 0; i < 8; i++) {
+        U32 address = context + 0x8C + i * 10;
+
+        if (cpu->fpu.isMMXInUse) {
+            cpu->memory->writeq(address, cpu->reg_mmx[i].q);
+            cpu->memory->writew(address + 8, 0xffff);
+        } else {
+            cpu->fpu.ST80(cpu, address, cpu->fpu.STV(i));
+        }
+    }
+    memory->writew(context + 0xDC, 0); // status
+    // magic :TODO: what should this value be, wine just checks if it has a value 
+    // #define FPUX_sig(context)    (FPU_sig(context) && !((context)->uc_mcontext.fpregs->status >> 16) ? (XSAVE_FORMAT *)(FPU_sig(context) + 1) : NULL)
+    memory->writew(context + 0xDE, 1 | (cpu->fpu.isMMXInUse ? 0x8000 : 0)); 
+    memory->memset(context + 0xE0, 0, 512); // wine will look for a magic number that we don't want to set. fpu->Reserved4)[12] == FP_XSTATE_MAGIC1
+    if (cpu->fpu.isMMXInUse || cpu->fpu.GetTag(cpu) != 0xffff) {
+        int ii = 0;
+    }
+    common_fxsave(cpu, context + 0xE0);
 }
 
+void common_fxrstor(CPU* cpu, U32 address);
 void readFromContext(CPU* cpu, U32 context) {
     KMemory* memory = (KMemory*)cpu->memory;
 
@@ -979,6 +1021,24 @@ void readFromContext(CPU* cpu, U32 context) {
     cpu->setSegment(CS, memory->readd(context+0x50));
     cpu->flags = memory->readd(context+0x54);
     cpu->setSegment(SS, memory->readd(context+0x5C));
+
+    /* common_fxrstor will handle this
+    cpu->fpu.SetCW(memory->readd(context + 0x70));
+    cpu->fpu.SetSW(memory->readd(context + 0x74));
+    cpu->fpu.SetTag(memory->readd(context + 0x78));
+    cpu->fpu.isMMXInUse = (memory->readw(context + 0xDE) & 0x8000) != 0;
+    for (U32 i = 0; i < 8; i++) {
+        U32 address = context + 0x8C + i * 10;
+
+        if (cpu->fpu.isMMXInUse) {
+            cpu->reg_mmx[i].q = cpu->memory->readq(address);
+        } else {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            cpu->fpu.regs[i].d = cpu->fpu.FLD80(cpu->memory->readq(address), (S16)cpu->memory->readw(address+8));
+        }
+    }
+    */
+    common_fxrstor(cpu, context + 0xE0);
 }
 
 U32 KThread::sigreturn() {

@@ -227,18 +227,7 @@ void signalHandler() {
         cpu->loadFxState(op->inst, fpu);        
 #endif
         bool saveFxState = true;
-        bool inSignal = cpu->thread->inSignal;
         cpu->returnHostAddress = cpu->handleAccessException(op);
-        if (inSignal != (cpu->thread->inSignal != 0)) {
-            // :TODO: move this threads context read/write
-            // realdeal can trigger this
-            if (inSignal) {
-                memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
-                saveFxState = false;
-            } else {
-                memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
-            }
-        }
         cpu->fillFlags();        
         cpu->updateX64Flags();
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU

@@ -339,7 +339,6 @@ void common_runSingleOp(x64CPU* cpu) {
         }
     }
 #endif
-    bool inSignal = cpu->thread->inSignal;
     if (writesFlags[op->inst]) {
         cpu->flags &= ~(SF | AF | ZF | PF | CF | OF);
         cpu->flags |= ((cpu->instructionStoredFlags >> 8) & 0xff) | ((cpu->instructionStoredFlags & 1) << 11);
@@ -348,14 +347,6 @@ void common_runSingleOp(x64CPU* cpu) {
         op->pfn(cpu, op);
     } catch (...) {
         int ii = 0;
-    }
-    if (inSignal != (cpu->thread->inSignal!=0)) {
-        // :TODO: move this threads context read/write
-        if (inSignal) {
-            memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
-        } else {
-            memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
-        }
     }
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
     for (U32 i = 0; i < 8; i++) {

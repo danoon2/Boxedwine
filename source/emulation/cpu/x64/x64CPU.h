@@ -88,8 +88,9 @@ public:
     U32 currentHostFlags = 0;
     U32 instructionStoredFlags = 0;
     ALIGN(FxsaveStruct fpuState, 16) = { 0 };
-    ALIGN(FxsaveStruct originalFpuState, 16) = { 0 };
     ALIGN(U8 fpuBuffer[512], 16) = { 0 };
+    U32 sseControlStateTmp = 0;
+    U32 sseControlStateTmp2 = 0;
     U64 originalCpuRegs[16] = { 0 };
     void* reTranslateChunkAddress = nullptr;    
     void* jmpAndTranslateIfNecessary = nullptr;

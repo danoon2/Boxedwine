@@ -882,111 +882,111 @@ const InstructionInfo instructionInfo[] = {
     {0, 64, 64, ZF, 0, 0, 0}, // CmpXchg8b
     {0, 0, 0, 0, 0, 0, 0}, // Bswap32
 
-    {0, 0, 0, 0, 0, 0, 0}, // PunpcklbwMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PunpcklbwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PunpcklwdMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PunpcklwdE64
-    {0, 0, 0, 0, 0, 0, 0}, // PunpckldqMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PunpckldqE64
-    {0, 0, 0, 0, 0, 0, 0}, // PacksswbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PacksswbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PcmpgtbMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PcmpgtbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PcmpgtwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PcmpgtwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PcmpgtdMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PcmpgtdE64
-    {0, 0, 0, 0, 0, 0, 0}, // PackuswbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PackuswbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PunpckhbwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PunpckhbwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PunpckhwdMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PunpckhwdE64
-    {0, 0, 0, 0, 0, 0, 0}, // PunpckhdqMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PunpckhdqE64
-    {0, 0, 0, 0, 0, 0, 0}, // PackssdwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PackssdwE64
-    {0, 0, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // MovPqR32, 
-    {0, 32, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // MovPqE32,
-    {0, 0, 0, 0, 0, 0, 0}, // MovPqMmx, 
-    {0, 64, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // MovPqE64,
-    {0, 0, 0, 0, 0, 0, 0}, // Psrlw 
-    {0, 0, 0, 0, 0, 0, 0}, // Psraw 
-    {0, 0, 0, 0, 0, 0, 0}, // Psllw
-    {0, 0, 0, 0, 0, 0, 0}, // Psrld 
-    {0, 0, 0, 0, 0, 0, 0}, // Psrad 
-    {0, 0, 0, 0, 0, 0, 0}, // Pslld
-    {0, 0, 0, 0, 0, 0, 0}, // Psrlq 
-    {0, 0, 0, 0, 0, 0, 0}, // Psllq
-    {0, 0, 0, 0, 0, 0, 0}, // PcmpeqbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PcmpeqbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PcmpeqwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PcmpeqwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PcmpeqdMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PcmpeqdE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpcklbwMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpcklbwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpcklwdMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpcklwdE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckldqMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckldqE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PacksswbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PacksswbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpgtbMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpgtbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpgtwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpgtwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpgtdMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpgtdE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PackuswbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PackuswbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckhbwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckhbwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckhwdMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckhwdE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckhdqMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PunpckhdqE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PackssdwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PackssdwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_STARTS_MMX|INST_MMX_WRITE }, // MovPqR32, 
+    {0, 32, 0, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // MovPqE32,
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // MovPqMmx, 
+    {0, 64, 0, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // MovPqE64,
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Psrlw 
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Psraw 
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Psllw
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Psrld 
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Psrad 
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Pslld
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Psrlq 
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // Psllq
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpeqbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpeqbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpeqwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpeqwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpeqdMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PcmpeqdE64
     {0, 0, 0, 0, 0, 0, 0}, // Emms
     {0, 0, 0, 0, 0, 0, 0}, // MovR32Pq 
     {0, 0, 32, 0, 0, 0, 0}, // MovE32Pq
-    {0, 0, 0, 0, 0, 0, 0}, // MovMmxPq
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // MovMmxPq
     {0, 0, 64, 0, 0, 0, 0}, // MovE64Pq
-    {0, 0, 0, 0, 0, 0, 0}, // PsrlwMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PsrlwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsrldMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsrldE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsrlqMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsrlqE64
-    {0, 0, 0, 0, 0, 0, 0}, // PmullwMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PmullwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsubusbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsubusbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsubuswMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsubuswE64
-    {0, 0, 0, 0, 0, 0, 0}, // PandMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PandE64
-    {0, 0, 0, 0, 0, 0, 0}, // PaddusbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PaddusbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PadduswMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PadduswE64
-    {0, 0, 0, 0, 0, 0, 0}, // PandnMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PandnE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsrawMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PsrawE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsradMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsradE64
-    {0, 0, 0, 0, 0, 0, 0}, // PmulhwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PmulhwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsubsbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsubsbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsubswMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsubswE64
-    {0, 0, 0, 0, 0, 0, 0}, // PorMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PorE64
-    {0, 0, 0, 0, 0, 0, 0}, // PaddsbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PaddsbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PaddswMmx
-    {0, 64, 0, 0, 0, 0, 0}, // PaddswE64
-    {0, 0, 0, 0, 0, 0, 0}, // PxorMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PxorE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsllwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsllwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PslldMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PslldE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsllqMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsllqE64
-    {0, 0, 0, 0, 0, 0, 0}, // PmaddwdMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PmaddwdE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsubbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsubbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsubwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsubwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PsubdMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PsubdE64
-    {0, 0, 0, 0, 0, 0, 0}, // PaddbMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PaddbE64
-    {0, 0, 0, 0, 0, 0, 0}, // PaddwMmx 
-    {0, 64, 0, 0, 0, 0, 0}, // PaddwE64
-    {0, 0, 0, 0, 0, 0, 0}, // PadddMmx 
-    {0, 64, 0, 0, 0, 0}, // PadddE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrlwMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrlwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrldMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrldE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrlqMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrlqE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmullwMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmullwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubusbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubusbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubuswMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubuswE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PandMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PandE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddusbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddusbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PadduswMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PadduswE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PandnMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PandnE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrawMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsrawE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsradMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsradE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmulhwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmulhwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubsbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubsbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubswMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubswE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PorMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PorE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddsbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddsbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddswMmx
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddswE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PxorMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PxorE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsllwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsllwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PslldMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PslldE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsllqMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsllqE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmaddwdMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmaddwdE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubdMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubdE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddbMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddbE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddwMmx 
+    {0, 64, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddwE64
+    {0, 0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PadddMmx 
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PadddE64
 
     {0, 0, 512*8, 0, 0, 0}, // Fxsave
     {0, 512*8, 0, 0, 0, 0}, // Fxrstor
@@ -1036,50 +1036,50 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // MinpsE128
     {0, 0, 0, 0, 0, 0}, // MinssXmm
     {0, 32, 0, 0, 0, 0}, // MinssE32
-    {0, 0, 0, 0, 0, 0}, // PavgbMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PavgbMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PavgbMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PavgbMmxE64
     {0, 0, 0, 0, 0, 0}, // PavgbXmmXmm
     {0, 128, 0, 0, 0, 0}, // PavgbXmmE128
-    {0, 0, 0, 0, 0, 0}, // PavgwMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PavgwMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PavgwMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PavgwMmxE64
     {0, 0, 0, 0, 0, 0}, // PavgwXmmXmm
     {0, 128, 0, 0, 0, 0}, // PavgwXmmE128
-    {0, 0, 0, 0, 0, 0}, // PsadbwMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PsadbwMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsadbwMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PsadbwMmxE64
     {0, 0, 0, 0, 0, 0}, // PsadbwXmmXmm
     {0, 128, 0, 0, 0, 0}, // PsadbwXmmE128
     {0, 0, 0, 0, 0, 0}, // PextrwR32Mmx
     {0, 0, 16, 0, 0, 0}, // PextrwE16Mmx
     {0, 0, 0, 0, 0, 0}, // PextrwR32Xmm
     {0, 0, 16, 0, 0, 0}, // PextrwE16Xmm
-    {0, 0, 0, 0, 0, 0}, // PinsrwMmxR32
-    {0, 16, 0, 0, 0, 0}, // PinsrwMmxE16
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PinsrwMmxR32
+    {0, 16, 0, 0, 0, 0, INST_MMX_WRITE }, // PinsrwMmxE16
     {0, 0, 0, 0, 0, 0}, // PinsrwXmmR32
     {0, 16, 0, 0, 0, 0}, // PinsrwXmmE16
-    {0, 0, 0, 0, 0, 0}, // PmaxswMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PmaxswMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmaxswMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PmaxswMmxE64
     {0, 0, 0, 0, 0, 0}, // PmaxswXmmXmm
     {0, 128, 0, 0, 0, 0}, // PmaxswXmmE128
-    {0, 0, 0, 0, 0, 0}, // PmaxubMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PmaxubMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmaxubMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PmaxubMmxE64
     {0, 0, 0, 0, 0, 0}, // PmaxubXmmXmm
     {0, 128, 0, 0, 0, 0}, // PmaxubXmmE128
-    {0, 0, 0, 0, 0, 0}, // PminswMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PminswMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PminswMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PminswMmxE64
     {0, 0, 0, 0, 0, 0}, // PminswXmmXmm
     {0, 128, 0, 0, 0, 0}, // PminswXmmE128
-    {0, 0, 0, 0, 0, 0}, // PminubMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PminubMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PminubMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PminubMmxE64
     {0, 0, 0, 0, 0, 0}, // PminubXmmXmm
     {0, 128, 0, 0, 0, 0}, // PminubXmmE128
     {0, 0, 0, 0, 0, 0}, // PmovmskbR32Mmx
     {0, 0, 0, 0, 0, 0}, // PmovmskbR32Xmm
-    {0, 0, 0, 0, 0, 0}, // PmulhuwMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PmulhuwMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmulhuwMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PmulhuwMmxE64
     {0, 0, 0, 0, 0, 0}, // PmulhuwXmmXmm
     {0, 128, 0, 0, 0, 0}, // PmulhuwXmmE128
-    {0, 0, 0, 0, 0, 0}, // PshufwMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PshufwMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PshufwMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PshufwMmxE64
     {0, 0, 0, 0, 0, 0}, // AndnpsXmmXmm
     {0, 128, 0, 0, 0, 0}, // AndnpsXmmE128
     {0, 0, 0, 0, 0, 0}, // AndpsXmmXmm
@@ -1090,14 +1090,14 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // XorpsXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvtpi2psXmmMmx
     {0, 64, 0, 0, 0, 0}, // Cvtpi2psXmmE64
-    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvtps2piMmxXmm
-    {0, 64, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvtps2piMmxE64
+    { 0, 0, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvtps2piMmxXmm
+    {0, 64, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvtps2piMmxE64
     {0, 0, 0, 0, 0, 0}, // Cvtsi2ssXmmR32
     {0, 32, 0, 0, 0, 0}, // Cvtsi2ssXmmE32
     {0, 0, 0, 0, 0, 0}, // Cvtss2siR32Xmm
     {0, 32, 0, 0, 0, 0}, // Cvtss2siR32E32
-    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvttps2piMmxXmm
-    {0, 64, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvttps2piMmxE64
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvttps2piMmxXmm
+    {0, 64, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvttps2piMmxE64
     {0, 0, 0, 0, 0, 0}, // Cvttss2siR32Xmm
     {0, 32, 0, 0, 0, 0}, // Cvttss2siR32E32
     {0, 0, 0, 0, 0, 0}, // MovapsXmmXmm
@@ -1116,7 +1116,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // MovupsXmmXmm
     {0, 128, 0, 0, 0, 0}, // MovupsXmmE128
     {0, 0, 128, 0, 0, 0}, // MovupsE128Xmm
-    {0, 0, 0, 0, 0, 0}, // MaskmovqEDIMmxMmx
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // MaskmovqEDIMmxMmx
     {0, 0, 128, 0, 0, 0}, // MovntpsE128Xmm
     {0, 0, 64, 0, 0, 0}, // MovntqE64Mmx
     {0, 0, 0, 0, 0, 0}, // ShufpsXmmXmm
@@ -1168,8 +1168,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // PaddwXmmE128
     {0, 0, 0, 0, 0, 0}, // PadddXmmXmm
     {0, 128, 0, 0, 0, 0}, // PadddXmmE128
-    {0, 0, 0, 0, 0, 0}, // PaddqMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PaddqMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddqMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PaddqMmxE64
     {0, 0, 0, 0, 0, 0}, // PaddqXmmXmm
     {0, 128, 0, 0, 0, 0}, // PaddqXmmE128
     {0, 0, 0, 0, 0, 0}, // PaddsbXmmXmm
@@ -1186,8 +1186,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // PsubwXmmE128
     {0, 0, 0, 0, 0, 0}, // PsubdXmmXmm
     {0, 128, 0, 0, 0, 0}, // PsubdXmmE128
-    {0, 0, 0, 0, 0, 0}, // PsubqMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PsubqMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubqMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PsubqMmxE64
     {0, 0, 0, 0, 0, 0}, // PsubqXmmXmm
     {0, 128, 0, 0, 0, 0}, // PsubqXmmE128
     {0, 0, 0, 0, 0, 0}, // PsubsbXmmXmm
@@ -1204,8 +1204,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // PmulhwXmmE128
     {0, 0, 0, 0, 0, 0}, // PmullwXmmXmm
     {0, 128, 0, 0, 0, 0}, // PmullwXmmE128
-    {0, 0, 0, 0, 0, 0}, // PmuludqMmxMmx
-    {0, 64, 0, 0, 0, 0}, // PmuludqMmxE64
+    {0, 0, 0, 0, 0, 0, INST_MMX_WRITE }, // PmuludqMmxMmx
+    {0, 64, 0, 0, 0, 0, INST_MMX_WRITE }, // PmuludqMmxE64
     {0, 0, 0, 0, 0, 0}, // PmuludqXmmXmm
     {0, 128, 0, 0, 0, 0}, // PmuludqXmmE128
     {0, 0, 0, 0, 0, 0}, // SqrtpdXmmXmm
@@ -1278,8 +1278,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 128, 0, 0, 0, 0}, // Cvtdq2pdXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvtdq2psXmmXmm
     {0, 128, 0, 0, 0, 0}, // Cvtdq2psXmmE128
-    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvtpd2piMmxXmm
-    {0, 128, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvtpd2piMmxE128
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvtpd2piMmxXmm
+    {0, 128, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvtpd2piMmxE128
     {0, 0, 0, 0, 0, 0}, // Cvtpd2dqXmmXmm
     {0, 128, 0, 0, 0, 0}, // Cvtpd2dqXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvtpd2psXmmXmm
@@ -1298,8 +1298,8 @@ const InstructionInfo instructionInfo[] = {
     {0, 32, 0, 0, 0, 0}, // Cvtsi2sdXmmE32
     {0, 0, 0, 0, 0, 0}, // Cvtss2sdXmmXmm
     {0, 32, 0, 0, 0, 0}, // Cvtss2sdXmmE32
-    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Cvttpd2piMmxXmm
-    {0, 128, 0, 0, 0, 0, INST_STARTS_MMX }, // Cvttpd2piMmE128
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvttpd2piMmxXmm
+    {0, 128, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Cvttpd2piMmE128
     {0, 0, 0, 0, 0, 0}, // Cvttpd2dqXmmXmm
     {0, 128, 0, 0, 0, 0}, // Cvttpd2dqXmmE128
     {0, 0, 0, 0, 0, 0}, // Cvttps2dqXmmXmm
@@ -1333,7 +1333,7 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // MovdquXmmXmm
     {0, 128, 0, 0, 0, 0}, // MovdquXmmE128
     {0, 0, 128, 0, 0, 0}, // MovdquE128Xmm    
-    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX}, // Movdq2qMmxXmm
+    {0, 0, 0, 0, 0, 0, INST_STARTS_MMX | INST_MMX_WRITE }, // Movdq2qMmxXmm
     {0, 0, 0, 0, 0, 0}, // Movq2dqXmmMmx
     {0, 0, 128, 0, 0, 0}, // MovntpdE128Xmm
     {0, 0, 128, 0, 0, 0}, // MovntdqE128Xmm

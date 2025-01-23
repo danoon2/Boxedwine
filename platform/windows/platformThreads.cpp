@@ -64,7 +64,7 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, U64* fpu) {
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
     for (int i = 0; i < 8; i++) {
         ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->reg_mmx[i].q;
-        ep->ContextRecord->FltSave.FloatRegisters[i].High = 0xffff;
+        ep->ContextRecord->FltSave.FloatRegisters[i].High = 0x000000000000ffffl;
     }
 #else
     if (cpu->fpu.isMMXInUse) {
@@ -165,17 +165,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
-        bool inSignal = cpu->thread->inSignal;
         ep->ContextRecord->Rip = cpu->handleAccessException(op);
-        if (inSignal != (cpu->thread->inSignal != 0)) {
-            // :TODO: move this threads context read/write
-            // realdeal can trigger this
-            if (inSignal) {
-                memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
-            } else {
-                memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
-            }
-        }
         op->dealloc(true);
         syncToException(ep, fpu);
         return EXCEPTION_CONTINUE_EXECUTION;

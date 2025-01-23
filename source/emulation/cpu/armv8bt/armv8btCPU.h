@@ -19,7 +19,6 @@ public:
     SSE sseConstants[6];
 
     ALIGN(U8 fpuState[512], 16);
-	ALIGN(U8 originalFpuState[512], 16);
 	U64 originalCpuRegs[16];	
     void* reTranslateChunkAddress;
     void* reTranslateChunkAddressFromReg;

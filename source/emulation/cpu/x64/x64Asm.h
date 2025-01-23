@@ -33,6 +33,8 @@
 #define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(x64CPU, returnToLoopAddress))
 #define CPU_OFFSET_FPU_TOP (U32)(offsetof(CPU, fpu.top))
 #define CPU_OFFSET_FPU_IS_MMX (U32)(offsetof(CPU, fpu.isMMXInUse))
+#define CPU_OFFSET_FPU_LOADED_INTERGER (U32)(offsetof(CPU, fpu.loadedInteger))
+#define CPU_OFFSET_FPU_IS_INTERGER_LOADED (U32)(offsetof(CPU, fpu.isIntegerLoaded))
 #define CPU_OFFSET_FPU_TAG (U32)(offsetof(CPU, fpu.tags[0]))
 #define CPU_OFFSET_INSTRUCTION_FLAGS (U32)(offsetof(x64CPU, instructionStoredFlags))
 
@@ -240,7 +242,9 @@ public:
     void shiftLeftReg(U8 reg, bool isRegRex, U8 shiftAmount);
     void bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
     void bmi2ShiftLeftReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
+    void bmi2AndReg(U8 dstReg, U8 srcReg, U8 maskReg);
     void andReg(U8 reg, bool isRegRex, U32 mask);
+    void andRegNoFlags(U8 src, U8 dst, U32 value, U8 tmpReg);
     void orReg(U8 reg, bool isRegRex, U32 mask);
     void subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data

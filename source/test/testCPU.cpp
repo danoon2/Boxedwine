@@ -6863,6 +6863,21 @@ void fldf32(float f, int index) {
     writeF(f, index);
 }
 
+void fild64(U64 value, int index) {
+    int rm = 0;
+    if (cpu->big)
+        rm += 0x2d;
+    else
+        rm += 0x2e;
+    pushCode8(0xdf);
+    pushCode8(rm);
+    if (cpu->big)
+        pushCode32(4 * index);
+    else
+        pushCode16(4 * index);
+    memory->writeq(HEAP_ADDRESS + 4 * index, value);
+}
+
 void fpu_init() {
     pushCode8(0xdb);
     pushCode8(rm(false, 4, 3));
@@ -8592,12 +8607,87 @@ void testFSAVEMmx() {
     assertTrue(state.st[0].q == data);
 }
 
+// this is a very tricky test for emulators
+// x87 fpu registers are 80-bit with a 64 bit mantissa, this means a 64-bit integer can be push in and read out without any loss
+// 
+// if an emulator represents this register as a normal 64-bit double, it only has a 52-bits mantissa, thus for large 64-bit integer
+// reads and writes out of the fpu there can be loss.
+//
+// for some games, they may count on reading/writing 64-bit ints in/out of the fpu without loss, like a memcpy would
+void testFISTTP64() {
+    U64 data = 0x123456789abcdef0l;    
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        struct FSaveState state;
+        U64 result = 0;
+
+        __asm {
+            finit;
+            fild data;
+            fisttp result;
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0);
+        assertTrue(result == data);
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fild64(data, 0);
+    pushCode8(0xdd);
+    pushCode8(rm(true, 1, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 0);
+    assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
+    assertTrue(memory->readq(HEAP_ADDRESS + 8) == data);
+}
+
 void testFPUDD() {
     // MEMORY
+
+    // 1 FISTTP 64-bit
+    testFISTTP64();
 
     // 6 FSAVE
     testFSAVE();
     testFSAVEMmx();
+}
+
+void testFILD() {
+    U64 data = 0x123456789abcdef0l;    
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        struct FSaveState state;
+        __asm {
+            finit;
+            fild data;
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0x3800);
+        assertTrue(state.st[1].q == data);
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fild64(data, 0);
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 7);
+    assertTrue(cpu->fpu.isIntegerLoaded[7]);
+    assertTrue(cpu->fpu.loadedInteger[7] == data);
+}
+
+void testFPUDF() {
+    // MEMORY
+
+    // 5 FILD
+    testFILD();
 }
 
 void testFPU0x0d8() {cpu->big=false;testFPUD8();}
@@ -8608,6 +8698,8 @@ void testFPU0x0da() { cpu->big = false; testFPUDA(); }
 void testFPU0x2da() { cpu->big = true; testFPUDA(); }
 void testFPU0x0dd() { cpu->big = false; testFPUDD(); }
 void testFPU0x2dd() { cpu->big = true; testFPUDD(); }
+void testFPU0x0df() { cpu->big = false; testFPUDF(); }
+void testFPU0x2df() { cpu->big = true; testFPUDF(); }
 
 void doLoopZ(U32 instruction, bool big, bool neg) {
     cpu->big = big;
@@ -12161,6 +12253,8 @@ int runCpuTests() {
     run(testFPU0x2da, "FPU 2da");
     run(testFPU0x0dd, "FPU 0dd");
     run(testFPU0x2dd, "FPU 2dd");
+    run(testFPU0x0df, "FPU 0df");
+    run(testFPU0x2df, "FPU 2df");
 
     run(testLoopNZ0x0e0, "LoopNZ 0e0");
     run(testLoopNZ0x2e0, "LoopNZ 2e0");

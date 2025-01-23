@@ -1428,6 +1428,7 @@ enum Instruction {
 #define DECODE_BRANCH_NO_CACHE 0x04
 
 #define INST_STARTS_MMX 1
+#define INST_MMX_WRITE 1
 
 class InstructionInfo {
 public:    

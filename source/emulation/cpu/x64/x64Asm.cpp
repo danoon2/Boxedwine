@@ -347,7 +347,6 @@ void X64Asm::shiftRightNoFlags(U8 src, bool isSrcRex, U8 dst, U32 value, U8 tmpR
             writeToRegFromReg(dst, true, src, isSrcRex, 4);
         }
         pushFlagsToReg(tmpReg, true, true); // since shiftRightReg will change flags
-        writeToRegFromReg(dst, true, src, isSrcRex, 4);
         shiftRightReg(dst, true, value);
         popFlagsFromReg(tmpReg, true, true);
     }
@@ -392,6 +391,16 @@ void X64Asm::bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg
     write8(0x03 | (index << 3));
     write8(0xf7);
     write8(0xc0 | (dstReg << 3) | srcReg);
+}
+
+void X64Asm::bmi2AndReg(U8 dstReg, U8 srcReg, U8 maskReg) {
+    // pdep dstReg,srcReg,maskReg 
+    U8 index = 7 - srcReg;
+    write8(0xc4); // vex
+    write8(0x42);
+    write8(0x03 | (index << 3));
+    write8(0xf5);
+    write8(0xc0 | (dstReg << 3) | maskReg);
 }
 
 void X64Asm::bmi2ShiftLeftReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg) {
@@ -2014,6 +2023,7 @@ void X64Asm::createCodeForSyncFromHost() {
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
     // store SSE to CPU
     for (int i = 0; i < 8; i++) {
+        // MOVDQA (Move Aligned Double Quadword)
         write8(0x66);
         write8(0x41);
         write8(0x0f);
@@ -2024,6 +2034,7 @@ void X64Asm::createCodeForSyncFromHost() {
 
     // store MMX to CPU
     for (int i = 0; i < 8; i++) {
+        // movq
         write8(0x41);
         write8(0x0f);
         write8(0x7f);
@@ -2063,6 +2074,7 @@ void X64Asm::createCodeForSyncToHost() {
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
     // load SSE from CPU
     for (int i = 0; i < 8; i++) {
+        // movdqa
         write8(0x66);
         write8(0x41);
         write8(0x0f);
@@ -2073,6 +2085,7 @@ void X64Asm::createCodeForSyncToHost() {
 
     // load MMX from CPU
     for (int i = 0; i < 8; i++) {
+        // movq
         write8(0x41);
         write8(0x0f);
         write8(0x6f);
@@ -3102,6 +3115,20 @@ void X64Asm::andReg(U8 reg, bool isRegRex, U32 mask) {
     write8(0x81);
     write8(0xE0 | reg);
     write32(mask);
+}
+
+void X64Asm::andRegNoFlags(U8 dst, U8 src, U32 value, U8 tmpReg) {
+    if (x64CPU::hasBMI2) {
+        writeToRegFromValue(tmpReg, true, value, 4);
+        bmi2AndReg(dst, src, tmpReg);
+    } else {
+        if (dst != src) {
+            writeToRegFromReg(dst, true, src, true, 4);
+        }
+        pushFlagsToReg(tmpReg, true, true); // since andReg will change flags
+        andReg(dst, true, value);
+        popFlagsFromReg(tmpReg, true, true);
+    }
 }
 
 void X64Asm::orReg(U8 reg, bool isRegRex, U32 mask) {
@@ -4803,7 +4830,8 @@ void X64Asm::fpu5(U8 rm) {
         } else {
             switch ((rm >> 3) & 7) {
             case 0: opFLD_DOUBLE_REAL(this, rm); break;
-            case 1: opFISTTP64(this, rm); break;
+            case 1: callFpuWithAddressWrite(common_FISTTP64, rm, 8); break;
+            //case 1: opFISTTP64(this, rm); break;
             case 2: opFST_DOUBLE_REAL(this, rm); break;
             case 3: opFST_DOUBLE_REAL_Pop(this, rm); break;
             case 4: callFpuWithAddress(common_FRSTOR, rm); break;
@@ -4947,7 +4975,9 @@ void X64Asm::fpu7(U8 rm) {
             case 4: callFpuWithAddress(common_FBLD_PACKED_BCD, rm); break;
             case 5: opFILD_QWORD_INTEGER(this, rm); break;
             case 6: callFpuWithAddressWrite(common_FBSTP_PACKED_BCD, rm, 10); break;
-            case 7: opFISTP_QWORD_INTEGER(this, rm); break;
+            // need to implement rounding and 64-bit precision (isIntegerLoaded)
+            // case 7: opFISTP_QWORD_INTEGER(this, rm); break;
+            case 7: callFpuWithAddressWrite(common_FISTP_QWORD_INTEGER, rm, 8); break;
             }
         }
     }
@@ -4979,7 +5009,7 @@ void X64Asm::translateInstruction() {
         this->inst = this->baseOp + this->op;
         if (!x64Decoder[this->inst](this)) {
             if (instructionInfo[this->currentOp->inst].extra & INST_STARTS_MMX) {
-                writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 4, false);
+                writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 1, false);
             }
             break;
         }
