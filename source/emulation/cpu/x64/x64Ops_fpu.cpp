@@ -660,23 +660,12 @@ static void writeDouble(X64Asm* data, U8 rm, U8 xmm) {
 	data->releaseTmpReg(memReg);
 }
 
-static void hostReadTag(X64Asm* data, U8 topReg, U8 regIndex, U8 resultReg) {
-	if (regIndex == 0) {
-		data->writeToRegFromMem(resultReg, true, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-	} else {
-		U8 indexReg = calculateIndexReg(data, topReg, regIndex);
-		data->writeToRegFromMem(resultReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-		data->releaseTmpReg(indexReg);
-	}
+static void hostReadTag(X64Asm* data, U8 indexReg, U8 resultReg) {
+	data->writeToRegFromMem(resultReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
 }
-static void hostWriteTag(X64Asm* data, U8 topReg, U8 regIndex, U8 valueReg) {
-	if (regIndex == 0) {
-		data->writeToMemFromReg(valueReg, true, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-	} else {
-		U8 indexReg = calculateIndexReg(data, topReg, regIndex);
-		data->writeToMemFromReg(valueReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-		data->releaseTmpReg(indexReg);
-	}
+
+static void hostWriteTag(X64Asm* data, U8 indexReg, U8 valueReg) {
+	data->writeToMemFromReg(valueReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
 }
 
 class FPUReg {
@@ -1005,14 +994,18 @@ void opFLD_STi(X64Asm* data, U8 reg) {
 	U8 topReg = getTopReg(data);
 	FPUReg fromTmp(data, topReg, reg);
 	U8 tagReg = data->getTmpReg();
-	hostReadTag(data, topReg, reg, tagReg); // read before push changes indexes
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
+
+	hostReadTag(data, indexReg, tagReg); // read before push changes indexes
 
 	PREP_PUSH(data, topReg, false); // will change topReg
 
 	syncXmmToCPU(data, topReg, fromTmp.reg, 0);
-	hostWriteTag(data, topReg, 0, tagReg);
+	hostWriteTag(data, topReg, tagReg);
+
 	data->releaseTmpReg(tagReg);
 	data->releaseTmpReg(topReg);
+	data->releaseTmpReg(indexReg);
 }
 void opFXCH_STi(X64Asm* data, U8 reg) {
 	// int tag = this->tags[other];
@@ -1029,15 +1022,30 @@ void opFXCH_STi(X64Asm* data, U8 reg) {
 	// exchange xmm
 	syncXmmToCPU(data, topReg, from.reg, 0);
 	syncXmmToCPU(data, topReg, to.reg, reg);
-
-	// exchange tags
+	
 	U8 tmpReg = data->getTmpReg();
 	U8 tmpReg2 = data->getTmpReg();
-	hostReadTag(data, topReg, 0, tmpReg);
-	hostReadTag(data, topReg, reg, tmpReg2);
-	hostWriteTag(data, topReg, 0, tmpReg2);
-	hostWriteTag(data, topReg, reg, tmpReg);
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
+
+	// exchange tags
+	hostReadTag(data, topReg, tmpReg);
+	hostReadTag(data, indexReg, tmpReg2);
+	hostWriteTag(data, topReg, tmpReg2);
+	hostWriteTag(data, indexReg, tmpReg);
 	
+	// exchange isIntegerLoaded
+	data->writeToRegFromMem(tmpReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+	data->writeToRegFromMem(tmpReg2, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+	data->writeToMemFromReg(tmpReg2, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+	data->writeToMemFromReg(tmpReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+
+	// exchange loadedInteger
+	data->writeToRegFromMem(tmpReg, true, HOST_CPU, true, topReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+	data->writeToRegFromMem(tmpReg2, true, HOST_CPU, true, indexReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+	data->writeToMemFromReg(tmpReg2, true, HOST_CPU, true, topReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+	data->writeToMemFromReg(tmpReg, true, HOST_CPU, true, indexReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+
+	data->releaseTmpReg(indexReg);
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(tmpReg2);
 	data->releaseTmpReg(topReg);
@@ -1055,9 +1063,22 @@ void opFST_STi_Pop(X64Asm* data, U8 reg) {
 	//FPUReg dst(data, topReg, reg, true, false);
 
 	U8 tagReg = data->getTmpReg();
-	hostReadTag(data, topReg, 0, tagReg);
-	hostWriteTag(data, topReg, reg, tagReg);
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
+
+	// copy tag
+	hostReadTag(data, topReg, tagReg);
+	hostWriteTag(data, indexReg, tagReg);
+
+	// copy isIntegerLoaded
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+
+	// copy loadedInteger
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, indexReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+
 	data->releaseTmpReg(tagReg);	
+	data->releaseTmpReg(indexReg);
 
 	syncXmmToCPU(data, topReg, src.reg, reg);
 
@@ -1147,7 +1168,7 @@ void opFXAM(X64Asm* data) {
 		}, nullptr, false, false, false, 0x7d, 0x7c); // less than 0
 
 	U8 tagReg = data->getTmpReg();
-	hostReadTag(data, topReg, 0, tagReg);
+	hostReadTag(data, topReg, tagReg);
 
 	data->doIf(tagReg, true, TAG_Empty, [data, swReg] {
 		data->orReg(swReg, true, 0x4100);
@@ -1353,10 +1374,21 @@ static void doCMov(X64Asm* data, U8 reg) {
 	U8 topReg = getTopReg(data);
 	U8 tagReg = data->getTmpReg();
 	FPUReg from(data, topReg, reg);	
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
 
-	hostReadTag(data, topReg, reg, tagReg);
+	hostReadTag(data, indexReg, tagReg);
 	syncXmmToCPU(data, topReg, from.reg, 0);
-	hostWriteTag(data, topReg, 0, tagReg);
+	hostWriteTag(data, topReg, tagReg);
+
+	// copy isIntegerLoaded
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+
+	// copy loadedInteger
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, indexReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, topReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+
+	data->releaseTmpReg(indexReg);
 
 	data->releaseTmpReg(tagReg);
 	data->releaseTmpReg(topReg);
@@ -1739,10 +1771,17 @@ void opFST_STi(X64Asm* data, U8 reg) {
 	U8 topReg = getTopReg(data);
 	U8 tagReg = data->getTmpReg();
 	FPUReg src(data, topReg, 0);	
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
 
 	syncXmmToCPU(data, topReg, src.reg, reg);
-	hostReadTag(data, topReg, 0, tagReg);
-	hostWriteTag(data, topReg, reg, tagReg);
+	hostReadTag(data, topReg, tagReg);
+	hostWriteTag(data, indexReg, tagReg);
+
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_INTERGER_LOADED, 1, false);
+
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, indexReg, true, 3, CPU_OFFSET_FPU_LOADED_INTERGER, 8, false);
 
 	data->releaseTmpReg(tagReg);
 	data->releaseTmpReg(topReg);

@@ -130,62 +130,6 @@ union Reg {
 	U8  byte[4];
 };
 
-typedef union {
-
-	U64 q;
-
-#ifndef WORDS_BIGENDIAN
-	struct {
-		U32 d0,d1;
-	} ud;
-
-	struct {
-		S32 d0,d1;
-	} sd;
-
-	struct {
-		U16 w0,w1,w2,w3;
-	} uw;
-
-	struct {
-		S16 w0,w1,w2,w3;
-	} sw;
-
-	struct {
-		U8 b0,b1,b2,b3,b4,b5,b6,b7;
-	} ub;
-
-	struct {
-		S8 b0,b1,b2,b3,b4,b5,b6,b7;
-	} sb;
-#else
-	struct {
-		U32 d1,d0;
-	} ud;
-
-	struct {
-		S32 d1,d0;
-	} sd;
-
-	struct {
-		U16 w3,w2,w1,w0;
-	} uw;
-
-	struct {
-		S16 w3,w2,w1,w0;
-	} sw;
-
-	struct {
-		U8 b7,b6,b5,b4,b3,b2,b1,b0;
-	} ub;
-
-	struct {
-		S8 b7,b6,b5,b4,b3,b2,b1,b0;
-	} sb;
-#endif
-
-} MMX_reg;
-
 class Seg {
 public:
     U32 address;
@@ -235,7 +179,6 @@ public:
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     DecodedOp* currentSingleOp = nullptr;
 #endif
-    MMX_reg reg_mmx[8];
     ALIGN(SSE xmm[8], 16);
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64)

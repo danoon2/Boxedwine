@@ -4831,6 +4831,7 @@ void X64Asm::fpu5(U8 rm) {
             switch ((rm >> 3) & 7) {
             case 0: opFLD_DOUBLE_REAL(this, rm); break;
             case 1: callFpuWithAddressWrite(common_FISTTP64, rm, 8); break;
+            // need to implement 64-bit precision (isIntegerLoaded)
             //case 1: opFISTTP64(this, rm); break;
             case 2: opFST_DOUBLE_REAL(this, rm); break;
             case 3: opFST_DOUBLE_REAL_Pop(this, rm); break;

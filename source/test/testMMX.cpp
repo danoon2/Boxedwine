@@ -102,11 +102,11 @@ void testMmxMovdToMmx() {
             runTestCPU();
             for (U8 m1=0;m1<8;m1++) {
                 if (m1==m) {
-                    if (cpu->reg_mmx[m].q!=(U64)MMX_MEM_VALUE32) {
+                    if (cpu->fpu.getMMX(m)->q!=(U64)MMX_MEM_VALUE32) {
                         failed("movd failed");
                     }
                 } else {
-                    if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                         failed("movd failed");
                     }
                 }
@@ -121,11 +121,11 @@ void testMmxMovdToMmx() {
         runTestCPU();
         for (U8 m1=0;m1<8;m1++) {
             if (m1==m) {
-                if (cpu->reg_mmx[m].q!=MMX_MEM_VALUE32) {
+                if (cpu->fpu.getMMX(m)->q!=MMX_MEM_VALUE32) {
                     failed("movd failed");
                 }
             } else {
-                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                     failed("movd failed");
                 }
             }
@@ -193,11 +193,11 @@ void testMmx64(U8 op, U64 value1, U64 value2, U64 result) {
             runTestCPU();
             for (U8 m1=0;m1<8;m1++) {
                 if (m1==m || m1==from) {
-                    if (cpu->reg_mmx[m].q!=result) {
+                    if (cpu->fpu.getMMX(m)->q!=result) {
                         failed("mmx failed");
                     }
                 } else {
-                    if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                         failed("mmx failed");
                     }
                 }
@@ -214,11 +214,11 @@ void testMmx64(U8 op, U64 value1, U64 value2, U64 result) {
         runTestCPU();
         for (U8 m1=0;m1<8;m1++) {
             if (m1==m) {
-                if (cpu->reg_mmx[m].q!=result) {
+                if (cpu->fpu.getMMX(m)->q!=result) {
                     failed("mmx failed");
                 }
             } else {
-                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                     failed("mmx failed");
                 }
             }
@@ -265,11 +265,11 @@ void testMmx64Eimm8(U8 preOp1, U8 op, U64 value1, U32 value2, U64 result, U8 imm
             runTestCPU();
             for (U8 m1=0;m1<8;m1++) {
                 if (m1==m || m1==from) {
-                    if (cpu->reg_mmx[m].q!=result) {
+                    if (cpu->fpu.getMMX(m)->q!=result) {
                         failed("mmx failed");
                     }
                 } else {
-                    if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                         failed("mmx failed");
                     }
                 }
@@ -290,11 +290,11 @@ void testMmx64Eimm8(U8 preOp1, U8 op, U64 value1, U32 value2, U64 result, U8 imm
         runTestCPU();
         for (U8 m1=0;m1<8;m1++) {
             if (m1==m) {
-                if (cpu->reg_mmx[m].q!=result) {
+                if (cpu->fpu.getMMX(m)->q!=result) {
                     failed("mmx failed");
                 }
             } else {
-                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                     failed("mmx failed");
                 }
             }
@@ -345,11 +345,11 @@ void testMmx64imm8(U8 preOp1, U8 op, U64 value1, U64 value2, U64 result, U8 imm8
             runTestCPU();
             for (U8 m1=0;m1<8;m1++) {
                 if (m1==m || m1==from) {
-                    if (cpu->reg_mmx[m].q!=result) {
+                    if (cpu->fpu.getMMX(m)->q!=result) {
                         failed("mmx failed");
                     }
                 } else {
-                    if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                    if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                         failed("mmx failed");
                     }
                 }
@@ -370,11 +370,11 @@ void testMmx64imm8(U8 preOp1, U8 op, U64 value1, U64 value2, U64 result, U8 imm8
         runTestCPU();
         for (U8 m1=0;m1<8;m1++) {
             if (m1==m) {
-                if (cpu->reg_mmx[m].q!=result) {
+                if (cpu->fpu.getMMX(m)->q!=result) {
                     failed("mmx failed");
                 }
             } else {
-                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                     failed("mmx failed");
                 }
             }
@@ -393,11 +393,11 @@ void testMmx64imm8Sub(U8 op, U8 g, U64 value1, U8 value2, U64 result) {
         runTestCPU();
         for (U8 m1=0;m1<8;m1++) {
             if (m1==m) {
-                if (cpu->reg_mmx[m].q!=result) {
+                if (cpu->fpu.getMMX(m)->q!=result) {
                     failed("mmx failed");
                 }
             } else {
-                if (cpu->reg_mmx[m1].q!=MMX_MEM_VALUE64_DEFAULT) {
+                if (cpu->fpu.getMMX(m1)->q!=MMX_MEM_VALUE64_DEFAULT) {
                     failed("mmx failed");
                 }
             }
@@ -435,7 +435,7 @@ void testMmxMovqToE() {
             pushCode8(0xC0 | (m<<3) | r);
             cpu->reg[r].u32 = 0;
             runTestCPU();
-            if (cpu->reg_mmx[r].q!=MMX_MEM_VALUE64) {
+            if (cpu->fpu.getMMX(r)->q!=MMX_MEM_VALUE64) {
                 failed("movd failed");
             }
         }

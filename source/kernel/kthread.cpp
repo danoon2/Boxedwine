@@ -979,22 +979,13 @@ void writeToContext(KThread* thread, U32 stack, U32 context, bool altStack, U32 
     memory->writed(context+0x88, 0);
     for (U32 i = 0; i < 8; i++) {
         U32 address = context + 0x8C + i * 10;
-
-        if (cpu->fpu.isMMXInUse) {
-            cpu->memory->writeq(address, cpu->reg_mmx[i].q);
-            cpu->memory->writew(address + 8, 0xffff);
-        } else {
-            cpu->fpu.ST80(cpu, address, cpu->fpu.STV(i));
-        }
+        cpu->fpu.ST80(cpu, address, cpu->fpu.STV(i));
     }
     memory->writew(context + 0xDC, 0); // status
     // magic :TODO: what should this value be, wine just checks if it has a value 
     // #define FPUX_sig(context)    (FPU_sig(context) && !((context)->uc_mcontext.fpregs->status >> 16) ? (XSAVE_FORMAT *)(FPU_sig(context) + 1) : NULL)
-    memory->writew(context + 0xDE, 1 | (cpu->fpu.isMMXInUse ? 0x8000 : 0)); 
+    memory->writew(context + 0xDE, 1);
     memory->memset(context + 0xE0, 0, 512); // wine will look for a magic number that we don't want to set. fpu->Reserved4)[12] == FP_XSTATE_MAGIC1
-    if (cpu->fpu.isMMXInUse || cpu->fpu.GetTag(cpu) != 0xffff) {
-        int ii = 0;
-    }
     common_fxsave(cpu, context + 0xE0);
 }
 

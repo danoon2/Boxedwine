@@ -9,7 +9,8 @@
 #include "../../../util/ptrpool.h"
 
 #ifdef _DEBUG
-#define START_OP(cpu, op) op->log(cpu)
+//#define START_OP(cpu, op) op->log(cpu)
+#define START_OP(cpu, op)
 #else
 #define START_OP(cpu, op)
 #endif

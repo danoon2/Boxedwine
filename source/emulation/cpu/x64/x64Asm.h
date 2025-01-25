@@ -36,6 +36,7 @@
 #define CPU_OFFSET_FPU_LOADED_INTERGER (U32)(offsetof(CPU, fpu.loadedInteger))
 #define CPU_OFFSET_FPU_IS_INTERGER_LOADED (U32)(offsetof(CPU, fpu.isIntegerLoaded))
 #define CPU_OFFSET_FPU_TAG (U32)(offsetof(CPU, fpu.tags[0]))
+#define CPU_OFFSET_FPU_SW (U32)(offsetof(CPU, fpu.sw))
 #define CPU_OFFSET_INSTRUCTION_FLAGS (U32)(offsetof(x64CPU, instructionStoredFlags))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
