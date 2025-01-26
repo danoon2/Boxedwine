@@ -20,8 +20,8 @@
 #define __FPU_H__
 
 extern "C" {
-#include "../../../lib/softfloat/source/include/platform.h"
-#include "../../../lib/softfloat/source/include/softfloat.h"
+#include "../../../../lib/softfloat/source/include/platform.h"
+#include "../../../../lib/softfloat/source/include/softfloat.h"
 }
 
 class CPU;
