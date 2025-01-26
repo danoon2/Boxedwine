@@ -43,7 +43,7 @@ void preFpuLog() {
 #ifndef isnan
 #define isnan(x) _isnan(x)
 #endif
-#ifndef isnan
+#ifndef isinf
 #define isinf(x) (!_finite(x))
 #endif
 #endif
@@ -88,6 +88,10 @@ static const extFloat80_t fx80_l2e = { 0xb8aa3b295c17f0bcU, 0x3fff };
 static const extFloat80_t fx80_pi = { 0xc90fdaa22168c235U, 0x4000 };
 static const extFloat80_t fx80_lg2 = { 0x9a209a84fbcff799U, 0x3ffd };
 static const extFloat80_t fx80_ln2 = { 0xb17217f7d1cf79ac, 0x3ffe };
+
+static const U64 DOUBLE_POSITIVE_INFINITY_BITS = 0x7ff0000000000000;
+static const U64 DOUBLE_NEGATIVE_INFINITY_BITS = 0xfff0000000000000;
+static const U64 DOUBLE_QUIET_NAN_BITS = 0x7FF8000000000000;
 
 struct FPU_Float {
     union {
@@ -210,6 +214,7 @@ void FPU::FINIT() {
     this->tags[6] = TAG_Empty;
     this->tags[7] = TAG_Empty;
     this->isMMXInUse = false;
+    memset(isRegCached, 0, sizeof(isRegCached));
 }
 
 void FPU::FCLEX() {
@@ -243,42 +248,93 @@ uint_fast8_t FPU::getSoftRounding() {
 }
 
 void FPU::ST80(CPU* cpu, U32 addr, int reg) {
-    cpu->memory->writeq(addr, this->regs[reg].signif);
-    cpu->memory->writew(addr + 8, this->regs[reg].signExp);
+    extFloat80_t& f80 = getReg(reg);
+    cpu->memory->writeq(addr, f80.signif);
+    cpu->memory->writew(addr + 8, f80.signExp);
+}
+
+void FPU::LD80(U32 reg, U64 low, U16 high) {
+    extFloat80_t& f80 = getReg(reg);
+    f80.signif = low;
+    f80.signExp = high;
 }
 
 void FPU::ST80(U32 reg, U64* pLow, U64* pHigh) {
-    *pLow = this->regs[reg].signif;
-    *pHigh = this->regs[reg].signExp;
+    extFloat80_t& f80 = getReg(reg);
+    *pLow = f80.signif;
+    *pHigh = f80.signExp;
 }
 
 void FPU::FLD_F32(U32 value, int store_to) {
-    float32_t f;
-    f.v = value;
-    this->regs[store_to] = f32_to_extF80(f);
+    if (KSystem::useF64) {
+        struct FPU_Float f;
+        f.i = value;
+        regCache[store_to].d = (double)f.f;
+        isRegCached[store_to] = true;
+    } else {
+        float32_t f;
+        f.v = value;
+        regs[store_to] = f32_to_extF80(f);
+    }
 }
 
 void FPU::FLD_F64(U64 value, int store_to) {
-    float64_t f;
-    f.v = value;
-    this->regs[store_to] = f64_to_extF80(f);
+    if (KSystem::useF64) {
+        regCache[store_to].l = value;
+        isRegCached[store_to] = true;
+    } else {
+        float64_t f;
+        f.v = value;
+        regs[store_to] = f64_to_extF80(f);
+    }
+}
+
+double FPU::FROUND(double in) {
+    switch (this->round) {
+    case ROUND_Nearest:
+        if (in - floor(in) > 0.5) return (floor(in) + 1);
+        else if (in - floor(in) < 0.5) return (floor(in));
+        else return ((((long)(floor(in))) & 1) != 0) ? (floor(in) + 1) : (floor(in));
+    case ROUND_Down:
+        return (floor(in));
+    case ROUND_Up:
+        return (ceil(in));
+    case ROUND_Chop:
+        return in; // the caller will cast, which will chop
+    default:
+        return in;
+    }
 }
 
 void FPU::FLD_F80(U64 low, S16 high) {
-    this->regs[this->top].signif = low;
-    this->regs[this->top].signExp = high;
+    extFloat80_t& f80 = getReg(this->top);
+    f80.signif = low;
+    f80.signExp = high;
 }
 
 void FPU::FLD_I16(S16 value, int store_to) {
-    this->regs[store_to] = i32_to_extF80((S32)value);
+    if (KSystem::useF64) {
+        regCache[store_to].d = (double)value;
+        isRegCached[store_to] = true;
+    } else {
+        regs[store_to] = i32_to_extF80((S32)value);
+    }
 }
 
 void FPU::FLD_I32(S32 value, int store_to) {
-    this->regs[store_to] = i32_to_extF80(value);
+    if (KSystem::useF64) {
+        regCache[store_to].d = (double)value;
+        isRegCached[store_to] = true;
+    } else {
+        regs[store_to] = i32_to_extF80(value);
+    }
 }
 
 void FPU::FLD_I64(S64 value, int store_to) {
-    this->regs[store_to] = i64_to_extF80(value);
+    // ignore useF64 since we don't want to loose precision until we do a calculation
+    // some apps seems to do a memcpy like thing with data pushed in and out and we
+    // don't want this value to change if its writen directly back out
+    getReg(store_to) = i64_to_extF80(value);
 }
 
 void FPU::FBLD(U8 data[], int store_to) {
@@ -295,7 +351,7 @@ void FPU::FBLD(U8 data[], int store_to) {
     if (data[9] & 0x80) {
         value *= -1;
     }
-    regs[store_to] = i64_to_extF80(value);
+    FLD_I64(value, store_to);
 }
 
 void FPU::FLD_F32_EA(CPU* cpu, U32 address) {
@@ -315,13 +371,23 @@ void FPU::FLD_I16_EA(CPU* cpu, U32 address) {
 }
 
 void FPU::FST_F32(CPU* cpu, U32 addr) {
-    softfloat_roundingMode = getSoftRounding();
-    cpu->memory->writed(addr, extF80_to_f32(this->regs[this->top]).v);
+    if (isRegCached[this->top]) {
+        struct FPU_Float f;
+        f.f = (float)this->regCache[this->top].d;
+        cpu->memory->writed(addr, f.i);
+    } else {
+        softfloat_roundingMode = getSoftRounding();
+        cpu->memory->writed(addr, extF80_to_f32(this->regs[this->top]).v);
+    }
 }
 
 void FPU::FST_F64(CPU* cpu, U32 addr) {
-    softfloat_roundingMode = getSoftRounding();
-    cpu->memory->writeq(addr, extF80_to_f64(this->regs[this->top]).v);
+    if (isRegCached[this->top]) {
+        cpu->memory->writeq(addr, this->regCache[this->top].l);
+    } else {
+        softfloat_roundingMode = getSoftRounding();
+        cpu->memory->writeq(addr, extF80_to_f64(this->regs[this->top]).v);
+    }
 }
 
 void FPU::FST_F80(CPU* cpu, U32 addr) {
@@ -329,31 +395,64 @@ void FPU::FST_F80(CPU* cpu, U32 addr) {
 }
 
 void FPU::FST_I16(CPU* cpu, U32 addr) {
-    cpu->memory->writew(addr, (S16)extF80_to_i32(this->regs[this->top], getSoftRounding(), getSoftExact()));
+    if (isRegCached[this->top]) {
+        S16 value = (S16)(FROUND(this->regCache[this->top].d));
+        cpu->memory->writew(addr, value);
+    } else {
+        cpu->memory->writew(addr, (S16)extF80_to_i32(this->regs[this->top], getSoftRounding(), getSoftExact()));
+    }
 }
 
 void FPU::FSTT_I16(CPU* cpu, U32 addr) {
-    cpu->memory->writew(addr, (S16)extF80_to_i32_r_minMag(this->regs[this->top], getSoftExact()));
+    if (isRegCached[this->top]) {
+        S16 value = (S16)(this->regCache[this->top].d);
+        cpu->memory->writew(addr, value);
+    } else {
+        cpu->memory->writew(addr, (S16)extF80_to_i32_r_minMag(this->regs[this->top], getSoftExact()));
+    }
 }
 
 void FPU::FSTT_I32(CPU* cpu, U32 addr) {
-    cpu->memory->writed(addr, extF80_to_i32_r_minMag(this->regs[this->top], getSoftExact()));
+    if (isRegCached[this->top]) {
+        S32 value = (S32)this->regCache[this->top].d;
+        cpu->memory->writed(addr, value);
+    } else {
+        cpu->memory->writed(addr, extF80_to_i32_r_minMag(this->regs[this->top], getSoftExact()));
+    }
 }
 
 void FPU::FST_I32(CPU* cpu, U32 addr) {
-    cpu->memory->writed(addr, extF80_to_i32(this->regs[this->top], getSoftRounding(), getSoftExact()));
+    if (isRegCached[this->top]) {
+        S32 value = (S32)(FROUND(this->regCache[this->top].d));
+        cpu->memory->writed(addr, value);
+    } else {
+        cpu->memory->writed(addr, extF80_to_i32(this->regs[this->top], getSoftRounding(), getSoftExact()));
+    }
 }
 
 void FPU::FSTT_I64(CPU* cpu, U32 addr) {
-    cpu->memory->writeq(addr, extF80_to_i64_r_minMag(this->regs[this->top], getSoftExact()));
+    if (isRegCached[this->top]) {
+        cpu->memory->writeq(addr, (S64)this->regCache[this->top].d);
+    } else {
+        cpu->memory->writeq(addr, extF80_to_i64_r_minMag(this->regs[this->top], getSoftExact()));
+    }
 }
 
 void FPU::FST_I64(CPU* cpu, U32 addr) {
-    cpu->memory->writeq(addr, extF80_to_i64(this->regs[this->top], getSoftRounding(), getSoftExact()));
+    if (isRegCached[this->top]) {
+        cpu->memory->writeq(addr, (S64)(FROUND(this->regCache[this->top].d)));
+    } else {
+        cpu->memory->writeq(addr, extF80_to_i64(this->regs[this->top], getSoftRounding(), getSoftExact()));
+    }
 }
 
 void FPU::FBST(CPU* cpu, U32 addr) {
-    S64 sValue = extF80_to_i64(regs[top], getSoftRounding(), getSoftExact());
+    S64 sValue;
+    if (isRegCached[this->top]) {
+        sValue = (S64)this->regCache[this->top].d;
+    } else {
+        sValue = extF80_to_i64(regs[top], getSoftRounding(), getSoftExact());
+    }
     U64 value = sValue < 0 ? (U64)(-1 * sValue) : (U64)sValue;
     U8 data[10] = { 0 };
 
@@ -369,47 +468,96 @@ void FPU::FBST(CPU* cpu, U32 addr) {
 }
 
 void FPU::FADD(int op1, int op2) {
-    this->regs[op1] = extF80_add(this->regs[op1], this->regs[op2]);
+    if (KSystem::useF64) {
+        this->regCache[op1].d = getF64(op1) + getF64(op2);
+    } else {
+        this->regs[op1] = extF80_add(this->regs[op1], this->regs[op2]);
+    }
     //flags and such :)
 }
 
 void FPU::FDIV(int st, int other) {
-    this->regs[st] = extF80_div(this->regs[st], this->regs[other]);
+    if (KSystem::useF64) {
+        this->regCache[st].d = getF64(st) / getF64(other);
+    } else {
+        this->regs[st] = extF80_div(this->regs[st], this->regs[other]);
+    }
     //flags and such :)
 }
 
 void FPU::FDIVR(int st, int other) {
-    this->regs[st] = extF80_div(this->regs[other], this->regs[st]);
+    if (KSystem::useF64) {
+        this->regCache[st].d = getF64(other) / getF64(st);
+    } else {
+        this->regs[st] = extF80_div(this->regs[other], this->regs[st]);
+    }
     // flags and such :)
 }
 
 void FPU::FMUL(int st, int other) {
-    this->regs[st] = extF80_mul(this->regs[st], this->regs[other]);
+    if (KSystem::useF64) {
+        this->regCache[st].d = getF64(st) * getF64(other);
+    } else {
+        this->regs[st] = extF80_mul(this->regs[st], this->regs[other]);
+    }
     //flags and such :)
 }
 
 void FPU::FSUB(int st, int other) {
-    this->regs[st] = extF80_sub(this->regs[st], this->regs[other]);
+    if (KSystem::useF64) {
+        this->regCache[st].d = getF64(st) - getF64(other);
+    } else {
+        this->regs[st] = extF80_sub(this->regs[st], this->regs[other]);
+    }
     //flags and such :)
 }
 
 void FPU::FSUBR(int st, int other) {
-    this->regs[st] = extF80_sub(this->regs[other], this->regs[st]);
+    if (KSystem::useF64) {
+        this->regCache[st].d = getF64(other) - getF64(st);
+    } else {
+        this->regs[st] = extF80_sub(this->regs[other], this->regs[st]);
+    }
     //flags and such :)
 }
 
 void FPU::FXCH(int st, int other) {
-    int tag = this->tags[other];
-    extFloat80_t reg = this->regs[other];
+    int tag = this->tags[other];    
     this->tags[other] = this->tags[st];
-    this->regs[other] = this->regs[st];
     this->tags[st] = tag;
-    this->regs[st] = reg;
+
+    if (isRegCached[other] != isRegCached[st]) {
+        if (isRegCached[st]) {
+            std::swap(st, other);
+        }
+        regCache[st] = regCache[other];
+        isRegCached[st] = true;
+        regs[other] = regs[st];
+        isRegCached[other] = false;
+    } else if (isRegCached[other]) {
+        double& d1 = regCache[other].d;
+        double& d2 = regCache[st].d;
+        double d = d1;
+        d1 = d2;
+        d2 = d;
+    } else {
+        extFloat80_t& f1 = getReg(other);
+        extFloat80_t& f2 = getReg(st);
+        extFloat80_t reg = f2;
+        f2 = f1;
+        f1 = reg;
+    }
 }
 
 void FPU::FST(int st, int other) {
     this->tags[other] = this->tags[st];
-    this->regs[other] = this->regs[st];
+    if (isRegCached[st]) {
+        this->regCache[other] = this->regCache[st];
+        this->isRegCached[other] = true;
+    } else {        
+        this->regs[other] = this->regs[st];
+        this->isRegCached[other] = false;
+    }
 }
 
 static void setFlags(CPU* cpu, int newFlags) {
@@ -422,48 +570,97 @@ void FPU::FCOMI(CPU* cpu, int st, int other) {
     U32 stTag = GetTag(cpu, st);
     U32 otherTag = GetTag(cpu, other);
 
-    if (stTag == TAG_Empty || otherTag == TAG_Empty || F80_isnan(this->regs[st]) || F80_isnan(this->regs[other])) {
-        setFlags(cpu, ZF | PF | CF);
-        return;
+    // don't want to convert to cache just for inspection
+    if (isRegCached[other] && isRegCached[st]) {
+        if (stTag == TAG_Empty || otherTag == TAG_Empty || isnan(this->regCache[st].d) || isnan(this->regCache[other].d)) {
+            setFlags(cpu, ZF | PF | CF);
+            return;
+        }
+        if (this->regCache[st].d == this->regCache[other].d) {
+            setFlags(cpu, ZF);
+            return;
+        }
+        if (this->regCache[st].d < this->regCache[other].d) {
+            setFlags(cpu, CF);
+            return;
+        }
+        // st > other
+        setFlags(cpu, 0);
+    } else {
+        extFloat80_t f1 = getReg(st);
+        extFloat80_t f2 = getReg(other);
+
+        if (stTag == TAG_Empty || otherTag == TAG_Empty || F80_isnan(f1) || F80_isnan(f2)) {
+            setFlags(cpu, ZF | PF | CF);
+            return;
+        }
+        if (extF80_eq(f1, f2)) {
+            setFlags(cpu, ZF);
+            return;
+        }
+        if (extF80_lt(f1, f2)) {
+            setFlags(cpu, CF);
+            return;
+        }
+        // st > other
+        setFlags(cpu, 0);
     }
-    if (extF80_eq(this->regs[st], this->regs[other])) {
-        setFlags(cpu, ZF);
-        return;
-    }
-    if (extF80_lt(this->regs[st], this->regs[other])) {
-        setFlags(cpu, CF);
-        return;
-    }
-    // st > other
-    setFlags(cpu, 0);
 }
 
 void FPU::FCOM(CPU* cpu, int st, int other) {
     U32 stTag = GetTag(cpu, st);
     U32 otherTag = GetTag(cpu, other);
 
-    if (stTag == TAG_Empty || otherTag == TAG_Empty || F80_isnan(this->regs[st]) || F80_isnan(this->regs[other])) {
-        FPU_SET_C3(this, 1);
-        FPU_SET_C2(this, 1);
-        FPU_SET_C0(this, 1);
-        return;
-    }
-    if (extF80_eq(this->regs[st], this->regs[other])) {
-        FPU_SET_C3(this, 1);
-        FPU_SET_C2(this, 0);
-        FPU_SET_C0(this, 0);
-        return;
-    }
-    if (extF80_lt(this->regs[st], this->regs[other])) {
+    // don't want to convert to cache just for inspection
+    if (isRegCached[other] && isRegCached[st]) {
+        if (stTag == TAG_Empty || otherTag == TAG_Empty || isnan(this->regCache[st].d) || isnan(this->regCache[other].d)) {
+            FPU_SET_C3(this, 1);
+            FPU_SET_C2(this, 1);
+            FPU_SET_C0(this, 1);
+            return;
+        }
+        if (this->regCache[st].d == this->regCache[other].d) {
+            FPU_SET_C3(this, 1);
+            FPU_SET_C2(this, 0);
+            FPU_SET_C0(this, 0);
+            return;
+        }
+        if (this->regCache[st].d < this->regCache[other].d) {
+            FPU_SET_C3(this, 0);
+            FPU_SET_C2(this, 0);
+            FPU_SET_C0(this, 1);
+            return;
+        }
+        // st > other
         FPU_SET_C3(this, 0);
         FPU_SET_C2(this, 0);
-        FPU_SET_C0(this, 1);
-        return;
+        FPU_SET_C0(this, 0);
+    } else {
+        extFloat80_t f1 = getReg(st);
+        extFloat80_t f2 = getReg(other);
+        if (stTag == TAG_Empty || otherTag == TAG_Empty || F80_isnan(f1) || F80_isnan(f2)) {
+            FPU_SET_C3(this, 1);
+            FPU_SET_C2(this, 1);
+            FPU_SET_C0(this, 1);
+            return;
+        }
+        if (extF80_eq(f1, f2)) {
+            FPU_SET_C3(this, 1);
+            FPU_SET_C2(this, 0);
+            FPU_SET_C0(this, 0);
+            return;
+        }
+        if (extF80_lt(f1, f2)) {
+            FPU_SET_C3(this, 0);
+            FPU_SET_C2(this, 0);
+            FPU_SET_C0(this, 1);
+            return;
+        }
+        // st > other
+        FPU_SET_C3(this, 0);
+        FPU_SET_C2(this, 0);
+        FPU_SET_C0(this, 0);
     }
-    // st > other
-    FPU_SET_C3(this, 0);
-    FPU_SET_C2(this, 0);
-    FPU_SET_C0(this, 0);
 }
 
 void FPU::FUCOM(CPU* cpu, int st, int other) {
@@ -472,7 +669,12 @@ void FPU::FUCOM(CPU* cpu, int st, int other) {
 }
 
 void FPU::FRNDINT() {
-    this->regs[this->top] = extF80_roundToInt(this->regs[this->top], getSoftRounding(), getSoftExact());
+    if (isRegCached[this->top]) {
+        double value = this->regCache[this->top].d;
+        this->regCache[this->top].d = (double)(S64)FROUND(value);
+    } else {
+        this->regs[this->top] = extF80_roundToInt(this->regs[this->top], getSoftRounding(), getSoftExact());
+    }
 }
 
 /*
@@ -493,8 +695,33 @@ FI;
 */
 
 void FPU::FPREM(bool truncate) {
-    extFloat80_t top = regs[this->top];
-    extFloat80_t bottom = regs[STV(1)];
+    // don't want to convert STV(1) to cache just for inspection
+    if (isRegCached[STV(1)]) {
+        double valtop = getF64(this->top);
+        double valdiv = getF64(STV(1));
+
+        if (isnan(valtop) || isnan(valdiv) || isinf(valtop)) {
+            regCache[top].l = DOUBLE_QUIET_NAN_BITS;
+            isRegCached[top] = true;
+            return;
+        }
+        if (isinf(valdiv)) {
+            return;
+        }
+
+        S64 ressaved = (S64)((valtop / valdiv));
+        // Some backups
+        // Real64 res=valtop - ressaved*valdiv;
+        // res= fmod(valtop,valdiv);
+        this->regCache[this->top].d = valtop - ressaved * valdiv;
+        FPU_SET_C0(this, (int)(ressaved & 4));
+        FPU_SET_C3(this, (int)(ressaved & 2));
+        FPU_SET_C1(this, (int)(ressaved & 1));
+        FPU_SET_C2(this, 0);
+        return;
+    }
+    extFloat80_t& top = getReg(this->top);
+    extFloat80_t& bottom = getReg(STV(1));
 
     // conditions based on spec and what hardware returned in unit tests
     if (F80_isnan(bottom) || F80_isnan(top)) {
@@ -541,6 +768,33 @@ void FPU::FPREM(bool truncate) {
 }
 
 void FPU::FPREM1() {
+    // don't want to convert STV(1) to cache just for inspection
+    if (isRegCached[STV(1)]) {
+        double valtop = getF64(this->top);
+        double valdiv = getF64(STV(1));
+
+        if (isnan(valtop) || isnan(valdiv) || isinf(valtop)) {
+            regCache[top].l = DOUBLE_QUIET_NAN_BITS;
+            isRegCached[top] = true;
+            return;
+        }
+        if (isinf(valdiv)) {
+            return;
+        }
+
+        double quot = valtop / valdiv;
+        double quotf = floor(quot);
+        S64 ressaved = 0;
+        if (quot - quotf > 0.5) ressaved = (S64)(quotf + 1);
+        else if (quot - quotf < 0.5) ressaved = (S64)(quotf);
+        else ressaved = (S64)(((((S64)(quotf)) & 1) != 0) ? (quotf + 1) : (quotf));
+        this->regCache[this->top].d = valtop - ressaved * valdiv;
+        FPU_SET_C0(this, (int)(ressaved & 4));
+        FPU_SET_C3(this, (int)(ressaved & 2));
+        FPU_SET_C1(this, (int)(ressaved & 1));
+        FPU_SET_C2(this, 0);
+        return;
+    }
     FPREM(false);
 }
 
@@ -564,6 +818,42 @@ CASE (class of value or number in ST(0)) OF
 ESAC;
 */
 void FPU::FXAM() {
+    if (isRegCached[top]) {
+        S64 bits = this->regCache[this->top].l;
+        // this check before looking if the tag is empty is intentional
+        if ((bits & 0x8000000000000000l) != 0)    //sign
+        {
+            FPU_SET_C1(this, 1);
+        } else {
+            FPU_SET_C1(this, 0);
+        }
+
+        if (this->tags[this->top] == TAG_Empty) {
+            FPU_SET_C3(this, 1);
+            FPU_SET_C2(this, 0);
+            FPU_SET_C0(this, 1);
+            return;
+        }
+        if (isnan(this->regCache[this->top].d)) {
+            FPU_SET_C3(this, 0);
+            FPU_SET_C2(this, 0);
+            FPU_SET_C0(this, 1);
+        } else if (isinf(this->regCache[this->top].d)) {
+            FPU_SET_C3(this, 0);
+            FPU_SET_C2(this, 1);
+            FPU_SET_C0(this, 1);
+        } else if (this->regCache[this->top].d == 0.0)        //zero or normalized number.
+        {
+            FPU_SET_C3(this, 1);
+            FPU_SET_C2(this, 0);
+            FPU_SET_C0(this, 0);
+        } else {
+            FPU_SET_C3(this, 0);
+            FPU_SET_C2(this, 1);
+            FPU_SET_C0(this, 0);
+        }
+        return;
+    }
     S64 bits = this->regs[this->top].signExp & 0x8000;
     // C1 := sign bit of ST; (* 0 for positive, 1 for negative *)
     if (this->regs[this->top].signExp & 0x8000) {
@@ -597,85 +887,126 @@ void FPU::FXAM() {
 
 
 void FPU::F2XM1() {
-    long2Double d;
-    d.l = extF80_to_f64(this->regs[this->top]).v;
-    d.d = pow(2.0, d.d) - 1;
-    float64_t f;
-    f.v = d.l;
-    this->regs[this->top] = f64_to_extF80(f);
+    if (isRegCached[top]) {
+        regCache[this->top].d = pow(2.0, this->regCache[this->top].d) - 1;
+    } else {
+        long2Double d;
+        d.l = extF80_to_f64(this->regs[this->top]).v;
+        d.d = pow(2.0, d.d) - 1;
+        float64_t f;
+        f.v = d.l;
+        this->regs[this->top] = f64_to_extF80(f);
+    }
 }
 
 void FPU::FYL2X() {
-    long2Double d1;
-    long2Double d2;
-    d1.l = extF80_to_f64(this->regs[this->top]).v;
-    d2.l = extF80_to_f64(this->regs[STV(1)]).v;
-    d1.d = d2.d * log(d1.d) / log(2.0);
-    float64_t f;
-    f.v = d1.l;
-    this->regs[STV(1)] = f64_to_extF80(f);
+    // if either is cached, then convert since top is popped and STV(1) is overwritten
+    if (isRegCached[top] || isRegCached[STV(1)]) {
+        double& d1 = getF64(top);
+        double& d2 = getF64(STV(1));
+        d2 = d2 * log(d1) / log(2.0);
+    } else {
+        long2Double d1;
+        long2Double d2;
+        d1.l = extF80_to_f64(this->regs[this->top]).v;
+        d2.l = extF80_to_f64(this->regs[STV(1)]).v;
+        d1.d = d2.d * log(d1.d) / log(2.0);
+        float64_t f;
+        f.v = d1.l;
+        this->regs[STV(1)] = f64_to_extF80(f);
+    }
     FPOP();
 }
 
 void FPU::FPTAN() {
-    long2Double d;
-    d.l = extF80_to_f64(this->regs[this->top]).v;
-    d.d = tan(d.d);
-    float64_t f;
-    f.v = d.l;
-    this->regs[this->top] = f64_to_extF80(f);
-    PREP_PUSH();
-    this->regs[this->top] = fx80_one;
+    if (isRegCached[top]) {
+        regCache[this->top].d = tan(this->regCache[this->top].d);
+    } else {
+        long2Double d;
+        d.l = extF80_to_f64(this->regs[this->top]).v;
+        d.d = tan(d.d);
+        float64_t f;
+        f.v = d.l;
+        this->regs[this->top] = f64_to_extF80(f);
+    }
+    FLD1();
+
     FPU_SET_C2(this, 0);
     //flags and such :)
 }
 
 void FPU::FPATAN() {
-    long2Double d1;
-    long2Double d2;
-    d1.l = extF80_to_f64(this->regs[this->top]).v;
-    d2.l = extF80_to_f64(this->regs[STV(1)]).v;
-    d1.d = atan2(d2.d, d1.d);
-    float64_t f;
-    f.v = d1.l;
-    this->regs[STV(1)] = f64_to_extF80(f);
+    // if either is cached, then convert since top is popped and STV(1) is overwritten
+    if (isRegCached[top] || isRegCached[STV(1)]) {
+        double& d1 = getF64(top);
+        double& d2 = getF64(STV(1));
+        d2 = atan2(d2, d1);
+    } else {
+        long2Double d1;
+        long2Double d2;
+        d1.l = extF80_to_f64(this->regs[this->top]).v;
+        d2.l = extF80_to_f64(this->regs[STV(1)]).v;
+        d1.d = atan2(d2.d, d1.d);
+        float64_t f;
+        f.v = d1.l;
+        this->regs[STV(1)] = f64_to_extF80(f);
+    }
     FPOP();
     //flags and such :)
 }
 
 void FPU::FYL2XP1() {
-    long2Double d1;
-    long2Double d2;
-    d1.l = extF80_to_f64(this->regs[this->top]).v;
-    d2.l = extF80_to_f64(this->regs[STV(1)]).v;
-    d1.d = d2.d * log(d1.d + 1.0) / log(2.0);
-    float64_t f;
-    f.v = d1.l;
-    this->regs[STV(1)] = f64_to_extF80(f);
+    // if either is cached, then convert since top is popped and STV(1) is overwritten
+    if (isRegCached[top] || isRegCached[STV(1)]) {
+        double& d1 = getF64(top);
+        double& d2 = getF64(STV(1));
+        d2 = d2 * log(d1 + 1.0) / log(2.0);
+    } else {
+        long2Double d1;
+        long2Double d2;
+        d1.l = extF80_to_f64(this->regs[this->top]).v;
+        d2.l = extF80_to_f64(this->regs[STV(1)]).v;
+        d1.d = d2.d * log(d1.d + 1.0) / log(2.0);
+        float64_t f;
+        f.v = d1.l;
+        this->regs[STV(1)] = f64_to_extF80(f);
+    }
     FPOP();
 }
 
 void FPU::FSQRT() {
-    this->regs[this->top] = extF80_sqrt(this->regs[this->top]);
+    if (isRegCached[top]) {
+        regCache[this->top].d = sqrt(regCache[this->top].d);
+    } else {
+        this->regs[this->top] = extF80_sqrt(this->regs[this->top]);
+    }
     //flags and such :)
 }
 
 // f-16 uses this
 void FPU::FSINCOS() {
-    long2Double d;
-    long2Double result;
-    d.l = extF80_to_f64(this->regs[this->top]).v;
-    result.d = sin(d.d);
-    float64_t f;
-    f.v = result.l;
-    this->regs[this->top] = f64_to_extF80(f);
+    if (this->isRegCached[this->top]) {
+        double temp = this->regCache[this->top].d;
+        this->regCache[this->top].d = sin(temp);
+        PREP_PUSH();
+        this->regCache[this->top].d = cos(temp);
+        this->isRegCached[this->top] = true;
+    } else {
+        long2Double d;
+        long2Double result;
+        d.l = extF80_to_f64(this->regs[this->top]).v;
+        result.d = sin(d.d);
+        float64_t f;
+        f.v = result.l;
+        this->regs[this->top] = f64_to_extF80(f);
 
-    PREP_PUSH();
+        PREP_PUSH();
 
-    d.d = cos(d.d);
-    f.v = d.l;
-    this->regs[this->top] = f64_to_extF80(f);
-
+        d.d = cos(d.d);
+        f.v = d.l;
+        this->regs[this->top] = f64_to_extF80(f);
+        this->isRegCached[this->top] = false;
+    }
     FPU_SET_C2(this, 0);
     //flags and such :)
 }
@@ -692,68 +1023,78 @@ void FPU::FSINCOS() {
 // NaN    NaN NaN   NaN  NaN  NaN  NaN   NaN
 
 void FPU::FSCALE() {
-    if (F80_isinf(this->regs[this->top])) {
-        if (F80_isPosInf(this->regs[STV(1)])) {
+    // :TODO: what about a cached version
+    extFloat80_t& d0 = getReg(top);
+    extFloat80_t& d1 = getReg(STV(1));
+    if (F80_isinf(d0)) {
+        if (F80_isPosInf(d1)) {
             return; // keep same
-        } else if (F80_isNegInf(this->regs[STV(1)])) {
-            this->regs[this->top] = fx80_nan;
+        } else if (F80_isNegInf(d1)) {
+            d0 = fx80_nan;
             return;
         }
     }
-    if (F80_isPosInf(this->regs[STV(1)]) && F80_isfinite(this->regs[this->top])) {
-        if (F80_iszero(this->regs[this->top])) {
-            this->regs[this->top] = fx80_nan;
-        } else if (extF80_lt(this->regs[this->top], fx80_zero)) {
-            this->regs[this->top] = fx80_ninf;
+    if (F80_isPosInf(d1) && F80_isfinite(d0)) {
+        if (F80_iszero(d0)) {
+            d0 = fx80_nan;
+        } else if (extF80_lt(d0, fx80_zero)) {
+            d0 = fx80_ninf;
         } else {
-            this->regs[this->top] = fx80_inf;
+            d0 = fx80_inf;
         }
         return;
     }
-    if (F80_isNegInf(this->regs[STV(1)])) {
-        if (F80_isfinite(this->regs[this->top])) {
-            if (extF80_lt(this->regs[this->top], fx80_zero)) {
-                this->regs[this->top] = fx80_neg_zero;
+    if (F80_isNegInf(d1)) {
+        if (F80_isfinite(d0)) {
+            if (extF80_lt(d0, fx80_zero)) {
+                d0 = fx80_neg_zero;
             } else {
-                this->regs[this->top] = fx80_zero;
+                d0 = fx80_zero;
             }
         } else {
-            this->regs[this->top] = fx80_nan;
+            d0 = fx80_nan;
         }
     }
-    if (F80_isnan(this->regs[STV(1)])) {
-        this->regs[this->top] = fx80_nan;
+    if (F80_isnan(d1)) {
+        d0 = fx80_nan;
         return;
     }
     long2Double d;
     long2Double d2;
-    d.l = extF80_to_f64(this->regs[this->top]).v;
-    d2.l = extF80_to_f64(this->regs[STV(1)]).v;
+    d.l = extF80_to_f64(d0).v;
+    d2.l = extF80_to_f64(d1).v;
     d.d = d.d * pow(2.0, (double)(S64)d2.d);
     float64_t f;
     f.v = d.l;
-    this->regs[this->top] = f64_to_extF80(f);    
+    d0 = f64_to_extF80(f);    
 }
 
 void FPU::FSIN() {
-    long2Double d;
-    d.l = extF80_to_f64(this->regs[this->top]).v;
-    d.d = sin(d.d);
-    float64_t f;
-    f.v = d.l;
-    this->regs[this->top] = f64_to_extF80(f);
+    if (isRegCached[top]) {
+        regCache[this->top].d = sin(this->regCache[this->top].d);
+    } else {
+        long2Double d;
+        d.l = extF80_to_f64(this->regs[this->top]).v;
+        d.d = sin(d.d);
+        float64_t f;
+        f.v = d.l;
+        this->regs[this->top] = f64_to_extF80(f);
+    }
 
     FPU_SET_C2(this, 0);
 }
 
 void FPU::FCOS() {
-    long2Double d;
-    d.l = extF80_to_f64(this->regs[this->top]).v;
-    d.d = cos(d.d);
-    float64_t f;
-    f.v = d.l;
-    this->regs[this->top] = f64_to_extF80(f);
-
+    if (isRegCached[top]) {
+        regCache[this->top].d = cos(this->regCache[this->top].d);
+    } else {
+        long2Double d;
+        d.l = extF80_to_f64(this->regs[this->top]).v;
+        d.d = cos(d.d);
+        float64_t f;
+        f.v = d.l;
+        this->regs[this->top] = f64_to_extF80(f);
+    }
     FPU_SET_C2(this, 0);
     //flags and such :)
 }
@@ -764,10 +1105,18 @@ int FPU::GetTag(CPU* cpu, U32 index) {
         tag = TAG_Valid;
     }
     if (tag != TAG_Empty) {
-        if (F80_iszero(regs[index])) {
-            tag = TAG_Zero;
-        } else if (F80_isnan(regs[index]) || F80_isinf(regs[index])) {
-            tag = TAG_Special;
+        if (isRegCached[index]) {
+            if (regCache[index].d == 0.0) {
+                tag = TAG_Zero;
+            } else if (isnan(regCache[index].d) || isinf(regCache[index].d)) {
+                tag = TAG_Special;
+            }
+        } else {
+            if (F80_iszero(regs[index])) {
+                tag = TAG_Zero;
+            } else if (F80_isnan(regs[index]) || F80_isinf(regs[index])) {
+                tag = TAG_Special;
+            }
         }
     }
     return tag;
@@ -854,75 +1203,137 @@ void FPU::FRSTOR(CPU* cpu, U32 addr) {
     for (i = 0; i < 8; i++) {
         regs[STV(i)].signif = cpu->memory->readq(addr + start);
         regs[STV(i)].signExp = cpu->memory->readw(addr + start + 8);
+        isRegCached[STV(i)] = false;
         start += 10;
     }
 }
 
 void FPU::FXTRACT() {
-    if (F80_iszero(this->regs[this->top])) {
-        this->regs[this->top] = fx80_ninf;
+    extFloat80_t& d0 = getReg(top);
+
+    if (F80_iszero(d0)) {
+        d0 = fx80_ninf;
         PREP_PUSH();
-        this->regs[this->top] = fx80_zero;
+        regs[top] = fx80_zero;
+        isRegCached[top] = false;
     } else {
-        extFloat80_t exponent = i32_to_extF80((this->regs[this->top].signExp & 0x7fff) - 0x3fff);
-        extFloat80_t mant = this->regs[this->top];
+        extFloat80_t exponent = i32_to_extF80((d0.signExp & 0x7fff) - 0x3fff);
+        extFloat80_t mant = d0;
         mant.signExp &= ~0x7fff;
         mant.signExp |= 0x3fff;
-        this->regs[this->top] = exponent;
+        d0 = exponent;
         PREP_PUSH();
-        this->regs[this->top] = mant;
+        regs[top] = mant;
+        isRegCached[top] = false;
     }
 }
 
 void FPU::FCHS() {
-    this->regs[this->top].signExp ^= 0x8000;
+    if (isRegCached[top]) {
+        regCache[top].d = -1.0 * regCache[top].d;
+    } else {
+        regs[top].signExp ^= 0x8000;
+    }
     FPU_SET_C1(this, 0);
 }
 
 void FPU::FABS() {
-    this->regs[this->top].signExp &= 0x7fff;
+    if (isRegCached[top]) {
+        regCache[top].d = fabs(regCache[top].d);
+    } else {
+        regs[top].signExp &= 0x7fff;
+    }
     FPU_SET_C1(this, 0);
 }
 
 void FPU::FTST(CPU* cpu) {
-    this->regs[8] = fx80_zero;
-    this->tags[8] = TAG_Zero;
+    if (isRegCached[top]) { // check top since that is what we will compare against
+        regCache[8].d = 0.0;
+        tags[8] = TAG_Zero;
+        isRegCached[8] = true;
+    } else {
+        regs[8] = fx80_zero;
+        tags[8] = TAG_Zero;
+        isRegCached[8] = false;
+    }
     FCOM(cpu, this->top, 8);
 }
 
 void FPU::FLD1() {
     PREP_PUSH();
-    this->regs[this->top] = fx80_one;
+    if (KSystem::useF64) {
+        regCache[top].d = 1.0;
+        isRegCached[top] = true;
+    } else {
+        regs[top] = fx80_one;
+        isRegCached[top] = false;
+    }
 }
 
 void FPU::FLDL2T() {
     PREP_PUSH();
-    this->regs[this->top] = fx80_l2t;
+    if (KSystem::useF64) {
+        regCache[top].d = 3.3219280948873623;
+        isRegCached[top] = true;
+    } else {
+        regs[top] = fx80_l2t;
+        isRegCached[top] = false;
+    }
 }
 
 void FPU::FLDL2E() {
     PREP_PUSH();
-    this->regs[this->top] = fx80_l2e;
+    if (KSystem::useF64) {
+        regCache[top].d = 1.4426950408889634;
+        isRegCached[top] = true;
+    } else {
+        regs[top] = fx80_l2e;
+        isRegCached[top] = false;
+    }
 }
 
 void FPU::FLDPI() {
     PREP_PUSH();
-    this->regs[this->top] = fx80_pi;
+    if (KSystem::useF64) {
+        regCache[top].d = 3.14159265358979323846;
+        isRegCached[top] = true;
+    } else {
+        regs[top] = fx80_pi;
+        isRegCached[top] = false;
+    }
 }
 
 void FPU::FLDLG2() {
     PREP_PUSH();
-    this->regs[this->top] = fx80_lg2;
+    if (KSystem::useF64) {
+        regCache[top].d = 0.3010299956639812;
+        isRegCached[top] = true;
+    } else {
+        regs[top] = fx80_lg2;
+        isRegCached[top] = false;
+    }
 }
 
 void FPU::FLDLN2() {
     PREP_PUSH();
-    this->regs[this->top] = fx80_ln2;
+    if (KSystem::useF64) {
+        regCache[top].d = 0.69314718055994531;
+        isRegCached[top] = true;
+    } else {
+        regs[top] = fx80_ln2;
+        isRegCached[top] = false;
+    }
 }
 
 void FPU::FLDZ() {
     PREP_PUSH();
-    this->regs[this->top] = fx80_zero;
+    if (KSystem::useF64) {
+        regCache[top].d = 0.0;
+        isRegCached[top] = true;
+    } else {
+        regs[top] = fx80_zero;
+        isRegCached[top] = false;
+    }
 }
 
 
@@ -980,4 +1391,24 @@ void FPU::startMMX() {
     SetSW(0);
     SetTag(0); // all TAG_Valid
     isMMXInUse = true;
+    memset(isRegCached, 0, sizeof(isRegCached));
+}
+
+extFloat80_t& FPU::getReg(U32 reg) {
+    if (isRegCached[reg]) {
+        isRegCached[reg] = false;
+        float64_t f;
+        f.v = regCache[reg].l;
+        regs[reg] = f64_to_extF80(f);
+    }
+    return regs[reg];
+}
+
+double& FPU::getF64(U32 reg) {
+    if (!isRegCached[reg]) {
+        isRegCached[reg] = true;
+        softfloat_roundingMode = softfloat_round_near_even;
+        regCache[reg].l = extF80_to_f64(regs[reg]).v;
+    }
+    return regCache[reg].d;
 }

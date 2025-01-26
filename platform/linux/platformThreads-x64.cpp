@@ -224,7 +224,7 @@ void signalHandler() {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
-        cpu->loadFxState(op->inst, fpu);        
+        cpu->loadFxState(op->inst);        
 #endif
         bool saveFxState = true;
         cpu->returnHostAddress = cpu->handleAccessException(op);
@@ -232,7 +232,7 @@ void signalHandler() {
         cpu->updateX64Flags();
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
         if (saveFxState) {
-            cpu->saveToFxState(op->inst, fpu);
+            cpu->saveToFxState(op->inst);
         }
 #endif
         op->dealloc(true);

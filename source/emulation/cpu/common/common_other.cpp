@@ -232,8 +232,7 @@ void common_fxrstor(CPU* cpu, U32 address) {
     cpu->fpu.SetTagFromAbridged(cpu->memory->readb(address+4));
     for (int i=0;i<8;i++) {
         U32 index = (i - cpu->fpu.GetTop()) & 7;
-        cpu->fpu.regs[i].signif = cpu->memory->readq(address + 32 + index * 16);
-        cpu->fpu.regs[i].signExp = cpu->memory->readw(address + 40 + index * 16);
+        cpu->fpu.LD80(i, cpu->memory->readq(address + 32 + index * 16), cpu->memory->readw(address + 40 + index * 16));
     }
     for (int i=0;i<8;i++) {
         cpu->xmm[i].pi.u64[0] = cpu->memory->readq(address+160+i*16);

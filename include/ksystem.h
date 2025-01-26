@@ -109,6 +109,7 @@ public:
     static BString exePath;
     static bool disableHideCursor;
     static bool forceRelativeMouse;
+    static bool useF64;
 
     static void init();
 	static void destroy();

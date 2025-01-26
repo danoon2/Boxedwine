@@ -2176,7 +2176,10 @@ void testFILD() {
     fild64(data, 0);
     runTestCPU();
     assertTrue(cpu->fpu.GetTop() == 7);
-    assertTrue(cpu->fpu.regs[cpu->fpu.STV(1)].signif == data);
+    U64 low = 0;
+    U64 high = 0;
+    cpu->fpu.ST80(cpu->fpu.STV(1), &low, &high);
+    assertTrue(low == data);
     assertTrue(cpu->fpu.SW() == 0x3800);
 }
 

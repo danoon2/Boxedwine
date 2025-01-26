@@ -68,6 +68,12 @@ U32 KSystem::wineMajorVersion;
 bool KSystem::disableHideCursor = false;
 bool KSystem::forceRelativeMouse = false;
 
+#ifdef BOXEDWINE_X64
+bool KSystem::useF64 = false;
+#else
+bool KSystem::useF64 = true;
+#endif
+
 BOXEDWINE_CONDITION KSystem::processesCond(std::make_shared<BoxedWineCondition>(B("KSystem::processesCond")));
 
 void KSystem::init() {

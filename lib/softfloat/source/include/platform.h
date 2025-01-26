@@ -6,4 +6,8 @@
 #define SOFTFLOAT_FAST_DIV32TO16
 #define SOFTFLOAT_FAST_DIV64TO32
 
+#ifdef BOXEDWINE_MSVC
 #define THREAD_LOCAL __declspec( thread )
+#else
+#define THREAD_LOCAL __thread
+#endif

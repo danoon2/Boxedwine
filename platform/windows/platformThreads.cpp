@@ -34,8 +34,7 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep) {
         cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord);
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - cpu->fpu.GetTop()) & 7;
-            cpu->fpu.regs[i].signif = ep->ContextRecord->FltSave.FloatRegisters[index].Low;
-            cpu->fpu.regs[i].signExp = ep->ContextRecord->FltSave.FloatRegisters[index].High;
+            cpu->fpu.LD80(i, ep->ContextRecord->FltSave.FloatRegisters[index].Low, (U16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
         }
     }
 #endif

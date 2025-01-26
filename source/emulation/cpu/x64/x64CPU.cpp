@@ -146,8 +146,7 @@ void x64CPU::postTestRun() {
 
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - fpu.GetTop()) & 7;
-            fpu.regs[i].signif = fpuState.st_mm[index].low;
-            fpu.regs[i].signExp = (U16)fpuState.st_mm[index].high;
+            fpu.LD80(i, fpuState.st_mm[index].low, (U16)fpuState.st_mm[index].high);
         }
     }
 }
@@ -191,8 +190,7 @@ void x64CPU::loadFxState(U32 inst) {
 
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - this->fpu.GetTop()) & 7;
-            this->fpu.regs[i].signif = this->fpuState.st_mm[index].low;
-            this->fpu.regs[i].signExp = (U16)this->fpuState.st_mm[index].high;
+            fpu.LD80(i, this->fpuState.st_mm[index].low, (U16)this->fpuState.st_mm[index].high);
         }
     }
 #endif
@@ -323,8 +321,7 @@ void common_runSingleOp(x64CPU* cpu) {
         cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
         cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
         if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
-            cpu->fpu.regs[i].signif = cpu->fpuState.st_mm[i].low;
-            cpu->fpu.regs[i].signExp = (U16)cpu->fpuState.st_mm[i].high;
+            cpu->fpu.LD80(i, cpu->fpuState.st_mm[i].low, (U16)cpu->fpuState.st_mm[i].high);
         }
     }
     if (!cpu->thread->process->emulateFPU) {
@@ -337,8 +334,7 @@ void common_runSingleOp(x64CPU* cpu) {
 
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - cpu->fpu.GetTop()) & 7;
-            cpu->fpu.regs[i].signif = cpu->fpuState.st_mm[index].low;
-            cpu->fpu.regs[i].signExp = (U16)cpu->fpuState.st_mm[index].high;
+            cpu->fpu.LD80(i, cpu->fpuState.st_mm[index].low, (U16)cpu->fpuState.st_mm[index].high);
         }
     }
 #endif
@@ -356,8 +352,7 @@ void common_runSingleOp(x64CPU* cpu) {
         cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
         cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
         if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
-            cpu->fpuState.st_mm[i].low = cpu->fpu.regs[i].signif;
-            cpu->fpuState.st_mm[i].high = cpu->fpu.regs[i].signExp;
+            cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[i].low, (U64*)&cpu->fpuState.st_mm[i].high);
         }
     }
     if (!cpu->thread->process->emulateFPU) {

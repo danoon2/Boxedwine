@@ -118,6 +118,7 @@ class FPU {
 public:
     void reset();
     void startMMX();
+
     MMX_reg* getMMX(U8 r) {
         return (MMX_reg*)&regs[r].signif;
     }
@@ -131,6 +132,8 @@ public:
     }
     void ST80(CPU* cpu, U32 addr, int reg);
     void ST80(U32 reg, U64* pLow, U64* pHigh);
+    void LD80(U32 reg, U64 low, U16 high);
+
     void FLD_F32(U32 value, int store_to);
     void FLD_F64(U64 value, int store_to);
     void FLD_F80(U64 low, S16 high);
@@ -221,8 +224,7 @@ public:
     int GetTag(CPU* cpu, U32 index);
     void LOG_STACK();
 
-    bool isMMXInUse;
-    extFloat80_t regs[9];
+    bool isMMXInUse;    
 
     U32 tags[9];
     U32 cw;
@@ -232,6 +234,16 @@ public:
     U32 round;
 
     U32 envData[4];
+
+private:
+    extFloat80_t& getReg(U32 reg);
+    double& getF64(U32 reg);
+    float& getF32(U32 reg);
+    double FROUND(double in);
+
+    extFloat80_t regs[9];
+    FPU_Reg regCache[9];
+    bool isRegCached[9];    
 };
 
 #endif
