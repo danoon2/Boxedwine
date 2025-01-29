@@ -911,6 +911,9 @@
     <ClCompile Include="..\..\..\..\..\lib\softfloat\source\s_mul64To128.c">
       <Filter>softfloat</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\test\testFPU.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -2433,6 +2436,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\lib\softfloat\source\8086-SSE\specialize.h">
       <Filter>softfloat\8086-SSE</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\test\testFPU.h">
+      <Filter>source\test</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

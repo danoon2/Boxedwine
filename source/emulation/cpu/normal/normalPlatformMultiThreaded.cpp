@@ -19,6 +19,20 @@ static void platformThread(CPU* cpu) {
             cpu->nextBlock = nullptr;
         }
 #ifdef __TEST
+        if (cpu->nextBlock) {
+            DecodedOp* o = cpu->nextBlock->op;
+            bool found = false;
+
+            while (o) {
+                if (o->inst == IntIb && o->imm == 0x97) {
+                    found = true;
+                }
+                o = o->next;
+            }
+            if (!found) {
+                continue;
+            }
+        }
         return;
 #else
         if (cpu->thread->process->terminated) {
@@ -41,12 +55,27 @@ static void platformThread(CPU* cpu) {
     }
 }
 
+#ifdef __TEST
+void initThreadForTesting() {
+}
+
+void joinThread(KThread* thread) {
+    std::thread* cppThread = (std::thread*)thread->cpu->nativeHandle;
+    cppThread->join();
+    delete cppThread;
+}
+#endif
+
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     CPU* cpu = thread->cpu;
+#ifdef __TEST
+    cpu->nativeHandle = (U64)new std::thread(platformThread, cpu);
+#else
     std::thread cppThread = std::thread(platformThread, cpu);
     cpu->nativeHandle = (U64)cppThread.native_handle();
     cppThread.detach();
+#endif
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
         Platform::setCpuAffinityForThread(thread, KSystem::cpuAffinityCountForApp);
     }

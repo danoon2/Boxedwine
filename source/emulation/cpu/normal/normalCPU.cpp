@@ -289,7 +289,8 @@ void OPCALL lockOp16(CPU* cpu, DecodedOp* op) {
     lockedOp.ea16 = 0;
 
     LockData16* p= (LockData16*)cpu->memory->getIntPtr(address, true);
-    if (((U32)p) & 1) {
+    auto iptr = reinterpret_cast<std::uintptr_t>(p);
+    if (iptr % 2) {
         BOXEDWINE_CRITICAL_SECTION;
         normalOps[op->inst](cpu, op);
         return;
@@ -338,7 +339,8 @@ void OPCALL lockOp32(CPU* cpu, DecodedOp* op) {
     lockedOp.ea16 = 0;
 
     LockData32* p = (LockData32*)cpu->memory->getIntPtr(address, true);
-    if (((U32)p) & 3) {
+    auto iptr = reinterpret_cast<std::uintptr_t>(p);
+    if (iptr % 4) {
         BOXEDWINE_CRITICAL_SECTION;
         normalOps[op->inst](cpu, op);
         return;

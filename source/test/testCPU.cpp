@@ -9872,6 +9872,7 @@ void testSelfModifyingBack() {
     assertTrue(EAX == 0x60); // 0x20 from first run + 0x40 from second run
 }
 
+#ifdef BOXEDWINE_MULTI_THREADED
 void setupForThread() {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #ifdef BOXEDWINE_X64
@@ -9885,6 +9886,8 @@ void setupForThread() {
     pushCode8(0);
     pushCode8(0x70); // jump will fetch the next block as well
     pushCode8(0);
+    pushCode8(0xcd); // for multi-thread test
+    pushCode8(0x97);
 #endif
 }
 
@@ -9927,7 +9930,7 @@ void testLockedInc() {
     testLockedInc(0xc4); // aligned 4
     testLockedInc(0xc9); // aligned 1
 }
-
+#endif
 int runCpuTests() {
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");

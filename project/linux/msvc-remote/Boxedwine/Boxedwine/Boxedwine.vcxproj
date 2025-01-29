@@ -1312,6 +1312,7 @@
     <ClCompile Include="..\..\..\..\..\source\sdl\singleThreaded\mainloop.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\startupArgs.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testCPU.cpp" />
+    <ClCompile Include="..\..\..\..\..\source\test\testFPU.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testMMX.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testSSE.cpp" />
     <ClCompile Include="..\..\..\..\..\source\test\testSSE2.cpp" />
@@ -1896,6 +1897,7 @@
     <ClInclude Include="..\..\..\..\..\source\sdl\mainloop.h" />
     <ClInclude Include="..\..\..\..\..\source\sdl\startupArgs.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testCPU.h" />
+    <ClInclude Include="..\..\..\..\..\source\test\testFPU.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testMMX.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testSSE.h" />
     <ClInclude Include="..\..\..\..\..\source\test\testSSE2.h" />
