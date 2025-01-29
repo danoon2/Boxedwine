@@ -97,77 +97,77 @@ void softfloat_raiseFlags( uint_fast8_t );
 /*----------------------------------------------------------------------------
 | Integer-to-floating-point conversion routines.
 *----------------------------------------------------------------------------*/
-float16_t ui32_to_f16( uint32_t );
+float16_sf ui32_to_f16( uint32_t );
 float32_sf ui32_to_f32( uint32_t );
 float64_sf ui32_to_f64( uint32_t );
 #ifdef SOFTFLOAT_FAST_INT64
 extFloat80_t ui32_to_extF80( uint32_t );
-float128_t ui32_to_f128( uint32_t );
+float128_sf ui32_to_f128( uint32_t );
 #endif
 void ui32_to_extF80M( uint32_t, extFloat80_t * );
-void ui32_to_f128M( uint32_t, float128_t * );
-float16_t ui64_to_f16( uint64_t );
+void ui32_to_f128M( uint32_t, float128_sf * );
+float16_sf ui64_to_f16( uint64_t );
 float32_sf ui64_to_f32( uint64_t );
 float64_sf ui64_to_f64( uint64_t );
 #ifdef SOFTFLOAT_FAST_INT64
 extFloat80_t ui64_to_extF80( uint64_t );
-float128_t ui64_to_f128( uint64_t );
+float128_sf ui64_to_f128( uint64_t );
 #endif
 void ui64_to_extF80M( uint64_t, extFloat80_t * );
-void ui64_to_f128M( uint64_t, float128_t * );
-float16_t i32_to_f16( int32_t );
+void ui64_to_f128M( uint64_t, float128_sf * );
+float16_sf i32_to_f16( int32_t );
 float32_sf i32_to_f32( int32_t );
 float64_sf i32_to_f64( int32_t );
 #ifdef SOFTFLOAT_FAST_INT64
 extFloat80_t i32_to_extF80( int32_t );
-float128_t i32_to_f128( int32_t );
+float128_sf i32_to_f128( int32_t );
 #endif
 void i32_to_extF80M( int32_t, extFloat80_t * );
-void i32_to_f128M( int32_t, float128_t * );
-float16_t i64_to_f16( int64_t );
+void i32_to_f128M( int32_t, float128_sf * );
+float16_sf i64_to_f16( int64_t );
 float32_sf i64_to_f32( int64_t );
 float64_sf i64_to_f64( int64_t );
 #ifdef SOFTFLOAT_FAST_INT64
 extFloat80_t i64_to_extF80( int64_t );
-float128_t i64_to_f128( int64_t );
+float128_sf i64_to_f128( int64_t );
 #endif
 void i64_to_extF80M( int64_t, extFloat80_t * );
-void i64_to_f128M( int64_t, float128_t * );
+void i64_to_f128M( int64_t, float128_sf * );
 
 /*----------------------------------------------------------------------------
 | 16-bit (half-precision) floating-point operations.
 *----------------------------------------------------------------------------*/
-uint_fast32_t f16_to_ui32( float16_t, uint_fast8_t, bool );
-uint_fast64_t f16_to_ui64( float16_t, uint_fast8_t, bool );
-int_fast32_t f16_to_i32( float16_t, uint_fast8_t, bool );
-int_fast64_t f16_to_i64( float16_t, uint_fast8_t, bool );
-uint_fast32_t f16_to_ui32_r_minMag( float16_t, bool );
-uint_fast64_t f16_to_ui64_r_minMag( float16_t, bool );
-int_fast32_t f16_to_i32_r_minMag( float16_t, bool );
-int_fast64_t f16_to_i64_r_minMag( float16_t, bool );
-float32_sf f16_to_f32( float16_t );
-float64_sf f16_to_f64( float16_t );
+uint_fast32_t f16_to_ui32( float16_sf, uint_fast8_t, bool );
+uint_fast64_t f16_to_ui64( float16_sf, uint_fast8_t, bool );
+int_fast32_t f16_to_i32( float16_sf, uint_fast8_t, bool );
+int_fast64_t f16_to_i64( float16_sf, uint_fast8_t, bool );
+uint_fast32_t f16_to_ui32_r_minMag( float16_sf, bool );
+uint_fast64_t f16_to_ui64_r_minMag( float16_sf, bool );
+int_fast32_t f16_to_i32_r_minMag( float16_sf, bool );
+int_fast64_t f16_to_i64_r_minMag( float16_sf, bool );
+float32_sf f16_to_f32( float16_sf );
+float64_sf f16_to_f64( float16_sf );
 #ifdef SOFTFLOAT_FAST_INT64
-extFloat80_t f16_to_extF80( float16_t );
-float128_t f16_to_f128( float16_t );
+extFloat80_t f16_to_extF80( float16_sf );
+float128_sf f16_to_f128( float16_sf );
 #endif
-void f16_to_extF80M( float16_t, extFloat80_t * );
-void f16_to_f128M( float16_t, float128_t * );
-float16_t f16_roundToInt( float16_t, uint_fast8_t, bool );
-float16_t f16_add( float16_t, float16_t );
-float16_t f16_sub( float16_t, float16_t );
-float16_t f16_mul( float16_t, float16_t );
-float16_t f16_mulAdd( float16_t, float16_t, float16_t );
-float16_t f16_div( float16_t, float16_t );
-float16_t f16_rem( float16_t, float16_t );
-float16_t f16_sqrt( float16_t );
-bool f16_eq( float16_t, float16_t );
-bool f16_le( float16_t, float16_t );
-bool f16_lt( float16_t, float16_t );
-bool f16_eq_signaling( float16_t, float16_t );
-bool f16_le_quiet( float16_t, float16_t );
-bool f16_lt_quiet( float16_t, float16_t );
-bool f16_isSignalingNaN( float16_t );
+void f16_to_extF80M( float16_sf, extFloat80_t * );
+void f16_to_f128M( float16_sf, float128_sf * );
+float16_sf f16_roundToInt( float16_sf, uint_fast8_t, bool );
+float16_sf f16_add( float16_sf, float16_sf );
+float16_sf f16_sub( float16_sf, float16_sf );
+float16_sf f16_mul( float16_sf, float16_sf );
+float16_sf f16_mulAdd( float16_sf, float16_sf, float16_sf );
+float16_sf f16_div( float16_sf, float16_sf );
+float16_sf f16_rem( float16_sf, float16_sf );
+float16_sf f16_sqrt( float16_sf );
+bool f16_eq( float16_sf, float16_sf );
+bool f16_le( float16_sf, float16_sf );
+bool f16_lt( float16_sf, float16_sf );
+bool f16_eq_signaling( float16_sf, float16_sf );
+bool f16_le_quiet( float16_sf, float16_sf );
+bool f16_lt_quiet( float16_sf, float16_sf );
+bool f16_isSignalingNaN( float16_sf );
 
 /*----------------------------------------------------------------------------
 | 16-bit (brain float 16) floating-point operations.
@@ -187,14 +187,14 @@ uint_fast32_t f32_to_ui32_r_minMag( float32_sf, bool );
 uint_fast64_t f32_to_ui64_r_minMag( float32_sf, bool );
 int_fast32_t f32_to_i32_r_minMag( float32_sf, bool );
 int_fast64_t f32_to_i64_r_minMag( float32_sf, bool );
-float16_t f32_to_f16( float32_sf );
+float16_sf f32_to_f16( float32_sf );
 float64_sf f32_to_f64( float32_sf );
 #ifdef SOFTFLOAT_FAST_INT64
 extFloat80_t f32_to_extF80( float32_sf );
-float128_t f32_to_f128( float32_sf );
+float128_sf f32_to_f128( float32_sf );
 #endif
 void f32_to_extF80M( float32_sf, extFloat80_t * );
-void f32_to_f128M( float32_sf, float128_t * );
+void f32_to_f128M( float32_sf, float128_sf * );
 float32_sf f32_roundToInt( float32_sf, uint_fast8_t, bool );
 float32_sf f32_add( float32_sf, float32_sf );
 float32_sf f32_sub( float32_sf, float32_sf );
@@ -222,14 +222,14 @@ uint_fast32_t f64_to_ui32_r_minMag( float64_sf, bool );
 uint_fast64_t f64_to_ui64_r_minMag( float64_sf, bool );
 int_fast32_t f64_to_i32_r_minMag( float64_sf, bool );
 int_fast64_t f64_to_i64_r_minMag( float64_sf, bool );
-float16_t f64_to_f16( float64_sf );
+float16_sf f64_to_f16( float64_sf );
 float32_sf f64_to_f32( float64_sf );
 #ifdef SOFTFLOAT_FAST_INT64
 extFloat80_t f64_to_extF80( float64_sf );
-float128_t f64_to_f128( float64_sf );
+float128_sf f64_to_f128( float64_sf );
 #endif
 void f64_to_extF80M( float64_sf, extFloat80_t * );
-void f64_to_f128M( float64_sf, float128_t * );
+void f64_to_f128M( float64_sf, float128_sf * );
 float64_sf f64_roundToInt( float64_sf, uint_fast8_t, bool );
 float64_sf f64_add( float64_sf, float64_sf );
 float64_sf f64_sub( float64_sf, float64_sf );
@@ -264,10 +264,10 @@ uint_fast32_t extF80_to_ui32_r_minMag( extFloat80_t, bool );
 uint_fast64_t extF80_to_ui64_r_minMag( extFloat80_t, bool );
 int_fast32_t extF80_to_i32_r_minMag( extFloat80_t, bool );
 int_fast64_t extF80_to_i64_r_minMag( extFloat80_t, bool );
-float16_t extF80_to_f16( extFloat80_t );
+float16_sf extF80_to_f16( extFloat80_t );
 float32_sf extF80_to_f32( extFloat80_t );
 float64_sf extF80_to_f64( extFloat80_t );
-float128_t extF80_to_f128( extFloat80_t );
+float128_sf extF80_to_f128( extFloat80_t );
 extFloat80_t extF80_roundToInt( extFloat80_t, uint_fast8_t, bool );
 extFloat80_t extF80_add( extFloat80_t, extFloat80_t );
 extFloat80_t extF80_sub( extFloat80_t, extFloat80_t );
@@ -291,10 +291,10 @@ uint_fast32_t extF80M_to_ui32_r_minMag( const extFloat80_t *, bool );
 uint_fast64_t extF80M_to_ui64_r_minMag( const extFloat80_t *, bool );
 int_fast32_t extF80M_to_i32_r_minMag( const extFloat80_t *, bool );
 int_fast64_t extF80M_to_i64_r_minMag( const extFloat80_t *, bool );
-float16_t extF80M_to_f16( const extFloat80_t * );
+float16_sf extF80M_to_f16( const extFloat80_t * );
 float32_sf extF80M_to_f32( const extFloat80_t * );
 float64_sf extF80M_to_f64( const extFloat80_t * );
-void extF80M_to_f128M( const extFloat80_t *, float128_t * );
+void extF80M_to_f128M( const extFloat80_t *, float128_sf * );
 void
  extF80M_roundToInt(
      const extFloat80_t *, uint_fast8_t, bool, extFloat80_t * );
@@ -316,64 +316,64 @@ bool extF80M_isSignalingNaN( const extFloat80_t * );
 | 128-bit (quadruple-precision) floating-point operations.
 *----------------------------------------------------------------------------*/
 #ifdef SOFTFLOAT_FAST_INT64
-uint_fast32_t f128_to_ui32( float128_t, uint_fast8_t, bool );
-uint_fast64_t f128_to_ui64( float128_t, uint_fast8_t, bool );
-int_fast32_t f128_to_i32( float128_t, uint_fast8_t, bool );
-int_fast64_t f128_to_i64( float128_t, uint_fast8_t, bool );
-uint_fast32_t f128_to_ui32_r_minMag( float128_t, bool );
-uint_fast64_t f128_to_ui64_r_minMag( float128_t, bool );
-int_fast32_t f128_to_i32_r_minMag( float128_t, bool );
-int_fast64_t f128_to_i64_r_minMag( float128_t, bool );
-float16_t f128_to_f16( float128_t );
-float32_sf f128_to_f32( float128_t );
-float64_sf f128_to_f64( float128_t );
-extFloat80_t f128_to_extF80( float128_t );
-float128_t f128_roundToInt( float128_t, uint_fast8_t, bool );
-float128_t f128_add( float128_t, float128_t );
-float128_t f128_sub( float128_t, float128_t );
-float128_t f128_mul( float128_t, float128_t );
-float128_t f128_mulAdd( float128_t, float128_t, float128_t );
-float128_t f128_div( float128_t, float128_t );
-float128_t f128_rem( float128_t, float128_t );
-float128_t f128_sqrt( float128_t );
-bool f128_eq( float128_t, float128_t );
-bool f128_le( float128_t, float128_t );
-bool f128_lt( float128_t, float128_t );
-bool f128_eq_signaling( float128_t, float128_t );
-bool f128_le_quiet( float128_t, float128_t );
-bool f128_lt_quiet( float128_t, float128_t );
-bool f128_isSignalingNaN( float128_t );
+uint_fast32_t f128_to_ui32( float128_sf, uint_fast8_t, bool );
+uint_fast64_t f128_to_ui64( float128_sf, uint_fast8_t, bool );
+int_fast32_t f128_to_i32( float128_sf, uint_fast8_t, bool );
+int_fast64_t f128_to_i64( float128_sf, uint_fast8_t, bool );
+uint_fast32_t f128_to_ui32_r_minMag( float128_sf, bool );
+uint_fast64_t f128_to_ui64_r_minMag( float128_sf, bool );
+int_fast32_t f128_to_i32_r_minMag( float128_sf, bool );
+int_fast64_t f128_to_i64_r_minMag( float128_sf, bool );
+float16_sf f128_to_f16( float128_sf );
+float32_sf f128_to_f32( float128_sf );
+float64_sf f128_to_f64( float128_sf );
+extFloat80_t f128_to_extF80( float128_sf );
+float128_sf f128_roundToInt( float128_sf, uint_fast8_t, bool );
+float128_sf f128_add( float128_sf, float128_sf );
+float128_sf f128_sub( float128_sf, float128_sf );
+float128_sf f128_mul( float128_sf, float128_sf );
+float128_sf f128_mulAdd( float128_sf, float128_sf, float128_sf );
+float128_sf f128_div( float128_sf, float128_sf );
+float128_sf f128_rem( float128_sf, float128_sf );
+float128_sf f128_sqrt( float128_sf );
+bool f128_eq( float128_sf, float128_sf );
+bool f128_le( float128_sf, float128_sf );
+bool f128_lt( float128_sf, float128_sf );
+bool f128_eq_signaling( float128_sf, float128_sf );
+bool f128_le_quiet( float128_sf, float128_sf );
+bool f128_lt_quiet( float128_sf, float128_sf );
+bool f128_isSignalingNaN( float128_sf );
 #endif
-uint_fast32_t f128M_to_ui32( const float128_t *, uint_fast8_t, bool );
-uint_fast64_t f128M_to_ui64( const float128_t *, uint_fast8_t, bool );
-int_fast32_t f128M_to_i32( const float128_t *, uint_fast8_t, bool );
-int_fast64_t f128M_to_i64( const float128_t *, uint_fast8_t, bool );
-uint_fast32_t f128M_to_ui32_r_minMag( const float128_t *, bool );
-uint_fast64_t f128M_to_ui64_r_minMag( const float128_t *, bool );
-int_fast32_t f128M_to_i32_r_minMag( const float128_t *, bool );
-int_fast64_t f128M_to_i64_r_minMag( const float128_t *, bool );
-float16_t f128M_to_f16( const float128_t * );
-float32_sf f128M_to_f32( const float128_t * );
-float64_sf f128M_to_f64( const float128_t * );
-void f128M_to_extF80M( const float128_t *, extFloat80_t * );
-void f128M_roundToInt( const float128_t *, uint_fast8_t, bool, float128_t * );
-void f128M_add( const float128_t *, const float128_t *, float128_t * );
-void f128M_sub( const float128_t *, const float128_t *, float128_t * );
-void f128M_mul( const float128_t *, const float128_t *, float128_t * );
+uint_fast32_t f128M_to_ui32( const float128_sf *, uint_fast8_t, bool );
+uint_fast64_t f128M_to_ui64( const float128_sf *, uint_fast8_t, bool );
+int_fast32_t f128M_to_i32( const float128_sf *, uint_fast8_t, bool );
+int_fast64_t f128M_to_i64( const float128_sf *, uint_fast8_t, bool );
+uint_fast32_t f128M_to_ui32_r_minMag( const float128_sf *, bool );
+uint_fast64_t f128M_to_ui64_r_minMag( const float128_sf *, bool );
+int_fast32_t f128M_to_i32_r_minMag( const float128_sf *, bool );
+int_fast64_t f128M_to_i64_r_minMag( const float128_sf *, bool );
+float16_sf f128M_to_f16( const float128_sf * );
+float32_sf f128M_to_f32( const float128_sf * );
+float64_sf f128M_to_f64( const float128_sf * );
+void f128M_to_extF80M( const float128_sf *, extFloat80_t * );
+void f128M_roundToInt( const float128_sf *, uint_fast8_t, bool, float128_sf * );
+void f128M_add( const float128_sf *, const float128_sf *, float128_sf * );
+void f128M_sub( const float128_sf *, const float128_sf *, float128_sf * );
+void f128M_mul( const float128_sf *, const float128_sf *, float128_sf * );
 void
  f128M_mulAdd(
-     const float128_t *, const float128_t *, const float128_t *, float128_t *
+     const float128_sf *, const float128_sf *, const float128_sf *, float128_sf *
  );
-void f128M_div( const float128_t *, const float128_t *, float128_t * );
-void f128M_rem( const float128_t *, const float128_t *, float128_t * );
-void f128M_sqrt( const float128_t *, float128_t * );
-bool f128M_eq( const float128_t *, const float128_t * );
-bool f128M_le( const float128_t *, const float128_t * );
-bool f128M_lt( const float128_t *, const float128_t * );
-bool f128M_eq_signaling( const float128_t *, const float128_t * );
-bool f128M_le_quiet( const float128_t *, const float128_t * );
-bool f128M_lt_quiet( const float128_t *, const float128_t * );
-bool f128M_isSignalingNaN( const float128_t * );
+void f128M_div( const float128_sf *, const float128_sf *, float128_sf * );
+void f128M_rem( const float128_sf *, const float128_sf *, float128_sf * );
+void f128M_sqrt( const float128_sf *, float128_sf * );
+bool f128M_eq( const float128_sf *, const float128_sf * );
+bool f128M_le( const float128_sf *, const float128_sf * );
+bool f128M_lt( const float128_sf *, const float128_sf * );
+bool f128M_eq_signaling( const float128_sf *, const float128_sf * );
+bool f128M_le_quiet( const float128_sf *, const float128_sf * );
+bool f128M_lt_quiet( const float128_sf *, const float128_sf * );
+bool f128M_isSignalingNaN( const float128_sf * );
 
 #endif
 

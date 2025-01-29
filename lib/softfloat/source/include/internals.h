@@ -42,14 +42,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "primitives.h"
 #include "softfloat_types.h"
 
-union ui16_f16 { uint16_t ui; float16_t f; };
+union ui16_f16 { uint16_t ui; float16_sf f; };
 union ui16_bf16 { uint16_t ui; bfloat16_t f; };
 union ui32_f32 { uint32_t ui; float32_sf f; };
 union ui64_f64 { uint64_t ui; float64_sf f; };
 
 #ifdef SOFTFLOAT_FAST_INT64
 union extF80M_extF80 { struct extFloat80M fM; extFloat80_t f; };
-union ui128_f128 { struct uint128 ui; float128_t f; };
+union ui128_f128 { struct uint128 ui; float128_sf f; };
 #endif
 
 enum {
@@ -91,12 +91,12 @@ int_fast64_t softfloat_roundMToI64( bool, uint32_t *, uint_fast8_t, bool );
 struct exp8_sig16 { int_fast8_t exp; uint_fast16_t sig; };
 struct exp8_sig16 softfloat_normSubnormalF16Sig( uint_fast16_t );
 
-float16_t softfloat_roundPackToF16( bool, int_fast16_t, uint_fast16_t );
-float16_t softfloat_normRoundPackToF16( bool, int_fast16_t, uint_fast16_t );
+float16_sf softfloat_roundPackToF16( bool, int_fast16_t, uint_fast16_t );
+float16_sf softfloat_normRoundPackToF16( bool, int_fast16_t, uint_fast16_t );
 
-float16_t softfloat_addMagsF16( uint_fast16_t, uint_fast16_t );
-float16_t softfloat_subMagsF16( uint_fast16_t, uint_fast16_t );
-float16_t
+float16_sf softfloat_addMagsF16( uint_fast16_t, uint_fast16_t );
+float16_sf softfloat_subMagsF16( uint_fast16_t, uint_fast16_t );
+float16_sf
  softfloat_mulAddF16(
      uint_fast16_t, uint_fast16_t, uint_fast16_t, uint_fast8_t );
 
@@ -197,20 +197,20 @@ struct exp32_sig128 { int_fast32_t exp; struct uint128 sig; };
 struct exp32_sig128
  softfloat_normSubnormalF128Sig( uint_fast64_t, uint_fast64_t );
 
-float128_t
+float128_sf
  softfloat_roundPackToF128(
      bool, int_fast32_t, uint_fast64_t, uint_fast64_t, uint_fast64_t );
-float128_t
+float128_sf
  softfloat_normRoundPackToF128(
      bool, int_fast32_t, uint_fast64_t, uint_fast64_t );
 
-float128_t
+float128_sf
  softfloat_addMagsF128(
      uint_fast64_t, uint_fast64_t, uint_fast64_t, uint_fast64_t, bool );
-float128_t
+float128_sf
  softfloat_subMagsF128(
      uint_fast64_t, uint_fast64_t, uint_fast64_t, uint_fast64_t, bool );
-float128_t
+float128_sf
  softfloat_mulAddF128(
      uint_fast64_t,
      uint_fast64_t,
