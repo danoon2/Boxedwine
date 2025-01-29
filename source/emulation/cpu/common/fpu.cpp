@@ -153,7 +153,7 @@ U8 FPU::GetAbridgedTag(CPU* cpu) {
 void FPU::SetTag(U32 tag) {
     int i;
     for (i = 0; i < 8; i++) {
-        this->tags[i] = ((tag >> (2 * i)) & 3);
+        this->tags[i] = tag;
     }
 }
 
@@ -272,7 +272,7 @@ void FPU::FLD_F32(U32 value, int store_to) {
         regCache[store_to].d = (double)f.f;
         isRegCached[store_to] = true;
     } else {
-        float32_t f;
+        float32_sf f;
         f.v = value;
         regs[store_to] = f32_to_extF80(f);
     }
@@ -283,7 +283,7 @@ void FPU::FLD_F64(U64 value, int store_to) {
         regCache[store_to].l = value;
         isRegCached[store_to] = true;
     } else {
-        float64_t f;
+        float64_sf f;
         f.v = value;
         regs[store_to] = f64_to_extF80(f);
     }
@@ -334,7 +334,8 @@ void FPU::FLD_I64(S64 value, int store_to) {
     // ignore useF64 since we don't want to loose precision until we do a calculation
     // some apps seems to do a memcpy like thing with data pushed in and out and we
     // don't want this value to change if its writen directly back out
-    getReg(store_to) = i64_to_extF80(value);
+    regs[store_to] = i64_to_extF80(value);
+    isRegCached[store_to] = false;
 }
 
 void FPU::FBLD(U8 data[], int store_to) {
@@ -755,7 +756,7 @@ void FPU::FPREM(bool truncate) {
         // N: = An implementation - dependent number between 32 and 63;
         S32 n = 58;
         // QQ: = Integer(TruncateTowardZero((ST(0) / ST(1)) / 2 ^ (D - N)));
-        float64_t p64;
+        float64_sf p64;
         long2Double d2l;
         d2l.d = pow(2.0, d - n);
         p64.v = d2l.l;
@@ -893,7 +894,7 @@ void FPU::F2XM1() {
         long2Double d;
         d.l = extF80_to_f64(this->regs[this->top]).v;
         d.d = pow(2.0, d.d) - 1;
-        float64_t f;
+        float64_sf f;
         f.v = d.l;
         this->regs[this->top] = f64_to_extF80(f);
     }
@@ -911,7 +912,7 @@ void FPU::FYL2X() {
         d1.l = extF80_to_f64(this->regs[this->top]).v;
         d2.l = extF80_to_f64(this->regs[STV(1)]).v;
         d1.d = d2.d * log(d1.d) / log(2.0);
-        float64_t f;
+        float64_sf f;
         f.v = d1.l;
         this->regs[STV(1)] = f64_to_extF80(f);
     }
@@ -925,7 +926,7 @@ void FPU::FPTAN() {
         long2Double d;
         d.l = extF80_to_f64(this->regs[this->top]).v;
         d.d = tan(d.d);
-        float64_t f;
+        float64_sf f;
         f.v = d.l;
         this->regs[this->top] = f64_to_extF80(f);
     }
@@ -947,7 +948,7 @@ void FPU::FPATAN() {
         d1.l = extF80_to_f64(this->regs[this->top]).v;
         d2.l = extF80_to_f64(this->regs[STV(1)]).v;
         d1.d = atan2(d2.d, d1.d);
-        float64_t f;
+        float64_sf f;
         f.v = d1.l;
         this->regs[STV(1)] = f64_to_extF80(f);
     }
@@ -967,7 +968,7 @@ void FPU::FYL2XP1() {
         d1.l = extF80_to_f64(this->regs[this->top]).v;
         d2.l = extF80_to_f64(this->regs[STV(1)]).v;
         d1.d = d2.d * log(d1.d + 1.0) / log(2.0);
-        float64_t f;
+        float64_sf f;
         f.v = d1.l;
         this->regs[STV(1)] = f64_to_extF80(f);
     }
@@ -996,7 +997,7 @@ void FPU::FSINCOS() {
         long2Double result;
         d.l = extF80_to_f64(this->regs[this->top]).v;
         result.d = sin(d.d);
-        float64_t f;
+        float64_sf f;
         f.v = result.l;
         this->regs[this->top] = f64_to_extF80(f);
 
@@ -1064,7 +1065,7 @@ void FPU::FSCALE() {
     d.l = extF80_to_f64(d0).v;
     d2.l = extF80_to_f64(d1).v;
     d.d = d.d * pow(2.0, (double)(S64)d2.d);
-    float64_t f;
+    float64_sf f;
     f.v = d.l;
     d0 = f64_to_extF80(f);    
 }
@@ -1076,7 +1077,7 @@ void FPU::FSIN() {
         long2Double d;
         d.l = extF80_to_f64(this->regs[this->top]).v;
         d.d = sin(d.d);
-        float64_t f;
+        float64_sf f;
         f.v = d.l;
         this->regs[this->top] = f64_to_extF80(f);
     }
@@ -1091,7 +1092,7 @@ void FPU::FCOS() {
         long2Double d;
         d.l = extF80_to_f64(this->regs[this->top]).v;
         d.d = cos(d.d);
-        float64_t f;
+        float64_sf f;
         f.v = d.l;
         this->regs[this->top] = f64_to_extF80(f);
     }
@@ -1397,7 +1398,7 @@ void FPU::startMMX() {
 extFloat80_t& FPU::getReg(U32 reg) {
     if (isRegCached[reg]) {
         isRegCached[reg] = false;
-        float64_t f;
+        float64_sf f;
         f.v = regCache[reg].l;
         regs[reg] = f64_to_extF80(f);
     }

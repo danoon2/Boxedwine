@@ -88,7 +88,7 @@ void setup() {
         process = KProcess::create();
         memory = KMemory::create(process.get());
         process->memory = memory;
-        KThread* thread = new KThread(KSystem::getNextThreadId(), process);
+        KThread* thread = process->createThread();
         cpu = thread->cpu;
         KThread::setCurrentThread(thread);
         process->memory->mmap(thread, ((STACK_ADDRESS >> K_PAGE_SHIFT)-PAGES_PER_SEG) << K_PAGE_SHIFT, PAGES_PER_SEG << K_PAGE_SHIFT, K_PROT_WRITE | K_PROT_READ|K_PROT_READ, K_MAP_FIXED | K_MAP_PRIVATE, -1, 0);
@@ -9872,6 +9872,62 @@ void testSelfModifyingBack() {
     assertTrue(EAX == 0x60); // 0x20 from first run + 0x40 from second run
 }
 
+void setupForThread() {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_X64
+    process->emulateFPU = !cpu->isBig();
+#endif
+    pushCode8(0xcd);
+    pushCode8(0x97); // will cause TEST specific return code to be inserted
+    ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
+#else
+    pushCode8(0x70); // jump causes the decoder to stop building the block
+    pushCode8(0);
+    pushCode8(0x70); // jump will fetch the next block as well
+    pushCode8(0);
+#endif
+}
+
+KThread* doLockedIncThread(U32 numberOfIterationsPerThread) {
+    KThread* thread = process->createThread();
+    thread->cpu->clone(cpu); // make sure segments are correct
+    thread->cpu->reg[1].u32 = numberOfIterationsPerThread;
+    scheduleThread(thread);
+    return thread;
+}
+
+void testLockedInc(U32 address) {
+    const U32 numberOfThreads = 10;
+    const U32 numberOfIterationsPerThread = 1000000;
+
+    memory->writed(cpu->seg[DS].address + address, 0);
+
+    // inc memory
+    newInstructionWithRM(0xff, 5, 0, 0xf0);
+    pushCode32(address);
+    
+    // loop
+    pushCode8(0xe2);
+    pushCode8((U8)(S8)(-9)); // jump amount if ecx is not 0
+
+    setupForThread();
+    std::vector<KThread*> threads;
+    for (U32 i = 0; i < numberOfThreads; i++) {
+        threads.push_back(doLockedIncThread(numberOfIterationsPerThread));
+    }
+    for (U32 i = 0; i < numberOfThreads; i++) {
+        joinThread(threads[i]);
+    }
+    U32 value = memory->readd(cpu->seg[DS].address + address);
+    assertTrue(value == numberOfIterationsPerThread * numberOfThreads);
+}
+
+void testLockedInc() {
+    testLockedInc(0xc8); // aligned 8
+    testLockedInc(0xc4); // aligned 4
+    testLockedInc(0xc9); // aligned 1
+}
+
 int runCpuTests() {
     printf("Please wait, these first 2 tests can take a while\n");
     run(test32BitMemoryAccess, "32-bit Memory Access");
@@ -10793,6 +10849,9 @@ int runCpuTests() {
     printf("Self Modifying Code Same Block(Next) ... Skipping\n");
 #else
     run(testSelfModifyingBack, "Self Modifying Code Same Block(Next)");
+#endif
+#ifdef BOXEDWINE_MULTI_THREADED
+    run(testLockedInc, "Multi-threaded locked inc");
 #endif
     run(testSplitPageWrite, "Split Page Write");
     printf("%d tests FAILED\n", totalFails);

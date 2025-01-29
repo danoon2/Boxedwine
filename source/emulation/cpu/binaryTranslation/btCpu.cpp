@@ -227,6 +227,7 @@ void BtCPU::startThread() {
     } catch (...) {
         int ii = 0;
     }
+#ifndef __TEST
     KProcessPtr process = thread->process;
     process->deleteThread(thread);
     KThread::setCurrentThread(nullptr);
@@ -235,6 +236,7 @@ void BtCPU::startThread() {
         KSystem::shutingDown = true;
         KNativeSystem::postQuit();
     }
+#endif
 }
 
 // called from another thread

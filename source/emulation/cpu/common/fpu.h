@@ -116,6 +116,13 @@ typedef union {
 // binary translator assumes FPU->regs will be at offset 0
 class FPU {
 public:
+    FPU_Reg regCache[9]; // first in class to make ARMv8 easier    
+
+    extFloat80_t& getReg(U32 reg);
+    double& getF64(U32 reg);
+    float& getF32(U32 reg);
+    double FROUND(double in);       
+
     void reset();
     void startMMX();
 
@@ -222,9 +229,7 @@ public:
 
     int GetTag(CPU* cpu);
     int GetTag(CPU* cpu, U32 index);
-    void LOG_STACK();
-
-    bool isMMXInUse;    
+    void LOG_STACK();    
 
     U32 tags[9];
     U32 cw;
@@ -235,15 +240,10 @@ public:
 
     U32 envData[4];
 
-private:
-    extFloat80_t& getReg(U32 reg);
-    double& getF64(U32 reg);
-    float& getF32(U32 reg);
-    double FROUND(double in);
-
     extFloat80_t regs[9];
-    FPU_Reg regCache[9];
-    bool isRegCached[9];    
+
+    bool isRegCached[9];
+    bool isMMXInUse;
 };
 
 #endif

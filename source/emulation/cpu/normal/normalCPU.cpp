@@ -223,30 +223,6 @@ void NormalBlock::dealloc(bool delayed) {
     }
 }
 
-DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big) {
-    DecodedBlock* block = NormalBlock::alloc();
-    decodeBlock(fetchByte, cpu, address, big, 0, 0, 0, block);
-    block->address = address;
-    initNormalOps();
-    DecodedOp* op = block->op;
-
-    while (op) {
-        if (!op->pfn) // callback will be set by decoder
-            op->pfn = normalOps[op->inst];
-        op = op->next;
-    }
-    return block;
-}
-
-DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
-    thread_local static DecodedBlock* block = new DecodedBlock();
-    decodeBlock(fetchByte, cpu, address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
-    DecodedOp* op = block->op;
-    op->pfn = normalOps[op->inst];
-    block->op = nullptr;
-    return op;
-}
-
 #ifdef BOXEDWINE_MULTI_THREADED
 void OPCALL emptyInst(CPU* cpu, DecodedOp* op) {
 }
@@ -313,6 +289,11 @@ void OPCALL lockOp16(CPU* cpu, DecodedOp* op) {
     lockedOp.ea16 = 0;
 
     LockData16* p= (LockData16*)cpu->memory->getIntPtr(address, true);
+    if (((U32)p) & 1) {
+        BOXEDWINE_CRITICAL_SECTION;
+        normalOps[op->inst](cpu, op);
+        return;
+    }
     std::atomic_ref<U16> mem(p->data);
     Reg savedRegs[8];
     U32 savedEip = cpu->eip.u32;
@@ -357,6 +338,11 @@ void OPCALL lockOp32(CPU* cpu, DecodedOp* op) {
     lockedOp.ea16 = 0;
 
     LockData32* p = (LockData32*)cpu->memory->getIntPtr(address, true);
+    if (((U32)p) & 3) {
+        BOXEDWINE_CRITICAL_SECTION;
+        normalOps[op->inst](cpu, op);
+        return;
+    }
     std::atomic_ref<U32> mem(p->data);
     Reg savedRegs[8];
     U32 savedEip = cpu->eip.u32;
@@ -447,6 +433,30 @@ bool setNormalFunction(DecodedOp* op) {
             op->pfn = normalOps[op->inst];
         }
     return usesLock;
+}
+
+DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big) {
+    DecodedBlock* block = NormalBlock::alloc();
+    decodeBlock(fetchByte, cpu, address, big, 0, 0, 0, block);
+    block->address = address;
+    initNormalOps();
+    DecodedOp* op = block->op;
+
+    while (op) {
+        if (!op->pfn) // callback will be set by decoder
+            setNormalFunction(op);
+        op = op->next;
+    }
+    return block;
+}
+
+DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
+    thread_local static DecodedBlock* block = new DecodedBlock();
+    decodeBlock(fetchByte, cpu, address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
+    DecodedOp* op = block->op;
+    setNormalFunction(op);
+    block->op = nullptr;
+    return op;
 }
 
 DecodedBlock* NormalCPU::getNextBlock() {

@@ -176,11 +176,11 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     cpu->flags = (ep->ContextRecord->X8 & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
     cpu->lazyFlags = FLAGS_NONE;
 
-    if (cpu->thread->process->emulateFPU) {
-        for (int i = 0; i < 8; i++) {
-            cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
-            cpu->xmm[i].pi.u64[1] = ep->ContextRecord->V[i].High;
-            cpu->reg_mmx[i].q = ep->ContextRecord->V[i + 8].Low;
+    for (int i = 0; i < 8; i++) {
+        cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
+        cpu->xmm[i].pi.u64[1] = ep->ContextRecord->V[i].High;
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.getMMX(i)->q = ep->ContextRecord->V[i + 8].Low;
         }
     }
 }
@@ -199,11 +199,11 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     ep->ContextRecord->X8 &= ~(AF | CF | OF | SF | PF | ZF);
     ep->ContextRecord->X8 |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
 
-    if (includeFPU) {
-        for (int i = 0; i < 8; i++) {
-            ep->ContextRecord->V[i].Low = cpu->xmm[i].pi.u64[0];
-            ep->ContextRecord->V[i].High = cpu->xmm[i].pi.u64[1];
-            ep->ContextRecord->V[i+8].Low = cpu->reg_mmx[i].q;
+    for (int i = 0; i < 8; i++) {
+        ep->ContextRecord->V[i].Low = cpu->xmm[i].pi.u64[0];
+        ep->ContextRecord->V[i].High = cpu->xmm[i].pi.u64[1];
+        if (cpu->fpu.isMMXInUse) {
+            ep->ContextRecord->V[i + 8].Low = cpu->fpu.getMMX(i)->q;
         }
     }
 }
@@ -273,7 +273,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         ep->ContextRecord->Pc = cpu->handleFpuException(K_FPE_INTDIV);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
         DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
         ep->ContextRecord->Pc = cpu->handleAccessException(op);
         op->dealloc(true);
@@ -307,6 +307,10 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     }
     cpu->startThread();
     return 0;
+}
+
+void joinThread(KThread* thread) {
+    WaitForSingleObject((HANDLE)thread->cpu->nativeHandle, INFINITE);
 }
 
 void scheduleThread(KThread* thread) {

@@ -2111,8 +2111,7 @@ void testFSAVEMmx() {
 // reads and writes out of the fpu there can be loss.
 //
 // for some games, they may count on reading/writing 64-bit ints in/out of the fpu without loss, like a memcpy would
-void testFISTTP64() {
-    U64 data = 0x123456789abcdef0l;
+void doFISTTP64(U64 data) {
 
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     {
@@ -2136,13 +2135,22 @@ void testFISTTP64() {
     pushCode8(rm(true, 1, cpu->big ? 5 : 6));
     if (cpu->big) {
         pushCode32(4 * 2);
-    } else {
+    }
+    else {
         pushCode16(4 * 2);
     }
     runTestCPU();
     assertTrue(cpu->fpu.GetTop() == 0);
     assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
     assertTrue(memory->readq(HEAP_ADDRESS + 8) == data);
+}
+
+void testFISTTP64() {
+    doFISTTP64(0);
+    doFISTTP64(0x123456789abcdef0l);
+    doFISTTP64(0x723456789abcdef0l);
+    doFISTTP64(0x0000000800000000l); // gog installer uses this and it exposed a bug where only the bottom 32-bits where checked for a 0 case
+    doFISTTP64((U64)(S64)-2);
 }
 
 void testFPUDD() {
