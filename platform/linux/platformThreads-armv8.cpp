@@ -75,14 +75,18 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
 #ifdef __MACH__
     for (int i = 0; i < 8; i++) {
         memcpy(&cpu->xmm[i], &context->uc_mcontext->__ns.__v[xXMM0 + i], 16);
-        cpu->reg_mmx[i].q = (U64)context->uc_mcontext->__ns.__v[vMMX0 + i];
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.regs[i].signif = (U64)context->uc_mcontext->__ns.__v[vMMX0 + i];
+        }
     }
 #else
     struct fpsimd_context* fc = getSimdContext(&context->uc_mcontext);
 
     for (int i = 0; i < 8; i++) {
         memcpy(&cpu->xmm[i], &fc->vregs[xXMM0 + i], 16);
-        cpu->reg_mmx[i].q = (U64)fc->vregs[vMMX0 + i];
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.regs[i].signif = (U64)fc->vregs[vMMX0 + i];
+        }
     }
 #endif
 }
