@@ -43,7 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "softfloat_types.h"
 
 union ui16_f16 { uint16_t ui; float16_sf f; };
-union ui16_bf16 { uint16_t ui; bfloat16_t f; };
+union ui16_bf16 { uint16_t ui; bfloat16_sf f; };
 union ui32_f32 { uint32_t ui; float32_sf f; };
 union ui64_f64 { uint64_t ui; float64_sf f; };
 
@@ -109,7 +109,7 @@ float16_sf
 
 #define isNaNBF16UI( a ) (((~(a) & 0x7FC0) == 0) && ((a) & 0x07F))
 
-bfloat16_t softfloat_roundPackToBF16( bool, int_fast16_t, uint_fast16_t );
+bfloat16_sf softfloat_roundPackToBF16( bool, int_fast16_t, uint_fast16_t );
 struct exp8_sig16 softfloat_normSubnormalBF16Sig( uint_fast16_t );
 
 /*----------------------------------------------------------------------------

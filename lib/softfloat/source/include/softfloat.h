@@ -172,9 +172,9 @@ bool f16_isSignalingNaN( float16_sf );
 /*----------------------------------------------------------------------------
 | 16-bit (brain float 16) floating-point operations.
 *----------------------------------------------------------------------------*/
-float32_sf bf16_to_f32( bfloat16_t );
-bfloat16_t f32_to_bf16( float32_sf );
-bool bf16_isSignalingNaN( bfloat16_t );
+float32_sf bf16_to_f32( bfloat16_sf );
+bfloat16_sf f32_to_bf16( float32_sf );
+bool bf16_isSignalingNaN( bfloat16_sf );
 
 /*----------------------------------------------------------------------------
 | 32-bit (single-precision) floating-point operations.
