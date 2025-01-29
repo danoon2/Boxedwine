@@ -60,6 +60,10 @@ void* platformThreadProc(void* param) {
     return 0;
 }
 
+void joinThread(KThread* thread) {
+    pthread_join((pthread_t)thread->cpu->nativeHandle, nullptr);
+}
+
 void scheduleThread(KThread* thread) {
     BtCPU* cpu = (BtCPU*)thread->cpu;
     pthread_t threadId;
