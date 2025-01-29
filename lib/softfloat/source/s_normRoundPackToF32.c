@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "platform.h"
 #include "internals.h"
 
-float32_t
+float32_sf
  softfloat_normRoundPackToF32( bool sign, int_fast16_t exp, uint_fast32_t sig )
 {
     int_fast8_t shiftDist;

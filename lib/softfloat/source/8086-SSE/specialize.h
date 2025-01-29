@@ -75,7 +75,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *----------------------------------------------------------------------------*/
 struct commonNaN {
     bool sign;
-#ifdef LITTLEENDIAN
+#ifdef LITTLEENDIAN_SF
     uint64_t v0, v64;
 #else
     uint64_t v64, v0;

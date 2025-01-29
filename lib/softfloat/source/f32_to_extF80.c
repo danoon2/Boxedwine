@@ -41,7 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "specialize.h"
 #include "softfloat.h"
 
-extFloat80_t f32_to_extF80( float32_t a )
+extFloat80_t f32_to_extF80( float32_sf a )
 {
     union ui32_f32 uA;
     uint_fast32_t uiA;

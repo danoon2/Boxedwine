@@ -44,8 +44,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 union ui16_f16 { uint16_t ui; float16_t f; };
 union ui16_bf16 { uint16_t ui; bfloat16_t f; };
-union ui32_f32 { uint32_t ui; float32_t f; };
-union ui64_f64 { uint64_t ui; float64_t f; };
+union ui32_f32 { uint32_t ui; float32_sf f; };
+union ui64_f64 { uint64_t ui; float64_sf f; };
 
 #ifdef SOFTFLOAT_FAST_INT64
 union extF80M_extF80 { struct extFloat80M fM; extFloat80_t f; };
@@ -124,12 +124,12 @@ struct exp8_sig16 softfloat_normSubnormalBF16Sig( uint_fast16_t );
 struct exp16_sig32 { int_fast16_t exp; uint_fast32_t sig; };
 struct exp16_sig32 softfloat_normSubnormalF32Sig( uint_fast32_t );
 
-float32_t softfloat_roundPackToF32( bool, int_fast16_t, uint_fast32_t );
-float32_t softfloat_normRoundPackToF32( bool, int_fast16_t, uint_fast32_t );
+float32_sf softfloat_roundPackToF32( bool, int_fast16_t, uint_fast32_t );
+float32_sf softfloat_normRoundPackToF32( bool, int_fast16_t, uint_fast32_t );
 
-float32_t softfloat_addMagsF32( uint_fast32_t, uint_fast32_t );
-float32_t softfloat_subMagsF32( uint_fast32_t, uint_fast32_t );
-float32_t
+float32_sf softfloat_addMagsF32( uint_fast32_t, uint_fast32_t );
+float32_sf softfloat_subMagsF32( uint_fast32_t, uint_fast32_t );
+float32_sf
  softfloat_mulAddF32(
      uint_fast32_t, uint_fast32_t, uint_fast32_t, uint_fast8_t );
 
@@ -145,12 +145,12 @@ float32_t
 struct exp16_sig64 { int_fast16_t exp; uint_fast64_t sig; };
 struct exp16_sig64 softfloat_normSubnormalF64Sig( uint_fast64_t );
 
-float64_t softfloat_roundPackToF64( bool, int_fast16_t, uint_fast64_t );
-float64_t softfloat_normRoundPackToF64( bool, int_fast16_t, uint_fast64_t );
+float64_sf softfloat_roundPackToF64( bool, int_fast16_t, uint_fast64_t );
+float64_sf softfloat_normRoundPackToF64( bool, int_fast16_t, uint_fast64_t );
 
-float64_t softfloat_addMagsF64( uint_fast64_t, uint_fast64_t, bool );
-float64_t softfloat_subMagsF64( uint_fast64_t, uint_fast64_t, bool );
-float64_t
+float64_sf softfloat_addMagsF64( uint_fast64_t, uint_fast64_t, bool );
+float64_sf softfloat_subMagsF64( uint_fast64_t, uint_fast64_t, bool );
+float64_sf
  softfloat_mulAddF64(
      uint_fast64_t, uint_fast64_t, uint_fast64_t, uint_fast8_t );
 
