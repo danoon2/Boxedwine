@@ -27,17 +27,7 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep) {
         cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
         cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
     }
-#ifndef BOXEDWINE_USE_SSE_FOR_FPU
-    if (!cpu->thread->process->emulateFPU) {
-        cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
-        cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
-        cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord);
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            cpu->fpu.LD80(i, ep->ContextRecord->FltSave.FloatRegisters[index].Low, (U16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
-        }
-    }
-#endif
+    // x64CPU won't allow an exception on a FPU or MMX operation, so no need for ep->ContextRecord->FltSave
 }
 
 void syncToException(struct _EXCEPTION_POINTERS* ep) {
@@ -58,22 +48,7 @@ void syncToException(struct _EXCEPTION_POINTERS* ep) {
         ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
         ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
     }
-#ifdef BOXEDWINE_USE_SSE_FOR_FPU
-    for (int i = 0; i < 8; i++) {
-        ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->reg_mmx[i].q;
-        ep->ContextRecord->FltSave.FloatRegisters[i].High = 0x000000000000ffffl;
-    }
-#else
-    if (!cpu->thread->process->emulateFPU) {
-        ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
-        ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
-        ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag(cpu);
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            cpu->fpu.ST80(i, &ep->ContextRecord->FltSave.FloatRegisters[index].Low, (ULONGLONG*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
-        }
-    }
-#endif
+    // x64CPU won't allow an exception on a FPU or MMX operation, so no need for ep->ContextRecord->FltSave
 }
 
 class InException {

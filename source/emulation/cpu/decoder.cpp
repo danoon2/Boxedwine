@@ -6070,7 +6070,7 @@ bool DecodedOp::isStringOp() {
 }
 
 bool DecodedOp::isFpuOp() {
-   return (this->inst>=FADD_ST0_STj && this->inst<=FISTP_QWORD_INTEGER);
+   return (this->inst>=FADD_ST0_STj && this->inst<=FISTP_QWORD_INTEGER) || this->inst == Fxsave || this->inst == Fxrstor;
 }
 
 bool DecodedOp::isMmxOp() {

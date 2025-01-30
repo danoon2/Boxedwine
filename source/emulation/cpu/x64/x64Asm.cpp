@@ -998,9 +998,8 @@ void X64Asm::checkMemory4k(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 
 }
 #endif
 void X64Asm::checkMemory(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
-    //bool fpuMustBeNative = currentOp->inst == FNSAVE || currentOp->inst == FRSTOR || currentOp->inst == FLDENV || currentOp->inst == FNSTENV || currentOp->inst == Fxrstor || currentOp->inst == Fxsave;
 #ifdef BOXEDWINE_4K_PAGE_SIZE
-    if (cpu->use4kMemCheck) {
+    if (cpu->use4kMemCheck && !currentOp->isFpuOp() && !currentOp->isMmxOp()) {
         checkMemory4k(emulatedAddressReg, isRex, isWrite, width, memReg, skipAlignmentCheck, tmpReg);
         return;
     }
