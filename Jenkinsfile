@@ -303,7 +303,7 @@ pipeline {
                     steps {
                         dir("project/linux") {                                                        
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation3.zip
                                 rm -rf automation
                                 unzip automation3.zip
                             '''
@@ -334,7 +334,7 @@ pipeline {
                         }
                         dir("project/mac-xcode") {
                             sh '''#!/bin/bash
-                                curl -z automation3.zip http://boxedwine.org/v2/automation3.zip --output automation3.zip
+                                curl -z automation3.zip http://boxedwine.org/v2/1/automation3.zip --output automation3.zip
                                 rm -rf automation
                                 unzip automation3.zip
 
@@ -364,7 +364,7 @@ pipeline {
                     steps {
                         dir("project/linux") {
                             sh '''#!/bin/bash
-                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
+                                wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation3.zip
                                 rm -rf automation
                                 unzip automation3.zip
                             '''
@@ -386,7 +386,7 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation3.zip
                             IF EXIST "automation" rmdir /q /s "automation"
                             unzip automation3.zip
                         '''
@@ -411,7 +411,7 @@ pipeline {
                     }
                     steps {
                         bat '''
-                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/automation3.zip
+                            wget -N --no-if-modified-since -np http://boxedwine.org/v2/1/automation3.zip
                             IF EXIST "automation" rmdir /q /s "automation"
                             tar -xf automation3.zip
                         '''
