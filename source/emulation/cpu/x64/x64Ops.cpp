@@ -1272,7 +1272,7 @@ static U32 keepSame(X64Asm* data) {
 
 static U32 opEmms(X64Asm* data) {
     data->writeOp();
-    data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 4, false);
+    data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 1, false);
     for (U32 i = 0; i < 8; i++) {
         data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_TAG + i * 4, 4, false);
     }

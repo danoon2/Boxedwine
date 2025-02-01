@@ -132,21 +132,29 @@ void* x64CPU::init() {
 
 #ifdef __TEST
 void x64CPU::postTestRun() {
-    if (!thread->process->emulateFPU) {
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+    if (!thread->process->emulateFPU) 
+#endif
+    {
         for (int i = 0; i < 8; i++) {
             xmm[i].pi.u64[0] = fpuState.xmm[i].low;
             xmm[i].pi.u64[1] = fpuState.xmm[i].high;
-        }
-        U16 controlWord = fpuState.fcw;
-        U16 statusWord = fpuState.fsw;
-        U8 tag = fpuState.ftw;
-        fpu.SetCW(controlWord);
-        fpu.SetSW(statusWord);
-        fpu.SetTagFromAbridged(tag);
+        }        
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+        if (fpu.isMMXInUse) 
+#endif
+        {
+            U16 controlWord = fpuState.fcw;
+            U16 statusWord = fpuState.fsw;
+            U8 tag = fpuState.ftw;
+            fpu.SetCW(controlWord);
+            fpu.SetSW(statusWord);
+            fpu.SetTagFromAbridged(tag);
 
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - fpu.GetTop()) & 7;
-            fpu.LD80(i, fpuState.st_mm[index].low, (U16)fpuState.st_mm[index].high);
+            for (U32 i = 0; i < 8; i++) {
+                U32 index = (i - fpu.GetTop()) & 7;
+                fpu.LD80(i, fpuState.st_mm[index].low, (U16)fpuState.st_mm[index].high);
+            }
         }
     }
 }
@@ -202,9 +210,10 @@ void x64CPU::saveToFxState(U32 inst) {
         this->fpuState.xmm[i].high = this->xmm[i].pd.u64[1];
     }
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
-    for (U32 i = 0; i < 8; i++) {
-        this->fpuState.st_mm[i].low = this->reg_mmx[i].q;
-        this->fpuState.st_mm[i].high = 0xffff;
+    if (this->fpu.isMMXInUse) {
+        for (U32 i = 0; i < 8; i++) {
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
+        }
     }
 #else
     if (!this->thread->process->emulateFPU) {
@@ -359,7 +368,6 @@ void common_runSingleOp(x64CPU* cpu) {
         cpu->fpuState.fcw = cpu->fpu.CW();
         cpu->fpuState.fsw = cpu->fpu.SW();
         cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag(cpu);
-        U8 tag = cpu->fpuState.ftw;
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - cpu->fpu.GetTop()) & 7;
             cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);

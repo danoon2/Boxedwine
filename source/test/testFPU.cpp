@@ -776,6 +776,17 @@ void doFCHS() {
     struct FPU_Float result;
     result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
 
+    // trigger fpu.isRegCached is true
+    newInstruction(0);
+    fpu_init();
+    fild64(100, 0);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 4, 0));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == -100.0f);
+
     newInstruction(0);
     fpu_init();
     fldf32(432.1f, 1);
@@ -1552,22 +1563,22 @@ void doFSCALE_inst(FPU_Float* st0, FPU_Float* st1, FPU_Float* st0Result) {
         }
     }
 #endif
-struct FPU_Float result;
+    struct FPU_Float result;
 
-newInstruction(0);
-fpu_init();
-fldf32(st1->f, 1);
-fldf32(st0->f, 2);
-pushCode8(0xd9);
-pushCode8(rm(false, 7, 5));
-writeTopFloat(2);
-runTestCPU();
-result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
-if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
-    assertTrue(isnan(result.f));
-} else {
-    assertTrue(result.f == st0Result->f);
-}
+    newInstruction(0);
+    fpu_init();
+    fldf32(st1->f, 1);
+    fldf32(st0->f, 2);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 7, 5));
+    writeTopFloat(2);
+    runTestCPU();
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
+    if (st0Result->i == FLOAT_QUIET_NAN_BITS) {
+        assertTrue(isnan(result.f));
+    } else {
+        assertTrue(result.f == st0Result->f);
+    }
 }
 
 // ST(0) 		ST(1)
@@ -2153,11 +2164,101 @@ void testFISTTP64() {
     doFISTTP64((U64)(S64)-2);
 }
 
+void doFST_DOUBLE_REAL_f64(double data, bool pop) {
+#if defined(BOXEDWINE_MSVC) && !defined(BOXEDWINE_64)
+    {
+        struct FSaveState state;
+        double result = 0;
+
+        __asm {
+            finit;
+            fld data;
+            fst[result];
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0x3800);
+        assertTrue((isnan(result) && isnan(data)) || result == data);
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fld64(data, 0);
+    pushCode8(0xdd);
+    pushCode8(rm(true, 2, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 7);
+    assertTrue(cpu->fpu.GetTag(cpu, 7) != TAG_Empty);
+    long2Double l2d;
+    l2d.l = memory->readq(HEAP_ADDRESS + 8);
+    assertTrue((isnan(l2d.d) && isnan(data)) || l2d.d == data);
+}
+
+void doFST_DOUBLE_REAL_i64(U64 data, bool pop) {
+#if defined(BOXEDWINE_MSVC) && !defined(BOXEDWINE_64)
+    {
+        struct FSaveState state;
+        double result = 0;
+
+        __asm {
+            finit;
+            fild data;
+            fst [result];
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0x3800);
+        assertTrue(result == (S64)data);
+    }
+#endif
+    newInstruction(0);
+    fpu_init();
+    fild64(data, 0);
+    pushCode8(0xdd);
+    pushCode8(rm(true, pop ? 3 : 2, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == (pop ? 0 : 7));
+    if (pop) {
+        assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
+    } else {
+        assertTrue(cpu->fpu.GetTag(cpu, 7) != TAG_Empty);
+    }
+    long2Double l2d;
+    l2d.l = memory->readq(HEAP_ADDRESS + 8);
+    assertTrue(l2d.d == (S64)data);
+}
+
+void testFST_DOUBLE_REAL(bool pop) {
+    // i64 case fpu.isRegCached = false
+    doFST_DOUBLE_REAL_i64(0, pop);
+    doFST_DOUBLE_REAL_i64(123456, pop);
+    doFST_DOUBLE_REAL_i64((U64)(-123456), pop);
+    // f64 case fpu.isRegCached = true
+    doFST_DOUBLE_REAL_f64(0, pop);
+    doFST_DOUBLE_REAL_f64(123456.5, pop);
+    doFST_DOUBLE_REAL_f64(-123456.5, pop);
+    doFST_DOUBLE_REAL_f64(TEST_NAN_DOUBLE, pop);
+}
+
 void testFPUDD() {
     // MEMORY
 
     // 1 FISTTP 64-bit
     testFISTTP64();
+
+    // 3 FST_DOUBLE_REAL
+    testFST_DOUBLE_REAL(false);
+
+    // 4 FST_DOUBLE_REAL_Pop
+    testFST_DOUBLE_REAL(true);
 
     // 6 FSAVE
     testFSAVE();

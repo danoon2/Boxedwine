@@ -68,7 +68,7 @@ U32 KSystem::wineMajorVersion;
 bool KSystem::disableHideCursor = false;
 bool KSystem::forceRelativeMouse = false;
 
-#ifdef BOXEDWINE_X64
+#if defined(BOXEDWINE_X64) && !defined(BOXEDWINE_USE_SSE_FOR_FPU)
 bool KSystem::useF64 = false;
 #else
 bool KSystem::useF64 = true;

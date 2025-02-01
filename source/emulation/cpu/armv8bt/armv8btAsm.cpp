@@ -4897,13 +4897,14 @@ void Armv8btAsm::translateInstruction() {
 #endif
     armv8btEncoder[this->currentOp->inst](this);
 
-    if (instructionInfo[this->currentOp->inst].extra & INST_STARTS_MMX) {
+    bool mmxRead = instructionInfo[this->currentOp->inst].extra & INST_MMX_READ;
+    bool mmxWrite = instructionInfo[this->currentOp->inst].extra & INST_MMX_WRITE;
+    if (mmxWrite && !mmxRead) {
         U8 tmp = getRegWithConst(1);
         writeMem8ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.isMMXInUse)));
         zeroReg(tmp);
         writeMem8ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.top)));
         writeMem8ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.sw)));
-        writeMem64ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.isRegCached[0])));
         releaseTmpReg(tmp);
     }
 

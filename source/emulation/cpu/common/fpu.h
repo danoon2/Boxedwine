@@ -230,6 +230,7 @@ public:
     int GetTag(CPU* cpu);
     int GetTag(CPU* cpu, U32 index);
     void LOG_STACK();    
+    U32 sizeofRegInRegsArray();
 
     U32 tags[9];
     U32 cw;

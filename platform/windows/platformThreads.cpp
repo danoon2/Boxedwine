@@ -23,14 +23,34 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep) {
     cpu->flags = (ep->ContextRecord->EFlags & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
     cpu->lazyFlags = FLAGS_NONE;    
 
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (cpu->fpu.isMMXInUse) {
+#else
+    if (!cpu->thread->process->emulateFPU || cpu->fpu.isMMXInUse) {
+#endif
+        cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
+        cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
+        cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord);
+    }
     for (int i = 0; i < 8; i++) {
         cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
         cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
-    }
-    // x64CPU won't allow an exception on a FPU or MMX operation, so no need for ep->ContextRecord->FltSave
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.regs[i].signif = ep->ContextRecord->FltSave.FloatRegisters[i].Low;
+            cpu->fpu.regs[i].signExp = (U16)ep->ContextRecord->FltSave.FloatRegisters[i].High;
+        } 
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+        else if (!cpu->thread->process->emulateFPU) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            cpu->fpu.regs[i].signif = ep->ContextRecord->FltSave.FloatRegisters[index].Low;
+            cpu->fpu.regs[i].signExp = (U16)ep->ContextRecord->FltSave.FloatRegisters[index].High;
+            cpu->fpu.isRegCached[i] = false;
+        }
+#endif        
+    }        
 }
 
-void syncToException(struct _EXCEPTION_POINTERS* ep) {
+void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU = true) {
     BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
     ep->ContextRecord->Rax = EAX;
     ep->ContextRecord->Rcx = ECX;
@@ -43,12 +63,41 @@ void syncToException(struct _EXCEPTION_POINTERS* ep) {
     cpu->fillFlags();
     ep->ContextRecord->EFlags &= ~(AF | CF | OF | SF | PF | ZF);
     ep->ContextRecord->EFlags |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
-    
+
+    if (!includeFPU) {
+        for (int i = 0; i < 8; i++) {
+            ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
+            ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
+        }
+        return;
+    }
+    klog("fpu/mmx should not get here");
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (cpu->fpu.isMMXInUse) {
+#else
+    if (!cpu->thread->process->emulateFPU || cpu->fpu.isMMXInUse) {
+#endif
+        ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
+        ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
+        ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag(cpu);
+    }
+
     for (int i = 0; i < 8; i++) {
         ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
         ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
+
+        if (cpu->fpu.isMMXInUse) {
+            ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->fpu.regs[i].signif;
+            ep->ContextRecord->FltSave.FloatRegisters[i].High = 0xffff;
+        }
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+        else if (!cpu->thread->process->emulateFPU) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            // don't access fpu.regs directly incase something was cached
+            cpu->fpu.ST80(i, (U64*)&ep->ContextRecord->FltSave.FloatRegisters[index].Low, (U64*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
+        }
+#endif
     }
-    // x64CPU won't allow an exception on a FPU or MMX operation, so no need for ep->ContextRecord->FltSave
 }
 
 class InException {
@@ -130,8 +179,11 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
         ep->ContextRecord->Rip = cpu->handleAccessException(op);
+        // X64Asm::checkMemory disables the code path for fpu and mmx to throw exceptions
+        //
+        // I'm not sure why, but setting the fpu state causes some stability issues so for now this is the band-aid
+        syncToException(ep, op->isFpuOp() || op->isMmxOp());
         op->dealloc(true);
-        syncToException(ep);
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;

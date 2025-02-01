@@ -65,7 +65,7 @@ bool F80_isPosInf(extFloat80_t& f) {
 
 bool F80_isNegInf(extFloat80_t& f) {
     if ((f.signExp & 0x7FFF) != 0x7FFF) return false;
-    return (f.signif & UINT64_C(0x7FFFFFFFFFFFFFFF)) == 0 && (f.signExp & 0x8000) == 1;
+    return (f.signif & UINT64_C(0x7FFFFFFFFFFFFFFF)) == 0 && (f.signExp & 0x8000) != 0;
 }
 
 bool F80_isfinite(extFloat80_t& f) {
@@ -1412,4 +1412,8 @@ double& FPU::getF64(U32 reg) {
         regCache[reg].l = extF80_to_f64(regs[reg]).v;
     }
     return regCache[reg].d;
+}
+
+U32 FPU::sizeofRegInRegsArray() {
+    return (U32)(offsetof(FPU, regs[1])) - (U32)(offsetof(FPU, regs[0])); // weird offset calculation to take into account padding
 }

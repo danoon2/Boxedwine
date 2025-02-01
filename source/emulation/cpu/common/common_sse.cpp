@@ -386,21 +386,18 @@ void common_pmulhuwMmxE64(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_pshufwMmxMmx(CPU* cpu, U32 r1, U32 r2, U8 imm) {
-    simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
     m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_shuffle_pi16(m2, imm);
     cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pshufwMmxE64(CPU* cpu, U32 reg, U32 address, U8 imm) {
-    simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_shuffle_pi16(m2, imm);
     cpu->fpu.getMMX(reg)->q = r.u64[0];
+    cpu->fpu.startMMX();
 }
 
 void common_andnpsXmmXmm(CPU* cpu, U32 r1, U32 r2) {
