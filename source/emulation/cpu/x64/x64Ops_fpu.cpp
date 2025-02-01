@@ -272,6 +272,7 @@ static U8 calculateIndexReg(X64Asm* data, U8 topReg, U32 index) {
 
 static void getIsCachedReg(X64Asm* data, U8 regIsCached, U8 indexReg) {
 	data->zeroReg(regIsCached, true, false);
+	static_assert(sizeof(data->cpu->fpu.isRegCached) == 9, "false");
 	data->writeToRegFromMem(regIsCached, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
 }
 
@@ -285,7 +286,7 @@ static void syncXmmToCPU(X64Asm* data, U8 topReg, U8 xmm, U8 regIndex) {
 	if (regIndex != 0) {
 		indexReg = calculateIndexReg(data, topReg, regIndex);
 	}
-		
+	static_assert(sizeof(data->cpu->fpu.regCache) == 72, "false");
 	data->write8(0xf2);
 	if (xmm < 8) {
 		data->write8(0x43);

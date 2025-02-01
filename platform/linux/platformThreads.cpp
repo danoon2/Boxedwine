@@ -51,9 +51,7 @@ void initThreadForTesting() {
 #endif
 
 void* platformThreadProc(void* param) {
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-    initHandlers();
-#endif
+    initHandlers(); // needed to BOXEDWINE_4K_PAGE_SIZE and handling sigbus because someone loaded the AC (alignment check) flag
     KThread* thread = (KThread*)param;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->startThread();

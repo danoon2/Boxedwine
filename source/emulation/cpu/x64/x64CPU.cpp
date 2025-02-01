@@ -187,7 +187,14 @@ void x64CPU::loadFxState(U32 inst) {
         this->xmm[i].pd.u64[0] = this->fpuState.xmm[i].low;
         this->xmm[i].pd.u64[1] = this->fpuState.xmm[i].high;
     }
-#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (this->fpu.isMMXInUse) {
+        klog("mmx");
+        for (U32 i = 0; i < 8; i++) {
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
+        }
+    }
+#else
     if (!this->thread->process->emulateFPU) {
         U16 controlWord = this->fpuState.fcw;
         U16 statusWord = this->fpuState.fsw;

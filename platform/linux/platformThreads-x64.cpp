@@ -184,6 +184,11 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionSigCode = info->si_code;
     x64Cpu->exceptionIp = context->CONTEXT_RIP;
 
+    if (cpu->exceptionSigNo == SIGBUS) {
+        // setup_openttd_14.1_(32bit)_(73101).exe, instruction 0x42bdd5 which is just a normal 32-bit ready to a register can, but not always, trigger this.
+        // I'm not sure why the alignment check flag gets enabled.  Windows platformThreads.cpp / seh_filter also implements this
+        context->CONTEXT_FLAGS &= ~AC;
+    }
     context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
 }
 
