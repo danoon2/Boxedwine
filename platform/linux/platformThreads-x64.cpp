@@ -126,14 +126,16 @@ void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
 
     cpu->lazyFlags = FLAGS_NONE;
 #if defined(BOXEDWINE_X64) && defined(BOXEDWINE_USE_SSE_FOR_FPU)
-    cpu->reg_mmx[0].q = *CONTEXT_FPU_REG_0_LOW(context);
-    cpu->reg_mmx[1].q = *CONTEXT_FPU_REG_1_LOW(context);
-    cpu->reg_mmx[2].q = *CONTEXT_FPU_REG_2_LOW(context);
-    cpu->reg_mmx[3].q = *CONTEXT_FPU_REG_3_LOW(context);
-    cpu->reg_mmx[4].q = *CONTEXT_FPU_REG_4_LOW(context);
-    cpu->reg_mmx[5].q = *CONTEXT_FPU_REG_5_LOW(context);
-    cpu->reg_mmx[6].q = *CONTEXT_FPU_REG_6_LOW(context);
-    cpu->reg_mmx[7].q = *CONTEXT_FPU_REG_7_LOW(context);
+    if (cpu->fpu.isMMXInUse) {
+        cpu->fpu.regs[0].signif = *CONTEXT_FPU_REG_0_LOW(context);
+        cpu->fpu.regs[1].signif = *CONTEXT_FPU_REG_1_LOW(context);
+        cpu->fpu.regs[2].signif = *CONTEXT_FPU_REG_2_LOW(context);
+        cpu->fpu.regs[3].signif = *CONTEXT_FPU_REG_3_LOW(context);
+        cpu->fpu.regs[4].signif = *CONTEXT_FPU_REG_4_LOW(context);
+        cpu->fpu.regs[5].signif = *CONTEXT_FPU_REG_5_LOW(context);
+        cpu->fpu.regs[6].signif = *CONTEXT_FPU_REG_6_LOW(context);
+        cpu->fpu.regs[7].signif = *CONTEXT_FPU_REG_7_LOW(context);
+    }
 
     memcpy(&cpu->xmm[0], &context->CONTEXT_XMM0, 16);
     memcpy(&cpu->xmm[1], &context->CONTEXT_XMM1, 16);
