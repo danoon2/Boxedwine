@@ -1444,10 +1444,10 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, 
             len = sizeof(tmp);
         S32 r = (S32)::recvfrom(this->nativeSocket, tmp, len, nativeFlags, hdr.msg_name?(struct sockaddr*)&in:nullptr, hdr.msg_name ? &inLen : nullptr);
         LOG_SOCK("%x native socket: %x recvmsg flags=%x msg_name=%x msg_namelen=%x result=%x", thread->id, nativeSocket, flags, hdr.msg_name, hdr.msg_namelen, r);
-        if (r < 0) {
-            Platform::nanoSleep(10000000);
-            r = (S32)::recvfrom(this->nativeSocket, tmp, len, nativeFlags, hdr.msg_name ? (struct sockaddr*)&in : nullptr, hdr.msg_name ? &inLen : nullptr);
-        }
+        //if (r < 0) {
+        //    Platform::nanoSleep(10000000);
+        //    r = (S32)::recvfrom(this->nativeSocket, tmp, len, nativeFlags, hdr.msg_name ? (struct sockaddr*)&in : nullptr, hdr.msg_name ? &inLen : nullptr);
+        //}
         if (r>=0) {
             memory->memcpy(p, tmp, r);
             // :TODO: maybe copied fields to the expected location rather than assume the structures are the same
