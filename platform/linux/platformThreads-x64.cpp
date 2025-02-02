@@ -127,6 +127,10 @@ void syncFromException(BtCPU* cpu, ucontext_t* context, bool includeFPU) {
     cpu->lazyFlags = FLAGS_NONE;
 #if defined(BOXEDWINE_X64) && defined(BOXEDWINE_USE_SSE_FOR_FPU)
     if (cpu->fpu.isMMXInUse) {
+        cpu->fpu.SetCW(context->CONTEXT_FCW);
+        cpu->fpu.SetSW(context->CONTEXT_FSW);
+        cpu->fpu.SetTagFromAbridged(context->CONTEXT_FTW);
+
         cpu->fpu.regs[0].signif = *CONTEXT_FPU_REG_0_LOW(context);
         cpu->fpu.regs[1].signif = *CONTEXT_FPU_REG_1_LOW(context);
         cpu->fpu.regs[2].signif = *CONTEXT_FPU_REG_2_LOW(context);
@@ -163,13 +167,19 @@ U32 exceptionCount;
 // this will quickly store the info then exit to signalHandler() to perform the logic there
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     exceptionCount++;
+    ucontext_t* context = (ucontext_t*)vcontext;
+    if (info->si_signo == SIGBUS) {
+        // setup_openttd_14.1_(32bit)_(73101).exe, instruction 0x42bdd5 which is just a normal 32-bit read to a register can, but not always, trigger this.
+        // I'm not sure why the alignment check flag gets enabled.  Windows platformThreads.cpp / seh_filter also implements this
+        context->CONTEXT_FLAGS &= ~AC;
+        return;
+    }
     KThread* currentThread = KThread::currentThread();
     KMemoryData* mem = getMemData(currentThread->memory);
 
     if (!currentThread) {
         return;
-    }
-    ucontext_t* context = (ucontext_t*)vcontext;
+    }    
     BtCPU* cpu = (BtCPU*)currentThread->cpu;
     if (cpu != (BtCPU*)context->CONTEXT_R13) {
         return;
@@ -183,12 +193,7 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
     x64Cpu->exceptionIp = context->CONTEXT_RIP;
-
-    if (cpu->exceptionSigNo == SIGBUS) {
-        // setup_openttd_14.1_(32bit)_(73101).exe, instruction 0x42bdd5 which is just a normal 32-bit ready to a register can, but not always, trigger this.
-        // I'm not sure why the alignment check flag gets enabled.  Windows platformThreads.cpp / seh_filter also implements this
-        context->CONTEXT_FLAGS &= ~AC;
-    }
+    
     context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
 }
 
