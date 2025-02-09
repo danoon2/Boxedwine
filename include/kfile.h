@@ -52,6 +52,8 @@ public:
 
     U32 pwrite(KThread* thread, U32 buffer, S64 offset, U32 len);
     U32 pread(KThread* thread, U32 buffer,S64 offset,  U32 len);
+    U32 pwriteNative(U8* buffer, S64 offset, U32 len);
+    U32 preadNative(U8* buffer, S64 offset, U32 len);
 
     FsOpenNode* openFile;
 
