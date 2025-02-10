@@ -1435,9 +1435,11 @@ void common_pmulhuwXmmE128(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_lfence(CPU* cpu) {
+    std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 
 void common_mfence(CPU* cpu) {
+    std::atomic_thread_fence(std::memory_order_seq_cst);
 }
 
 void common_clflush(CPU* cpu, U32 address) {

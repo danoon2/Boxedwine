@@ -483,7 +483,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
                 block->address = startIp;
 
                 DecodedOp* op = block->op;
-                bool excludeFromJIT = true;
+                bool excludeFromJIT = false;
                 while (op) {
                     if (setNormalFunction(op)) {
                         // these 4 will call the appropriate lock function

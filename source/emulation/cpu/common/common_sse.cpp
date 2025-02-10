@@ -771,4 +771,5 @@ void common_ldmxcsr(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_sfence(CPU* cpu) {
+    std::atomic_thread_fence(std::memory_order_seq_cst);
 }

@@ -22,8 +22,12 @@
 #define SSE_0(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu);NEXT();}
 #undef SSE_RR
 #define SSE_RR(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm);NEXT();}
+#undef SSE_RR_SETS_FLAGS
+#define SSE_RR_SETS_FLAGS(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm);NEXT();}
 #undef SSE_RE
 #define SSE_RE(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, eaa(cpu, op));NEXT();}
+#undef SSE_RE_SETS_FLAGS
+#define SSE_RE_SETS_FLAGS(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, eaa(cpu, op));NEXT();}
 #undef SSE_RR_I8
 #define SSE_RR_I8(name) void OPCALL normal_##name(CPU* cpu, DecodedOp* op) {START_OP(cpu, op); common_##name(cpu, op->reg, op->rm, (U8)op->imm);NEXT();}
 #undef SSE_RE_I8
