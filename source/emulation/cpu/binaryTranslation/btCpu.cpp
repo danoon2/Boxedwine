@@ -156,7 +156,7 @@ U64 BtCPU::startException(U64 address, bool readAddress) {
         this->thread->seg_mapper((U32)address, readAddress, !readAddress);
         U64 result = (U64)this->translateEip(this->eip.u32);
         if (result == 0) {
-            kpanic("Armv8btCPU::startException failed to translate code in exception");
+            kpanic("BtCPU::startException failed to translate code in exception");
         }
         return result;
     }
@@ -175,7 +175,7 @@ U64 BtCPU::handleFpuException(int code) {
     }
     U64 result = (U64)this->translateEip(this->eip.u32);
     if (result == 0) {
-        kpanic("Armv8btCPU::handleFpuException failed to translate code");
+        kpanic("BtCPU::handleFpuException failed to translate code");
     }
     return result;
 }

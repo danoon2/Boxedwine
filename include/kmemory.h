@@ -27,8 +27,10 @@ class DynamicMemory;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
 #define CodeBlock std::shared_ptr<BtCodeChunk>
+#define CodeBlockParam const std::shared_ptr<BtCodeChunk>&
 #else
 #define CodeBlock DecodedBlock*
+#define CodeBlockParam DecodedBlock*
 #endif
 
 class DecodedBlock;
@@ -128,7 +130,7 @@ public:
     CodeBlock getCodeBlock(U32 address);
 #endif
     CodeBlock findCodeBlockContaining(U32 address, U32 len);
-    void addCodeBlock(U32 address, CodeBlock block);
+    void addCodeBlock(CodeBlockParam block);
     void removeCodeBlock(U32 address, U32 len);
 
     BOXEDWINE_MUTEX mutex;

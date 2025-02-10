@@ -285,7 +285,7 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
         }
 #ifndef __TEST
         KMemoryData* mem = getMemData(memory);
-        if (mem->isAddressDynamic(address, data->currentOp->len)) {
+        if (mem->codeCache.isAddressDynamic(address, data->currentOp->len)) {
             if (data->startOfDataIp == data->startOfOpIp) {
                 data->mapAddress(address, data->bufferPos);
 

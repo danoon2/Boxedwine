@@ -3,6 +3,8 @@
 
 class CodePage;
 
+#include "codePageData.h"
+
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../cpu/binaryTranslation/btMemory.h"
 
@@ -34,8 +36,6 @@ public:
     U8 flags[K_NUMBER_OF_PAGES];
 
     CodePage* getOrCreateCodePage(U32 address);
-    bool isAddressDynamic(U32 address, U32 len);
-    void markAddressDynamic(U32 address, U32 len);
 
     // you need to add the full emulated address to the page to get the host page instead of just an offset
     // this will speed things up in the binary translator
@@ -54,6 +54,8 @@ public:
 #ifdef BOXEDWINE_DYNAMIC
     DynamicMemory* dynamicMemory;
 #endif
+
+    CodeCache codeCache;
 };
 
 KMemoryData* getMemData(KMemory* memory);

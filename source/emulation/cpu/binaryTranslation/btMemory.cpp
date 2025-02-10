@@ -116,7 +116,7 @@ void BtMemory::removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
 // called when BtCodeChunk is being alloc'd
 void BtMemory::addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-    memory->addCodeBlock(chunk->getEip(), chunk);
+    memory->addCodeBlock(chunk);
 }
 
 bool BtMemory::isEipPageCommitted(U32 page) {

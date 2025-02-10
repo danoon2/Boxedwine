@@ -506,7 +506,7 @@ DecodedBlock* NormalCPU::getNextBlock() {
             }
         }
         if (blockCreated) {
-            this->thread->memory->addCodeBlock(startIp, block);
+            this->thread->memory->addCodeBlock(block);
         }
     }
     return block;

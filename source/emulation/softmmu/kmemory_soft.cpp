@@ -505,84 +505,21 @@ void KMemory::clone(KMemory* from, bool vfork) {
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
 // normal core
 CodeBlock KMemory::getCodeBlock(U32 address) {
-    Page* page = data->getPage(address >> K_PAGE_SHIFT);
-    if (page->getType() == Page::Type::Code_Page) {
-        CodePage* codePage = (CodePage*)page;
-        return codePage->getCode(address);
-    }
-    return nullptr;
+    return data->codeCache.getCode(address);
 }
 #endif
 
 CodeBlock KMemory::findCodeBlockContaining(U32 address, U32 len) {
-    while (len) {
-        Page* page = data->getPage(address >> K_PAGE_SHIFT);
-        U32 offset = address & K_PAGE_MASK;
-        U32 available = K_PAGE_SIZE - offset;
-        U32 todo = len;
-        if (todo > available) {
-            todo = available;
-        }
-        if (page->getType() == Page::Type::Code_Page) {
-            CodePage* codePage = (CodePage*)page;
-            CodeBlock result = codePage->findCode(address, todo);
-            if (result) {
-                return result;
-            }
-        }  
-        address += available;
-        len -= todo;
-    }
-    return nullptr;
+    return data->codeCache.findCode(address, len);
 }
 
 void KMemory::removeCodeBlock(U32 address, U32 len) {
-    Page* page = data->getPage(address >> K_PAGE_SHIFT);
-    
-    if (page->getType() == Page::Type::Code_Page) {
-        CodePage* codePage = (CodePage*)page;
-        codePage->removeBlockAt(address, len);
-    }
+    data->codeCache.removeBlockAt(address, len);
 }
 
-void KMemory::addCodeBlock(U32 address, CodeBlock block) {
-    CodePage* codePage = data->getOrCreateCodePage(address);
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    codePage->addCode(address, block, block->getEipLen());
-#else
-    codePage->addCode(address, block, block->bytes);
-#endif
-}
-
-void KMemoryData::markAddressDynamic(U32 address, U32 len) {
-    Page* page = getPage(address >> K_PAGE_SHIFT);
-
-    if (page->getType() == Page::Type::Code_Page) {
-        CodePage* codePage = (CodePage*)page;
-        U32 offset = address & K_PAGE_MASK;
-        if (offset + len > K_PAGE_SIZE) {
-            U32 todo = len - (K_PAGE_SIZE - offset);
-            markAddressDynamic(address + len - todo, todo);
-        }
-        codePage->markOffsetDynamic(offset, len);
-    }
-}
-
-bool KMemoryData::isAddressDynamic(U32 address, U32 len) {    
-    bool result = false;
-
-    Page* page = getPage(address >> K_PAGE_SHIFT);
-
-    if (page->getType() == Page::Type::Code_Page) {
-        CodePage* codePage = (CodePage*)page;
-        U32 offset = address & K_PAGE_MASK;
-        if (offset + len > K_PAGE_SIZE) {
-            U32 todo = len - (K_PAGE_SIZE - offset);
-            result = isAddressDynamic(address + len - todo, todo);
-        }
-        result |= codePage->isOffsetDynamic(offset, len);
-    }
-    return result;
+void KMemory::addCodeBlock(CodeBlockParam block) {
+    data->getOrCreateCodePage(block->getEip());
+    data->codeCache.addCode(this, block);
 }
 
 CodePage* KMemoryData::getOrCreateCodePage(U32 address) {

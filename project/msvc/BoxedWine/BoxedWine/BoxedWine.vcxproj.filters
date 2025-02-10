@@ -925,6 +925,9 @@
     <ClCompile Include="..\..\..\..\source\test\testFPU.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\codePageData.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1808,6 +1811,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\test\testFPU.h">
       <Filter>source\test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h">
+      <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
