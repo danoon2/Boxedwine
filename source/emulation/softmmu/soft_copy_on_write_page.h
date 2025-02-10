@@ -23,10 +23,10 @@
 
 class CopyOnWritePage : public RWPage {
 protected:
-    CopyOnWritePage(const KRamPtr& page, U32 address) : RWPage(page, address){}
+    CopyOnWritePage(RamPage page, U32 address) : RWPage(page, address){}
 
 public:
-    static CopyOnWritePage* alloc(const KRamPtr& page, U32 address);
+    static CopyOnWritePage* alloc(RamPage page, U32 address);
 
     // from Page
     U8 readb(U32 address) override;

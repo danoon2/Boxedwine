@@ -2,7 +2,7 @@
 
 #include "soft_no_page.h"
 
-NOPage* NOPage::alloc(const KRamPtr& page, U32 address) {
+NOPage* NOPage::alloc(RamPage page, U32 address) {
     return new NOPage(page, address);
 }
 

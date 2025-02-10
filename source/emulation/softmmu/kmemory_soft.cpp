@@ -18,11 +18,11 @@
 
 static InvalidPage _invalidPage;
 static InvalidPage* invalidPage = &_invalidPage;
-static KRamPtr callbackRam;
+static RamPage callbackRam;
 static U32 callbackRamPos;
 
 void KMemoryData::shutdown() {
-    callbackRam = nullptr;
+    callbackRam.value = 0;
     callbackRamPos = 0;
 }
 
@@ -44,7 +44,7 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmu
     for (int i = 0; i < K_NUMBER_OF_PAGES; i++) {
         this->mmu[i] = invalidPage;
     }
-    if(!callbackRam) {
+    if(!callbackRam.value) {
         callbackRam = ramPageAlloc();
         addCallback(onExitSignal);
     }
@@ -110,7 +110,7 @@ void KMemoryData::setPage(U32 index, Page* page) {
 
 void KMemoryData::addCallback(OpCallback func) {
     U64 funcAddress = (U64)func;
-    U8* address = callbackRam.get() + callbackRamPos;
+    U8* address = ramPageGet(callbackRam) + callbackRamPos;
 
     *address = 0xFE;
     address++;
@@ -137,7 +137,7 @@ void KMemoryData::addCallback(OpCallback func) {
     }
 }
 
-void KMemoryData::setPageRam(const KRamPtr& ram, U32 pageIndex, bool copyOnWrite) {
+void KMemoryData::setPageRam(RamPage ram, U32 pageIndex, bool copyOnWrite) {
     bool read = memory->canRead(pageIndex) || memory->canExec(pageIndex);
     bool write = memory->canWrite(pageIndex);
     
@@ -154,7 +154,7 @@ void KMemoryData::setPageRam(const KRamPtr& ram, U32 pageIndex, bool copyOnWrite
     }
 }
 
-void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, KRamPtr* ramPages) {
+void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, const RamPage* ramPages) {
     for (U32 i = 0; i < pageCount; i++) {
         flags[page + i] = permissions;
     }
@@ -459,9 +459,10 @@ void KMemory::clone(KMemory* from, bool vfork) {
             RWPage* p = (RWPage*)page;
             if (!mapShared(i)) {
                 if (data->flags[i] & PAGE_FUTEX) {
-                    KRamPtr ram = ramPageAlloc();
-                    ::memcpy(ram.get(), p->page.get(), K_PAGE_SIZE);
+                    RamPage ram = ramPageAlloc();
+                    ::memcpy(ramPageGet(ram), ramPageGet(p->page), K_PAGE_SIZE);
                     data->setPageRam(ram, i, false);
+                    ramPageRelease(ram); // setPageRam will retain
                     data->flags[i] &= ~PAGE_FUTEX; // since it's not shared, it doesn't need to know this
                 } else {                        
                     data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));

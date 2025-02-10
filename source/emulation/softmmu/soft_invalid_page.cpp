@@ -9,7 +9,9 @@ void InvalidPage::ondemmand(KMemory* memory, U32 page) {
     if (mem->getPage(page) != this) {
         return;
     }
-    getMemData(memory)->setPageRam(nullptr, page, false);
+    RamPage ramPage;
+    ramPage.value = 0;
+    getMemData(memory)->setPageRam(ramPage, page, false);
 }
 
 U8 InvalidPage::readb(U32 address) {

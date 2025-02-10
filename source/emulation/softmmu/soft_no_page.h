@@ -23,10 +23,10 @@
 
 class NOPage : public RWPage {
 protected:
-    NOPage(const KRamPtr& page, U32 address) : RWPage(page, address) {}
+    NOPage(RamPage page, U32 address) : RWPage(page, address) {}
 
 public:
-    static NOPage* alloc(const KRamPtr& page, U32 address);
+    static NOPage* alloc(RamPage page, U32 address);
 
     // from Page
     U8 readb(U32 address) override;

@@ -2,7 +2,7 @@
 
 #include "soft_ro_page.h"
 
-ROPage* ROPage::alloc(const KRamPtr& page, U32 address) {
+ROPage* ROPage::alloc(RamPage page, U32 address) {
     return new ROPage(page, address);
 }
 

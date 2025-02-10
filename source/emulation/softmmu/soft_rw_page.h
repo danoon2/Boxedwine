@@ -23,9 +23,9 @@
 
 class RWPage : public Page {
 protected:
-    RWPage(const KRamPtr& page, U32 address);
+    RWPage(RamPage page, U32 address);
 public:    
-    static RWPage* alloc(const KRamPtr& page, U32 address);
+    static RWPage* alloc(RamPage page, U32 address);
 
     virtual ~RWPage();
 
@@ -43,7 +43,7 @@ public:
     void close() override {delete this;}
     Type getType() override { return Type::RW_Page; }
 
-    KRamPtr page;
+    RamPage page;
     U8* ram;
     U32 address;
 };

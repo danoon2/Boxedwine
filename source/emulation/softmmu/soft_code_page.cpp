@@ -5,11 +5,11 @@
 #include "kmemory_soft.h"
 #include "../cpu/normal/normalCPU.h"
     
-CodePage* CodePage::alloc(const KRamPtr& page, U32 address) {
+CodePage* CodePage::alloc(RamPage page, U32 address) {
     return new CodePage(page, address);
 }
 
-CodePage::CodePage(const KRamPtr& page, U32 address) : RWPage(page, address) {
+CodePage::CodePage(RamPage page, U32 address) : RWPage(page, address) {
 }
 
 CodePage::~CodePage() {
@@ -21,11 +21,12 @@ void CodePage::close() {
 }
 
 void CodePage::copyOnWrite() {
-    if (!KThread::currentThread()->memory->mapShared(address >> K_PAGE_SHIFT) && page.use_count() > 1) {
-        KRamPtr ram = ramPageAlloc();
-        ::memcpy(ram.get(), page.get(), K_PAGE_SIZE);
+    if (!KThread::currentThread()->memory->mapShared(address >> K_PAGE_SHIFT) && ramPageUseCount(page) > 1) {
+        RamPage ram = ramPageAlloc();
+        ::memcpy(ramPageGet(ram), ramPageGet(page), K_PAGE_SIZE);
         page = ram;
         getMemData(KThread::currentThread()->memory)->setPage(address >> K_PAGE_SHIFT, this);
+        ramPageRelease(ram); // setPage will retain
     }
 }
 

@@ -2,7 +2,7 @@
 
 #include "soft_wo_page.h"
 
-WOPage* WOPage::alloc(const KRamPtr& page, U32 address) {
+WOPage* WOPage::alloc(RamPage page, U32 address) {
     return new WOPage(page, address);
 }
 

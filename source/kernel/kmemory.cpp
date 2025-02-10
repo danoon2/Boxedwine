@@ -7,7 +7,9 @@
 #include "../emulation/softmmu/soft_copy_on_write_page.h"
 
 MappedFileCache::~MappedFileCache() {
-    delete[] this->data;
+    for (RamPage& page : data) {
+        ramPageRelease(page);
+    }
 }
 
 void KMemory::shutdown() {
@@ -146,8 +148,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                     KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
                     cache->file = mappedFile->file;
                     U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
-                    cache->data = new KRamPtr[size];
-                    cache->dataSize = size;
+                    cache->data.resize(size);
                 }
                 mappedFile->systemCacheEntry = cache;
             }
@@ -271,12 +272,12 @@ U32 KMemory::unmap(U32 address, U32 len) {
     return 0;
 }
 
-U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<KRamPtr>& pages, U32 permissions) {
+U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<RamPage>& pages, U32 permissions) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (startPage == 0 && !data->reserveAddress(ADDRESS_PROCESS_MMAP_START, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
         return 0;        
     }
-    this->data->allocPages(thread, startPage, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, (KRamPtr*)pages.data());
+    this->data->allocPages(thread, startPage, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, pages.data());
     return startPage << K_PAGE_SHIFT;
 }
 

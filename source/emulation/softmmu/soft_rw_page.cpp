@@ -3,21 +3,22 @@
 #include "soft_rw_page.h"
 #include "soft_ram.h"
 
-RWPage* RWPage::alloc(const KRamPtr& page, U32 address) {
+RWPage* RWPage::alloc(RamPage page, U32 address) {
     return new RWPage(page, address);
 }
 
-RWPage::RWPage(const KRamPtr& page, U32 address) : address(address) {
-    if (page) {
+RWPage::RWPage(RamPage page, U32 address) : address(address) {
+    if (page.value) {
         this->page = page;
+        ramPageRetain(page);
     } else {
         this->page = ramPageAlloc();
     }
-    this->ram = this->page.get();
+    this->ram = ramPageGet(this->page);
 }
 
 RWPage::~RWPage() {
-    
+    ramPageRelease(this->page);
 }
 
 U8 RWPage::readb(U32 address) {

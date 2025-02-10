@@ -33,26 +33,30 @@ void FilePage::ondemmandFile(U32 address) {
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
-    KRamPtr ram;
+    RamPage ram;
+    ram.value = 0;
 
     if (mem->getPage(page) != this) {
         return;
     }
 
     if (1) {
-        if (index < mapped->systemCacheEntry->dataSize) {
+        if (index < mapped->systemCacheEntry->data.size()) {
             ram = mapped->systemCacheEntry->data[this->index];
+            ramPageRetain(ram);
         }
     } 
-    if (!ram) {
+    if (!ram.value) {
         ram = ramPageAlloc();
-        mapped->file->preadNative(ram.get(), ((U64)this->index) << K_PAGE_SHIFT, K_PAGE_SIZE);
-        if (index < mapped->systemCacheEntry->dataSize) {
+        mapped->file->preadNative(ramPageGet(ram), ((U64)this->index) << K_PAGE_SHIFT, K_PAGE_SIZE);
+        if (index < mapped->systemCacheEntry->data.size()) {
+            ramPageRetain(ram);
             mapped->systemCacheEntry->data[this->index] = ram;
         }
     }
 
     getMemData(memory)->setPageRam(ram, page, true);
+    ramPageRelease(ram); // setPageRam will retain
 }
 
 U8 FilePage::readb(U32 address) {	
