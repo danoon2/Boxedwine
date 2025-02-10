@@ -149,7 +149,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     syncFromException(ep);
     U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0] == 0);
     if (result) {
-        syncToException(ep);
+        syncToException(ep, false);
         ep->ContextRecord->Rip = result;
         return EXCEPTION_CONTINUE_EXECUTION;
     }

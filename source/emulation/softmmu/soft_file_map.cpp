@@ -23,40 +23,46 @@
 
 #include "kprocess.h"
 
-FilePage* FilePage::alloc(const std::shared_ptr<MappedFile>& mapped, U32 index) {
-    return new FilePage(mapped, index);
+FilePage* FilePage::alloc(U32 key, U32 index) {
+    return new FilePage(key, index);
 }
 
 // :TODO: what about sync'ing the writes back to the file?
 void FilePage::ondemmandFile(U32 address) {
-    KMemory* memory = KThread::currentThread()->memory;
+    KThread* thread = KThread::currentThread();
+    KMemory* memory = thread->memory;
     KMemoryData* mem = getMemData(memory);
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     U32 page = address >> K_PAGE_SHIFT;
-    RamPage ram;
-    ram.value = 0;
-
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->memory->mutex);
     if (mem->getPage(page) != this) {
         return;
     }
+    MappedFilePtr mappedFile = thread->process->getMappedFile(this->key);
+    U32 mappedOffset = (address - mappedFile->address) & 0xfffff000;
+    U64 fileOffset = mappedOffset + mappedFile->offset;
+    U32 fileOffsetPage = (U32)(fileOffset >> K_PAGE_SHIFT);
+    RamPage ramPage;
 
-    if (1) {
-        if (index < mapped->systemCacheEntry->data.size()) {
-            ram = mapped->systemCacheEntry->data[this->index];
-            ramPageRetain(ram);
-        }
-    } 
-    if (!ram.value) {
-        ram = ramPageAlloc();
-        mapped->file->preadNative(ramPageGet(ram), ((U64)this->index) << K_PAGE_SHIFT, K_PAGE_SIZE);
-        if (index < mapped->systemCacheEntry->data.size()) {
-            ramPageRetain(ram);
-            mapped->systemCacheEntry->data[this->index] = ram;
+    ramPage.value = 0;
+    if (mappedFile->systemCacheEntry && fileOffsetPage < (U32)mappedFile->systemCacheEntry->data.size()) {
+        ramPage = mappedFile->systemCacheEntry->data[fileOffsetPage];
+        if (ramPage.value) {
+            ramPageRetain(ramPage);
         }
     }
 
-    getMemData(memory)->setPageRam(ram, page, true);
-    ramPageRelease(ram); // setPageRam will retain
+    if (!ramPage.value) {
+        ramPage = ramPageAlloc();
+        mappedFile->file->preadNative(ramPageGet(ramPage), fileOffset, K_PAGE_SIZE);
+        if (mappedFile->systemCacheEntry && fileOffsetPage < (U32)mappedFile->systemCacheEntry->data.size()) {
+            ramPageRetain(ramPage);
+            ramPageMarkSystem(ramPage, true);
+            mappedFile->systemCacheEntry->data[fileOffsetPage] = ramPage;
+        }
+    }
+
+    getMemData(memory)->setPageRam(ramPage, page, true);
+    ramPageRelease(ramPage); // setPageRam will retain
 }
 
 U8 FilePage::readb(U32 address) {	

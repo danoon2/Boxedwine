@@ -186,7 +186,7 @@ void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permis
         }
 
         for (U32 i = 0; i < pageCount; i++) {
-            this->setPage(page + i, FilePage::alloc(mappedFile, filePage++));
+            this->setPage(page + i, FilePage::alloc(mappedFile->key, filePage++));
         }
     } else {
         for (U32 i = 0; i < pageCount; i++) {
@@ -449,7 +449,7 @@ void KMemory::clone(KMemory* from, bool vfork) {
                 p->ondemmandFile(i << K_PAGE_SHIFT);
                 // fall through
             } else {
-                data->setPage(i, FilePage::alloc(p->mapped, p->index));
+                data->setPage(i, FilePage::alloc(p->key, p->index));
                 continue;
             }
         }

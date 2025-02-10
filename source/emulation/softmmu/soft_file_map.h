@@ -23,10 +23,10 @@
 
 class FilePage : public Page {
 protected:
-    FilePage(const std::shared_ptr<MappedFile>& mapped, U32 index) : mapped(mapped), index(index) {}
+    FilePage(U32 key, U32 index) : key(key), index(index) {}
 
 public:
-    static FilePage* alloc(const std::shared_ptr<MappedFile>& mapped, U32 index);
+    static FilePage* alloc(U32 key, U32 index);
 
     // from Page
     U8 readb(U32 address) override;
@@ -43,7 +43,7 @@ public:
 
     void ondemmandFile(U32 address);
 
-    std::shared_ptr<MappedFile> mapped;
+    U32 key;
     U32 index;
 };
 
