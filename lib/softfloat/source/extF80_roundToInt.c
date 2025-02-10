@@ -80,7 +80,7 @@ extFloat80_t
         if ( exp == 0x7FFF ) {
             if ( sigA & UINT64_C( 0x7FFFFFFFFFFFFFFF ) ) {
                 uiZ = softfloat_propagateNaNExtF80UI( uiA64, sigA, 0, 0 );
-                uiZ64 = uiZ.v64;
+                uiZ64 = (uint_fast16_t)uiZ.v64;
                 sigZ  = uiZ.v0;
                 goto uiZ;
             }

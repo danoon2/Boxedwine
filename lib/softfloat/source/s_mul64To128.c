@@ -47,9 +47,9 @@ struct uint128 softfloat_mul64To128( uint64_t a, uint64_t b )
     uint64_t mid1, mid;
 
     a32 = a>>32;
-    a0 = a;
+    a0 = (uint32_t)a;
     b32 = b>>32;
-    b0 = b;
+    b0 = (uint32_t)b;
     z.v0 = (uint_fast64_t) a0 * b0;
     mid1 = (uint_fast64_t) a32 * b0;
     mid = mid1 + (uint_fast64_t) a0 * b32;

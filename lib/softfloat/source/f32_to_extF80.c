@@ -68,7 +68,7 @@ extFloat80_t f32_to_extF80( float32_sf a )
         if ( frac ) {
             softfloat_f32UIToCommonNaN( uiA, &commonNaN );
             uiZ = softfloat_commonNaNToExtF80UI( &commonNaN );
-            uiZ64 = uiZ.v64;
+            uiZ64 = (uint_fast16_t)uiZ.v64;
             uiZ0  = uiZ.v0;
         } else {
             uiZ64 = packToExtF80UI64( sign, 0x7FFF );

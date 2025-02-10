@@ -24,6 +24,7 @@
 #include "knativesystem.h"
 #include "../../../platform/sdl/sdlcallback.h"
 #include "../../emulation/softmmu/soft_page.h"
+#include "../../emulation/softmmu/soft_rw_page.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
 
 static U32 screenBPP=32;
@@ -352,67 +353,6 @@ void fbSetupScreen() {
     fb_fix_screeninfo.smem_len = fb_fix_screeninfo.line_length*fb_var_screeninfo.yres_virtual;	
 }
 
-class FBPage : public Page {
-public:
-    FBPage() : Page() {}
-
-    U8 readb(U32 address) override;
-    void writeb(U32 address, U8 value) override;
-    U16 readw(U32 address) override;
-    void writew(U32 address, U16 value) override;
-    U32 readd(U32 address) override;
-    void writed(U32 address, U32 value) override;
-
-    // these two take memory argument so that they won't call KThread::current thread, this makes them safe to call from the audio thread
-    U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false) override; // might have permission, but may not ready
-    U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false) override; // might have permission, but may not be ready
-
-    bool inRam() override { return true; }
-    void close() override { delete this; }
-    Type getType() override { return Page::Type::Frame_Buffer_Page; }
-};
-
-U8 FBPage::readb(U32 address) {	
-    if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
-        return ((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
-    return 0;
-}
-
-void FBPage::writeb(U32 address, U8 value) {
-    if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
-        ((U8*)screenPixels)[address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS] = value;
-}
-
-U16 FBPage::readw(U32 address) {
-    if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
-        return ((U16*)screenPixels)[(address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)>>1];
-    return 0;
-}
-
-void FBPage::writew(U32 address, U16 value) {
-    if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
-        ((U16*)screenPixels)[(address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)>>1] = value;
-}
-
-U32 FBPage::readd(U32 address) {
-    if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
-        return ((U32*)screenPixels)[(address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)>>2];
-    return 0;
-}
-
-void FBPage::writed(U32 address, U32 value) {
-    if (!bOpenGL && (address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)<fb_fix_screeninfo.smem_len)
-        ((U32*)screenPixels)[(address-ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS)>>2] = value;
-}
-
-U8* FBPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    return &((U8*)screenPixels)[address - ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
-}
-
-U8* FBPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    return &((U8*)screenPixels)[address - ADDRESS_PROCESS_FRAME_BUFFER_ADDRESS];
-}
-
 class DevFB : public FsVirtualOpenNode {
 public:
     DevFB(const std::shared_ptr<FsNode>& node, U32 flags);
@@ -528,10 +468,6 @@ U32 DevFB::ioctl(KThread* thread, U32 request) {
     return 0;
 }
 
-Page* allocFBPage() {
-    return new FBPage();
-}
-
 U32 DevFB::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     if ((flags & K_MAP_FIXED) && address!=fb_fix_screeninfo.smem_start) {
         kpanic("Mapping /dev/fb at fixed address not supported");
@@ -549,10 +485,12 @@ U32 DevFB::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 o
         screenPixels = new U8[1280 * 1024 * 4];
     }
     for (U32 i=0;i<pageCount;i++) {
-        if (mem->getPage(i+pageStart)->getType()!=Page::Type::Invalid_Page && mem->mmu[i+pageStart]->getType()!=Page::Type::Frame_Buffer_Page) {
+        if (mem->getPage(i+pageStart)->getType()!=Page::Type::Invalid_Page) {
             kpanic("Something else got mapped into the framebuffer address");
         }
-        mem->setPage(i+pageStart, new FBPage());
+        RamPage ram = ramPageAllocNative(screenPixels + (i << K_PAGE_SHIFT));
+        mem->setPage(i+pageStart, RWPage::alloc(ram, (i + pageStart) << K_PAGE_SHIFT));
+        ramPageRelease(ram); // setPage retains
         mem->flags[i + pageStart] = flags;
     }    
     return fb_fix_screeninfo.smem_start;

@@ -87,7 +87,7 @@ int_fast32_t extF80_to_i32_r_minMag( extFloat80_t a, bool exact )
     }
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
-    absZ = sig>>shiftDist;
+    absZ = (int_fast32_t)(sig>>shiftDist);
     if ( exact && ((uint_fast64_t) (uint_fast32_t) absZ<<shiftDist != sig) ) {
         softfloat_exceptionFlags |= softfloat_flag_inexact;
     }

@@ -74,7 +74,7 @@ extFloat80_t extF80_sqrt( extFloat80_t a )
     if ( expA == 0x7FFF ) {
         if ( sigA & UINT64_C( 0x7FFFFFFFFFFFFFFF ) ) {
             uiZ = softfloat_propagateNaNExtF80UI( uiA64, uiA0, 0, 0 );
-            uiZ64 = uiZ.v64;
+            uiZ64 = (uint_fast16_t)uiZ.v64;
             uiZ0  = uiZ.v0;
             goto uiZ;
         }
@@ -123,7 +123,7 @@ extFloat80_t extF80_sqrt( extFloat80_t a )
     | (Repeating this loop is a rare occurrence.)
     *------------------------------------------------------------------------*/
     for (;;) {
-        term = softfloat_mul64ByShifted32To128( x64 + sigZ, q );
+        term = softfloat_mul64ByShifted32To128( x64 + sigZ, (uint32_t)q );
         rem = softfloat_sub128( y.v64, y.v0, term.v64, term.v0 );
         if ( ! (rem.v64 & UINT64_C( 0x8000000000000000 )) ) break;
         --q;
@@ -140,7 +140,7 @@ extFloat80_t extF80_sqrt( extFloat80_t a )
     if ( (q & 0xFFFFFF) <= 2 ) {
         q &= ~(uint_fast64_t) 0xFFFF;
         sigZExtra = (uint64_t) (q<<39);
-        term = softfloat_mul64ByShifted32To128( x64 + (q>>27), q );
+        term = softfloat_mul64ByShifted32To128( x64 + (q>>27), (uint32_t)q );
         x64 = (uint32_t) (q<<5) * (uint_fast64_t) (uint32_t) q;
         term = softfloat_add128( term.v64, term.v0, 0, x64 );
         rem = softfloat_shortShiftLeft128( rem.v64, rem.v0, 28 );

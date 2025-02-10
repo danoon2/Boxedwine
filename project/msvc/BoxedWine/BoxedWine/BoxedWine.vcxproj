@@ -857,7 +857,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_file_map.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_native_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ram.h" />
@@ -1835,6 +1834,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\i64_to_extF80.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
@@ -1855,6 +1866,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\softfloat_state.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
@@ -2335,6 +2358,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundToI64.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
@@ -2355,6 +2390,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundToUI32.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
@@ -2415,6 +2462,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shiftRightJam32.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
@@ -2435,6 +2494,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shiftRightJam64.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
@@ -2455,6 +2526,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shiftRightJam64Extra.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
@@ -2475,6 +2558,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shortShiftLeft128.c">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
@@ -2535,6 +2630,18 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Test|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Test|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">4996;26451;4146</DisableSpecificWarnings>
+      <DisableSpecificWarnings Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4996;26451;4146</DisableSpecificWarnings>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\softfloat\source\s_sub128.c">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\..\..\lib\softfloat\source\8086-SSE;..\..\..\..\lib\softfloat\source\include;</AdditionalIncludeDirectories>
@@ -2701,7 +2808,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_native_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ram.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp" />

@@ -129,7 +129,7 @@ extFloat80_t extF80_mul( extFloat80_t a, extFloat80_t b )
     *------------------------------------------------------------------------*/
  propagateNaN:
     uiZ = softfloat_propagateNaNExtF80UI( uiA64, uiA0, uiB64, uiB0 );
-    uiZ64 = uiZ.v64;
+    uiZ64 = (uint_fast16_t)uiZ.v64;
     uiZ0  = uiZ.v0;
     goto uiZ;
     /*------------------------------------------------------------------------

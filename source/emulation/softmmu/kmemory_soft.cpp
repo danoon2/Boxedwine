@@ -2,7 +2,6 @@
 
 #include "soft_invalid_page.h"
 #include "kmemory_soft.h"
-#include "soft_native_page.h"
 #include "soft_ro_page.h"
 #include "soft_rw_page.h"
 #include "soft_wo_page.h"
@@ -488,15 +487,8 @@ void KMemory::clone(KMemory* from, bool vfork) {
         }  else if (page->getType() == Page::Type::Copy_On_Write_Page) {
             CopyOnWritePage* p = (CopyOnWritePage*)page;
             data->setPage(i, CopyOnWritePage::alloc(p->page, p->address));
-        } else if (page->getType() == Page::Type::Native_Page) {
-            NativePage* p = (NativePage*)page;
-            data->setPage(i, NativePage::alloc(p->nativeAddress, p->address));
         } else if (page->getType() == Page::Type::Invalid_Page) {
             
-        } else if (page->getType() == Page::Type::Frame_Buffer_Page) {
-            if (mapShared(i)) {
-                data->setPage(i, allocFBPage());
-            }
         } else {
             kpanic("unhandled case when cloning memory: page type = %d", static_cast<int>(page->getType()));
         }
@@ -687,7 +679,9 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
     result++; // guard page
     for (U32 i = 0; i < pageCount; i++) {
         data->flags[result + i] = PAGE_MAPPED | PAGE_READ | PAGE_WRITE;
-        getMemData(this)->setPage(result + i, NativePage::alloc((U8*)hostAddress + K_PAGE_SIZE * i, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i));
+        RamPage ramPage = ramPageAllocNative((U8*)hostAddress + K_PAGE_SIZE * i);
+        getMemData(this)->setPage(result + i, RWPage::alloc(ramPage, (result << K_PAGE_SHIFT) + K_PAGE_SIZE * i));
+        ramPageRelease(ramPage); // setPage retains
     }
     return result << K_PAGE_SHIFT;
 }

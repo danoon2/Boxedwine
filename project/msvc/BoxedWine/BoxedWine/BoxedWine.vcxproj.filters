@@ -196,9 +196,6 @@
     <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_native_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
       <Filter>minizip</Filter>
     </ClCompile>
@@ -1169,9 +1166,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\boxedwine.h">
       <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_native_page.h">
-      <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h">
       <Filter>minizip</Filter>
