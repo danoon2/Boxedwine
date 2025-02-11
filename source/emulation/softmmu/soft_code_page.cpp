@@ -100,18 +100,15 @@ void CodePage::writed(U32 address, U32 value) {
     }
 }
 
-U8* CodePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    if (memory->canRead(address >> K_PAGE_SHIFT)) {
-        return this->ram;
+U8* CodePage::getRamPtr(KMemory* memory, U32 page, bool write, bool force, U32 offset, U32 len) {
+    if (memory->canRead(page) && !write) {
+        return RWPage::getRamPtr(memory, page, write, force, offset, len);
     }
-    return nullptr;
-}
 
-U8* CodePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    if (memory->canWrite(address >> K_PAGE_SHIFT) && makeReady) {
-        KMemory* memory = KThread::currentThread()->memory;
-        memory->removeCodeBlock(address, len);
-        return this->ram;
+    if (force && memory->canWrite(page) && write) {
+        KMemoryData* data = getMemData(memory);
+        memory->removeCodeBlock((page << K_PAGE_SHIFT) + offset, len);
+        return RWPage::getRamPtr(memory, page, write, force, offset, len);
     }
     return nullptr;
 }

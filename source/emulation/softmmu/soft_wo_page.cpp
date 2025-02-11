@@ -21,10 +21,9 @@ U32 WOPage::readd(U32 address) {
     return 0;
 }
 
-U8* WOPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
+U8* WOPage::getRamPtr(KMemory* memory, U32 page, bool write, bool force, U32 offset, U32 len) {
+    if (write) {
+        return RWPage::getRamPtr(memory, page, write, force, offset, len);
+    }
     return nullptr;
-}
-
-U8* WOPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    return this->ram;
 }

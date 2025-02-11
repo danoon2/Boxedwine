@@ -46,9 +46,8 @@ public:
     virtual U32 readd(U32 address)=0;
     virtual void writed(U32 address, U32 value)=0;
 
-    // these two take memory argument so that they won't call KThread::current thread, this makes them safe to call from the audio thread
-    virtual U8* getReadPtr(KMemory* memory, U32 address, bool makeReady = false)=0; // might have permission, but may not ready
-    virtual U8* getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady = false)=0; // might have permission, but may not be ready
+    // if address == 0 and len == 0, then its assumed to be the entire page
+    virtual U8* getRamPtr(KMemory* memory, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) = 0;
 
     virtual bool inRam()=0;
     virtual void close() = 0;    

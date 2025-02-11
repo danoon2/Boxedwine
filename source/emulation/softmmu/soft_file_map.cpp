@@ -101,20 +101,11 @@ void FilePage::writed(U32 address, U32 value) {
     data->memory->writed(address, value);
 }
 
-U8* FilePage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    if (makeReady && memory->canRead(address >> K_PAGE_SHIFT)) {
+U8* FilePage::getRamPtr(KMemory* memory, U32 page, bool write, bool force, U32 offset, U32 len) {
+    if (force && ((memory->canRead(page) && !write) || ((memory->canWrite(page) && write)))) {
         KMemoryData* data = getMemData(memory);
-        ondemmandFile(address);
-        return data->getPage(address >> K_PAGE_SHIFT)->getReadPtr(memory, address, true);
-    }
-    return nullptr;
-}
-
-U8* FilePage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    if (makeReady && memory->canWrite(address >> K_PAGE_SHIFT)) {
-        KMemoryData* data = getMemData(memory);
-        ondemmandFile(address);
-        return data->getPage(address >> K_PAGE_SHIFT)->getWritePtr(memory, address, len, true);
+        ondemmandFile((page << K_PAGE_SHIFT) + offset);
+        return data->getPage(page)->getRamPtr(memory, page, write, force, offset, len);
     }
     return nullptr;
 }

@@ -68,10 +68,10 @@ void KMemoryData::onPageChanged(U32 index) {
     Page* page = this->mmu[index];
     U32 address = index << K_PAGE_SHIFT;    
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
-    this->mmuReadPtr[index] = page->getReadPtr(memory, address);
-    this->mmuWritePtr[index] = page->getWritePtr(memory, address, K_PAGE_SIZE);
+    this->mmuReadPtr[index] = page->getRamPtr(memory, index, false);
+    this->mmuWritePtr[index] = page->getRamPtr(memory, index, true);
 #else
-    U8* readPtr = page->getReadPtr(memory, address);
+    U8* readPtr = page->getRamPtr(memory, index, false);
     if (readPtr) {
         this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
 #ifdef BOXEDWINE_4K_PAGE_SIZE
@@ -83,7 +83,7 @@ void KMemoryData::onPageChanged(U32 index) {
         this->mmuReadPtr[index] = nullptr;
 #endif
     }
-    U8* writePtr = page->getWritePtr(memory, address, K_PAGE_SHIFT);
+    U8* writePtr = page->getRamPtr(memory, index, true);
     if (writePtr) {
         this->mmuWritePtrAdjusted[index] = writePtr - (index << K_PAGE_SHIFT);
 #ifdef BOXEDWINE_4K_PAGE_SIZE
@@ -400,17 +400,10 @@ U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {
     if (len + offset > K_PAGE_SIZE) {
         kpanic("KMemory::getRamPtr");
     }
-    U8* result;
-
-    if (write) {
-        result = data->mmu[index]->getWritePtr(this, address, 4, true);
-    } else {
-        result = data->mmu[index]->getReadPtr(this, address, true);
-    }
+    U8* result = data->mmu[index]->getRamPtr(this, index, write, true, offset, len);
     
     if (result) {
         data->flags[index] |= PAGE_FUTEX;
-        result += offset;
     }
     return result;
 }
@@ -570,11 +563,11 @@ void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function
         todo = K_PAGE_SIZE - offset;
     }
 
-    U8* ram = readOnly ? page->getReadPtr(this, address, true) : page->getWritePtr(this, address, todo, true);
+    U8* ram = page->getRamPtr(this, pageIndex, !readOnly, true, offset, todo);
     if (!ram) {
         int ii = 0;
     }
-    if (!callback(ram+offset, todo)) {
+    if (!callback(ram, todo)) {
         return;
     }
     address += todo;
@@ -583,7 +576,7 @@ void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function
     while (len > K_PAGE_SIZE) {
         pageIndex++;
         page = data->getPage(pageIndex);
-        ram = readOnly ? page->getReadPtr(this, address, true) : page->getWritePtr(this, address, K_PAGE_SIZE, true);
+        ram = page->getRamPtr(this, pageIndex, !readOnly, true, 0, K_PAGE_SHIFT);
         if (!ram) {
             int ii = 0;
         }
@@ -597,7 +590,7 @@ void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function
     if (len > 0) {
         pageIndex++;
         page = data->getPage(pageIndex);
-        ram = readOnly ? page->getReadPtr(this, address, true) : page->getWritePtr(this, address, len, true);
+        ram = page->getRamPtr(this, pageIndex, !readOnly, true, 0, len);
         if (!ram) {
             int ii = 0;
         }
@@ -613,7 +606,7 @@ U8* KMemory::lockReadOnlyMemory(U32 address, U32 len) {
 
     // if we cross a page boundry then we will need to make a copy
     if (len <= K_PAGE_SIZE - offset) {
-        return page->getReadPtr(this, address, true) + (address & K_PAGE_MASK);
+        return page->getRamPtr(this, pageIndex, false, true, offset, len);
     }
     std::shared_ptr<LockedMemory> p = std::make_shared<LockedMemory>();
     p->p = new U8[len];
@@ -642,7 +635,7 @@ U8* KMemory::lockReadWriteMemory(U32 address, U32 len) {
 
     // if we cross a page boundry then we will need to make a copy
     if (len <= K_PAGE_SIZE - offset) {
-        U8* result = page->getWritePtr(this, address, true) + (address & K_PAGE_MASK);
+        U8* result = page->getRamPtr(this, pageIndex, true, true, offset, len);
         if (result) {
             return result;
         }

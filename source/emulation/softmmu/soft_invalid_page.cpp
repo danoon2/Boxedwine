@@ -86,22 +86,11 @@ void InvalidPage::writed(U32 address, U32 value) {
     }
 }
 
-U8* InvalidPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    KMemoryData* data = getMemData(memory);
-    U32 page = address >> K_PAGE_SHIFT;
-    if (makeReady && memory->canRead(page)) {
-        ondemmand(memory, page);
-        return data->getPage(page)->getReadPtr(memory, address, true);
-    }
-    return nullptr;
-}
-
-U8* InvalidPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    U32 page = address >> K_PAGE_SHIFT;
-    if (makeReady && memory->canWrite(page)) {
+U8* InvalidPage::getRamPtr(KMemory* memory, U32 page, bool write, bool force, U32 offset, U32 len) {    
+    if (force && ((memory->canRead(page) && !write) || ((memory->canWrite(page) && write)))) {
         KMemoryData* data = getMemData(memory);
         ondemmand(memory, page);
-        return data->getPage(page)->getWritePtr(memory, address, len, true);
+        return data->getPage(page)->getRamPtr(memory, page, write, force, offset, len);
     }
     return nullptr;
 }

@@ -33,10 +33,6 @@ void NOPage::writed(U32 address, U32 value) {
     KThread::currentThread()->seg_access(address, false, true);
 }
 
-U8* NOPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    return nullptr;
-}
-
-U8* NOPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
+U8* NOPage::getRamPtr(KMemory* memory, U32 page, bool write, bool force, U32 offset, U32 len) {
     return nullptr;
 }

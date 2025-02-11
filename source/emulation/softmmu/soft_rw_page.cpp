@@ -65,10 +65,6 @@ void RWPage::writed(U32 address, U32 value) {
 #endif
 }
 
-U8* RWPage::getReadPtr(KMemory* memory, U32 address, bool makeReady) {
-    return this->ram;
-}
-
-U8* RWPage::getWritePtr(KMemory* memory, U32 address, U32 len, bool makeReady) {
-    return this->ram;
+U8* RWPage::getRamPtr(KMemory* memory, U32 page, bool write, bool force, U32 offset, U32 len) {
+    return ram + offset;
 }
