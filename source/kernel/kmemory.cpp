@@ -24,6 +24,9 @@ KMemory::~KMemory() {
     if (data) {
         delete data;
     }
+    if (deleteOnNextLoop) {
+        delete deleteOnNextLoop;
+    }
 }
 
 void KMemory::cleanup() {
@@ -295,7 +298,12 @@ bool KMemory::canRead(U32 address, U32 len) {
 
 void KMemory::execvReset(bool cloneVM) {
     if (!cloneVM) {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        deleteOnNextLoop = data;
+        data = new KMemoryData(this);
+#else
         data->execvReset();
+#endif
     } else {
         // data no longer shared with parent
         data = new KMemoryData(this);
@@ -417,5 +425,5 @@ void KMemory::iteratePages(U32 address, U32 len, std::function<bool(U32 page)> c
 }
 
 U32 KMemory::getPageFlags(U32 page) {
-    return data->flags[page];
+    return data->mmu[page].flags;
 }

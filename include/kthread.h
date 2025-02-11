@@ -188,7 +188,7 @@ private:
     struct user_desc tls[TLS_ENTRIES] = {};
     BOXEDWINE_MUTEX tlsMutex;
 
-    static BOXEDWINE_MUTEX futexesMutex;
+    static BOXEDWINE_MUTEX_NR futexesMutex;
 };
 
 class ChangeThread {

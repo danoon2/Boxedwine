@@ -100,12 +100,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
@@ -183,9 +177,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\kernel\ksocketobject.cpp">
       <Filter>source\kernel</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\crc.cpp">
       <Filter>source\util</Filter>
@@ -925,6 +916,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\codePageData.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_mmu.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1110,12 +1104,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
@@ -1160,9 +1148,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\ksocketobject.h">
       <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h">
-      <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\boxedwine.h">
       <Filter>include</Filter>
@@ -1807,6 +1792,9 @@
       <Filter>source\test</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_mmu.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
   </ItemGroup>
