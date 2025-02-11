@@ -905,7 +905,7 @@ static void x11_GetModifierMapping(CPU* cpu) {
 static void x11_FreeModifierMap(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
-    XModifierKeymap* result = (XModifierKeymap*)memory->getIntPtr(ARG1, true);
+    XModifierKeymap* result = (XModifierKeymap*)memory->getRamPtr(ARG1, sizeof(XModifierKeymap), true);
     thread->process->free(result->modifiermap);
     thread->process->free(ARG1);
     EAX = Success;
@@ -1487,7 +1487,7 @@ static void x11_GetVisualInfo(CPU* cpu) {
     U32 itemAddress = listAddress + sizeof(U32) * count;
     Display::iterateVisuals(thread, displayAddress, [&memory, &listAddress, &itemAddress, mask, &infoTemplate](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
         if (infoTemplate.match(mask, screenIndex, depth, visual)) {
-            XVisualInfo* visualInfo = (XVisualInfo*)memory->getIntPtr(itemAddress, true);
+            XVisualInfo* visualInfo = (XVisualInfo*)memory->getRamPtr(itemAddress, sizeof(XVisualInfo), true);
             memory->writed(listAddress, itemAddress);
             itemAddress += sizeof(XVisualInfo);
             listAddress += sizeof(U32);
@@ -2540,7 +2540,7 @@ static void x11_XineramaQueryScreens(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     U32 resultAddress = thread->process->alloc(thread, sizeof(XineramaScreenInfo));
-    XineramaScreenInfo* info = (XineramaScreenInfo*)memory->getIntPtr(resultAddress, true);
+    XineramaScreenInfo* info = (XineramaScreenInfo*)memory->getRamPtr(resultAddress, sizeof(XineramaScreenInfo), true);
     info->screen_number = 1;
     info->x_org = 0;
     info->y_org = 0;

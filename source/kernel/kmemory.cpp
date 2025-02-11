@@ -238,26 +238,7 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         }
         if ((flags & 1) != 0) { // MREMAP_MAYMOVE
             result = this->mmap(thread, 0, newsize, prot, f | K_MAP_ANONYMOUS, -1, 0);
-
-            U32 pageStart = result >> K_PAGE_SHIFT;
-            
-            for (U32 i = 0; i < oldPageCount; i++) {
-                Page* oldPage = data->mmu[oldPageStart + i];
-                Page* newPage = data->mmu[pageStart + i];
-
-                Page::Type oldType = oldPage->getType();
-                if (oldType == Page::Type::Invalid_Page) {
-                    continue; // valid page but hasn't been read from or written to yet
-                } else if (oldType == Page::Type::NO_Page || oldType == Page::Type::RO_Page || oldType == Page::Type::WO_Page || oldType == Page::Type::RW_Page) {
-                    RWPage* rwPage = (RWPage*)oldPage;
-                    data->setPageRam(rwPage->page, pageStart + i);
-                } else if (oldType == Page::Type::Copy_On_Write_Page) {
-                    CopyOnWritePage* rwPage = (CopyOnWritePage*)oldPage;
-                    data->setPageRam(rwPage->page, pageStart + i, true);
-                } else {
-                    kpanic("KMemory::mremap not implemented for page type");
-                }
-            }
+            this->memcpy(result, oldaddress, oldsize);
             this->unmap(oldaddress, oldsize);
             return result;
         }

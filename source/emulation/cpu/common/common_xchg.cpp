@@ -73,7 +73,7 @@ void common_cmpxchge32r32_lock(CPU* cpu, U32 address, U32 srcReg) {
     cpu->result.u32 = cpu->dst.u32 - cpu->src.u32;
     cpu->lazyFlags = FLAGS_CMP32;
 
-    LockData32* p = (LockData32*)cpu->memory->getIntPtr(address, true);
+    LockData32* p = (LockData32*)cpu->memory->getRamPtr(address, 4, true);
     std::atomic_ref<U32> mem(p->data);
     U32 expected = EAX;
     U32 desired = cpu->reg[srcReg].u32;
@@ -90,7 +90,7 @@ void common_cmpxchge16r16_lock(CPU* cpu, U32 address, U32 srcReg) {
     cpu->result.u16 = cpu->dst.u16 - cpu->src.u16;
     cpu->lazyFlags = FLAGS_CMP16;
 
-    LockData16* p = (LockData16*)cpu->memory->getIntPtr(address, true);
+    LockData16* p = (LockData16*)cpu->memory->getRamPtr(address, 2, true);
     std::atomic_ref<U16> mem(p->data);
 
     U16 expected = AX;
@@ -108,7 +108,7 @@ void common_cmpxchge8r8_lock(CPU* cpu, U32 address, U32 srcReg) {
     cpu->result.u8 = cpu->dst.u8 - cpu->src.u8;
     cpu->lazyFlags = FLAGS_CMP8;
 
-    LockData8* p = (LockData8*)cpu->memory->getIntPtr(address, true);
+    LockData8* p = (LockData8*)cpu->memory->getRamPtr(address, 1, true);
     std::atomic_ref<U8> mem(p->data);
     U8 expected = AL;
     U8 desired = *cpu->reg8[srcReg];

@@ -107,8 +107,7 @@ public:
     U8* lockReadWriteMemory(U32 address, U32 len);
     void unlockMemory(U8* lockedPointer);
 
-    U8* getIntPtr(U32 address, bool write = false);
-    U8* getPtrForFutex(U32 address);
+    U8* getRamPtr(U32 address, U32 len, bool write = false, bool futex = false);
 
     // caller is responsible for making sure the address+len is valid
     void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);

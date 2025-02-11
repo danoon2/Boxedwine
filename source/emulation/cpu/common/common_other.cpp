@@ -173,7 +173,7 @@ void common_cmpxchg8b_lock(CPU* cpu, U32 address) {
 
     cpu->fillFlags();
 
-    LockData64* p = (LockData64*)cpu->memory->getIntPtr(address, true);
+    LockData64* p = (LockData64*)cpu->memory->getRamPtr(address, 8, true);
     std::atomic_ref<U64> mem(p->data);
 
     if (mem.compare_exchange_strong(expected, value)) {

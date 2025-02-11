@@ -393,10 +393,13 @@ void KMemory::writeb(U32 address, U8 value) {
         data->mmu[index]->writeb(address, value);
 }
 
-// used by futex, may point to shared memory
-U8* KMemory::getIntPtr(U32 address, bool write) {
+U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {
     U32 index = address >> K_PAGE_SHIFT;
     U32 offset = address & K_PAGE_MASK;
+
+    if (len + offset > K_PAGE_SIZE) {
+        kpanic("KMemory::getRamPtr");
+    }
     U8* result;
 
     if (write) {
@@ -404,20 +407,9 @@ U8* KMemory::getIntPtr(U32 address, bool write) {
     } else {
         result = data->mmu[index]->getReadPtr(this, address, true);
     }
+    
     if (result) {
-        result += offset;
-    }
-    return result;
-}
-
-U8* KMemory::getPtrForFutex(U32 address) {
-    U32 index = address >> K_PAGE_SHIFT;
-    U32 offset = address & K_PAGE_MASK;
-    // if this page isn't shared, then when we clone, we might make it copy on write which can result it getting a new ram address
-    // we want to prevent that if a futux is using that page
-    data->flags[index] |= PAGE_FUTEX;
-    U8* result = data->mmu[index]->getWritePtr(this, address, true);
-    if (result) {
+        data->flags[index] |= PAGE_FUTEX;
         result += offset;
     }
     return result;

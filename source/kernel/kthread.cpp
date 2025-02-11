@@ -304,7 +304,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
     if (isPrivate) {
         ramAddress = addr;
     } else {
-        ramAddress = (U64)memory->getPtrForFutex(addr);
+        ramAddress = (U64)memory->getRamPtr(addr, 4, false, true);
     }
     if (ramAddress == 0) {
         kpanic("Could not find futex address: %0.8X", addr);

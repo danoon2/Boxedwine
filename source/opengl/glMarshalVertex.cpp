@@ -19,7 +19,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
             if (p->marshal_size) {
                 free(p->marshal);
             }         
-            p->marshal = cpu->memory->getIntPtr(p->ptr);
+            p->marshal = cpu->memory->getRamPtr(p->ptr, datasize, false);
             p->marshal_size = 0;
             
             if (p->marshal) {
