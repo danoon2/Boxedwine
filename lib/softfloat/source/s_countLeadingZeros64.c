@@ -51,7 +51,7 @@ uint_fast8_t softfloat_countLeadingZeros64( uint64_t a )
     a32 = a>>32;
     if ( ! a32 ) {
         count = 32;
-        a32 = a;
+        a32 = (uint32_t)a;
     }
     /*------------------------------------------------------------------------
     | From here, result is current count + count leading zeros of `a32'.

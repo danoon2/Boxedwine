@@ -65,7 +65,7 @@ T* marshalArray(CPU* cpu, U32 address, U32 count) {
     U32 page = address >> K_PAGE_SHIFT;
     U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
     if (page == pageStop && cpu->memory->canRead(page)) {
-        return (T*)cpu->memory->getIntPtr(address);
+        return (T*)cpu->memory->getRamPtr(address, len, false);
     }
     if (!buffer) {
         buffer = new T * [index + 1];
@@ -150,7 +150,7 @@ public:
             U32 page = address >> K_PAGE_SHIFT;
             U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
             if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
-                return (T*)cpu->memory->getIntPtr(address, true);
+                return (T*)cpu->memory->getRamPtr(address, len, true);
             }
             buffer = marshalArray<T>(cpu, address, count);
         }
@@ -362,7 +362,7 @@ public:
                 U32 page = address >> K_PAGE_SHIFT;
                 U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
                 if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
-                    return (T*)cpu->memory->getIntPtr(address, true);
+                    return (T*)cpu->memory->getRamPtr(address, len, true);
                 }
             }
             buffer = marshalArray<T>(cpu, address, count);

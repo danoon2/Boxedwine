@@ -36,7 +36,10 @@ public:
     U32 address = 0;
     U64 len = 0;
     U64 offset = 0;
+    U32 key = 0; // key to KProcess::mappedFiles
 };
+
+typedef std::shared_ptr<MappedFile> MappedFilePtr;
 
 #define K_SIG_INFO_SIZE 10
 
@@ -230,6 +233,7 @@ public:
     void attachSHM(U32 address, const std::shared_ptr<SHM>& shm);
     void printMappedFiles();
     void cleanupProcess();
+    MappedFilePtr getMappedFile(U32 key);
 
     U32 id = 0;
     U32 parentId = 0;
@@ -303,7 +307,9 @@ private:
     BOXEDWINE_MUTEX attachedShmMutex;
 
     friend class KMemory;
-    BHashTable<U32, std::shared_ptr<MappedFile> > mappedFiles; // key is address
+    BHashTable<U32, MappedFilePtr> mappedFiles; // key is index
+    // needs to be static, since during clone, the file pages and mappedFiles are cloned with the same map index, so this nextMappedFileIndex must be shared across processes
+    static std::atomic_int nextMappedFileIndex;
     BOXEDWINE_MUTEX mappedFilesMutex;
 
     BHashTable<U32, KThread*> threads;

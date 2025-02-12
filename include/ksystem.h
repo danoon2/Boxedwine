@@ -54,8 +54,7 @@ public:
     virtual ~MappedFileCache();
     const BString name;
     std::shared_ptr<KFile> file;
-    KRamPtr* data = nullptr;
-    U32 dataSize = 0;
+    std::vector<RamPage> data;
 };
 
 class SHM {
@@ -66,7 +65,7 @@ public:
     void incAttach() {this->nattch++;}
     void decAttach() {this->nattch--;}
 
-    std::vector<KRamPtr> pages;
+    std::vector<RamPage> pages;
     const U32 id;
     U32 len = 0;
     const U32 key;

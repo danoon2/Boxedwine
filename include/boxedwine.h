@@ -28,7 +28,7 @@
 #ifdef BOXEDWINE_X64
 #define BOXEDWINE_4K_PAGE_SIZE
 // with BOXEDWINE_USE_SSE_FOR_FPU enabled, quake 2 was about 8% slower, mdk perf was about 3% slower
-#define BOXEDWINE_USE_SSE_FOR_FPU
+#define BOXEDWINE_USE_SSE_FOR_FPU1
 #endif
 
 #if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)

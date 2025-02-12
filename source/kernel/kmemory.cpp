@@ -7,7 +7,9 @@
 #include "../emulation/softmmu/soft_copy_on_write_page.h"
 
 MappedFileCache::~MappedFileCache() {
-    delete[] this->data;
+    for (RamPage& page : data) {
+        ramPageRelease(page);
+    }
 }
 
 void KMemory::shutdown() {
@@ -21,6 +23,9 @@ KMemory::KMemory(KProcess* process) : process(process) {
 KMemory::~KMemory() {
     if (data) {
         delete data;
+    }
+    if (deleteOnNextLoop) {
+        delete deleteOnNextLoop;
     }
 }
 
@@ -138,6 +143,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
             mappedFile->len = ((U64)pageCount) << K_PAGE_SHIFT;
             mappedFile->offset = off;
             mappedFile->file = std::dynamic_pointer_cast<KFile>(fd->kobject);
+            mappedFile->key = this->process->nextMappedFileIndex++;
             bool addFileToSystemCache = true;
             if (addFileToSystemCache) {
                 std::shared_ptr<MappedFileCache> cache = KSystem::getFileCache(mappedFile->file->openFile->node->path);
@@ -146,12 +152,11 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
                     KSystem::setFileCache(mappedFile->file->openFile->node->path, cache);
                     cache->file = mappedFile->file;
                     U32 size = ((U32)((fd->kobject->length() + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT));
-                    cache->data = new KRamPtr[size];
-                    cache->dataSize = size;
+                    cache->data.resize(size);
                 }
                 mappedFile->systemCacheEntry = cache;
             }
-            this->process->mappedFiles.set(mappedFile->address, mappedFile);
+            this->process->mappedFiles.set(mappedFile->key, mappedFile);
             this->data->allocPages(thread, pageStart, pageCount, permissions, fildes, off, mappedFile);
         } else {
             this->data->allocPages(thread, pageStart, pageCount, permissions, 0, 0, nullptr);
@@ -236,26 +241,7 @@ U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U
         }
         if ((flags & 1) != 0) { // MREMAP_MAYMOVE
             result = this->mmap(thread, 0, newsize, prot, f | K_MAP_ANONYMOUS, -1, 0);
-
-            U32 pageStart = result >> K_PAGE_SHIFT;
-            
-            for (U32 i = 0; i < oldPageCount; i++) {
-                Page* oldPage = data->mmu[oldPageStart + i];
-                Page* newPage = data->mmu[pageStart + i];
-
-                Page::Type oldType = oldPage->getType();
-                if (oldType == Page::Type::Invalid_Page) {
-                    continue; // valid page but hasn't been read from or written to yet
-                } else if (oldType == Page::Type::NO_Page || oldType == Page::Type::RO_Page || oldType == Page::Type::WO_Page || oldType == Page::Type::RW_Page) {
-                    RWPage* rwPage = (RWPage*)oldPage;
-                    data->setPageRam(rwPage->page, pageStart + i);
-                } else if (oldType == Page::Type::Copy_On_Write_Page) {
-                    CopyOnWritePage* rwPage = (CopyOnWritePage*)oldPage;
-                    data->setPageRam(rwPage->page, pageStart + i, true);
-                } else {
-                    kpanic("KMemory::mremap not implemented for page type");
-                }
-            }
+            this->memcpy(result, oldaddress, oldsize);
             this->unmap(oldaddress, oldsize);
             return result;
         }
@@ -271,12 +257,12 @@ U32 KMemory::unmap(U32 address, U32 len) {
     return 0;
 }
 
-U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<KRamPtr>& pages, U32 permissions) {
+U32 KMemory::mapPages(KThread* thread, U32 startPage, const std::vector<RamPage>& pages, U32 permissions) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (startPage == 0 && !data->reserveAddress(ADDRESS_PROCESS_MMAP_START, (U32)pages.size(), &startPage, false, false, PAGE_MAPPED)) {
         return 0;        
     }
-    this->data->allocPages(thread, startPage, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, (KRamPtr*)pages.data());
+    this->data->allocPages(thread, startPage, (U32)pages.size(), permissions | PAGE_MAPPED, 0, 0, nullptr, pages.data());
     return startPage << K_PAGE_SHIFT;
 }
 
@@ -312,7 +298,12 @@ bool KMemory::canRead(U32 address, U32 len) {
 
 void KMemory::execvReset(bool cloneVM) {
     if (!cloneVM) {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+        deleteOnNextLoop = data;
+        data = new KMemoryData(this);
+#else
         data->execvReset();
+#endif
     } else {
         // data no longer shared with parent
         data = new KMemoryData(this);
@@ -434,5 +425,5 @@ void KMemory::iteratePages(U32 address, U32 len, std::function<bool(U32 page)> c
 }
 
 U32 KMemory::getPageFlags(U32 page) {
-    return data->flags[page];
+    return data->mmu[page].flags;
 }

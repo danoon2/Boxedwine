@@ -69,7 +69,7 @@ uint_fast32_t
     roundBits = sig & 0xFFF;
     sig += roundIncrement;
     if ( sig & UINT64_C( 0xFFFFF00000000000 ) ) goto invalid;
-    z = sig>>12;
+    z = (uint_fast32_t)(sig>>12);
     if ( 
         (roundBits == 0x800) && (roundingMode == softfloat_round_near_even)
     ) {

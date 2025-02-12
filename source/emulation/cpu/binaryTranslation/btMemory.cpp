@@ -85,15 +85,10 @@ void BtMemory::freeExcutableMemory(U8* hostMemory, U32 actualSize) {
         memset(hostMemory, 0xcd, actualSize);
         });
 
-    //U32 size = 0;
-    //U32 powerOf2Size = powerOf2(actualSize, size);
-    //U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
-    //this->freeExecutableMemory[index].push_back(hostMemory);
-
-    // :TODO: when this recycled, make sure we delay the recycling in case another thread is also waiting in seh_filter 
-    // for its turn to jump to this chunk at the same time another thread retranslated it
-    //
-    // I saw this in the Real Deal installer
+    U32 size = 0;
+    U32 powerOf2Size = powerOf2(actualSize, size);
+    U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
+    this->freeExecutableMemory[index].push_back(hostMemory);
 }
 
 void BtMemory::executableMemoryReleased() {
@@ -116,7 +111,7 @@ void BtMemory::removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
 // called when BtCodeChunk is being alloc'd
 void BtMemory::addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-    memory->addCodeBlock(chunk->getEip(), chunk);
+    memory->addCodeBlock(chunk);
 }
 
 bool BtMemory::isEipPageCommitted(U32 page) {

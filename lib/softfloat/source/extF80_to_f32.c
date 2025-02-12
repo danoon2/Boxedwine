@@ -74,7 +74,7 @@ float32_sf extF80_to_f32( extFloat80_t a )
     }
     /*------------------------------------------------------------------------
     *------------------------------------------------------------------------*/
-    sig32 = softfloat_shortShiftRightJam64( sig, 33 );
+    sig32 = (uint_fast32_t)softfloat_shortShiftRightJam64( sig, 33 );
     if ( ! (exp | sig32) ) {
         uiZ = packToF32UI( sign, 0, 0 );
         goto uiZ;

@@ -32,6 +32,16 @@ void BtCPU::run() {
         if (this->inException) {
             this->inException = false;
         }
+        if (this->memory->deleteOnNextLoop) {
+            // a bit ugly
+            // see CodePageData::addCode
+            // that code uses a custom deleter that looks at the current thread->memory->data
+            KMemoryData* data = this->memory->data;
+            this->memory->data = this->memory->deleteOnNextLoop;
+            delete this->memory->deleteOnNextLoop;
+            this->memory->data = data;
+            this->memory->deleteOnNextLoop = nullptr;
+        }
 #endif
     }
 }
@@ -156,7 +166,7 @@ U64 BtCPU::startException(U64 address, bool readAddress) {
         this->thread->seg_mapper((U32)address, readAddress, !readAddress);
         U64 result = (U64)this->translateEip(this->eip.u32);
         if (result == 0) {
-            kpanic("Armv8btCPU::startException failed to translate code in exception");
+            kpanic("BtCPU::startException failed to translate code in exception");
         }
         return result;
     }
@@ -175,7 +185,7 @@ U64 BtCPU::handleFpuException(int code) {
     }
     U64 result = (U64)this->translateEip(this->eip.u32);
     if (result == 0) {
-        kpanic("Armv8btCPU::handleFpuException failed to translate code");
+        kpanic("BtCPU::handleFpuException failed to translate code");
     }
     return result;
 }

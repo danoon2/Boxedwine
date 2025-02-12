@@ -546,7 +546,9 @@ static BHashTable<U32, std::shared_ptr<SHM> > shmKey;
 #define PRIVATE_SHMID 0x40000000
 
 SHM::~SHM() {
-
+    for (RamPage& page : pages) {
+        ramPageRelease(page);
+    }
 }
 
 U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {
