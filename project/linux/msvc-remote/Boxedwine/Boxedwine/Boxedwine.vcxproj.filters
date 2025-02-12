@@ -118,10 +118,22 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_native_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ram.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_wo_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\io\fs.cpp">
@@ -902,12 +914,6 @@
     <ClCompile Include="..\..\..\..\..\source\test\testFPU.cpp">
       <Filter>source\test</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\codePageData.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_mmu.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1530,13 +1536,25 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_invalid_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_native_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_no_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_ram.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_ro_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_rw_page.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_wo_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\io\fs.h">
@@ -2421,12 +2439,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\test\testFPU.h">
       <Filter>source\test</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\codePageData.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_mmu.h">
-      <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
