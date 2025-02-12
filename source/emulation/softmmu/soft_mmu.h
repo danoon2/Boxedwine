@@ -7,10 +7,10 @@ class MMU {
 public:
     U32 ramIndex : 20;
     U32 type : 3;
-    U32 pad : 1;    
-    U32 flags : 6;        
-    U32 canReadRam : 1;    
     U32 canWriteRam : 1;
+    U32 flags : 6;    
+    U32 pad : 1;    
+    U32 canReadRam : 1;    
 
     RamPage getRamPageIndex() {
         if (getPageType() != PageType::File) {

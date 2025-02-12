@@ -7,8 +7,6 @@
 #include "../dynamic/dynamic_memory.h"
 #include "../../softmmu/kmemory_soft.h"
 
-extern U8* ramPages[K_NUMBER_OF_PAGES];
-
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
 
 /********************************************************/
@@ -614,30 +612,20 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     outb(0xe8);
     outb(0x0c);
 
-    // mov eax, [mmu+sizeof(MMU)*index];
+    // mov eax, [currentMMUReadPtr+sizeof(U8*)*index];
     outb(0x8b);
     outb(0x04);
     outb(0x85);
-    outd((U32)getMemData(KThread::currentThread()->memory)->mmu);
+    outd((U32)getMemData(KThread::currentThread()->memory)->mmuReadPtr);
 
-    // test eax, 0x40000000 (mmu[index].canReadRam)
-    outb(0xa9);
-    outd(0x40000000);
+    // test eax, eax
+    outb(0x85);
+    outb(0xc0);
 
     // jz
     outb(0x74);
     U32 jzPos = outBufferPos;
     outb(0); // skip over cached read
-
-    // and eax, 0xfffff (bottom 20 bits of mmu contains ram page index)
-    outb(0x25);
-    outd(0xfffff);
-
-    // mov eax, [eax*4 + ramPages]
-    outb(0x8b);
-    outb(0x04);
-    outb(0x85);
-    outd((U32)ramPages);
 
     // mov eax, [eax+(address & 0xFFF)]
     U32 reg;
@@ -979,32 +967,20 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     outb(0xe8 | reg1);
     outb(0x0c);
 
-    // mov reg1, [mmu+sizeof(MMU*)*index];
+    // mov reg1, [currentMMUWritePtr+sizeof(U8*)*index];
     outb(0x8b);
     outb(0x04|(reg1<<3));
     outb(0x85|(reg1<<3));
-    outd((U32)getMemData(KThread::currentThread()->memory)->mmu);
+    outd((U32)getMemData(KThread::currentThread()->memory)->mmuWritePtr);
 
-    // test reg1, 0x80000000
-    outb(0xf7);
-    outb(0xc0 | reg1);
-    outd(0x80000000);
+    // test reg1, reg1
+    outb(0x85);
+    outb(0xc0 | reg1 | (reg1 << 3));
 
     // jz
     outb(0x74);
     U32 jzPos = outBufferPos;
     outb(0); // skip over cached read
-
-    // and reg1, 0xfffff (bottom 20 bits of mmu contains ram page index)
-    outb(0x81);
-    outb(0xe0 | reg1);
-    outd(0xfffff);
-
-    // mov reg1, [reg1*4 + ramPages]
-    outb(0x8b);
-    outb(0x04 | (reg1 << 3));
-    outb(0x85 | (reg1 << 3));
-    outd((U32)ramPages);
 
     // mov eax, [eax+(address & 0xFFF)]
     U32 reg2;
