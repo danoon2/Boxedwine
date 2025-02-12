@@ -22,6 +22,7 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep) {
 
     cpu->flags = (ep->ContextRecord->EFlags & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
     cpu->lazyFlags = FLAGS_NONE;    
+    cpu->eip.u32 = getMemData(cpu->memory)->codeCache.getEipFromHost((U8*)ep->ContextRecord->Rip) - cpu->seg[CS].address;
 
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
     if (cpu->fpu.isMMXInUse) {
@@ -173,7 +174,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         syncToException(ep);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
-        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler
+        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler        
         DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);

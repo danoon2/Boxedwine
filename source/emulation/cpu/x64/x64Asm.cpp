@@ -997,7 +997,7 @@ void X64Asm::getRamPage(U8 memReg, U8 pageReg, bool isWrite) {
 #ifdef BOXEDWINE_4K_PAGE_SIZE
 void X64Asm::checkMemory4k(U8 emulatedAddressReg, bool isRex, bool isWrite, U32 width, U8 memReg, bool skipAlignmentCheck, U8 tmpReg) {
     // the exception handler will need this
-    writeToMemFromValue(startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
+    // writeToMemFromValue(startOfOpIp, HOST_CPU, true, -1, false, 0, CPU_OFFSET_EIP, 4, false);
 
     // get page
     U8 pageReg = getTmpReg();

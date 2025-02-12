@@ -193,7 +193,8 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     cpu->exceptionSigNo = info->si_signo;
     cpu->exceptionSigCode = info->si_code;
     x64Cpu->exceptionIp = context->CONTEXT_RIP;
-    
+    cpu->eip.u32 = getMemData(cpu->memory)->codeCache.getEipFromHost((U8*)context->CONTEXT_RIP) - cpu->seg[CS].address;
+
     context->CONTEXT_RIP = (U64)cpu->thread->process->runSignalAddress;
 }
 
