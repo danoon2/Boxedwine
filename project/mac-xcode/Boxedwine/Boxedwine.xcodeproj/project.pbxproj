@@ -320,7 +320,6 @@
 		1A80EF1A276EBCC70032A70A /* self.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1A2433BBBE003F17F1 /* self.cpp */; };
 		1A80EF1C276EBCC70032A70A /* threadutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F348C2440D7FB0038F5A4 /* threadutils.cpp */; };
 		1A80EF1E276EBCC70032A70A /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
-		1A80EF22276EBCC70032A70A /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
 		1A80EF28276EBCC70032A70A /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		1A80EF2F276EBCC70032A70A /* glMarshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4D2433BBBE003F17F1 /* glMarshal.cpp */; };
 		1A80EF30276EBCC70032A70A /* cpuonline.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE322433BBBE003F17F1 /* cpuonline.cpp */; };
@@ -329,7 +328,6 @@
 		1A80EF33276EBCC70032A70A /* knativesystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091372644D42B003413C3 /* knativesystem.cpp */; };
 		1A80EF34276EBCC70032A70A /* boxedTranslation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD122433BBBE003F17F1 /* boxedTranslation.cpp */; };
 		1A80EF36276EBCC70032A70A /* ksystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1E2433BBBE003F17F1 /* ksystem.cpp */; };
-		1A80EF39276EBCC70032A70A /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		1A80EF3A276EBCC70032A70A /* audiounit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC479C2648471000EE5FCC /* audiounit.cpp */; };
 		1A80EF3C276EBCC70032A70A /* synchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD532433BBBE003F17F1 /* synchronization.cpp */; };
 		1A80EF3E276EBCC70032A70A /* menubar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD252433BBBE003F17F1 /* menubar.cpp */; };
@@ -370,7 +368,6 @@
 		1A80EF99276EBCC70032A70A /* common_bit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD982433BBBE003F17F1 /* common_bit.cpp */; };
 		1A80EF9A276EBCC70032A70A /* unzipDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715EABB92460C839001B4730 /* unzipDlg.cpp */; };
 		1A80EFA5276EBCC70032A70A /* meminfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE192433BBBE003F17F1 /* meminfo.cpp */; };
-		1A80EFA7276EBCC70032A70A /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
 		1A80EFAA276EBCC70032A70A /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
 		1A80EFAB276EBCC70032A70A /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1A80EFAE276EBCC70032A70A /* fszipnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEC2433BBBE003F17F1 /* fszipnode.cpp */; };
@@ -392,7 +389,6 @@
 		1A80F00A276EBCC70032A70A /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
 		1A80F00D276EBCC70032A70A /* coremidi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4795264827A600EE5FCC /* coremidi.cpp */; };
 		1A80F00E276EBCC70032A70A /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
-		1A80F013276EBCC70032A70A /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		1A80F014276EBCC70032A70A /* esopengl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE552433BBBE003F17F1 /* esopengl.c */; };
 		1A80F015276EBCC70032A70A /* fsdynamiclinknode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AB0D6DA26CB4AA800E18A08 /* fsdynamiclinknode.cpp */; };
 		1A80F016276EBCC70032A70A /* configFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD402433BBBE003F17F1 /* configFile.cpp */; };
@@ -496,7 +492,6 @@
 		1A80F164276EBF170032A70A /* self.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1A2433BBBE003F17F1 /* self.cpp */; };
 		1A80F166276EBF170032A70A /* threadutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F348C2440D7FB0038F5A4 /* threadutils.cpp */; };
 		1A80F168276EBF170032A70A /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
-		1A80F16C276EBF170032A70A /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
 		1A80F172276EBF170032A70A /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		1A80F176276EBF170032A70A /* platform.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091542644D44E003413C3 /* platform.cpp */; };
 		1A80F179276EBF170032A70A /* glMarshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4D2433BBBE003F17F1 /* glMarshal.cpp */; };
@@ -506,7 +501,6 @@
 		1A80F17D276EBF170032A70A /* boxedwineData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD392433BBBE003F17F1 /* boxedwineData.cpp */; };
 		1A80F17E276EBF170032A70A /* boxedTranslation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD122433BBBE003F17F1 /* boxedTranslation.cpp */; };
 		1A80F180276EBF170032A70A /* ksystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1E2433BBBE003F17F1 /* ksystem.cpp */; };
-		1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		1A80F185276EBF170032A70A /* (null) in Sources */ = {isa = PBXBuildFile; };
 		1A80F186276EBF170032A70A /* synchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD532433BBBE003F17F1 /* synchronization.cpp */; };
 		1A80F187276EBF170032A70A /* audiounit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC479C2648471000EE5FCC /* audiounit.cpp */; };
@@ -550,7 +544,6 @@
 		1A80F1E6276EBF170032A70A /* knativecoreaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4793264826FD00EE5FCC /* knativecoreaudio.cpp */; };
 		1A80F1E9276EBF170032A70A /* knativeaudio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091392644D42C003413C3 /* knativeaudio.cpp */; };
 		1A80F1F0276EBF170032A70A /* meminfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE192433BBBE003F17F1 /* meminfo.cpp */; };
-		1A80F1F2276EBF170032A70A /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
 		1A80F1F3276EBF170032A70A /* knativethread.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091382644D42B003413C3 /* knativethread.cpp */; };
 		1A80F1F6276EBF170032A70A /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
 		1A80F1F9276EBF170032A70A /* fszipnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEC2433BBBE003F17F1 /* fszipnode.cpp */; };
@@ -572,7 +565,6 @@
 		1A80F24E276EBF170032A70A /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF72433BBBE003F17F1 /* fs.cpp */; };
 		1A80F258276EBF170032A70A /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
 		1A80F25B276EBF170032A70A /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
-		1A80F25F276EBF170032A70A /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		1A80F260276EBF170032A70A /* esopengl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE552433BBBE003F17F1 /* esopengl.c */; };
 		1A80F261276EBF170032A70A /* configFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD402433BBBE003F17F1 /* configFile.cpp */; };
 		1A80F263276EBF170032A70A /* readIcons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD142433BBBE003F17F1 /* readIcons.cpp */; };
@@ -955,14 +947,10 @@
 		71222B742435169100CDBABD /* instructions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBE2433BBBE003F17F1 /* instructions.cpp */; };
 		71222B752435169100CDBABD /* normal_strings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC02433BBBE003F17F1 /* normal_strings.cpp */; };
 		71222B762435169100CDBABD /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
-		71222B792435169100CDBABD /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
 		71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
-		71222B7B2435169100CDBABD /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD62433BBBE003F17F1 /* soft_file_map.cpp */; };
 		71222B7D2435169100CDBABD /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
 		71222B7E2435169100CDBABD /* soft_copy_on_write_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDA2433BBBE003F17F1 /* soft_copy_on_write_page.cpp */; };
-		71222B7F2435169100CDBABD /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
-		71222B802435169100CDBABD /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		71222B812435169100CDBABD /* soft_invalid_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE12433BBBE003F17F1 /* soft_invalid_page.cpp */; };
 		71222B822435169100CDBABD /* soft_rw_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE42433BBBE003F17F1 /* soft_rw_page.cpp */; };
 		71222B842435169100CDBABD /* fszip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE92433BBBE003F17F1 /* fszip.cpp */; };
@@ -1082,14 +1070,12 @@
 		71222C0924351CBA00CDBABD /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE132433BBBE003F17F1 /* main.cpp */; };
 		71222C0A24351CBA00CDBABD /* self.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1A2433BBBE003F17F1 /* self.cpp */; };
 		71222C0B24351CBA00CDBABD /* testSSE.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD452433BBBE003F17F1 /* testSSE.cpp */; };
-		71222C0C24351CBA00CDBABD /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
 		71222C0E24351CBA00CDBABD /* glMarshal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4D2433BBBE003F17F1 /* glMarshal.cpp */; };
 		71222C0F24351CBA00CDBABD /* cpuonline.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE322433BBBE003F17F1 /* cpuonline.cpp */; };
 		71222C1024351CBA00CDBABD /* x64Asm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD762433BBBE003F17F1 /* x64Asm.cpp */; };
 		71222C1124351CBA00CDBABD /* boxedwineData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD392433BBBE003F17F1 /* boxedwineData.cpp */; };
 		71222C1324351CBA00CDBABD /* boxedTranslation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD122433BBBE003F17F1 /* boxedTranslation.cpp */; };
 		71222C1424351CBA00CDBABD /* ksystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1E2433BBBE003F17F1 /* ksystem.cpp */; };
-		71222C1524351CBA00CDBABD /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		71222C1624351CBA00CDBABD /* synchronization.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD532433BBBE003F17F1 /* synchronization.cpp */; };
 		71222C1724351CBA00CDBABD /* menubar.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD252433BBBE003F17F1 /* menubar.cpp */; };
 		71222C1824351CBA00CDBABD /* common_pushpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD852433BBBE003F17F1 /* common_pushpop.cpp */; };
@@ -1121,7 +1107,6 @@
 		71222C3824351CBA00CDBABD /* ksignal.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE1C2433BBBE003F17F1 /* ksignal.cpp */; };
 		71222C3924351CBA00CDBABD /* common_bit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD982433BBBE003F17F1 /* common_bit.cpp */; };
 		71222C3A24351CBA00CDBABD /* meminfo.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE192433BBBE003F17F1 /* meminfo.cpp */; };
-		71222C3B24351CBA00CDBABD /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
 		71222C3C24351CBA00CDBABD /* fszipnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDEC2433BBBE003F17F1 /* fszipnode.cpp */; };
 		71222C3D24351CBA00CDBABD /* imgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227AC2433EE5300CDBABD /* imgui.cpp */; };
 		71222C3E24351CBA00CDBABD /* soft_rw_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE42433BBBE003F17F1 /* soft_rw_page.cpp */; };
@@ -1138,7 +1123,6 @@
 		71222C4E24351CBA00CDBABD /* fs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDF72433BBBE003F17F1 /* fs.cpp */; };
 		71222C5124351CBA00CDBABD /* appChooserDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD312433BBBE003F17F1 /* appChooserDlg.cpp */; };
 		71222C5224351CBA00CDBABD /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
-		71222C5324351CBA00CDBABD /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		71222C5424351CBA00CDBABD /* esopengl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE552433BBBE003F17F1 /* esopengl.c */; };
 		71222C5524351CBA00CDBABD /* configFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD402433BBBE003F17F1 /* configFile.cpp */; };
 		71222C5624351CBA00CDBABD /* readIcons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD142433BBBE003F17F1 /* readIcons.cpp */; };
@@ -1189,7 +1173,6 @@
 		7135DC21264EBCD0005D6AA6 /* cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9E2433BBBE003F17F1 /* cpu.cpp */; };
 		7135DC22264EBCD0005D6AA6 /* glMarshalSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */; };
 		7135DC23264EBCD0005D6AA6 /* player.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD512433BBBE003F17F1 /* player.cpp */; };
-		7135DC24264EBCD0005D6AA6 /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
 		7135DC25264EBCD0005D6AA6 /* log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD502433BBBE003F17F1 /* log.cpp */; };
 		7135DC26264EBCD0005D6AA6 /* decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDAA2433BBBE003F17F1 /* decoder.cpp */; };
 		7135DC27264EBCD0005D6AA6 /* devurandom.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2B2433BBBE003F17F1 /* devurandom.cpp */; };
@@ -1233,7 +1216,6 @@
 		7135DC4F264EBCD0005D6AA6 /* common_other.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD932433BBBE003F17F1 /* common_other.cpp */; };
 		7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2F2433BBBE003F17F1 /* kfiledescriptor.cpp */; };
 		7135DC51264EBCD0005D6AA6 /* loader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE392433BBBE003F17F1 /* loader.cpp */; };
-		7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		7135DC53264EBCD0005D6AA6 /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
 		7135DC54264EBCD0005D6AA6 /* glext.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE4A2433BBBE003F17F1 /* glext.cpp */; };
 		7135DC56264EBCD0005D6AA6 /* lazyFlags.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD8B2433BBBE003F17F1 /* lazyFlags.cpp */; };
@@ -1245,7 +1227,6 @@
 		7135DC5D264EBCD0005D6AA6 /* common_sse2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD972433BBBE003F17F1 /* common_sse2.cpp */; };
 		7135DC5E264EBCD0005D6AA6 /* common_pushpop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD852433BBBE003F17F1 /* common_pushpop.cpp */; };
 		7135DC5F264EBCD0005D6AA6 /* fileutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD552433BBBE003F17F1 /* fileutils.cpp */; };
-		7135DC60264EBCD0005D6AA6 /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		7135DC61264EBCD0005D6AA6 /* startupArgs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE0F2433BBBE003F17F1 /* startupArgs.cpp */; };
 		7135DC62264EBCD0005D6AA6 /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
 		7135DC64264EBCD0005D6AA6 /* mainloop.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE112433BBBE003F17F1 /* mainloop.cpp */; };
@@ -1254,7 +1235,6 @@
 		7135DC67264EBCD0005D6AA6 /* kfile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2C2433BBBE003F17F1 /* kfile.cpp */; };
 		7135DC68264EBCD0005D6AA6 /* common_bit.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD982433BBBE003F17F1 /* common_bit.cpp */; };
 		7135DC69264EBCD0005D6AA6 /* ktimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3B2433BBBE003F17F1 /* ktimer.cpp */; };
-		7135DC6A264EBCD0005D6AA6 /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
 		7135DC6B264EBCD0005D6AA6 /* common_xchg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9F2433BBBE003F17F1 /* common_xchg.cpp */; };
 		7135DC6C264EBCD0005D6AA6 /* bufferaccess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE172433BBBE003F17F1 /* bufferaccess.cpp */; };
 		7135DC6D264EBCD0005D6AA6 /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
@@ -1316,6 +1296,18 @@
 		7140975A2D4AA57300D10110 /* glew.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097472D4AA57300D10110 /* glew.cpp */; };
 		714097652D4AA94100D10110 /* testFPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097642D4AA94100D10110 /* testFPU.cpp */; };
 		714097662D4AA94100D10110 /* testFPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097642D4AA94100D10110 /* testFPU.cpp */; };
+		7140976B2D5C56FA00D10110 /* codePageData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097682D5C56FA00D10110 /* codePageData.cpp */; };
+		7140976C2D5C56FA00D10110 /* soft_mmu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140976A2D5C56FA00D10110 /* soft_mmu.cpp */; };
+		7140976D2D5C56FA00D10110 /* codePageData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097682D5C56FA00D10110 /* codePageData.cpp */; };
+		7140976E2D5C56FA00D10110 /* soft_mmu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140976A2D5C56FA00D10110 /* soft_mmu.cpp */; };
+		7140976F2D5C56FA00D10110 /* codePageData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097682D5C56FA00D10110 /* codePageData.cpp */; };
+		714097702D5C56FA00D10110 /* soft_mmu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140976A2D5C56FA00D10110 /* soft_mmu.cpp */; };
+		714097712D5C56FA00D10110 /* codePageData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097682D5C56FA00D10110 /* codePageData.cpp */; };
+		714097722D5C56FA00D10110 /* soft_mmu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140976A2D5C56FA00D10110 /* soft_mmu.cpp */; };
+		714097732D5C56FA00D10110 /* codePageData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097682D5C56FA00D10110 /* codePageData.cpp */; };
+		714097742D5C56FA00D10110 /* soft_mmu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140976A2D5C56FA00D10110 /* soft_mmu.cpp */; };
+		714097752D5C56FA00D10110 /* codePageData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 714097682D5C56FA00D10110 /* codePageData.cpp */; };
+		714097762D5C56FA00D10110 /* soft_mmu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7140976A2D5C56FA00D10110 /* soft_mmu.cpp */; };
 		715EABBA2460C839001B4730 /* unzipDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715EABB92460C839001B4730 /* unzipDlg.cpp */; };
 		715EABBB2460C839001B4730 /* unzipDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715EABB92460C839001B4730 /* unzipDlg.cpp */; };
 		715F34822440D7D10038F5A4 /* yesNoDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F34782440D7D00038F5A4 /* yesNoDlg.cpp */; };
@@ -1859,14 +1851,10 @@
 		71FBFE922433BBBE003F17F1 /* instructions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDBE2433BBBE003F17F1 /* instructions.cpp */; };
 		71FBFE932433BBBE003F17F1 /* normal_strings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC02433BBBE003F17F1 /* normal_strings.cpp */; };
 		71FBFE942433BBBE003F17F1 /* x32CPU.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDC72433BBBE003F17F1 /* x32CPU.cpp */; };
-		71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */; };
 		71FBFE982433BBBE003F17F1 /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
-		71FBFE992433BBBE003F17F1 /* soft_wo_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */; };
 		71FBFE9A2433BBBE003F17F1 /* soft_file_map.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD62433BBBE003F17F1 /* soft_file_map.cpp */; };
 		71FBFE9B2433BBBE003F17F1 /* soft_ram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */; };
 		71FBFE9C2433BBBE003F17F1 /* soft_copy_on_write_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDA2433BBBE003F17F1 /* soft_copy_on_write_page.cpp */; };
-		71FBFE9D2433BBBE003F17F1 /* soft_ro_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */; };
-		71FBFE9E2433BBBE003F17F1 /* soft_native_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */; };
 		71FBFE9F2433BBBE003F17F1 /* soft_invalid_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE12433BBBE003F17F1 /* soft_invalid_page.cpp */; };
 		71FBFEA02433BBBE003F17F1 /* soft_rw_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE42433BBBE003F17F1 /* soft_rw_page.cpp */; };
 		71FBFEA22433BBBE003F17F1 /* fszip.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDE92433BBBE003F17F1 /* fszip.cpp */; };
@@ -2308,6 +2296,10 @@
 		7140975E2D4AA57B00D10110 /* glew.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = glew.h; sourceTree = "<group>"; };
 		714097632D4AA94100D10110 /* testFPU.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = testFPU.h; sourceTree = "<group>"; };
 		714097642D4AA94100D10110 /* testFPU.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = testFPU.cpp; sourceTree = "<group>"; };
+		714097672D5C56FA00D10110 /* codePageData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = codePageData.h; sourceTree = "<group>"; };
+		714097682D5C56FA00D10110 /* codePageData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = codePageData.cpp; sourceTree = "<group>"; };
+		714097692D5C56FA00D10110 /* soft_mmu.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = soft_mmu.h; sourceTree = "<group>"; };
+		7140976A2D5C56FA00D10110 /* soft_mmu.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = soft_mmu.cpp; sourceTree = "<group>"; };
 		715EABB82460C839001B4730 /* unzipDlg.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = unzipDlg.h; sourceTree = "<group>"; };
 		715EABB92460C839001B4730 /* unzipDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = unzipDlg.cpp; sourceTree = "<group>"; };
 		715F34782440D7D00038F5A4 /* yesNoDlg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = yesNoDlg.cpp; sourceTree = "<group>"; };
@@ -2662,22 +2654,14 @@
 		71FBFDC92433BBBE003F17F1 /* conditions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = conditions.h; sourceTree = "<group>"; };
 		71FBFDCA2433BBBE003F17F1 /* decode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decode.h; sourceTree = "<group>"; };
 		71FBFDCD2433BBBE003F17F1 /* soft_code_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_code_page.h; sourceTree = "<group>"; };
-		71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_no_page.cpp; sourceTree = "<group>"; };
 		71FBFDD02433BBBE003F17F1 /* soft_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_page.h; sourceTree = "<group>"; };
 		71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_code_page.cpp; sourceTree = "<group>"; };
-		71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_wo_page.cpp; sourceTree = "<group>"; };
-		71FBFDD32433BBBE003F17F1 /* soft_native_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_native_page.h; sourceTree = "<group>"; };
-		71FBFDD42433BBBE003F17F1 /* soft_ro_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_ro_page.h; sourceTree = "<group>"; };
 		71FBFDD52433BBBE003F17F1 /* soft_rw_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_rw_page.h; sourceTree = "<group>"; };
 		71FBFDD62433BBBE003F17F1 /* soft_file_map.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_file_map.cpp; sourceTree = "<group>"; };
-		71FBFDD72433BBBE003F17F1 /* soft_no_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_no_page.h; sourceTree = "<group>"; };
 		71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_ram.cpp; sourceTree = "<group>"; };
 		71FBFDD92433BBBE003F17F1 /* soft_ram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_ram.h; sourceTree = "<group>"; };
 		71FBFDDA2433BBBE003F17F1 /* soft_copy_on_write_page.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_copy_on_write_page.cpp; sourceTree = "<group>"; };
-		71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_ro_page.cpp; sourceTree = "<group>"; };
-		71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_native_page.cpp; sourceTree = "<group>"; };
 		71FBFDDE2433BBBE003F17F1 /* soft_file_map.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_file_map.h; sourceTree = "<group>"; };
-		71FBFDDF2433BBBE003F17F1 /* soft_wo_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_wo_page.h; sourceTree = "<group>"; };
 		71FBFDE02433BBBE003F17F1 /* soft_copy_on_write_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_copy_on_write_page.h; sourceTree = "<group>"; };
 		71FBFDE12433BBBE003F17F1 /* soft_invalid_page.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = soft_invalid_page.cpp; sourceTree = "<group>"; };
 		71FBFDE22433BBBE003F17F1 /* soft_invalid_page.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = soft_invalid_page.h; sourceTree = "<group>"; };
@@ -3871,25 +3855,21 @@
 		71FBFDCB2433BBBE003F17F1 /* softmmu */ = {
 			isa = PBXGroup;
 			children = (
+				714097672D5C56FA00D10110 /* codePageData.h */,
+				714097682D5C56FA00D10110 /* codePageData.cpp */,
+				714097692D5C56FA00D10110 /* soft_mmu.h */,
+				7140976A2D5C56FA00D10110 /* soft_mmu.cpp */,
 				1AA711B72B4FBCCB008704E2 /* kmemory_soft.cpp */,
 				1AA711B62B4FBCCB008704E2 /* kmemory_soft.h */,
 				71FBFDCD2433BBBE003F17F1 /* soft_code_page.h */,
-				71FBFDCF2433BBBE003F17F1 /* soft_no_page.cpp */,
 				71FBFDD02433BBBE003F17F1 /* soft_page.h */,
 				71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */,
-				71FBFDD22433BBBE003F17F1 /* soft_wo_page.cpp */,
-				71FBFDD32433BBBE003F17F1 /* soft_native_page.h */,
-				71FBFDD42433BBBE003F17F1 /* soft_ro_page.h */,
 				71FBFDD52433BBBE003F17F1 /* soft_rw_page.h */,
 				71FBFDD62433BBBE003F17F1 /* soft_file_map.cpp */,
-				71FBFDD72433BBBE003F17F1 /* soft_no_page.h */,
 				71FBFDD82433BBBE003F17F1 /* soft_ram.cpp */,
 				71FBFDD92433BBBE003F17F1 /* soft_ram.h */,
 				71FBFDDA2433BBBE003F17F1 /* soft_copy_on_write_page.cpp */,
-				71FBFDDC2433BBBE003F17F1 /* soft_ro_page.cpp */,
-				71FBFDDD2433BBBE003F17F1 /* soft_native_page.cpp */,
 				71FBFDDE2433BBBE003F17F1 /* soft_file_map.h */,
-				71FBFDDF2433BBBE003F17F1 /* soft_wo_page.h */,
 				71FBFDE02433BBBE003F17F1 /* soft_copy_on_write_page.h */,
 				71FBFDE12433BBBE003F17F1 /* soft_invalid_page.cpp */,
 				71FBFDE22433BBBE003F17F1 /* soft_invalid_page.h */,
@@ -4472,7 +4452,6 @@
 				1A80EF1C276EBCC70032A70A /* threadutils.cpp in Sources */,
 				1A80EF1E276EBCC70032A70A /* testSSE.cpp in Sources */,
 				1A0F95422C912B6B00E5A9BF /* xcolormap.cpp in Sources */,
-				1A80EF22276EBCC70032A70A /* soft_ro_page.cpp in Sources */,
 				1A80EF28276EBCC70032A70A /* MacPlatform.m in Sources */,
 				1AC5F2E32772D957001D0FCA /* armv8btOps.cpp in Sources */,
 				1AC5F2E92772D957001D0FCA /* armv8btAsm.cpp in Sources */,
@@ -4489,7 +4468,6 @@
 				1A80EF36276EBCC70032A70A /* ksystem.cpp in Sources */,
 				1A55D62F2A0841E2002B7021 /* inflate.c in Sources */,
 				1A0F94E82C912B6B00E5A9BF /* xcursor.cpp in Sources */,
-				1A80EF39276EBCC70032A70A /* soft_native_page.cpp in Sources */,
 				1AE7E5DA2B5A1C7D00D29E4A /* btData.cpp in Sources */,
 				714097442D4AA53F00D10110 /* pugixml.cpp in Sources */,
 				1A80EF3A276EBCC70032A70A /* audiounit.cpp in Sources */,
@@ -4559,7 +4537,6 @@
 				1A80EF99276EBCC70032A70A /* common_bit.cpp in Sources */,
 				1A80EF9A276EBCC70032A70A /* unzipDlg.cpp in Sources */,
 				1A80EFA5276EBCC70032A70A /* meminfo.cpp in Sources */,
-				1A80EFA7276EBCC70032A70A /* soft_no_page.cpp in Sources */,
 				1A80EFAA276EBCC70032A70A /* installView.cpp in Sources */,
 				1A80EFAB276EBCC70032A70A /* llvm_helper.cpp in Sources */,
 				1A0F95602C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
@@ -4595,7 +4572,6 @@
 				1A80F00D276EBCC70032A70A /* coremidi.cpp in Sources */,
 				1A80F00E276EBCC70032A70A /* kfiledescriptor.cpp in Sources */,
 				1A55D6372A0841E2002B7021 /* inffast.c in Sources */,
-				1A80F013276EBCC70032A70A /* soft_wo_page.cpp in Sources */,
 				1A80F014276EBCC70032A70A /* esopengl.c in Sources */,
 				1A0F955A2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				1A80F015276EBCC70032A70A /* fsdynamiclinknode.cpp in Sources */,
@@ -4623,6 +4599,8 @@
 				1AC96019278FB69600107ED0 /* vk_host.cpp in Sources */,
 				1A80F048276EBCC70032A70A /* soft_invalid_page.cpp in Sources */,
 				1A80F049276EBCC70032A70A /* armv8CPU.cpp in Sources */,
+				714097712D5C56FA00D10110 /* codePageData.cpp in Sources */,
+				714097722D5C56FA00D10110 /* soft_mmu.cpp in Sources */,
 				1A80F04A276EBCC70032A70A /* lazyFlags.cpp in Sources */,
 				1A80F04B276EBCC70032A70A /* normal_shift.cpp in Sources */,
 				1A80F04C276EBCC70032A70A /* platformhelper.cpp in Sources */,
@@ -4808,7 +4786,6 @@
 				1A80F164276EBF170032A70A /* self.cpp in Sources */,
 				1A80F166276EBF170032A70A /* threadutils.cpp in Sources */,
 				1A80F168276EBF170032A70A /* testSSE.cpp in Sources */,
-				1A80F16C276EBF170032A70A /* soft_ro_page.cpp in Sources */,
 				1AA711C32B505C9A008704E2 /* kmemory_soft.cpp in Sources */,
 				718F07632D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				1A55D6622A08428F002B7021 /* uncompr.c in Sources */,
@@ -4825,7 +4802,6 @@
 				1A80F17E276EBF170032A70A /* boxedTranslation.cpp in Sources */,
 				1A80F180276EBF170032A70A /* ksystem.cpp in Sources */,
 				714097412D4AA53F00D10110 /* pugixml.cpp in Sources */,
-				1A80F183276EBF170032A70A /* soft_native_page.cpp in Sources */,
 				1A55D65A2A08428F002B7021 /* zutil.c in Sources */,
 				1A80F185276EBF170032A70A /* (null) in Sources */,
 				1ADBD8422B91944B0074867C /* devfb.cpp in Sources */,
@@ -4897,7 +4873,6 @@
 				1AA711B32B492273008704E2 /* bstring.cpp in Sources */,
 				1A80F1F0276EBF170032A70A /* meminfo.cpp in Sources */,
 				1A0F95612C912BD100E5A9BF /* knativescreenSDL.cpp in Sources */,
-				1A80F1F2276EBF170032A70A /* soft_no_page.cpp in Sources */,
 				1A80F1F3276EBF170032A70A /* knativethread.cpp in Sources */,
 				1A80F1F6276EBF170032A70A /* installView.cpp in Sources */,
 				1A80F1F9276EBF170032A70A /* fszipnode.cpp in Sources */,
@@ -4933,7 +4908,6 @@
 				1A80F258276EBF170032A70A /* appChooserDlg.cpp in Sources */,
 				1A0F955B2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				1A80F25B276EBF170032A70A /* kfiledescriptor.cpp in Sources */,
-				1A80F25F276EBF170032A70A /* soft_wo_page.cpp in Sources */,
 				1A80F260276EBF170032A70A /* esopengl.c in Sources */,
 				1A80F261276EBF170032A70A /* configFile.cpp in Sources */,
 				1A80F263276EBF170032A70A /* readIcons.cpp in Sources */,
@@ -4957,6 +4931,8 @@
 				1A80F290276EBF170032A70A /* boxedApp.cpp in Sources */,
 				1A80F297276EBF170032A70A /* soft_invalid_page.cpp in Sources */,
 				1A80F298276EBF170032A70A /* lazyFlags.cpp in Sources */,
+				714097752D5C56FA00D10110 /* codePageData.cpp in Sources */,
+				714097762D5C56FA00D10110 /* soft_mmu.cpp in Sources */,
 				1A55D65E2A08428F002B7021 /* compress.c in Sources */,
 				1A80F299276EBF170032A70A /* normal_shift.cpp in Sources */,
 				1A80F29A276EBF170032A70A /* platformhelper.cpp in Sources */,
@@ -5097,7 +5073,6 @@
 				1AC5F2C72772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				71222B422435163F00CDBABD /* player.cpp in Sources */,
 				1AEBC3A42AABC1AC007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
-				71222B792435169100CDBABD /* soft_no_page.cpp in Sources */,
 				1AC5F2AF2772D957001D0FCA /* armv8btOps_sse_shuffle.cpp in Sources */,
 				71222B412435163F00CDBABD /* log.cpp in Sources */,
 				1AC9601B278FB69600107ED0 /* vk_host.cpp in Sources */,
@@ -5165,7 +5140,6 @@
 				1A0F95142C912B6B00E5A9BF /* x11common.cpp in Sources */,
 				71222BAE2435169100CDBABD /* kfiledescriptor.cpp in Sources */,
 				71222BB52435169100CDBABD /* loader.cpp in Sources */,
-				71222B802435169100CDBABD /* soft_native_page.cpp in Sources */,
 				71222B7A2435169100CDBABD /* soft_code_page.cpp in Sources */,
 				71222BC12435169100CDBABD /* glext.cpp in Sources */,
 				71222B662435169100CDBABD /* lazyFlags.cpp in Sources */,
@@ -5177,7 +5151,6 @@
 				71222B6B2435169100CDBABD /* common_sse2.cpp in Sources */,
 				71222B652435169100CDBABD /* common_pushpop.cpp in Sources */,
 				71222B442435163F00CDBABD /* fileutils.cpp in Sources */,
-				71222B7B2435169100CDBABD /* soft_wo_page.cpp in Sources */,
 				1AE7E5D72B5A1C7800D29E4A /* btCpu.cpp in Sources */,
 				71222B942435169100CDBABD /* startupArgs.cpp in Sources */,
 				1A0F94FC2C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
@@ -5196,7 +5169,6 @@
 				71222B6C2435169100CDBABD /* common_bit.cpp in Sources */,
 				71222BB72435169100CDBABD /* ktimer.cpp in Sources */,
 				1ADBD8682B92E7B60074867C /* sysdev.cpp in Sources */,
-				71222B7F2435169100CDBABD /* soft_ro_page.cpp in Sources */,
 				1A0F955C2C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
 				1ADBD87B2B94249B0074867C /* procstat.cpp in Sources */,
 				71222B702435169100CDBABD /* common_xchg.cpp in Sources */,
@@ -5339,6 +5311,8 @@
 				1ADBD8842B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71222BB92435169100CDBABD /* kpoll.cpp in Sources */,
 				71222B3C2435163100CDBABD /* testSSE.cpp in Sources */,
+				714097732D5C56FA00D10110 /* codePageData.cpp in Sources */,
+				714097742D5C56FA00D10110 /* soft_mmu.cpp in Sources */,
 				1A0F950E2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -5422,7 +5396,6 @@
 				715F34912440D7FC0038F5A4 /* threadutils.cpp in Sources */,
 				1A68217A2BF44BC0001AA732 /* kevent.cpp in Sources */,
 				71222C0B24351CBA00CDBABD /* testSSE.cpp in Sources */,
-				71222C0C24351CBA00CDBABD /* soft_ro_page.cpp in Sources */,
 				1ADBD8592B92E7B60074867C /* sysdevices.cpp in Sources */,
 				7120545F244D074000C3CB1B /* MacPlatform.m in Sources */,
 				1AC5F2E22772D957001D0FCA /* armv8btOps.cpp in Sources */,
@@ -5439,7 +5412,6 @@
 				71222C1424351CBA00CDBABD /* ksystem.cpp in Sources */,
 				1A55D6582A08428F002B7021 /* zutil.c in Sources */,
 				1ADBD8472B92E7A50074867C /* sysbus.cpp in Sources */,
-				71222C1524351CBA00CDBABD /* soft_native_page.cpp in Sources */,
 				1A55D62E2A0841E2002B7021 /* inflate.c in Sources */,
 				71222C1624351CBA00CDBABD /* synchronization.cpp in Sources */,
 				1A0F94DB2C912B6B00E5A9BF /* xvisualinfo.cpp in Sources */,
@@ -5517,7 +5489,6 @@
 				7100914C2644D42C003413C3 /* knativeaudio.cpp in Sources */,
 				71222C3A24351CBA00CDBABD /* meminfo.cpp in Sources */,
 				1A0F95782C9132DC00E5A9BF /* bheap.cpp in Sources */,
-				71222C3B24351CBA00CDBABD /* soft_no_page.cpp in Sources */,
 				710091492644D42C003413C3 /* knativethread.cpp in Sources */,
 				715F842D24464C080038F5A4 /* installView.cpp in Sources */,
 				71222C3C24351CBA00CDBABD /* fszipnode.cpp in Sources */,
@@ -5590,6 +5561,8 @@
 				71B492F32D4AA1B800A8AB32 /* s_approxRecip_1Ks.c in Sources */,
 				71B492F62D4AA1B800A8AB32 /* extF80_div.c in Sources */,
 				71B492F72D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c in Sources */,
+				7140976B2D5C56FA00D10110 /* codePageData.cpp in Sources */,
+				7140976C2D5C56FA00D10110 /* soft_mmu.cpp in Sources */,
 				71B492F82D4AA1B800A8AB32 /* s_commonNaNToF64UI.c in Sources */,
 				71B492F92D4AA1B800A8AB32 /* s_roundToUI32.c in Sources */,
 				71B492FB2D4AA1B800A8AB32 /* extF80_isSignalingNaN.c in Sources */,
@@ -5626,7 +5599,6 @@
 				71222C5124351CBA00CDBABD /* appChooserDlg.cpp in Sources */,
 				1A55D6362A0841E2002B7021 /* inffast.c in Sources */,
 				71222C5224351CBA00CDBABD /* kfiledescriptor.cpp in Sources */,
-				71222C5324351CBA00CDBABD /* soft_wo_page.cpp in Sources */,
 				71222C5424351CBA00CDBABD /* esopengl.c in Sources */,
 				71222C5524351CBA00CDBABD /* configFile.cpp in Sources */,
 				1AAC184A2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
@@ -5705,7 +5677,6 @@
 				7135DC21264EBCD0005D6AA6 /* cpu.cpp in Sources */,
 				7135DC22264EBCD0005D6AA6 /* glMarshalSize.cpp in Sources */,
 				7135DC23264EBCD0005D6AA6 /* player.cpp in Sources */,
-				7135DC24264EBCD0005D6AA6 /* soft_no_page.cpp in Sources */,
 				1AC5F2B62772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				7135DC25264EBCD0005D6AA6 /* log.cpp in Sources */,
 				7135DC26264EBCD0005D6AA6 /* decoder.cpp in Sources */,
@@ -5773,7 +5744,6 @@
 				7135DC50264EBCD0005D6AA6 /* kfiledescriptor.cpp in Sources */,
 				7135DC51264EBCD0005D6AA6 /* loader.cpp in Sources */,
 				1A0F95152C912B6B00E5A9BF /* x11common.cpp in Sources */,
-				7135DC52264EBCD0005D6AA6 /* soft_native_page.cpp in Sources */,
 				1AEBC3A02AABC111007ECB08 /* BoxedwineUnitTestsMain.m in Sources */,
 				1AC5F2C82772D957001D0FCA /* armv8btOps_shift.cpp in Sources */,
 				7135DC53264EBCD0005D6AA6 /* soft_code_page.cpp in Sources */,
@@ -5793,7 +5763,6 @@
 				1A0F94FD2C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				7135DC5F264EBCD0005D6AA6 /* fileutils.cpp in Sources */,
 				1A0F95742C91326600E5A9BF /* platformOpenGL.cpp in Sources */,
-				7135DC60264EBCD0005D6AA6 /* soft_wo_page.cpp in Sources */,
 				7135DC61264EBCD0005D6AA6 /* startupArgs.cpp in Sources */,
 				1ADBD86F2B92E7B60074867C /* sysfs.cpp in Sources */,
 				7135DC62264EBCD0005D6AA6 /* glfunctions_ext1.cpp in Sources */,
@@ -5811,7 +5780,6 @@
 				1ADBD87C2B94249B0074867C /* procstat.cpp in Sources */,
 				7135DC68264EBCD0005D6AA6 /* common_bit.cpp in Sources */,
 				7135DC69264EBCD0005D6AA6 /* ktimer.cpp in Sources */,
-				7135DC6A264EBCD0005D6AA6 /* soft_ro_page.cpp in Sources */,
 				1AAC183F2C1E96430089C40D /* pixelMatch.cpp in Sources */,
 				7135DC6B264EBCD0005D6AA6 /* common_xchg.cpp in Sources */,
 				71B4933D2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */,
@@ -5949,6 +5917,8 @@
 				1ADBD8852B9E25DA0074867C /* knetlink.cpp in Sources */,
 				7135DC95264EBCD0005D6AA6 /* testSSE.cpp in Sources */,
 				1AC5F2E02772D957001D0FCA /* arm8btFlags.cpp in Sources */,
+				7140976D2D5C56FA00D10110 /* codePageData.cpp in Sources */,
+				7140976E2D5C56FA00D10110 /* soft_mmu.cpp in Sources */,
 				1A0F950F2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -6048,7 +6018,6 @@
 				1A0F950A2C912B6B00E5A9BF /* xpixmap.cpp in Sources */,
 				715F34902440D7FC0038F5A4 /* threadutils.cpp in Sources */,
 				71FBFE722433BBBE003F17F1 /* testSSE.cpp in Sources */,
-				71FBFE9D2433BBBE003F17F1 /* soft_ro_page.cpp in Sources */,
 				7120545E244D074000C3CB1B /* MacPlatform.m in Sources */,
 				1ADBD8462B92E7A50074867C /* sysbus.cpp in Sources */,
 				1AC5F2BD2772D957001D0FCA /* armv8btData.cpp in Sources */,
@@ -6071,7 +6040,6 @@
 				1A0F94F82C912B6B00E5A9BF /* xdisplay.cpp in Sources */,
 				71FBFE5A2433BBBE003F17F1 /* boxedTranslation.cpp in Sources */,
 				71FBFEBE2433BBBE003F17F1 /* ksystem.cpp in Sources */,
-				71FBFE9E2433BBBE003F17F1 /* soft_native_page.cpp in Sources */,
 				1ADBD8772B94249B0074867C /* procstat.cpp in Sources */,
 				1AFC479D2648471000EE5FCC /* audiounit.cpp in Sources */,
 				1AE7E5C42B5A1BD200D29E4A /* btCpu.cpp in Sources */,
@@ -6135,7 +6103,6 @@
 				1A0F94CE2C912B6B00E5A9BF /* xscreen.cpp in Sources */,
 				1ADBD8802B9E25DA0074867C /* knetlink.cpp in Sources */,
 				71FBFEB92433BBBE003F17F1 /* meminfo.cpp in Sources */,
-				71FBFE972433BBBE003F17F1 /* soft_no_page.cpp in Sources */,
 				715F842C24464C080038F5A4 /* installView.cpp in Sources */,
 				1A0F954C2C912B6B00E5A9BF /* xinput2.cpp in Sources */,
 				1ADBD85E2B92E7B60074867C /* sysmouse.cpp in Sources */,
@@ -6200,6 +6167,8 @@
 				71B494612D4AA1B800A8AB32 /* s_approxRecip_1Ks.c in Sources */,
 				71B494642D4AA1B800A8AB32 /* extF80_div.c in Sources */,
 				71B494652D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c in Sources */,
+				7140976F2D5C56FA00D10110 /* codePageData.cpp in Sources */,
+				714097702D5C56FA00D10110 /* soft_mmu.cpp in Sources */,
 				71B494662D4AA1B800A8AB32 /* s_commonNaNToF64UI.c in Sources */,
 				71B494672D4AA1B800A8AB32 /* s_roundToUI32.c in Sources */,
 				71B494692D4AA1B800A8AB32 /* extF80_isSignalingNaN.c in Sources */,
@@ -6242,7 +6211,6 @@
 				1AFC4798264827A600EE5FCC /* coremidi.cpp in Sources */,
 				1AAC18492C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				71FBFECD2433BBBE003F17F1 /* kfiledescriptor.cpp in Sources */,
-				71FBFE992433BBBE003F17F1 /* soft_wo_page.cpp in Sources */,
 				71FBFEE52433BBBE003F17F1 /* esopengl.c in Sources */,
 				1AB0D6DC26CB4AA800E18A08 /* fsdynamiclinknode.cpp in Sources */,
 				71FBFE702433BBBE003F17F1 /* configFile.cpp in Sources */,
