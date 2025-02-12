@@ -107,7 +107,7 @@ public:
     U8* lockReadWriteMemory(U32 address, U32 len);
     void unlockMemory(U8* lockedPointer);
 
-    U8* getRamPtr(U32 address, U32 len, bool write, bool futex = false);
+    U8* getRamPtr(U32 address, U32 len, bool write = false, bool futex = false);
 
     // caller is responsible for making sure the address+len is valid
     void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);
@@ -133,14 +133,12 @@ public:
     void removeCodeBlock(U32 address, U32 len);
 
     BOXEDWINE_MUTEX mutex;
-    KMemoryData* deleteOnNextLoop = nullptr;
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
     friend BtMemory;        
-    friend class BtCPU;
 
-    KMemoryData* data;    
+    KMemoryData* data;
     KProcess* process;
 
     class LockedMemory {

@@ -52,11 +52,9 @@ private:
 
 #define BOXEDWINE_CRITICAL_SECTION static std::recursive_mutex csMutex; const std::lock_guard<std::recursive_mutex> lock(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex) const std::lock_guard<std::recursive_mutex> lock(csMutex);
-#define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION_MUTEX(csMutex) std::unique_lock<std::mutex> boxedWineCriticalSection(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond) std::unique_lock<std::mutex> boxedWineCriticalSection((csCond)->m);
 
 #define BOXEDWINE_MUTEX std::recursive_mutex
-#define BOXEDWINE_MUTEX_NR std::mutex
 #define BOXEDWINE_MUTEX_LOCK(mutex) mutex.lock()
 #define BOXEDWINE_MUTEX_TRY_LOCK(mutex) mutex.try_lock()
 #define BOXEDWINE_MUTEX_UNLOCK(mutex) mutex.unlock()
@@ -73,11 +71,9 @@ private:
 #else
 #define BOXEDWINE_CRITICAL_SECTION
 #define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex)
-#define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION_MUTEX(csMutex)
 #define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond)
 
 typedef void* BOXEDWINE_MUTEX;
-typedef void* BOXEDWINE_MUTEX_NR;
 #define BOXEDWINE_MUTEX_LOCK(mutex)
 #define BOXEDWINE_MUTEX_TRY_LOCK(mutex) true
 #define BOXEDWINE_MUTEX_UNLOCK(mutex)

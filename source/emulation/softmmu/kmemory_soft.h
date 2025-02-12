@@ -4,7 +4,6 @@
 class CodePage;
 
 #include "codePageData.h"
-#include "soft_mmu.h"
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../cpu/binaryTranslation/btMemory.h"
@@ -19,8 +18,10 @@ public:
     KMemoryData(KMemory* memory);
     ~KMemoryData();
 
+    void setPage(U32 index, Page* page);
     void addCallback(OpCallback func);
-    Page* getPage(U32 page) {return mmu[page].getPage();};
+    void setPageRam(RamPage ram, U32 page, bool copyOnWrite = false);
+    Page* getPage(U32 page) {return mmu[page];};
     void allocPages(KThread* thread, U32 page, U32 pageCount, U8 permissions, FD fd, U64 offset, const std::shared_ptr<MappedFile>& mappedFile, const RamPage* ramPages = nullptr);
     bool reserveAddress(U32 startingPage, U32 pageCount, U32* result, bool canBeReMapped, bool alignNative, U32 reservedFlag);
     void protectPage(KThread* thread, U32 i, U32 permissions);
@@ -31,7 +32,8 @@ public:
 
     KMemory* memory;
 
-    MMU mmu[K_NUMBER_OF_PAGES];
+    Page* mmu[K_NUMBER_OF_PAGES];    
+    U8 flags[K_NUMBER_OF_PAGES];
 
     CodePage* getOrCreateCodePage(U32 address);
 

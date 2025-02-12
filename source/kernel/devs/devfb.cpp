@@ -485,14 +485,13 @@ U32 DevFB::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 o
         screenPixels = new U8[1280 * 1024 * 4];
     }
     for (U32 i=0;i<pageCount;i++) {
-        MMU& mmu = mem->mmu[i + pageStart];
-        if (mmu.getPageType() != PageType::None) {
+        if (mem->getPage(i+pageStart)->getType()!=Page::Type::Invalid_Page) {
             kpanic("Something else got mapped into the framebuffer address");
         }
         RamPage ram = ramPageAllocNative(screenPixels + (i << K_PAGE_SHIFT));
-        mmu.setPage(getMemData(memory), i + pageStart, PageType::Ram, ram);
-        mmu.setFlags(flags);
+        mem->setPage(i+pageStart, RWPage::alloc(ram, (i + pageStart) << K_PAGE_SHIFT));
         ramPageRelease(ram); // setPage retains
+        mem->flags[i + pageStart] = flags;
     }    
     return fb_fix_screeninfo.smem_start;
 }

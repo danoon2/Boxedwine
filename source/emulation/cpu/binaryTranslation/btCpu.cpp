@@ -32,16 +32,6 @@ void BtCPU::run() {
         if (this->inException) {
             this->inException = false;
         }
-        if (this->memory->deleteOnNextLoop) {
-            // a bit ugly
-            // see CodePageData::addCode
-            // that code uses a custom deleter that looks at the current thread->memory->data
-            KMemoryData* data = this->memory->data;
-            this->memory->data = this->memory->deleteOnNextLoop;
-            delete this->memory->deleteOnNextLoop;
-            this->memory->data = data;
-            this->memory->deleteOnNextLoop = nullptr;
-        }
 #endif
     }
 }

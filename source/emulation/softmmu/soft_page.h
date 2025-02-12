@@ -24,37 +24,34 @@
 
 class KThread;
 class KMemory;
-class MMU;
-
-enum class PageType {
-    None = 0,
-    Ram = 1,
-    Code = 2,
-    File = 3,
-    CopyOnWrite = 4
-};
 
 class Page {
 public:
-    virtual U8 readb(MMU* mmu, U32 address) = 0;
-    virtual void writeb(MMU* mmu, U32 address, U8 value) = 0;
-    virtual U16 readw(MMU* mmu, U32 address) = 0;
-    virtual void writew(MMU* mmu, U32 address, U16 value) = 0;
-    virtual U32 readd(MMU* mmu, U32 address) = 0;
-    virtual void writed(MMU* mmu, U32 address, U32 value) = 0;
+    enum class Type {
+        Invalid_Page,
+        RW_Page,
+        RO_Page,
+        WO_Page,
+        NO_Page,
+        File_Page,
+        Code_Page,
+        Copy_On_Write_Page
+    };
+    virtual ~Page() {};
 
-    virtual bool canReadRam(MMU* mmu) = 0;
-    virtual bool canWriteRam(MMU* mmu) = 0;
+    virtual U8 readb(U32 address)=0;
+    virtual void writeb(U32 address, U8 value)=0;
+    virtual U16 readw(U32 address)=0;
+    virtual void writew(U32 address, U16 value)=0;
+    virtual U32 readd(U32 address)=0;
+    virtual void writed(U32 address, U32 value)=0;
 
     // if address == 0 and len == 0, then its assumed to be the entire page
-    virtual U8* getRamPtr(MMU* mmu, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) = 0;
+    virtual U8* getRamPtr(KMemory* memory, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) = 0;
 
-    // file pages will read the file and convert to ram pages
-    // on demand ram pages will allocate the ram
-    virtual void onDemmand(MMU* mmu, U32 pageIndex) = 0;
-
-    static Page* getPage(PageType type);
-    static Page* getRWPage();
+    virtual bool inRam()=0;
+    virtual void close() = 0;    
+    virtual Type getType() = 0;    
 };
 
 #endif

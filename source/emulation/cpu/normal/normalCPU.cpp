@@ -230,9 +230,7 @@ void OPCALL emptyInst(CPU* cpu, DecodedOp* op) {
 DecodedOp emptyOp;
 
 void OPCALL lockOp8(CPU* cpu, DecodedOp* op) {
-    BOXEDWINE_CRITICAL_SECTION;
-    normalOps[op->inst](cpu, op);
-    /*
+    START_OP(cpu, op);
     START_OP(cpu, op);
     if (!cpu->tmpLockAddress) {
         cpu->tmpLockAddress = cpu->thread->process->alloc(cpu->thread, 4);
@@ -274,13 +272,9 @@ void OPCALL lockOp8(CPU* cpu, DecodedOp* op) {
     }
     cpu->eip.u32 = savedEip;
     NEXT();
-    */
 }
 
 void OPCALL lockOp16(CPU* cpu, DecodedOp* op) {
-    BOXEDWINE_CRITICAL_SECTION;
-    normalOps[op->inst](cpu, op);
-    /*
     START_OP(cpu, op);
     if (!cpu->tmpLockAddress) {
         cpu->tmpLockAddress = cpu->thread->process->alloc(cpu->thread, 4);
@@ -328,19 +322,9 @@ void OPCALL lockOp16(CPU* cpu, DecodedOp* op) {
     }
     cpu->eip.u32 = savedEip;
     NEXT();
-    */
 }
 
 void OPCALL lockOp32(CPU* cpu, DecodedOp* op) {
-    // :TODO: not sure why std::atomic_ref didn't work for me, it passes unit tests, but I see problems, especially in high contention areas
-    // like the audio thread where pthread_mutex will use cmpxchge32r32 with futex a lot.  The symptom that cmpxchge32r32 didn't work correctly
-    // is that 2 threads end up waiting on the same value for a futex
-
-    // this is pretty heavy to do a global lock for this instruction and the rest of the instructions in this block, but most blocks are small
-    // and so far this hasn't been a problem
-    BOXEDWINE_CRITICAL_SECTION;
-    normalOps[op->inst](cpu, op);
-    /*
     START_OP(cpu, op);
     if (!cpu->tmpLockAddress) {
         cpu->tmpLockAddress = cpu->thread->process->alloc(cpu->thread, 4);
@@ -388,7 +372,6 @@ void OPCALL lockOp32(CPU* cpu, DecodedOp* op) {
     }
     cpu->eip.u32 = savedEip;
     NEXT();
-    */
 }
 
 void OPCALL lockCmpXchg8b(CPU* cpu, DecodedOp* op) {

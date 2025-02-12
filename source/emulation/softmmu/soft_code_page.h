@@ -22,13 +22,24 @@
 #include "soft_rw_page.h"
 
 class CodePage : public RWPage {
+protected:
+    CodePage(RamPage page, U32 address);
+    ~CodePage();
+
 public:
-    void writeb(MMU* mmu, U32 address, U8 value) override;
-    void writew(MMU* mmu, U32 address, U16 value) override;
-    void writed(MMU* mmu, U32 address, U32 value) override;
-    bool canWriteRam(MMU* mmu) override;
-    U8* getRamPtr(MMU* mmu, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) override;
-    void onDemmand(MMU* mmu, U32 pageIndex) override;
+    static CodePage* alloc(RamPage page, U32 address);
+
+    // from Page
+    void writeb(U32 address, U8 value) override;
+    void writew(U32 address, U16 value) override;
+    void writed(U32 address, U32 value) override;
+    U8* getRamPtr(KMemory* memory, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) override;
+    Type getType() override { return Type::Code_Page; }
+    void close() override;
+
+private:
+    void copyOnWrite();
+    BOXEDWINE_MUTEX mutex;
 };
 
 #endif

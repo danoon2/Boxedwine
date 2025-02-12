@@ -3,56 +3,85 @@
 #include "soft_copy_on_write_page.h"
 #include "soft_ram.h"
 #include "kmemory_soft.h"
-#include "soft_mmu.h"
 
-void CopyOnWritePage::writeb(MMU* mmu, U32 address, U8 value) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
-    RWPage::writeb(mmu, address, value);
+CopyOnWritePage* CopyOnWritePage::alloc(RamPage page, U32 address) {
+    return new CopyOnWritePage(page, address);
 }
 
-void CopyOnWritePage::writew(MMU* mmu, U32 address, U16 value) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
-    RWPage::writew(mmu, address, value);
-}
-
-void CopyOnWritePage::writed(MMU* mmu, U32 address, U32 value) {
-    onDemmand(mmu, address >> K_PAGE_SHIFT);
-    RWPage::writed(mmu, address, value);
-}
-
-bool CopyOnWritePage::canWriteRam(MMU* mmu) {
-    return false;
-}
-
-U8* CopyOnWritePage::getRamPtr(MMU* mmu, U32 page, bool write, bool force, U32 offset, U32 len) {
-    if (!write) {
-        return RWPage::getRamPtr(mmu, page, write, force, offset, len);
-    }
-    if (!force) {
-        return nullptr;
-    }
-    onDemmand(mmu, page);
-    return RWPage::getRamPtr(mmu, page, write, force, offset, len);
-}
-
-void CopyOnWritePage::onDemmand(MMU* mmu, U32 pageIndex) {
+void CopyOnWritePage::copyOnWrite(U32 address) {	
+    RamPage ram;
     KMemory* memory = KThread::currentThread()->memory;
     KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+    U32 page = address >> K_PAGE_SHIFT;
 
-    if (mmu->getPageType() != PageType::CopyOnWrite) {
+    if (mem->getPage(page) != this) {
         return;
     }
 
-    if (!memory->mapShared(pageIndex) && ramPageUseCount((RamPage)mmu->ramIndex) > 1) {
-        RamPage ramIndex = ramPageAlloc();
-        RamPage currentRamPage = mmu->getRamPageIndex();
-
-        memcpy(ramPageGet(ramIndex), ramPageGet(currentRamPage), K_PAGE_SIZE);
-        mmu->setPage(getMemData(memory), pageIndex, PageType::Ram, ramIndex);
-        ramPageRelease(ramIndex);
+    if (!memory->mapShared(page) && ramPageUseCount(this->page)>1) {
+        ram = ramPageAlloc();
+        memcpy(ramPageGet(ram), ramPageGet(this->page), K_PAGE_SIZE);
     } else {
-        mmu->setPageType(getMemData(memory), pageIndex, PageType::Ram);
+        ram = this->page;
+        ramPageRetain(ram);
+    }    
+
+    mem->setPageRam(ram, address >> K_PAGE_SHIFT, false);
+    ramPageRelease(ram); // setPageRam will retain
+}
+
+void CopyOnWritePage::writeb(U32 address, U8 value) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
+    copyOnWrite(address);
+    data->memory->writeb(address, value);
+}
+
+void CopyOnWritePage::writew(U32 address, U16 value) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
+    copyOnWrite(address);
+    data->memory->writew(address, value);
+}
+
+void CopyOnWritePage::writed(U32 address, U32 value) {
+    KMemoryData* data = getMemData(KThread::currentThread()->memory);
+    copyOnWrite(address);
+    data->memory->writed(address, value);
+}
+
+U8 CopyOnWritePage::readb(U32 address) {
+    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
+        return RWPage::readb(address);
     }
-    getMemData(memory)->onPageChanged(pageIndex);
+    KThread::currentThread()->seg_access(address, true, false);
+    return 0;
+}
+
+U16 CopyOnWritePage::readw(U32 address) {
+    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
+        return RWPage::readw(address);
+    }
+    KThread::currentThread()->seg_access(address, true, false);
+    return 0;
+}
+
+U32 CopyOnWritePage::readd(U32 address) {
+    if (KThread::currentThread()->memory->canRead(address >> K_PAGE_SHIFT)) {
+        return RWPage::readd(address);
+    }
+    KThread::currentThread()->seg_access(address, true, false);
+    return 0;
+}
+
+U8* CopyOnWritePage::getRamPtr(KMemory* memory, U32 page, bool write, bool force, U32 offset, U32 len) {
+    if (memory->canRead(page) && !write) {
+        return RWPage::getRamPtr(memory, page, write, force, offset, len);
+    }
+
+    if (force && memory->canWrite(page) && write) {
+        KMemoryData* data = getMemData(memory);
+        copyOnWrite((page << K_PAGE_SHIFT) + offset);
+        return data->getPage(page)->getRamPtr(memory, page, write, force, offset, len);
+    }
+    return nullptr;
 }

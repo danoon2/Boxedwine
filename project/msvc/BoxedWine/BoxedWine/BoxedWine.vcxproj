@@ -857,10 +857,12 @@
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_file_map.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_mmu.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ram.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.h" />
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.h" />
     <ClInclude Include="..\..\..\..\source\io\fs.h" />
     <ClInclude Include="..\..\..\..\source\io\fsdiropennode.h" />
     <ClInclude Include="..\..\..\..\source\io\fsdynamiclinknode.h" />
@@ -2806,9 +2808,11 @@
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_file_map.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_invalid_page.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_mmu.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ram.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.cpp" />
     <ClCompile Include="..\..\..\..\source\io\fs.cpp" />
     <ClCompile Include="..\..\..\..\source\io\fsdiropennode.cpp" />
     <ClCompile Include="..\..\..\..\source\io\fsdynamiclinknode.cpp" />

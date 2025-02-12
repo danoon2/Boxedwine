@@ -85,10 +85,15 @@ void BtMemory::freeExcutableMemory(U8* hostMemory, U32 actualSize) {
         memset(hostMemory, 0xcd, actualSize);
         });
 
-    U32 size = 0;
-    U32 powerOf2Size = powerOf2(actualSize, size);
-    U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
-    this->freeExecutableMemory[index].push_back(hostMemory);
+    //U32 size = 0;
+    //U32 powerOf2Size = powerOf2(actualSize, size);
+    //U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
+    //this->freeExecutableMemory[index].push_back(hostMemory);
+
+    // :TODO: when this recycled, make sure we delay the recycling in case another thread is also waiting in seh_filter 
+    // for its turn to jump to this chunk at the same time another thread retranslated it
+    //
+    // I saw this in the Real Deal installer
 }
 
 void BtMemory::executableMemoryReleased() {

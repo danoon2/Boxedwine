@@ -168,21 +168,6 @@ void common_verw(CPU* cpu, U32 selector){
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void common_cmpxchg8b_lock(CPU* cpu, U32 address) {    
-    BOXEDWINE_CRITICAL_SECTION;
-
-    U64 value1 = ((U64)EDX) << 32 | EAX;
-    U64 value2 = cpu->memory->readq(address);
-    cpu->fillFlags();
-    if (value1 == value2) {
-        cpu->addZF();
-        cpu->memory->writed(address, EBX);
-        cpu->memory->writed(address + 4, ECX);
-    } else {
-        cpu->removeZF();
-        EDX = (U32)(value2 >> 32);
-        EAX = (U32)value2;
-    }
-    /*
     U64 expected = ((U64)EDX) << 32 | EAX;
     U64 value = ((U64)ECX) << 32 | EBX;
 
@@ -198,7 +183,6 @@ void common_cmpxchg8b_lock(CPU* cpu, U32 address) {
         EDX = (U32)(expected >> 32);
         EAX = (U32)expected;
     }
-    */
 }
 #endif
 

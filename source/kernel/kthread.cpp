@@ -29,7 +29,7 @@
 
 thread_local KThread* KThread::runningThread;
 
-BOXEDWINE_MUTEX_NR KThread::futexesMutex;
+BOXEDWINE_MUTEX KThread::futexesMutex;
 
 KThread::~KThread() {  
     for (auto& callback : callbacksOnExit) {
@@ -288,7 +288,7 @@ void freeFutex(struct futex* f) {
 void KThread::clearFutexes() {
     U32 i;
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION_MUTEX(KThread::futexesMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
     for (i=0;i<MAX_FUTEXES;i++) {
         if (system_futex[i].thread == this) {
             freeFutex(&system_futex[i]);
@@ -315,7 +315,6 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         cmd == FUTEX_CMP_REQUEUE_PI || cmd == FUTEX_WAKE_OP)
         val2 = (u32)(unsigned long)utime;
         */
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION_MUTEX(KThread::futexesMutex);
     if (cmd ==FUTEX_WAIT || cmd == FUTEX_WAIT_BITSET) {
         //klog("%x/%x futux WAIT addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
         struct futex* f=getFutex(this, ramAddress);
@@ -345,7 +344,9 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
             }
             expireTime += KSystem::getMilliesSinceStart();
         }
-        if (!f) {            
+        if (!f) {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
+
             U32 currentValue = memory->readd(addr);
             if (currentValue != value) {
                 //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
@@ -360,46 +361,46 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
             int ii = 0;
         }
         while (true) {                        
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
             if (this->pendingSignals) {
                 // I know this is a nested if statement, but it makes setting a break point easier
                 if (runSignals()) {
                     //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x RAN SIGNAL", id, process->id, addr, op, value, (U32)ramAddress);
-                    freeFutex(f);
                     return -K_CONTINUE;
                 }
             }
             if (f->wake) {
+#ifdef BOXEDWINE_MULTI_THREADED
+                // need to unlock before getting futexesMutex since FUTEX_WAKE will get futexesMutex then try to signal f->cond
+                boxedWineCriticalSection.unlock();
+#endif
+                BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
                 freeFutex(f);
                 return 0;
-            }
-            U32 currentValue = memory->readd(addr);
-            if (currentValue != value) {
-                //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE 2nd try %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
-                freeFutex(f);
-                return -K_EWOULDBLOCK;
-            }
+            }       
             if (f->expireTimeInMillies<0x7FFFFFFF) {
                 S32 diff = f->expireTimeInMillies - KSystem::getMilliesSinceStart();
                 if (diff<=0) {
+#ifdef BOXEDWINE_MULTI_THREADED
+                    // need to unlock before getting futexesMutex since FUTEX_WAKE will get futexesMutex then try to signal f->cond
+                    boxedWineCriticalSection.unlock();
+#endif
+                    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);
                     freeFutex(f);
                     return -K_ETIMEDOUT;
                 }
                 //klog("   %x/%x futux SLEEPING %x addr=%x op=%x val=%x ram=%x", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress);
                 BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, (U32)diff);
-                //klog("   %x/%x futux DONE SLEEPING %x addr=%x op=%x val=%x ram=%x wake=%d", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress, f->wake);
+                //klog("   %x/%x futux DONE SLEEPING %x addr=%x op=%x val=%x ram=%x", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress);
             } else {
-                //klog("   %x/%x futux SLEEPING addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
                 BOXEDWINE_CONDITION_WAIT(f->cond);
-                //klog("   %x/%x futux DONE SLEEPING addr=%x op=%x val=%x ram=%x wake=%d", id, process->id, addr, op, value, (U32)ramAddress, f->wake);
             }
 #ifdef BOXEDWINE_MULTI_THREADED
 			if (this->terminating) {
-                freeFutex(f);
 				return -K_EINTR;
 			}
             if (KThread::currentThread()->startSignal) {
                 KThread::currentThread()->startSignal = false;
-                freeFutex(f);
                 return -K_CONTINUE;
             }
 #endif
@@ -407,7 +408,9 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
     } else if (cmd ==FUTEX_WAKE || cmd == FUTEX_WAKE_BITSET) {
         U32 count = 0;
         //klog("%x/%x futux wake addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
-        {            
+        {
+            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(KThread::futexesMutex);            
+
             for (int i = 0; i < MAX_FUTEXES && count < value; i++) {
                 if (!system_futex[i].thread) {
                     continue;
@@ -416,13 +419,14 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
                 bool addressCheck = system_futex[i].address == ramAddress;
                 bool maskCheck = ((cmd != FUTEX_WAKE_BITSET) || (system_futex[i].mask & val3));
                 if (processCheck && addressCheck && !system_futex[i].wake && maskCheck) {
+                    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
                     system_futex[i].wake = true;
                     BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);
                     count++;
                 }
             }
         }
-        //klog("    %x/%x futux wake finished addr=%x op=%x val=%x ram=%x count=%d", id, process->id, addr, op, value, (U32)ramAddress, count);
+        //klog("    %x/%x futux wake finished addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
         return count;
     } else {
         kwarn("syscall __NR_futex op %d not implemented", op);
