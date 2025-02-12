@@ -44,9 +44,6 @@ public:
     U8* mmuReadPtr[K_NUMBER_OF_PAGES];
     U8* mmuWritePtr[K_NUMBER_OF_PAGES];
 #endif
-#else
-    U8* mmuReadPtr[K_NUMBER_OF_PAGES];
-    U8* mmuWritePtr[K_NUMBER_OF_PAGES];
 #endif  
 
 #ifdef BOXEDWINE_DYNAMIC

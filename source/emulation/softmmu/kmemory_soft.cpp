@@ -33,7 +33,7 @@ KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mm
 , mmuWritePtr{ 0 }
 #endif
 #else
-KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtr{ 0 }, mmuWritePtr{ 0 }
+KMemoryData::KMemoryData(KMemory* memory) : memory(memory)
 #endif
 {
     ::memset(mmu, 0, sizeof(mmu));
@@ -59,18 +59,7 @@ KMemoryData::~KMemoryData() {
 void KMemoryData::onPageChanged(U32 index) {
     Page* page = this->mmu[index].getPage();
     U32 address = index << K_PAGE_SHIFT;    
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
-    if (mmu[index].canReadRam) {
-        this->mmuReadPtr[index] = page->getRamPtr(&mmu[index], index, false);
-    } else {
-        this->mmuReadPtr[index] = nullptr;
-    }
-    if (mmu[index].canWriteRam) {
-        this->mmuWritePtr[index] = page->getRamPtr(&mmu[index], index, true);
-    } else {
-        this->mmuWritePtr[index] = nullptr;
-    }
-#else
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8* readPtr = page->getRamPtr(&mmu[index], index, false);
     if (mmu[index].canReadRam) {
         this->mmuReadPtrAdjusted[index] = readPtr - (index << K_PAGE_SHIFT);
@@ -78,7 +67,7 @@ void KMemoryData::onPageChanged(U32 index) {
         this->mmuReadPtr[index] = readPtr;
 #endif
     } else {
-        this->mmuReadPtrAdjusted[index] = nullptr;
+        this->mmuReadPtrAdjusted[index] = (U8*)0x0000002000000000l;
 #ifdef BOXEDWINE_4K_PAGE_SIZE
         this->mmuReadPtr[index] = nullptr;
 #endif
@@ -91,7 +80,7 @@ void KMemoryData::onPageChanged(U32 index) {
         this->mmuWritePtr[index] = writePtr;
 #endif
     } else {
-        this->mmuWritePtrAdjusted[index] = nullptr;
+        this->mmuWritePtrAdjusted[index] = (U8*)0x0000002000000000l;
 #ifdef BOXEDWINE_4K_PAGE_SIZE
         this->mmuWritePtr[index] = nullptr;
 #endif
@@ -235,8 +224,9 @@ U64 KMemory::readq(U32 address) {
 #if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
-        if (data->mmuReadPtr[index]) {
-            return *(U64*)(&data->mmuReadPtr[index][address & 0xFFF]);
+        MMU& mmu = data->mmu[index];
+        if (mmu.canReadRam) {
+            return *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
         }
     }
 #endif
@@ -247,8 +237,9 @@ U32 KMemory::readd(U32 address) {
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
 #if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        if (data->mmuReadPtr[index])
-            return *(U32*)(&data->mmuReadPtr[index][address & 0xFFF]);
+        MMU& mmu = data->mmu[index];
+        if (mmu.canReadRam)
+            return *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
 #endif
         return data->mmu[index].getPage()->readd(&data->mmu[index], address);
     } else {
@@ -260,8 +251,9 @@ U16 KMemory::readw(U32 address) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
 #if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        if (data->mmuReadPtr[index])
-            return *(U16*)(&data->mmuReadPtr[index][address & 0xFFF]);
+        MMU& mmu = data->mmu[index];
+        if (mmu.canReadRam)
+            return *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
 #endif
         return data->mmu[index].getPage()->readw(&data->mmu[index], address);
     }
@@ -271,8 +263,9 @@ U16 KMemory::readw(U32 address) {
 U8 KMemory::readb(U32 address) {
     int index = address >> 12;
 #if !defined(BOXEDWINE_BINARY_TRANSLATOR)
-    if (data->mmuReadPtr[index])
-        return data->mmuReadPtr[index][address & 0xFFF];
+    MMU& mmu = data->mmu[index];
+    if (mmu.canReadRam)
+        return ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF];
 #endif
     return data->mmu[index].getPage()->readb(&data->mmu[index], address);
 }
@@ -281,8 +274,9 @@ void KMemory::writeq(U32 address, U64 value) {
 #if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
     if ((address & 0xFFF) < 0xFF9) {
         int index = address >> 12;
-        if (data->mmuWritePtr[index]) {
-            *(U64*)(&data->mmuWritePtr[index][address & 0xFFF]) = value;
+        MMU& mmu = data->mmu[index];
+        if (mmu.canWriteRam) {
+            *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
             return;
         }
     }
@@ -294,8 +288,9 @@ void KMemory::writed(U32 address, U32 value) {
     if ((address & 0xFFF) < 0xFFD) {
         int index = address >> 12;
 #if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        if (data->mmuWritePtr[index])
-            *(U32*)(&data->mmuWritePtr[index][address & 0xFFF]) = value;
+        MMU& mmu = data->mmu[index];
+        if (mmu.canWriteRam)
+            *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
         else
 #endif
             data->mmu[index].getPage()->writed(&data->mmu[index], address, value);
@@ -311,8 +306,9 @@ void KMemory::writew(U32 address, U16 value) {
     if ((address & 0xFFF) < 0xFFF) {
         int index = address >> 12;
 #if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        if (data->mmuWritePtr[index])
-            *(U16*)(&data->mmuWritePtr[index][address & 0xFFF]) = value;
+        MMU& mmu = data->mmu[index];
+        if (mmu.canWriteRam)
+            *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
         else
 #endif
             data->mmu[index].getPage()->writew(&data->mmu[index], address, value);
@@ -325,8 +321,9 @@ void KMemory::writew(U32 address, U16 value) {
 void KMemory::writeb(U32 address, U8 value) {
     int index = address >> 12;
 #if !defined(BOXEDWINE_BINARY_TRANSLATOR)
-    if (data->mmuWritePtr[index])
-        data->mmuWritePtr[index][address & 0xFFF] = value;
+    MMU& mmu = data->mmu[index];
+    if (mmu.canWriteRam)
+        ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF] = value;
     else
 #endif
         data->mmu[index].getPage()->writeb(&data->mmu[index], address, value);

@@ -260,7 +260,22 @@ void CodePageData::addCode(KMemory* memory, CodeBlockParam block) {
     this->addCode(memory, block->getEip(), block, sharedBlock, block->getEipLen(), nullptr);
 }
 
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+U32 CodePageData::getEipFromHost(U8* host) {
+    for (int i = 0; i < CODE_ENTRIES; i++) {
+        CodePageEntry* entry = entries[i];
+        while (entry) {
+            U32 result = entry->block->getEipThatContainsHostAddress(host, nullptr, nullptr);
+            if (result) {
+                return result;
+            }
+            entry = entry->nextEntry;
+        }
+    }
+    return 0;
+}
+
+#else
 CodeBlock CodePageData::getCode(U32 eip) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     U32 offset = eip & K_PAGE_MASK;
@@ -389,3 +404,21 @@ CodePageData* CodeCache::getCodePageData(U32 address, bool create) {
     }
     return result;
 }
+
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+U32 CodeCache::getEipFromHost(U8* host) {
+    for (U32 i = 0; i < FIRST_INDEX_SIZE; i++) {
+        if (pageData[i]) {
+            for (U32 j = 0; j < SECOND_INDEX_SIZE; j++) {
+                if (pageData[i][j]) {
+                    U32 result = pageData[i][j]->getEipFromHost(host);
+                    if (result) {
+                        return result;
+                    }
+                }
+            }
+        }
+    }
+    return 0;
+}
+#endif
