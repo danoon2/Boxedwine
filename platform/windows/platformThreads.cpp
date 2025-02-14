@@ -173,7 +173,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         syncToException(ep);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
-        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler
+        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler        
         DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);

@@ -22,29 +22,21 @@
 #include "soft_page.h"
 
 class RWPage : public Page {
-protected:
-    RWPage(RamPage page, U32 address);
-public:    
-    static RWPage* alloc(RamPage page, U32 address);
-
-    virtual ~RWPage();
-
+public:
     // from Page
-    U8 readb(U32 address) override;
-    void writeb(U32 address, U8 value) override;
-    U16 readw(U32 address) override;
-    void writew(U32 address, U16 value) override;
-    U32 readd(U32 address) override;
-    void writed(U32 address, U32 value) override;
-    U8* getRamPtr(KMemory* memory, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) override;
+    U8 readb(MMU* mmu, U32 address) override;
+    void writeb(MMU* mmu, U32 address, U8 value) override;
+    U16 readw(MMU* mmu, U32 address) override;
+    void writew(MMU* mmu, U32 address, U16 value) override;
+    U32 readd(MMU* mmu, U32 address) override;
+    void writed(MMU* mmu, U32 address, U32 value) override;
+    bool canReadRam(MMU* mmu) override;
+    bool canWriteRam(MMU* mmu) override;
+    U8* getRamPtr(MMU* mmu, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) override;
+    void onDemmand(MMU* mmu, U32 pageIndex) override;
 
-    bool inRam() override {return true;}
-    void close() override {delete this;}
-    Type getType() override { return Type::RW_Page; }
-
-    RamPage page;
-    U8* ram;
-    U32 address;
+private:
+    U8* internalGetRamPtr(MMU* mmu, U32 page, bool write);
 };
 
 #endif

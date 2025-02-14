@@ -19,7 +19,9 @@ public:
 
     void addCode(KMemory* memory, CodeBlockParam block);
     CodeBlock findCode(U32 eip, U32 len);
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    U32 getEipFromHost(U8* host);
+#else
     CodeBlock getCode(U32 eip);
 #endif
 
@@ -84,7 +86,9 @@ public:
 
     void addCode(KMemory* memory, CodeBlockParam block);
     CodeBlock findCode(U32 eip, U32 len);
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    U32 getEipFromHost(U8* host);
+#else
     CodeBlock getCode(U32 eip);
 #endif
     void removeBlockAt(U32 address, U32 len);

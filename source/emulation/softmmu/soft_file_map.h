@@ -19,31 +19,21 @@
 #ifndef __KFMMAP_H__
 #define __KFMMAP_H__
 
-#include "soft_page.h"
+#include "soft_rw_page.h"
 
-class FilePage : public Page {
-protected:
-    FilePage(U32 key, U32 index) : key(key), index(index) {}
-
+class FilePage : public RWPage {
 public:
-    static FilePage* alloc(U32 key, U32 index);
-
     // from Page
-    U8 readb(U32 address) override;
-    void writeb(U32 address, U8 value) override;
-    U16 readw(U32 address) override;
-    void writew(U32 address, U16 value) override;
-    U32 readd(U32 address) override;
-    void writed(U32 address, U32 value) override;
-    U8* getRamPtr(KMemory* memory, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) override;
-    Type getType() override { return Type::File_Page; }
-    bool inRam() override {return false;}
-    void close() override {delete this;}
-
-    void ondemmandFile(U32 address);
-
-    U32 key;
-    U32 index;
+    U8 readb(MMU* mmu, U32 address) override;
+    void writeb(MMU* mmu, U32 address, U8 value) override;
+    U16 readw(MMU* mmu, U32 address) override;
+    void writew(MMU* mmu, U32 address, U16 value) override;
+    U32 readd(MMU* mmu, U32 address) override;
+    void writed(MMU* mmu, U32 address, U32 value) override;
+    bool canReadRam(MMU* mmu) override;
+    bool canWriteRam(MMU* mmu) override;
+    U8* getRamPtr(MMU* mmu, U32 page, bool write = false, bool force = false, U32 offset = 0, U32 len = 0) override;
+    void onDemmand(MMU* mmu, U32 pageIndex) override;
 };
 
 #endif

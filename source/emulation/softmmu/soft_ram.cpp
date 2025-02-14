@@ -120,6 +120,7 @@ RamPage ramPageAllocNative(U8* native) {
     }
     ramPages[foundIndex] = native;
     refCounts[foundIndex].refCount = 1;
+    refCounts[foundIndex].isNative = 1;
     RamPage result;
     result.value = foundIndex;
     return result;
@@ -150,6 +151,7 @@ RamPage ramPageAllocNative(U8* native) {
     }
     ramPages[index] = native;
     refCounts[index].refCount = 1;
+    refCounts[foundIndex].isNative = 1;
     RamPage result;
     result.value = index;
     return result;
