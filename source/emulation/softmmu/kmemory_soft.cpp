@@ -67,7 +67,7 @@ void KMemoryData::onPageChanged(U32 index) {
         this->mmuReadPtr[index] = readPtr;
 #endif
     } else {
-        this->mmuReadPtrAdjusted[index] = (U8*)0x0000002000000000l;
+        this->mmuReadPtrAdjusted[index] = nullptr;
 #ifdef BOXEDWINE_4K_PAGE_SIZE
         this->mmuReadPtr[index] = nullptr;
 #endif
@@ -80,7 +80,7 @@ void KMemoryData::onPageChanged(U32 index) {
         this->mmuWritePtr[index] = writePtr;
 #endif
     } else {
-        this->mmuWritePtrAdjusted[index] = (U8*)0x0000002000000000l;
+        this->mmuWritePtrAdjusted[index] = nullptr;
 #ifdef BOXEDWINE_4K_PAGE_SIZE
         this->mmuWritePtr[index] = nullptr;
 #endif

@@ -48,6 +48,7 @@ void MMU::setPermissions(U32 permissions) {
 #endif
     this->flags &= ~PAGE_PERMISSION_MASK;
     this->flags |= (permissions & PAGE_PERMISSION_MASK);    
+    onPageChanged();
 }
 
 void MMU::setFlags(U32 flags) {
