@@ -9,13 +9,10 @@
 void CodePage::onDemmand(MMU* mmu, U32 pageIndex) {
     KThread* thread = KThread::currentThread();
     if (!thread->memory->mapShared(pageIndex) && ramPageUseCount((RamPage)mmu->ramIndex) > 1) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->memory->mutex);
-        if (ramPageUseCount((RamPage)mmu->ramIndex) > 1) {
-            RamPage ram = ramPageAlloc();
-            ::memcpy(ramPageGet(ram), ramPageGet((RamPage)mmu->ramIndex), K_PAGE_SIZE);
-            mmu->setPage(getMemData(thread->memory), pageIndex, PageType::Code, ram);
-            getMemData(thread->memory)->onPageChanged(pageIndex);
-        }
+        RamPage ram = ramPageAlloc();
+        ::memcpy(ramPageGet(ram), ramPageGet((RamPage)mmu->ramIndex), K_PAGE_SIZE);
+        mmu->setPage(getMemData(thread->memory), pageIndex, PageType::Code, ram);
+        getMemData(thread->memory)->onPageChanged(pageIndex);
     }
 }
 
@@ -30,11 +27,8 @@ void CodePage::writeb(MMU* mmu, U32 address, U8 value) {
         if (currentValue == value) {
             return;
         }
-        if (ramPageUseCount((RamPage)mmu->ramIndex) == 1) {
-            memory->removeCodeBlock(address, 1);
-        } else {
-            onDemmand(mmu, address >> K_PAGE_SHIFT);
-        }
+        memory->removeCodeBlock(address, 1);
+        onDemmand(mmu, address >> K_PAGE_SHIFT);
         Page::getRWPage()->writeb(mmu, address, value);
     }
 }
@@ -63,11 +57,8 @@ void CodePage::writew(MMU* mmu, U32 address, U16 value) {
             }
             len++;
         }
-        if (ramPageUseCount((RamPage)mmu->ramIndex) == 1) {
-            memory->removeCodeBlock(startAddress, len);
-        } else {
-            onDemmand(mmu, address >> K_PAGE_SHIFT);
-        }
+        memory->removeCodeBlock(startAddress, len);
+        onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writew(mmu, address, value);
     }
 }
@@ -108,11 +99,8 @@ void CodePage::writed(MMU* mmu, U32 address, U32 value) {
             }
             endAddress = address + 3;
         }
-        if (ramPageUseCount((RamPage)mmu->ramIndex) == 1) {
-            memory->removeCodeBlock(startAddress, endAddress - startAddress + 1);
-        } else {
-            onDemmand(mmu, address >> K_PAGE_SHIFT);
-        }
+        memory->removeCodeBlock(startAddress, endAddress - startAddress + 1);
+        onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writed(mmu, address, value);
     }
 }
@@ -129,16 +117,11 @@ U8* CodePage::getRamPtr(MMU* mmu, U32 page, bool write, bool force, U32 offset, 
         if (!len && !offset) {
             len = K_PAGE_SIZE;
         }
-        if (ramPageUseCount((RamPage)mmu->ramIndex) == 1) {
-            KThread::currentThread()->memory->removeCodeBlock((page << K_PAGE_SHIFT) + offset, len);
-        } else {
-            onDemmand(mmu, page);
-        }
-        U8* result = ramPageGet((RamPage)mmu->ramIndex);
-        if (offset && result) {
-            result += offset;
-        }
-        return result;
+        KMemory* memory = KThread::currentThread()->memory;
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
+        memory->removeCodeBlock((page << K_PAGE_SHIFT) + offset, len);
+        onDemmand(mmu, page);
+        return Page::getRWPage()->getRamPtr(mmu, page, write, force, offset, len);
     }
     return nullptr;
 }
