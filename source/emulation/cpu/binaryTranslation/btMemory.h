@@ -25,8 +25,6 @@ public:
 	void addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
 	void removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk);
 
-	BOXEDWINE_MUTEX executableMemoryMutex;
-
 	class AllocatedMemory {
 	public:
 		AllocatedMemory(U8* memory, U32 size) : memory(memory), size(size) {}

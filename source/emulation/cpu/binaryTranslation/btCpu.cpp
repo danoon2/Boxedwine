@@ -90,7 +90,7 @@ U64 BtCPU::reTranslateChunk() {
     KMemoryData* mem = getMemData(memory);
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 #endif
     std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
     if (chunk) {
@@ -146,8 +146,7 @@ void* BtCPU::translateEipInternal(U32 ip) {
 }
 
 void* BtCPU::translateEip(U32 ip) {
-    KMemoryData* mem = getMemData(memory);
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 
     void* result = translateEipInternal(ip);
     makePendingCodePagesReadOnly();

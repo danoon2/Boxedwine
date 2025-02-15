@@ -71,7 +71,7 @@ void* Armv8btCPU::init() {
     KMemoryData* mem = getMemData(memory);
     Armv8btCPU* cpu = this;
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 	data.saveNativeState();
 
     data.writeToRegFromValue(xCPU, (U64)this);

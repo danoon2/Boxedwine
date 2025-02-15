@@ -202,6 +202,7 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
 
     cpu->flags = (ep->ContextRecord->X8 & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
     cpu->lazyFlags = FLAGS_NONE;
+    cpu->eip.u32 = getMemData(cpu->memory)->codeCache.getEipFromHost((U8*)ep->ContextRecord->Pc);
 
     for (int i = 0; i < 8; i++) {
         cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
