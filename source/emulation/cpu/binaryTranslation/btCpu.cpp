@@ -200,7 +200,7 @@ U64 BtCPU::handleAccessException(DecodedOp* op) {
     Page* page = getMemData(memory)->getPage(address >> K_PAGE_SHIFT);
     block->exceptionCount++;
     if (block->exceptionCount > 1000 && !block->retranslatedForException) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(getMemData(memory)->executableMemoryMutex);
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         if (!block->retranslatedForException) {
             use4kMemCheck = false;
             block->releaseAndRetranslate();

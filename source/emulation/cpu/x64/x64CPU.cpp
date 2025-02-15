@@ -47,7 +47,7 @@ void* x64CPU::init() {
         this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
     }
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
