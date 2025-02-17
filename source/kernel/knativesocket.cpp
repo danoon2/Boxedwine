@@ -181,12 +181,14 @@ void startNativeSocketsThread() {
 
 void stopNativeSocketsThread() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(checkWaitingNativeSocketsThreadMutex);
-    checkWaitingNativeSocketsThreadDone = true;
-    char buf = 0;
-    ::send(nativeSocketPipe[1], &buf, 1, 0);
-    checkWaitingNativeSocketsThread->wait();
-    checkWaitingNativeSocketsThreadDone = false;
-    checkWaitingNativeSocketsThread = nullptr;
+    if (checkWaitingNativeSocketsThread) {
+        checkWaitingNativeSocketsThreadDone = true;
+        char buf = 0;
+        ::send(nativeSocketPipe[1], &buf, 1, 0);
+        checkWaitingNativeSocketsThread->wait();
+        checkWaitingNativeSocketsThreadDone = false;
+        checkWaitingNativeSocketsThread = nullptr;
+    }
 }
 #endif
 
@@ -207,16 +209,21 @@ void addWaitingNativeSocket(const std::shared_ptr<KNativeSocketObject>& s) {
 }
 
 void removeWaitingSocket(S32 nativeSocket) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);
-    for (int i = 0; i < (int)waitingNativeSockets.size(); i++) {
-        if (waitingNativeSockets[i]->nativeSocket == nativeSocket) {
-            waitingNativeSockets.erase(waitingNativeSockets.begin() + i);
-            break;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);
+        for (int i = 0; i < (int)waitingNativeSockets.size(); i++) {
+            if (waitingNativeSockets[i]->nativeSocket == nativeSocket) {
+                waitingNativeSockets.erase(waitingNativeSockets.begin() + i);
+                break;
+            }
         }
     }
 #ifdef BOXEDWINE_MULTI_THREADED
     char buf = 3;
     ::send(nativeSocketPipe[1], &buf, 1, 0);
+    if (waitingNativeSockets.size() == 0) {
+        stopNativeSocketsThread();
+    }
 #endif
 }
 
