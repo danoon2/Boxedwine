@@ -2105,7 +2105,11 @@ static void armv8_translateIfNecessary(Armv8btCPU* cpu) {
     if (!cpu->isBig()) {
         cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
     }
-    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+    try {
+        cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+    } catch (...) {
+        cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+    }
 }
 
 void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {

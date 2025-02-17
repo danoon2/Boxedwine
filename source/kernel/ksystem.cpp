@@ -90,6 +90,7 @@ void KSystem::init() {
     KSystem::killTime2 = 0;
 }
 
+void stopNativeSocketsThread();
 void KSystem::destroy() {
 	KThread::setCurrentThread(nullptr);
 	KSystem::shutingDown = true;
@@ -121,6 +122,9 @@ void KSystem::destroy() {
     KMemory::shutdown();
     XServer::shutdown();
     shutdownRam();
+#ifdef BOXEDWINE_MULTI_THREADED
+    stopNativeSocketsThread();
+#endif
 }
 
 U32 KSystem::getProcessCount() {

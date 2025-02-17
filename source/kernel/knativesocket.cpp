@@ -221,9 +221,6 @@ void removeWaitingSocket(S32 nativeSocket) {
 #ifdef BOXEDWINE_MULTI_THREADED
     char buf = 3;
     ::send(nativeSocketPipe[1], &buf, 1, 0);
-    if (waitingNativeSockets.size() == 0) {
-        stopNativeSocketsThread();
-    }
 #endif
 }
 
