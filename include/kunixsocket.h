@@ -30,6 +30,7 @@ public:
     U32 writeNative(U8* buffer, U32 len) override;
     U32 writev(KThread* thread, U32 iov, S32 iovcnt) override;
     U32 read(KThread* thread, U32 buffer, U32 len) override;
+    U32 read(KThread* thread, U32 buffer, U32 len, U32 flags);
     U32 readNative(U8* buffer, U32 len) override;
     U32 stat(KProcess* process, U32 address, bool is64) override;
     U32 map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) override;
