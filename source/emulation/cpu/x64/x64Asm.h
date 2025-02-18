@@ -33,7 +33,9 @@
 #define CPU_OFFSET_RETURN_ADDRESS (U32)(offsetof(x64CPU, returnToLoopAddress))
 #define CPU_OFFSET_FPU_TOP (U32)(offsetof(CPU, fpu.top))
 #define CPU_OFFSET_FPU_IS_MMX (U32)(offsetof(CPU, fpu.isMMXInUse))
+#define CPU_OFFSET_FPU_IS_REG_CACHED (U32)(offsetof(CPU, fpu.isRegCached))
 #define CPU_OFFSET_FPU_TAG (U32)(offsetof(CPU, fpu.tags[0]))
+#define CPU_OFFSET_FPU_SW (U32)(offsetof(CPU, fpu.sw))
 #define CPU_OFFSET_INSTRUCTION_FLAGS (U32)(offsetof(x64CPU, instructionStoredFlags))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
@@ -238,17 +240,26 @@ public:
     void jmpNativeReg(U8 reg, bool isRegRex);
     void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith = false, bool is64bit = false);
     void shiftLeftReg(U8 reg, bool isRegRex, U8 shiftAmount);
+    void shiftLeftRegReg(U8 reg, bool isRegRex, U8 regAmount, bool isRegAmountRex, bool is64bit = false);
     void bmi2ShiftRightReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
     void bmi2ShiftLeftReg(U8 dstReg, U8 srcReg, bool isSrcRex, U8 amountReg);
+    void bmi2AndReg(U8 dstReg, U8 srcReg, U8 maskReg);
     void andReg(U8 reg, bool isRegRex, U32 mask);
+    void andRegNoFlags(U8 src, U8 dst, U32 value, U8 tmpReg);
     void orReg(U8 reg, bool isRegRex, U32 mask);
     void subRegs(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64);
     void writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes); // will trash current op data
     void writeToRegFromE(U8 reg, bool isRegRex, U8 rm, U8 bytes); // will trash current op data
     void getAddressInRegFromE(U8 reg, bool isRegRex, U8 rm, bool calculateHostAddress = false); // will trash current op data    
     void zeroExtend16to32(U8 reg, bool isRegRex, U8 fromReg, bool isFromRex);
+    void xorReg(U8 reg, bool isRegRex, U64 value, bool is64bit);
+    void xorRegReg(U8 reg, bool isRegRex, U8 reg2, bool isReg2Rex, bool is64bit);
     void testReg(U8 reg, bool isRegRex, U64 value, bool is64bit);
+    void testRegReg(U8 reg, bool isRegRex, U8 reg2, bool isReg2Rex, bool is64bit);
     void cmpReg(U8 reg, bool isRegRex, U64 value, bool is64bit);
+    void abs(U8 reg, bool isRegRex, bool is64bit);
+    void neg(U8 reg, bool isRegRex, bool is64bit);
+    void clz(U8 dst, bool isDstRex, U8 src, bool isSrcRex, bool is64bit);
 
     void pushFlagsToReg(U8 reg, bool isRexReg, bool includeOF);
     void popFlagsFromReg(U8 reg, bool isRexReg, bool includeOF);

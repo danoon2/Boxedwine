@@ -68,6 +68,12 @@ U32 KSystem::wineMajorVersion;
 bool KSystem::disableHideCursor = false;
 bool KSystem::forceRelativeMouse = false;
 
+#if defined(BOXEDWINE_X64) && !defined(BOXEDWINE_USE_SSE_FOR_FPU)
+bool KSystem::useF64 = false;
+#else
+bool KSystem::useF64 = true;
+#endif
+
 BOXEDWINE_CONDITION KSystem::processesCond(std::make_shared<BoxedWineCondition>(B("KSystem::processesCond")));
 
 void KSystem::init() {
@@ -84,6 +90,7 @@ void KSystem::init() {
     KSystem::killTime2 = 0;
 }
 
+void stopNativeSocketsThread();
 void KSystem::destroy() {
 	KThread::setCurrentThread(nullptr);
 	KSystem::shutingDown = true;
@@ -115,6 +122,9 @@ void KSystem::destroy() {
     KMemory::shutdown();
     XServer::shutdown();
     shutdownRam();
+#ifdef BOXEDWINE_MULTI_THREADED
+    stopNativeSocketsThread();
+#endif
 }
 
 U32 KSystem::getProcessCount() {
@@ -540,7 +550,9 @@ static BHashTable<U32, std::shared_ptr<SHM> > shmKey;
 #define PRIVATE_SHMID 0x40000000
 
 SHM::~SHM() {
-
+    for (RamPage& page : pages) {
+        ramPageRelease(page);
+    }
 }
 
 U32 KSystem::shmget(KThread* thread, U32 key, U32 size, U32 flags) {

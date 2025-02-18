@@ -4,6 +4,11 @@
 #include "armv8btAsm.h"
 #include "armv8btCPU.h"
 
+Armv8CodeChunk::Armv8CodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) : BtCodeChunk(instructionCount, eipInstructionAddress, hostInstructionIndex, hostInstructionBuffer, hostInstructionBufferLen, eip, eipLen, dynamic)
+{
+    this->clearInstructionCache(this->hostAddress, this->hostLen);
+}
+
 bool Armv8CodeChunk::retranslateSingleInstruction(BtCPU* btCPU, U8* address) {
     Armv8btCPU* cpu = (Armv8btCPU*)btCPU;
     U8* startofHostInstruction;

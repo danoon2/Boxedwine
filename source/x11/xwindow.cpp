@@ -54,7 +54,7 @@ XSetWindowAttributes* XSetWindowAttributes::get(KMemory* memory, U32 address, XS
 	}
 #ifndef UNALIGNED_MEMORY
 	if ((address & K_PAGE_MASK) + sizeof(XSetWindowAttributes) < K_PAGE_SIZE) {
-		return (XSetWindowAttributes*)memory->getIntPtr(address, true);
+		return (XSetWindowAttributes*)memory->getRamPtr(address, sizeof(XSetWindowAttributes), true);
 	}
 #endif
 	tmp->read(memory, address);

@@ -3,8 +3,8 @@
 #define NEXT_BRANCH1()
 #define NEXT_BRANCH2()
 #else
-#define NEXT_BRANCH1() if (!DecodedBlock::currentBlock->next1) {DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next1
-#define NEXT_BRANCH2() if (!DecodedBlock::currentBlock->next2) {DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);} cpu->nextBlock = DecodedBlock::currentBlock->next2
+#define NEXT_BRANCH1() if (!cpu->currentBlock->next1) {cpu->currentBlock->next1 = cpu->getNextBlock(); cpu->currentBlock->next1->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next1
+#define NEXT_BRANCH2() if (!cpu->currentBlock->next2) {cpu->currentBlock->next2 = cpu->getNextBlock(); cpu->currentBlock->next2->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next2
 #endif
 U32 common_bound16(CPU* cpu, U32 reg, U32 address){
     if (cpu->reg[reg].u16<cpu->memory->readw(address) || cpu->reg[reg].u16>cpu->memory->readw(address+2)) {
@@ -168,13 +168,28 @@ void common_verw(CPU* cpu, U32 selector){
 
 #ifdef BOXEDWINE_MULTI_THREADED
 void common_cmpxchg8b_lock(CPU* cpu, U32 address) {    
+    BOXEDWINE_CRITICAL_SECTION;
+
+    U64 value1 = ((U64)EDX) << 32 | EAX;
+    U64 value2 = cpu->memory->readq(address);
+    cpu->fillFlags();
+    if (value1 == value2) {
+        cpu->addZF();
+        cpu->memory->writed(address, EBX);
+        cpu->memory->writed(address + 4, ECX);
+    } else {
+        cpu->removeZF();
+        EDX = (U32)(value2 >> 32);
+        EAX = (U32)value2;
+    }
+    /*
     U64 expected = ((U64)EDX) << 32 | EAX;
     U64 value = ((U64)ECX) << 32 | EBX;
 
     cpu->fillFlags();
 
-    U64& ram = *(U64*)cpu->memory->getIntPtr(address, true);
-    std::atomic_ref<U64> mem(ram);
+    LockData64* p = (LockData64*)cpu->memory->getRamPtr(address, 8, true);
+    std::atomic_ref<U64> mem(p->data);
 
     if (mem.compare_exchange_strong(expected, value)) {
         cpu->addZF();
@@ -183,6 +198,7 @@ void common_cmpxchg8b_lock(CPU* cpu, U32 address) {
         EDX = (U32)(expected >> 32);
         EAX = (U32)expected;
     }
+    */
 }
 #endif
 
@@ -216,16 +232,9 @@ void common_fxsave(CPU* cpu, U32 address) {
     cpu->memory->writed(address + 24, 0x1F80); // mxcsr
     cpu->memory->writed(address + 28, 0xFFFF); // mxcsr mask
 
-    if (cpu->fpu.isMMXInUse) {
-        for (int i=0;i<8;i++) {
-            cpu->memory->writeq(address+32+i*16, cpu->reg_mmx[i].q);
-            cpu->memory->writeq(address+40+i*16, 0xffff);
-        }
-    } else {
-        for (int i=0;i<8;i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            cpu->fpu.ST80(cpu, address+32+index*16, i);
-        }
+    for (int i=0;i<8;i++) {
+        U32 index = (i - cpu->fpu.GetTop()) & 7;
+        cpu->fpu.ST80(cpu, address+32+index*16, i);
     }
     for (int i=0;i<8;i++) {
         cpu->memory->writeq(address+160+i*16, cpu->xmm[i].pi.u64[0]);
@@ -238,9 +247,8 @@ void common_fxrstor(CPU* cpu, U32 address) {
     cpu->fpu.SetSW(cpu->memory->readw(address+2));
     cpu->fpu.SetTagFromAbridged(cpu->memory->readb(address+4));
     for (int i=0;i<8;i++) {
-        cpu->reg_mmx[i].q = cpu->memory->readq(address+32+i*16);
         U32 index = (i - cpu->fpu.GetTop()) & 7;
-        cpu->fpu.regs[i].d = cpu->fpu.FLD80(cpu->reg_mmx[i].q, (S16)cpu->memory->readw(address+40+index*16));
+        cpu->fpu.LD80(i, cpu->memory->readq(address + 32 + index * 16), cpu->memory->readw(address + 40 + index * 16));
     }
     for (int i=0;i<8;i++) {
         cpu->xmm[i].pi.u64[0] = cpu->memory->readq(address+160+i*16);

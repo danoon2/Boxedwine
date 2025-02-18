@@ -100,12 +100,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.cpp">
       <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
@@ -184,9 +178,6 @@
     <ClCompile Include="..\..\..\..\source\kernel\ksocketobject.cpp">
       <Filter>source\kernel</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_no_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\crc.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
@@ -195,9 +186,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\test\testCPU.cpp">
       <Filter>source\test</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_native_page.cpp">
-      <Filter>source\emulation\softmmu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\zlib\contrib\minizip\ioapi.c">
       <Filter>minizip</Filter>
@@ -709,6 +697,228 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_add.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_div.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_eq.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_eq_signaling.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_isSignalingNaN.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_le.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_le_quiet.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_lt.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_lt_quiet.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_mul.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_rem.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_roundToInt.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_sqrt.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_sub.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_to_f32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_to_f64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_to_i32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_to_i32_r_minMag.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_to_i64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\extF80_to_i64_r_minMag.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\i32_to_extF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\i64_to_extF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_addMagsExtF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_approxRecip_1Ks.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_approxRecip32_1.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_approxRecipSqrt_1Ks.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_approxRecipSqrt32_1.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_countLeadingZeros8.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_countLeadingZeros32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_countLeadingZeros64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_normRoundPackToExtF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_normRoundPackToF32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_normRoundPackToF64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_normSubnormalExtF80Sig.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_normSubnormalF32Sig.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_normSubnormalF64Sig.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundPackToExtF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundPackToF32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundPackToF64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundToI32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundToI64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundToUI32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_roundToUI64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shiftRightJam32.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shiftRightJam64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shiftRightJam64Extra.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shortShiftRightJam64.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shortShiftRightJam64Extra.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_subMagsExtF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\softfloat_state.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\extF80M_isSignalingNaN.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_commonNaNToExtF80UI.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_commonNaNToF32UI.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_commonNaNToF64UI.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_extF80UIToCommonNaN.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_f32UIToCommonNaN.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_f64UIToCommonNaN.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_propagateNaNExtF80UI.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_propagateNaNF32UI.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\s_propagateNaNF64UI.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\8086-SSE\softfloat_raiseFlags.c">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_sub128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_add128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_mul64ByShifted32To128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shiftRightJam128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_le128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_lt128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_shortShiftLeft128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\f32_to_extF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\f64_to_extF80.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\lib\softfloat\source\s_mul64To128.c">
+      <Filter>softfloat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\test\testFPU.cpp">
+      <Filter>source\test</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\codePageData.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\softmmu\soft_mmu.cpp">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -894,12 +1104,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_rw_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_ro_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_wo_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_copy_on_write_page.h">
       <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
@@ -945,14 +1149,8 @@
     <ClInclude Include="..\..\..\..\include\ksocketobject.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_no_page.h">
-      <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\boxedwine.h">
       <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_native_page.h">
-      <Filter>source\emulation\softmmu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\lib\zlib\contrib\minizip\crypt.h">
       <Filter>minizip</Filter>
@@ -1566,6 +1764,39 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\include\internals.h">
+      <Filter>softfloat\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\include\opts-GCC.h">
+      <Filter>softfloat\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\include\primitives.h">
+      <Filter>softfloat\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\include\primitiveTypes.h">
+      <Filter>softfloat\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\include\softfloat.h">
+      <Filter>softfloat\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\include\softfloat_types.h">
+      <Filter>softfloat\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\8086-SSE\specialize.h">
+      <Filter>softfloat\8086-SSE</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\lib\softfloat\source\include\platform.h">
+      <Filter>softfloat\include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\test\testFPU.h">
+      <Filter>source\test</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\codePageData.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_mmu.h">
+      <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="include">
@@ -1696,6 +1927,15 @@
     </Filter>
     <Filter Include="source\emulation\cpu\armv8bt">
       <UniqueIdentifier>{342d7025-9a61-4029-bf27-04ee5aced917}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="softfloat">
+      <UniqueIdentifier>{3d551b03-cd82-4c52-a3ea-33ceddc440b1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="softfloat\include">
+      <UniqueIdentifier>{19d4030e-a584-4918-8280-59f7749dfb7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="softfloat\8086-SSE">
+      <UniqueIdentifier>{7041b349-6869-4816-b065-e7f57e538df7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

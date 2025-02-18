@@ -27,8 +27,10 @@ class DynamicMemory;
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
 #define CodeBlock std::shared_ptr<BtCodeChunk>
+#define CodeBlockParam const std::shared_ptr<BtCodeChunk>&
 #else
 #define CodeBlock DecodedBlock*
+#define CodeBlockParam DecodedBlock*
 #endif
 
 class DecodedBlock;
@@ -37,6 +39,20 @@ class KMemoryData;
 class KProcess;
 class BtMemory;
 
+#ifdef BOXEDWINE_MULTI_THREADED   
+struct LockData8 {
+    U8 data;
+};
+struct LockData16 {
+    U16 data;
+};
+struct LockData32 {
+    U32 data;
+};
+struct LockData64 {
+    U64 data;
+};
+#endif
 class KMemory {
 private:
     KMemory(KProcess* process);
@@ -53,7 +69,7 @@ public:
     U32 mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U32 flags);
     U32 unmap(U32 address, U32 len);
 
-    U32 mapPages(KThread* thread, U32 startPage, const std::vector<KRamPtr>& pages, U32 permissions);
+    U32 mapPages(KThread* thread, U32 startPage, const std::vector<RamPage>& pages, U32 permissions);
     U32 mapNativeMemory(void* hostAddress, U32 size);
     void unmapNativeMemory(U32 address, U32 size);
 
@@ -91,8 +107,7 @@ public:
     U8* lockReadWriteMemory(U32 address, U32 len);
     void unlockMemory(U8* lockedPointer);
 
-    U8* getIntPtr(U32 address, bool write = false);
-    U8* getPtrForFutex(U32 address);
+    U8* getRamPtr(U32 address, U32 len, bool write, bool futex = false);
 
     // caller is responsible for making sure the address+len is valid
     void iteratePages(U32 address, U32 len, std::function<bool(U32 page)> callback);
@@ -114,16 +129,18 @@ public:
     CodeBlock getCodeBlock(U32 address);
 #endif
     CodeBlock findCodeBlockContaining(U32 address, U32 len);
-    void addCodeBlock(U32 address, CodeBlock block);
+    void addCodeBlock(CodeBlockParam block);
     void removeCodeBlock(U32 address, U32 len);
 
     BOXEDWINE_MUTEX mutex;
+    KMemoryData* deleteOnNextLoop = nullptr;
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
     friend BtMemory;        
+    friend class BtCPU;
 
-    KMemoryData* data;
+    KMemoryData* data;    
     KProcess* process;
 
     class LockedMemory {

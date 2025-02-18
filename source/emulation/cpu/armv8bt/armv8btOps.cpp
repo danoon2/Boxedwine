@@ -1913,6 +1913,7 @@ void opIncE32(Armv8btAsm* data) {
     U32 flags = data->flagsNeeded();
     U8 addressReg = data->getAddressReg();
 
+    // :TODO: use ldaddal if Arm 8.1?
     data->readWriteMemory(addressReg, xDst, xResult, 32, [data] {
         data->addValue32(xResult, xDst, 1);
         }, data->currentOp->lock != 0);
@@ -4242,6 +4243,23 @@ void opBswap32(Armv8btAsm* data) {
 
 void opEmms(Armv8btAsm* data) {
     data->emulateSingleOp(data->currentOp);
+    /*
+    U8 tmpReg = data->getRegWithConst(0);
+
+    data->writeMem8ValueOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, isMMXInUse)));
+
+    data->loadConst(tmpReg, TAG_Empty);
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[0])));
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[1])));
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[2])));
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[3])));
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[4])));
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[5])));
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[6])));
+    data->writeMem32RegOffset(tmpReg, data->getFpuOffset(), (U32)(offsetof(FPU, tags[7])));
+
+    data->releaseTmpReg(tmpReg);
+    */
 }
 
 void opFxsave(Armv8btAsm* data) {

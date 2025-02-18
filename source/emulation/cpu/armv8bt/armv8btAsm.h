@@ -334,10 +334,12 @@ public:
 
     // 
     void loadConst(U8 reg, U64 value);    
+    void abs64(U8 dst, U8 src);
 
     // arith
     void addRegs32(U8 dst, U8 src1, U8 src2, U8 src2ShiftLeft = 0, bool flags = false);
     void addRegs64(U8 dst, U8 src1, U8 src2, U8 src2ShiftLeft = 0, bool flags = false);
+    void addRegs64Asr(U8 dst, U8 src1, U8 src2, U8 src2ShiftRight, bool flags = false);
     void addValue32(U8 dst, U8 src, U32 value, bool flags = false);
     void addValue64(U8 dst, U8 src, U32 value);
 
@@ -364,6 +366,8 @@ public:
 
     void xorRegs32(U8 dst, U8 src1, U8 src2);
     void xorValue32(U8 dst, U8 src, U32 value);
+    void xorRegs64(U8 dst, U8 src1, U8 src2, U8 src2ShiftLeft);
+    void xorRegs64Asr(U8 dst, U8 src1, U8 src2, U8 src2ShiftRight);
 
     void cmpRegs32(U8 src1, U8 src2);
     void cmpRegs64(U8 src1, U8 src2);
@@ -426,6 +430,7 @@ public:
     void vReadMem64ValueOffset(U8 dst, U8 base, S32 offset);
 
     void vWriteMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl = 0); // lsl can be 0 or 3
+    void vWriteMem64ValueOffset(U8 dst, U8 base, S32 offset);
 
     void vReadMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress);
     void vWriteMemory32(U8 addressReg, U8 dst, U32 index, bool addMemOffsetToAddress);

@@ -39,7 +39,7 @@ void initHandlers() {
 
         // set a break point on this line then enter the above commands.
         
-        //task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
+        task_set_exception_ports(mach_task_self(), EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION, MACH_PORT_NULL, EXCEPTION_DEFAULT, 0);
 #endif
     }
 }
@@ -51,13 +51,15 @@ void initThreadForTesting() {
 #endif
 
 void* platformThreadProc(void* param) {
-#ifdef BOXEDWINE_4K_PAGE_SIZE
-    initHandlers();
-#endif
+    initHandlers(); // needed to BOXEDWINE_4K_PAGE_SIZE and handling sigbus because someone loaded the AC (alignment check) flag
     KThread* thread = (KThread*)param;
     BtCPU* cpu = (BtCPU*)thread->cpu;
     cpu->startThread();
     return 0;
+}
+
+void joinThread(KThread* thread) {
+    pthread_join((pthread_t)thread->cpu->nativeHandle, nullptr);
 }
 
 void scheduleThread(KThread* thread) {

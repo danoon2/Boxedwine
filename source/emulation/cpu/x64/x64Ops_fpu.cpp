@@ -14,6 +14,47 @@
 
 extern bool writesFlags[InstructionCount];
 
+class PushPopSSERounding {
+public:
+	PushPopSSERounding(X64Asm* data) : data(data) {
+		// STMXCSR DWORD PTR[HOST_CPU + offsetof(sseControlStateTmp)
+		data->write8(0x41);
+		data->write8(0x0f);
+		data->write8(0xae);
+		data->write8(0x98 | HOST_CPU);
+		data->write32((U32)(offsetof(x64CPU, sseControlStateTmp)));
+
+		U8 sseControl = data->getTmpReg();
+		U8 round = data->getTmpReg();
+		data->writeToRegFromMem(sseControl, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, sseControlStateTmp)), 4, false);
+		data->writeToRegFromMem(round, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(CPU, fpu.round)), 4, false);
+		data->andReg(sseControl, true, ~0x6000); // clear rounding
+		data->shiftLeftReg(round, true, 13);
+		data->orRegReg(sseControl, true, round, true); // set round
+
+		// there is no way to set sse rounding from a register
+		data->writeToMemFromReg(sseControl, true, HOST_CPU, true, -1, false, 0, (U32)(offsetof(x64CPU, sseControlStateTmp2)), 4, false);
+
+		// LDMXCSR DWORD PTR[HOST_CPU + offsetof(sseControlStateTmp2)
+		data->write8(0x41);
+		data->write8(0x0f);
+		data->write8(0xae);
+		data->write8(0x90| HOST_CPU);
+		data->write32((U32)(offsetof(x64CPU, sseControlStateTmp2)));
+		data->releaseTmpReg(sseControl);
+		data->releaseTmpReg(round);
+	}
+	~PushPopSSERounding() {
+		// LDMXCSR DWORD PTR[HOST_CPU + offsetof(sseControlStateTmp)
+		data->write8(0x41);
+		data->write8(0x0f);
+		data->write8(0xae);
+		data->write8(0x90 | HOST_CPU);
+		data->write32((U32)(offsetof(x64CPU, sseControlStateTmp)));
+	}
+	X64Asm* data;
+};
+
 class PushPopFlags {
 public:
 	PushPopFlags(X64Asm* data) : data(data) {
@@ -229,13 +270,23 @@ static U8 calculateIndexReg(X64Asm* data, U8 topReg, U32 index) {
 	return result;
 }
 
+static void getIsCachedReg(X64Asm* data, U8 regIsCached, U8 indexReg) {
+	data->zeroReg(regIsCached, true, false);
+	static_assert(sizeof(data->cpu->fpu.isRegCached) == 9, "false");
+	data->writeToRegFromMem(regIsCached, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+}
+
+static void setRegIsCached(X64Asm* data, U8 regIsCached, U8 indexReg) {
+	data->writeToMemFromValue(regIsCached, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+}
+
 // movsd qword ptr[HOST_CPU + topReg*8 + offsetof(CPU, fpu.regs[0].d)], xmm
 static void syncXmmToCPU(X64Asm* data, U8 topReg, U8 xmm, U8 regIndex) {
 	U8 indexReg = topReg;
 	if (regIndex != 0) {
 		indexReg = calculateIndexReg(data, topReg, regIndex);
 	}
-
+	static_assert(sizeof(data->cpu->fpu.regCache) == 72, "false");
 	data->write8(0xf2);
 	if (xmm < 8) {
 		data->write8(0x43);
@@ -246,12 +297,13 @@ static void syncXmmToCPU(X64Asm* data, U8 topReg, U8 xmm, U8 regIndex) {
 	data->write8(0x0f);
 	data->write8(0x11);
 	data->write8(0x84 | (xmm << 3));
-	data->write8(0xc0 | HOST_CPU | (indexReg << 3));
-	data->write32(offsetof(CPU, fpu.regs[0].d));
+	data->write8(0xC0 | HOST_CPU | (indexReg << 3));
+	data->write32(offsetof(CPU, fpu.regCache[0].d));
 
+	setRegIsCached(data, 1, indexReg);
 	if (regIndex != 0) {
 		data->releaseTmpReg(indexReg);
-	}
+	}	
 }
 
 // movsd qword ptr[HOST_CPU + topReg*8 + offsetof(CPU, fpu.regs[0].d)], xmm
@@ -260,6 +312,12 @@ static void syncCPUToXmm(X64Asm* data, U8 topReg, U8 xmm, U8 regIndex) {
 	if (regIndex != 0) {
 		indexReg = calculateIndexReg(data, topReg, regIndex);
 	}
+
+	U8 tmpReg = data->getTmpReg();
+	getIsCachedReg(data, tmpReg, indexReg);
+	data->doIf(tmpReg, true, 0, [data]() {
+		data->emulateSingleOp(data->currentOp);
+		}, nullptr, false, true, true);
 
 	data->write8(0xf2);
 	if (xmm < 8) {
@@ -272,7 +330,7 @@ static void syncCPUToXmm(X64Asm* data, U8 topReg, U8 xmm, U8 regIndex) {
 	data->write8(0x10);
 	data->write8(0x84 | (xmm << 3));
 	data->write8(0xc0 | HOST_CPU | (indexReg << 3));
-	data->write32(offsetof(CPU, fpu.regs[0].d));
+	data->write32(offsetof(CPU, fpu.regCache[0].d));
 
 	if (regIndex != 0) {
 		data->releaseTmpReg(indexReg);
@@ -328,29 +386,6 @@ static void loadInt16AsDouble(X64Asm* data, U8 xmm, U8 rm) {
 	data->write8(0xc0 | (xmm << 3) | reg);
 
 	data->releaseTmpReg(reg);
-}
-
-static void loadInt64AsDouble(X64Asm* data, U8 xmm, U32 rm) {
-	U8 reg = data->getTmpReg();
-	data->calculateMemory(reg, true, rm);
-	U8 memReg = data->getTmpReg();
-	data->checkMemory(reg, true, false, 8, memReg, false);
-
-	// CVTSI2SD xmm1, dword ptr[r8]
-	data->write8(0xf2);
-	if (xmm > 7) {
-		data->write8(0x4f);
-		xmm -= 8;
-	} else {
-		data->write8(0x4b);
-	}
-	data->write8(0x0f);
-	data->write8(0x2a);
-	data->write8(0x04 | (xmm << 3));
-	data->write8((memReg << 3) | reg);
-
-	data->releaseTmpReg(reg);
-	data->releaseTmpReg(memReg);
 }
 
 static void doubleToFloat(X64Asm* data, U8 src, U8 dst) {
@@ -428,6 +463,24 @@ static void storeInt32WithTruncation(X64Asm* data, U8 xmm, U8 addressReg, U8 mem
 	data->releaseTmpReg(tmpReg);
 }
 
+static void storeInt32WithRounding(X64Asm* data, U8 xmm, U8 addressReg, U8 memReg) {
+	// cvtsd2si reg, xmm
+	U8 tmpReg = data->getTmpReg();
+
+	data->write8(0xf2);
+	if (xmm < 8) {
+		data->write8(0x44);
+	} else {
+		data->write8(0x45);
+		xmm -= 8;
+	}
+	data->write8(0x0f);
+	data->write8(0x2d);
+	data->write8(0xc0 | (tmpReg << 3) | xmm);
+	data->writeToMemFromReg(tmpReg, true, addressReg, true, memReg, true, 0, 0, 4, false);
+	data->releaseTmpReg(tmpReg);
+}
+
 static void storeInt64WithTruncation(X64Asm* data, U8 xmm, U8 addressReg, U8 memReg) {
 	// cvttsd2si reg, xmm
 	U8 tmpReg = data->getTmpReg();
@@ -459,6 +512,24 @@ static void storeInt16WithTruncation(X64Asm* data, U8 xmm, U8 addressReg, U8 mem
 	}
 	data->write8(0x0f);
 	data->write8(0x2c);
+	data->write8(0xc0 | (tmpReg << 3) | xmm);
+	data->writeToMemFromReg(tmpReg, true, addressReg, true, memReg, true, 0, 0, 2, false);
+	data->releaseTmpReg(tmpReg);
+}
+
+static void storeInt16WithRounding(X64Asm* data, U8 xmm, U8 addressReg, U8 memReg) {
+	// cvtsd2si reg, xmm
+	U8 tmpReg = data->getTmpReg();
+
+	data->write8(0xf2);
+	if (xmm < 8) {
+		data->write8(0x44);
+	} else {
+		data->write8(0x45);
+		xmm -= 8;
+	}
+	data->write8(0x0f);
+	data->write8(0x2d);
 	data->write8(0xc0 | (tmpReg << 3) | xmm);
 	data->writeToMemFromReg(tmpReg, true, addressReg, true, memReg, true, 0, 0, 2, false);
 	data->releaseTmpReg(tmpReg);
@@ -605,23 +676,12 @@ static void writeDouble(X64Asm* data, U8 rm, U8 xmm) {
 	data->releaseTmpReg(memReg);
 }
 
-static void hostReadTag(X64Asm* data, U8 topReg, U8 regIndex, U8 resultReg) {
-	if (regIndex == 0) {
-		data->writeToRegFromMem(resultReg, true, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-	} else {
-		U8 indexReg = calculateIndexReg(data, topReg, regIndex);
-		data->writeToRegFromMem(resultReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-		data->releaseTmpReg(indexReg);
-	}
+static void hostReadTag(X64Asm* data, U8 indexReg, U8 resultReg) {
+	data->writeToRegFromMem(resultReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
 }
-static void hostWriteTag(X64Asm* data, U8 topReg, U8 regIndex, U8 valueReg) {
-	if (regIndex == 0) {
-		data->writeToMemFromReg(valueReg, true, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-	} else {
-		U8 indexReg = calculateIndexReg(data, topReg, regIndex);
-		data->writeToMemFromReg(valueReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
-		data->releaseTmpReg(indexReg);
-	}
+
+static void hostWriteTag(X64Asm* data, U8 indexReg, U8 valueReg) {
+	data->writeToMemFromReg(valueReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
 }
 
 class FPUReg {
@@ -949,14 +1009,18 @@ void opFLD_STi(X64Asm* data, U8 reg) {
 	U8 topReg = getTopReg(data);
 	FPUReg fromTmp(data, topReg, reg);
 	U8 tagReg = data->getTmpReg();
-	hostReadTag(data, topReg, reg, tagReg); // read before push changes indexes
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
+
+	hostReadTag(data, indexReg, tagReg); // read before push changes indexes
 
 	PREP_PUSH(data, topReg, false); // will change topReg
 
 	syncXmmToCPU(data, topReg, fromTmp.reg, 0);
-	hostWriteTag(data, topReg, 0, tagReg);
+	hostWriteTag(data, topReg, tagReg);
+
 	data->releaseTmpReg(tagReg);
 	data->releaseTmpReg(topReg);
+	data->releaseTmpReg(indexReg);
 }
 void opFXCH_STi(X64Asm* data, U8 reg) {
 	// int tag = this->tags[other];
@@ -973,15 +1037,24 @@ void opFXCH_STi(X64Asm* data, U8 reg) {
 	// exchange xmm
 	syncXmmToCPU(data, topReg, from.reg, 0);
 	syncXmmToCPU(data, topReg, to.reg, reg);
-
-	// exchange tags
+	
 	U8 tmpReg = data->getTmpReg();
 	U8 tmpReg2 = data->getTmpReg();
-	hostReadTag(data, topReg, 0, tmpReg);
-	hostReadTag(data, topReg, reg, tmpReg2);
-	hostWriteTag(data, topReg, 0, tmpReg2);
-	hostWriteTag(data, topReg, reg, tmpReg);
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
+
+	// exchange tags
+	hostReadTag(data, topReg, tmpReg);
+	hostReadTag(data, indexReg, tmpReg2);
+	hostWriteTag(data, topReg, tmpReg2);
+	hostWriteTag(data, indexReg, tmpReg);
 	
+	// exchange isRegCached
+	data->writeToRegFromMem(tmpReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+	data->writeToRegFromMem(tmpReg2, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+	data->writeToMemFromReg(tmpReg2, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+	data->writeToMemFromReg(tmpReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+
+	data->releaseTmpReg(indexReg);
 	data->releaseTmpReg(tmpReg);
 	data->releaseTmpReg(tmpReg2);
 	data->releaseTmpReg(topReg);
@@ -999,9 +1072,18 @@ void opFST_STi_Pop(X64Asm* data, U8 reg) {
 	//FPUReg dst(data, topReg, reg, true, false);
 
 	U8 tagReg = data->getTmpReg();
-	hostReadTag(data, topReg, 0, tagReg);
-	hostWriteTag(data, topReg, reg, tagReg);
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
+
+	// copy tag
+	hostReadTag(data, topReg, tagReg);
+	hostWriteTag(data, indexReg, tagReg);
+
+	// copy isRegCached
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+
 	data->releaseTmpReg(tagReg);	
+	data->releaseTmpReg(indexReg);
 
 	syncXmmToCPU(data, topReg, src.reg, reg);
 
@@ -1011,18 +1093,18 @@ void opFST_STi_Pop(X64Asm* data, U8 reg) {
 void opFCHS(X64Asm* data) {
 	// this->regs[this->top].d = -1.0 * (this->regs[this->top].d);
 
-	// flags not set, so don't need to save
+	PushPopFlags flags(data); // FPUReg adjust flags
 	U8 topReg = getTopReg(data);
 	FPUReg reg(data, topReg, 0);
-	loadConstantFromCPU(data, TMP_XMM0, offsetof(CPU, fNeg));
-	xorpd(data, reg.reg, TMP_XMM0);
-	syncXmmToCPU(data, topReg, reg.reg, 0);
+	loadConstantFromCPU(data, TMP_XMM0, offsetof(CPU, fZero));
+	subsd(data, TMP_XMM0, reg.reg);
+	syncXmmToCPU(data, topReg, TMP_XMM0, 0);
 	data->releaseTmpReg(topReg);
 }
 void opFABS(X64Asm* data) {
 	// this->regs[this->top].d = fabs(this->regs[this->top].d);
 
-	// flags not set, so don't need to save
+	PushPopFlags flags(data); // FPUReg adjust flags
 	U8 topReg = getTopReg(data);
 	FPUReg reg(data, topReg, 0);
 	loadConstantFromCPU(data, TMP_XMM0, offsetof(CPU, fAbs));
@@ -1034,7 +1116,7 @@ void opFTST(X64Asm* data) {
 	// this->regs[8].d = 0.0;
 	// FCOM(this->top, 8);
 
-	// flags not set, so don't need to save
+	PushPopFlags flags(data); // doFCOM changes flags
 	U8 topReg = getTopReg(data);
 	FPUReg dst(data, topReg, 0);
 	loadConstantFromCPU(data, TMP_XMM0, offsetof(CPU, fZero));
@@ -1091,7 +1173,7 @@ void opFXAM(X64Asm* data) {
 		}, nullptr, false, false, false, 0x7d, 0x7c); // less than 0
 
 	U8 tagReg = data->getTmpReg();
-	hostReadTag(data, topReg, 0, tagReg);
+	hostReadTag(data, topReg, tagReg);
 
 	data->doIf(tagReg, true, TAG_Empty, [data, swReg] {
 		data->orReg(swReg, true, 0x4100);
@@ -1226,9 +1308,7 @@ void opFLD_SINGLE_REAL(X64Asm* data, U8 rm) {
 	U8 reg = data->getTmpReg();
 	data->calculateMemory(reg, true, rm);
 	U8 memReg = data->getTmpReg();
-	data->checkMemory(reg, true, false, 4, memReg, false);
-
-	PREP_PUSH(data, topReg, true);
+	data->checkMemory(reg, true, false, 4, memReg, false);	
 
 	// movss xmm8, dword ptr[r8]
 	U8 xmm = TMP_XMM0;
@@ -1243,6 +1323,9 @@ void opFLD_SINGLE_REAL(X64Asm* data, U8 rm) {
 	data->write8(0x10);
 	data->write8(0x04 | (xmm << 3));
 	data->write8((memReg << 3) | reg);
+
+	// after above read, motorhead 3dfx logo can have drawing artifacts if this push is done before the read
+	PREP_PUSH(data, topReg, true);
 
 	floatToDouble(data, TMP_XMM0, TMP_XMM0);
 	syncXmmToCPU(data, topReg, TMP_XMM0, 0);
@@ -1294,12 +1377,19 @@ void opFNSTCW(X64Asm* data, U8 rm) {
 static void doCMov(X64Asm* data, U8 reg) {
 	PushPopFlags flags(data);
 	U8 topReg = getTopReg(data);
-	U8 tagReg = data->getTmpReg();
-	FPUReg from(data, topReg, reg);	
+	U8 tagReg = data->getTmpReg();	
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
+	FPUReg from(data, indexReg, 0);
 
-	hostReadTag(data, topReg, reg, tagReg);
+	hostReadTag(data, indexReg, tagReg);
 	syncXmmToCPU(data, topReg, from.reg, 0);
-	hostWriteTag(data, topReg, 0, tagReg);
+	hostWriteTag(data, topReg, tagReg);
+
+	// copy isRegCached
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+
+	data->releaseTmpReg(indexReg);
 
 	data->releaseTmpReg(tagReg);
 	data->releaseTmpReg(topReg);
@@ -1456,7 +1546,7 @@ void opFNINIT(X64Asm* data) {
 	for (int i = 0; i < 8; i++) {
 		data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_TAG + i*sizeof(U32), 4, false);
 	}
-	data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 4, false);
+	data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 1, false);
 }
 void opFUCOMI_ST0_STj(X64Asm* data, U8 reg) {
 	U8 topReg = getTopReg(data);
@@ -1508,7 +1598,7 @@ void opFISTTP32(X64Asm* data, U8 rm) {
 	data->releaseTmpReg(memReg);
 }
 void opFIST_DWORD_INTEGER(X64Asm* data, U8 rm) {
-	PushPopFlags flags(data); // checkMemory changes flags
+	PushPopFlags flags(data); // checkMemory and PushPopSSERounding change flags	
 	U8 topReg = getTopReg(data);
 	U8 reg = data->getTmpReg();
 
@@ -1516,14 +1606,16 @@ void opFIST_DWORD_INTEGER(X64Asm* data, U8 rm) {
 	U8 memReg = data->getTmpReg();
 	data->checkMemory(reg, true, false, 4, memReg, false);
 
+	PushPopSSERounding sseRounding(data); // after checkMemory
 	FPUReg src(data, topReg, 0);
-	storeInt32WithTruncation(data, src.reg, reg, memReg); // until rounding is implemented, just truncate
+	storeInt32WithRounding(data, src.reg, reg, memReg);
 	data->releaseTmpReg(topReg);
 	data->releaseTmpReg(reg);
 	data->releaseTmpReg(memReg);
 }
 void opFIST_DWORD_INTEGER_Pop(X64Asm* data, U8 rm) {
-	PushPopFlags flags(data); // checkMemory changes flags
+	PushPopFlags flags(data); // checkMemory and PushPopSSERounding change flags	
+
 	U8 topReg = getTopReg(data);
 	U8 reg = data->getTmpReg();
 
@@ -1531,8 +1623,9 @@ void opFIST_DWORD_INTEGER_Pop(X64Asm* data, U8 rm) {
 	U8 memReg = data->getTmpReg();
 	data->checkMemory(reg, true, false, 4, memReg, false);
 
+	PushPopSSERounding sseRounding(data); // after checkMemory
 	FPUReg src(data, topReg, 0);
-	storeInt32WithTruncation(data, src.reg, reg, memReg); // until rounding is implemented, just truncate
+	storeInt32WithRounding(data, src.reg, reg, memReg);
 	FPU_POP(data, topReg);
 	data->releaseTmpReg(topReg);
 	data->releaseTmpReg(reg);
@@ -1679,10 +1772,14 @@ void opFST_STi(X64Asm* data, U8 reg) {
 	U8 topReg = getTopReg(data);
 	U8 tagReg = data->getTmpReg();
 	FPUReg src(data, topReg, 0);	
+	U8 indexReg = calculateIndexReg(data, topReg, reg);
 
 	syncXmmToCPU(data, topReg, src.reg, reg);
-	hostReadTag(data, topReg, 0, tagReg);
-	hostWriteTag(data, topReg, reg, tagReg);
+	hostReadTag(data, topReg, tagReg);
+	hostWriteTag(data, indexReg, tagReg);
+
+	data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
+	data->writeToMemFromReg(tagReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_IS_REG_CACHED, 1, false);
 
 	data->releaseTmpReg(tagReg);
 	data->releaseTmpReg(topReg);
@@ -1714,9 +1811,7 @@ void opFLD_DOUBLE_REAL(X64Asm* data, U8 rm) {
 	U8 reg = data->getTmpReg();
 	data->calculateMemory(reg, true, rm);
 	U8 memReg = data->getTmpReg();
-	data->checkMemory(reg, true, false, 8, memReg, false);
-
-	PREP_PUSH(data, topReg, true);
+	data->checkMemory(reg, true, false, 8, memReg, false);	
 
 	// movsd xmm1, qword ptr[r8]
 	U8 xmm = TMP_XMM0;
@@ -1731,6 +1826,8 @@ void opFLD_DOUBLE_REAL(X64Asm* data, U8 rm) {
 	data->write8(0x10);
 	data->write8(0x04 | (xmm << 3));
 	data->write8((memReg << 3) | reg);
+
+	PREP_PUSH(data, topReg, true);
 
 	syncXmmToCPU(data, topReg, TMP_XMM0, 0);
 
@@ -1763,7 +1860,7 @@ void opFST_DOUBLE_REAL(X64Asm* data, U8 rm) {
 	data->releaseTmpReg(topReg);
 }
 void opFST_DOUBLE_REAL_Pop(X64Asm* data, U8 rm) {
-	PushPopFlags flags(data); // writeDouble/checkMemory changes flags
+	PushPopFlags flags(data); // writeDouble/checkMemory and FPU_POP changes flags
 	U8 topReg = getTopReg(data);
 	FPUReg src(data, topReg, 0);
 
@@ -1991,7 +2088,7 @@ void opFISTTP16(X64Asm* data, U8 rm) {
 	data->releaseTmpReg(memReg);
 }
 void opFIST_WORD_INTEGER(X64Asm* data, U8 rm) {
-	PushPopFlags flags(data); // checkMemory changes flags
+	PushPopFlags flags(data); // checkMemory and PushPopSSERounding change flags
 	U8 topReg = getTopReg(data);
 	U8 reg = data->getTmpReg();
 
@@ -1999,14 +2096,15 @@ void opFIST_WORD_INTEGER(X64Asm* data, U8 rm) {
 	U8 memReg = data->getTmpReg();
 	data->checkMemory(reg, true, true, 2, memReg, false);
 
+	PushPopSSERounding sseRounding(data); // after checkMemory
 	FPUReg src(data, topReg, 0);
-	storeInt16WithTruncation(data, src.reg, reg, memReg); // until rounding is implemented, just truncate
+	storeInt16WithRounding(data, src.reg, reg, memReg);
 	data->releaseTmpReg(topReg);
 	data->releaseTmpReg(reg);
 	data->releaseTmpReg(memReg);
 }
 void opFIST_WORD_INTEGER_Pop(X64Asm* data, U8 rm) {
-	PushPopFlags flags(data); // checkMemory changes flags
+	PushPopFlags flags(data); // checkMemory and PushPopSSERounding change flags
 	U8 topReg = getTopReg(data);
 	U8 reg = data->getTmpReg();
 
@@ -2014,22 +2112,62 @@ void opFIST_WORD_INTEGER_Pop(X64Asm* data, U8 rm) {
 	U8 memReg = data->getTmpReg();
 	data->checkMemory(reg, true, true, 2, memReg, false);
 
+	PushPopSSERounding sseRounding(data); // after checkMemory
 	FPUReg src(data, topReg, 0);
-	storeInt16WithTruncation(data, src.reg, reg, memReg); // until rounding is implemented, just truncate
+	storeInt16WithRounding(data, src.reg, reg, memReg);
 	FPU_POP(data, topReg);
 	data->releaseTmpReg(topReg);
 	data->releaseTmpReg(reg);
 	data->releaseTmpReg(memReg);
 }
 void opFILD_QWORD_INTEGER(X64Asm* data, U8 rm) {
-	PushPopFlags flags(data); // loadInt32AsDouble/checkMemory changes flags
+	PushPopFlags flags(data); // writeToRegFromE/checkMemory changes flags
 	U8 topReg = getTopReg(data);
-	loadInt64AsDouble(data, TMP_XMM0, rm);
-	PREP_PUSH(data, topReg, true);
-	syncXmmToCPU(data, topReg, TMP_XMM0, 0);
-	data->releaseTmpReg(topReg);
+	U8 absA = data->getTmpReg();
 
+	data->writeToRegFromE(absA, true, rm, 8);
+
+	PREP_PUSH(data, topReg, true);
+
+	U8 uiZ64 = data->getTmpReg();
+	data->zeroReg(uiZ64, true, false);
+	data->testRegReg(absA, true, absA, true, true);
+	data->doIf(absA, true, 0, [data, absA, uiZ64]() {
+		// from softfloat / i64_to_extF80
+		// sign = (a < 0);
+		// absA = sign ? -a : a;
+		// shiftDist = __builtin_clzll(absA);
+		// uiZ64 = sign << 15 | (0x403E - shiftDist);
+		// absA <<= shiftDist;
+		U8 signReg = uiZ64;
+		data->writeToRegFromReg(signReg, true, absA, true, 8);
+		data->shiftRightReg(signReg, true, 63, false, true);
+		data->shiftLeftReg(signReg, true, 15);
+		data->abs(absA, true, true);
+		U8 dist = data->getTmpReg();
+		data->clz(dist, true, absA, true, true);
+		data->shiftLeftRegReg(absA, true, dist, true, true);
+
+		// dist = 0x403e - dist
+		data->addWithLea(dist, true, dist, true, -1, false, 0, -(S32)0x403e, 4); // dist = dist - 0x403e
+		data->neg(dist, true, false); // changes above to dist = 0x403e - dist
+
+		data->orRegReg(uiZ64, true, dist, true);
+		data->releaseTmpReg(dist);
+		}, nullptr, false, false, false, 0x74, 0x75);
+
+	// cpu->fpu.regs[top].signif = absA
+	// cpu->fpu.regs[top].signExp = uiZ64
+	setRegIsCached(data, 0, topReg);
+	data->shiftLeftReg(topReg, true, 4);
+	data->writeToMemFromReg(uiZ64, true, HOST_CPU, true, topReg, true, 0, (U32)(offsetof(CPU, fpu.regs[0].signExp)), 2, false);
+	data->writeToMemFromReg(absA, true, HOST_CPU, true, topReg, true, 0, (U32)(offsetof(CPU, fpu.regs[0].signif)), 8, false);
+
+	data->releaseTmpReg(absA);
+	data->releaseTmpReg(uiZ64);
+	data->releaseTmpReg(topReg);
 }
+// bugged doesn't handle if (this->isIntegerLoaded[this->top]) correctly, see void FPU::FST_I64(CPU* cpu, U32 addr)
 void opFISTP_QWORD_INTEGER(X64Asm* data, U8 rm) {
 	PushPopFlags flags(data); // checkMemory changes flags
 	U8 topReg = getTopReg(data);

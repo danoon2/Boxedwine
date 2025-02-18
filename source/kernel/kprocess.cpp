@@ -35,6 +35,8 @@
 #include <stdio.h>
 #include <time.h> 
 
+std::atomic_int KProcess::nextMappedFileIndex = 1;
+
 #define MAX_ARG_COUNT 1024
 
 bool KProcessTimer::run() {
@@ -2783,6 +2785,11 @@ void KProcess::signalFd(KThread* thread, U32 signal) {
             }
         }
     }
+}
+
+MappedFilePtr KProcess::getMappedFile(U32 key) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
+    return mappedFiles.get(key);
 }
 
 void KProcess::printMappedFiles() {

@@ -35,7 +35,7 @@ GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
     U32 page = address >> K_PAGE_SHIFT;
     U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
     if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
-        return (GLvoid*)cpu->memory->getIntPtr(address);
+        return (GLvoid*)cpu->memory->getRamPtr(address, len, false);
     }
 
     switch (type) {
@@ -366,7 +366,7 @@ GLvoid* MarshalReadWritePackedPixels::getPtr() {
         U32 page = pixels >> K_PAGE_SHIFT;
         U32 pageStop = (pixels + len - 1) >> K_PAGE_SHIFT;
         if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
-            return (GLvoid*)cpu->memory->getIntPtr(pixels, true);
+            return (GLvoid*)cpu->memory->getRamPtr(pixels, len, true);
         }
         buffer = marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
     }
@@ -438,7 +438,7 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     }
     // :TODO: a lot of work needs to be done here, marshalp needs to be removed and instead marshal the correct type of array, like marshalf.
     // This is also important to make things work with UNALIGNED_MEMORY
-    return (GLvoid*)cpu->memory->getIntPtr(buffer);
+    return (GLvoid*)cpu->memory->getRamPtr(buffer, len, false);
 }
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {

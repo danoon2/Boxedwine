@@ -212,195 +212,192 @@ void common_minssE32(CPU* cpu, U32 reg, U32 address) {
 void common_pavgbMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_avg_pu8(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pavgbMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_avg_pu8(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_pavgwMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_avg_pu16(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pavgwMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_avg_pu16(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_psadbwMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_sad_pu8(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_psadbwMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_sad_pu8(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_pextrwR32Mmx(CPU* cpu, U32 r1, U32 r2, U8 imm) {
     simde__m64 m = {};
-    m.u64[0] = cpu->reg_mmx[r2].q;
+    m.u64[0] = cpu->fpu.getMMX(r2)->q;
     cpu->reg[r1].u32 = simde_mm_extract_pi16(m, imm);
 }
 
 void common_pextrwE16Mmx(CPU* cpu, U32 reg, U32 address, U8 imm) {
     simde__m64 m = {};
-    m.u64[0] = cpu->reg_mmx[reg].q;
+    m.u64[0] = cpu->fpu.getMMX(reg)->q;
     cpu->memory->writew(address, (U16)simde_mm_extract_pi16(m, imm));
 }
 
 void common_pinsrwMmxR32(CPU* cpu, U32 r1, U32 r2, U8 imm) {
     simde__m64 m = {};
-    m.u64[0] = cpu->reg_mmx[r1].q;
+    m.u64[0] = cpu->fpu.getMMX(r1)->q;
     m = simde_mm_insert_pi16(m, cpu->reg[r2].u16, imm);
-    cpu->reg_mmx[r1].q = m.u64[0];
+    cpu->fpu.getMMX(r1)->q = m.u64[0];
 }
 
 void common_pinsrwMmxE16(CPU* cpu, U32 reg, U32 address, U8 imm) {
     simde__m64 m = {};
-    m.u64[0] = cpu->reg_mmx[reg].q;
+    m.u64[0] = cpu->fpu.getMMX(reg)->q;
     m = simde_mm_insert_pi16(m, cpu->memory->readw(address), imm);
-    cpu->reg_mmx[reg].q = m.u64[0];
+    cpu->fpu.getMMX(reg)->q = m.u64[0];
 }
 
 void common_pmaxswMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_max_pi16(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pmaxswMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_max_pi16(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_pmaxubMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_max_pu8(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pmaxubMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_max_pu8(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_pminswMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_min_pi16(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pminswMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_min_pi16(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_pminubMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_min_pu8(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pminubMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_min_pu8(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_pmovmskbR32Mmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m = {};
-    m.u64[0] = cpu->reg_mmx[r2].q;
+    m.u64[0] = cpu->fpu.getMMX(r2)->q;
     cpu->reg[r1].u32 = (U32)simde_mm_movemask_pi8(m);
 }
 
 void common_pmulhuwMmxMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m1.u64[0] = cpu->fpu.getMMX(r1)->q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_mulhi_pu16(m1, m2);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pmulhuwMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
+    m1.u64[0] = cpu->fpu.getMMX(reg)->q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_mulhi_pu16(m1, m2);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
 }
 
 void common_pshufwMmxMmx(CPU* cpu, U32 r1, U32 r2, U8 imm) {
-    simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[r1].q;
-    m2.u64[0] = cpu->reg_mmx[r2].q;
+    m2.u64[0] = cpu->fpu.getMMX(r2)->q;
     simde__m64 r = simde_mm_shuffle_pi16(m2, imm);
-    cpu->reg_mmx[r1].q = r.u64[0];
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
 }
 
 void common_pshufwMmxE64(CPU* cpu, U32 reg, U32 address, U8 imm) {
-    simde__m64 m1 = {};
     simde__m64 m2 = {};
-    m1.u64[0] = cpu->reg_mmx[reg].q;
     m2.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_shuffle_pi16(m2, imm);
-    cpu->reg_mmx[reg].q = r.u64[0];
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
+    cpu->fpu.startMMX();
 }
 
 void common_andnpsXmmXmm(CPU* cpu, U32 r1, U32 r2) {
@@ -449,7 +446,7 @@ void common_xorpsXmmE128(CPU* cpu, U32 reg, U32 address) {
 
 void common_cvtpi2psXmmMmx(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 value;
-    value.u64[0] = cpu->reg_mmx[r2].q;
+    value.u64[0] = cpu->fpu.getMMX(r2)->q;
     cpu->xmm[r1].ps = simde_mm_cvtpi32_ps(cpu->xmm[r1].ps, value);
 }
 
@@ -460,15 +457,15 @@ void common_cvtpi2psXmmE64(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_cvtps2piMmxXmm(CPU* cpu, U32 r1, U32 r2) {
-    cpu->reg_mmx[r1].q = simde_mm_cvtps_pi32(cpu->xmm[r2].ps).u64[0];
-    cpu->fpu.isMMXInUse = true;
+    cpu->fpu.getMMX(r1)->q = simde_mm_cvtps_pi32(cpu->xmm[r2].ps).u64[0];
+    cpu->fpu.startMMX();
 }
 
 void common_cvtps2piMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
     value.u64[0] = cpu->memory->readq(address);
-    cpu->reg_mmx[reg].q = simde_mm_cvtps_pi32(value).u64[0];
-    cpu->fpu.isMMXInUse = true;
+    cpu->fpu.getMMX(reg)->q = simde_mm_cvtps_pi32(value).u64[0];
+    cpu->fpu.startMMX();
 }
 
 void common_cvtsi2ssXmmR32(CPU* cpu, U32 r1, U32 r2) {
@@ -491,16 +488,16 @@ void common_cvtss2siR32E32(CPU* cpu, U32 reg, U32 address) {
 
 void common_cvttps2piMmxXmm(CPU* cpu, U32 r1, U32 r2) {
     simde__m64 r = simde_mm_cvttps_pi32(cpu->xmm[r2].ps);
-    cpu->reg_mmx[r1].q = r.u64[0];
-    cpu->fpu.isMMXInUse = true;
+    cpu->fpu.getMMX(r1)->q = r.u64[0];
+    cpu->fpu.startMMX();
 }
 
 void common_cvttps2piMmxE64(CPU* cpu, U32 reg, U32 address) {
     simde__m128 value;
     value.u64[0] = cpu->memory->readq(address);
     simde__m64 r = simde_mm_cvttps_pi32(value);
-    cpu->reg_mmx[reg].q = r.u64[0];
-    cpu->fpu.isMMXInUse = true;
+    cpu->fpu.getMMX(reg)->q = r.u64[0];
+    cpu->fpu.startMMX();
 }
 
 void common_cvttss2siR32Xmm(CPU* cpu, U32 r1, U32 r2) {
@@ -588,8 +585,8 @@ void common_maskmovqEDIMmxMmx(CPU* cpu, U32 r1, U32 r2, U32 address) {
     simde__m64 a = {};
     simde__m64 mask = {};
     U8 result[8] = {};
-    a.u64[0] = cpu->reg_mmx[r1].q;
-    mask.u64[0] = cpu->reg_mmx[r2].q;
+    a.u64[0] = cpu->fpu.getMMX(r1)->q;
+    mask.u64[0] = cpu->fpu.getMMX(r2)->q;
 
     cpu->memory->memcpy(result, address, 8);
     simde_mm_maskmove_si64(a, mask, (int8_t*)result);
@@ -604,8 +601,8 @@ void common_maskmovqEDIMmxMmxRM(CPU* cpu, U32 rm, U32 base, U32 bigAddress) {
     simde__m64 mask = {};
     U32 address = (bigAddress ? EDI : DI) + cpu->seg[base].address;
     U8 result[8] = {};
-    a.u64[0] = cpu->reg_mmx[G(rm)].q;
-    mask.u64[0] = cpu->reg_mmx[E(rm)].q;
+    a.u64[0] = cpu->fpu.getMMX(G(rm))->q;
+    mask.u64[0] = cpu->fpu.getMMX(E(rm))->q;
 
     cpu->memory->memcpy(result, address, 8);
     simde_mm_maskmove_si64(a, mask, (int8_t*)result);
@@ -618,7 +615,7 @@ void common_movntpsE128Xmm(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_movntqE64Mmx(CPU* cpu, U32 reg, U32 address) {
-    cpu->memory->writeq(address, cpu->reg_mmx[reg].q);
+    cpu->memory->writeq(address, cpu->fpu.getMMX(reg)->q);
 }
 
 void common_shufpsXmmXmm(CPU* cpu, U32 r1, U32 r2, U8 imm) {
@@ -774,4 +771,5 @@ void common_ldmxcsr(CPU* cpu, U32 reg, U32 address) {
 }
 
 void common_sfence(CPU* cpu) {
+    std::atomic_thread_fence(std::memory_order_seq_cst);
 }

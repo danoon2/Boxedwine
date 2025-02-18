@@ -495,7 +495,7 @@ void dynamic_verwe16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_xaddr8r8(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         movToRegFromCpu(DYN_SRC, CPU::offsetofReg8(op->reg), DYN_8bit);
         movToRegFromCpu(DYN_DEST, CPU::offsetofReg8(op->rm), DYN_8bit);
         instRegReg('+', DYN_SRC, DYN_DEST, DYN_8bit, false);
@@ -516,7 +516,7 @@ void dynamic_xaddr8r8(DynamicData* data, DecodedOp* op) {
 void dynamic_xaddr8e8(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
 
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         movToRegFromCpu(DYN_SRC, CPU::offsetofReg8(op->reg), DYN_8bit);
         movFromMem(DYN_8bit, DYN_ADDRESS, false);
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_8bit, false);
@@ -536,7 +536,7 @@ void dynamic_xaddr8e8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_xaddr16r16(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         movToRegFromCpu(DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
         movToRegFromCpu(DYN_DEST, CPU::offsetofReg16(op->rm), DYN_16bit);
         instRegReg('+', DYN_SRC, DYN_DEST, DYN_16bit, false);
@@ -557,7 +557,7 @@ void dynamic_xaddr16r16(DynamicData* data, DecodedOp* op) {
 void dynamic_xaddr16e16(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
 
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         movToRegFromCpu(DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
         movFromMem(DYN_16bit, DYN_ADDRESS, false);
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_16bit, false);
@@ -577,7 +577,7 @@ void dynamic_xaddr16e16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_xaddr32r32(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
         movToRegFromCpu(DYN_DEST, CPU::offsetofReg32(op->rm), DYN_32bit);
         instRegReg('+', DYN_SRC, DYN_DEST, DYN_32bit, false);
@@ -597,7 +597,7 @@ void dynamic_xaddr32r32(DynamicData* data, DecodedOp* op) {
 void dynamic_xaddr32e32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
 
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
         movFromMem(DYN_32bit, DYN_ADDRESS, false);
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_32bit, false);

@@ -32,6 +32,16 @@ void BtCPU::run() {
         if (this->inException) {
             this->inException = false;
         }
+        if (this->memory->deleteOnNextLoop) {
+            // a bit ugly
+            // see CodePageData::addCode
+            // that code uses a custom deleter that looks at the current thread->memory->data
+            KMemoryData* data = this->memory->data;
+            this->memory->data = this->memory->deleteOnNextLoop;
+            delete this->memory->deleteOnNextLoop;
+            this->memory->data = data;
+            this->memory->deleteOnNextLoop = nullptr;
+        }
 #endif
     }
 }
@@ -80,7 +90,7 @@ U64 BtCPU::reTranslateChunk() {
     KMemoryData* mem = getMemData(memory);
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 #endif
     std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
     if (chunk) {
@@ -136,8 +146,7 @@ void* BtCPU::translateEipInternal(U32 ip) {
 }
 
 void* BtCPU::translateEip(U32 ip) {
-    KMemoryData* mem = getMemData(memory);
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 
     void* result = translateEipInternal(ip);
     makePendingCodePagesReadOnly();
@@ -156,7 +165,7 @@ U64 BtCPU::startException(U64 address, bool readAddress) {
         this->thread->seg_mapper((U32)address, readAddress, !readAddress);
         U64 result = (U64)this->translateEip(this->eip.u32);
         if (result == 0) {
-            kpanic("Armv8btCPU::startException failed to translate code in exception");
+            kpanic("BtCPU::startException failed to translate code in exception");
         }
         return result;
     }
@@ -175,7 +184,7 @@ U64 BtCPU::handleFpuException(int code) {
     }
     U64 result = (U64)this->translateEip(this->eip.u32);
     if (result == 0) {
-        kpanic("Armv8btCPU::handleFpuException failed to translate code");
+        kpanic("BtCPU::handleFpuException failed to translate code");
     }
     return result;
 }
@@ -191,7 +200,7 @@ U64 BtCPU::handleAccessException(DecodedOp* op) {
     Page* page = getMemData(memory)->getPage(address >> K_PAGE_SHIFT);
     block->exceptionCount++;
     if (block->exceptionCount > 1000 && !block->retranslatedForException) {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(getMemData(memory)->executableMemoryMutex);
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         if (!block->retranslatedForException) {
             use4kMemCheck = false;
             block->releaseAndRetranslate();
@@ -227,6 +236,7 @@ void BtCPU::startThread() {
     } catch (...) {
         int ii = 0;
     }
+#ifndef __TEST
     KProcessPtr process = thread->process;
     process->deleteThread(thread);
     KThread::setCurrentThread(nullptr);
@@ -235,6 +245,7 @@ void BtCPU::startThread() {
         KSystem::shutingDown = true;
         KNativeSystem::postQuit();
     }
+#endif
 }
 
 // called from another thread

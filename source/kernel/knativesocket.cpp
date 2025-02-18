@@ -181,12 +181,14 @@ void startNativeSocketsThread() {
 
 void stopNativeSocketsThread() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(checkWaitingNativeSocketsThreadMutex);
-    checkWaitingNativeSocketsThreadDone = true;
-    char buf = 0;
-    ::send(nativeSocketPipe[1], &buf, 1, 0);
-    checkWaitingNativeSocketsThread->wait();
-    checkWaitingNativeSocketsThreadDone = false;
-    checkWaitingNativeSocketsThread = nullptr;
+    if (checkWaitingNativeSocketsThread) {
+        checkWaitingNativeSocketsThreadDone = true;
+        char buf = 0;
+        ::send(nativeSocketPipe[1], &buf, 1, 0);
+        checkWaitingNativeSocketsThread->wait();
+        checkWaitingNativeSocketsThreadDone = false;
+        checkWaitingNativeSocketsThread = nullptr;
+    }
 }
 #endif
 
@@ -207,11 +209,13 @@ void addWaitingNativeSocket(const std::shared_ptr<KNativeSocketObject>& s) {
 }
 
 void removeWaitingSocket(S32 nativeSocket) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);
-    for (int i = 0; i < (int)waitingNativeSockets.size(); i++) {
-        if (waitingNativeSockets[i]->nativeSocket == nativeSocket) {
-            waitingNativeSockets.erase(waitingNativeSockets.begin() + i);
-            break;
+    {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(waitingNodeMutex);
+        for (int i = 0; i < (int)waitingNativeSockets.size(); i++) {
+            if (waitingNativeSockets[i]->nativeSocket == nativeSocket) {
+                waitingNativeSockets.erase(waitingNativeSockets.begin() + i);
+                break;
+            }
         }
     }
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -1444,6 +1448,10 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, 
             len = sizeof(tmp);
         S32 r = (S32)::recvfrom(this->nativeSocket, tmp, len, nativeFlags, hdr.msg_name?(struct sockaddr*)&in:nullptr, hdr.msg_name ? &inLen : nullptr);
         LOG_SOCK("%x native socket: %x recvmsg flags=%x msg_name=%x msg_namelen=%x result=%x", thread->id, nativeSocket, flags, hdr.msg_name, hdr.msg_namelen, r);
+        //if (r < 0) {
+        //    Platform::nanoSleep(10000000);
+        //    r = (S32)::recvfrom(this->nativeSocket, tmp, len, nativeFlags, hdr.msg_name ? (struct sockaddr*)&in : nullptr, hdr.msg_name ? &inLen : nullptr);
+        //}
         if (r>=0) {
             memory->memcpy(p, tmp, r);
             // :TODO: maybe copied fields to the expected location rather than assume the structures are the same

@@ -564,7 +564,7 @@ void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 val
             pushCode8(0xC0 | (m << 3) | from);            
             runTestCPU();
 
-            if (cpu->reg_mmx[m].q!=mmxResult) {
+            if (cpu->fpu.getMMX(m)->q!=mmxResult) {
                 failed("sse failed");
             }
         }
@@ -585,7 +585,7 @@ void testSseMmx64r(U8 preOp1, U8 preOp2, U8 op, U64 value1, U64 value2l, U64 val
             pushCode8(0x25);
             pushCode32(SSE_MEM_VALUE_TMP_OFFSET+16);
             runTestCPU();
-            if (cpu->reg_mmx[m].q!=mmxMemResult) {
+            if (cpu->fpu.getMMX(m)->q!=mmxMemResult) {
                 failed("sse failed");
             }
         }

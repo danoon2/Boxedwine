@@ -165,6 +165,16 @@ void Armv8btAsm::reverseBytes32(U8 dst, U8 src) {
     write8(0x5a);
 }
 
+void Armv8btAsm::abs64(U8 dst, U8 src) {
+    // add  w1, w0, w0 asr #31 ; w1 = w0 < 0 ? w0 - 1 : w0
+    // eor  w1, w1, w0 asr #31 ; w1 = w0 < 0 ? ~(w0 - 1) : w0
+    U8 tmpReg = getTmpReg();
+    addRegs64Asr(tmpReg, src, src, 63);
+    xorRegs64Asr(dst, tmpReg, src, 63);
+    releaseTmpReg(tmpReg);
+}
+
+
 void Armv8btAsm::loadConst(U8 reg, U64 value) {    
 #ifdef BOXEDWINE_MSVC
     unsigned long shift;
@@ -184,7 +194,7 @@ void Armv8btAsm::loadConst(U8 reg, U64 value) {
     }
     U64 v = value >> shift;
     if (v <= 0xFFFF) {
-        movz(reg, v, shift);
+        movz(reg, (U16)v, (U8)shift);
     } else {
         movz(reg, (U16)value);
         if (value > 0xFFFF) {
@@ -466,6 +476,13 @@ void Armv8btAsm::addRegs64(U8 dst, U8 src1, U8 src2, U8 src2ShiftLeft, bool flag
     write8(dst | (U8)(src1 << 5));
     write8((U8)(src1 >> 3) | (src2ShiftLeft << 2));
     write8(src2);
+    write8(flags ? 0xab : 0x8b);
+}
+
+void Armv8btAsm::addRegs64Asr(U8 dst, U8 src1, U8 src2, U8 src2ShiftRight, bool flags) {
+    write8(dst | (U8)(src1 << 5));
+    write8((U8)(src1 >> 3) | (src2ShiftRight << 2));
+    write8(0x80 | src2);
     write8(flags ? 0xab : 0x8b);
 }
 
@@ -788,6 +805,20 @@ void Armv8btAsm::orValue32(U8 dst, U8 src, U32 value) {
         orRegs32(dst, src, tmp);
         releaseTmpReg(tmp);
     }
+}
+
+void Armv8btAsm::xorRegs64(U8 dst, U8 src1, U8 src2, U8 src2ShiftLeft) {
+    write8(dst | (U8)(src1 << 5));
+    write8((U8)(src1 >> 3) | (src2ShiftLeft << 2));
+    write8(src2);
+    write8(0xca);
+}
+
+void Armv8btAsm::xorRegs64Asr(U8 dst, U8 src1, U8 src2, U8 src2ShiftRight) {
+    write8(dst | (U8)(src1 << 5));
+    write8((U8)(src1 >> 3) | (src2ShiftRight << 2));
+    write8(0x80 | src2);
+    write8(0xca);
 }
 
 void Armv8btAsm::xorRegs32(U8 dst, U8 src1, U8 src2) {
@@ -1483,6 +1514,14 @@ void Armv8btAsm::readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 wid
 
     U32 restartPos = this->bufferPos;
 
+    if (lock) {
+        U8 tmpReg = getRegWithConst(width/8 - 1);
+        andRegs32(tmpReg, addressReg, tmpReg);
+        doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this]() {
+            emulateSingleOp(currentOp);
+            });
+        releaseTmpReg(tmpReg);
+    }
     readMemory(addressReg, readDst, width, false, lock);
     pfn();
     if (doWrite) {
@@ -1561,6 +1600,11 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
             kpanic("ArmV8bt: writeMemory lock not implement for addMemOffsetToAddress = true");
         }
         U8 statusReg = getTmpReg();       
+
+        // in case of data alignment exception
+        loadConst(statusReg, this->startOfOpIp);
+        writeMem32ValueOffset(statusReg, xCPU, CPU_OFFSET_EIP);
+
         // addressReg should already be added with xMem
 
         write8(src | (U8)(addressReg << 5));
@@ -2061,7 +2105,11 @@ static void armv8_translateIfNecessary(Armv8btCPU* cpu) {
     if (!cpu->isBig()) {
         cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
     }
-    cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+    try {
+        cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+    } catch (...) {
+        cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
+    }
 }
 
 void Armv8btAsm::createCodeForJmpAndTranslateIfNecessary() {
@@ -2273,10 +2321,17 @@ void Armv8btAsm::createCodeForSyncFromHost() {
     vWriteMemMultiple128(xXMM0, addressReg, 4, true);
     vWriteMemMultiple128(xXMM4, addressReg, 4, false);
 
-    // when using the FPU, these will contain cached FPU values
-    addValue64(addressReg, xCPU, (U32)(offsetof(CPU, reg_mmx[0])));
-    vWriteMemMultiple64(vMMX0, addressReg, 4, true);
-    vWriteMemMultiple64(vMMX4, addressReg, 4, false);
+    readMem8ValueOffset(addressReg, xCPU, (U32)(offsetof(CPU, fpu.isMMXInUse)));
+    doIf(addressReg, 0, DO_IF_NOT_EQUAL, [addressReg, this]() {
+        vWriteMem64ValueOffset(vMMX0, xCPU, (U32)(offsetof(CPU, fpu.regs[0])));
+        vWriteMem64ValueOffset(vMMX1, xCPU, (U32)(offsetof(CPU, fpu.regs[1])));
+        vWriteMem64ValueOffset(vMMX2, xCPU, (U32)(offsetof(CPU, fpu.regs[2])));
+        vWriteMem64ValueOffset(vMMX3, xCPU, (U32)(offsetof(CPU, fpu.regs[3])));
+        vWriteMem64ValueOffset(vMMX4, xCPU, (U32)(offsetof(CPU, fpu.regs[4])));
+        vWriteMem64ValueOffset(vMMX5, xCPU, (U32)(offsetof(CPU, fpu.regs[5])));
+        vWriteMem64ValueOffset(vMMX6, xCPU, (U32)(offsetof(CPU, fpu.regs[6])));
+        vWriteMem64ValueOffset(vMMX7, xCPU, (U32)(offsetof(CPU, fpu.regs[7])));
+        });
 
     releaseTmpReg(addressReg);
     ret();
@@ -2307,11 +2362,18 @@ void Armv8btAsm::createCodeForSyncToHost() {
     vReadMemMultiple128(xXMM0, addressReg, 4, true);
     vReadMemMultiple128(xXMM4, addressReg, 4, false);
 
-    // when using the FPU, these will contain cached FPU values
-    addValue64(addressReg, xCPU, (U32)(offsetof(CPU, reg_mmx[0])));
-    vReadMemMultiple64(vMMX0, addressReg, 4, true);
-    vReadMemMultiple64(vMMX4, addressReg, 4, false);
-
+    // ok to read regs even if not in mmx mode since vMMX0... won't be used in that case
+    readMem8ValueOffset(addressReg, xCPU, (U32)(offsetof(CPU, fpu.isMMXInUse)));
+    doIf(addressReg, 0, DO_IF_NOT_EQUAL, [this]() {
+        vReadMem64ValueOffset(vMMX0, xCPU, (U32)(offsetof(CPU, fpu.regs[0])));
+        vReadMem64ValueOffset(vMMX1, xCPU, (U32)(offsetof(CPU, fpu.regs[1])));
+        vReadMem64ValueOffset(vMMX2, xCPU, (U32)(offsetof(CPU, fpu.regs[2])));
+        vReadMem64ValueOffset(vMMX3, xCPU, (U32)(offsetof(CPU, fpu.regs[3])));
+        vReadMem64ValueOffset(vMMX4, xCPU, (U32)(offsetof(CPU, fpu.regs[4])));
+        vReadMem64ValueOffset(vMMX5, xCPU, (U32)(offsetof(CPU, fpu.regs[5])));
+        vReadMem64ValueOffset(vMMX6, xCPU, (U32)(offsetof(CPU, fpu.regs[6])));
+        vReadMem64ValueOffset(vMMX7, xCPU, (U32)(offsetof(CPU, fpu.regs[7])));
+        });
     // if we are using the FPU, these need to be restored
     // Quake 2 time demo will require this because it will cause an exception from self modifying code while using the FPU
     //addValue64(xFpuOffset, xCPU, (U32)(offsetof(CPU, fpu)));
@@ -2642,6 +2704,29 @@ void Armv8btAsm::vWriteMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     }
     write8(0x20 | offsetReg);
     write8(0xfc);
+}
+
+void Armv8btAsm::vWriteMem64ValueOffset(U8 dst, U8 base, S32 offset) {
+    if (offset >= 0 && offset <= 32760 && (offset & 0x7) == 0) {
+        // str d0, [x0, 32760]
+        offset = offset >> 3;
+        write8(dst | (U8)(base << 5));
+        write8(((offset & 0x3F) << 2) | (U8)(base >> 3));
+        write8(((offset >> 6) & 0x1F));
+        write8(0xfd);
+    }
+    else if (offset > 255 || offset < -256) {
+        U8 tmp = getRegWithConst(offset);
+        vWriteMem64RegOffset(dst, base, tmp);
+        releaseTmpReg(tmp);
+    }
+    else {
+        // str d0, [x0,0]
+        write8(dst | (U8)(base << 5));
+        write8(((offset & 0xF) << 4) | (U8)(base >> 3));
+        write8(((offset >> 4) & 0x1F));
+        write8(0xfd);
+    }
 }
 
 void Armv8btAsm::vReadMem64ValueOffset(U8 dst, U8 base, S32 offset) {
@@ -4816,9 +4901,14 @@ void Armv8btAsm::translateInstruction() {
 #endif
     armv8btEncoder[this->currentOp->inst](this);
 
-    if (instructionInfo[this->currentOp->inst].extra & INST_STARTS_MMX) {
+    bool mmxRead = instructionInfo[this->currentOp->inst].extra & INST_MMX_READ;
+    bool mmxWrite = instructionInfo[this->currentOp->inst].extra & INST_MMX_WRITE;
+    if (mmxWrite && !mmxRead) {
         U8 tmp = getRegWithConst(1);
         writeMem8ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.isMMXInUse)));
+        zeroReg(tmp);
+        writeMem8ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.top)));
+        writeMem8ValueOffset(tmp, xCPU, (U32)(offsetof(CPU, fpu.sw)));
         releaseTmpReg(tmp);
     }
 

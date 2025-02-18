@@ -64,6 +64,9 @@ SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/mztools.c
 SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/unzip.c
 SOURCES += $(PROJDIR)/lib/zlib/contrib/minizip/zip.c
 
+SOFT_SOURCES = $(wildcard $(PROJDIR)/lib/softfloat/source/*.c)
+SOFT_SOURCES += $(wildcard $(PROJDIR)/lib/softfloat/source/8086-SSE/*.c)
+
 TEST_SOURCES = $(wildcard $(PROJDIR)/source/test/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/*.cpp)
 TEST_SOURCES += $(wildcard $(PROJDIR)/source/sdl/emscripten/*.cpp)
@@ -88,11 +91,15 @@ SRCS := $(TEST_SOURCES)
 else
 SRCS := $(SOURCES)
 endif
-OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
-DEPS := $(OBJS:.o=.d)
 
-INCLUDES = -I../../include
-INCLUDES += -I../../lib/simde
+OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
+SOFT_OBJS := $(SOFT_SOURCES:%=$(BUILD_DIR)/%.o)
+ALL := $(OBJS)
+ALL += $(SOFT_OBJS)
+DEPS := $(ALL:.o=.d)
+
+$(OBJS): INCLUDES := -I../../include -I../../lib/simde
+$(SOFT_OBJS): INCLUDES := -I../../lib/softfloat/source/include -I../../lib/softfloat/source -I../../lib/softfloat/source/8086-SSE
 
 CXXFLAGS ?= -std=c++20
 CPPFLAGS ?= -O3 -s USE_SDL=2 -s USE_ZLIB=1 -DBOXEDWINE_ZLIB -DSDL2=1 -DBOXEDWINE_DISABLE_UI -DSIMDE_SSE2_NO_NATIVE $(GCC_EXTRA_FLAGS) -Wall -Wno-format-security -Wno-unused-private-field -Wno-invalid-offsetof -Wno-delete-incomplete -Wno-unused-result -Wno-unknown-pragmas -Wno-unused-local-typedefs -Wno-unused-variable -Wno-unused-function -Wno-unused-but-set-variable $(INCLUDES) $(EXTRA_CPP_FLAGS)
@@ -102,8 +109,8 @@ LDFLAGS = -s FORCE_FILESYSTEM -lidbfs.js -s USE_SDL=2 -s USE_ZLIB=1 -fwasm-excep
 #$(TEST_BUILD_DIR)/boxedwineTest: $(TEST_OBJS)
 #	$(CC) $(TEST_OBJS) -o $@ $(LDFLAGS)
 
-$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
-	@$(CC) $(OBJS) -o $@ $(LDFLAGS)
+$(BUILD_DIR)/$(TARGET_EXEC): $(ALL)
+	@$(CC) $(ALL) -o $@ $(LDFLAGS)
 
 # assembly
 $(BUILD_DIR)/%.s.o: %.s

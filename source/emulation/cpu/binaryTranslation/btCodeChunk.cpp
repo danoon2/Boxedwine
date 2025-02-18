@@ -15,9 +15,6 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
     this->emulatedInstructionLen = new U8[instructionCount];
     this->hostInstructionLen = new U32[instructionCount];
     this->block = nullptr;
-    Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [this]() {
-        memset(this->hostAddress, 0xce, this->hostAddressSize);
-        });
     if (instructionCount) {
         for (U32 i = 0; i < instructionCount; i++) {
             if (i == instructionCount - 1) {
@@ -33,8 +30,8 @@ BtCodeChunk::BtCodeChunk(U32 instructionCount, U32* eipInstructionAddress, U32* 
         }
     }
     Platform::writeCodeToMemory(this->hostAddress, this->hostAddressSize, [=, this]() {
-        memcpy(this->hostAddress, hostInstructionBuffer, hostInstructionBufferLen);
-        });
+        memcpy(this->hostAddress, hostInstructionBuffer, this->hostLen);
+        });    
 }
 
 void BtCodeChunk::makeLive() {
@@ -62,7 +59,6 @@ void BtCodeChunk::makeLive() {
         }
         mem->addCodeChunk(shared_from_this());
     }
-    this->clearInstructionCache(this->hostAddress, this->hostLen);
 }
 
 void BtCodeChunk::detachFromHost(KMemory* memory) {

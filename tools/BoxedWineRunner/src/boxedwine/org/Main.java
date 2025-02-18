@@ -55,7 +55,12 @@ public class Main {
         commands.add(wineZip);
         commands.add("-w");
         commands.add(parts[0]);
+        int lastIndex = -1;
         for (int i=2;i<parts.length;i++) {
+            if (parts[i].equals("ARGS")) {
+                lastIndex = i + 1;
+                break;
+            }
             commands.add(parts[i]);
         }
         for (int i=0;i<extraCommands.size();i++) {
@@ -63,10 +68,17 @@ public class Main {
         }
         commands.add("/bin/wine");
         commands.add(parts[1]);
+        if (lastIndex > 1) {
+            for (int i = lastIndex; i < parts.length; i++) {
+                commands.add(parts[i]);
+            }
+        }
         builder.command(commands);
         results.commandLine = "boxedwine -automation "+directory+File.separator+scriptDir+" -root "+directory+File.separator+"root -zip \""+wineZip+"\" -w \""+parts[0]+"\" /bin/wine \""+parts[1]+"\"";
-        for (int i=2;i<parts.length;i++) {
-            results.commandLine+=" "+parts[i];
+        if (lastIndex > 1) {
+            for (int i = lastIndex; i < parts.length; i++) {
+                results.commandLine += " " + parts[i];
+            }
         }
         for (int i=0;i<extraCommands.size();i++) {
             results.commandLine+=" "+extraCommands.elementAt(i);

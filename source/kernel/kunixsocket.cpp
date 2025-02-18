@@ -279,6 +279,19 @@ U32 KUnixSocketObject::readNative(U8* buffer, U32 len) {
 }
 
 U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len) {
+    return read(thread, buffer, len, 0);
+}
+
+U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len, U32 flags) {
+    bool peek = false;
+    if (flags & K_MSG_PEEK) {
+        peek = true;
+        flags &= ~K_MSG_PEEK;
+    }
+    if (flags) {
+        kwarn("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
+    }
+
     U32 count = 0;
     this->pid = thread->process->id; // kind of a hack to do this here
     std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
@@ -310,11 +323,31 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len) {
 #endif
     }
     count = std::min(len, (U32)this->recvBuffer.size_used());
-    memory->performOnMemory(buffer, count, false, [this](U8* ram, U32 len) {
-        this->recvBuffer.get(ram, len);
-        return true;
-        });
-
+    if (peek) {
+        U32 availableOnPage = K_PAGE_SIZE - (buffer & K_PAGE_MASK);
+        if (count <= availableOnPage) {
+            memory->performOnMemory(buffer, count, false, [this](U8* ram, U32 len) {
+                this->recvBuffer.peek(ram, len);
+                return true;
+                });
+        } else {
+            U8* tmp = new U8[count];
+            this->recvBuffer.peek(tmp, count);
+            U8* p = tmp;
+            memory->performOnMemory(buffer, count, false, [&p](U8* ram, U32 len) {
+                memcpy(ram, p, len);
+                p += len;
+                return true;
+                });
+            delete[] tmp;
+        }
+    }
+    else {
+        memory->performOnMemory(buffer, count, false, [this](U8* ram, U32 len) {
+            this->recvBuffer.get(ram, len);
+            return true;
+            });
+    }
     if (con) {
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->lockCond);
     }
@@ -861,11 +894,8 @@ U32 KUnixSocketObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32
 }
 
 U32 KUnixSocketObject::recvfrom(KThread* thread, const KFileDescriptorPtr& fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
-    if (address == 0) {
-        if (flags) {
-            kwarn("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
-        }
-        return read(thread, buffer, length);
+    if (address == 0) {        
+        return read(thread, buffer, length, flags);
     }
     return 0;
 }

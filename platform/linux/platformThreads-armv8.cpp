@@ -5,7 +5,8 @@
 #include "../../source/emulation/cpu/armv8bt/armv8btCPU.h"
 #include "../../source/emulation/cpu/armv8bt/armv8btAsm.h"
 #include "../../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
-
+#include "../../source/emulation/softmmu/kmemory_soft.h"
+#include "../../source/emulation/cpu/normal/normalCPU.h"
 #ifdef __MACH__
 #define __USE_GNU
 #define _XOPEN_SOURCE
@@ -71,18 +72,23 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
 #endif
     cpu->flags = (U32)context->CONTEXT_REG(xFLAGS);
     cpu->lazyFlags = FLAGS_NONE;
-
+    cpu->eip.u32 = getMemData(cpu->memory)->codeCache.getEipFromHost((U8*)context->CONTEXT_PC);
+    
 #ifdef __MACH__
     for (int i = 0; i < 8; i++) {
         memcpy(&cpu->xmm[i], &context->uc_mcontext->__ns.__v[xXMM0 + i], 16);
-        cpu->reg_mmx[i].q = (U64)context->uc_mcontext->__ns.__v[vMMX0 + i];
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.regs[i].signif = (U64)context->uc_mcontext->__ns.__v[vMMX0 + i];
+        }
     }
 #else
     struct fpsimd_context* fc = getSimdContext(&context->uc_mcontext);
 
     for (int i = 0; i < 8; i++) {
         memcpy(&cpu->xmm[i], &fc->vregs[xXMM0 + i], 16);
-        cpu->reg_mmx[i].q = (U64)fc->vregs[vMMX0 + i];
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.regs[i].signif = (U64)fc->vregs[vMMX0 + i];
+        }
     }
 #endif
 }
@@ -185,6 +191,14 @@ void signalHandler() {
     if (cpu->exceptionSigNo == SIGFPE) {
         int code = getFPUCode(cpu->exceptionSigCode);
         cpu->returnHostAddress = cpu->handleFpuException(code);
+        return;
+    }
+    if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
+        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+
+        cpu->returnHostAddress = cpu->handleAccessException(op);
+        cpu->fillFlags();
+        op->dealloc(true);
         return;
     }
     kpanic("unhandled exception %d", cpu->exceptionSigNo);

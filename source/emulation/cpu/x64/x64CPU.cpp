@@ -47,7 +47,7 @@ void* x64CPU::init() {
         this->negSegAddress[i] = (U32)(-((S32)(this->seg[i].address)));
     }
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mem->executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 
 	// will push 15 regs, since it is odd, it will balance rip being pushed on the stack and give use a 16-byte alignment
 	data.saveNativeState(); // also sets HOST_CPU
@@ -132,12 +132,30 @@ void* x64CPU::init() {
 
 #ifdef __TEST
 void x64CPU::postTestRun() {
-    for (int i = 0; i < 8; i++) {
-        reg_mmx[i].q = fpuState.st_mm[i].low;
-    }
-    for (int i = 0; i < 8; i++) {
-        xmm[i].pi.u64[0] = fpuState.xmm[i].low;
-        xmm[i].pi.u64[1] = fpuState.xmm[i].high;
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+    if (!thread->process->emulateFPU) 
+#endif
+    {
+        for (int i = 0; i < 8; i++) {
+            xmm[i].pi.u64[0] = fpuState.xmm[i].low;
+            xmm[i].pi.u64[1] = fpuState.xmm[i].high;
+        }        
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+        if (fpu.isMMXInUse) 
+#endif
+        {
+            U16 controlWord = fpuState.fcw;
+            U16 statusWord = fpuState.fsw;
+            U8 tag = fpuState.ftw;
+            fpu.SetCW(controlWord);
+            fpu.SetSW(statusWord);
+            fpu.SetTagFromAbridged(tag);
+
+            for (U32 i = 0; i < 8; i++) {
+                U32 index = (i - fpu.GetTop()) & 7;
+                fpu.LD80(i, fpuState.st_mm[index].low, (U16)fpuState.st_mm[index].high);
+            }
+        }
     }
 }
 
@@ -164,14 +182,20 @@ void x64CPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 off
     }
 }
 
-void x64CPU::loadFxState(U32 inst, U64* currentFPU) {
+void x64CPU::loadFxState(U32 inst) {
     for (U32 i = 0; i < 8; i++) {
         this->xmm[i].pd.u64[0] = this->fpuState.xmm[i].low;
         this->xmm[i].pd.u64[1] = this->fpuState.xmm[i].high;
-        this->reg_mmx[i].q = this->fpuState.st_mm[i].low;
     }
-#ifndef BOXEDWINE_USE_SSE_FOR_FPU
-    if (!this->thread->process->emulateFPU && !this->fpu.isMMXInUse) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (this->fpu.isMMXInUse) {
+        klog("mmx");
+        for (U32 i = 0; i < 8; i++) {
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
+        }
+    }
+#else
+    if (!this->thread->process->emulateFPU) {
         U16 controlWord = this->fpuState.fcw;
         U16 statusWord = this->fpuState.fsw;
         U8 tag = ((x64CPU*)this)->fpuState.ftw;
@@ -181,39 +205,31 @@ void x64CPU::loadFxState(U32 inst, U64* currentFPU) {
 
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - this->fpu.GetTop()) & 7;
-            double d = this->fpu.FLD80(this->fpuState.st_mm[index].low, (S16)this->fpuState.st_mm[index].high);
-            this->fpu.setReg(i, d);
-            currentFPU[i] = this->fpu.regs[i].l;
+            fpu.LD80(i, this->fpuState.st_mm[index].low, (U16)this->fpuState.st_mm[index].high);
         }
     }
 #endif
 }
 
-void x64CPU::saveToFxState(U32 inst, U64* previousFPU) {
+void x64CPU::saveToFxState(U32 inst) {
     for (U32 i = 0; i < 8; i++) {
         this->fpuState.xmm[i].low = this->xmm[i].pd.u64[0];
         this->fpuState.xmm[i].high = this->xmm[i].pd.u64[1];
     }
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
-    for (U32 i = 0; i < 8; i++) {
-        this->fpuState.st_mm[i].low = this->reg_mmx[i].q;
-        this->fpuState.st_mm[i].high = 0xffff;
+    if (this->fpu.isMMXInUse) {
+        for (U32 i = 0; i < 8; i++) {
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
+        }
     }
 #else
-    if (this->fpu.isMMXInUse) {
-        for (int i = 0; i < 8; i++) {
-            this->fpuState.st_mm[i].low = this->reg_mmx[i].q;
-            this->fpuState.st_mm[i].high = 0xffff;
-        }
-    } else if (!this->thread->process->emulateFPU) {
+    if (!this->thread->process->emulateFPU) {
         this->fpuState.fcw = this->fpu.CW();
         this->fpuState.fsw = this->fpu.SW();
         this->fpuState.ftw = this->fpu.GetAbridgedTag(this);
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - this->fpu.GetTop()) & 7;
-            if (previousFPU[i] != this->fpu.regs[i].l) { // this prevents an 80-bit -> 64-bit conversion and back which can cause some issues, especially in f-22 game
-                this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[index].low, (U64*)&this->fpuState.st_mm[index].high);
-            }
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[index].low, (U64*)&this->fpuState.st_mm[index].high);
         }
     }
 #endif
@@ -269,7 +285,7 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
         }
 #ifndef __TEST
         KMemoryData* mem = getMemData(memory);
-        if (mem->isAddressDynamic(address, data->currentOp->len)) {
+        if (mem->codeCache.isAddressDynamic(address, data->currentOp->len)) {
             if (data->startOfDataIp == data->startOfOpIp) {
                 data->mapAddress(address, data->bufferPos);
 
@@ -320,26 +336,24 @@ void common_runSingleOp(x64CPU* cpu) {
     for (U32 i = 0; i < 8; i++) {
         cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
         cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
-        cpu->reg_mmx[i].q = cpu->fpuState.st_mm[i].low;
+        if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
+            cpu->fpu.LD80(i, cpu->fpuState.st_mm[i].low, (U16)cpu->fpuState.st_mm[i].high);
+        }
     }
-    U64 fpu[8];
-    if (!cpu->thread->process->emulateFPU && !cpu->fpu.isMMXInUse) {
+    if (!cpu->thread->process->emulateFPU) {
         U16 controlWord = cpu->fpuState.fcw;
         U16 statusWord = cpu->fpuState.fsw;
-        U8 tag = ((x64CPU*)cpu)->fpuState.ftw;
+        U8 tag = cpu->fpuState.ftw;
         cpu->fpu.SetCW(controlWord);
         cpu->fpu.SetSW(statusWord);
         cpu->fpu.SetTagFromAbridged(tag);
 
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - cpu->fpu.GetTop()) & 7;
-            double d = cpu->fpu.FLD80(cpu->fpuState.st_mm[index].low, (S16)cpu->fpuState.st_mm[index].high);
-            cpu->fpu.setReg(i, d);
-            fpu[i] = cpu->fpu.regs[i].l;
+            cpu->fpu.LD80(i, cpu->fpuState.st_mm[index].low, (U16)cpu->fpuState.st_mm[index].high);
         }
     }
 #endif
-    bool inSignal = cpu->thread->inSignal;
     if (writesFlags[op->inst]) {
         cpu->flags &= ~(SF | AF | ZF | PF | CF | OF);
         cpu->flags |= ((cpu->instructionStoredFlags >> 8) & 0xff) | ((cpu->instructionStoredFlags & 1) << 11);
@@ -349,34 +363,21 @@ void common_runSingleOp(x64CPU* cpu) {
     } catch (...) {
         int ii = 0;
     }
-    if (inSignal != (cpu->thread->inSignal!=0)) {
-        // :TODO: move this threads context read/write
-        if (inSignal) {
-            memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
-        } else {
-            memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
-        }
-    }
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
     for (U32 i = 0; i < 8; i++) {
         cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
         cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
-    }
-    if (cpu->fpu.isMMXInUse) {
-        for (U32 i = 0; i < 8; i++) {
-            // f-22 will hit this with psrld when starting a game
-            cpu->fpuState.st_mm[i].low = cpu->reg_mmx[i].q;
+        if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
+            cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[i].low, (U64*)&cpu->fpuState.st_mm[i].high);
         }
-    } else if (!cpu->thread->process->emulateFPU) {
+    }
+    if (!cpu->thread->process->emulateFPU) {
         cpu->fpuState.fcw = cpu->fpu.CW();
         cpu->fpuState.fsw = cpu->fpu.SW();
         cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag(cpu);
-        U8 tag = cpu->fpuState.ftw;
         for (U32 i = 0; i < 8; i++) {
             U32 index = (i - cpu->fpu.GetTop()) & 7;
-            if (fpu[i] != cpu->fpu.regs[i].l) { // this prevents an 80-bit -> 64-bit conversion and back which can cause some issues, especially in f-22 game
-                cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
-            }
+            cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
         }
     }
 #endif
@@ -385,6 +386,6 @@ void common_runSingleOp(x64CPU* cpu) {
     if (deallocOp) {
         op->dealloc(true);
     }
-    DecodedBlock::currentBlock = nullptr;
+    cpu->currentBlock = nullptr;
 }
 #endif

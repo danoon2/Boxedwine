@@ -9,7 +9,7 @@
 #include "../source/emulation/cpu/x64/x64CPU.h"
 #include "../source/emulation/cpu/armv8bt/armv8btCPU.h"
 #ifdef BOXEDWINE_X64
-void syncFromException(struct _EXCEPTION_POINTERS* ep, U64* fpu) {
+void syncFromException(struct _EXCEPTION_POINTERS* ep) {
     x64CPU* cpu = (x64CPU*)KThread::currentThread()->cpu;
     EAX = (U32)ep->ContextRecord->Rax;
     ECX = (U32)ep->ContextRecord->Rcx;
@@ -23,27 +23,34 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, U64* fpu) {
     cpu->flags = (ep->ContextRecord->EFlags & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
     cpu->lazyFlags = FLAGS_NONE;    
 
-    for (int i = 0; i < 8; i++) {
-        cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
-        cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
-        cpu->reg_mmx[i].q = ep->ContextRecord->FltSave.FloatRegisters[i].Low;
-    }
-#ifndef BOXEDWINE_USE_SSE_FOR_FPU
-    if (!cpu->thread->process->emulateFPU && !cpu->fpu.isMMXInUse) {
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (cpu->fpu.isMMXInUse) {
+#else
+    if (!cpu->thread->process->emulateFPU || cpu->fpu.isMMXInUse) {
+#endif
         cpu->fpu.SetCW(ep->ContextRecord->FltSave.ControlWord);
         cpu->fpu.SetSW(ep->ContextRecord->FltSave.StatusWord);
         cpu->fpu.SetTagFromAbridged(ep->ContextRecord->FltSave.TagWord);
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            double d = cpu->fpu.FLD80(ep->ContextRecord->FltSave.FloatRegisters[index].Low, (S16)ep->ContextRecord->FltSave.FloatRegisters[index].High);
-            cpu->fpu.setReg(i, d);
-            fpu[i] = cpu->fpu.regs[i].l;
-        }
     }
-#endif
+    for (int i = 0; i < 8; i++) {
+        cpu->xmm[i].pi.u64[0] = ep->ContextRecord->FltSave.XmmRegisters[i].Low;
+        cpu->xmm[i].pi.u64[1] = ep->ContextRecord->FltSave.XmmRegisters[i].High;
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.regs[i].signif = ep->ContextRecord->FltSave.FloatRegisters[i].Low;
+            cpu->fpu.regs[i].signExp = (U16)ep->ContextRecord->FltSave.FloatRegisters[i].High;
+        } 
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+        else if (!cpu->thread->process->emulateFPU) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            cpu->fpu.regs[i].signif = ep->ContextRecord->FltSave.FloatRegisters[index].Low;
+            cpu->fpu.regs[i].signExp = (U16)ep->ContextRecord->FltSave.FloatRegisters[index].High;
+            cpu->fpu.isRegCached[i] = false;
+        }
+#endif        
+    }        
 }
 
-void syncToException(struct _EXCEPTION_POINTERS* ep, U64* fpu) {
+void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU = true) {
     BtCPU* cpu = (BtCPU*)KThread::currentThread()->cpu;
     ep->ContextRecord->Rax = EAX;
     ep->ContextRecord->Rcx = ECX;
@@ -56,34 +63,41 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, U64* fpu) {
     cpu->fillFlags();
     ep->ContextRecord->EFlags &= ~(AF | CF | OF | SF | PF | ZF);
     ep->ContextRecord->EFlags |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
-    
-    for (int i = 0; i < 8; i++) {
-        ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
-        ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
-    }
-#ifdef BOXEDWINE_USE_SSE_FOR_FPU
-    for (int i = 0; i < 8; i++) {
-        ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->reg_mmx[i].q;
-        ep->ContextRecord->FltSave.FloatRegisters[i].High = 0xffff;
-    }
-#else
-    if (cpu->fpu.isMMXInUse) {
+
+    if (!includeFPU) {
         for (int i = 0; i < 8; i++) {
-            ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->reg_mmx[i].q;
-            ep->ContextRecord->FltSave.FloatRegisters[i].High = 0xffff;
+            ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
+            ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
         }
-    } else if (!cpu->thread->process->emulateFPU) {
+        return;
+    }
+    klog("fpu/mmx should not get here");
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (cpu->fpu.isMMXInUse) {
+#else
+    if (!cpu->thread->process->emulateFPU || cpu->fpu.isMMXInUse) {
+#endif
         ep->ContextRecord->FltSave.ControlWord = cpu->fpu.CW();
         ep->ContextRecord->FltSave.StatusWord = cpu->fpu.SW();
         ep->ContextRecord->FltSave.TagWord = cpu->fpu.GetAbridgedTag(cpu);
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            if (fpu[i] != cpu->fpu.regs[i].l) { // this prevents an 80-bit -> 64-bit conversion and back which can cause some issues, especially in f-22 game
-                cpu->fpu.ST80(i, &ep->ContextRecord->FltSave.FloatRegisters[index].Low, (ULONGLONG*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
-            }
-        }
     }
+
+    for (int i = 0; i < 8; i++) {
+        ep->ContextRecord->FltSave.XmmRegisters[i].Low = cpu->xmm[i].pi.u64[0];
+        ep->ContextRecord->FltSave.XmmRegisters[i].High = cpu->xmm[i].pi.u64[1];
+
+        if (cpu->fpu.isMMXInUse) {
+            ep->ContextRecord->FltSave.FloatRegisters[i].Low = cpu->fpu.regs[i].signif;
+            ep->ContextRecord->FltSave.FloatRegisters[i].High = 0xffff;
+        }
+#ifndef BOXEDWINE_USE_SSE_FOR_FPU
+        else if (!cpu->thread->process->emulateFPU) {
+            U32 index = (i - cpu->fpu.GetTop()) & 7;
+            // don't access fpu.regs directly incase something was cached
+            cpu->fpu.ST80(i, (U64*)&ep->ContextRecord->FltSave.FloatRegisters[index].Low, (U64*)&ep->ContextRecord->FltSave.FloatRegisters[index].High);
+        }
 #endif
+    }
 }
 
 class InException {
@@ -132,11 +146,10 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         // caesar 3 installer will trigger this when it exits
         return EXCEPTION_CONTINUE_SEARCH;
     }
-    U64 fpu[8];
-    syncFromException(ep, fpu);
+    syncFromException(ep);
     U64 result = cpu->startException(ep->ExceptionRecord->ExceptionInformation[1], ep->ExceptionRecord->ExceptionInformation[0] == 0);
     if (result) {
-        syncToException(ep, fpu);
+        syncToException(ep, false);
         ep->ContextRecord->Rip = result;
         return EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -149,35 +162,28 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         int code = getFpuException(ep->ContextRecord->FltSave.ControlWord, ep->ContextRecord->FltSave.StatusWord);
 
         ep->ContextRecord->Rip = cpu->handleFpuException(code);
-        syncToException(ep, fpu);
+        syncToException(ep);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_FLT_INEXACT_RESULT) {
         ep->ContextRecord->Rip = cpu->handleFpuException(K_FPE_FLTRES);
-        syncToException(ep, fpu);
+        syncToException(ep);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == STATUS_INTEGER_DIVIDE_BY_ZERO) {
         ep->ContextRecord->Rip = cpu->handleFpuException(K_FPE_INTDIV);
-        syncToException(ep, fpu);
+        syncToException(ep);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
-        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler
+        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler        
         DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
-        bool inSignal = cpu->thread->inSignal;
         ep->ContextRecord->Rip = cpu->handleAccessException(op);
-        if (inSignal != (cpu->thread->inSignal != 0)) {
-            // :TODO: move this threads context read/write
-            // realdeal can trigger this
-            if (inSignal) {
-                memcpy(&cpu->fpuState, &cpu->originalFpuState, sizeof(cpu->fpuState));
-            } else {
-                memcpy(&cpu->originalFpuState, &cpu->fpuState, sizeof(cpu->fpuState));
-            }
-        }
+        // X64Asm::checkMemory disables the code path for fpu and mmx to throw exceptions
+        //
+        // I'm not sure why, but setting the fpu state causes some stability issues so for now this is the band-aid
+        syncToException(ep, op->isFpuOp() || op->isMmxOp());
         op->dealloc(true);
-        syncToException(ep, fpu);
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;
@@ -196,12 +202,13 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
 
     cpu->flags = (ep->ContextRecord->X8 & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
     cpu->lazyFlags = FLAGS_NONE;
+    cpu->eip.u32 = getMemData(cpu->memory)->codeCache.getEipFromHost((U8*)ep->ContextRecord->Pc);
 
-    if (cpu->thread->process->emulateFPU) {
-        for (int i = 0; i < 8; i++) {
-            cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
-            cpu->xmm[i].pi.u64[1] = ep->ContextRecord->V[i].High;
-            cpu->reg_mmx[i].q = ep->ContextRecord->V[i + 8].Low;
+    for (int i = 0; i < 8; i++) {
+        cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
+        cpu->xmm[i].pi.u64[1] = ep->ContextRecord->V[i].High;
+        if (cpu->fpu.isMMXInUse) {
+            cpu->fpu.getMMX(i)->q = ep->ContextRecord->V[i + 8].Low;
         }
     }
 }
@@ -220,11 +227,11 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     ep->ContextRecord->X8 &= ~(AF | CF | OF | SF | PF | ZF);
     ep->ContextRecord->X8 |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
 
-    if (includeFPU) {
-        for (int i = 0; i < 8; i++) {
-            ep->ContextRecord->V[i].Low = cpu->xmm[i].pi.u64[0];
-            ep->ContextRecord->V[i].High = cpu->xmm[i].pi.u64[1];
-            ep->ContextRecord->V[i+8].Low = cpu->reg_mmx[i].q;
+    for (int i = 0; i < 8; i++) {
+        ep->ContextRecord->V[i].Low = cpu->xmm[i].pi.u64[0];
+        ep->ContextRecord->V[i].High = cpu->xmm[i].pi.u64[1];
+        if (cpu->fpu.isMMXInUse) {
+            ep->ContextRecord->V[i + 8].Low = cpu->fpu.getMMX(i)->q;
         }
     }
 }
@@ -294,7 +301,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         ep->ContextRecord->Pc = cpu->handleFpuException(K_FPE_INTDIV);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
-    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
+    } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
         DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
         ep->ContextRecord->Pc = cpu->handleAccessException(op);
         op->dealloc(true);
@@ -328,6 +335,10 @@ DWORD WINAPI platformThreadProc(LPVOID lpThreadParameter) {
     }
     cpu->startThread();
     return 0;
+}
+
+void joinThread(KThread* thread) {
+    WaitForSingleObject((HANDLE)thread->cpu->nativeHandle, INFINITE);
 }
 
 void scheduleThread(KThread* thread) {

@@ -79,8 +79,8 @@ public:
     void updateFlagsFromX64() {
         this->flags = ((this->currentHostFlags >> 8) & 0xFF) | (this->flags & DF) | ((this->currentHostFlags & 0xFF) ? OF : 0);
     }
-    void loadFxState(U32 inst, U64* currentFPU);
-    void saveToFxState(U32 inst, U64* previousFPU);
+    void loadFxState(U32 inst);
+    void saveToFxState(U32 inst);
 
     U32 negSegAddress[6] = { 0 };
 	U8*** eipToHostInstructionPages = nullptr;
@@ -88,8 +88,9 @@ public:
     U32 currentHostFlags = 0;
     U32 instructionStoredFlags = 0;
     ALIGN(FxsaveStruct fpuState, 16) = { 0 };
-    ALIGN(FxsaveStruct originalFpuState, 16) = { 0 };
     ALIGN(U8 fpuBuffer[512], 16) = { 0 };
+    U32 sseControlStateTmp = 0;
+    U32 sseControlStateTmp2 = 0;
     U64 originalCpuRegs[16] = { 0 };
     void* reTranslateChunkAddress = nullptr;    
     void* jmpAndTranslateIfNecessary = nullptr;

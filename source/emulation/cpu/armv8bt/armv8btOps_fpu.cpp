@@ -31,20 +31,42 @@ static U8 loadInt16AsDouble(Armv8btAsm* data) {
 	return tmpReg;
 }
 
-static U8 loadInt64AsDouble(Armv8btAsm* data) {
-	U8 addressReg = data->getAddressReg();
-	U8 tmpReg = data->vGetTmpReg();
-	data->vReadMemory64(addressReg, tmpReg, 0, true);
-	data->vConvertInt64ToDouble(tmpReg, tmpReg, false);
-	data->releaseTmpReg(addressReg);
-	return tmpReg;
-}
-
 static U8 calculateIndexReg(Armv8btAsm* data, U32 index) {
 	U8 result = data->getTmpReg();
 	data->addValue32(result, data->getFpuTopReg(), index);
 	data->andValue32(result, result, 7);
 	return result;
+}
+
+static void setIsRegCached(Armv8btAsm* data, U8 stv, U8 value) {
+	U8 tmpReg = data->getRegWithConst(value);
+	U8 offsetReg = data->getTmpReg();
+	data->addValue64(offsetReg, data->getFpuOffset(), (U32)(offsetof(FPU, isRegCached)));
+	if (stv == 0) {
+		data->writeMem8RegOffset(tmpReg, offsetReg, data->getFpuTopReg());
+	} else {
+		U8 indexReg = calculateIndexReg(data, stv);
+		data->writeMem8RegOffset(tmpReg, offsetReg, indexReg);
+		data->releaseTmpReg(indexReg);
+	}
+	data->releaseTmpReg(tmpReg);
+	data->releaseTmpReg(offsetReg);
+}
+
+static void isRegCached(Armv8btAsm* data, U8 indexReg, U8 reg) {
+	U8 offsetReg = data->getTmpReg();
+	data->addValue64(offsetReg, data->getFpuOffset(), (U32)(offsetof(FPU, isRegCached)));
+	data->readMem8RegOffset(reg, offsetReg, indexReg);
+	data->releaseTmpReg(offsetReg);
+}
+
+static void setIsRegCachedWithRegIndex(Armv8btAsm* data, U8 regIndex, U8 value) {
+	U8 tmpReg = data->getRegWithConst(value);
+	U8 offsetReg = data->getTmpReg();
+	data->addValue64(offsetReg, data->getFpuOffset(), (U32)(offsetof(FPU, isRegCached)));
+	data->writeMem8RegOffset(tmpReg, offsetReg, regIndex);	
+	data->releaseTmpReg(tmpReg);
+	data->releaseTmpReg(offsetReg);
 }
 
 static void hostReadTag(Armv8btAsm* data, U32 index, U8 resultReg) {
@@ -79,12 +101,25 @@ static void hostWriteTag(Armv8btAsm* data, U8 valueReg, bool releaseValueReg, U3
 static void hostSaveDouble(Armv8btAsm* data, U32 index) {
 	if (index == 0) {
 		data->vWriteMem64RegOffset(vMMX0, data->getFpuOffset(), data->getFpuTopReg(), 3);
+		setIsRegCached(data, 0, 1);
 	} else {
 		U8 topReg = calculateIndexReg(data, index);
 		data->vWriteMem64RegOffset(vMMX0 + index, data->getFpuOffset(), topReg, 3);
+		setIsRegCachedWithRegIndex(data, topReg, 1);
 		data->releaseTmpReg(topReg);
 	}
-	data->isFpuRegCached[index] = true;
+	data->isFpuRegCached[index] = true;	
+}
+
+static void hostReadDouble(Armv8btAsm* data,U8 vReg, U8 indexReg) {
+	U8 tmpReg = data->getTmpReg();
+	isRegCached(data, indexReg, tmpReg);
+	data->doIf(tmpReg, 0, DO_IF_EQUAL, [data]() {
+		data->emulateSingleOp(data->currentOp);
+	}, [data, vReg, indexReg]() {
+		data->vReadMem64RegOffset(vReg, data->getFpuOffset(), indexReg, 3);
+	});
+	data->releaseTmpReg(tmpReg);
 }
 
 // add  w10, w25, #0x8
@@ -127,10 +162,10 @@ public:
 			this->topRegNeedsRelease = true;
 		}
 		if (useTmpReg) {
-			data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
+			hostReadDouble(data, this->reg, this->topReg);
 		} else if (!data->isFpuRegCached[index]) {			
 			if (read) {
-				data->vReadMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
+				hostReadDouble(data, this->reg, this->topReg);
 				if (!useTmpReg) {
 					// causes Abiword to fail launching
 					// :TODO: what happens when we jump to an instruction, wouldn't that mess this up?
@@ -159,6 +194,7 @@ public:
 				kpanic("FPUReg: don't release top reg since it was needed");
 			}
 			data->vWriteMem64RegOffset(this->reg, data->getFpuOffset(), this->topReg, 3);
+			setIsRegCachedWithRegIndex(data, this->topReg, 1);
 			this->writeBack = false;
 		}		
 	}
@@ -577,11 +613,9 @@ void opFXCH_STi(Armv8btAsm* data) {
 	// this->regs[st] = reg;
 	FPUReg from(data, data->currentOp->reg, true);
 	FPUReg to(data, 0, true);
-	U8 vTmpReg = data->vGetTmpReg();
-	data->vMov64(vTmpReg, 0, from.reg, 0);
-	data->vMov64(from.reg, 0, to.reg, 0);
-	data->vMov64(to.reg, 0, vTmpReg, 0);
-	data->vReleaseTmpReg(vTmpReg);
+	U8 vTmpReg = from.reg;
+	from.reg = to.reg;
+	to.reg = vTmpReg;
 
 	U8 tmpReg = data->getTmpReg();
 	U8 tmpReg2 = data->getTmpReg();
@@ -1143,6 +1177,7 @@ void opFNINIT(Armv8btAsm* data) {
 	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, top)));	
 	data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, sw)));
 	data->writeMem8ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, isMMXInUse)));
+	data->writeMem64ValueOffset(xFpuTop, xCPU, (U32)(offsetof(CPU, fpu.isRegCached[0])));
 #endif
 }
 void opFUCOMI_ST0_STj(Armv8btAsm* data) {
@@ -1175,6 +1210,7 @@ void opFILD_DWORD_INTEGER(Armv8btAsm* data) {
 	PREP_PUSH(data);
 	data->vWriteMem64RegOffset(vTmpReg, data->getFpuOffset(), data->getFpuTopReg(), 3);
 	data->vReleaseTmpReg(vTmpReg);
+	setIsRegCached(data, 0, 1);
 #endif
 }
 void opFISTTP32(Armv8btAsm* data) {
@@ -1677,6 +1713,7 @@ void opFILD_WORD_INTEGER(Armv8btAsm* data) {
 	PREP_PUSH(data);
 	data->vWriteMem64RegOffset(vTmpReg, data->getFpuOffset(), data->getFpuTopReg(), 3);
 	data->vReleaseTmpReg(vTmpReg);
+	setIsRegCached(data, 0, 1);
 #endif
 }
 void opFISTTP16(Armv8btAsm* data) {
@@ -1718,14 +1755,58 @@ void opFIST_WORD_INTEGER_Pop(Armv8btAsm* data) {
 void opFBLD_PACKED_BCD(Armv8btAsm* data) {
 	callFpuA(data, common_FBLD_PACKED_BCD);
 }
+
 void opFILD_QWORD_INTEGER(Armv8btAsm* data) {
 #ifdef NORMAL_FPU
 	callFpuA(data, common_FILD_QWORD_INTEGER);
 #else
-	U8 vTmpReg = loadInt64AsDouble(data);
+
+	U8 absA = data->getAddressReg();
+	U8 uiZ64 = data->getRegWithConst(0);
+
+	data->readMemory(absA, absA, 64, true); // read before adjusting fpu stack in case of exception
+
 	PREP_PUSH(data);
-	data->vWriteMem64RegOffset(vTmpReg, data->getFpuOffset(), data->getFpuTopReg(), 3);
-	data->vReleaseTmpReg(vTmpReg);
+
+	data->cmpValue64(absA, 0);
+	data->doIf(absA, 0, DO_IF_NOT_EQUAL, [data, absA, uiZ64]() {
+		// from softfloat / i64_to_extF80
+		// sign = (a < 0);
+		// absA = sign ? -a : a;
+		// shiftDist = __builtin_clzll(absA);
+		// uiZ64 = sign << 15 | (0x403E - shiftDist);
+		// absA <<= shiftDist;
+		U8 signReg = uiZ64;
+		data->shiftRegRightWithValue64(signReg, absA, 63);
+		data->shiftRegLeftWithValue32(signReg, signReg, 15);
+		data->abs64(absA, absA);
+		U8 dist = data->getTmpReg();
+		data->clz64(dist, absA);
+		data->shiftRegLeftWithReg64(absA, absA, dist);
+		U8 valueReg = data->getRegWithConst(0x403e);
+		data->subRegs32(dist, valueReg, dist);
+		data->releaseTmpReg(valueReg);
+		data->orRegs32(uiZ64, uiZ64, dist);
+		data->releaseTmpReg(dist);
+		}, nullptr, nullptr, false, false);
+
+	// cpu->fpu.regs[top].signif = absA
+	// cpu->fpu.regs[top].signExp = uiZ64
+	U8 offsetReg = data->getTmpReg();
+	U8 sizeofReg = data->getRegWithConst((U32)(offsetof(FPU, regs[1])) - (U32)(offsetof(FPU, regs[0]))); // weird offset calculation to take into account padding
+	data->unsignedMultiply32(offsetReg, data->getFpuTopReg(), sizeofReg);
+	data->addValue32(offsetReg, offsetReg, (U32)(offsetof(FPU, regs[0])));
+	data->releaseTmpReg(sizeofReg);
+	data->writeMem64RegOffset(absA, data->getFpuOffset(), offsetReg);
+	data->addValue32(offsetReg, offsetReg, 8);
+	data->writeMem16RegOffset(uiZ64, data->getFpuOffset(), offsetReg);			
+
+	data->releaseTmpReg(offsetReg);
+	data->releaseTmpReg(absA);
+	data->releaseTmpReg(uiZ64);
+
+	// cpu->fpu.isRegCached[top] = false
+	setIsRegCached(data, 0, 0);
 #endif
 }
 void opFBSTP_PACKED_BCD(Armv8btAsm* data) {

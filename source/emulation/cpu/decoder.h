@@ -1427,7 +1427,8 @@ enum Instruction {
 // jump location is not at a fixed offset
 #define DECODE_BRANCH_NO_CACHE 0x04
 
-#define INST_STARTS_MMX 1
+#define INST_MMX_WRITE 1
+#define INST_MMX_READ 2
 
 class InstructionInfo {
 public:    
@@ -1457,7 +1458,7 @@ public:
 
     void dealloc(bool deallocNext);    
     void log(CPU* cpu);
-    bool needsToSetFlags();
+    bool needsToSetFlags(CPU* cpu);
     bool isFpuOp();
     bool isMmxOp();
     bool isStringOp();
@@ -1510,7 +1511,6 @@ public:
 
 class DecodedBlock {
 public:       
-    thread_local static DecodedBlock* currentBlock;
     virtual ~DecodedBlock() {}
 
     DecodedBlock() = default;
@@ -1529,6 +1529,8 @@ public:
     void addReferenceFrom(DecodedBlock* block);
     void removeReferenceFrom(DecodedBlock* block);
     
+    U32 getEip() { return address; }
+    U32 getEipLen() { return bytes; }
     DecodedOp* getOp(U32 eip);
 protected:
     DecodedBlockFromNode* referencedFrom = nullptr;    

@@ -1,5 +1,5 @@
 void dynamic_inc8_reg(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPUImm('+', CPU::offsetofReg8(op->reg), DYN_8bit, 1);
     } else {
         dynamic_getCF(data);
@@ -14,7 +14,7 @@ void dynamic_inc8_reg(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_inc8_mem32(DynamicData* data, DecodedOp* op) {    
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         calculateEaa(op, DYN_ADDRESS);
         instMemImm('+', DYN_ADDRESS, DYN_8bit, 1, true);
     } else {
@@ -31,7 +31,7 @@ void dynamic_inc8_mem32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPUImm('+', CPU::offsetofReg16(op->reg), DYN_16bit, 1);
     } else {
         dynamic_getCF(data);
@@ -46,7 +46,7 @@ void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_inc16_mem32(DynamicData* data, DecodedOp* op) {    
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         calculateEaa(op, DYN_ADDRESS);
         instMemImm('+', DYN_ADDRESS, DYN_16bit, 1, true);
     } else {
@@ -63,7 +63,7 @@ void dynamic_inc16_mem32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPUImm('+', CPU::offsetofReg32(op->reg), DYN_32bit, 1);
     } else {
         dynamic_getCF(data);
@@ -78,7 +78,7 @@ void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {    
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         calculateEaa(op, DYN_ADDRESS);
         instMemImm('+', DYN_ADDRESS, DYN_32bit, 1, true);
     } else {
@@ -95,7 +95,7 @@ void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPUImm('-', CPU::offsetofReg8(op->reg), DYN_8bit, 1);
     } else {
         dynamic_getCF(data);
@@ -110,7 +110,7 @@ void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dec8_mem32(DynamicData* data, DecodedOp* op) {    
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         calculateEaa(op, DYN_ADDRESS);
         instMemImm('-', DYN_ADDRESS, DYN_8bit, 1, true);
     } else {
@@ -127,7 +127,7 @@ void dynamic_dec8_mem32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPUImm('-', CPU::offsetofReg16(op->reg), DYN_16bit, 1);
     } else {
         dynamic_getCF(data);
@@ -142,7 +142,7 @@ void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dec16_mem32(DynamicData* data, DecodedOp* op) {    
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         calculateEaa(op, DYN_ADDRESS);
         instMemImm('-', DYN_ADDRESS, DYN_16bit, 1, true);
     } else {
@@ -159,7 +159,7 @@ void dynamic_dec16_mem32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         instCPUImm('-', CPU::offsetofReg32(op->reg), DYN_32bit, 1);
     } else {
         dynamic_getCF(data);
@@ -174,7 +174,7 @@ void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dec32_mem32(DynamicData* data, DecodedOp* op) {    
-    if (!op->needsToSetFlags()) {
+    if (!op->needsToSetFlags(data->cpu)) {
         calculateEaa(op, DYN_ADDRESS);
         instMemImm('-', DYN_ADDRESS, DYN_32bit, 1, true);
     } else {

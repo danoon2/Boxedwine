@@ -19,6 +19,11 @@
 #ifndef __FPU_H__
 #define __FPU_H__
 
+extern "C" {
+#include "../../../../lib/softfloat/source/include/platform.h"
+#include "../../../../lib/softfloat/source/include/softfloat.h"
+}
+
 class CPU;
 //#define LOG_FPU
 
@@ -47,24 +52,95 @@ struct FPU_Reg {
     };    
 };
 
+typedef union {
+
+    U64 q;
+
+#ifndef WORDS_BIGENDIAN
+    struct {
+        U32 d0, d1;
+    } ud;
+
+    struct {
+        S32 d0, d1;
+    } sd;
+
+    struct {
+        U16 w0, w1, w2, w3;
+    } uw;
+
+    struct {
+        S16 w0, w1, w2, w3;
+    } sw;
+
+    struct {
+        U8 b0, b1, b2, b3, b4, b5, b6, b7;
+    } ub;
+
+    struct {
+        S8 b0, b1, b2, b3, b4, b5, b6, b7;
+    } sb;
+#else
+    struct {
+        U32 d1, d0;
+    } ud;
+
+    struct {
+        S32 d1, d0;
+    } sd;
+
+    struct {
+        U16 w3, w2, w1, w0;
+    } uw;
+
+    struct {
+        S16 w3, w2, w1, w0;
+    } sw;
+
+    struct {
+        U8 b7, b6, b5, b4, b3, b2, b1, b0;
+    } ub;
+
+    struct {
+        S8 b7, b6, b5, b4, b3, b2, b1, b0;
+    } sb;
+#endif
+
+} MMX_reg;
+
 #define TAG_Valid 0
 #define TAG_Zero 1
+#define TAG_Special 2
 #define TAG_Empty 3
 
 // binary translator assumes FPU->regs will be at offset 0
 class FPU {
 public:
-    void reset();
+    FPU_Reg regCache[9]; // first in class to make ARMv8 easier    
 
+    extFloat80_t& getReg(U32 reg);
+    double& getF64(U32 reg);
+    float& getF32(U32 reg);
+    double FROUND(double in);       
+
+    void reset();
+    void startMMX();
+
+    MMX_reg* getMMX(U8 r) {
+        return (MMX_reg*)&regs[r].signif;
+    }
     void FINIT();
     void FCLEX();
-    void PUSH(double in);
     void PREP_PUSH();
     void FPOP();
-    double FROUND(double in);
-    double FLD80(U64 eind, S16 begin);
+    uint_fast8_t getSoftRounding();
+    bool getSoftExact() {
+        return false;
+    }
     void ST80(CPU* cpu, U32 addr, int reg);
     void ST80(U32 reg, U64* pLow, U64* pHigh);
+    void LD80(U32 reg, U64 low, U16 high);
+
     void FLD_F32(U32 value, int store_to);
     void FLD_F64(U64 value, int store_to);
     void FLD_F80(U64 low, S16 high);
@@ -98,7 +174,7 @@ public:
     void FCOM(CPU* cpu, int st, int other);
     void FUCOM(CPU* cpu, int st, int other);
     void FRNDINT();
-    void FPREM();
+    void FPREM(bool truncate = true);
     void FPREM1();
     void FXAM();
     void F2XM1();
@@ -149,17 +225,12 @@ public:
 
     void SetTagFromAbridged(U8 tag);
     U8 GetAbridgedTag(CPU* cpu);
-    void setReg(U32 index, double value);
     inline U32 GetTop() {return this->top;}
 
     int GetTag(CPU* cpu);
     int GetTag(CPU* cpu, U32 index);
-    void LOG_STACK();
-
-    struct FPU_Reg regs[9];
-    U64 loadedInteger[9]; // moved out of FPU_Reg to make it easier for the binary translators to address
-    U8 isIntegerLoaded[9];
-    bool isMMXInUse;
+    void LOG_STACK();    
+    U32 sizeofRegInRegsArray();
 
     U32 tags[9];
     U32 cw;
@@ -169,6 +240,11 @@ public:
     U32 round;
 
     U32 envData[4];
+
+    extFloat80_t regs[9];
+
+    bool isRegCached[9];
+    bool isMMXInUse;
 };
 
 #endif

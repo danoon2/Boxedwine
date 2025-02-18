@@ -21,6 +21,7 @@
 
 void scheduleThread(KThread* thread);
 void unscheduleThread(KThread* thread);
+void joinThread(KThread* thread);
 void terminateOtherThread(const KProcessPtr& process, U32 threadId);
 void terminateCurrentThread(KThread* thread);
 

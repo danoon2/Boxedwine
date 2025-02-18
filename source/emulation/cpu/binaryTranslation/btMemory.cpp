@@ -31,7 +31,7 @@ U8* BtMemory::getExistingHostAddress(U32 eip) {
 }
 
 bool BtMemory::isAddressExecutable(U8* address) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     for (auto& p : this->allocatedExecutableMemory) {
         if (address >= p.memory && address < p.memory + p.size) {
             return true;
@@ -51,7 +51,7 @@ int powerOf2(U32 requestedSize, U32& size) {
 }
 
 U8* BtMemory::allocateExcutableMemory(U32 requestedSize, U32* allocatedSize) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     U32 size = 0;
     U32 powerOf2Size = powerOf2(requestedSize, size);
 
@@ -85,19 +85,14 @@ void BtMemory::freeExcutableMemory(U8* hostMemory, U32 actualSize) {
         memset(hostMemory, 0xcd, actualSize);
         });
 
-    //U32 size = 0;
-    //U32 powerOf2Size = powerOf2(actualSize, size);
-    //U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
+    U32 size = 0;
+    U32 powerOf2Size = powerOf2(actualSize, size);
+    U32 index = powerOf2Size - EXECUTABLE_MIN_SIZE_POWER;
     //this->freeExecutableMemory[index].push_back(hostMemory);
-
-    // :TODO: when this recycled, make sure we delay the recycling in case another thread is also waiting in seh_filter 
-    // for its turn to jump to this chunk at the same time another thread retranslated it
-    //
-    // I saw this in the Real Deal installer
 }
 
 void BtMemory::executableMemoryReleased() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(executableMemoryMutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
 
     for (U32 i = 0; i < EXECUTABLE_SIZES; i++) {
         this->freeExecutableMemory[i].clear();
@@ -116,7 +111,7 @@ void BtMemory::removeCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
 // called when BtCodeChunk is being alloc'd
 void BtMemory::addCodeChunk(const std::shared_ptr<BtCodeChunk>& chunk) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-    memory->addCodeBlock(chunk->getEip(), chunk);
+    memory->addCodeBlock(chunk);
 }
 
 bool BtMemory::isEipPageCommitted(U32 page) {

@@ -1091,9 +1091,6 @@ void CPU::clone(CPU* from) {
     this->flags = from->flags;
     this->eip = from->eip;
     this->setIsBig(from->isBig());
-    //U8* reg8[9];
-    for (int i=0;i<8;i++)
-        this->reg_mmx[i] = from->reg_mmx[i];
 
     this->src = from->src;
     this->dst = from->dst;
