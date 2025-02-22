@@ -24,16 +24,7 @@ class DynamicMemory;
 
 #define GET_PAGE_PERMISSIONS(flags) (flags & PAGE_PERMISSION_MASK)
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#include "../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
-#define CodeBlock std::shared_ptr<BtCodeChunk>
-#define CodeBlockParam const std::shared_ptr<BtCodeChunk>&
-#else
-#define CodeBlock DecodedBlock*
-#define CodeBlockParam DecodedBlock*
-#endif
-
-class DecodedBlock;
+class DecodedOp;
 class Page;
 class KMemoryData;
 class KProcess;
@@ -125,12 +116,13 @@ public:
     bool mapShared(U32 page) { return (getPageFlags(page) & PAGE_SHARED) != 0; }
     bool isPageMapped(U32 page) { return (getPageFlags(page) & PAGE_MAPPED) != 0; }
 
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
-    CodeBlock getCodeBlock(U32 address);
-#endif
-    CodeBlock findCodeBlockContaining(U32 address, U32 len);
-    void addCodeBlock(CodeBlockParam block);
-    void removeCodeBlock(U32 address, U32 len);
+    DecodedOp* getDecodedOp(U32 address);
+    DecodedOp** getDecodedOpLocation(U32 address);
+
+    void addCode_nolock(U32 address, U32 len, DecodedOp* op, bool followOpNext);
+    void removeCode(U32 address, U32 len, bool becauseOfWrite);
+    bool isAddressDynamic(U32 address, U32 len);
+    void markAddressDynamic(U32 address, U32 len);
 
     BOXEDWINE_MUTEX mutex;
     KMemoryData* deleteOnNextLoop = nullptr;

@@ -21,10 +21,29 @@
 #define NEXT_BRANCH1() cpu->eip.u32+=op->len
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len
 #else
-#define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next)
-#define NEXT_DONE() cpu->nextBlock = cpu->getNextBlock();
-#define NEXT_BRANCH1() cpu->eip.u32+=op->len; if (!cpu->currentBlock->next1) {cpu->currentBlock->next1 = cpu->getNextBlock(); cpu->currentBlock->next1->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next1
-#define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!cpu->currentBlock->next2) {cpu->currentBlock->next2 = cpu->getNextBlock(); cpu->currentBlock->next2->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next2
+#define NEXT() cpu->eip.u32+=op->len; if (op->next == nullptr) op->next = cpu->getNextOp(); op->next->pfn(cpu, op->next)
+#define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
+// if jmp back, then return so that we don't blow the stack
+#define NEXT_BRANCH1()                                      \
+cpu->eip.u32+=op->len;                                      \
+if (!op->nextJump) {                                        \
+    DecodedOp* nextOp = cpu->getNextOp();                       \
+    if (((S32)op->imm) > 0) {                               \
+        nextOp->pfn(cpu, nextOp);                                   \
+    } else {                                                \
+        cpu->nextOp = nextOp;                                   \
+    }                                                       \
+} else {                                                    \
+    if (!(*(op->nextJump))) {                               \
+        *(op->nextJump) = cpu->getNextOp();                 \
+    }                                                       \
+    if (((S32)op->imm) > 0) {                               \
+        (*(op->nextJump))->pfn(cpu, *(op->nextJump));       \
+    } else {                                                \
+        cpu->nextOp = *(op->nextJump);                      \
+    }                                                       \
+}
+#define NEXT_BRANCH2() cpu->eip.u32+=op->len; if (!op->next) {op->next = cpu->getNextOp(); } op->next->pfn(cpu, op->next);
 #endif
 
 #include "instructions.h"
@@ -59,6 +78,10 @@ void OPCALL normal_sidt(CPU* cpu, DecodedOp* op) {
     klog("sidt not implemented");
 #endif
     NEXT();
+}
+
+void OPCALL onTestEnd(CPU* cpu, DecodedOp* op) {
+    cpu->nextOp = op;
 }
 
 static void initNormalOps() {
@@ -96,10 +119,10 @@ static void initNormalOps() {
     normalOps[LMSW] = nullptr;
     normalOps[INVLPG] = nullptr;
     normalOps[Callback] = onExitSignal;
+    normalOps[TestEnd] = onTestEnd;
 }
 
 OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
-    initNormalOps();
     return normalOps[op->inst];
 }
 
@@ -110,117 +133,6 @@ NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {
 #else
     this->firstOp = nullptr;
 #endif
-}
-
-U8 fetchByte(void* data, U32 *eip) {
-    CPU* cpu = (CPU*)data;
-    if (*eip - cpu->seg[CS].address == 0xFFFF && !cpu->isBig()) {
-        kpanic("eip wrapped around.");
-    }
-    return cpu->memory->readb((*eip)++);
-}
-
-class NormalBlock : public DecodedBlock {
-public:
-    static NormalBlock* alloc();
-    static void clearCache();
-
-    NormalBlock();
-
-    // from DecodedBlock
-    void dealloc(bool delayed) override;
-    void run(CPU* cpu) override;
-
-    void reset();
-};
-
-NormalBlock::NormalBlock() {
-    this->reset();
-}
-
-void NormalBlock::run(CPU* cpu) {
-#ifdef _DEBUG
-    if (this->op== nullptr || this->op->pfn== nullptr) {
-        kpanic("NormalBlock::run is about to crash");
-    }
-#endif  
-    this->op->pfn(cpu, this->op);
-    this->runCount++;
-    cpu->blockInstructionCount+=this->opCount;
-}
-
-static PtrPool<NormalBlock> freeBlocks;
-
-void NormalBlock::reset() {
-    this->op = nullptr;
-    this->bytes = 0;
-    this->opCount = 0;
-    this->runCount = 0;
-    this->next1 = nullptr;
-    this->next2 = nullptr;
-    this->referencedFrom = nullptr;
-}
-
-void NormalBlock::clearCache() {
-    freeBlocks.deleteAll();
-}
-
-NormalBlock* NormalBlock::alloc() {
-    return freeBlocks.get();
-}
-
-void NormalBlock::dealloc(bool delayed) {
-    KThread* thread = KThread::currentThread();
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->normalBlockMutex);
-    bool doDelete = false;
-    if (thread) {
-        CPU* cpu = thread->cpu;
-        if (cpu && cpu->delayedFreeBlock && cpu->delayedFreeBlock != cpu->currentBlock) {
-            DecodedBlock* b = cpu->delayedFreeBlock;
-            cpu->delayedFreeBlock = nullptr;
-            b->dealloc(false);
-        }
-        if (cpu && ((delayed && !cpu->delayedFreeBlock) || this == cpu->currentBlock)) {
-            cpu->delayedFreeBlock = this;
-        } else {
-            if (op) {
-                this->op->dealloc(true);
-                this->op = nullptr;
-            }
-            doDelete = true;
-
-        }
-    } else {
-        this->op->dealloc(true);
-        this->op = nullptr;
-        doDelete = true;
-    }
-    if (this->next1) {
-        this->next1->removeReferenceFrom(this);
-        this->next1 = nullptr;
-    }
-    if (this->next2) {
-        this->next2->removeReferenceFrom(this);
-        this->next2 = nullptr;
-    }
-    DecodedBlockFromNode* from = this->referencedFrom;
-    while (from) {
-        DecodedBlockFromNode* n = from->next;
-        if (from->block) {
-            if (from->block->next1 == this) {
-                from->block->next1 = nullptr;
-            }
-            if (from->block->next2 == this) {
-                from->block->next2 = nullptr;
-            }
-        }
-        from->dealloc();
-        from = n;
-    }
-    this->referencedFrom = nullptr;
-    if (doDelete) {
-        freeBlocks.put(this);
-    }
 }
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -454,93 +366,47 @@ bool setNormalFunction(DecodedOp* op) {
     return usesLock;
 }
 
-DecodedBlock* NormalCPU::getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big) {
-    DecodedBlock* block = NormalBlock::alloc();
-    decodeBlock(fetchByte, cpu, address, big, 0, 0, 0, block);
-    block->address = address;
-    initNormalOps();
-    DecodedOp* op = block->op;
-
-    while (op) {
-        if (!op->pfn) // callback will be set by decoder
-            setNormalFunction(op);
-        op = op->next;
-    }
-    return block;
+bool NormalCPU::shouldContinue(U32 eip) {
+    return this->memory->getDecodedOp(eip) == nullptr;
 }
 
-DecodedOp* NormalCPU::decodeSingleOp(CPU* cpu, U32 address) {
-    thread_local static DecodedBlock* block = new DecodedBlock();
-    decodeBlock(fetchByte, cpu, address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
-    DecodedOp* op = block->op;
-    setNormalFunction(op);
-    block->op = nullptr;
+DecodedOp** NormalCPU::getOpLocation(U32 eip) {
+    return this->memory->getDecodedOpLocation(eip);
+}
+
+U8 NormalCPU::fetchByte(U32* eip) {
+    if (*eip - this->seg[CS].address == 0xFFFF && !this->isBig()) {
+        kpanic("eip wrapped around.");
+    }
+    return this->memory->readb((*eip)++);
+}
+
+DecodedOp* NormalCPU::getNextOp() {
+    if (!this->thread->process) // exit was called, don't need to pre-cache the next block
+        return nullptr;
+
+    U32 startIp = getEipAddress();
+    DecodedOp* op = memory->getDecodedOp(startIp);
+
+    if (!op) {
+        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex); // lock across all emulated processes because the DecodedOpCache is global
+        op = memory->getDecodedOp(startIp);
+        if (!op) {
+            U32 opCount = 0;
+            U32 eipLen = 0;
+            op = decodeBlock(this, startIp, this->isBig(), opCount, eipLen);
+
+            DecodedOp* nextOp = op;
+            while (nextOp) {
+                setNormalFunction(nextOp);
+                nextOp = nextOp->next;
+            }
+            this->thread->memory->addCode_nolock(startIp, eipLen, op, true);
+        }
+    }
     return op;
 }
 
-DecodedBlock* NormalCPU::getNextBlock() {
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    return nullptr;
-#else
-    if (!this->thread->process) // exit was called, don't need to pre-cache the next block
-        return nullptr;
-    
-    U32 startIp = (this->big?this->eip.u32:this->eip.u16) + this->seg[CS].address;
-    DecodedBlock* block = this->thread->memory->getCodeBlock(startIp);
-
-    if (!block) {
-        bool blockCreated = false;
-        {
-            BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->normalBlockMutex);
-            block = this->thread->memory->getCodeBlock(startIp);
-            if (!block) {
-                block = NormalBlock::alloc();
-                blockCreated = true;
-                decodeBlock(fetchByte, this, startIp, this->isBig(), 0, K_PAGE_SIZE, 0, block);
-                block->address = startIp;
-
-                DecodedOp* op = block->op;
-                bool excludeFromJIT = false;
-                while (op) {
-                    if (setNormalFunction(op)) {
-                        // these 4 will call the appropriate lock function
-                        if (op->inst != CmpXchgE8R8 && op->inst != CmpXchgE16R16 && op->inst != CmpXchgE32R32 && op->inst != CmpXchg8b) {
-                            excludeFromJIT = true;
-                        }                        
-                    }
-                    op = op->next;
-                }
-#ifdef BOXEDWINE_MULTI_THREADED
-                if (!excludeFromJIT)
-#endif
-                    if (this->firstOp) {
-                        op = DecodedOp::alloc();
-                        op->inst = Custom1;
-                        op->pfn = this->firstOp;
-                        op->next = block->op;
-                        block->op = op;
-                    }
-            }
-        }
-        if (blockCreated) {
-            this->thread->memory->addCodeBlock(block);
-        }
-    }
-    return block;
-#endif
-}
-
-void NormalCPU::run() {    
-    currentBlock = this->nextBlock;
-    currentBlock->run(this);    
-#ifdef _DEBUG
-    if (!this->nextBlock && !this->yield && !this->thread->terminating) {
-        kpanic("NormalCPU::run no block set");
-    }
-    currentBlock = nullptr;
-#endif
-}
-
-void NormalCPU::clearCache() {
-    NormalBlock::clearCache();
+void NormalCPU::run() {
+    nextOp->pfn(this, nextOp);
 }

@@ -1410,6 +1410,7 @@ enum Instruction {
     Callback,
     Done,
     Custom1,
+    TestEnd,
     InstructionCount
 };
 
@@ -1445,18 +1446,18 @@ public:
 extern const InstructionInfo instructionInfo[];
 
 class DecodedOp;
-class DecodedBlock;
 
 typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
 class DecodedOp {
-public:    
+public:
     static DecodedOp* alloc();
     static void clearCache();
+    static DecodedOp* allocDone();
 
     DecodedOp();
 
-    void dealloc(bool deallocNext);    
+    void dealloc();
     void log(CPU* cpu);
     bool needsToSetFlags(CPU* cpu);
     bool isFpuOp();
@@ -1464,9 +1465,15 @@ public:
     bool isStringOp();
     const char* name();
 
-    static U32 getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth=2);
+    U32 getNeededFlags(U32 flags, U32 depth = 2);
 
     DecodedOp* next;
+    // by making this a double pointer (address to where to find the op instead of the op itself), multiple jumps can point to that
+    // location and if the op there gets updated, we won't have to try to figure out all the jumps to it that need to be updated
+    //
+    // To prevent hard to track cases where the ram page containing the op location might be copy on write and get updated to a new ram page,
+    // nextJump will be null if this op and the op its jumping to are not on the same page.
+    DecodedOp** nextJump;
     OpCallback pfn;
 
     U32 disp;
@@ -1483,58 +1490,27 @@ public:
     U16 inst;
 #endif
     U8 reg;
-    U8 rm;        
+    U8 rm;
 
     U8 base;
-    U8 sibIndex;	
-    U8 sibScale;    
+    U8 sibIndex;
+    U8 sibScale;
     U8 len; // guaranteed to be 15 bytes or less
 
     U8 lock;
     U8 repZero;
-    U8 repNotZero;    
+    U8 repNotZero;
     U8 ea16;
 
     void reset();
 };
 
-typedef U8 (*pfnFetchByte)(void* data, U32* pEip);
-
-class DecodedBlockFromNode {
+class DecodeBlockCallback {
 public:
-    static DecodedBlockFromNode* alloc();
-    virtual void dealloc();
-
-    DecodedBlock* block = nullptr;
-    DecodedBlockFromNode* next = nullptr;
+    virtual U8 fetchByte(U32* eip) = 0;
+    virtual bool shouldContinue(U32 eip) = 0;
+    virtual DecodedOp** getOpLocation(U32 eip) = 0;
 };
 
-class DecodedBlock {
-public:       
-    virtual ~DecodedBlock() {}
-
-    DecodedBlock() = default;
-    DecodedOp* op = nullptr;
-    U32 opCount = 0;
-    U32 bytes = 0;
-    U32 runCount = 0;
-    U32 address = 0;
-    
-    DecodedBlock* next1 = nullptr;
-    DecodedBlock* next2 = nullptr;    
-
-    virtual void run(CPU* cpu) {};
-    virtual void dealloc(bool delayed) {};
-
-    void addReferenceFrom(DecodedBlock* block);
-    void removeReferenceFrom(DecodedBlock* block);
-    
-    U32 getEip() { return address; }
-    U32 getEipLen() { return bytes; }
-    DecodedOp* getOp(U32 eip);
-protected:
-    DecodedBlockFromNode* referencedFrom = nullptr;    
-};
-void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
-
+DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen);
 #endif

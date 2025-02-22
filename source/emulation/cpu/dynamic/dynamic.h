@@ -5,13 +5,14 @@
 
 class DynamicData {
 public:
-    DynamicData() : cpu(NULL), skipToOp(NULL), block(NULL), skipEipUpdateLen(0), done(false), currentLazyFlags(NULL) {}
-    CPU* cpu;
-    DecodedOp* skipToOp;
-    DecodedBlock* block;
-    U32 skipEipUpdateLen;
-    bool done;
-    const LazyFlags* currentLazyFlags;
+    CPU* cpu = nullptr;
+    DecodedOp* skipToOp = nullptr;
+    DecodedOp* firstOp = nullptr;
+    DecodedOp* currentOp = nullptr;
+
+    U32 skipEipUpdateLen = 0;
+    bool done = false;
+    const LazyFlags* currentLazyFlags = nullptr;;
 };
 
 typedef void (*pfnDynamicOp)(DynamicData* data, DecodedOp* op);

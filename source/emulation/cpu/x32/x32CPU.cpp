@@ -154,8 +154,8 @@ void callHostFunction(void* address, bool hasReturn=false, U32 argCount=0, U32 a
 // this is called for cases where we don't know ahead of time where the next block will be, so we need to look it up
 void blockDone();
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void blockNext1();
-void blockNext2();
+void blockNext1(DecodedOp* op);
+void blockNext2(DecodedOp* op);
 
 /********************************************************/
 /* End required for dynamic code                        */
@@ -2066,9 +2066,9 @@ void incrementEip(DynamicData* data, U32 len) {
 }
 
 void blockDone() {
-    // cpu->nextBlock = cpu->getNextBlock();
-    callHostFunction(common_getNextBlock, true, 1, 0, DYN_PARAM_CPU, false);
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
+    // cpu->nextOp = cpu->nextOp();
+    callHostFunction(common_getNextOp, true, 1, 0, DYN_PARAM_CPU, false);
+    movToCpuFromReg(offsetof(CPU, nextOp), DYN_CALL_RESULT, DYN_32bit, true);
     outb(0x5f); // pop edi
     outb(0x5b); // pop ebx
     outb(0xc3); // ret
@@ -2081,13 +2081,29 @@ static DecodedBlock* updateNext1(CPU* cpu) {
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void blockNext1() {
-    // if (!DecodedBlock::currentBlock->next1) {
-    //    DecodedBlock::currentBlock->next1 = cpu->getNextBlock(); 
-    //    DecodedBlock::currentBlock->next1->addReferenceFrom(DecodedBlock::currentBlock);
-    // } 
-    // cpu->nextBlock = DecodedBlock::currentBlock->next1
+void blockNext1(DynamicData* data, DecodedOp* op) {
+    // cpu->eip.u32 += op->len;
+    // if (!op->nextJump) {
+    //     DecodedOp* nextOp = cpu->getNextOp();
+    //     if (((S32)op->imm) > 0) {
+    //         nextOp->pfn(cpu, nextOp);
+    //      }  else {
+    //         cpu->nextOp = nextOp;
+    //      }
+    // } else {
+    //     if (!(*(op->nextJump))) {
+    //         *(op->nextJump) = cpu->getNextOp();
+    //     }
+    //     if (((S32)op->imm) > 0) {
+    //         (*(op->nextJump))->pfn(cpu, *(op->nextJump));
+    //     } else {
+    //         cpu->nextOp = *(op->nextJump);
+    //     }
+    // }
     
+    if (((S32)op->imm) > 0) {
+        // psudo code
+    }
     movToRegFromCpu(DYN_EDX, offsetof(CPU, currentBlock), DYN_32bit);
 
     // mov eax, DecodedBlock::currentBlock->next1
@@ -2118,46 +2134,16 @@ void blockNext1() {
     
 }
 
-static DecodedBlock* updateNext2(CPU* cpu) {
-    cpu->currentBlock->next2 = cpu->getNextBlock(); 
-    cpu->currentBlock->next2->addReferenceFrom(cpu->currentBlock);
-    return cpu->currentBlock->next2;
-}
-
-void blockNext2() {
-    // if (!DecodedBlock::currentBlock->next2) {
-    //    DecodedBlock::currentBlock->next2 = cpu->getNextBlock(); 
-    //    DecodedBlock::currentBlock->next2->addReferenceFrom(DecodedBlock::currentBlock);
-    // } 
-    // cpu->nextBlock = DecodedBlock::currentBlock->next2
+void blockNext2(DynamicData* data, DecodedOp* op) {
+    // if (!op->next) { 
+    //     op->next = cpu->getNextOp(); 
+    // }
+    // op->next->pfn(cpu, op->next);
     
-    movToRegFromCpu(DYN_EDX, offsetof(CPU, currentBlock), DYN_32bit);
-
-    // mov eax, DecodedBlock::currentBlock->next1
-    outb(0x8b);    
-    if (offsetof(DecodedBlock, next2)<128) {
-        outb(0x42);
-        outb(offsetof(DecodedBlock, next2));
-    } else {
-        outb(0x82);
-        outd(offsetof(DecodedBlock, next2));
+    // if we don't have this by the time this JIT ran then maybe its a case we will never see, but we need to code for it
+    if (!op->next) {
+        dynamic_done(data, op);
     }
-
-    // test eax, eax
-    outb(0x85);
-    outb(0xc0);
-
-    // jnz 
-    outb(0x75);
-    U32 pos = outBufferPos;
-    outb(1);
-    
-    callHostFunction(updateNext2, true, 1, 0, DYN_PARAM_CPU);
-
-    outBuffer[pos] = (U8)(outBufferPos-pos-1);
-
-    // cpu->nextBlock = DecodedBlock::currentBlock->next2
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
 }
 
 void x32_sidt(DynamicData* data, DecodedOp* op) {

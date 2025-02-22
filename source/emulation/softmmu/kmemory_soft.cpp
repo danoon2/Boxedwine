@@ -385,26 +385,6 @@ void KMemory::clone(KMemory* from, bool vfork) {
     }
 }
 
-#ifndef BOXEDWINE_BINARY_TRANSLATOR
-// normal core
-CodeBlock KMemory::getCodeBlock(U32 address) {
-    return data->codeCache.getCode(address);
-}
-#endif
-
-CodeBlock KMemory::findCodeBlockContaining(U32 address, U32 len) {
-    return data->codeCache.findCode(address, len);
-}
-
-void KMemory::removeCodeBlock(U32 address, U32 len) {
-    data->codeCache.removeBlockAt(address, len);
-}
-
-void KMemory::addCodeBlock(CodeBlockParam block) {
-    data->getOrCreateCodePage(block->getEip());
-    data->codeCache.addCode(this, block);
-}
-
 CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
     U32 pageIndex = address >> K_PAGE_SHIFT;
     PageType type = mmu[pageIndex].getPageType();

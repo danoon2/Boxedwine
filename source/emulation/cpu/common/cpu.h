@@ -218,10 +218,6 @@ public:
     KMemory* memory = nullptr;
     BWriteFile logFile;
 
-    DecodedBlock* nextBlock = nullptr;
-    DecodedBlock* delayedFreeBlock = nullptr;
-    DecodedBlock* currentBlock = nullptr;
-
     bool getCF();
     bool getSF();
     bool getZF();
@@ -283,8 +279,10 @@ public:
 
     U32 getEipAddress();
 
+    DecodedOp* nextOp = nullptr;
+
     virtual void run()=0;
-    virtual DecodedBlock* getNextBlock() = 0;
+    virtual DecodedOp* getNextOp() = 0;
     virtual void restart() {}
     virtual void setSeg(U32 index, U32 address, U32 value);
 
@@ -347,7 +345,7 @@ void common_iret(CPU* cpu, U32 big, U32 oldEip);
 void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level);
 void common_rdtsc(CPU* cpu, U32 extra);
 void common_log(CPU* cpu, DecodedOp* op);
-DecodedBlock* common_getNextBlock(CPU* cpu);
+DecodedOp* common_getNextOp(CPU* cpu);
 U32 common_readCrx(CPU* cpu, U32 which, U32 reg);
 U32 common_writeCrx(CPU* cpu, U32 which, U32 value);
 #endif

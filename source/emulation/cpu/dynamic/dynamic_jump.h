@@ -2,7 +2,7 @@ void dynamic_jumpO(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, O, DYN_CALL_RESULT);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     INCREMENT_EIP(data, op->len);
-    blockNext2();
+    blockNext2(op);
     startElse();
     INCREMENT_EIP(data, op->imm+op->len);
     blockNext1();

@@ -9,31 +9,18 @@ static void platformThread(CPU* cpu) {
     KThread::setCurrentThread(cpu->thread);
     KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
 
+    cpu->nextOp = cpu->getNextOp();
     while (true) {
         try {
-            if (!cpu->nextBlock) {
-                cpu->nextBlock = cpu->getNextBlock();
-            }
             cpu->run();
         } catch (...) {
-            cpu->nextBlock = nullptr;
+            cpu->nextOp = cpu->getNextOp();
         }
 #ifdef __TEST
-        if (cpu->nextBlock) {
-            DecodedOp* o = cpu->nextBlock->op;
-            bool found = false;
-
-            while (o) {
-                if (o->inst == IntIb && o->imm == 0x97) {
-                    found = true;
-                }
-                o = o->next;
-            }
-            if (!found) {
-                continue;
-            }
+        if (cpu->nextOp->inst == TestEnd) {
+            return;
         }
-        return;
+        continue;
 #else
         if (cpu->thread->process->terminated) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);

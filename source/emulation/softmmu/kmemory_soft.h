@@ -50,7 +50,7 @@ public:
     DynamicMemory* dynamicMemory;
 #endif
 
-    CodeCache codeCache;
+    DecodedOpCache opCache;
 };
 
 KMemoryData* getMemData(KMemory* memory);

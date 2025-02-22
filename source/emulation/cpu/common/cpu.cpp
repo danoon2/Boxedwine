@@ -95,8 +95,7 @@ void CPU::reset() {
     this->lazyFlags = FLAGS_NONE;
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
-    this->nextBlock = nullptr;
-    this->delayedFreeBlock = nullptr;
+    this->nextOp = nullptr;
 #ifdef BOXEDWINE_MULTI_THREADED
     this->tmpLockAddress = 0;
 #endif
@@ -1377,11 +1376,11 @@ void common_log(CPU* cpu, DecodedOp* op) {
     op->log(cpu);
 }
 
-DecodedBlock* common_getNextBlock(CPU* cpu) {
+DecodedOp* common_getNextOp(CPU* cpu) {
     if (cpu->thread->terminating) {
         return nullptr;
     }
-    return cpu->getNextBlock();
+    return cpu->getNextOp();
 }
 
 U32 common_readCrx(CPU* cpu, U32 which, U32 reg) {

@@ -118,7 +118,6 @@ void KSystem::destroy() {
 	KSystem::shutingDown = false;
 	Fs::shutDown();
     DecodedOp::clearCache();
-    NormalCPU::clearCache();
     KMemory::shutdown();
     XServer::shutdown();
     shutdownRam();

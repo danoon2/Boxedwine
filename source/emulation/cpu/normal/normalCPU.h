@@ -3,22 +3,22 @@
 
 #include "../common/cpu.h"
 
-class NormalCPU : public CPU {
+class NormalCPU : public CPU, public DecodeBlockCallback {
 public:
     NormalCPU(KMemory* memory);
 
-    static void clearCache();
-
     // from CPU
     void run() override;
-    DecodedBlock* getNextBlock() override;
+    DecodedOp* getNextOp() override;
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 
-    static DecodedBlock* getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big);
-    static DecodedOp* decodeSingleOp(CPU* cpu, U32 address);
-
     OpCallback firstOp;
+
+    // from DecodeBlockCallback
+    U8 fetchByte(U32* eip) override;
+    bool shouldContinue(U32 eip) override;
+    DecodedOp** getOpLocation(U32 eip) override;
 };
 
 #endif

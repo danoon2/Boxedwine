@@ -214,27 +214,21 @@ void useFlags() {
     pushCode8(0x02);
 }
 
-void runTestCPU() {    
+void runTestCPU() {
+    pushCode8(0xcd);
+    pushCode8(0x97); // will cause TestEnd specific return code to be inserted
+
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #ifdef BOXEDWINE_X64
     process->emulateFPU = !cpu->isBig();
 #endif
-    pushCode8(0xcd);
-    pushCode8(0x97); // will cause TEST specific return code to be inserted
     ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
     cpu->run();
-#else
-    pushCode8(0x70); // jump causes the decoder to stop building the block
-    pushCode8(0);
-    pushCode8(0x70); // jump will fetch the next block as well
-    pushCode8(0);
-    cpu->nextBlock = cpu->getNextBlock();    
+#else    
+    cpu->nextOp = cpu->getNextOp();
     do {
         cpu->run();
-        if (!cpu->nextBlock) {
-            cpu->nextBlock = cpu->getNextBlock();
-        }
-    } while (cpu->nextBlock->op->inst != JumpO && (cpu->nextBlock->op->inst != Custom1 || cpu->nextBlock->op->next->inst != JumpO));
+    } while (cpu->nextOp->inst != TestEnd);
 
 #endif    
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
