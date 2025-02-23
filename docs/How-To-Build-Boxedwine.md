@@ -1,4 +1,4 @@
-#How to build
+# How to build
 
 The code is hosted at GitHub and can be seen here
 
@@ -24,7 +24,7 @@ With just the filesystem and an executable you should be able to test launching 
 
 boxedwine -root . -zip TinyCore15Wine6.0.zip /bin/wine notepad
 
-##Windows Build
+## Windows Build
 
 Currently I use Visual Studio 2022 community edition.
 
@@ -46,7 +46,7 @@ make release
 * the release target is for the normal CPU emulation
 
 
-##MacOSX Build
+## MacOSX Build
 
 Install XCode from the App store
 
@@ -54,7 +54,7 @@ change to the directory project\mac-xcode in finder and open Boxedwine.xcworkspa
 
 The Boxedwine target uses the binary translator for x64 or Armv8 depending on your system.
 
-##Emscripten Build
+## Emscripten Build
 
 follow instructions on Emscripten and/or WebAssembly website for setup
 
