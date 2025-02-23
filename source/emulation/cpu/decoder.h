@@ -1411,6 +1411,8 @@ enum Instruction {
     Done,
     Custom1,
     TestEnd,
+    JIT,
+    AlignDecode,
     InstructionCount
 };
 
@@ -1486,6 +1488,8 @@ public:
 #endif
 #ifdef _DEBUG
     Instruction inst;
+    Instruction lastInst;
+    U32 lastEip;
 #else
     U16 inst;
 #endif
@@ -1510,7 +1514,9 @@ public:
     virtual U8 fetchByte(U32* eip) = 0;
     virtual bool shouldContinue(U32 eip) = 0;
     virtual DecodedOp** getOpLocation(U32 eip) = 0;
+    virtual DecodedOp* getDecodedOp(U32 eip) = 0;
 };
 
 DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen);
+DecodedOp* decodeFunction(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen);
 #endif

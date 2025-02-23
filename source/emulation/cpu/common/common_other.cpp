@@ -241,3 +241,9 @@ void common_xsave(CPU* cpu, U32 address) {
 void common_xrstor(CPU* cpu, U32 address) {
     kpanic("xrstore not implemented");
 }
+
+void common_call_and_return(CPU* cpu, U32 expectedReturnAddress) {
+    while (cpu->getEipAddress() != expectedReturnAddress) {
+        cpu->run();
+    }
+}

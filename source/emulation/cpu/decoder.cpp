@@ -1378,7 +1378,9 @@ const InstructionInfo instructionInfo[] = {
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Callback
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Done
     {0, 0, 0, 0, 0, 0}, // Custom1
-    { 0, 0, 0, 0, 0, 0 } // TestEnd
+    { 0, 0, 0, 0, 0, 0 }, // TestEnd
+    { 0, 0, 0, 0, 0, 0 }, // JIT
+    { 0, 0, 0, 0, 0, 0 } // AlignDecode
 };
 
 // for now, kept out of emscript to keep size down
@@ -6076,9 +6078,9 @@ void DecodedOp::dealloc() {
 #ifdef __TEST
     if (this->next && this->next->inst == TestEnd) {
         this->next->dealloc();
-    }
+    } else 
 #endif
-    if (this->next && this->next->inst == Done) {
+    if (this->next && (this->next->inst == AlignDecode || this->next->inst == Done || inst == JIT)) {
         this->next->dealloc();
     }
     this->next = nullptr;
@@ -6144,7 +6146,11 @@ U32 DecodedOp::getNeededFlags(U32 flags, U32 depth) {
         if (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_1) {
             bool conditionalBranch = (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2) != 0;
             if (!conditionalBranch) {
-                n = *(n->nextJump);
+                if (n->nextJump) {
+                    n = *(n->nextJump);
+                } else {
+                    return flags;
+                }
             }
             else {
                 if (n->nextJump && *(n->nextJump)) {
@@ -6162,11 +6168,142 @@ U32 DecodedOp::getNeededFlags(U32 flags, U32 depth) {
     return flags;
 }
 
+DecodedOp* decodeFunction(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen, BHashTable<U32, U32>& jumps, BHashTable<U32, DecodedOp*>& eipToOp, U32 pass) {
+    DecodedOp* result = callback->getDecodedOp(eip);
+    if (!result) {
+        U32 count = 0;
+        U32 len = 0;
+        result = decodeBlock(callback, eip, isBig, count, len);
+    }
+    U32 address = eip;
+    U32 furthestJmp = 0;
+
+    DecodedOp* op = result;     
+    bool foundReturn = false;        
+
+    while (true) {
+        bool branch1 = (instructionInfo[op->inst].branch & DECODE_BRANCH_1);
+        bool branch2 = (instructionInfo[op->inst].branch & DECODE_BRANCH_2);
+        bool calculatedBranchTarget = (instructionInfo[op->inst].branch & DECODE_BRANCH_NO_CACHE);
+
+        opCount++;
+        if (address == 0xd041b81b) {
+            int ii = 0;
+        }
+        eipToOp.set(address, op);
+        bool isReturn = (op->inst == Retn32 || op->inst == Retn16 || op->inst == Retn32Iw || op->inst == Retn16Iw);
+        bool isDirectJump = op->inst == JmpJb || op->inst == JmpJw || op->inst == JmpJd;
+        bool isConditionalJump = op->inst >= JumpO && op->inst <= JumpNLE;
+        bool isJump = isDirectJump || isConditionalJump;
+
+        if (isReturn) {
+            foundReturn = isReturn;
+        }
+        if ((furthestJmp < address + op->len) && isReturn) {
+            break;
+        }
+        if (((address & 0xfff) == 0x097) && isJump) {
+            int ii = 0;
+        }
+        if (branch1 && op->inst != CallJw && op->inst != CallJd) {
+            DecodedOp* destOp = callback->getDecodedOp(address + op->len + op->imm);
+            if (destOp && destOp->inst == JIT) {
+                if (furthestJmp < address + op->len) {
+                    if (0) {
+                        KThread::currentThread()->cpu->eip.u32 = address;
+                        KThread::currentThread()->seg_access(address, true, false);
+                    }
+                    break;
+                }
+            } else {
+                jumps.set(address + op->len + op->imm, address);
+                furthestJmp = std::max(furthestJmp, address + op->len + op->imm);
+            }
+        }
+        address += op->len;
+        bool skippedOps = false;
+        if (isDirectJump) {            
+            U32 found = 0;
+            // is next instruction valid
+            if (!jumps.get(address, found)) {                
+                // libc memchr will leave some bytes in the function unused, maybe for alignment reasons?
+                // in this case jump to the next know good spot
+                U32 nextClosestAddress = 0xffffffff;
+                for (auto& keyValue : jumps) {
+                    if (keyValue.key >= address && keyValue.key < nextClosestAddress) {
+                        nextClosestAddress = keyValue.key;
+                    }
+                }
+                // I have seem some valid ones > 0x100 on the first pass
+                // :TODO: how can I better detect a function that jumps to the beginning of another function 
+                // like ntdll.so _IO_file_read
+                U32 limit = pass == 1 ? 0x200 : 0x10;
+                if (nextClosestAddress - address > limit) {
+                    break;
+                }
+                if (pass == 1) {
+                    skippedOps = true;
+                } else {
+                    DecodedOp* alignOp = DecodedOp::alloc();
+                    alignOp->inst = AlignDecode;
+                    alignOp->len = nextClosestAddress - address;
+                    if (alignOp->len > 0x8) { // libc memchr has an 8 byte align
+                        //KThread::currentThread()->seg_access(address, true, false);
+                        int ii = 0;
+                    }
+                    op->next = alignOp;
+                    op = alignOp;
+                    opCount++;
+                }
+                address = nextClosestAddress;
+            }
+        }
+        if (op->inst == JmpE16 || op->inst == JmpE32 || op->inst == JmpR16 || op->inst == JmpR32) {
+            return nullptr;
+        }        
+        if (!op->next || op->inst == Done) {
+            op->next = callback->getDecodedOp(address);
+            if (!op->next) {
+                U32 count = 0;
+                U32 len = 0;
+                op->next = decodeBlock(callback, address, isBig, count, len);
+            }
+        }
+        DecodedOp* prevOp = op;
+        op = op->next;
+        if (skippedOps) {
+            prevOp->next = nullptr;
+        }
+    }    
+    decodedLen = address - eip;
+    return result;
+}
+
+DecodedOp* decodeFunction(DecodeBlockCallback * callback, U32 eip, bool isBig, U32 & opCount, U32 & decodedLen) {
+    BHashTable<U32, U32> jumps;
+    BHashTable<U32, DecodedOp*> eipToOp;
+
+    // get valid jumps
+    while (true) {
+        U32 count = jumps.size();
+        if (!decodeFunction(callback, eip, isBig, opCount, decodedLen, jumps, eipToOp, 1)) {
+            return nullptr;
+        }
+        if (count == jumps.size()) {
+            break;
+        }
+    }
+
+    eipToOp.clear();
+    opCount = 0;
+    decodedLen = 0;
+    return decodeFunction(callback, eip, isBig, opCount, decodedLen, jumps, eipToOp, 2);
+}
+
 DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen) {
     DecodeData d;
     DecodedOp* op = DecodedOp::alloc();
     DecodedOp* result = op;
-    U32 furtherestDirectJump = 0;
     U32 startOfOp = 0;
 
     d.callback = callback;
@@ -6190,6 +6327,10 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
             d.opCode = 0;
             d.ea16 = 1;
         }
+        op->lastEip = d.eip;
+        if (op->lastEip == 0xd0512b96) {
+            int ii = 0;
+        }
         d.inst = d.opCode + d.fetch8();
         if (!decoder[d.inst]) {
             op->inst = Invalid;
@@ -6201,6 +6342,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
                 op->lock = true;
             }
         }
+        op->lastInst = op->inst;
         if (op->inst == Invalid) {
 #if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
             op->originalOp = d.inst;
@@ -6228,17 +6370,11 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1) && ((d.eip + op->imm) >> K_PAGE_SHIFT) == (startOfOp >> K_PAGE_SHIFT)) {
             op->nextJump = callback->getOpLocation(d.eip + op->imm);
         }
-        // is it the last call or return, if so, then stop
-        if (((instructionInfo[op->inst].branch & DECODE_BRANCH_NO_CACHE) || op->inst == CallJd || op->inst == CallJw) && d.eip > furtherestDirectJump) {
+
+        if ((instructionInfo[op->inst].branch & (DECODE_BRANCH_1 | DECODE_BRANCH_NO_CACHE))) {
             break;
         }
 
-        if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1)) {
-            break;
-        }
-        if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1) && ((S32)op->imm) > 0) {
-            furtherestDirectJump = d.eip + op->imm;
-        }
         op->next = DecodedOp::alloc();
         op = op->next;
     }
