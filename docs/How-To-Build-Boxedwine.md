@@ -1,33 +1,65 @@
-These instructions will allow you to build your own version of Wine that can be used by Boxedwine.  I doubt very many people will every need to do this, but if you need a specific patch included in a particular version of Wine to run a particular game/app, then this is a good place to start.
+#How to build
 
-This will build different versions of Wine, including the custom winex11.drv.so replacement that Boxedwine needs.
+The code is hosted at GitHub and can be seen here
 
-Freetype 2.8.1 broke the Wine build. So for Wine versions 2.18 or later, Freetype 2.8.1 or later must be used. This is why I use Debian 10 for Wine 3.0 and later and Debian 9 for Wine 2.0 or earlier.
+https://github.com/danoon2/Boxedwine
 
-1. Install Debian 9 or 10 (32-bit). This can be in a Virtual Machine, like VMWare or on a real machine.
-> * VMWare Player: It will build Wine faster if you give it 4 CPUs.
-> * For Wine 3.0 or higher Debian 10 , for example: debian-10.4.0-i386-netinst.iso
-> * For Wine 1.6 to 2.0 Debian 9 , for example: debian-9.12.0-i386-netinst.iso
-2. Make sure your user has sudo access. On Debian 10 you can do that by:
-> * Hit Alt-Ctrl-F1 and login as root
-> * Where username is the name of the user you created when installing Debian 10: "usermod -aG sudo username"
-> * Hit Alt-F7 to go back to the graphical environment if you want. You will need to log out and back into your Window environment for the group change to take effect.
-3. Install dependencies: at the command prompt, type:
-> * sudo apt-get install build-essential
-> * sudo apt-get install git
-> * sudo apt-get build-dep wine
-4. Install OSS header so that wineoss.drv.so will build
-> * Download OSS source
-> * Unzip the file, for example, "tar -xvf oss-v4.2-build2019-src-gpl.tar.bz2"
-> * Make directory: "sudo mkdir -p /usr/lib/oss/include/sys"
-> * copy include/soundcard.h to /usr/lib/oss/include/sys/soundcard.h: "sudo cp include/soundcard.h /usr/lib/oss/include/sys/"
-5. In your home directory, checkout Boxedwine with this command "git clone https://github.com/danoon2/Boxedwine.git"
-6. Change directory to "cd ~/Boxedwine/tools/buildWine"
-7. Run script with Bash "bash buildAll.sh"
-8. The script will ask for sudo access to install Wine into /opt. It will then zip it up. This is why its best to this in a VM instead on a real machine.
-9. When it is all done, you should have some zipped up wine files in the ~/Boxedwine/tools/buildWine directory.
-10. These zips only contain Wine, not the full file system. But the Wine zip files do contain a depends.txt file that tells Boxedwine to also load debian10.zip. If you would prefer to only have 1 file system zip file, the Wine zip and Debian 10 zip files can be merged together.
-11. To prevent Wine creating the .wine directory when launching Boxedwine, I will run something like Winecfg with the new file system, then copy the premade /home/username/.wine folder in the Wine file system.
+You can clone this repo locally,
 
-### Toubleshooting
-If you get any build errors, like __acrt_iob_func undefined, try deleting the wine-git directory and build again.
+git clone https://github.com/danoon2/Boxedwine
+
+or you can download a zip of the repo by visiting https://github.com/danoon2/Boxedwine in your browser, then tapping the green button in the upper right called “Code”.  That will launch a popup and at the bottom of the popup is an entry for “Download ZIP”.  Select that and after it downloads, unzip it on your computer.  This is the full Boxedwine source code and you can build it using the instructions below.
+
+To use Boxedwine, you need a file system.  The easiest way to get a file system is to launch Boxedwine that you built with no command line arguments.  If you haven't downloaded a file system before it will ask you if you want to.
+
+On Windows, Boxedwine will store the file system here:
+
+C:\Users\username\AppData\Roaming\Boxedwine\FileSystems2
+
+On Linux
+
+~/.local/share/Boxedwine/FileSystems2
+
+With just the filesystem and an executable you should be able to test launching notepad with this command line:
+
+boxedwine -root . -zip TinyCore15Wine6.0.zip /bin/wine notepad
+
+##Windows Build
+
+Currently I use Visual Studio 2022 community edition.
+
+Open solution file project\msvc\BoxedWine\BoxedWine.sln
+
+##Linux Build
+
+dependencies: on Ubuntu this might be zlib1g-dev, libminizip-dev, libsdl2-dev and libssl-dev
+
+change directory to project/linux and run either
+
+make multiThreaded
+
+or 
+
+make release
+
+* the multiThreaded target is for x64 or Armv8 systems to compile the binary translator emulation. 
+* the release target is for the normal CPU emulation
+
+
+##MacOSX Build
+
+Install XCode from the App store
+
+change to the directory project\mac-xcode in finder and open Boxedwine.xcworkspace
+
+The Boxedwine target uses the binary translator for x64 or Armv8 depending on your system.
+
+##Emscripten Build
+
+follow instructions on Emscripten and/or WebAssembly website for setup
+
+make sure to initialize the emscripten environment: source ./emsdk_env.sh
+
+change directory to project/emscripten and make
+
+read buildFlags.txt in source code tree for configuration options

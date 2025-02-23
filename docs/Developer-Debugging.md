@@ -9,7 +9,7 @@
 
 1. It is rare for 32-bit apps and game to trigger an exception/signal. So if your 32-bit app or game is crashing, try setting a break point in KThread::runSignal. This gets called when Boxedwine tries to communicate to Wine that an exception has happened. For easier to understand call stacks, it is best to debug the normal CPU core.
 
-[kernel/kthread.cpp runSignal](https://github.com/danoon2/Boxedwine/blob/master/source/kernel/kthread.cpp#L681)
+[kernel/kthread.cpp void KThread::runSignal(U32 signal, U32 trapNo, U32 errorNo)](https://github.com/danoon2/Boxedwine/blob/master/source/kernel/kthread.cpp)
 
 2. I always keep a break point near the top of kpanic, that way if it gets called I can see the call stack and some context before the app/game exits.
 

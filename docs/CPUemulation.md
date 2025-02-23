@@ -1,6 +1,6 @@
 # CPU Emulation
 
-Boxedwine runs x86 Linux binaries, so far only binaries from Debian 10 have been tested.  The main purpose of Boxedwine is to run the 32-bit version of Wine in order to run 32-bit Windows applications and games.  Wine is not an emulator so it will expect the host to run on an x86 processor inorder to run the x86 compiled code of the Windows apps/games.
+Boxedwine runs x86 Linux binaries, currently it is using Tiny Core Linux 15.  The main purpose of Boxedwine is to run the 32-bit version of Wine in order to run 32-bit Windows applications and games.  Wine is not an emulator so it will expect the host to run on an x86 processor inorder to run the x86 compiled code of the Windows apps/games.
 
 Boxedwine is an emulator and will emulate all x86 instructions.  Because of this it is easy to run Boxedwine on other hardware architectures such as ARM.  The simplist CPU emulation is to decode an x86 instruction then run the code associated with that instruction, for example you can think of a giant switch statement that loops, handling each instruction.  Boxedwine has a 2 main types of CPU emulation, "normal" which is kind of like the giant switch/loop I just mentioned and "binary translation" which converts each x86 instruction to the native host instruction at run time.  The normal CPU emulator is slow but since it doesn't know about the host, it will just work on all architectures.  The binary translator CPU emulator is very fast but requires a large effort to bring up for each new architecture.  Currently the binary translator is written for x64 and ARMv8 (ARM64).
 
@@ -23,13 +23,17 @@ https://github.com/danoon2/Boxedwine/blob/master/source/emulation/softmmu/soft_c
 
 A "DecodedBlock" has a linked list of "DecodedOp", so when a block is called you only call the first "DecodedOp" and that op will call the next.  Because the next op that will be called can be anything (not known at Boxedwine compile time), this will use an indirect call (think virtual call for c++/java).  These are slower than normal direct calls because the host CPU cannot predict where the code will jump to.
 
-The normal CPU does not handle the "lock" instruction in x86.  This is a very important instruction when it comes to synchronizing memory access between threads. In a multi-threaded emulator, not handling this will cause crashes.  Because of this the normal CPU emulator will also emulate threads and thread scheduling.  For the scheduling code, see
+The normal CPU can run in single or multi-threaded mode.  For single-threaded mode, there is a schedule that tries to give each thread some time, but its honestly not that great and can result in stuttering
 
 https://github.com/danoon2/Boxedwine/blob/master/source/kernel/kscheduler.cpp#L168
 
+The multi-thread CPU is about 50% faster than the single-thread.  The main trick to getting this right is handling the lock instruction prefix.  See setNormalFunction in normalCPU
+
+https://github.com/danoon2/Boxedwine/blob/21c40b2c2ce0436f5123c08b7a964a80ac0ba1b9/source/emulation/cpu/normal/normalCPU.cpp
+
 
 ## Normal CPU + JIT
-This is the same as the normal CPU emulator but for blocks that are run more frequently it will recompile the block to be faster.  It will use a combination of inlining some x86 instructions and for more complicated instructions it will just call a function to handle it from within the block.  Here is the code that handles the start of the JIT
+This is the same as the normal CPU emulator but for blocks that are run more frequently it will recompile the block to be faster.  It will use a combination of inlining some x86 instructions and for more complicated instructions it will just call a function to handle it from within the block.  See firstDynamicOp here
 
 https://github.com/danoon2/Boxedwine/blob/master/source/emulation/cpu/x32/x32CPU.cpp#L2188
 
@@ -105,6 +109,6 @@ U32 readMemory32(U32 address) {
 }
 ```
 
-x64 implementation of above pseudo code
+x64 implementation of above pseudo code can be found in X64Asm::checkMemory
 
-https://github.com/danoon2/Boxedwine/tree/master/source/emulation/cpu/x64/x64Asm.cpp#L942
+https://github.com/danoon2/Boxedwine/tree/master/source/emulation/cpu/x64/x64Asm.cpp
