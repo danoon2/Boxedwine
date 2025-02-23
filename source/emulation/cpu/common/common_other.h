@@ -34,3 +34,4 @@ void common_fxsave(CPU* cpu, U32 address);
 void common_fxrstor(CPU* cpu, U32 address);
 void common_xsave(CPU* cpu, U32 address);
 void common_xrstor(CPU* cpu, U32 address);
+void common_call_and_return(CPU* cpu, U32 expectedReturnAddress);

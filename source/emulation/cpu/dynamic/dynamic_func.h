@@ -1,17 +1,3 @@
-void dynamic_jump(DynamicData* data, DynReg reg, U32 inst, U32 len1, U32 len2) {
-    startIf(reg, (inst==JumpZ?DYN_NOT_EQUALS_ZERO:DYN_EQUALS_ZERO), true);
-    U32 extra = data->skipEipUpdateLen;
-    data->skipEipUpdateLen = 0;
-
-    INCREMENT_EIP(data, len2+extra);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, len1+extra);
-    blockNext1();
-    endIf();
-    data->done = true;
-}
-
 enum DynArg {
     DYN_Mem=0,
     DYN_Reg,
@@ -73,9 +59,8 @@ U32 cpuOffsetSrc(DynWidth width) {
 void dynamic_getCF(DynamicData* data);
 
 void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
-    bool isJump = op->next->inst == JumpZ || op->next->inst == JumpNZ;
     bool isSet = op->next->inst == SetZ_E8 || op->next->inst == SetZ_R8 || op->next->inst == SetNZ_E8 || op->next->inst == SetNZ_R8;
-    bool needResultReg = isJump || isSet;
+    bool needResultReg = isSet;
     DynReg jmpReg = DYN_NOT_SET;
     bool needsToSetFlags = op->needsToSetFlags(data->cpu);
 
@@ -318,11 +303,11 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
         if (width != DYN_32bit) {
             movToRegFromReg(jmpReg, DYN_32bit, jmpReg, width, false);
         }
-        if (isJump) {
-            dynamic_jump(data, jmpReg, op->next->inst, op->len + op->next->len + op->next->imm, op->len + op->next->len);
-        } else if (isSet) {
+        if (isSet) {
             INCREMENT_EIP(data, op);
             op = op->next;
+            data->currentEip += op->len;
+            data->currentOp = op;
             if (op->inst == SetZ_E8 || op->inst == SetNZ_E8) {
                 startIf(jmpReg, (op->inst == SetZ_E8 ? DYN_EQUALS_ZERO : DYN_NOT_EQUALS_ZERO), true);
                 movToReg(DYN_SRC, DYN_8bit, 1);

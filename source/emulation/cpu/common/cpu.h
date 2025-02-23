@@ -282,7 +282,7 @@ public:
     DecodedOp* nextOp = nullptr;
 
     virtual void run()=0;
-    virtual DecodedOp* getNextOp() = 0;
+    virtual DecodedOp* getNextOp(bool callTarget = false) = 0;
     virtual void restart() {}
     virtual void setSeg(U32 index, U32 address, U32 value);
 

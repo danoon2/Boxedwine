@@ -6,6 +6,7 @@
 #include "../dynamic/dynamic.h"
 #include "../dynamic/dynamic_memory.h"
 #include "../../softmmu/kmemory_soft.h"
+#include "../normal/normalCPU.h"
 
 extern U8* ramPages[K_NUMBER_OF_PAGES];
 
@@ -154,8 +155,7 @@ void callHostFunction(void* address, bool hasReturn=false, U32 argCount=0, U32 a
 // this is called for cases where we don't know ahead of time where the next block will be, so we need to look it up
 void blockDone();
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void blockNext1(DecodedOp* op);
-void blockNext2(DecodedOp* op);
+void blockNext1(DynamicData* data, DecodedOp* op);
 
 /********************************************************/
 /* End required for dynamic code                        */
@@ -2046,22 +2046,10 @@ void incrementEip(U32 inc) {
 }
 
 void incrementEip(DynamicData* data, DecodedOp* op) {
-    if (op->next) {
-        const InstructionInfo& info = instructionInfo[op->next->inst];
-        if (!info.branch && !info.readMemWidth && !info.writeMemWidth && !info.throwsException) {
-            data->skipEipUpdateLen += op->len;
-            return;
-        }
-    }
-    U32 len = op->len + data->skipEipUpdateLen;
-    data->skipEipUpdateLen = 0;
-    incrementEip(len);
+    incrementEip(op->len);
 }
 
 void incrementEip(DynamicData* data, U32 len) {
-    if (data->skipEipUpdateLen) {
-        kpanic("incrementEip had an unexpected update");
-    }
     incrementEip(len);
 }
 
@@ -2074,75 +2062,18 @@ void blockDone() {
     outb(0xc3); // ret
 }
 
-static DecodedBlock* updateNext1(CPU* cpu) {
-    cpu->currentBlock->next1 = cpu->getNextBlock(); 
-    cpu->currentBlock->next1->addReferenceFrom(cpu->currentBlock);
-    return cpu->currentBlock->next1;
-}
-
-// next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
 void blockNext1(DynamicData* data, DecodedOp* op) {
-    // cpu->eip.u32 += op->len;
-    // if (!op->nextJump) {
-    //     DecodedOp* nextOp = cpu->getNextOp();
-    //     if (((S32)op->imm) > 0) {
-    //         nextOp->pfn(cpu, nextOp);
-    //      }  else {
-    //         cpu->nextOp = nextOp;
-    //      }
-    // } else {
-    //     if (!(*(op->nextJump))) {
-    //         *(op->nextJump) = cpu->getNextOp();
-    //     }
-    //     if (((S32)op->imm) > 0) {
-    //         (*(op->nextJump))->pfn(cpu, *(op->nextJump));
-    //     } else {
-    //         cpu->nextOp = *(op->nextJump);
-    //     }
-    // }
-    
-    if (((S32)op->imm) > 0) {
-        // psudo code
-    }
-    movToRegFromCpu(DYN_EDX, offsetof(CPU, currentBlock), DYN_32bit);
-
-    // mov eax, DecodedBlock::currentBlock->next1
-    outb(0x8b);    
-    if (offsetof(DecodedBlock, next1)<128) {
-        outb(0x42);
-        outb(offsetof(DecodedBlock, next1));
+    U32 found = 0;
+    // are we jumping to before the begining of the function
+    // ld seems to do this, where 1 returning branch is just before the beginning of the call, I'm not sure why they
+    // would do this, maybe so the call starts on a nice boundry?
+    if ((S32)op->imm < 0 && !data->eipToBufferPos.get(data->currentEip + op->len + op->imm, found)) {
+        blockDone();
+        data->done = true;
     } else {
-        outb(0x82);
-        outd(offsetof(DecodedBlock, next1));
-    }
-
-    // test eax, eax
-    outb(0x85);
-    outb(0xc0);
-
-    // jnz 
-    outb(0x75);
-    U32 pos = outBufferPos;
-    outb(0);
-    
-    callHostFunction(updateNext1, true, 1, 0, DYN_PARAM_CPU);
-
-    outBuffer[pos] = (U8)(outBufferPos-pos-1);
-
-    // cpu->nextBlock = DecodedBlock::currentBlock->next1
-    movToCpuFromReg(offsetof(CPU, nextBlock), DYN_CALL_RESULT, DYN_32bit, true);
-    
-}
-
-void blockNext2(DynamicData* data, DecodedOp* op) {
-    // if (!op->next) { 
-    //     op->next = cpu->getNextOp(); 
-    // }
-    // op->next->pfn(cpu, op->next);
-    
-    // if we don't have this by the time this JIT ran then maybe its a case we will never see, but we need to code for it
-    if (!op->next) {
-        dynamic_done(data, op);
+        outb(0xe9);
+        data->jumps.push_back(DynamicJump(data->currentEip + op->len + op->imm, outBufferPos));
+        outd(0);
     }
 }
 
@@ -2159,6 +2090,20 @@ void x32_callback(DynamicData* data, DecodedOp* op) {
     } else {
         kpanic("x32CPU::x32_callback unhandled callback");
     }
+}
+
+void x32_onTestEnd(CPU* cpu, DecodedOp* op) {
+    cpu->nextOp = op;
+}
+
+void x32_testEnd(DynamicData* data, DecodedOp* op) {
+    callHostFunction(x32_onTestEnd, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)op, DYN_PARAM_CONST_PTR, false);
+}
+
+void x32_alignDecode(DynamicData* data, DecodedOp* op) {
+}
+
+void x32_JIT(DynamicData* data, DecodedOp* op) {
 }
 
 void x32_invalid_op(DynamicData* data, DecodedOp* op) {
@@ -2212,24 +2157,48 @@ static void initX32Ops() {
     x32Ops[LMSW] = 0;
     x32Ops[INVLPG] = 0;
     x32Ops[Callback] = x32_callback;
+    x32Ops[TestEnd] = x32_testEnd;
+    x32Ops[AlignDecode] = x32_alignDecode;
+    x32Ops[JIT] = x32_JIT;
 }
 
 void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
+    static U32 count = 0;    
 #ifdef __TEST
-    if (cpu->currentBlock->runCount == 0) {
+    if (op->imm == 0) {
 #else
-    if (cpu->currentBlock->runCount == 50) {
+    if (op->imm == 50 && count < 300) {
 #endif
+        count++;
+        if (0) {
+            op->next->pfn(cpu, op->next);
+            op->imm++;
+            return;
+            //cpu->thread->seg_access(cpu->eip.u32, true, false);
+        }
         {
             BOXEDWINE_CRITICAL_SECTION;
-
+            klog("%d", count);
+            U32 opCount = 0;
+            U32 decodedLen = 0;            
             if (op->pfn != firstDynamicOp) {
                 op->pfn(cpu, op);
                 return;
             }
+            U32 a = cpu->getEipAddress();
+            if (cpu->getEipAddress() == 0xd045e800) {
+                int ii = 0;
+            }
+            DecodedOp* fullFunction = decodeFunction((NormalCPU*)cpu, cpu->getEipAddress(), cpu->isBig(), opCount, decodedLen);
+            if (!fullFunction) {
+                op->next->pfn(cpu, op->next);
+                op->imm++;
+                return;
+            }
+            DecodedOp* prevOp = nullptr;
             DynamicData data;
             data.cpu = cpu;
-            data.block = cpu->currentBlock;
+            data.currentEip = cpu->getEipAddress();
 
             initX32Ops();
             DecodedOp* o = op->next;
@@ -2241,14 +2210,27 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             // mov edi, ecx
             outb(0x89);
             outb(0xcf);
-            while (o) {
+            while (o && opCount) {
+                opCount--;
+                data.currentOp = o;
                 memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
                 //callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
-                x32Ops[o->inst](&data, o);
+                data.eipToBufferPos.set(data.currentEip, outBufferPos);
+                if (o->lock) {
+                    data.eipToBufferPos.set(data.currentEip+1, outBufferPos);
+                }
+                bool isDirectJmp = o->inst == JmpJb || o->inst == JmpJw || o->inst == JmpJd;
+                U32 targetAddress = data.currentEip + o->len + o->imm;
+                if (isDirectJmp && (targetAddress < cpu->getEipAddress() || targetAddress > cpu->getEipAddress() + decodedLen)) {
+                    blockDone();
+                } else {
+                    x32Ops[o->inst](&data, o);
+                }
+                data.currentEip += o->len;
                 if (ifJump.size()) {
                     kpanic("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
                 }
@@ -2258,18 +2240,40 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
                 } else if (data.done) {
 #ifndef __TEST
 #ifdef _DEBUG
-                    if (o->next)
-                        callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
+                    //if (o->next)
+                    //    callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)o->next, DYN_PARAM_CONST_PTR, false);
 #endif
 #endif
-                    break;
+                    for (DynamicJump& jmp : data.jumps) {
+                        if (jmp.eip >= data.currentEip) {
+                            data.done = false;
+                            break;
+                        }
+                    }
+                    if (data.done) {
+                        break;
+                    }
+                    prevOp = o;
+                    o = o->next;
                 } else {
+                    prevOp = o;
                     o = o->next;
                 }
             }
-            outb(0x5f); // pop edi
-            outb(0x5b); // pop ebx
-            outb(0xc3); // ret
+            if (prevOp->inst != Retn16 && prevOp->inst != Retn32 && prevOp->inst != Retn16Iw && prevOp->inst != Retn32Iw) {
+                outb(0x5f); // pop edi
+                outb(0x5b); // pop ebx
+                outb(0xc3); // ret
+            }
+            for (DynamicJump& jmp : data.jumps) {
+                U32 bufferIndex = 0;
+
+                if (!data.eipToBufferPos.get(jmp.eip, bufferIndex)) {                    
+                    cpu->thread->seg_access(cpu->eip.u32, true, false);
+                    kpanic("x32CPU firstDynamicOp");
+                }
+                *(U32*)&outBuffer[jmp.bufferPos] = bufferIndex - jmp.bufferPos - 4;
+            }
             DynamicMemory* memory = getMemData(cpu->memory)->dynamicMemory;
             if (!memory) {
                 memory = new DynamicMemory();
@@ -2316,10 +2320,16 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #endif
             op->pfn = (OpCallback)begin; // :TODO: if function is expected to pop stack because of the two passed params, then this will not work        
         }
+#ifdef __TEST
+        DecodedOp* next = DecodedOp::alloc();
+        next->inst = TestEnd;
+        op->next = next;
+#endif
         op->pfn(cpu, op);        
     } else {
         op->next->pfn(cpu, op->next);
     }
+    op->imm++;
 }
 
 #endif

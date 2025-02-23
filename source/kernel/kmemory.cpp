@@ -433,6 +433,9 @@ DecodedOp** KMemory::getDecodedOpLocation(U32 address) {
 }
 
 DecodedOp* KMemory::getDecodedOp(U32 address) {
+    if (address == 0xf0002FDA) {
+        int ii = 0;
+    }
     return data->opCache.get(address);
 }
 

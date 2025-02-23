@@ -23,6 +23,8 @@
 #else
 #define NEXT() cpu->eip.u32+=op->len; if (op->next == nullptr) op->next = cpu->getNextOp(); op->next->pfn(cpu, op->next)
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
+#define NEXT_DONE_CALL() cpu->nextOp = cpu->getNextOp(true);
+
 // if jmp back, then return so that we don't blow the stack
 #define NEXT_BRANCH1()                                      \
 cpu->eip.u32+=op->len;                                      \
@@ -36,6 +38,25 @@ if (!op->nextJump) {                                        \
 } else {                                                    \
     if (!(*(op->nextJump))) {                               \
         *(op->nextJump) = cpu->getNextOp();                 \
+    }                                                       \
+    if (((S32)op->imm) > 0) {                               \
+        (*(op->nextJump))->pfn(cpu, *(op->nextJump));       \
+    } else {                                                \
+        cpu->nextOp = *(op->nextJump);                      \
+    }                                                       \
+}
+#define NEXT_BRANCH1_CALL()                                      \
+cpu->eip.u32+=op->len;                                      \
+if (!op->nextJump) {                                        \
+    DecodedOp* nextOp = cpu->getNextOp(true);                       \
+    if (((S32)op->imm) > 0) {                               \
+        nextOp->pfn(cpu, nextOp);                                   \
+    } else {                                                \
+        cpu->nextOp = nextOp;                                   \
+    }                                                       \
+} else {                                                    \
+    if (!(*(op->nextJump))) {                               \
+        *(op->nextJump) = cpu->getNextOp(true);                 \
     }                                                       \
     if (((S32)op->imm) > 0) {                               \
         (*(op->nextJump))->pfn(cpu, *(op->nextJump));       \
@@ -370,6 +391,10 @@ bool NormalCPU::shouldContinue(U32 eip) {
     return this->memory->getDecodedOp(eip) == nullptr;
 }
 
+DecodedOp* NormalCPU::getDecodedOp(U32 eip) {
+    return memory->getDecodedOp(eip);
+}
+
 DecodedOp** NormalCPU::getOpLocation(U32 eip) {
     return this->memory->getDecodedOpLocation(eip);
 }
@@ -381,7 +406,7 @@ U8 NormalCPU::fetchByte(U32* eip) {
     return this->memory->readb((*eip)++);
 }
 
-DecodedOp* NormalCPU::getNextOp() {
+DecodedOp* NormalCPU::getNextOp(bool callTarget) {
     if (!this->thread->process) // exit was called, don't need to pre-cache the next block
         return nullptr;
 
@@ -401,6 +426,14 @@ DecodedOp* NormalCPU::getNextOp() {
                 setNormalFunction(nextOp);
                 nextOp = nextOp->next;
             }
+            if (callTarget && firstOp && op->next != nullptr) {
+                DecodedOp* jitOp = DecodedOp::alloc();
+                jitOp->pfn = firstOp;
+                jitOp->inst = JIT;
+                jitOp->next = op;
+                jitOp->len = 0; // needs to be 0 so that code that loops won't count it as part of the address running total
+                op = jitOp;
+            }
             this->thread->memory->addCode_nolock(startIp, eipLen, op, true);
         }
     }
@@ -408,5 +441,8 @@ DecodedOp* NormalCPU::getNextOp() {
 }
 
 void NormalCPU::run() {
+    if (nextOp->inst == InstructionCount) {
+        nextOp = getNextOp();
+    }
     nextOp->pfn(this, nextOp);
 }

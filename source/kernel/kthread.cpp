@@ -122,7 +122,7 @@ KThread::KThread(U32 id, const KProcessPtr& process) :
     //BString tmp = BString::valueOf(id);
     //tmp += ".txt";
     //if (id==0x1c)
-    //this->cpu->logFile = fopen(tmp.c_str(), "w");
+    //this->cpu->logFile.createNew(tmp);
 }
 
 bool KThread::isLdtEmpty(struct user_desc* desc) {

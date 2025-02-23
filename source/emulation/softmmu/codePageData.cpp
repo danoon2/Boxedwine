@@ -78,6 +78,11 @@ void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	}
 	for (U32 i = offset; i < end; i++) {
 		if (page->ops[i]) {
+#ifdef __TEST
+			if (page->ops[i]->next && page->ops[i]->next->inst == TestEnd) {
+				page->ops[i + page->ops[i]->len] = nullptr;
+			}
+#endif
 			page->ops[i]->dealloc();
 			page->ops[i] = nullptr;
 			activeOps--;
@@ -206,6 +211,9 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, bool followOpNext) {
 		activeOps++;
 		if (!followOpNext) {
 			break;
+		}		
+		if (op->inst == JIT) {
+			op = op->next;
 		}
 		offset += op->len;
 		prevOp = op;

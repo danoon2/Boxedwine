@@ -9,7 +9,7 @@ public:
 
     // from CPU
     void run() override;
-    DecodedOp* getNextOp() override;
+    DecodedOp* getNextOp(bool callTarget = false) override;
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 
@@ -19,6 +19,7 @@ public:
     U8 fetchByte(U32* eip) override;
     bool shouldContinue(U32 eip) override;
     DecodedOp** getOpLocation(U32 eip) override;
+    DecodedOp* getDecodedOp(U32 eip) override;
 };
 
 #endif

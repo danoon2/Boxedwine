@@ -811,7 +811,7 @@ U32 KProcess::execve(KThread* thread, BString path, std::vector<BString>& args, 
     //klog("%d/%d exec %s (cwd=%s)", KThread::currentThread()->id, this->id, this->commandLine.c_str(), this->currentDirectory.c_str());
 
     thread->cpu->restart();
-    
+    throw 2;
     return -K_CONTINUE;
 }
 
