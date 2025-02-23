@@ -30,7 +30,7 @@ Currently I use Visual Studio 2022 community edition.
 
 Open solution file project\msvc\BoxedWine\BoxedWine.sln
 
-##Linux Build
+## Linux Build
 
 dependencies: on Ubuntu this might be zlib1g-dev, libminizip-dev, libsdl2-dev and libssl-dev
 
