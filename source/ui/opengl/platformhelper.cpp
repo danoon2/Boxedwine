@@ -40,9 +40,7 @@ void* dx9MakeRGBATexture(const unsigned char* data, int width, int height) {
     return (void*)texture;
 }
 
-#endif
-
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
 void glUnloadTexture(void* texture) {
     if (texture) {
         GLuint t = (GLuint)(U64)texture;
@@ -73,8 +71,7 @@ void UnloadTexture(void* texture) {
     if (StartUpArgs::uiType == UI_TYPE_DX9) {
         dx9UnloadTexture(texture);
     }
-#endif
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         glUnloadTexture(texture);
     }
@@ -87,8 +84,7 @@ void* MakeRGBATexture(const unsigned char* data, int width, int height) {
     if (StartUpArgs::uiType == UI_TYPE_DX9) {
         return dx9MakeRGBATexture(data, width, height);
     }
-#endif
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         return glMakeRGBATexture(data, width, height);
     }

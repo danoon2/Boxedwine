@@ -5149,7 +5149,7 @@ void glcommon_glGetCompressedTexImage(CPU* cpu) {
             });
         if (!img.isPacked() && img.getCount()==0) {
             // 3dmark 2001 needs this otherwise it will crash after first test
-            GLenum e = glGetError();
+            GLenum e = pglGetError();
             if (e != GL_NO_ERROR) {
                 cpu->thread->glLastError = e;
                 return;

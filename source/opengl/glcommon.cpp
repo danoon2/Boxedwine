@@ -708,7 +708,7 @@ void gl_common_XChooseVisual(CPU* cpu) {
         if (isDoubleBuffer != doubleBuffer) {
             return true;
         }
-        if (colorType != cfg->glPixelFormat->pf.iPixelType) {
+        if (colorType != PF_COLOR_TYPE_NOTSET && colorType != cfg->glPixelFormat->pf.iPixelType) {
             return true;
         }
         visualId = cfg->visualId;

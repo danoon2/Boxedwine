@@ -1487,11 +1487,12 @@ static void x11_GetVisualInfo(CPU* cpu) {
     U32 itemAddress = listAddress + sizeof(U32) * count;
     Display::iterateVisuals(thread, displayAddress, [&memory, &listAddress, &itemAddress, mask, &infoTemplate](S32 screenIndex, U32 visualAddress, Depth* depth, Visual* visual) {
         if (infoTemplate.match(mask, screenIndex, depth, visual)) {
-            XVisualInfo* visualInfo = (XVisualInfo*)memory->getRamPtr(itemAddress, sizeof(XVisualInfo), true);
+            XVisualInfo* visualInfo = (XVisualInfo*)memory->lockReadWriteMemory(itemAddress, sizeof(XVisualInfo));
             memory->writed(listAddress, itemAddress);
             itemAddress += sizeof(XVisualInfo);
             listAddress += sizeof(U32);
             visualInfo->set(screenIndex, visualAddress, depth->depth, visual);
+            memory->unlockMemory((U8*)visualInfo);
         }
         return true;
         });

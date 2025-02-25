@@ -581,7 +581,7 @@ int getSize(GLenum pname) {
       
       case GL_COMPRESSED_TEXTURE_FORMATS_ARB: {
           GLint results;
-          glGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS_ARB, &results);
+          pglGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS_ARB, &results);
           return results;
       }      
       default:

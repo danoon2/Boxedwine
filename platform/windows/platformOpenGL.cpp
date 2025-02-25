@@ -86,9 +86,22 @@ typedef HGLRC(WINAPI* PFNWGLCREATECONTEXTATTRIBSARBPROC) (HDC hDC, HGLRC hShareC
 typedef const char* (WINAPI* PFNWGLGETEXTENSIONSSTRINGARBPROC) (HDC hdc);
 typedef BOOL(WINAPI* PFNWGLGETPIXELFORMATATTRIBIVARBPROC) (HDC hdc, int iPixelFormat, int iLayerPlane, UINT nAttributes, const int* piAttributes, int* piValues);
 typedef BOOL(WINAPI* PFNWGLCHOOSEPIXELFORMATARBPROC) (HDC hdc, const int* piAttribIList, const FLOAT* pfAttribFList, UINT nMaxFormats, int* piFormats, UINT* nNumFormats);
+typedef BOOL(WINAPI* PFNWGLMAKECURRENT) (HDC, HGLRC);
+typedef BOOL(WINAPI* PFNWGLDELETECONTEXT) (HGLRC);
+typedef HGLRC(WINAPI* PFNWGLCREATECONTEXT) (HDC);
+typedef PROC(WINAPI* PFNWGLGETPROCADDRESS) (LPCSTR);
+typedef HDC(WINAPI* PFNWGLGETCURRENTDC) (VOID);
+typedef HGLRC(WINAPI* PFNWGLGETCURRENTCONTEXT) (VOID);
 
 static PFNWGLCREATECONTEXTATTRIBSARBPROC pfnWglCreateContextAttribsARB;
 static PFNWGLCHOOSEPIXELFORMATARBPROC pfnWglChoosePixelFormat;
+static PFNWGLMAKECURRENT pfnwglMakeCurrent;
+static PFNWGLDELETECONTEXT pfnwglDeleteContext;
+static PFNWGLCREATECONTEXT pfnwglCreateContext;
+static PFNWGLGETPROCADDRESS pfnwglGetProcAddress;
+static PFNWGLGETCURRENTDC pfnwglGetCurrentDC;
+static PFNWGLGETCURRENTCONTEXT pfnwglGetCurrentContext;
+static HMODULE glModule;
 
 bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLPixelFormatPtr>& glformats) {
     WNDCLASS tmpClass;
@@ -120,17 +133,28 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
         SetPixelFormat(hdc, format, &pfd);
     }
 
-    HGLRC hrc = wglCreateContext(hdc);
+    if (!glModule) {
+        glModule = LoadLibrary("opengl32.dll");
+    }
+
+    pfnwglCreateContext = (PFNWGLCREATECONTEXT)GetProcAddress(glModule, "wglCreateContext");
+    pfnwglMakeCurrent = (PFNWGLMAKECURRENT)GetProcAddress(glModule, "wglMakeCurrent");
+    pfnwglDeleteContext = (PFNWGLDELETECONTEXT)GetProcAddress(glModule, "wglDeleteContext");
+    pfnwglGetProcAddress = (PFNWGLGETPROCADDRESS)GetProcAddress(glModule, "wglGetProcAddress");
+    pfnwglGetCurrentDC = (PFNWGLGETCURRENTDC)GetProcAddress(glModule, "wglGetCurrentDC");
+    pfnwglGetCurrentContext = (PFNWGLGETCURRENTCONTEXT)GetProcAddress(glModule, "wglGetCurrentContext");
+
+    HGLRC hrc = pfnwglCreateContext(hdc);
     if (hrc) {
-        HGLRC oldrc = wglGetCurrentContext();
-        HDC oldhdc = wglGetCurrentDC();
+        HGLRC oldrc = pfnwglGetCurrentContext();
+        HDC oldhdc = pfnwglGetCurrentDC();
 
-        wglMakeCurrent(hdc, hrc);
+        pfnwglMakeCurrent(hdc, hrc);
 
-        pfnWglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)wglGetProcAddress("wglCreateContextAttribsARB");
-        PFNWGLGETEXTENSIONSSTRINGARBPROC pfnWglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)wglGetProcAddress("wglGetExtensionsStringARB");
-        PFNWGLGETPIXELFORMATATTRIBIVARBPROC pfnWglGetPixelFormatAttribiv = (PFNWGLGETPIXELFORMATATTRIBIVARBPROC)wglGetProcAddress("wglGetPixelFormatAttribivARB");
-        pfnWglChoosePixelFormat = (PFNWGLCHOOSEPIXELFORMATARBPROC)wglGetProcAddress("wglChoosePixelFormatARB");
+        pfnWglCreateContextAttribsARB = (PFNWGLCREATECONTEXTATTRIBSARBPROC)pfnwglGetProcAddress("wglCreateContextAttribsARB");
+        PFNWGLGETEXTENSIONSSTRINGARBPROC pfnWglGetExtensionsStringARB = (PFNWGLGETEXTENSIONSSTRINGARBPROC)pfnwglGetProcAddress("wglGetExtensionsStringARB");
+        PFNWGLGETPIXELFORMATATTRIBIVARBPROC pfnWglGetPixelFormatAttribiv = (PFNWGLGETPIXELFORMATATTRIBIVARBPROC)pfnwglGetProcAddress("wglGetPixelFormatAttribivARB");
+        pfnWglChoosePixelFormat = (PFNWGLCHOOSEPIXELFORMATARBPROC)pfnwglGetProcAddress("wglChoosePixelFormatARB");
 
         bool arbPixelFormat = false;
         bool arbMultisample = false;
@@ -270,8 +294,8 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
             }
         }
 
-        wglMakeCurrent(oldhdc, oldrc);
-        wglDeleteContext(hrc);
+        pfnwglMakeCurrent(oldhdc, oldrc);
+        pfnwglDeleteContext(hrc);
     }
     DestroyWindow(hwnd);
     UnregisterClass(tmpClass.lpszClassName, tmpClass.hInstance);

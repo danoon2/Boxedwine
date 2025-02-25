@@ -30,6 +30,12 @@
 
 static std::atomic_int shownGlWindows;
 
+typedef void (GLAPIENTRY *pfnglFinish)();
+typedef void (GLAPIENTRY *pfnglFlush)();
+
+static pfnglFinish pglFinish;
+static pfnglFlush pglFlush;
+
 class SDLGlWindow : public std::enable_shared_from_this<SDLGlWindow> {
 public:
     SDLGlWindow(SDL_Window* window, const std::shared_ptr<GLPixelFormat>& pixelFormat, U32 major, U32 minor, U32 profile, U32 flags) : window(window), pixelFormat(pixelFormat), major(major), minor(minor), profile(profile), flags(flags) {}
@@ -448,7 +454,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
 
 // GLAPI void APIENTRY glFinish( void ) {
 static void sdl_glFinish(CPU* cpu) {	
-    glFinish();
+    pglFinish();
 }
 
 // GLAPI void APIENTRY glFlush( void ) {
@@ -464,23 +470,28 @@ static void sdl_glFlush(CPU* cpu) {
             context->currentWindow->showWindow(true);
         }
     }
-    glFlush();	
+    pglFlush();	
 }
 
 #undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = gl##func;
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
 
 #undef GL_FUNCTION_CUSTOM
-#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = gl##func;
+#define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
 
 #undef GL_EXT_FUNCTION
 #define GL_EXT_FUNCTION(func, RET, PARAMS)
 
 static void initSdlOpenGL() {
+    SDL_GL_LoadLibrary("opengl32_mesa.dll");
+    
 #include "../glfunctions.h"
 
     int99Callback[Finish] = sdl_glFinish;
     int99Callback[Flush] = sdl_glFlush;
+
+    pglFinish = (pfnglFinish)SDL_GL_GetProcAddress("glFinish");
+    pglFlush = (pfnglFlush)SDL_GL_GetProcAddress("glFlush");
 }
 
 KOpenGLPtr SDLGL::create() {

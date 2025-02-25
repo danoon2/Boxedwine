@@ -52,9 +52,7 @@ void ResetDevice()
     ImGui_ImplDX9_CreateDeviceObjects();
 }
 
-#endif
-
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
 #ifdef BOXEDWINE_OPENGL_IMGUI_V2
 #include "examples/imgui_impl_opengl2.h"
 #else
@@ -322,10 +320,9 @@ void uiShutdown() {
         ImGui_ImplDX9_Shutdown();
         CleanupDeviceD3D();
     }
-#endif
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
-#ifdef BOXEDWINE_OPENGL_IMGUI_V2
+#if defined(BOXEDWINE_OPENGL_IMGUI_V2)
         ImGui_ImplOpenGL2_Shutdown();
 #else
         ImGui_ImplOpenGL3_Shutdown();
@@ -387,8 +384,7 @@ bool uiLoop() {
     if (StartUpArgs::uiType == UI_TYPE_DX9) {
         ImGui_ImplDX9_NewFrame();
     }
-#endif
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
 #ifdef BOXEDWINE_OPENGL_IMGUI_V2
         ImGui_ImplOpenGL2_NewFrame();
@@ -423,8 +419,7 @@ bool uiLoop() {
             ResetDevice();
         }
     }
-#endif
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         ImGui::Render();
         ImGuiIO& io = ImGui::GetIO();
@@ -531,8 +526,7 @@ bool uiShow(BString basePath) {
             return false;
         }
     }
-#endif
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         gl_context = SDL_GL_CreateContext(window);
         if (!gl_context) {
@@ -615,8 +609,7 @@ bool uiShow(BString basePath) {
         ImGui_ImplSDL2_InitForD3D(window);
         ImGui_ImplDX9_Init(g_pd3dDevice);
     }
-#endif
-#ifdef BOXEDWINE_OPENGL_SDL
+#elif defined(BOXEDWINE_OPENGL_SDL)
     if (StartUpArgs::uiType == UI_TYPE_OPENGL) {
         ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
 #ifdef BOXEDWINE_OPENGL_IMGUI_V2

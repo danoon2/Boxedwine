@@ -356,7 +356,7 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../../../../lib/directx/lib/x64</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;opengl32.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
+      <AdditionalDependencies>ntdll.lib;Shlwapi.lib;D3d9.lib;D3dx9.lib;Crypt32.lib;Iphlpapi.lib;Version.lib;Setupapi.lib;winmm.lib;..\x64\Debug\zlib.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);..\x64\Debug\sdl2.lib;..\x64\Debug\SDL2main.lib</AdditionalDependencies>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>
@@ -728,7 +728,6 @@
     <ClInclude Include="..\..\..\..\include\uptime.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.h" />
-    <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\examples\imgui_impl_sdl.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\imconfig.h" />
     <ClInclude Include="..\..\..\..\lib\imgui\imgui.h" />
@@ -969,17 +968,6 @@
     <ClInclude Include="..\..\..\..\source\x11\xwindow.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\lib\glew\src\glew.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
@@ -992,17 +980,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_dx9.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|ARM64'">NotUsing</PrecompiledHeader>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Test|ARM64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\lib\imgui\examples\imgui_impl_opengl3.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release SDL1|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
