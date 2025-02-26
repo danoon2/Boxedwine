@@ -34,7 +34,6 @@ public:
 private:
 	static BHashTable<U32, GLPixelFormatPtr> formatsById;
 	static std::vector<GLPixelFormatPtr> formats;
-	static bool initialized;
 };
 
 #endif

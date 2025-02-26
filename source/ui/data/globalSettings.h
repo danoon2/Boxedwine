@@ -6,6 +6,11 @@
 
 class BoxedContainer;
 
+#define OPENGL_TYPE_DEFAULT 0
+#define OPENGL_TYPE_LLVM_PIPE 1
+#define OPENGL_TYPE_ON_D3D12 2
+#define OPENGL_TYPE_ON_VULKAN 3
+
 //used http://www.ltg.ed.ac.uk/~richard/utf-8.cgi?input=F015&mode=hex to convert 16-bit unicode value to utf-8
 
 // home icon - F016

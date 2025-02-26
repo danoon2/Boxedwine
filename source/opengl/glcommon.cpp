@@ -673,6 +673,7 @@ void gl_common_XChooseVisual(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
+    U32 bpp = KNativeSystem::getScreen()->screenBpp();
     U32 address = ARG3;
     U32 value;
 
@@ -696,13 +697,28 @@ void gl_common_XChooseVisual(CPU* cpu) {
             kpanic("gl_common_XChooseVisual unhandled attribute %d", value);
         }
         address += 4;
-    }
+    }    
 
-    U32 visualId = 0;
+    CLXFBConfigPtr foundCfg = server->getFbConfig(1);
+    S32 foundPoints = 0;
 
-    server->iterateFbConfigs([&visualId, doubleBuffer, colorType](const CLXFBConfigPtr& cfg) {
-        if (!(cfg->glPixelFormat->pf.dwFlags & K_PFD_SUPPORT_OPENGL)) {
+    server->iterateFbConfigs([doubleBuffer, colorType, bpp, &foundCfg, &foundPoints](const CLXFBConfigPtr& cfg) {
+        S32 points = 0;
+
+        if (cfg->glPixelFormat->pf.dwFlags & K_PFD_SWAP_COPY) {
             return true;
+        }
+        if (cfg->glPixelFormat->pf.cRedBits > 8) {
+            return true;
+        }        
+        if (!(cfg->glPixelFormat->pf.dwFlags & K_PFD_DRAW_TO_WINDOW)) {
+            return true;
+        }
+        if (cfg->depth != bpp) {
+            return true;
+        }
+        if ((cfg->glPixelFormat->id & PIXEL_FORMAT_NATIVE_INDEX_MASK)) {
+            points++;
         }
         bool isDoubleBuffer = (cfg->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) != 0;
         if (isDoubleBuffer != doubleBuffer) {
@@ -710,11 +726,31 @@ void gl_common_XChooseVisual(CPU* cpu) {
         }
         if (colorType != PF_COLOR_TYPE_NOTSET && colorType != cfg->glPixelFormat->pf.iPixelType) {
             return true;
+        }        
+        if (cfg->glPixelFormat->pf.cAuxBuffers) {
+            points++;
         }
-        visualId = cfg->visualId;
-        return false;
-    });
+        if (cfg->glPixelFormat->pf.cAccumBits) {
+            points++;
+        }
+        if (cfg->glPixelFormat->pf.cStencilBits) {
+            points--;
+        }
+        if (cfg->glPixelFormat->pf.cAlphaBits) {
+            points--;
+        }
+        if (points > foundPoints) {
+            foundPoints = points;
+            foundCfg = cfg;
+        }
+        return true;
+        });
 
+    U32 visualId = 0;
+    
+    if (foundCfg) {
+        visualId = foundCfg->visualId;
+    }
     if (!visualId) {
         EAX = 0;
         return;
@@ -957,6 +993,10 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
     U32 attribute = ARG3;
     CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
 
+    if (!cfg) {
+        EAX = BadValue;
+        return;
+    }
     switch (attribute) {
     case GLX_DOUBLEBUFFER:
         memory->writed(ARG4, (cfg->glPixelFormat->pf.dwFlags & K_PFD_DOUBLEBUFFER) ? True : False);

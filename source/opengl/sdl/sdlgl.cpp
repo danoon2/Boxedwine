@@ -483,7 +483,11 @@ static void sdl_glFlush(CPU* cpu) {
 #define GL_EXT_FUNCTION(func, RET, PARAMS)
 
 static void initSdlOpenGL() {
-    SDL_GL_LoadLibrary("opengl32_mesa.dll");
+    const char* openGL = nullptr;
+    if (KSystem::openglLib.length()) {
+        openGL = KSystem::openglLib.c_str();
+    }
+    SDL_GL_LoadLibrary(openGL);
     
 #include "../glfunctions.h"
 

@@ -40,9 +40,6 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
         klog("SDL_Init Error: %s", SDL_GetError());
         return false;
     }
-#ifdef BOXEDWINE_OPENGL
-    PlatformOpenGL::init();
-#endif
     return true;
 }
 
@@ -80,12 +77,6 @@ void KNativeSystem::warpMouse(S32 x, S32 y) {
 
 KOpenGLPtr KNativeSystem::getOpenGL() {
     if (!opengl) {
-#ifdef BOXEDWINE_OPENGL_OSMESA
-        if (KSystem::openglType == OPENGL_TYPE_OSMESA) {
-            opengl = OsMesaGL::create();
-            return opengl;
-        }
-#endif
 #ifdef BOXEDWINE_OPENGL_SDL
         opengl = SDLGL::create();
         return opengl;

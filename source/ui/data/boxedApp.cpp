@@ -28,7 +28,7 @@ bool BoxedApp::load(BoxedContainer* container, BString iniFilePath) {
     this->cpuAffinity = config.readInt(B("CpuAffinity"), 0);
     this->pollRate = config.readInt(B("PollRate"), 0);
     this->skipFramesFPS = config.readInt(B("SkipFramesFPS"), 0);
-    this->openGlType = config.readInt(B("OpenGL"), OPENGL_TYPE_NOT_SET);
+    this->openGlType = config.readInt(B("OpenGL"), OPENGL_TYPE_DEFAULT);
     this->isWine = config.readBool(B("IsWine"), true);
     this->uid = config.readInt(B("uid"), -1);
     this->euid = config.readInt(B("euid"), -1);
@@ -209,10 +209,22 @@ void BoxedApp::launch() {
         }
     }
     GlobalSettings::startUpArgs.setWorkingDir(this->path);    
-    GlobalSettings::startUpArgs.openGlType = this->openGlType;
-    if (GlobalSettings::startUpArgs.openGlType == OPENGL_TYPE_NOT_SET) {
-        GlobalSettings::startUpArgs.openGlType = GlobalSettings::getDefaultOpenGL();
+#ifdef BOXEDWINE_MSVC
+    U32 type = this->openGlType;
+    if (type == OPENGL_TYPE_DEFAULT) {
+        type = GlobalSettings::getDefaultOpenGL();
     }
+    if (type != OPENGL_TYPE_DEFAULT) {
+        GlobalSettings::startUpArgs.openGlLib = "mesa/opengl32.dll";
+        if (type == OPENGL_TYPE_LLVM_PIPE) {
+            putenv("GALLIUM_DRIVER=llvmpipe");
+        } else if (type == OPENGL_TYPE_ON_D3D12) {
+            putenv("GALLIUM_DRIVER=d3d12");
+        } else if (type == OPENGL_TYPE_ON_VULKAN) {
+            putenv("GALLIUM_DRIVER=zink");
+        }
+    }
+#endif
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 

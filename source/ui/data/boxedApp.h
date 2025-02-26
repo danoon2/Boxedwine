@@ -57,7 +57,7 @@ private:
     BString link;
     BString cmd;    
     std::vector<BString> args;
-    U32 openGlType = OPENGL_TYPE_NOT_SET;
+    U32 openGlType = OPENGL_TYPE_DEFAULT;
 
     // Boxedwine command line options
     BString resolution;

@@ -33,13 +33,7 @@
 bool KSystem::modesInitialized = false;
 U32 KSystem::skipFrameFPS = 0;
 VideoOption KSystem::videoOption = VIDEO_NORMAL;
-#ifdef BOXEDWINE_OPENGL_SDL
-U32 KSystem::openglType = OPENGL_TYPE_SDL;
-#elif defined (BOXEDWINE_OPENGL_OSMESA) 
-U32 KSystem::openglType = OPENGL_TYPE_OSMESA;
-#else
-U32 KSystem::openglType = OPENGL_TYPE_UNAVAILABLE;
-#endif
+BString KSystem::openglLib;
 bool KSystem::soundEnabled = true;
 unsigned int KSystem::nextThreadId=10;
 BHashTable<U32, KProcessPtr > KSystem::processes;

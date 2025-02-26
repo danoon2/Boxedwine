@@ -129,8 +129,10 @@ void OptionsView::createGeneralTab() {
 #if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
     if (OsMesaGL::isAvailable()) {
         std::vector<ComboboxItem> glOptions;
-        glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_SDL));
-        glOptions.push_back(ComboboxItem(B("Mesa - OpenGL in Software"), OPENGL_TYPE_OSMESA));
+        glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_DEFAULT));
+        glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
+        glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
+        glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
         openGlControl = section->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
         openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
         openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);

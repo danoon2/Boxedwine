@@ -192,8 +192,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (dpiAware) {
         args.push_back(B("-dpiAware"));
     }
-    if (openGlType == OPENGL_TYPE_OSMESA) {
-        args.push_back(B("-mesa"));
+    if (openGlLib.length()) {
+        args.push_back(B("-opengl"));
+        args.push_back(openGlLib);
     }
     if (ttyPrepend) {
         args.push_back(B("-ttyPrepend"));
@@ -268,9 +269,7 @@ bool StartUpArgs::apply() {
     if (KSystem::pollRate < 0) {
         KSystem::pollRate = 0;
     }
-    if (this->openGlType) {
-        KSystem::openglType = this->openGlType;
-    }
+    KSystem::openglLib = this->openGlLib;
     KSystem::ttyPrepend = this->ttyPrepend;
     KSystem::skipFrameFPS = this->skipFrameFPS;
     if (!KSystem::logFile.isOpen() && this->logPath.length()) {
@@ -407,7 +406,7 @@ bool StartUpArgs::apply() {
         }
     }
 
-    //envValues.push_back(B("WINEDEBUG=+vulkan"));
+    //envValues.push_back(B("WINEDEBUG=+wgl"));
 
                             
     // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
@@ -530,6 +529,7 @@ bool StartUpArgs::apply() {
     KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL
+    PlatformOpenGL::init();
     gl_init(this->glExt);        
 #endif   
 #ifdef BOXEDWINE_VULKAN
@@ -736,8 +736,9 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
         } else if (!strcmp(argv[i], "-pollRate")) {
             this->pollRate = atoi(argv[i + 1]);
             i++;
-        } else if (!strcmp(argv[i], "-mesa")) {
-            this->openGlType = OPENGL_TYPE_OSMESA;
+        } else if (!strcmp(argv[i], "-opengl")) {
+            this->openGlLib = argv[i+1];
+            i++;
         }
         else if (!strcmp(argv[i], "-ttyPrepend")) { // used to send tty back to WaitDlg for winetricks when BOXEDWINE_UI_LAUNCH_IN_PROCESS is not defined
             this->ttyPrepend = true;

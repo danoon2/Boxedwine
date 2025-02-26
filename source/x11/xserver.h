@@ -145,7 +145,8 @@ private:
 	BHashTable<U32, VisualPtr> visuals;
 	BHashTable<U32, std::shared_ptr<std::vector<VisualPtr>>> visualsByDepth;
 	std::vector<U32> depths;
-	BHashTable<U32, CLXFBConfigPtr> fbConfigById;	
+	BHashTable<U32, CLXFBConfigPtr> fbConfigById;
+	std::vector<CLXFBConfigPtr> fbNativeConfigsSorted;
 
 	void initAtoms();
 	void initDepths();

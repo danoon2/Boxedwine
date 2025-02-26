@@ -388,9 +388,10 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
 
 #if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
     std::vector<ComboboxItem> glOptions;
-    glOptions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), OPENGL_TYPE_NOT_SET));
-    glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_SDL));
-    glOptions.push_back(ComboboxItem(B("Mesa - OpenGL in Software"), OPENGL_TYPE_OSMESA));
+    glOptions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), OPENGL_TYPE_DEFAULT));
+    glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
+    glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
+    glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
     appOpenGlControl = appSection->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
     appOpenGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
     appOpenGlControl->onChange = [this]() {

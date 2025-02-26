@@ -6,10 +6,10 @@
 #include GLH
 #include "../source/x11/x11.h"
 #include "../source/opengl/glcommon.h"
+#include "knativesystem.h"
 
 BHashTable<U32, GLPixelFormatPtr> PlatformOpenGL::formatsById;
 std::vector<GLPixelFormatPtr> PlatformOpenGL::formats;
-bool PlatformOpenGL::initialized;
 bool PlatformOpenGL::hardwareListLoaded;
 
 static BHashTable<U32, HGLRC> contexts;
@@ -126,15 +126,29 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
     pfd.nVersion = 1;
     pfd.cColorBits = 32;
     pfd.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-    pfd.iPixelType = PFD_TYPE_RGBA;
+    pfd.iPixelType = PFD_TYPE_RGBA;    
+
+    if (!glModule) {
+        const char* openGL = "opengl32.dll";
+        BString path;
+        if (KSystem::openglLib.length()) {            
+            path = KSystem::openglLib.replace('/', '\\');
+            if (!path.contains(":")) {    
+                char appPath[MAX_PATH];
+                GetModuleFileNameA(NULL, appPath, MAX_PATH);
+                BString fullPath;
+                fullPath = appPath;
+                fullPath = fullPath.substr(0, fullPath.lastIndexOf('\\'));
+                path = fullPath.stringByApppendingPath(path);
+            }
+            openGL = path.c_str();
+        }
+        glModule = LoadLibraryEx(openGL, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+    }
 
     int format = ChoosePixelFormat(hdc, &pfd);
     if (format != 0) {
         SetPixelFormat(hdc, format, &pfd);
-    }
-
-    if (!glModule) {
-        glModule = LoadLibrary("opengl32.dll");
     }
 
     pfnwglCreateContext = (PFNWGLCREATECONTEXT)GetProcAddress(glModule, "wglCreateContext");
@@ -222,11 +236,16 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
                 0
             };
             if (pfnWglChoosePixelFormat(hdc, openGlAttributes, 0, 1024, formats, &count)) {
+                U32 bpp = KNativeSystem::getScreen()->screenBpp();
+                bool found = false;
+
                 for (U32 i = 0; i < count; ++i) {
                     if (!pfnWglGetPixelFormatAttribiv(hdc, formats[i], 0, 22, attributes, results)) {
                         continue;
                     }
-
+                    if (results[4] != bpp) {
+                        continue;
+                    }
                     GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();
                     format->id = i | PIXEL_FORMAT_NATIVE_INDEX_MASK;
                     format->depth = results[4];
@@ -276,6 +295,7 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
                     format->pf.dwVisibleMask = 0;
                     format->pf.dwDamageMask = 0;
 
+                    format->bitsPerPixel = format->pf.cColorBits;
 
                     if (arbPBuffer && pfnWglGetPixelFormatAttribiv(hdc, formats[i], 0, 3, attributesPBuffer, results)) {
                         format->pbuffer = results[0] ? true : false;
@@ -287,9 +307,91 @@ bool queryOpenGL(BHashTable<U32, GLPixelFormatPtr>& formatsById, std::vector<GLP
                         format->sampleBuffers = results[0] ? true : false;
                         format->samples = results[1];
                     }
-
+                    if (!format->pf.cAlphaBits) {
+                        found = true;
+                    }
                     formatsById.set(format->id, format);
                     glformats.push_back(format);
+                }
+                if (!found) {
+                    U32 startIndex = count;
+                    if (pfnWglChoosePixelFormat(hdc, openGlAttributes, 0, 1024, formats, &count)) {
+                        U32 bpp = KNativeSystem::getScreen()->screenBpp();
+
+                        for (U32 i = 0; i < count; ++i) {
+                            if (!pfnWglGetPixelFormatAttribiv(hdc, formats[i], 0, 22, attributes, results)) {
+                                continue;
+                            }
+                            GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();
+                            format->id = (i + startIndex) | PIXEL_FORMAT_NATIVE_INDEX_MASK;
+                            format->depth = results[4];
+                            format->nativeId = formats[i];
+                            format->pf.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+                            format->pf.nVersion = 1;
+                            format->pf.dwFlags = PFD_SUPPORT_OPENGL;
+                            if (results[0]) {
+                                format->pf.dwFlags |= PFD_DRAW_TO_WINDOW;
+                            }
+                            if (results[1]) {
+                                format->pf.dwFlags |= PFD_DRAW_TO_BITMAP;
+                            }
+                            if (results[21]) {
+                                format->pf.dwFlags |= PFD_DOUBLEBUFFER;
+                            }
+                            if (results[2]) {
+                                format->pf.dwFlags |= PFD_STEREO;
+                            }
+                            if (results[3] == WGL_TYPE_RGBA_ARB) {
+                                format->pf.iPixelType = PFD_TYPE_RGBA;
+                            }
+                            else if (results[3] == WGL_TYPE_COLORINDEX_ARB) {
+                                format->pf.iPixelType = PFD_TYPE_COLORINDEX;
+                            }
+                            else {
+                                continue;
+                            }
+                            format->pf.cColorBits = results[4];
+                            format->pf.cRedBits = results[5];
+                            format->pf.cRedShift = results[6];
+                            format->pf.cGreenBits = results[7];
+                            format->pf.cGreenShift = results[8];
+                            format->pf.cBlueBits = results[9];
+                            format->pf.cBlueShift = results[10];
+                            format->pf.cAlphaBits = 0;
+                            format->pf.cAlphaShift = 0;
+                            format->pf.cAccumBits = results[13];
+                            format->pf.cAccumRedBits = results[14];
+                            format->pf.cAccumGreenBits = results[15];
+                            format->pf.cAccumBlueBits = results[16];
+                            format->pf.cAccumAlphaBits = results[17];
+                            format->pf.cDepthBits = results[18];
+                            format->pf.cStencilBits = results[19];
+                            format->pf.cAuxBuffers = results[20];
+                            format->pf.iLayerType = PFD_MAIN_PLANE;
+                            format->pf.bReserved = 0;
+                            format->pf.dwLayerMask = 0;
+                            format->pf.dwVisibleMask = 0;
+                            format->pf.dwDamageMask = 0;
+
+                            format->bitsPerPixel = format->pf.cColorBits;
+
+                            if (arbPBuffer && pfnWglGetPixelFormatAttribiv(hdc, formats[i], 0, 3, attributesPBuffer, results)) {
+                                format->pbuffer = results[0] ? true : false;
+                                format->pbufferMaxWidth = results[1];
+                                format->pbufferMaxHeight = results[2];
+                                format->pbufferMaxPixels = results[3];
+                            }
+                            if (arbMultisample && pfnWglGetPixelFormatAttribiv(hdc, formats[i], 0, 2, attributesSamples, results)) {
+                                format->sampleBuffers = results[0] ? true : false;
+                                format->samples = results[1];
+                            }
+                            if (!format->pf.cAlphaBits) {
+                                found = true;
+                            }
+                            formatsById.set(format->id, format);
+                            glformats.push_back(format);
+                        }
+                    }
                 }
             }
         }
@@ -390,29 +492,16 @@ static HWND glCreateWindow(const GLPixelFormatPtr& format, int width, int height
 }
 
 void PlatformOpenGL::init() {
-	if (!initialized) {
-		BOXEDWINE_CRITICAL_SECTION;
+	BOXEDWINE_CRITICAL_SECTION;
+         
+    formatsById.clear();
+    formats.clear();
+    hardwareListLoaded = false;
 
-		if (!initialized) {
-			initialized = true;            
-
-			U32 count = KSystem::getPixelFormatCount();
-			for (U32 i = 1; i < count; i++) {
-				GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();                
-				format->id = i;
-				format->pf = *KSystem::getPixelFormat(i);
-                format->nativeId = i;
-                format->depth = format->pf.cColorBits;
-                format->bitsPerPixel = format->pf.cColorBits;
-				formatsById.set(format->id, format);
-                formats.push_back(format);
-			}
-            if (KSystem::videoOption != VIDEO_NO_WINDOW) {
-                hardwareListLoaded = queryOpenGL(formatsById, formats);
-            }
-
-		}
-	}
+	
+    if (KSystem::videoOption != VIDEO_NO_WINDOW) {
+        hardwareListLoaded = queryOpenGL(formatsById, formats);
+    }
 }
 
 void PlatformOpenGL::iterateFormats(std::function<void(const GLPixelFormatPtr& format)> callback) {

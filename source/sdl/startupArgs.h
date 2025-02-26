@@ -82,7 +82,7 @@ public:
     U32 skipFrameFPS = 0;
     static U32 uiType;
     bool readyToLaunch = false;
-    U32 openGlType = OPENGL_TYPE_NOT_SET;
+    BString openGlLib;
     bool ttyPrepend = false;
     BString showAppPickerForContainerDir;
     std::function<void()> runOnRestartUI;

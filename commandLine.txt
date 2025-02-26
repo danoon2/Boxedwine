@@ -41,8 +41,6 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -log filePath : Will copy the output sent to the terminal to a file.  For example -log "c:\games\mygame\log.txt"
 
--mesa : If the build supports it, this option will select the off screen software Mesa OpenGL backend for renderering OpenGL.
-
 -mount : Will mount a host directory or zip file, in the emulated file systems.  Example: -mount "c:\my games" "/home/username/my games" or -mount "c:\my games\mygame.zip" "/home/username/my games"
 
 -mount_drive : Will mount a host directory in the emulate file system and set up the Wine links so that it shows up as a drive in Wine. Example: -mount_drive "c:\my games" d
@@ -52,6 +50,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 -novideo : Disable showing a window.  This is mainly used for running automated programs.
 
 -nozip : if -zip command line is not supplied, Boxedwine might try to find a suitable zip file system.  If you don't want a default zip file system, you can specify the -nozip command line option.
+
+-opengl : Will use the path passed in when loading OpenGL library.  On Windows this must be opengl32.dll, but you may specify a path to use a custom opengl32.dll.
 
 -p2 : sets the emulated cpu to be a Pentium 2 with MMX
 
