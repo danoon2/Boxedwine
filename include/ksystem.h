@@ -156,6 +156,12 @@ public:
     static U32 getPixelFormatCount();
     static U32 findPixelFormat(U32 flags, U32 colorType, U32 cRedBits, U32 cGreenBits, U32 cBlueBits, U32 cAlphaBits, U32 cAccumBits, U32 cDepthBits, U32 cStencilBits);
 
+    static BString getPlatform();
+    static BString getArchitecture();
+    static bool isWindows();
+    static bool isMac();
+    static bool isLinux();
+
     static std::shared_ptr<FsNode> procNode;    
 private:
     static void initDisplayModes();

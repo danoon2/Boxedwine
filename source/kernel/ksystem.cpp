@@ -1032,6 +1032,56 @@ U32 KSystem::describePixelFormat(KThread* thread, U32 hdc, U32 fmt, U32 size, U3
     return numberOfPfs;
 }
 
+bool KSystem::isWindows() {
+#if defined(_WIN32)
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool KSystem::isMac() {
+#if defined(_WIN32)
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool KSystem::isLinux() {
+#if defined(_WIN32)
+    return true;
+#else
+    return false;
+#endif
+}
+
+BString KSystem::getPlatform() {
+#if defined(_WIN32)
+    return B("Windows");
+#elif defined(__EMSCRIPTEN__)
+    return B("Emscripten");
+#elif defined(__MACH__)
+    return B("Mac");
+#elif defined(__linux__)
+    return B("Linux");
+#else
+    return B("Unknown");
+#endif
+}
+
+BString KSystem::getArchitecture() {
+#if defined(i386) || defined(__i386) || defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(__IA32__)|| defined(_M_I86) || defined(_M_IX86)|| defined(__X86__) || defined(_X86_) || defined(__THW_INTEL__) || defined(__I86__) || defined(__INTEL__) || defined(__386)
+    return B("x86");
+#elif defined(__x86_64__) || defined(__x86_64) || defined(__amd64__) || defined(__amd64) || defined(_M_X64) || defined(_M_AMD64)
+    return B("x64");
+#elif defined(__aarch64__) || defined(_M_ARM64) || defined(__AARCH64EL__) || defined(__arm64)
+    return B("Armv8");
+#else
+    return B("Unknown");
+#endif
+}
+
 /*
 void writePixelFormat(KThread* thread, PixelFormat* pf, U32 descr) {
     pf->nSize = readw(descr); descr += 2;

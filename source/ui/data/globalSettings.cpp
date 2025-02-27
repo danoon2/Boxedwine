@@ -16,6 +16,7 @@
 
 #define FILE_SYSTEMS_FOLDER "FileSystems2"
 #define CONTAINERS_FOLDER "Containers2"
+#define GL_FOLDER "OpenGL"
 
 BString GlobalSettings::dataFolderLocation;
 std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::fileSystemVersions;
@@ -325,6 +326,10 @@ void GlobalSettings::reloadWineVersions() {
 
 BString GlobalSettings::getContainerFolder() {
     return GlobalSettings::dataFolderLocation.stringByApppendingPath(CONTAINERS_FOLDER);
+}
+
+BString GlobalSettings::getAlternativeOpenGlFolder() {
+    return GlobalSettings::dataFolderLocation.stringByApppendingPath(GL_FOLDER);
 }
 
 BString GlobalSettings::getFileSystemFolder() {
@@ -719,6 +724,42 @@ void GlobalSettings::loadFonts() {
     }    
 }
 
+void GlobalSettings::downloadOpenGL(std::function<void(bool)> onCompleted) {
+    runOnMainUI([onCompleted]() {
+        BString size = BString::valueOf(GlobalSettings::alternativeOpenGlDownloadSizeMB());
+        new YesNoDlg(Msg::DOWNLOAD_OPENGL_TITLE, getTranslationWithFormat(Msg::DOWNLOAD_OPENGL, true, size), [onCompleted](bool yes) {
+            if (yes) {
+                BString url = GlobalSettings::alternativeOpenGlUrl();
+                BString fileName = Fs::getFileNameFromPath(url);
+                BString zipPath = GlobalSettings::getAlternativeOpenGlFolder().stringByApppendingPath(fileName);
+                U32 sizeMB = GlobalSettings::alternativeOpenGlDownloadSizeMB();
+
+                GlobalSettings::downloadFile(url, zipPath, fileName, sizeMB, [onCompleted, zipPath, fileName](bool sucess) {
+                    if (!sucess) {
+                        onCompleted(false);
+                    } else {
+                        BString destDir = GlobalSettings::getAlternativeOpenGlFolder();
+                        runOnMainUI([onCompleted, fileName, zipPath, destDir]() {
+                            new UnzipDlg(Msg::UNZIP_DLG_TITLE, fileName, zipPath, destDir, [onCompleted, zipPath](bool success) {
+                                if (!success) {
+                                    onCompleted(false);
+                                } else {
+                                    Fs::deleteNativeFile(zipPath);
+                                    onCompleted(true);
+                                }
+                            });
+                            return false;
+                        });
+                    }
+                });
+            } else {
+                onCompleted(false);
+            }
+        });
+        return false;
+    });
+}
+
 void GlobalSettings::downloadFile(BString url, BString filePath, BString name, U32 sizeMB, std::function<void(bool)> onCompleted) {
     runOnMainUI([url, filePath, name, sizeMB, onCompleted]() {
         BString parentPath = Fs::getNativeParentPath(filePath);
@@ -817,6 +858,45 @@ BString GlobalSettings::createUniqueContainerPath(BString name) {
             return result;
         }
     }
+}
+
+bool GlobalSettings::isAlternativeOpenGlDownloaded() {
+    BString location = alternativeOpenGlLocation();
+    return location.length()!=0 && Fs::doesNativePathExist(location);
+}
+
+BString GlobalSettings::alternativeOpenGlLocation() {
+    BString path = getAlternativeOpenGlFolder().stringByApppendingPath(KSystem::getArchitecture());
+    if (KSystem::isWindows()) {
+        return path.stringByApppendingPath("opengl32.dll");
+    }
+    return BString::empty;
+}
+
+BString GlobalSettings::alternativeOpenGlUrl() {    
+    if (KSystem::isWindows()) {
+        BString path;
+        path = "http://boxedwine.org/v2/OpenGL/mesa_25.0.0_";
+        path.append(KSystem::getPlatform());
+        path.append("_");
+        path.append(KSystem::getArchitecture());
+        path.append(".zip");
+        return path;
+    }
+    return BString::empty;
+}
+
+U32 GlobalSettings::alternativeOpenGlDownloadSizeMB() {
+    if (KSystem::isWindows()) {
+        if (KSystem::getArchitecture() == "x86") {
+            return 15;
+        } else if (KSystem::getArchitecture() == "x64") {
+            return 41;
+        } else if (KSystem::getArchitecture() == "Armv8") {
+            return 16;
+        }
+    }
+    return 0;
 }
 
 FileSystemZip::FileSystemZip(BString name, BString wineName, BString fsVersion, BString filePath, BString filePathBackup, BString depend, U32 size) :name(name), filePath(filePath), filePathBackup(filePathBackup), fsVersion(fsVersion), depend(depend), size(size) {

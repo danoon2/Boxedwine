@@ -7,9 +7,10 @@
 class BoxedContainer;
 
 #define OPENGL_TYPE_DEFAULT 0
-#define OPENGL_TYPE_LLVM_PIPE 1
-#define OPENGL_TYPE_ON_D3D12 2
-#define OPENGL_TYPE_ON_VULKAN 3
+#define OPENGL_TYPE_NATIVE 1
+#define OPENGL_TYPE_LLVM_PIPE 2
+#define OPENGL_TYPE_ON_D3D12 3
+#define OPENGL_TYPE_ON_VULKAN 4
 
 //used http://www.ltg.ed.ac.uk/~richard/utf-8.cgi?input=F015&mode=hex to convert 16-bit unicode value to utf-8
 
@@ -98,6 +99,7 @@ public:
     static std::shared_ptr<FileSystemZip> getInstalledFileSystemFromName(BString name, bool mustHaveWine = false);
     static BString getContainerFolder();
     static BString getFileSystemFolder();
+    static BString getAlternativeOpenGlFolder();
     static BString getAppFolder(BoxedContainer* container);
     static BString getAutomationFolder(BoxedContainer* container);
     static BString getRootFolder(BoxedContainer* container);
@@ -141,14 +143,18 @@ public:
     static std::vector<AppFile>& getComponents() { return GlobalSettings::components; }
     static AppFile* getComponentByOptionName(BString name);
     static void downloadFile(BString url, BString filePath, BString name, U32 sizeMB, std::function<void(bool)> onCompleted);
+    static void downloadOpenGL(std::function<void(bool)> onCompleted);
     static BString createUniqueContainerPath(BString name);
     static bool isDpiAware() {return GlobalSettings::scale != 100;}
     static int getPreviousScreenWidth() {return GlobalSettings::lastScreenCx;}
     static int getPreviousScreenHeight() { return GlobalSettings::lastScreenCy;}
     static int getPreviousScreenX() { return GlobalSettings::lastScreenX; }
     static int getPreviousScreenY() { return GlobalSettings::lastScreenY; }
-    static void clearData();
     static bool isAutomationEnabled() {return GlobalSettings::enabledAutomation;}
+    static bool isAlternativeOpenGlDownloaded();
+    static BString alternativeOpenGlLocation();
+    static BString alternativeOpenGlUrl();
+    static U32 alternativeOpenGlDownloadSizeMB();
 
     static StartUpArgs startUpArgs;
 

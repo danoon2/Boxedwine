@@ -214,8 +214,8 @@ void BoxedApp::launch() {
     if (type == OPENGL_TYPE_DEFAULT) {
         type = GlobalSettings::getDefaultOpenGL();
     }
-    if (type != OPENGL_TYPE_DEFAULT) {
-        GlobalSettings::startUpArgs.openGlLib = "mesa/opengl32.dll";
+    if (type != OPENGL_TYPE_NATIVE) {
+        GlobalSettings::startUpArgs.openGlLib = GlobalSettings::alternativeOpenGlLocation();
         if (type == OPENGL_TYPE_LLVM_PIPE) {
             putenv("GALLIUM_DRIVER=llvmpipe");
         } else if (type == OPENGL_TYPE_ON_D3D12) {

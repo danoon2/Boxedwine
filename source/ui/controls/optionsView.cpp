@@ -2,10 +2,6 @@
 #include "../boxedwineui.h"
 #include "../../../lib/imgui/addon/imguitinyfiledialogs.h"
 
-#ifdef BOXEDWINE_OPENGL_OSMESA
-#include "../../opengl/osmesa/osmesa.h"
-#endif
-
 OptionsView::OptionsView(BString tab) : BaseView(B("OptionsView")) {
     if (tab.length()) {
         if (tab == "Wine") {
@@ -126,19 +122,34 @@ void OptionsView::createGeneralTab() {
         GlobalSettings::saveConfig();
     };
 
-#if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
-    if (OsMesaGL::isAvailable()) {
+#if defined(BOXEDWINE_OPENGL_SDL)
+    if (KSystem::isWindows()) {
         std::vector<ComboboxItem> glOptions;
-        glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_DEFAULT));
+        glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_NATIVE));
         glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
-        glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
-        glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
+        // https://github.com/mmozeiko/build-mesa/releases has a working version for x86 and llvm
+        // https://github.com/pal1000/mesa-dist-win has a bad calling convention set for x86, but x64 works well
+        if (KSystem::getArchitecture() != "x86") { // keep in sync with containersView.cpp
+            glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
+            glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
+        }
         openGlControl = section->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
         openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
         openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);
         openGlControl->onChange = [this]() {
-            GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();
-            GlobalSettings::saveConfig();
+            if (this->openGlControl->getSelectionIntValue() != OPENGL_TYPE_NATIVE && !GlobalSettings::isAlternativeOpenGlDownloaded()) {
+                GlobalSettings::downloadOpenGL([this](bool sucess) {
+                    if (sucess) {
+                        GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();
+                        GlobalSettings::saveConfig();
+                    } else {
+                        openGlControl->setSelectionIntValue(OPENGL_TYPE_NATIVE);
+                    }
+                });
+            } else {
+                GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();
+                GlobalSettings::saveConfig();
+            }
         };
     }
 #endif

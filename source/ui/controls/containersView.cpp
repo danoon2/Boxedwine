@@ -386,17 +386,33 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         this->currentAppChanged = true;
     };
 
-#if defined(BOXEDWINE_OPENGL_OSMESA) && defined(BOXEDWINE_OPENGL_SDL)
-    std::vector<ComboboxItem> glOptions;
-    glOptions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), OPENGL_TYPE_DEFAULT));
-    glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
-    glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
-    glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
-    appOpenGlControl = appSection->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
-    appOpenGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
-    appOpenGlControl->onChange = [this]() {
-        this->currentAppChanged = true;
-    };
+#if defined(BOXEDWINE_OPENGL_SDL)
+    if (KSystem::isWindows()) {
+        std::vector<ComboboxItem> glOptions;
+        glOptions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), OPENGL_TYPE_DEFAULT));
+        glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_NATIVE));
+        glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
+        if (KSystem::getArchitecture() != "x86") { // keep in sync with optionsView.cpp
+            glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
+            glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
+        }
+        appOpenGlControl = appSection->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
+        appOpenGlControl->onChange = [this]() {
+            U32 selection = this->appOpenGlControl->getSelectionIntValue();
+            if (selection != OPENGL_TYPE_NATIVE && selection != OPENGL_TYPE_DEFAULT && !GlobalSettings::isAlternativeOpenGlDownloaded()) {
+                GlobalSettings::downloadOpenGL([this](bool sucess) {
+                    if (sucess) {
+                        this->currentAppChanged = true;
+                    }
+                    else {
+                        appOpenGlControl->setSelectionIntValue(OPENGL_TYPE_DEFAULT);
+                    }
+                    });
+            } else {
+                this->currentAppChanged = true;
+            }            
+        };
+    }
 #endif
 
     row = appSection->addRow(Msg::CONTAINER_VIEW_GL_EXT_LABEL, Msg::CONTAINER_VIEW_GL_EXT_HELP);

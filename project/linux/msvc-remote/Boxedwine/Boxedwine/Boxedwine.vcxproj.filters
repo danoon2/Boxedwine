@@ -514,9 +514,6 @@
     <ClCompile Include="..\..\..\..\..\platform\sdl\kdspaudio.cpp">
       <Filter>sdlPlatform</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\opengl\osmesa\osmesa.cpp">
-      <Filter>source\opengl\mesa</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\io\fsdynamiclinknode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
@@ -1065,9 +1062,6 @@
     </Filter>
     <Filter Include="source\emulation\cpu\armv8bt">
       <UniqueIdentifier>{966a1d27-d191-4bf3-9883-edb6b851d9e5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="source\opengl\mesa">
-      <UniqueIdentifier>{0d4507ea-ed6c-4ba6-8ba0-aa24f2b6c5af}</UniqueIdentifier>
     </Filter>
     <Filter Include="source\vulkan">
       <UniqueIdentifier>{4bf872fb-766a-43e0-b55e-8e10fc3803fb}</UniqueIdentifier>
@@ -2298,9 +2292,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\opengl\sdl\sdlgl.h">
       <Filter>source\opengl\sdl</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\opengl\osmesa\osmesa.h">
-      <Filter>source\opengl\mesa</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\platform\sdl\knativeinputSDL.h">
       <Filter>sdlPlatform</Filter>

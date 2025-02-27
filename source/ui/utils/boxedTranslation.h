@@ -218,7 +218,10 @@ enum class Msg {
     ERROR_NO_WINE,
     ERROR_NO_WINE_HIGH_DPI,
     ERROR_NO_FILE_LIST,
-    ERROR_MISSING_FILE_SYSTEM
+    ERROR_MISSING_FILE_SYSTEM,
+
+    DOWNLOAD_OPENGL_TITLE,
+    DOWNLOAD_OPENGL,
 };
 
 const char* c_getTranslation(Msg msg, bool useDefaultIfMissing = true);

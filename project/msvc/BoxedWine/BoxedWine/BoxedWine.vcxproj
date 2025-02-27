@@ -274,7 +274,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;POCO_UTIL_NO_JSONCONFIGURATION;POCO_UTIL_NO_XMLCONFIGURATION;POCO_NO_AUTOMATIC_LIBS;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_IMGUI_DX9;BOXEDWINE_VULKAN;BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_HIGHDPI;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;LOG_SYSCALLS;BOXEDWINE_HAS_SETJMP;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -338,7 +338,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -370,7 +370,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_ARMV8BT;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;__WINDOWS_WASAPI__;BOXEDWINE_IMGUI_DX9;BOXEDWINE_UI_LAUNCH_IN_PROCESS;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_ARMV8BT;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;_NO_DEBUG_HEAP=0;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -470,7 +470,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_HAS_OPENGL_MESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_HAS_SETJMP;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_MULTI_THREADED;BOXEDWINE_DYNAMIC32;BOXEDWINE_DYNAMIC;BOXEDWINE_IMGUI_DX9;BOXEDWINE_HIGHDPI;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;INCLUDE_CYCLES;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_OPENGL_SDL;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>%(UndefinePreprocessorDefinitions)</UndefinePreprocessorDefinitions>
@@ -537,7 +537,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_VULKAN;BOXEDWINE_OPENGL_SDL;BOXEDWINE_IMGUI_DX9;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_X64;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -570,7 +570,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_OPENGL_OSMESA;BOXEDWINE_IMGUI_DX9;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_ARMV8BT;BOXEDWINE_MULTI_THREADED;GLEW_STATIC;IMGUI_IMPL_OPENGL_LOADER_GLEW;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BOXEDWINE_OPENGL_SDL;BOXEDWINE_IMGUI_DX9;BOXEDWINE_BINARY_TRANSLATOR;BOXEDWINE_HIGHDPI;BOXEDWINE_ARMV8BT;BOXEDWINE_MULTI_THREADED;BOXEDWINE_MIDI;BOXEDWINE_RECORDER;BOXEDWINE_64;BOXEDWINE_ZLIB;GLH=&lt;sdl_opengl.h&gt;;BOXEDWINE_MSVC;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\..\..\..\include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>4996;26451</DisableSpecificWarnings>
       <UndefinePreprocessorDefinitions>
@@ -879,7 +879,6 @@
     <ClInclude Include="..\..\..\..\source\opengl\glfunctions.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glfunctions_ext.h" />
     <ClInclude Include="..\..\..\..\source\opengl\glMarshal.h" />
-    <ClInclude Include="..\..\..\..\source\opengl\osmesa\osmesa.h" />
     <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlgl.h" />
     <ClInclude Include="..\..\..\..\source\sdl\mainloop.h" />
     <ClInclude Include="..\..\..\..\source\sdl\startupArgs.h" />
@@ -2854,7 +2853,6 @@
     <ClCompile Include="..\..\..\..\source\opengl\glMarshal.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glMarshalSize.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\glMarshalVertex.cpp" />
-    <ClCompile Include="..\..\..\..\source\opengl\osmesa\osmesa.cpp" />
     <ClCompile Include="..\..\..\..\source\opengl\sdl\sdlgl.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\main.cpp" />
     <ClCompile Include="..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />

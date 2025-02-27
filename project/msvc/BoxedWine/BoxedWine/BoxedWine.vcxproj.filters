@@ -475,9 +475,6 @@
     <ClCompile Include="..\..\..\..\platform\windows\kwindowsaudio.cpp">
       <Filter>platform\windows</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\opengl\osmesa\osmesa.cpp">
-      <Filter>opengl\osmesa</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\io\fsdynamiclinknode.cpp">
       <Filter>source\io</Filter>
     </ClCompile>
@@ -1686,9 +1683,6 @@
     <ClInclude Include="..\..\..\..\platform\sdl\knativescreenSDL.h">
       <Filter>platform\sdl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\opengl\osmesa\osmesa.h">
-      <Filter>opengl\osmesa</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlgl.h">
       <Filter>opengl\sdl</Filter>
     </ClInclude>
@@ -1897,9 +1891,6 @@
     </Filter>
     <Filter Include="source\emulation\cpu\binaryTranslation">
       <UniqueIdentifier>{96c6e302-3534-4426-be3e-83673afb6d5b}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="opengl\osmesa">
-      <UniqueIdentifier>{c16a03b0-cb55-44fa-99bd-ea9eb8db949c}</UniqueIdentifier>
     </Filter>
     <Filter Include="vulkan">
       <UniqueIdentifier>{30fe2744-f038-4f14-be86-a165f2ac883f}</UniqueIdentifier>

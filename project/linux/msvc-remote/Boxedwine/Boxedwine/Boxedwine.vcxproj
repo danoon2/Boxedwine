@@ -1303,7 +1303,6 @@
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshal.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshalSize.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\glMarshalVertex.cpp" />
-    <ClCompile Include="..\..\..\..\..\source\opengl\osmesa\osmesa.cpp" />
     <ClCompile Include="..\..\..\..\..\source\opengl\sdl\sdlgl.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\main.cpp" />
     <ClCompile Include="..\..\..\..\..\source\sdl\multiThreaded\threadedMainloop.cpp" />
@@ -1888,7 +1887,6 @@
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions_ext.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glfunctions_ext_def.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\glMarshal.h" />
-    <ClInclude Include="..\..\..\..\..\source\opengl\osmesa\osmesa.h" />
     <ClInclude Include="..\..\..\..\..\source\opengl\sdl\sdlgl.h" />
     <ClInclude Include="..\..\..\..\..\source\sdl\mainloop.h" />
     <ClInclude Include="..\..\..\..\..\source\sdl\startupArgs.h" />

@@ -145,9 +145,9 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
     case Msg::OPTIONSVIEW_DEFAULT_SCALE_HELP:
         return "This is the default scale that Boxedwine will use to create the main window.  This can be overriden in the Containers view under the shortcut specific options on a per app basis.\n\nThis simple scaling option will blow up or shrink the emualted screen.  This is useful for applications that want to run in low resolution, like 640x480, and you want it to show larger on your monitor.";
     case Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL:
-        return "Default OpenGL Backend:";
+        return "OpenGL Backend:";
     case Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP:
-        return "OpenGL Backends:\n\nNative - This will use the OpenGL that is installed on your computer for your graphics card.  This is the best option if it works for you and will probably be the fastest.\n\nThe other options available to choose are in the order of expected performance.  They might be help older games/apps that try to use a color depth no longer supported by modern OpenGL graphics cards.";
+        return "OpenGL Backends:\n\nNative - This will use the OpenGL that is installed on your computer for your graphics card.  This is the best option if it works for you and will probably be the fastest.\n\nThe other options might be help older games/apps that try to use a color depth no longer supported by modern OpenGL graphics cards.";
     case Msg::OPTIONSVIEW_ENABLE_AUTOMATION_LABEL:
         return "Enable Automation:";
     case Msg::OPTIONSVIEW_ENABLE_AUTOMATION_HELP:
@@ -432,6 +432,10 @@ const char* c_getTranslation(Msg msg, bool useDefaultIfMissing) {
         return "The file system is missing.  Would you like to download it now?";
     case Msg::WINE_UPGRADE_AVAILABLE_TITLE:
         return "Upgrade Wine?";
+    case Msg::DOWNLOAD_OPENGL:
+        return "Do you want to download the alternative OpenGL Backends? (about {0}MB)";
+    case Msg::DOWNLOAD_OPENGL_TITLE:
+        return "Download?";
     case Msg::WINE_UPGRADE_AVAILABLE_LABEL:
         return "Would you like to upgrade Wine?  Upgrades are available for: {0}";
     default:

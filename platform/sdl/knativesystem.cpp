@@ -8,9 +8,6 @@
 
 #include UNISTD
 
-#ifdef BOXEDWINE_OPENGL_OSMESA
-#include "../../source/opengl/osmesa/osmesa.h"
-#endif
 #ifdef BOXEDWINE_OPENGL_SDL
 #include "../../source/opengl/sdl/sdlgl.h"
 #endif
