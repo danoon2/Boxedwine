@@ -342,7 +342,6 @@
 		1A80EF55276EBCC70032A70A /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
 		1A80EF56276EBCC70032A70A /* knativesocket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE2E2433BBBE003F17F1 /* knativesocket.cpp */; };
 		1A80EF57276EBCC70032A70A /* soft_code_page.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDD12433BBBE003F17F1 /* soft_code_page.cpp */; };
-		1A80EF58276EBCC70032A70A /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
 		1A80EF59276EBCC70032A70A /* boxedTexture.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 711F834824527273008E6A0C /* boxedTexture.cpp */; };
 		1A80EF5B276EBCC70032A70A /* containersView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD342433BBBE003F17F1 /* containersView.cpp */; };
 		1A80EF60276EBCC70032A70A /* cpu.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD9E2433BBBE003F17F1 /* cpu.cpp */; };
@@ -397,7 +396,6 @@
 		1A80F01D276EBCC70032A70A /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
 		1A80F022276EBCC70032A70A /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
 		1A80F023276EBCC70032A70A /* globalSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD372433BBBE003F17F1 /* globalSettings.cpp */; };
-		1A80F027276EBCC70032A70A /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
 		1A80F02C276EBCC70032A70A /* baseDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD242433BBBE003F17F1 /* baseDlg.cpp */; };
 		1A80F02E276EBCC70032A70A /* fsnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFB2433BBBE003F17F1 /* fsnode.cpp */; };
 		1A80F030276EBCC70032A70A /* fileutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD552433BBBE003F17F1 /* fileutils.cpp */; };
@@ -568,12 +566,10 @@
 		1A80F260276EBF170032A70A /* esopengl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE552433BBBE003F17F1 /* esopengl.c */; };
 		1A80F261276EBF170032A70A /* configFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD402433BBBE003F17F1 /* configFile.cpp */; };
 		1A80F263276EBF170032A70A /* readIcons.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD142433BBBE003F17F1 /* readIcons.cpp */; };
-		1A80F264276EBF170032A70A /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
 		1A80F266276EBF170032A70A /* uihelper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD132433BBBE003F17F1 /* uihelper.cpp */; };
 		1A80F26A276EBF170032A70A /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
 		1A80F26F276EBF170032A70A /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
 		1A80F270276EBF170032A70A /* globalSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD372433BBBE003F17F1 /* globalSettings.cpp */; };
-		1A80F274276EBF170032A70A /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
 		1A80F279276EBF170032A70A /* baseDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD242433BBBE003F17F1 /* baseDlg.cpp */; };
 		1A80F27B276EBF170032A70A /* llvm_helper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC4765264096CB00EE5FCC /* llvm_helper.cpp */; };
 		1A80F27C276EBF170032A70A /* fsnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFB2433BBBE003F17F1 /* fsnode.cpp */; };
@@ -607,7 +603,6 @@
 		1A80F2D3276EBF170032A70A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 71FBFCB32433B817003F17F1 /* Assets.xcassets */; };
 		1A80F2D4276EBF170032A70A /* Media.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 715F8427244115580038F5A4 /* Media.xcassets */; };
 		1A80F2D8276EBF170032A70A /* SDL2.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1A1551E82632656D006E0C8A /* SDL2.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
-		1A80F2DA276EBF170032A70A /* libOSMesa.8.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7143267F883900CDBC74 /* libOSMesa.8.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		1A80F2DB276EBF170032A70A /* libglapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7144267F883900CDBC74 /* libglapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		1A80F2DC276EBF170032A70A /* libc++abi.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7139267EB86400CDBC74 /* libc++abi.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		1A80F2DD276EBF170032A70A /* libc++.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B713B267EB86500CDBC74 /* libc++.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -1130,7 +1125,6 @@
 		71222C5824351CBA00CDBABD /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
 		71222C5A24351CBA00CDBABD /* devdsp.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE292433BBBE003F17F1 /* devdsp.cpp */; };
 		71222C5B24351CBA00CDBABD /* globalSettings.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD372433BBBE003F17F1 /* globalSettings.cpp */; };
-		71222C5C24351CBA00CDBABD /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
 		71222C5D24351CBA00CDBABD /* baseDlg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD242433BBBE003F17F1 /* baseDlg.cpp */; };
 		71222C5E24351CBA00CDBABD /* fsnode.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFDFB2433BBBE003F17F1 /* fsnode.cpp */; };
 		71222C6024351CBA00CDBABD /* fileutils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFD552433BBBE003F17F1 /* fileutils.cpp */; };
@@ -1330,7 +1324,6 @@
 		715F842D24464C080038F5A4 /* installView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 715F842A24464C080038F5A4 /* installView.cpp */; };
 		718B713D267EB86500CDBC74 /* libc++abi.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7139267EB86400CDBC74 /* libc++abi.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		718B713F267EB86500CDBC74 /* libc++.1.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B713B267EB86500CDBC74 /* libc++.1.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7143267F883900CDBC74 /* libOSMesa.8.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718B7144267F883900CDBC74 /* libglapi.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		718F07632D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
 		718F07642D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
@@ -1340,10 +1333,6 @@
 		718F07682D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
 		718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 718F07692D31C20F00D41270 /* libMoltenVK.dylib */; };
 		718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718F07772D31C23F00D41270 /* libMoltenVK.dylib */; };
-		71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
-		71B2D2FE2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
-		71B2D2FF2668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
-		71B2D3002668178700010AB6 /* osmesa.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71B2D2FC2668178700010AB6 /* osmesa.cpp */; };
 		71B4910C2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E02D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c */; };
 		71B4910D2D4AA1B800A8AB32 /* s_mul64To128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E72D4AA1B800A8AB32 /* s_mul64To128.c */; };
 		71B4910F2D4AA1B800A8AB32 /* f32_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D72D4AA1B800A8AB32 /* f32_to_extF80.c */; };
@@ -1908,7 +1897,6 @@
 		71FBFED82433BBBE003F17F1 /* kpoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3D2433BBBE003F17F1 /* kpoll.cpp */; };
 		71FBFED92433BBBE003F17F1 /* kscheduler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3E2433BBBE003F17F1 /* kscheduler.cpp */; };
 		71FBFEDA2433BBBE003F17F1 /* kepoll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE3F2433BBBE003F17F1 /* kepoll.cpp */; };
-		71FBFEDB2433BBBE003F17F1 /* mesagl.c in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE422433BBBE003F17F1 /* mesagl.c */; };
 		71FBFEDC2433BBBE003F17F1 /* glfunctions_ext1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */; };
 		71FBFEDD2433BBBE003F17F1 /* glfunctions_ext3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */; };
 		71FBFEDE2433BBBE003F17F1 /* glfunctions_ext2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 71FBFE462433BBBE003F17F1 /* glfunctions_ext2.cpp */; };
@@ -2016,7 +2004,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 6;
 			files = (
-				1A80F2DA276EBF170032A70A /* libOSMesa.8.dylib in CopyFiles */,
 				1A80F2DB276EBF170032A70A /* libglapi.0.dylib in CopyFiles */,
 				1A80F2DC276EBF170032A70A /* libc++abi.1.dylib in CopyFiles */,
 				1A80F2DD276EBF170032A70A /* libc++.1.dylib in CopyFiles */,
@@ -2041,7 +2028,6 @@
 			dstSubfolderSpec = 10;
 			files = (
 				718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */,
-				718B7145267F883900CDBC74 /* libOSMesa.8.dylib in CopyFiles */,
 				718B7146267F883900CDBC74 /* libglapi.0.dylib in CopyFiles */,
 				718B713D267EB86500CDBC74 /* libc++abi.1.dylib in CopyFiles */,
 				718B713F267EB86500CDBC74 /* libc++.1.dylib in CopyFiles */,
@@ -2325,7 +2311,6 @@
 		718B7125267EA77000CDBC74 /* libc++.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++.1.dylib"; sourceTree = "<group>"; };
 		718B7139267EB86400CDBC74 /* libc++abi.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++abi.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++abi.1.dylib"; sourceTree = "<group>"; };
 		718B713B267EB86500CDBC74 /* libc++.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.1.dylib"; path = "../../../lib/mac/precompiledMac/libc++.1.dylib"; sourceTree = "<group>"; };
-		718B7143267F883900CDBC74 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
 		718B7144267F883900CDBC74 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
 		718F07612D31C1C600D41270 /* kvulkanSDL.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = kvulkanSDL.h; path = /Users/james/Boxedwine2/platform/sdl/kvulkanSDL.h; sourceTree = "<absolute>"; };
 		718F07622D31C1C600D41270 /* kvulkanSDL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = kvulkanSDL.cpp; path = /Users/james/Boxedwine2/platform/sdl/kvulkanSDL.cpp; sourceTree = "<absolute>"; };
@@ -2337,8 +2322,6 @@
 		718F07732D31C23200D41270 /* libvulkan.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.dylib; sourceTree = "<group>"; };
 		718F07752D31C23800D41270 /* libvulkan.1.3.296.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.3.296.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.3.296.dylib; sourceTree = "<group>"; };
 		718F07772D31C23F00D41270 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../lib/mac/vulkan/lib/libMoltenVK.dylib; sourceTree = "<group>"; };
-		71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
-		71B2D2FC2668178700010AB6 /* osmesa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = osmesa.cpp; path = osmesa/osmesa.cpp; sourceTree = "<group>"; };
 		71B2D30926681CCA00010AB6 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
 		71B4905E2D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = extF80M_isSignalingNaN.c; sourceTree = "<group>"; };
 		71B4905F2D4AA1B800A8AB32 /* s_commonNaNToExtF80UI.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = s_commonNaNToExtF80UI.c; sourceTree = "<group>"; };
@@ -2734,7 +2717,6 @@
 		71FBFE3D2433BBBE003F17F1 /* kpoll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = kpoll.cpp; sourceTree = "<group>"; };
 		71FBFE3E2433BBBE003F17F1 /* kscheduler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = kscheduler.cpp; sourceTree = "<group>"; };
 		71FBFE3F2433BBBE003F17F1 /* kepoll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = kepoll.cpp; sourceTree = "<group>"; };
-		71FBFE422433BBBE003F17F1 /* mesagl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mesagl.c; sourceTree = "<group>"; };
 		71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = glfunctions_ext1.cpp; sourceTree = "<group>"; };
 		71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = glfunctions_ext3.cpp; sourceTree = "<group>"; };
 		71FBFE452433BBBE003F17F1 /* glMarshal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = glMarshal.h; sourceTree = "<group>"; };
@@ -3128,7 +3110,6 @@
 				718B7125267EA77000CDBC74 /* libc++.1.dylib */,
 				718B7124267EA76F00CDBC74 /* libc++abi.1.dylib */,
 				71B2D30926681CCA00010AB6 /* libglapi.0.dylib */,
-				71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */,
 				1AFC47A526489F7700EE5FCC /* CoreMIDI.framework */,
 				1A1551E82632656D006E0C8A /* SDL2.framework */,
 				1A4F1C362631FDAD0076F847 /* OpenSSL.xcframework */,
@@ -3230,14 +3211,6 @@
 				714097612D4AA57B00D10110 /* GL */,
 			);
 			path = include;
-			sourceTree = "<group>";
-		};
-		71B2D2FB2668177300010AB6 /* osmesa */ = {
-			isa = PBXGroup;
-			children = (
-				71B2D2FC2668178700010AB6 /* osmesa.cpp */,
-			);
-			name = osmesa;
 			sourceTree = "<group>";
 		};
 		71B4906A2D4AA1B800A8AB32 /* 8086-SSE */ = {
@@ -3382,7 +3355,6 @@
 				718F07732D31C23200D41270 /* libvulkan.1.dylib */,
 				718F07712D31C22A00D41270 /* libvulkan.dylib */,
 				718B7144267F883900CDBC74 /* libglapi.0.dylib */,
-				718B7143267F883900CDBC74 /* libOSMesa.8.dylib */,
 				718B713B267EB86500CDBC74 /* libc++.1.dylib */,
 				718B7139267EB86400CDBC74 /* libc++abi.1.dylib */,
 				7100912D2644D3F7003413C3 /* platform */,
@@ -4032,8 +4004,6 @@
 		71FBFE402433BBBE003F17F1 /* opengl */ = {
 			isa = PBXGroup;
 			children = (
-				71B2D2FB2668177300010AB6 /* osmesa */,
-				71FBFE412433BBBE003F17F1 /* mesa */,
 				71FBFE432433BBBE003F17F1 /* glfunctions_ext1.cpp */,
 				71FBFE442433BBBE003F17F1 /* glfunctions_ext3.cpp */,
 				71FBFE452433BBBE003F17F1 /* glMarshal.h */,
@@ -4051,14 +4021,6 @@
 				71FBFE592433BBBE003F17F1 /* glMarshalSize.cpp */,
 			);
 			path = opengl;
-			sourceTree = "<group>";
-		};
-		71FBFE412433BBBE003F17F1 /* mesa */ = {
-			isa = PBXGroup;
-			children = (
-				71FBFE422433BBBE003F17F1 /* mesagl.c */,
-			);
-			path = mesa;
 			sourceTree = "<group>";
 		};
 		71FBFE4B2433BBBE003F17F1 /* sdl */ = {
@@ -4491,7 +4453,6 @@
 				1A55D64D2A08428F002B7021 /* deflate.c in Sources */,
 				1A0F94EE2C912B6B00E5A9BF /* x11.cpp in Sources */,
 				1A0F95242C912B6B00E5A9BF /* xvisual.cpp in Sources */,
-				1A80EF58276EBCC70032A70A /* osmesa.cpp in Sources */,
 				1A80EF59276EBCC70032A70A /* boxedTexture.cpp in Sources */,
 				1A55D63F2A0841E2002B7021 /* infback.c in Sources */,
 				1AE7E5DF2B5A1C8200D29E4A /* btMemory.cpp in Sources */,
@@ -4587,7 +4548,6 @@
 				1A80F022276EBCC70032A70A /* devdsp.cpp in Sources */,
 				1AC9601F278FB69600107ED0 /* vulkancommon.cpp in Sources */,
 				1A80F023276EBCC70032A70A /* globalSettings.cpp in Sources */,
-				1A80F027276EBCC70032A70A /* mesagl.c in Sources */,
 				1A80F02C276EBCC70032A70A /* baseDlg.cpp in Sources */,
 				1A80F02E276EBCC70032A70A /* fsnode.cpp in Sources */,
 				1ADBD8662B92E7B60074867C /* sysdev.cpp in Sources */,
@@ -4913,12 +4873,10 @@
 				1A80F261276EBF170032A70A /* configFile.cpp in Sources */,
 				1A80F263276EBF170032A70A /* readIcons.cpp in Sources */,
 				1A0F95672C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
-				1A80F264276EBF170032A70A /* osmesa.cpp in Sources */,
 				1A80F266276EBF170032A70A /* uihelper.cpp in Sources */,
 				1A80F26A276EBF170032A70A /* imguitinyfiledialogs.cpp in Sources */,
 				1A80F26F276EBF170032A70A /* devdsp.cpp in Sources */,
 				1A80F270276EBF170032A70A /* globalSettings.cpp in Sources */,
-				1A80F274276EBF170032A70A /* mesagl.c in Sources */,
 				1A80F279276EBF170032A70A /* baseDlg.cpp in Sources */,
 				1A80F27B276EBF170032A70A /* llvm_helper.cpp in Sources */,
 				1A80F27C276EBF170032A70A /* fsnode.cpp in Sources */,
@@ -5132,7 +5090,6 @@
 				71222B692435169100CDBABD /* common_fpu.cpp in Sources */,
 				1AA711C42B505C9B008704E2 /* kmemory_soft.cpp in Sources */,
 				71222B962435169100CDBABD /* main.cpp in Sources */,
-				71B2D2FF2668178700010AB6 /* osmesa.cpp in Sources */,
 				1AC5F2C12772D957001D0FCA /* armv8btData.cpp in Sources */,
 				1A0F94E42C912B6B00E5A9BF /* ximage.cpp in Sources */,
 				71222B7C2435169100CDBABD /* soft_file_map.cpp in Sources */,
@@ -5604,7 +5561,6 @@
 				1AAC184A2C1F59A60089C40D /* normalPlatformMultiThreaded.cpp in Sources */,
 				1AC5F2D62772D957001D0FCA /* armv8btOps_fpu.cpp in Sources */,
 				71222C5624351CBA00CDBABD /* readIcons.cpp in Sources */,
-				71B2D2FE2668178700010AB6 /* osmesa.cpp in Sources */,
 				71222C5724351CBA00CDBABD /* uihelper.cpp in Sources */,
 				1AC5F2B22772D957001D0FCA /* armv8btCodeChunk.cpp in Sources */,
 				1AA711C12B505C99008704E2 /* kmemory_soft.cpp in Sources */,
@@ -5615,7 +5571,6 @@
 				71222C5A24351CBA00CDBABD /* devdsp.cpp in Sources */,
 				1AF730B12D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				71222C5B24351CBA00CDBABD /* globalSettings.cpp in Sources */,
-				71222C5C24351CBA00CDBABD /* mesagl.c in Sources */,
 				71222C5D24351CBA00CDBABD /* baseDlg.cpp in Sources */,
 				1AFC476F26409EBB00EE5FCC /* llvm_helper.cpp in Sources */,
 				1A0F951D2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
@@ -5893,7 +5848,6 @@
 				7135DC84264EBCD0005D6AA6 /* meminfo.cpp in Sources */,
 				1A0F94D32C912B6B00E5A9BF /* xscreen.cpp in Sources */,
 				1A0F95272C912B6B00E5A9BF /* xvisual.cpp in Sources */,
-				71B2D3002668178700010AB6 /* osmesa.cpp in Sources */,
 				7135DC85264EBCD0005D6AA6 /* kfilelock.cpp in Sources */,
 				7135DC86264EBCD0005D6AA6 /* cpuscalingmaxfreq.cpp in Sources */,
 				7135DC88264EBCD0005D6AA6 /* devsequencer.cpp in Sources */,
@@ -6064,7 +6018,6 @@
 				710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */,
 				71FBFECC2433BBBE003F17F1 /* knativesocket.cpp in Sources */,
 				71FBFE982433BBBE003F17F1 /* soft_code_page.cpp in Sources */,
-				71B2D2FD2668178700010AB6 /* osmesa.cpp in Sources */,
 				711F834924527273008E6A0C /* boxedTexture.cpp in Sources */,
 				718F07682D31C1C600D41270 /* kvulkanSDL.cpp in Sources */,
 				71FBFE6A2433BBBE003F17F1 /* containersView.cpp in Sources */,
@@ -6222,7 +6175,6 @@
 				1AF730B02D21D30C00F282A4 /* vk_host_marshal.cpp in Sources */,
 				71FBFEC72433BBBE003F17F1 /* devdsp.cpp in Sources */,
 				71FBFE6C2433BBBE003F17F1 /* globalSettings.cpp in Sources */,
-				71FBFEDB2433BBBE003F17F1 /* mesagl.c in Sources */,
 				71FBFE632433BBBE003F17F1 /* baseDlg.cpp in Sources */,
 				1A0F951C2C912B6B00E5A9BF /* xproperties.cpp in Sources */,
 				71FBFEAA2433BBBE003F17F1 /* fsnode.cpp in Sources */,

@@ -8,7 +8,6 @@
 
 BHashTable<U32, GLPixelFormatPtr> PlatformOpenGL::formatsById;
 std::vector<GLPixelFormatPtr> PlatformOpenGL::formats;
-bool PlatformOpenGL::initialized;
 bool PlatformOpenGL::hardwareListLoaded;
 /*
 static BHashTable<U32, HGLRC> contexts;
@@ -366,29 +365,23 @@ static HWND glCreateWindow(const GLPixelFormatPtr& format, int width, int height
 
 */
 void PlatformOpenGL::init() {
-	if (!initialized) {
-		BOXEDWINE_CRITICAL_SECTION;
-
-		if (!initialized) {
-			initialized = true;            
-
-			U32 count = KSystem::getPixelFormatCount();
-			for (U32 i = 1; i < count; i++) {
-				GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();                
-				format->id = i;
-				format->pf = *KSystem::getPixelFormat(i);
-                format->nativeId = i;
-                format->depth = format->pf.cColorBits;
-                format->bitsPerPixel = format->pf.cColorBits;
-				formatsById.set(format->id, format);
-                formats.push_back(format);
-			}
-            if (KSystem::videoOption == VIDEO_NORMAL) {
-                //hardwareListLoaded = queryOpenGL(formatsById, formats);
-            }
-
-		}
-	}
+    formatsById.clear();
+    formats.clear();
+    hardwareListLoaded = false;
+    U32 count = KSystem::getPixelFormatCount();
+    for (U32 i = 1; i < count; i++) {
+        GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();
+        format->id = i;
+        format->pf = *KSystem::getPixelFormat(i);
+        format->nativeId = i;
+        format->depth = format->pf.cColorBits;
+        format->bitsPerPixel = format->pf.cColorBits;
+        formatsById.set(format->id, format);
+        formats.push_back(format);
+    }
+    if (KSystem::videoOption == VIDEO_NORMAL) {
+        //hardwareListLoaded = queryOpenGL(formatsById, formats);
+    }
 }
 
 void PlatformOpenGL::iterateFormats(std::function<void(const GLPixelFormatPtr& format)> callback) {
