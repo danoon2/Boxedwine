@@ -129,7 +129,7 @@ void OptionsView::createGeneralTab() {
         glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
         // https://github.com/mmozeiko/build-mesa/releases has a working version for x86 and llvm
         // https://github.com/pal1000/mesa-dist-win has a bad calling convention set for x86, but x64 works well
-        if (KSystem::getArchitecture() != "x86") { // keep in sync with containersView.cpp
+        if (KSystem::getArchitecture() == "x64") { // keep in sync with containersView.cpp
             glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
             glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
         }

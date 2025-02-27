@@ -392,7 +392,7 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         glOptions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), OPENGL_TYPE_DEFAULT));
         glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_NATIVE));
         glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
-        if (KSystem::getArchitecture() != "x86") { // keep in sync with optionsView.cpp
+        if (KSystem::getArchitecture() == "x64") { // keep in sync with optionsView.cpp
             glOptions.push_back(ComboboxItem(B("OpenGL on D3D12"), OPENGL_TYPE_ON_D3D12));
             glOptions.push_back(ComboboxItem(B("OpenGL on Vulkan - Zink"), OPENGL_TYPE_ON_VULKAN));
         }
