@@ -31,7 +31,7 @@
 #define BOXEDWINE_USE_SSE_FOR_FPU1
 #endif
 
-#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES)
+#if defined(BOXEDWINE_OPENGL_SDL) || defined(BOXEDWINE_OPENGL_ES) || defined(BOXEDWINE_OPENGL_OSMESA)
 #define BOXEDWINE_OPENGL
 #endif
 

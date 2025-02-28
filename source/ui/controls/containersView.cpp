@@ -386,6 +386,17 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         this->currentAppChanged = true;
     };
 
+#if defined(BOXEDWINE_OPENGL_OSMESA)
+    std::vector<ComboboxItem> glOptions;
+    glOptions.push_back(ComboboxItem(getTranslation(Msg::GENERIC_DEFAULT), OPENGL_TYPE_DEFAULT));
+    glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_NATIVE));
+    glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
+    appOpenGlControl = appSection->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions);
+    appOpenGlControl->onChange = [this]() {
+        this->currentAppChanged = true;
+    };
+#endif
+    
 #if defined(BOXEDWINE_OPENGL_SDL)
     if (KSystem::isWindows()) {
         std::vector<ComboboxItem> glOptions;

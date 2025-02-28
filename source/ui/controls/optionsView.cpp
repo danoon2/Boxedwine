@@ -122,6 +122,18 @@ void OptionsView::createGeneralTab() {
         GlobalSettings::saveConfig();
     };
 
+#if defined(BOXEDWINE_OPENGL_OSMESA)
+    std::vector<ComboboxItem> glOptions;
+    glOptions.push_back(ComboboxItem(B("Native"), OPENGL_TYPE_NATIVE));
+    glOptions.push_back(ComboboxItem(B("Software - Mesa LLVM Pipe"), OPENGL_TYPE_LLVM_PIPE));
+    openGlControl = section->addComboboxRow(Msg::OPTIONSVIEW_DEFAULT_OPENGL_LABEL, Msg::OPTIONSVIEW_DEFAULT_OPENGL_HELP, glOptions, GlobalSettings::defaultOpenGL);
+    openGlControl->setWidth((int)GlobalSettings::scaleFloatUIAndFont(250));
+    openGlControl->setSelectionIntValue(GlobalSettings::defaultOpenGL);
+    openGlControl->onChange = [this]() {
+        GlobalSettings::defaultOpenGL = this->openGlControl->getSelectionIntValue();
+        GlobalSettings::saveConfig();
+    };
+#endif
 #if defined(BOXEDWINE_OPENGL_SDL)
     if (KSystem::isWindows()) {
         std::vector<ComboboxItem> glOptions;

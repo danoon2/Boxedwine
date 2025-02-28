@@ -2941,7 +2941,7 @@ void glcommon_glDeleteSync(CPU* cpu) {
     if (!ext_glDeleteSync)
         kpanic("ext_glDeleteSync is NULL");
     {
-    GL_FUNC(ext_glDeleteSync)(marshalSync(cpu, ARG1));
+    GL_FUNC(ext_glDeleteSync)(marshalSync(cpu, ARG1, true));
     GL_LOG ("glDeleteSync GLsync sync=%d",ARG1);
     }
 }

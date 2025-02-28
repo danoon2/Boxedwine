@@ -441,18 +441,38 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     return (GLvoid*)cpu->memory->getRamPtr(buffer, len, false);
 }
 
+static U32 nextSyncId = 0;
+static BHashTable<U32, GLsync> getGLSync;
+static BHashTable<GLsync, U32> getGLSyncId;
+
 U32 marshalBackSync(CPU* cpu, GLsync sync) {
     //klog("marshalBackSync not implemented");
 #ifdef BOXEDWINE_64
-    return (U32)(U64)sync;
+    U32 result = 0;
+    if (getGLSyncId.get(sync, result)) {
+        return result;
+    }
+    nextSyncId++;
+    getGLSync.set(nextSyncId, sync);
+    getGLSyncId.set(sync, nextSyncId);
+    return nextSyncId;
 #else
     return (U32)sync;
 #endif
 }
 
-GLsync marshalSync(CPU* cpu, U32 sync) {
+GLsync marshalSync(CPU* cpu, U32 sync, bool done) {
     //klog("marshalSync not implemented");
+#ifdef BOXEDWINE_64
+    GLsync result = getGLSync.get(sync);
+    if (result && done) {
+        getGLSync.remove(sync);
+        getGLSyncId.remove(result);
+    }
+    return result;
+#else
     return (GLsync)(U32)sync;
+#endif
 }
 
 GLvoid** bufferpp;

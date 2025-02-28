@@ -208,12 +208,17 @@ void BoxedApp::launch() {
             GlobalSettings::startUpArgs.addArg(this->args[i]);
         }
     }
-    GlobalSettings::startUpArgs.setWorkingDir(this->path);    
-#ifdef BOXEDWINE_MSVC
+    GlobalSettings::startUpArgs.setWorkingDir(this->path);
     U32 type = this->openGlType;
     if (type == OPENGL_TYPE_DEFAULT) {
         type = GlobalSettings::getDefaultOpenGL();
     }
+#ifdef __MACH__
+    if (type != OPENGL_TYPE_NATIVE) {
+        GlobalSettings::startUpArgs.openGlLib = "osmesa";
+    }
+#endif
+#ifdef BOXEDWINE_MSVC
     if (type != OPENGL_TYPE_NATIVE) {
         GlobalSettings::startUpArgs.openGlLib = GlobalSettings::alternativeOpenGlLocation();
         if (type == OPENGL_TYPE_LLVM_PIPE) {

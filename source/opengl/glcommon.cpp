@@ -780,7 +780,6 @@ void gl_common_XChooseVisual(CPU* cpu) {
 void gl_common_XCreateContext(CPU* cpu) {    
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
-    XServer* server = XServer::getServer();
     U32 shareList = ARG3;
     XVisualInfo info;
     info.read(memory, ARG2);

@@ -3,6 +3,7 @@ BOXEDWINE_ZLIB   Will allow the file system to be in a zip file (-zip command li
 BOXEDWINE_MSVC   Should use this on Windows platform
 BOXEDWINE_MAC_JIT Should use this on the Mac platform for the binary translator builds, it will correctly setup x64 and Armv8
 BOXEDWINE_OPENGL_SDL OpenGL will be enabled via SDL
+BOXEDWINE_OPENGL_OSMESA Will enable selecting software OpenGL via Mesa.  Option will be visible in UI and command line option -mesa will be available
 GLH the header that will be used for OpenGL, currently set to <sdl_opengl.h> in build files
 BOXEDWINE_HIGHDPI On windows this will allow games that doesn't support high dpi settings to be scaled up
 BOXEDWINE_MIDI turns on support for Midi

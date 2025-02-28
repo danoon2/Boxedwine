@@ -3,6 +3,9 @@
 #include "knativesystem.h"
 #include "ksocket.h"
 
+#ifdef BOXEDWINE_OPENGL_OSMESA
+#include "../../source/opengl/osmesa/osmesa.h"
+#endif
 #ifdef BOXEDWINE_OPENGL_SDL
 #include "../../source/opengl/sdl/sdlgl.h"
 #endif
@@ -1070,47 +1073,86 @@ void XServer::initVisuals() {
 	VisualPtr vis16 = addVisual(0xF800, 0x7E0, 0x1F, 16, 16, 0);
 	//VisualPtr vis15 = addVisual(0x7C00, 0x3E0, 0x1F, 15, 16, 0);
 	VisualPtr vis8 = addVisual(0, 0, 0, 8, 8, 0);
-	
+	 
+#ifdef BOXEDWINE_OPENGL_OSMESA
+    if (KSystem::openglLib == "osmesa") {
+        OsMesaGL::iterateFormats([this, &vis32, &vis16, &vis8](const GLPixelFormatPtr& format) {
+            PixelFormat* pf = &format->pf;
+
+            U32 rMask = ((1 << pf->cRedBits) - 1) << pf->cRedShift;
+            U32 gMask = ((1 << pf->cGreenBits) - 1) << pf->cGreenShift;
+            U32 bMask = ((1 << pf->cBlueBits) - 1) << pf->cBlueShift;
+            U32 depth = pf->cColorBits;
+
+            CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
+
+            // try to match a real format with a default
+            if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+                vis32->ext_data = format->id;
+                cfg->visualId = vis32->visualid;
+                vis32 = nullptr;
+            } else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+                vis16->ext_data = format->id;
+                cfg->visualId = vis16->visualid;
+                vis16 = nullptr;
+            } else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+                vis8->ext_data = format->id;
+                cfg->visualId = vis8->visualid;
+                vis8 = nullptr;
+            } else {
+                cfg->visualId = addVisual(rMask, gMask, bMask, format->depth, format->bitsPerPixel, format->id)->visualid;
+            }
+            cfg->fbId = getNextId();
+            cfg->glPixelFormat = format;
+            cfg->depth = format->pf.cColorBits;
+            fbConfigById.set(cfg->fbId, cfg);
+        });
+        return;
+    } else
+#endif
+
 #ifdef BOXEDWINE_OPENGL_SDL
-	PlatformOpenGL::init();
-	SDLGL::iterateFormats([this, &vis32, &vis24, &vis16, &vis8](const GLPixelFormatPtr& format) {
-		PixelFormat* pf = &format->pf;
-
-		U32 rMask = ((1 << pf->cRedBits) - 1) << pf->cRedShift;
-		U32 gMask = ((1 << pf->cGreenBits) - 1) << pf->cGreenShift;
-		U32 bMask = ((1 << pf->cBlueBits) - 1) << pf->cBlueShift;
-		U32 depth = pf->cColorBits;
-
-		CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
-
-		// try to match a real format with a default
-		if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
-			vis32->ext_data = format->id;
-			cfg->visualId = vis32->visualid;
-			vis32 = nullptr;
-		} else if (vis24 && rMask == vis24->red_mask && gMask == vis24->green_mask && bMask == vis24->blue_mask && depth == vis24->bits_per_rgb) {
-			vis24->ext_data = format->id;
-			cfg->visualId = vis24->visualid;
-			vis24 = nullptr;
-		} else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
-			vis16->ext_data = format->id;
-			cfg->visualId = vis16->visualid;
-			vis16 = nullptr;
-		} else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
-			vis8->ext_data = format->id;
-			cfg->visualId = vis8->visualid;
-			vis8 = nullptr;
-		} else {
-			cfg->visualId = addVisual(rMask, gMask, bMask, format->depth, format->bitsPerPixel, format->id)->visualid;
-		}
-		cfg->fbId = getNextId();
-		cfg->glPixelFormat = format;
-		cfg->depth = format->pf.cColorBits;
-		fbConfigById.set(cfg->fbId, cfg);
-		if (format->id & PIXEL_FORMAT_NATIVE_INDEX_MASK) {
-			fbNativeConfigsSorted.push_back(cfg);
-		}
-		});
+    {
+        PlatformOpenGL::init();
+        SDLGL::iterateFormats([this, &vis32, &vis24, &vis16, &vis8](const GLPixelFormatPtr& format) {
+            PixelFormat* pf = &format->pf;
+            
+            U32 rMask = ((1 << pf->cRedBits) - 1) << pf->cRedShift;
+            U32 gMask = ((1 << pf->cGreenBits) - 1) << pf->cGreenShift;
+            U32 bMask = ((1 << pf->cBlueBits) - 1) << pf->cBlueShift;
+            U32 depth = pf->cColorBits;
+            
+            CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
+            
+            // try to match a real format with a default
+            if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+                vis32->ext_data = format->id;
+                cfg->visualId = vis32->visualid;
+                vis32 = nullptr;
+            } else if (vis24 && rMask == vis24->red_mask && gMask == vis24->green_mask && bMask == vis24->blue_mask && depth == vis24->bits_per_rgb) {
+                vis24->ext_data = format->id;
+                cfg->visualId = vis24->visualid;
+                vis24 = nullptr;
+            } else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+                vis16->ext_data = format->id;
+                cfg->visualId = vis16->visualid;
+                vis16 = nullptr;
+            } else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+                vis8->ext_data = format->id;
+                cfg->visualId = vis8->visualid;
+                vis8 = nullptr;
+            } else {
+                cfg->visualId = addVisual(rMask, gMask, bMask, format->depth, format->bitsPerPixel, format->id)->visualid;
+            }
+            cfg->fbId = getNextId();
+            cfg->glPixelFormat = format;
+            cfg->depth = format->pf.cColorBits;
+            fbConfigById.set(cfg->fbId, cfg);
+            if (format->id & PIXEL_FORMAT_NATIVE_INDEX_MASK) {
+                fbNativeConfigsSorted.push_back(cfg);
+            }
+        });
+    }
 #else
 	U32 count = KSystem::getPixelFormatCount();
 	for (U32 i = 1; i < count; i++) {

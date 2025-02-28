@@ -260,7 +260,7 @@ inline GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count) {
 GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count);
 void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count);
 
-GLsync marshalSync(CPU* cpu, U32 sync);
+GLsync marshalSync(CPU* cpu, U32 sync, bool done=false);
 U32 marshalBackSync(CPU* cpu, GLsync sync);
 
 GLvoid* marshalp_and_check_array_buffer(CPU* cpu, U32 instance, U32 buffer, U32 len);
