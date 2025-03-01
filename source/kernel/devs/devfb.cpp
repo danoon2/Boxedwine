@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2016  The BoxedWine Team
+ *  Copyright (C) 2012-2025  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-// This code was written before the winedrv code existed.  Now this is considered dead code, but is kept for experimentation
+// This code was written before the x11 code existed.  Now this is considered dead code, but is kept for experimentation
 #include "boxedwine.h"
 
 #include <SDL.h>

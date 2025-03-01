@@ -1,3 +1,20 @@
+/*
+ *  Copyright (C) 2012-2025  The BoxedWine Team
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ */
 #define CALL_0_R(index) __asm__("push %0\n\tint $0x9b\n\taddl $4, %%esp"::"i"(index):"%eax"); 
 #define CALL_1_R(index, arg1) __asm__("push %1\n\tpush %0\n\tint $0x9b\n\taddl $8, %%esp"::"i"(index), "g"(arg1):"%eax"); 
 #define CALL_2_R(index, arg1, arg2) __asm__("push %2\n\tpush %1\n\tpush %0\n\tint $0x9b\n\taddl $12, %%esp"::"i"(index), "g"(arg1), "g"(arg2):"%eax"); 

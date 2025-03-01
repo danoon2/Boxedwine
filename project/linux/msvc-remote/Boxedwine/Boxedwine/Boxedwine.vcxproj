@@ -1556,7 +1556,6 @@
     <ClInclude Include="..\..\..\..\..\include\devinput.h" />
     <ClInclude Include="..\..\..\..\..\include\devmixer.h" />
     <ClInclude Include="..\..\..\..\..\include\devnull.h" />
-    <ClInclude Include="..\..\..\..\..\include\devpty.h" />
     <ClInclude Include="..\..\..\..\..\include\devsequencer.h" />
     <ClInclude Include="..\..\..\..\..\include\devtty.h" />
     <ClInclude Include="..\..\..\..\..\include\devurandom.h" />
@@ -1585,7 +1584,6 @@
     <ClInclude Include="..\..\..\..\..\include\kscheduler.h" />
     <ClInclude Include="..\..\..\..\..\include\ksignal.h" />
     <ClInclude Include="..\..\..\..\..\include\ksocket.h" />
-    <ClInclude Include="..\..\..\..\..\include\ksocketdata.h" />
     <ClInclude Include="..\..\..\..\..\include\ksocketmsg.h" />
     <ClInclude Include="..\..\..\..\..\include\ksocketobject.h" />
     <ClInclude Include="..\..\..\..\..\include\kstat.h" />
@@ -1612,7 +1610,6 @@
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingcurfreq.h" />
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingmaxfreq.h" />
     <ClInclude Include="..\..\..\..\..\include\uptime.h" />
-    <ClInclude Include="..\..\..\..\..\include\x64dynamic.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glew.h" />
     <ClInclude Include="..\..\..\..\..\lib\glew\include\GL\glxew.h" />
     <ClInclude Include="..\..\..\..\..\lib\imgui\addon\imguitinyfiledialogs.h" />
@@ -1794,10 +1791,7 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\cpu_init_sse2.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\fpu.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\lazyFlags.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\conditions.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\decode.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\decoder.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\decode_noflags.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_arith.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\dynamic\dynamic_bit.h" />
@@ -1821,7 +1815,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\gensrc.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\incdec.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\instructions.h" />
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\mmx.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\instructions.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normalCPU.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normal_arith.h" />

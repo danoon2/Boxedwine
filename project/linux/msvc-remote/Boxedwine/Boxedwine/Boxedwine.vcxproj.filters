@@ -1122,9 +1122,6 @@
     <ClInclude Include="..\..\..\..\..\include\devnull.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\include\devpty.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\devsequencer.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -1177,9 +1174,6 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\ksocket.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\include\ksocketdata.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\ksocketmsg.h">
@@ -1243,9 +1237,6 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\syscpuscalingmaxfreq.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\include\x64dynamic.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\fileutils.h">
@@ -1467,15 +1458,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Ops.h">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\conditions.h">
-      <Filter>source\emulation\cpu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\decode.h">
-      <Filter>source\emulation\cpu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\decode_noflags.h">
-      <Filter>source\emulation\cpu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\decoder.h">
       <Filter>source\emulation\cpu</Filter>
     </ClInclude>
@@ -1486,9 +1468,6 @@
       <Filter>source\emulation\cpu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\instructions.h">
-      <Filter>source\emulation\cpu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\mmx.h">
       <Filter>source\emulation\cpu</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\ops.h">

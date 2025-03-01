@@ -678,6 +678,8 @@
     <ClInclude Include="..\..\..\..\include\devsequencer.h" />
     <ClInclude Include="..\..\..\..\include\devtty.h" />
     <ClInclude Include="..\..\..\..\include\devurandom.h" />
+    <ClInclude Include="..\..\..\..\include\devzero.h" />
+    <ClInclude Include="..\..\..\..\include\fpu.h" />
     <ClInclude Include="..\..\..\..\include\jit.h" />
     <ClInclude Include="..\..\..\..\include\kdspaudio.h" />
     <ClInclude Include="..\..\..\..\include\kepoll.h" />
@@ -713,11 +715,12 @@
     <ClInclude Include="..\..\..\..\include\loader.h" />
     <ClInclude Include="..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\include\meminfo.h" />
-    <ClInclude Include="..\..\..\..\include\mixer.h" />
-    <ClInclude Include="..\..\..\..\include\page.h" />
+    <ClInclude Include="..\..\..\..\include\pixelformat.h" />
     <ClInclude Include="..\..\..\..\include\platform.h" />
     <ClInclude Include="..\..\..\..\include\platformOpenGL.h" />
+    <ClInclude Include="..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\include\player.h" />
+    <ClInclude Include="..\..\..\..\include\procselfexe.h" />
     <ClInclude Include="..\..\..\..\include\procstat.h" />
     <ClInclude Include="..\..\..\..\include\recorder.h" />
     <ClInclude Include="..\..\..\..\include\reg.h" />
@@ -764,6 +767,7 @@
     <ClInclude Include="..\..\..\..\platform\sdl\knativescreenSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\knativeinputSDL.h" />
     <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h" />
+    <ClInclude Include="..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.h" />
@@ -882,7 +886,6 @@
     <ClInclude Include="..\..\..\..\source\opengl\sdl\sdlgl.h" />
     <ClInclude Include="..\..\..\..\source\sdl\mainloop.h" />
     <ClInclude Include="..\..\..\..\source\sdl\startupArgs.h" />
-    <ClInclude Include="..\..\..\..\source\sdl\wnd.h" />
     <ClInclude Include="..\..\..\..\source\test\testCPU.h" />
     <ClInclude Include="..\..\..\..\source\test\testFPU.h" />
     <ClInclude Include="..\..\..\..\source\test\testMMX.h" />

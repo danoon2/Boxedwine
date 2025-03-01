@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2016  The BoxedWine Team
+ *  Copyright (C) 2012-2025  The BoxedWine Team
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-// :TODO: read/write operations in a single op to the same address should not have to look up the physical RAM address twice
 #include "arith.h"
 #include "incdec.h"
 #include "pushpop.h"

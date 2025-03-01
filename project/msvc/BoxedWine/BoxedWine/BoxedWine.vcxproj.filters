@@ -996,9 +996,6 @@
     <ClInclude Include="..\..\..\..\include\crc.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\sdl\wnd.h">
-      <Filter>source\sdl</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\include\ktimer.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -1267,9 +1264,6 @@
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\include\devsequencer.h">
-      <Filter>include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\include\mixer.h">
       <Filter>include</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\synchronization.h">
@@ -1698,9 +1692,6 @@
     <ClInclude Include="..\..\..\..\platform\sdl\kvulkanSDL.h">
       <Filter>platform\sdl</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\include\page.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\vulkan\vk_format_utils.h">
       <Filter>vulkan</Filter>
     </ClInclude>
@@ -1781,6 +1772,24 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\softmmu\soft_mmu.h">
       <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\fpu.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\pixelformat.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\platformtypes.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\devzero.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\include\procselfexe.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\platform\sdl\sdlcallback.h">
+      <Filter>platform\sdl</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
