@@ -24,6 +24,7 @@ public class VkHostMarshalType {
         boolean deleteItems = false;
         String itemCount;
         boolean unlock = false;
+        boolean isVoid = false;
     }
 
     public static void writeHeader(VkType t, StringBuilder out) throws Exception {
@@ -245,10 +246,12 @@ public class VkHostMarshalType {
         }
 
         out.append("new ");
-        paramData.add(new MarshalParamData("s."+param.name, true));
+        MarshalParamData data = new MarshalParamData("s."+param.name, true);
+        paramData.add(data);
         if (param.paramType.name.equals("void")) {
             if (param.isPointer) {
                 out.append("char");
+                data.isVoid = true;
             } else {
                 throw new Exception("oops");
             }
@@ -1099,6 +1102,9 @@ public class VkHostMarshalType {
                 out.append("[]");
             }
             out.append(" ");
+            if (data.isVoid) {
+                out.append("(char*)");
+            }
             if (data.name.equals("s.pNext")) {
                 out.append("(VkBaseOutStructure*)");
             }

@@ -2357,7 +2357,7 @@ void MarshalVkPipelineBinaryDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory*
     }
 }
 MarshalVkPipelineBinaryDataKHR::~MarshalVkPipelineBinaryDataKHR() {
-    delete[] s.pData;
+    delete[] (char*)s.pData;
 }
 void MarshalVkPipelineBinaryKeysAndDataKHR::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPipelineBinaryKeysAndDataKHR* s) {
     s->binaryCount = (uint32_t)memory->readd(address);address+=4;
@@ -13418,7 +13418,7 @@ void MarshalVkPipelineExecutableInternalRepresentationKHR::write(BoxedVulkanInfo
 }
 MarshalVkPipelineExecutableInternalRepresentationKHR::~MarshalVkPipelineExecutableInternalRepresentationKHR() {
     delete (VkBaseOutStructure*)s.pNext;
-    delete[] s.pData;
+    delete[] (char*)s.pData;
 }
 void MarshalVkPhysicalDeviceShaderDemoteToHelperInvocationFeatures::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkPhysicalDeviceShaderDemoteToHelperInvocationFeatures* s) {
     s->sType = (VkStructureType)memory->readd(address);address+=4;
