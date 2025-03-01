@@ -1079,6 +1079,9 @@ public class VkHostMarshalType {
                 out.append("[]");
             }
             out.append(" ");
+            if (data.name.equals("s.pNext")) {
+                out.append("(VkBaseOutStructure*)");
+            }
             out.append(data.name);
             out.append(";\n");
             alreadyAdded.add(data.name);
