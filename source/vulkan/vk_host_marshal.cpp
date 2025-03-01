@@ -17523,7 +17523,7 @@ void MarshalVkMemoryToImageCopy::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
         } else {
             copy_size = ((s->imageExtent.width * s->imageExtent.height * s->imageExtent.depth) * element_size);
         }
-        s->pHostPointer = memory->lockReadOnlyMemory(paramAddress, copy_size);
+        s->pHostPointer = memory->lockReadOnlyMemory(paramAddress, (U32)copy_size);
     }
 }
 MarshalVkMemoryToImageCopy::~MarshalVkMemoryToImageCopy() {

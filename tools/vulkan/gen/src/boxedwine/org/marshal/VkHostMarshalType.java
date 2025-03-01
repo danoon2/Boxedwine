@@ -779,7 +779,7 @@ public class VkHostMarshalType {
                 out.append("        } else {\n");
                 out.append("            copy_size = ((s->imageExtent.width * s->imageExtent.height * s->imageExtent.depth) * element_size);\n");
                 out.append("        }\n");
-                out.append("        s->pHostPointer = memory->lockReadOnlyMemory(paramAddress, copy_size);\n");
+                out.append("        s->pHostPointer = memory->lockReadOnlyMemory(paramAddress, (U32)copy_size);\n");
                 out.append("    }\n");
             } else if (t.name.equals("VkImageToMemoryCopy") && param.name.equals("pHostPointer")) {
                 out.append("    if (paramAddress == 0) {\n");
