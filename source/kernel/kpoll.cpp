@@ -47,26 +47,29 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
             // gather locks before we check the data so that we don't miss one
             for (U32 i = 0; i < count; i++) {
-                KFileDescriptorPtr fd = thread->process->getFileDescriptor(data->fd);
-                if (fd) {
-                    // even if 0, we still don't want to remove it and should still respond to POLLERR and POLLHUP
-                    fd->kobject->waitForEvents(thread->pollCond, data->events | K_POLLERR);
-                } else {
-                    int ii = 0;
+                KFileDescriptorPtr fd;
+                
+                data->revents = 0;
+                if (data->fd >= 0) {
+                    fd = thread->process->getFileDescriptor(data->fd);
+                    if (fd) {
+                        // even if 0, we still don't want to remove it and should still respond to POLLERR and POLLHUP
+                        fd->kobject->waitForEvents(thread->pollCond, data->events | K_POLLERR);
+                    } else {
+                        data->revents = K_POLLNVAL;
+                    }
                 }
                 data++;
             }
 
             data = firstData;
             for (U32 i = 0; i < count; i++) {
-                KFileDescriptorPtr fd = thread->process->getFileDescriptor(data->fd);
-                data->revents = 0;                
-                if (!fd) {
-                    data->revents |= K_POLLNVAL;
-                } else {
-                    if (fd->kobject->type != 1) {
-                        int ii = 0;
-                    }
+                KFileDescriptorPtr fd;
+                
+                if (data->fd >= 0) {
+                    fd = thread->process->getFileDescriptor(data->fd);
+                }
+                if (fd) {
                     if (!fd->kobject->isOpen()) {
                         data->revents |= K_POLLHUP;
                     }

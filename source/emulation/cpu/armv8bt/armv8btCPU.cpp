@@ -238,8 +238,6 @@ void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
                             // winfish seems to jump into the middle of an instruction which changes it from cmp to mov
                             data->currentBlock = nullptr;
                         }
-                    } else {
-                        int ii = 0;
                     }
                 }
             }
@@ -254,9 +252,6 @@ void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
                 }
             }
             data->currentOp = data->currentBlock->getOp(address);
-            if (!data->currentOp) {
-                int ii = 0;
-            }
         }
         data->mapAddress(address, data->bufferPos);
         // add a mapping so that if they skip the 1 byte lock they will get mapped to the lock version anyway, libc seems to want to skip the lock sometimes in order to improve performance by a tiny bit

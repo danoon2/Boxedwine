@@ -101,7 +101,7 @@ public:
 };
 
 U32 exceptionCount;
-
+/*
 #ifdef __MACH__
 
 #ifndef ESR_ELx_WNR
@@ -132,6 +132,7 @@ static bool Aarch64GetESR(ucontext_t *ucontext, bool* isWrite) {
     return false;
 }
 #endif
+*/
 
 // this will quickly store the info then exit to signalHandler() to perform the logic there
 void platformHandler(int sig, siginfo_t* info, void* vcontext) {

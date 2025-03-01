@@ -639,7 +639,6 @@ void XWindow::exposeNofity(const DisplayDataPtr& data, S32 x, S32 y, S32 width, 
 }
 
 void XWindow::setWmState(U32 state, U32 icon) {
-	XServer* server = XServer::getServer();
 	XWMState wmState;
 
 	wmState.state = state;

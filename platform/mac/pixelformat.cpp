@@ -168,7 +168,7 @@ static int nb_formats, nb_displayable_formats;
 static bool get_renderer_property(CGLRendererInfoObj renderer_info, GLint renderer_index, CGLRendererProperty property, GLint *value) {
     CGLError err = CGLDescribeRenderer(renderer_info, renderer_index, property, value);
     if (err != kCGLNoError) {
-        kwarn("CGLDescribeRenderer failed for property %d: %d %s\n", property, err, CGLErrorString(err));
+        kwarn_fmt("CGLDescribeRenderer failed for property %d: %d %s\n", property, err, CGLErrorString(err));
     }
     return (err == kCGLNoError);
 }
@@ -605,10 +605,10 @@ static void enum_renderer_pixel_formats(renderer_properties renderer, CFMutableA
 
     n_stack_idx--;
 
-    klog("Number of pixel format attribute combinations: %u\n", tried_pixel_formats);
-    klog(" Number which failed to choose a pixel format: %u\n", failed_pixel_formats);
-    klog("  Number which chose redundant pixel formats: %u\n", dupe_pixel_formats);
-    klog("Number of new pixel formats for this renderer: %u\n", new_pixel_formats);
+    klog_fmt("Number of pixel format attribute combinations: %u\n", tried_pixel_formats);
+    klog_fmt(" Number which failed to choose a pixel format: %u\n", failed_pixel_formats);
+    klog_fmt("  Number which chose redundant pixel formats: %u\n", dupe_pixel_formats);
+    klog_fmt("Number of new pixel formats for this renderer: %u\n", new_pixel_formats);
 }
 
 
@@ -797,7 +797,7 @@ static bool init_pixel_formats(void)
 
     err = CGLQueryRendererInfo(CGDisplayIDToOpenGLDisplayMask(CGMainDisplayID()), &renderer_info, &rendererCount);
     if (err) {
-        kwarn("CGLQueryRendererInfo failed (%d) %s", err, CGLErrorString(err));
+        kwarn_fmt("CGLQueryRendererInfo failed (%d) %s", err, CGLErrorString(err));
         return false;
     }
 

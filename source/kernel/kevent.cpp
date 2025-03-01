@@ -59,7 +59,6 @@ void KEvent::waitForEvents(BOXEDWINE_CONDITION& parentCondition, U32 events) {
 }
 
 bool KEvent::isReadReady() {
-    KThread* thread = KThread::currentThread();
     if (counter) {
         return true;
     }
@@ -151,7 +150,6 @@ S64 KEvent::length() {
 
 U32 syscall_eventfd2(KThread* thread, U32 initialValue, U32 flags) {
     KFileDescriptorPtr fd;
-    KMemory* memory = thread->memory;
 
     std::shared_ptr<KEvent> o = std::make_shared<KEvent>();
     o->counter = initialValue;

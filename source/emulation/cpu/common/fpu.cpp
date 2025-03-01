@@ -89,8 +89,8 @@ static const extFloat80_t fx80_pi = { 0xc90fdaa22168c235U, 0x4000 };
 static const extFloat80_t fx80_lg2 = { 0x9a209a84fbcff799U, 0x3ffd };
 static const extFloat80_t fx80_ln2 = { 0xb17217f7d1cf79ac, 0x3ffe };
 
-static const U64 DOUBLE_POSITIVE_INFINITY_BITS = 0x7ff0000000000000;
-static const U64 DOUBLE_NEGATIVE_INFINITY_BITS = 0xfff0000000000000;
+//static const U64 DOUBLE_POSITIVE_INFINITY_BITS = 0x7ff0000000000000;
+//static const U64 DOUBLE_NEGATIVE_INFINITY_BITS = 0xfff0000000000000;
 static const U64 DOUBLE_QUIET_NAN_BITS = 0x7FF8000000000000;
 
 struct FPU_Float {
@@ -855,7 +855,7 @@ void FPU::FXAM() {
         }
         return;
     }
-    S64 bits = this->regs[this->top].signExp & 0x8000;
+
     // C1 := sign bit of ST; (* 0 for positive, 1 for negative *)
     if (this->regs[this->top].signExp & 0x8000) {
         FPU_SET_C1(this, 1);

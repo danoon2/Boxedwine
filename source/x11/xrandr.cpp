@@ -25,7 +25,6 @@ bool XrrGetSize(KThread* thread, const DisplayDataPtr& displayData, U32 sizeInde
 
 U32 XrrRates(KThread* thread, const DisplayDataPtr& displayData, U32 screen, U32 sizeIndex, U32 rateCountAddress) {
     KMemory* memory = thread->memory;
-    XServer* server = XServer::getServer();
     XrrData* data = displayData->xrrData;
 
     memory->writed(rateCountAddress, 1);

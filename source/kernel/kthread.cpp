@@ -356,8 +356,6 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
             if (cmd == FUTEX_WAIT_BITSET) {
                 f->mask = val3;
             }
-        } else {
-            int ii = 0;
         }
         while (true) {                        
             if (this->pendingSignals) {
@@ -611,7 +609,7 @@ void KThread::exitRobustList()
     /*
      * Fetch the relative futex offset:
      */
-    U32 futexOffset = head.futex_offset;
+    //U32 futexOffset = head.futex_offset;
 
     /*
      * Fetch any possibly pending lock-add first, and handle it

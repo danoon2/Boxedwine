@@ -1179,6 +1179,9 @@ void scas(Armv8btAsm* data, U32 width, Arm8BtFlags* lazyFlags) {
             data->movRegToReg(xDst, xEAX, 32, false);
         }
         siReg = xEAX;
+    } else {
+        kpanic_fmt("Armv8bt scas unhandled width %d", width);
+        siReg = 0;
     }
     U32 cxZeroSkipPos = 0xffffffff;
 

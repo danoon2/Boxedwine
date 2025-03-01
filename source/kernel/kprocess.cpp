@@ -1515,16 +1515,16 @@ struct clone_args {
 // I'm not sure why this doesn't work, seems like eip might be in a different place
 U32 KProcess::clone3(KThread* thread, U32 args, U32 size) {
     U64 flags = memory->readq(args);
-    U64 pidfd = memory->readq(args+8);
+    //U64 pidfd = memory->readq(args+8);
     U64 child_tid = memory->readq(args + 16);
     U64 parent_tid = memory->readq(args + 24);
-    U64 exit_signal = memory->readq(args + 32);
+    //U64 exit_signal = memory->readq(args + 32);
     U64 stack = memory->readq(args + 40);
     U64 stack_size = memory->readq(args + 48);
     U64 tls = memory->readq(args + 56);
-    U64 set_tid = memory->readq(args + 64);
-    U64 set_tid_size = memory->readq(args + 72);
-    U64 cgroup = memory->readq(args + 80);
+    //U64 set_tid = memory->readq(args + 64);
+    //U64 set_tid_size = memory->readq(args + 72);
+    //U64 cgroup = memory->readq(args + 80);
     return clone(thread, (U32)flags, (U32)(stack + stack_size), (U32)parent_tid, (U32)tls, (U32)child_tid);
 }
 

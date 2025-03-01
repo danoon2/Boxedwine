@@ -1287,7 +1287,7 @@ static void x11_FreeColors(CPU* cpu) {
         if (c.uses.size() == 0) {
             c.flags = 0;
         } else {
-            int ii = 0;
+            kwarn("x11_FreeColors color still used");
         }
         pixelsAddress += 4;
     }    
@@ -1406,7 +1406,7 @@ static void x11_AllocColor(CPU* cpu) {
         } else if (freeIndex == -1 && !(c.flags & COLOR_ALLOCATED)) {
             freeIndex = i;
         } else if (c.flags & COLOR_WRITE) {
-            int ii = 0;
+            kwarn("x11_AllocColor COLOR_WRITE not implemented");
         }
     }
     if (freeIndex >= 0) {
@@ -2514,10 +2514,6 @@ static void x11_WithDrawWindow(CPU* cpu) {
         return;
     }
     EAX = w->unmapWindow();
-}
-
-static void x11_MbTextPropertyToTextList(CPU* cpu) {
-    kpanic("x11_MbTextPropertyToTextList");
 }
 
 // XrmQuark XrmUniqueQuark()

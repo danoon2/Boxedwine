@@ -58,7 +58,6 @@ KMemoryData::~KMemoryData() {
 
 void KMemoryData::onPageChanged(U32 index) {
     Page* page = this->mmu[index].getPage();
-    U32 address = index << K_PAGE_SHIFT;    
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8* readPtr = page->getRamPtr(&mmu[index], index, false);
     if (mmu[index].canReadRam) {
@@ -466,7 +465,7 @@ void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function
 
     U8* ram = page->getRamPtr(&data->mmu[pageIndex], pageIndex, !readOnly, true, offset, todo);
     if (!ram) {
-        int ii = 0;
+        kpanic("KMemory::performOnMemory failed to get ram");
     }
     if (!callback(ram, todo)) {
         return;
@@ -479,7 +478,7 @@ void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function
         page = data->getPage(pageIndex);
         ram = page->getRamPtr(&data->mmu[pageIndex], pageIndex, !readOnly, true, 0, K_PAGE_SIZE);
         if (!ram) {
-            int ii = 0;
+            kpanic("KMemory::performOnMemory failed to get ram");
         }
         if (!callback(ram, K_PAGE_SIZE)) {
             return;
@@ -493,7 +492,7 @@ void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function
         page = data->getPage(pageIndex);
         ram = page->getRamPtr(&data->mmu[pageIndex], pageIndex, !readOnly, true, 0, len);
         if (!ram) {
-            int ii = 0;
+            kpanic("KMemory::performOnMemory failed to get ram");
         }
         callback(ram, len);
     }

@@ -680,13 +680,13 @@ void gl_common_XChooseVisual(CPU* cpu) {
     U32 value;
 
     U32 colorType = PF_COLOR_TYPE_NOTSET;
-    U32 cRedBits = 0;
-    U32 cGreenBits = 0;
-    U32 cBlueBits = 0;
-    U32 cAlphaBits = 0;
-    U32 cAccumBits = 0;
-    U32 cDepthBits = 0;
-    U32 cStencilBits = 0;
+    //U32 cRedBits = 0;
+    //U32 cGreenBits = 0;
+    //U32 cBlueBits = 0;
+    //U32 cAlphaBits = 0;
+    //U32 cAccumBits = 0;
+    //U32 cDepthBits = 0;
+    //U32 cStencilBits = 0;
     bool doubleBuffer = false;
 
     while ((value = cpu->memory->readd(address))) {
@@ -864,10 +864,10 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
 
-    U32 count = 0;
-    U32 screen = ARG2;    
+    //U32 count = 0;
+    //U32 screen = ARG2;
 
-    U32 colorType = PF_COLOR_TYPE_NOTSET;
+    //U32 colorType = PF_COLOR_TYPE_NOTSET;
     U32 bufferSize = 0;
     U32 cAlphaBits = 0;
     U32 cDepthBits = 0;
@@ -985,7 +985,6 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
 
 // int glXGetFBConfigAttrib(Display* dpy, GLXFBConfig config, int attribute, int* value)
 void gl_common_XGetFBConfigAttrib(CPU* cpu) {
-    KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     U32 attribute = ARG3;
@@ -1107,9 +1106,6 @@ void gl_common_XGetFBConfigs(CPU* cpu) {
     KThread* thread = cpu->thread;
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
-
-    U32 count = 0;
-    U32 screen = ARG2;
 
     U32 resultAddress = thread->process->alloc(thread, server->getFbConfigCount() * 4); // list of ids
     EAX = resultAddress;
@@ -1257,7 +1253,7 @@ void gl_common_XCreateContextAttribsARB(CPU* cpu) {
     XServer* server = XServer::getServer();
     CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
     U32 share_context = ARG3;
-    U32 direct = ARG4;
+    //U32 direct = ARG4;
     U32 attribList = ARG5;
     U32 major = 0;
     U32 minor = 0;

@@ -29,10 +29,12 @@ CodePageData::~CodePageData() {
     }
 }
 
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
     cpu->nextBlock = nullptr;
     cpu->yield = true;
 }
+#endif
 
 void CodePageData::removeEntry(CodePageEntry* entry, U32 offset) {
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
@@ -77,7 +79,7 @@ void CodePageData::removeBlock(CodePageEntry* entry, U32 offset) {
         prev->next = nullptr;
         prev->page->removeBlock(prev);
     }
-    U32 s = entry->start;
+
     U32 bucketIndexStart = entry->start >> CODE_ENTRIES_SHIFT;
     U32 bucketIndexStop = entry->stop >> CODE_ENTRIES_SHIFT;
     CodeBlock block = entry->block;

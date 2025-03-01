@@ -2092,15 +2092,6 @@ void Armv8btAsm::doJmp(bool mightNeedCS) {
     jmpRegToxBranchEip(mightNeedCS);
 }
 
-static void armv8_retranslateChunkAdjustForCS() {
-    Armv8btCPU* cpu = ((Armv8btCPU*)KThread::currentThread()->cpu);
-    cpu->eip.u32 -= cpu->seg[CS].address;
-    if (!cpu->isBig()) {
-        cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
-    }
-    cpu->returnHostAddress = cpu->reTranslateChunk();
-}
-
 static void armv8_translateIfNecessary(Armv8btCPU* cpu) {
     if (!cpu->isBig()) {
         cpu->eip.u32 = cpu->eip.u32 & 0xFFFF;
@@ -2508,7 +2499,7 @@ void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(voi
         ifBlock();
         writeJumpAmount(pos, this->bufferPos);
     } else {
-        U32 pos;
+        U32 pos = 0;
         if (op == DO_IF_EQUAL) {
             pos = branchEQ();
         } else if (op == DO_IF_NOT_EQUAL) {
@@ -4848,11 +4839,6 @@ U8 Armv8btAsm::vGetTmpReg() {
 
 void Armv8btAsm::vReleaseTmpReg(U8 reg) {
     vTmpRegInUse[reg - vTmp1] = false;
-}
-
-static void arm_invalidOp(CPU* cpu, U32 op) {
-    klog_fmt("arm_invalidOp: 0x%X", op);
-    cpu->thread->signalIllegalInstruction(5);
 }
 
 void Armv8btAsm::invalidOp(U32 op) {

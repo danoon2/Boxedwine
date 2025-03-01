@@ -55,9 +55,6 @@ T* marshalArray(CPU* cpu, U32 address, U32 count) {
     if (!address) {
         return nullptr;
     }
-    if (address < 0x1000) {
-        int ii = 0;
-    }
     if (!count) {
         return (T*)(U64)address;
     }

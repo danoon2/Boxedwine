@@ -10,7 +10,6 @@
 #include <winsock.h>
 #else
 #include <unistd.h>
-static void closesocket(int socket) { close(socket); }
 #endif
 
 DownloadDlg::DownloadDlg(Msg title, const std::vector<DownloadItem>& items, std::function<void(bool)> onCompleted) : BaseDlg(title, 400, 175), items(items), onCompleted(onCompleted) {    

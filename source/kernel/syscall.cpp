@@ -1568,14 +1568,16 @@ static U32 syscall_set_robust_list(CPU* cpu, U32 eipCount) {
     return result;
 }
 
+/*
 static U32 syscall_get_robust_list(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_THREAD, cpu, "set_robust_list: pid=%X head_ptr=%X len_ptr=%X", ARG1, ARG2, ARG3);
     U32 result = cpu->thread->get_robust_list(ARG1, ARG2, ARG3);
     SYS_LOG(SYSCALL_THREAD, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
+*/
 
-static U32 syscall_sync_file_range(CPU* cpu, U32 eipCount) {    
+static U32 syscall_sync_file_range(CPU* cpu, U32 eipCount) {
     U32 result = 0;
     SYS_LOG1(SYSCALL_THREAD, cpu, "sync_file_range: result=%d(0x%X) IGNORED\n", result, result);
     return result;

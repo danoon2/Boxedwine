@@ -303,7 +303,7 @@ void KNativeScreenSDL::present() {
 bool KNativeScreenSDL::presentedSinceLastCheck() {
     bool result = presented;
     presented = false;
-    return presented;
+    return result;
 }
 
 void KNativeScreenSDL::clearTextureCache(U32 id) {
@@ -538,8 +538,6 @@ bool KNativeScreenSDL::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32
     } else {
         kpanic_fmt("Unhandled bpp for screen shot: %d", bpp);
     }
-    int pitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
-    U32 len = pitch * screenHeight();
 
     SDL_Surface* s = SDL_CreateRGBSurfaceFrom(buffer, w, h, bpp, w * 4, rMask, gMask, bMask, 0);
     if (!s) {

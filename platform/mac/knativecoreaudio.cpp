@@ -148,7 +148,6 @@ int AudioUnit_SetVolume(AudioUnit au, float left, float right);
 static bool CoreAudio_MIDIInit()
 {
     int i;
-    char szPname[MAXPNAMELEN] = {0};
 
     ItemCount numDest = MIDIGetNumberOfDestinations();
     CFStringRef name = CFStringCreateWithFormat(kCFAllocatorDefault, NULL, CFSTR("wineMIDIClient.%d"), getpid());
@@ -208,17 +207,17 @@ static bool CoreAudio_MIDIInit()
     }
     return true;
 }
-
+/*
 static void CoreAudio_MIDIRelease() {
-    if (wineMIDIClient) MIDIClientDispose(wineMIDIClient); /* MIDIClientDispose will close all ports */
+    if (wineMIDIClient) MIDIClientDispose(wineMIDIClient); // MIDIClientDispose will close all ports
     free(destinations);
 }
-
+*/
 U32 KNativeAudioCoreAudio::midiOutOpen(U32 wDevID) {
 	MIDIDestination *dest;
 
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutOpen bad device ID : %d", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutOpen bad device ID : %d", wDevID);
         return MMSYSERR_BADDEVICEID;
     }
 
@@ -228,13 +227,13 @@ U32 KNativeAudioCoreAudio::midiOutOpen(U32 wDevID) {
     {
         if (!SynthUnit_CreateDefaultSynthUnit(&dest->graph, &dest->synth))
         {
-            klog("KNativeAudioCoreAudio::midiOutOpen SynthUnit_CreateDefaultSynthUnit dest=%p failed", dest);
+            klog_fmt("KNativeAudioCoreAudio::midiOutOpen SynthUnit_CreateDefaultSynthUnit dest=%p failed", dest);
             return MMSYSERR_ERROR;
         }
 
         if (!SynthUnit_Initialize(dest->synth, dest->graph))
         {
-            klog("KNativeAudioCoreAudio::midiOutOpen SynthUnit_Initialise dest=%p failed", dest);
+            klog_fmt("KNativeAudioCoreAudio::midiOutOpen SynthUnit_Initialise dest=%p failed", dest);
             return MMSYSERR_ERROR;
         }
     }
@@ -247,7 +246,7 @@ U32 KNativeAudioCoreAudio::midiOutClose(U32 wDevID) {
     U32 ret = MMSYSERR_NOERROR;
 
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutClose bad device ID : %d", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutClose bad device ID : %d", wDevID);
         return MMSYSERR_BADDEVICEID;
     }
 
@@ -265,7 +264,7 @@ U32 KNativeAudioCoreAudio::midiOutData(U32 wDevID, U8* buffer, U32 len) {
     UInt8 chn = (evt & 0x0F);
 
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutData bad device ID : %d", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutData bad device ID : %d", wDevID);
         return MMSYSERR_BADDEVICEID;
     }
 
@@ -284,7 +283,7 @@ U32 KNativeAudioCoreAudio::midiOutData(U32 wDevID, U8* buffer, U32 len) {
         err = MusicDeviceMIDIEvent(destinations[wDevID].synth, (evt & 0xF0) | chn, d1, d2, 0);
         if (err != noErr)
         {
-            klog("KNativeAudioCoreAudio::midiOutData MusicDeviceMIDIEvent(%p, %04x, %04x, %04x, %d) return %d", destinations[wDevID].synth, (evt & 0xF0) | chn, d1, d2, 0, err);
+            klog_fmt("KNativeAudioCoreAudio::midiOutData MusicDeviceMIDIEvent(%p, %04x, %04x, %04x, %d) return %d", destinations[wDevID].synth, (evt & 0xF0) | chn, d1, d2, 0, err);
             return MMSYSERR_ERROR;
         }
     }
@@ -300,7 +299,7 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U8* buffer, U32 len) {
     OSStatus err = noErr;
     
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutLongData bad device ID : %d\n", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutLongData bad device ID : %d\n", wDevID);
         return MMSYSERR_BADDEVICEID;
     }
     
@@ -313,7 +312,7 @@ U32 KNativeAudioCoreAudio::midiOutLongData(U32 wDevID, U8* buffer, U32 len) {
         err = MusicDeviceSysEx(destinations[wDevID].synth, (const UInt8 *) buffer, len);
         if (err != noErr)
         {
-            klog("KNativeAudioCoreAudio::midiOutLongData MusicDeviceSysEx(%p, %p, %d) return %d", destinations[wDevID].synth, buffer, len, err);
+            klog_fmt("KNativeAudioCoreAudio::midiOutLongData MusicDeviceSysEx(%p, %p, %d) return %d", destinations[wDevID].synth, buffer, len, err);
             return MMSYSERR_ERROR;
         }
     }
@@ -330,7 +329,7 @@ U32 KNativeAudioCoreAudio::midiOutGetNumDevs() {
 
 U32 KNativeAudioCoreAudio::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpdwVolume) {
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutGetVolume bad device ID : %d", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutGetVolume bad device ID : %d", wDevID);
         return MMSYSERR_BADDEVICEID;
     }
     if (lpdwVolume == 0) {
@@ -354,7 +353,7 @@ U32 KNativeAudioCoreAudio::midiOutGetVolume(KThread* thread, U32 wDevID, U32 lpd
 
 U32 KNativeAudioCoreAudio::midiOutSetVolume(U32 wDevID, U32 dwVolume) {
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutSetVolume bad device ID : %d", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutSetVolume bad device ID : %d", wDevID);
         return MMSYSERR_BADDEVICEID;
     }
     if (destinations[wDevID].caps.wTechnology == MOD_SYNTH)
@@ -374,7 +373,7 @@ U32 KNativeAudioCoreAudio::midiOutSetVolume(U32 wDevID, U32 dwVolume) {
 
 BString KNativeAudioCoreAudio::midiOutGetName(U32 wDevID) {
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutGetName bad device ID : %d", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutGetName bad device ID : %d", wDevID);
         return BString::empty;
     }
     return BString::copy(destinations[wDevID].caps.szPname);
@@ -382,7 +381,7 @@ BString KNativeAudioCoreAudio::midiOutGetName(U32 wDevID) {
 
 bool KNativeAudioCoreAudio::midiOutIsOpen(U32 wDevID) {
     if (wDevID >= MIDIOut_NumDevs) {
-        klog("KNativeAudioCoreAudio::midiOutIsOpen bad device ID : %d", wDevID);
+        klog_fmt("KNativeAudioCoreAudio::midiOutIsOpen bad device ID : %d", wDevID);
         return false;
     }
     if (destinations[wDevID].caps.wTechnology == MOD_SYNTH) {

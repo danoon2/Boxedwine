@@ -29,6 +29,7 @@ static PFN_vkGetInstanceProcAddr pvkGetInstanceProcAddr = nullptr;
 static U32 vulkanPtrCount;
 static U32 vulkanPtrHighMark;
 
+#ifdef _DEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
@@ -39,6 +40,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 
     return VK_FALSE;
 }
+#endif
 
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
     KProcessPtr process = KThread::currentThread()->process;

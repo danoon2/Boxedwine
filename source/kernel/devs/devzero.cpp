@@ -42,10 +42,10 @@ U32 DevZero::writeNative(U8* buffer, U32 len) {
 
 U32 DevZero::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 off) {
     // :TODO: not correct, writing to this should just be ignored
-    return thread->memory->mmap(thread, address, len, prot, flags, -1, off);
     if (prot & K_PROT_WRITE) {
         kwarn("DevZero::map with PROT_WRITE not implemented, this will probably cause a problem");
     }
+    return thread->memory->mmap(thread, address, len, prot, flags, -1, off);
 }
 
 bool DevZero::canMap() {

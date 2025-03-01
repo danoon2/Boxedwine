@@ -228,7 +228,7 @@ S64 KNetLinkObject::length() {
 U32 KNetLinkObject::bind(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 len) {
     KMemory* memory = thread->memory;
 
-    U32 family = memory->readw(address);
+    //U32 family = memory->readw(address);
 
     U32 port = memory->readd(address + 4);
     if (port == 0) {
@@ -445,15 +445,13 @@ void KNetLinkObject::append(const char* s) {
 U32 ipAddress();
 
 U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 message, U32 length, U32 sendtoFlags, U32 dest_addr, U32 dest_len) {
-    if (0) {
-        thread->cpu->logFile.createNew(B("link.txt"));
-    }
+
     if (length >= 16) {
-        U32 len = thread->memory->readd(message);
+        //U32 len = thread->memory->readd(message);
         U16 type = thread->memory->readw(message + 4);
-        U16 flags = thread->memory->readw(message + 6);
+        //U16 flags = thread->memory->readw(message + 6);
         U32 seq = thread->memory->readd(message + 8);
-        U32 pid = thread->memory->readd(message + 12);
+        //U32 pid = thread->memory->readd(message + 12);
 
         // start in Wine 7 (with Tiny Core Linux), this function will crash if I don't return something.  I'm not sure if what I'm returning is correct, but it stops the crash
         //
@@ -465,7 +463,7 @@ U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 me
         //
         //    for (entry = indices; entry->if_index; entry++)
         if (type == 0x12) { // RTM_GETLINK
-            U8 ifa_family = thread->memory->readb(message + 12);
+            //U8 ifa_family = thread->memory->readb(message + 12);
 
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(lockCond);
 
@@ -621,7 +619,7 @@ U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 me
             BOXEDWINE_CONDITION_SIGNAL_ALL(lockCond);
             return length;
         } else {
-            int ii = 0;
+            kwarn_fmt("KNetLinkObject::sendto unhandled type %x", type);
         }
     }
     return -1; // if we return 0 here and pretend it succeeded, then some library might call recvfrom on a block thread to get the response and hang the app

@@ -544,7 +544,6 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
             std::shared_ptr< KNativeSocketObject> t = std::dynamic_pointer_cast<KNativeSocketObject>(shared_from_this());
             return handleNativeSocketError(t, false);
         }
-        U32 count = ifconf.ifc_len / sizeof(struct ifreq);
         thread->memory->writed(address, ifconf.ifc_len);
         thread->memory->memcpy(thread->memory->readd(address + 4), ifs, ifconf.ifc_len);
         delete[] ifs;
@@ -1018,7 +1017,7 @@ U32 KNativeSocketObject::accept(KThread* thread, const KFileDescriptorPtr& fd, U
 U32 KNativeSocketObject::getsockname(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) {
     KMemory* memory = thread->memory;
 
-    socklen_t len = (socklen_t)memory->readd( plen);
+    //socklen_t len = (socklen_t)memory->readd( plen);
     struct sockaddr_in addr = {0};
     socklen_t nativeLen = sizeof(struct sockaddr_in);
     U32 result = ::getsockname(this->nativeSocket, (struct sockaddr*)&addr, &nativeLen);
@@ -1035,7 +1034,7 @@ U32 KNativeSocketObject::getsockname(KThread* thread, const KFileDescriptorPtr& 
 
 U32 KNativeSocketObject::getpeername(KThread* thread, const KFileDescriptorPtr& fd, U32 address, U32 plen) {
     KMemory* memory = thread->memory;
-    socklen_t len = (socklen_t)memory->readd( plen);
+    //socklen_t len = (socklen_t)memory->readd( plen);
     struct sockaddr_in addr = {0};
     socklen_t nativeLen = sizeof(struct sockaddr_in);
     

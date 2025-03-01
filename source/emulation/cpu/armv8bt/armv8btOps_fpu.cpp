@@ -69,19 +69,6 @@ static void setIsRegCachedWithRegIndex(Armv8btAsm* data, U8 regIndex, U8 value) 
 	data->releaseTmpReg(offsetReg);
 }
 
-static void hostReadTag(Armv8btAsm* data, U32 index, U8 resultReg) {
-	U8 offsetReg = data->getFpuTagOffset();
-
-	if (index == 0) {
-		data->readMem32RegOffset(resultReg, offsetReg, data->getFpuTopReg(), 2);
-	} else {
-		U8 topReg = calculateIndexReg(data, index);
-		data->readMem32RegOffset(resultReg, offsetReg, topReg, 2);
-		data->releaseTmpReg(topReg);
-	}
-	data->releaseFpuTagOffset(offsetReg);
-}
-
 static void hostWriteTag(Armv8btAsm* data, U8 valueReg, bool releaseValueReg, U32 index) {
 	U8 offsetReg = data->getFpuTagOffset();
 

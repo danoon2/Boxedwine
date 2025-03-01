@@ -86,8 +86,9 @@ KOpenGLPtr KNativeSystem::getOpenGL() {
 #ifdef BOXEDWINE_OPENGL_SDL
         opengl = SDLGL::create();
         return opengl;
-#endif
+#else
         klog("Failed to load OpenGL, will probably crash");
+#endif
     }
     return opengl;
 }

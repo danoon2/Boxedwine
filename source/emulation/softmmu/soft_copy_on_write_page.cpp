@@ -37,7 +37,6 @@ U8* CopyOnWritePage::getRamPtr(MMU* mmu, U32 page, bool write, bool force, U32 o
 
 void CopyOnWritePage::onDemmand(MMU* mmu, U32 pageIndex) {
     KMemory* memory = KThread::currentThread()->memory;
-    KMemoryData* mem = getMemData(memory);
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 
     if (mmu->getPageType() != PageType::CopyOnWrite) {

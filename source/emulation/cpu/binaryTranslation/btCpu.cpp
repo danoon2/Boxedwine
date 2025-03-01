@@ -220,7 +220,7 @@ U64 BtCPU::handleAccessException(DecodedOp* op) {
     try {
         op->pfn(this, op);
     } catch (...) {
-        int ii = 0;
+        
     }
     fillFlags();
     return (U64)this->translateEip(this->eip.u32);
@@ -234,7 +234,7 @@ void BtCPU::startThread() {
     try {
         this->run();
     } catch (...) {
-        int ii = 0;
+        
     }
 #ifndef __TEST
     KProcessPtr process = thread->process;
@@ -326,9 +326,6 @@ void terminateCurrentThread(KThread* thread) {
 void unscheduleThread(KThread* thread) {
 }
 
-static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
-}
-
 #include "../x64/x64CPU.h"
 
 #if !defined(BOXEDWINE_X64)
@@ -353,7 +350,7 @@ void common_runSingleOp(BtCPU* cpu) {
     try {
         op->pfn(cpu, op);
     } catch (...) {
-        int ii = 0;
+        
     }
     cpu->fillFlags();
     cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);

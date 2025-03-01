@@ -27,7 +27,6 @@
 #include "../../emulation/softmmu/soft_rw_page.h"
 #include "../../emulation/softmmu/kmemory_soft.h"
 
-static U32 screenBPP=32;
 static U32 paletteChanged;
 static U8* screenPixels;
 #ifdef BOXEDWINE_64BIT_MMU

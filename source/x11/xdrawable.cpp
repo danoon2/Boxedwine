@@ -215,7 +215,7 @@ int XDrawable::fillRectangle(KThread* thread, const std::shared_ptr<XGC>& gc, S3
 			p += bytes_per_line/4;
 		}
 	} else {
-		int ii = 0;
+        kwarn_fmt("XDrawable::fillRectangle only %d-bit not handled", visual->bits_per_rgb);
 	}
 	setDirty();
 	return Success;
