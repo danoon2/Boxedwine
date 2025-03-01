@@ -518,7 +518,7 @@ public class VkHostMarshalType {
                 out.append(";\n");
             } else {
                 boolean needOutParen = false;
-                if (param.paramType.getType().equals("union")) {
+                if (param.paramType.getType().equals("union") || param.paramType.getCategory().equals("union")) {
                     String memberName = null;
                     for (VkParam member : param.paramType.members) {
                         if (member.paramType.getType().equals("uint64_t") && width == 8) {

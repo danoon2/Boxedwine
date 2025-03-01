@@ -13365,7 +13365,7 @@ void MarshalVkPipelineExecutableStatisticKHR::read(BoxedVulkanInfo* pBoxedInfo, 
     memory->memcpy(&s->name, address, 256);address+=256;
     memory->memcpy(&s->description, address, 256);address+=256;
     s->format = (VkPipelineExecutableStatisticFormatKHR)memory->readd(address);address+=4;
-    s->value = (VkPipelineExecutableStatisticValueKHR)memory->readq(address);address+=8;
+    s->value.u64 = memory->readq(address);address+=8;
 }
 void MarshalVkPipelineExecutableStatisticKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkPipelineExecutableStatisticKHR* s) {
     memory->writed(address, s->sType);address+=4;
@@ -14604,14 +14604,14 @@ void MarshalVkAccelerationStructureGeometryTrianglesDataKHR::read(BoxedVulkanInf
     }
     s->vertexFormat = (VkFormat)memory->readd(address);address+=4;
     //assuming deviceAddress is used
-    s->vertexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->vertexData.deviceAddress = memory->readq(address);address+=8;
     s->vertexStride = (VkDeviceSize)memory->readq(address);address+=8;
     s->maxVertex = (uint32_t)memory->readd(address);address+=4;
     s->indexType = (VkIndexType)memory->readd(address);address+=4;
     //assuming deviceAddress is used
-    s->indexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->indexData.deviceAddress = memory->readq(address);address+=8;
     //assuming deviceAddress is used
-    s->transformData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->transformData.deviceAddress = memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryTrianglesDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryTrianglesDataKHR* s) {
     kpanic("MarshalVkAccelerationStructureGeometryTrianglesDataKHR::write");
@@ -14628,7 +14628,7 @@ void MarshalVkAccelerationStructureGeometryAabbsDataKHR::read(BoxedVulkanInfo* p
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     //assuming deviceAddress is used
-    s->data = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->data.deviceAddress = memory->readq(address);address+=8;
     s->stride = (VkDeviceSize)memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryAabbsDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryAabbsDataKHR* s) {
@@ -14647,7 +14647,7 @@ void MarshalVkAccelerationStructureGeometryInstancesDataKHR::read(BoxedVulkanInf
     }
     s->arrayOfPointers = (VkBool32)memory->readd(address);address+=4;
     //assuming deviceAddress is used
-    s->data = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->data.deviceAddress = memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryInstancesDataKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryInstancesDataKHR* s) {
     kpanic("MarshalVkAccelerationStructureGeometryInstancesDataKHR::write");
@@ -14717,7 +14717,7 @@ void MarshalVkAccelerationStructureBuildGeometryInfoKHR::read(BoxedVulkanInfo* p
         s->ppGeometries = ppGeometries;
     }
     //assuming deviceAddress is used
-    s->scratchData = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
+    s->scratchData.deviceAddress = memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureBuildGeometryInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureBuildGeometryInfoKHR* s) {
     kpanic("MarshalVkAccelerationStructureBuildGeometryInfoKHR::write");
@@ -14855,7 +14855,7 @@ void MarshalVkCopyAccelerationStructureToMemoryInfoKHR::read(BoxedVulkanInfo* pB
     }
     s->src = (VkAccelerationStructureKHR)memory->readq(address);address+=8;
     //assuming deviceAddress is used
-    s->dst = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
+    s->dst.deviceAddress = memory->readq(address);address+=8;
     s->mode = (VkCopyAccelerationStructureModeKHR)memory->readd(address);address+=4;
 }
 void MarshalVkCopyAccelerationStructureToMemoryInfoKHR::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyAccelerationStructureToMemoryInfoKHR* s) {
@@ -14873,7 +14873,7 @@ void MarshalVkCopyMemoryToAccelerationStructureInfoKHR::read(BoxedVulkanInfo* pB
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     //assuming deviceAddress is used
-    s->src = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->src.deviceAddress = memory->readq(address);address+=8;
     s->dst = (VkAccelerationStructureKHR)memory->readq(address);address+=8;
     s->mode = (VkCopyAccelerationStructureModeKHR)memory->readd(address);address+=4;
 }
@@ -23144,7 +23144,7 @@ void MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::read(BoxedVulk
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     //assuming deviceAddress is used
-    s->vertexData = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->vertexData.deviceAddress = memory->readq(address);address+=8;
 }
 void MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkAccelerationStructureGeometryMotionTrianglesDataNV* s) {
     kpanic("MarshalVkAccelerationStructureGeometryMotionTrianglesDataNV::write");
@@ -24350,11 +24350,11 @@ void MarshalVkMicromapBuildInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* m
         s->ppUsageCounts = ppUsageCounts;
     }
     //assuming deviceAddress is used
-    s->data = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->data.deviceAddress = memory->readq(address);address+=8;
     //assuming deviceAddress is used
-    s->scratchData = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
+    s->scratchData.deviceAddress = memory->readq(address);address+=8;
     //assuming deviceAddress is used
-    s->triangleArray = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->triangleArray.deviceAddress = memory->readq(address);address+=8;
     s->triangleArrayStride = (VkDeviceSize)memory->readq(address);address+=8;
 }
 void MarshalVkMicromapBuildInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkMicromapBuildInfoEXT* s) {
@@ -24466,7 +24466,7 @@ void MarshalVkCopyMicromapToMemoryInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMe
     }
     s->src = (VkMicromapEXT)memory->readq(address);address+=8;
     //assuming deviceAddress is used
-    s->dst = (VkDeviceOrHostAddressKHR)memory->readq(address);address+=8;
+    s->dst.deviceAddress = memory->readq(address);address+=8;
     s->mode = (VkCopyMicromapModeEXT)memory->readd(address);address+=4;
 }
 void MarshalVkCopyMicromapToMemoryInfoEXT::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCopyMicromapToMemoryInfoEXT* s) {
@@ -24484,7 +24484,7 @@ void MarshalVkCopyMemoryToMicromapInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMe
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     //assuming deviceAddress is used
-    s->src = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->src.deviceAddress = memory->readq(address);address+=8;
     s->dst = (VkMicromapEXT)memory->readq(address);address+=8;
     s->mode = (VkCopyMicromapModeEXT)memory->readd(address);address+=4;
 }
@@ -24583,7 +24583,7 @@ void MarshalVkAccelerationStructureTrianglesOpacityMicromapEXT::read(BoxedVulkan
     }
     s->indexType = (VkIndexType)memory->readd(address);address+=4;
     //assuming deviceAddress is used
-    s->indexBuffer = (VkDeviceOrHostAddressConstKHR)memory->readq(address);address+=8;
+    s->indexBuffer.deviceAddress = memory->readq(address);address+=8;
     s->indexStride = (VkDeviceSize)memory->readq(address);address+=8;
     s->baseTriangle = (uint32_t)memory->readd(address);address+=4;
     s->usageCountsCount = (uint32_t)memory->readd(address);address+=4;
