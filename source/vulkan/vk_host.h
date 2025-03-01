@@ -9,6 +9,7 @@
 class MarshalVkDescriptorUpdateTemplateCreateInfo;
 class MarshalVkImageCreateInfo;
 class BoxedVulkanInfo;
+class MarshalCallbackData;
 VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);
 U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);
@@ -1303,8 +1304,8 @@ public:
     PFN_vkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV pvkGetPhysicalDeviceCooperativeMatrixFlexibleDimensionsPropertiesNV;
     std::unordered_map<BString, U32> functionAddressByName;
     std::unordered_map<U32, void*> rayTracingCaptureReplayShaderGroupHandles;
-    std::unordered_map<U64, void*> debugReportCallbacks;
-    std::unordered_map<U64, void*> debugUtilsCallbacks;
+    std::unordered_map<U64, MarshalCallbackData*> debugReportCallbacks;
+    std::unordered_map<U64, MarshalCallbackData*> debugUtilsCallbacks;
     std::unordered_map<U64, std::shared_ptr<MarshalVkDescriptorUpdateTemplateCreateInfo>> descriptorUpdateTemplateCreateInfo;
     std::unordered_map<U64, std::shared_ptr<MarshalVkImageCreateInfo>> imageCreateInfo;
     VkDebugUtilsMessengerEXT debugMessenger;

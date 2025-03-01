@@ -3118,7 +3118,7 @@ void vk_CreateDebugReportCallbackEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDebugReportCallbackEXT tmp_pCallback = (VkDebugReportCallbackEXT) cpu->memory->readq(ARG4);
     VkDebugReportCallbackEXT* pCallback = &tmp_pCallback;
-    pBoxedInfo->debugReportCallbacks[(U64)tmp_pCallback] = local_pCreateInfo.s.pUserData;
+    pBoxedInfo->debugReportCallbacks[(U64)tmp_pCallback] = (MarshalCallbackData*)local_pCreateInfo.s.pUserData;
     EAX = (U32)pBoxedInfo->pvkCreateDebugReportCallbackEXT(instance, pCreateInfo, pAllocator, pCallback);
     cpu->memory->writeq(ARG4, (U64)tmp_pCallback);
 }
@@ -4637,7 +4637,7 @@ void vk_CreateDebugUtilsMessengerEXT(CPU* cpu) {
     VkAllocationCallbacks* pAllocator = NULL;
     VkDebugUtilsMessengerEXT tmp_pMessenger = (VkDebugUtilsMessengerEXT) cpu->memory->readq(ARG4);
     VkDebugUtilsMessengerEXT* pMessenger = &tmp_pMessenger;
-    pBoxedInfo->debugUtilsCallbacks[(U64)tmp_pMessenger] = local_pCreateInfo.s.pUserData;
+    pBoxedInfo->debugUtilsCallbacks[(U64)tmp_pMessenger] = (MarshalCallbackData*)local_pCreateInfo.s.pUserData;
     EAX = (U32)pBoxedInfo->pvkCreateDebugUtilsMessengerEXT(instance, pCreateInfo, pAllocator, pMessenger);
     cpu->memory->writeq(ARG4, (U64)tmp_pMessenger);
 }

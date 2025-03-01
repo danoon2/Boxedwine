@@ -29,12 +29,12 @@ public class VkHost {
 
     static private void hostCall(VkFunction fn, StringBuilder out) throws Exception {
         if (fn.name.equals("vkCreateDebugReportCallbackEXT")) {
-            out.append("    pBoxedInfo->debugReportCallbacks[(U64)tmp_pCallback] = local_pCreateInfo.s.pUserData;\n");
+            out.append("    pBoxedInfo->debugReportCallbacks[(U64)tmp_pCallback] = (MarshalCallbackData*)local_pCreateInfo.s.pUserData;\n");
         } else if (fn.name.equals("vkDestroyDebugReportCallbackEXT")) {
             out.append("    delete pBoxedInfo->debugReportCallbacks[(U64)callback];\n");
             out.append("    pBoxedInfo->debugReportCallbacks.erase((U64)callback);\n");
         } else if (fn.name.equals("vkCreateDebugUtilsMessengerEXT")) {
-            out.append("    pBoxedInfo->debugUtilsCallbacks[(U64)tmp_pMessenger] = local_pCreateInfo.s.pUserData;\n");
+            out.append("    pBoxedInfo->debugUtilsCallbacks[(U64)tmp_pMessenger] = (MarshalCallbackData*)local_pCreateInfo.s.pUserData;\n");
         } else if (fn.name.equals("vkDestroyDebugUtilsMessengerEXT")) {
             out.append("    delete pBoxedInfo->debugUtilsCallbacks[(U64)messenger];\n");
             out.append("    pBoxedInfo->debugUtilsCallbacks.erase((U64)messenger);\n");
@@ -198,6 +198,7 @@ public class VkHost {
             }
         }
         out.append("class BoxedVulkanInfo;\n");
+        out.append("class MarshalCallbackData;\n");
         out.append("VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address);\n");
         out.append("U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info);\n");
         out.append("void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* pNext);\n");
@@ -233,8 +234,8 @@ public class VkHost {
         }
         out.append("    std::unordered_map<BString, U32> functionAddressByName;\n");
         out.append("    std::unordered_map<U32, void*> rayTracingCaptureReplayShaderGroupHandles;\n");
-        out.append("    std::unordered_map<U64, void*> debugReportCallbacks;\n");
-        out.append("    std::unordered_map<U64, void*> debugUtilsCallbacks;\n");
+        out.append("    std::unordered_map<U64, MarshalCallbackData*> debugReportCallbacks;\n");
+        out.append("    std::unordered_map<U64, MarshalCallbackData*> debugUtilsCallbacks;\n");
         HashSet<String> done = new HashSet<>();
         for (VkCopyData copyData : data.copyData.values()) {
             if (done.contains(copyData.variableName)) {
