@@ -517,6 +517,7 @@ public class VkHostMarshalType {
                 out.append(width);
                 out.append(";\n");
             } else {
+                boolean needOutParen = false;
                 if (param.paramType.getType().equals("union")) {
                     String memberName = null;
                     for (VkParam member : param.paramType.members) {
@@ -542,22 +543,41 @@ public class VkHostMarshalType {
                 } else {
                     out.append("    s->");
                     out.append(param.name);
-                    out.append(" = (");
-                    out.append(param.paramType.name);
-                    if (param.paramType.name.equals("void")) {
-                        out.append("*");
+                    out.append(" = ");
+                    if (!param.paramType.name.equals("void")) {
+                        out.append("(");
+                        out.append(param.paramType.name);
+                        out.append(")");
+                    } else {
+                        out.append("(void*)static_cast<intptr_t>(");
+                        needOutParen = true;
                     }
-                    out.append(")");
                 }
                 out.append("memory->read");
                 if (width == 8) {
-                    out.append("q(address);address+=8;\n");
+                    out.append("q(address)");
+                    if (needOutParen) {
+                        out.append(")");
+                    }
+                    out.append(";address+=8;\n");
                 } else if (width == 4) {
-                    out.append("d(address);address+=4;\n");
+                    out.append("d(address)");
+                    if (needOutParen) {
+                        out.append(")");
+                    }
+                    out.append(";address+=4;\n");
                 } else if (width == 2) {
-                    out.append("w(address);address+=2;\n");
+                    out.append("w(address)");
+                    if (needOutParen) {
+                        out.append(")");
+                    }
+                    out.append(";address+=2;\n");
                 } else if (width == 1) {
-                    out.append("b(address);address+=1;\n");
+                    out.append("b(address)");
+                    if (needOutParen) {
+                        out.append(")");
+                    }
+                    out.append(";address+=1;\n");
                 } else {
                     throw new Exception("Unknown width");
                 }

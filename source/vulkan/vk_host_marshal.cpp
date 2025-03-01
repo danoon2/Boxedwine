@@ -10001,7 +10001,7 @@ void MarshalVkCheckpointDataNV::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->stage = (VkPipelineStageFlagBits)memory->readd(address);address+=4;
-    s->pCheckpointMarker = (void*)memory->readd(address);address+=4;
+    s->pCheckpointMarker = (void*)static_cast<intptr_t>(memory->readd(address));address+=4;
 }
 void MarshalVkCheckpointDataNV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCheckpointDataNV* s) {
     memory->writed(address, s->sType);address+=4;
@@ -12939,7 +12939,7 @@ void MarshalVkInitializePerformanceApiInfoINTEL::read(BoxedVulkanInfo* pBoxedInf
     } else {
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
-    s->pUserData = (void*)memory->readd(address);address+=4;
+    s->pUserData = (void*)static_cast<intptr_t>(memory->readd(address));address+=4;
 }
 void MarshalVkInitializePerformanceApiInfoINTEL::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkInitializePerformanceApiInfoINTEL* s) {
     memory->writed(address, s->sType);address+=4;
@@ -17392,7 +17392,7 @@ void MarshalVkCheckpointData2NV::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memo
         s->pNext = vulkanGetNextPtr(pBoxedInfo, memory, paramAddress);
     }
     s->stage = (VkPipelineStageFlags2)memory->readq(address);address+=8;
-    s->pCheckpointMarker = (void*)memory->readd(address);address+=4;
+    s->pCheckpointMarker = (void*)static_cast<intptr_t>(memory->readd(address));address+=4;
 }
 void MarshalVkCheckpointData2NV::write(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const VkCheckpointData2NV* s) {
     memory->writed(address, s->sType);address+=4;
