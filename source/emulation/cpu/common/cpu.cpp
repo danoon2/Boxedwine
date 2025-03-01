@@ -203,7 +203,7 @@ void CPU::prepareFpuException(int code, int error) {
     } else {
         CPU* cpu = this;
         this->walkStack(this->eip.u32, EBP, 2);
-        kpanic("unhandled exception: code=%d error=%d", code, error);
+        kpanic_fmt("unhandled exception: code=%d error=%d", code, error);
     }
 }
 
@@ -249,7 +249,7 @@ void CPU::prepareException(int code, int error) {
     } else {        
         CPU* cpu = this;
         this->walkStack(this->eip.u32, EBP, 2);
-        kpanic("unhandled exception: code=%d error=%d", code, error);        
+        kpanic_fmt("unhandled exception: code=%d error=%d", code, error);
     }
 }
 
@@ -328,7 +328,7 @@ void CPU::walkStack(U32 eip, U32 ebp, U32 indent) {
     if (parts.size()) {
         functionName = parts[0];
     }
-    klog("%*s %-20s %-40s %08x / %08x", indent, "", name.length()?name.c_str():"Unknown", functionName.c_str(), eip, moduleEip);        
+    klog_fmt("%*s %-20s %-40s %08x / %08x", indent, "", name.length()?name.c_str():"Unknown", functionName.c_str(), eip, moduleEip);
 
     ChangeThread c(this->thread);
     if (this->memory->canRead(ebp, 8)) {
@@ -381,7 +381,7 @@ void CPU::cpuid() {
             EAX = 0;
             break;
         default:
-            kwarn("Unhandled CPUID Function %X", EAX);
+            kwarn_fmt("Unhandled CPUID Function %X", EAX);
             EAX=0;
             EBX=0;
             ECX=0;
@@ -471,7 +471,7 @@ U32 CPU::lsl(U32 selector, U32 limit) {
 U32 CPU::setSegment(U32 seg, U32 value) {
     value &= 0xffff;
     if (seg>=6) {
-        kpanic("CPU::setSegment invalid segment: %d", seg);
+        kpanic_fmt("CPU::setSegment invalid segment: %d", seg);
     }
     if (this->flags & VM) {
         this->setSeg(seg, value << 4, value);
@@ -1174,7 +1174,7 @@ U32 CPU::offsetofReg32(U32 index) {
     case 7: return offsetof(CPU, reg[7].u32);
     case 8: return offsetof(CPU, reg[8].u32);
     }
-    kpanic("CPU::offsetofReg32 oops %d", index);
+    kpanic_fmt("CPU::offsetofReg32 oops %d", index);
     return 0;
 }
 
@@ -1190,7 +1190,7 @@ U32 CPU::offsetofReg16(U32 index) {
     case 7: return offsetof(CPU, reg[7].u16);
     case 8: return offsetof(CPU, reg[8].u16);
     }
-    kpanic("CPU::offsetofReg16 oops %d", index);
+    kpanic_fmt("CPU::offsetofReg16 oops %d", index);
     return 0;
 }
 
@@ -1205,7 +1205,7 @@ U32 CPU::offsetofReg8(U32 index) {
     case 6: return offsetof(CPU, reg[2].h8);
     case 7: return offsetof(CPU, reg[3].h8);
     }
-    kpanic("CPU::offsetofReg8 oops %d", index);
+    kpanic_fmt("CPU::offsetofReg8 oops %d", index);
     return 0;
 }
 
@@ -1219,7 +1219,7 @@ U32 CPU::offsetofSegAddress(U32 index) {
     case 5: return offsetof(CPU, seg[5].address);
     case 6: return offsetof(CPU, seg[6].address);
     }
-    kpanic("CPU::offsetofSegAddress oops %d", index);
+    kpanic_fmt("CPU::offsetofSegAddress oops %d", index);
     return 0;
 }
 
@@ -1233,7 +1233,7 @@ U32 CPU::offsetofSegValue(U32 index) {
     case 5: return offsetof(CPU, seg[5].value);
     case 6: return offsetof(CPU, seg[6].value);
     }
-    kpanic("CPU::offsetofSegvalue oops %d", index);
+    kpanic_fmt("CPU::offsetofSegvalue oops %d", index);
     return 0;
 }
 

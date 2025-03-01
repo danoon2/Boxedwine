@@ -307,7 +307,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         ramAddress = (U64)memory->getRamPtr(addr, 4, false, true);
     }
     if (ramAddress == 0) {
-        kpanic("Could not find futex address: %0.8X", addr);
+        kpanic_fmt("Could not find futex address: %0.8X", addr);
     }
     /*
     * from kernel source, if I ever implement one of these I need to note pTime actually contains val2
@@ -425,7 +425,7 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         //klog("    %x/%x futux wake finished addr=%x op=%x val=%x ram=%x count=%d", id, process->id, addr, op, value, (U32)ramAddress, count);
         return count;
     } else {
-        kwarn("syscall __NR_futex op %d not implemented", op);
+        kwarn_fmt("syscall __NR_futex op %d not implemented", op);
         return -1;
     }
 }
@@ -667,9 +667,9 @@ void KThread::signalTrap(U32 code) {
         DecodedBlock block;
         decodeBlock(fetchByte, memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, &block);
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-        kpanic("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
 #else
-        kpanic("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->inst);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->inst);
 #endif
     }
     memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
@@ -685,9 +685,9 @@ void KThread::signalIllegalInstruction(int code) {
         DecodedBlock block;
         decodeBlock(fetchByte, memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, &block);
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-        kpanic("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
 #else
-        kpanic("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->inst);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->inst);
 #endif
     }
     memset(this->process->sigActions[K_SIGILL].sigInfo, 0, sizeof(this->process->sigActions[K_SIGILL].sigInfo));
@@ -1290,7 +1290,7 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
             ldt->base_addr = address;
             ldt->flags = flags;
         } else {
-            kpanic("syscall_modify_ldt invalid index: %d", index);
+            kpanic_fmt("syscall_modify_ldt invalid index: %d", index);
         }
         return 0;
     } else if (func == 0) {
@@ -1302,11 +1302,11 @@ U32 KThread::modify_ldt(U32 func, U32 ptr, U32 count) {
             memory->writed(ptr + 8, ldt->limit);
             memory->writed(ptr + 12, ldt->flags);
         } else {
-            kpanic("syscall_modify_ldt invalid index: %d", index);
+            kpanic_fmt("syscall_modify_ldt invalid index: %d", index);
         }
         return 16;
     } else {
-        kpanic("syscall_modify_ldt unknown func: %d", func);
+        kpanic_fmt("syscall_modify_ldt unknown func: %d", func);
         return -K_ENOSYS;
     }
 }
@@ -1321,7 +1321,7 @@ U32 KThread::nanoSleep(U64 nano) {
 
 U32 KThread::clockNanoSleep(U32 clock, U32 flags, U64 nano, U32 addressRemain) {
     if (flags) {
-        kpanic("clockNanoSleep flags (%x) does not equal 0: this has not been implemented yet", flags);
+        kpanic_fmt("clockNanoSleep flags (%x) does not equal 0: this has not been implemented yet", flags);
     }
     return Platform::nanoSleep(nano);
 }
@@ -1365,7 +1365,7 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
         } else if (sigsetSize==8) {
             memory->writeq(oset, this->sigMask);
         } else {
-            klog("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
+            klog_fmt("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
         }
         //klog("syscall_sigprocmask oset=%X", thread->sigMask);
     }
@@ -1377,7 +1377,7 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
         } else if (sigsetSize==8) {
             mask = memory->readq(set);
         } else {
-            klog("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
+            klog_fmt("sigprocmask: can't handle sigsetSize=%d", sigsetSize);
         }
         if (how == K_SIG_BLOCK) {
             this->sigMask|=mask;
@@ -1389,7 +1389,7 @@ U32 KThread::sigprocmask(U32 how, U32 set, U32 oset, U32 sigsetSize) {
             this->sigMask = mask;
             //klog("syscall_sigprocmask set %X(%X)", set, thread->sigMask);
         } else {
-            kpanic("sigprocmask how %d unsupported", how);
+            kpanic_fmt("sigprocmask how %d unsupported", how);
         }
     }
     return 0;
@@ -1404,7 +1404,7 @@ U32 KThread::sigtimedwait(U32 set, U32 info, U32 timeout, U32 sizeofSet, bool ti
     } else if (sizeofSet == 4) {
         mask = memory->readd(set);
     } else {
-        kpanic("KThread::sigtimedwait unhandled sigSetSize %d", sizeofSet);
+        kpanic_fmt("KThread::sigtimedwait unhandled sigSetSize %d", sizeofSet);
     }
 
     {
@@ -1482,7 +1482,7 @@ U32 KThread::sigsuspend(U32 mask, U32 sigsetSize) {
     } else if (sigsetSize==8) {
         this->sigMask = memory->readq(mask);
     } else {
-        klog("sigsuspend: can't handle sigsetSize=%d", sigsetSize);
+        klog_fmt("sigsuspend: can't handle sigsetSize=%d", sigsetSize);
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
     BOXEDWINE_CONDITION_WAIT(this->waitingForSignalToEndCond);

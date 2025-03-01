@@ -259,7 +259,7 @@ bool StartUpArgs::apply() {
 #ifdef BOXEDWINE_MULTI_THREADED
     KSystem::cpuAffinityCountForApp = this->cpuAffinity;
     if (KSystem::cpuAffinityCountForApp) {
-        klog("CPU Affinity set to %d", KSystem::cpuAffinityCountForApp);
+        klog_fmt("CPU Affinity set to %d", KSystem::cpuAffinityCountForApp);
     }
 #endif
     KSystem::disableHideCursor = this->disableHideCursor;
@@ -289,7 +289,7 @@ bool StartUpArgs::apply() {
     BOXEDWINE_RECORDER_INIT(this->root, this->zips, this->workingDir, this->args);
 #endif
 
-    klog("Using root directory: %s", root.c_str());
+    klog_fmt("Using root directory: %s", root.c_str());
 #ifdef BOXEDWINE_ZLIB
     std::vector<BString> fullfilled;
     for (auto& zip : zips) {
@@ -310,7 +310,7 @@ bool StartUpArgs::apply() {
                 depend = parentPath.stringByApppendingPath(depend);
             }
             if (!Fs::doesNativePathExist(depend)) {
-                klog("%s depends on %s, and %s could not be found", zip.c_str(), originalDepend.c_str(), originalDepend.c_str());
+                klog_fmt("%s depends on %s, and %s could not be found", zip.c_str(), originalDepend.c_str(), originalDepend.c_str());
             }
             depends.push_back(depend);
         }
@@ -320,14 +320,14 @@ bool StartUpArgs::apply() {
     }
 #endif
     for (auto& zip : zips) {
-        klog("Using zip file system: %s", zip.c_str());
+        klog_fmt("Using zip file system: %s", zip.c_str());
     }
     if (!Fs::initFileSystem(root)) {
-        kwarn("root %s does not exist", root.c_str());
+        kwarn_fmt("root %s does not exist", root.c_str());
         return false;
     }
     if (this->resolutionSet) {
-        klog("Resolution set to: %dx%d", this->screenCx, this->screenCy);
+        klog_fmt("Resolution set to: %dx%d", this->screenCx, this->screenCy);
     }
 #ifdef BOXEDWINE_ZLIB
     std::vector<std::shared_ptr<FsZip>> openZips;
@@ -337,7 +337,7 @@ bool StartUpArgs::apply() {
         fsZip->init(zip, B(""));
         openZips.push_back(fsZip);
         U64 endTime = KSystem::getMicroCounter();
-        klog("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
+        klog_fmt("Loaded %s in %d ms", zip.c_str(), (U32)(endTime - startTime) / 1000);
     }
 
     std::shared_ptr<FsNode> wineVersionNode = Fs::getNodeFromLocalPath(B(""), B("/wineVersion.txt"), false);
@@ -381,7 +381,7 @@ bool StartUpArgs::apply() {
         envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
         std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(BString::empty, this->ddrawOverridePath, true);
         if (!parent) {
-            klog("-ddrawOverride %s not found", this->ddrawOverridePath.c_str());
+            klog_fmt("-ddrawOverride %s not found", this->ddrawOverridePath.c_str());
         }
         std::shared_ptr<FsNode> ddrawParent = Fs::getNodeFromLocalPath(BString::empty, B("/home/username/.wine/drive_c/ddraw"), true);
         if (!ddrawParent) {
@@ -441,9 +441,9 @@ bool StartUpArgs::apply() {
                 fsZip->init(info.nativePath, info.localPath);
                 openZips.push_back(fsZip);
                 U64 endTime = KSystem::getMicroCounter();
-                klog("Mounted %s in %d ms", info.nativePath.c_str(), (U32)(endTime - startTime) / 1000);
+                klog_fmt("Mounted %s in %d ms", info.nativePath.c_str(), (U32)(endTime - startTime) / 1000);
     #else
-                klog("% not mounted because zlib was not compiled in", info.nativePath.c_str());
+                klog_fmt("% not mounted because zlib was not compiled in", info.nativePath.c_str());
     #endif
             } else {
                 std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(info.localPath), true);
@@ -540,7 +540,7 @@ bool StartUpArgs::apply() {
     if (this->args.size()) {
         klog_nonewline("Launching ");
         for (U32 i=0;i<this->args.size();i++) {
-            klog_nonewline("\"%s\" ", this->args[i].c_str());
+            klog_nonewline_fmt("\"%s\" ", this->args[i].c_str());
         }
         klog_nonewline("\n");
         bool result = false;
@@ -607,7 +607,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
     }
     klog_nonewline("Command line arguments:");
     for (i = 0; i < argc; i++) {
-        klog_nonewline(" \"%s\"", argv[i]);
+        klog_nonewline_fmt(" \"%s\"", argv[i]);
     }
     klog_nonewline("\n");
     for (i=1;i<argc;i++) {
@@ -718,7 +718,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
                 klog("example: -mount_zip \"c:\\my games\\mygame.zip\" /mnt/game");
             } else {
                 if (Fs::doesNativePathExist(BString::copy(argv[i + 2]))) {
-                    klog("mount directory/file does not exist: %s", argv[i + 2]);
+                    klog_fmt("mount directory/file does not exist: %s", argv[i + 2]);
                     return false;
                 }
                 this->mountInfo.push_back(MountInfo(BString::copy(argv[i+2]), BString::copy(argv[i+1]), false));
@@ -761,7 +761,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
                 static_cast<void>(MKDIR(argv[i+1])); // return result ignored
                 if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
-                    klog("-record path does not exist and could not be created: %s", argv[i+1]);
+                    klog_fmt("-record path does not exist and could not be created: %s", argv[i+1]);
                     return false;
                 }
             }
@@ -769,7 +769,7 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             i++;
         }  else if (!strcmp(argv[i], "-automation")) {
             if (!Fs::doesNativePathExist(BString::copy(argv[i+1]))) {
-                klog("-automation directory does not exist %s", argv[i+1]);
+                klog_fmt("-automation directory does not exist %s", argv[i+1]);
                 return false;
             }
             this->runAutomation = BString::copy(argv[i + 1]);

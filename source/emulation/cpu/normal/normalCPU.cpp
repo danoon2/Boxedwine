@@ -444,7 +444,7 @@ bool setNormalFunction(DecodedOp* op) {
         } else if (instructionInfo[op->inst].readMemWidth == 32) {
             op->pfn = lockOp32;
         } else {
-            kpanic("Unexepected memory width for locked instruction: %d", instructionInfo[op->inst].readMemWidth);
+            kpanic_fmt("Unexepected memory width for locked instruction: %d", instructionInfo[op->inst].readMemWidth);
         }
     } else
 #endif

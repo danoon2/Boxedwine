@@ -112,7 +112,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     int sdlFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
 
     if (SDL_GetDesktopDisplayMode(0, &dm) == 0) {
-        if (cx == dm.w && cy == dm.h) {
+        if (cx == (U32)dm.w && cy == (U32)dm.h) {
             sdlFlags |= SDL_WINDOW_BORDERLESS;
         }
     }
@@ -122,7 +122,7 @@ SDLGlWindowPtr SDLGlWindow::createWindow(const std::shared_ptr<GLPixelFormat>& p
     SDL_Window* window = SDL_CreateWindow("OpenGL Window", x, y, cx, cy, sdlFlags);
 
     if (!window) {
-        kwarn("Couldn't create window: %s", SDL_GetError());
+        kwarn_fmt("Couldn't create window: %s", SDL_GetError());
         return nullptr;
     }
 
@@ -388,6 +388,9 @@ static int sdlOpenExtensionsLoaded = false;
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
 
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG)
+
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
 
@@ -446,7 +449,7 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
             context->currentWindow = window;
             return true;
         } else {
-            kwarn("KOpenGLSdl::glMakeCurrent SDL_GL_MakeCurrent failed: %s", SDL_GetError());
+            kwarn_fmt("KOpenGLSdl::glMakeCurrent SDL_GL_MakeCurrent failed: %s", SDL_GetError());
         }
     }
     return false;
@@ -475,6 +478,9 @@ static void sdl_glFlush(CPU* cpu) {
 
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
+
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);
 
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = (gl##func##_func)SDL_GL_GetProcAddress("gl" #func);

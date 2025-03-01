@@ -74,7 +74,7 @@ U8 Armv8btAsm::getSegReg(U8 seg) {
     case DS: return xDS;
     case FS: return xFS;
     case GS: return xGS;
-    default: kpanic("ArmV8bt: getSegReg: invalid seg: %d", seg); return 0;
+    default: kpanic_fmt("ArmV8bt: getSegReg: invalid seg: %d", seg); return 0;
     }
 }
 
@@ -88,7 +88,7 @@ void Armv8btAsm::movk(U8 reg, U16 value, U8 shift) {
     } else if (shift == 48) {
         shiftBit = 0x60;
     } else if (shift != 0) {
-        kpanic("armv8: bad shift value of % in movk", shift);
+        kpanic_fmt("armv8: bad shift value of % in movk", shift);
     }
     write8((U8)(value << 5) | reg); // bottom 3 bits of the value in the top 3 bits
     write8((U8)(value >> 3)); // bits 4-11
@@ -106,7 +106,7 @@ void Armv8btAsm::movn(U8 reg, U16 value, U8 shift) {
     } else if (shift == 48) {
         shiftBit = 0x60;
     } else if (shift != 0) {
-        kpanic("armv8: bad shift value of % in movn", shift);
+        kpanic_fmt("armv8: bad shift value of % in movn", shift);
     }
     write8((U8)(value << 5) | reg); // bottom 3 bits of the value in the top 3 bits
     write8((U8)(value >> 3)); // bits 4-11
@@ -124,7 +124,7 @@ void Armv8btAsm::movz(U8 reg, U16 value, U8 shift) {
     } else if (shift == 48) {
         shiftBit = 0x60;
     } else if (shift != 0) {
-        kpanic("armv8: bad shift value of % in movz", shift);
+        kpanic_fmt("armv8: bad shift value of % in movz", shift);
     }
     write8((U8)(value << 5) | reg); // bottom 3 bits of the value in the top 3 bits
     write8((U8)(value >> 3)); // bits 4-11
@@ -310,7 +310,7 @@ void Armv8btAsm::readMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     } else if (lsl == 2) {
         write8(0x78 | (U8)(base >> 3));
     } else {
-        kpanic("ArmV8bt: readMem32RegOffset lsl must be 0 or 2: %d", lsl);
+        kpanic_fmt("ArmV8bt: readMem32RegOffset lsl must be 0 or 2: %d", lsl);
     }
     write8(0x60 | offsetReg);
     write8(0xb8);
@@ -349,7 +349,7 @@ void Armv8btAsm::readMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     } else if (lsl == 3) {
         write8(0x78 | (U8)(base >> 3));
     } else {
-        kpanic("ArmV8bt: readMem64RegOffset lsl must be 0 or 3: %d", lsl);
+        kpanic_fmt("ArmV8bt: readMem64RegOffset lsl must be 0 or 3: %d", lsl);
     }
     write8(0x60 | offsetReg);
     write8(0xf8);
@@ -410,7 +410,7 @@ void Armv8btAsm::writeMem32RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     } else if (lsl == 2) {
         write8(0x78 | (U8)(base >> 3));
     } else {
-        kpanic("ArmV8bt: writeMem32RegOffset lsl must be 0 or 2: %d", lsl);
+        kpanic_fmt("ArmV8bt: writeMem32RegOffset lsl must be 0 or 2: %d", lsl);
     }
 
     write8(0x20 | offsetReg);
@@ -425,7 +425,7 @@ void Armv8btAsm::writeMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     } else if (lsl == 3) {
         write8(0x78 | (U8)(base >> 3));
     } else {
-        kpanic("ArmV8bt: writeMem64RegOffset lsl must be 0 or 3: %d", lsl);
+        kpanic_fmt("ArmV8bt: writeMem64RegOffset lsl must be 0 or 3: %d", lsl);
     }
 
     write8(0x20 | offsetReg);
@@ -1286,7 +1286,7 @@ void Armv8btAsm::movRegToReg(U8 dst, U8 src, U32 width, bool zeroExtend) {
     } else if (width == 8) {
         kpanic("ArmV8bt: movRegToReg width=8 should use movReg8ToReg");
     } else {
-        kpanic("ArmV8bt: movRegToReg with invalid width: %d", width);
+        kpanic_fmt("ArmV8bt: movRegToReg with invalid width: %d", width);
     }
 }
 
@@ -1448,7 +1448,7 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool ski
     shiftRegRightWithValue32(tmpReg, regEmulatedAddress, 12); // get page
 
     if (width != 8 && width != 16 && width != 32 && width != 64 && width != 128) {
-        kpanic("Armv8btAsm::getHostMem bad width=%d %s", width, currentOp->name());
+        kpanic_fmt("Armv8btAsm::getHostMem bad width=%d %s", width, currentOp->name());
     }
     width = width / 8;
     readMem64RegOffset(resultReg, (write ? xMemWrite : xMemRead), tmpReg, 3);
@@ -1550,7 +1550,7 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
         } else if (width == 8) {
             readMem8RegOffset(dst, addressReg, memReg, signExtend);
         } else {
-            kpanic("ArmV8bt: readMemory with invalid width: %d", width);
+            kpanic_fmt("ArmV8bt: readMemory with invalid width: %d", width);
         }    
         releaseHostMem(memReg);
     } else if (lock) {
@@ -1567,7 +1567,7 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
             readMem8Lock(dst, addressReg);
         }
         else {
-            kpanic("ArmV8bt: readMemory with invalid width: %d", width);
+            kpanic_fmt("ArmV8bt: readMemory with invalid width: %d", width);
         }
     } else {
         if (width == 64) {
@@ -1579,7 +1579,7 @@ void Armv8btAsm::readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetT
         } else if (width == 8) {
             readMem8ValueOffset(dst, addressReg, 0, signExtend);
         } else {
-            kpanic("ArmV8bt: readMemory with invalid width: %d", width);
+            kpanic_fmt("ArmV8bt: readMemory with invalid width: %d", width);
         }
     }
 }
@@ -1624,7 +1624,7 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
             // STLXRB w0, w0, [x0]
             write8(0x08);
         } else {
-            kpanic("ArmV8bt: writeMemory with invalid width: %d", width);
+            kpanic_fmt("ArmV8bt: writeMemory with invalid width: %d", width);
         }
 
         S32 amount = -(S32)(this->bufferPos - restartPos);
@@ -1654,7 +1654,7 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
         } else if (width == 8) {
             writeMem8RegOffset(src, addressReg, memReg);
         } else {
-            kpanic("ArmV8bt: writeMemory with invalid width: %d", width);
+            kpanic_fmt("ArmV8bt: writeMemory with invalid width: %d", width);
         }
         releaseHostMem(memReg);
     } else {
@@ -1667,7 +1667,7 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
         } else if (width == 8) {
             writeMem8ValueOffset(src, addressReg, 0);
         } else {
-            kpanic("ArmV8bt: writeMemory with invalid width: %d", width);
+            kpanic_fmt("ArmV8bt: writeMemory with invalid width: %d", width);
         }
     }
 }
@@ -1688,7 +1688,7 @@ void Armv8btAsm::zeroExtend(U8 dst, U8 src, U32 width) {
         write8(0);
         write8(0x53);
     } else {
-        kpanic("ArmV8bt: zeroExtend with invalid width: %d", width);
+        kpanic_fmt("ArmV8bt: zeroExtend with invalid width: %d", width);
     }
 }
 
@@ -1712,7 +1712,7 @@ void Armv8btAsm::zeroExtend64(U8 dst, U8 src, U32 width) {
         write8(0);
         write8(0x53);
     } else {
-        kpanic("ArmV8bt: zeroExtend with invalid width: %d", width);
+        kpanic_fmt("ArmV8bt: zeroExtend with invalid width: %d", width);
     }
 }
 
@@ -1732,7 +1732,7 @@ void Armv8btAsm::signExtend(U8 dst, U8 src, U32 width) {
         write8(0);
         write8(0x13);
     } else {
-        kpanic("ArmV8bt: signExtend with invalid width: %d", width);
+        kpanic_fmt("ArmV8bt: signExtend with invalid width: %d", width);
     }
 }
 
@@ -1756,7 +1756,7 @@ void Armv8btAsm::signExtend64(U8 dst, U8 src, U32 width) {
         write8(0x40);
         write8(0x93);
     } else {
-        kpanic("ArmV8bt: signExtend with invalid width: %d", width);
+        kpanic_fmt("ArmV8bt: signExtend with invalid width: %d", width);
     }
 }
 
@@ -2400,7 +2400,7 @@ void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
     amount = amount >> 2;
     if (this->buffer[pos + 3] == 0x14) {
         if (amount > 0xFFFFFF) {
-            kpanic("armv8::jump in large if/else blocks not supported: %d", amount);
+            kpanic_fmt("armv8::jump in large if/else blocks not supported: %d", amount);
         }
         this->buffer[pos] = (U8)amount;
         this->buffer[pos + 1] = (U8)(amount >> 8);
@@ -2408,7 +2408,7 @@ void Armv8btAsm::writeJumpAmount(U32 pos, U32 toLocation) {
         this->buffer[pos + 2] |= ((U8)(amount >> 24)) & 4;
     } else {
         if (amount >= 256*1024 || amount <= -256*1024 ) {
-            kpanic("armv8::endIf large if/else blocks not supported: %d", amount);
+            kpanic_fmt("armv8::endIf large if/else blocks not supported: %d", amount);
         }
         this->buffer[pos] = (U8)(amount << 5) | this->buffer[pos];
         this->buffer[pos + 1] = (U8)(amount >> 3);
@@ -2503,7 +2503,7 @@ void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(voi
         } else if (op == DO_IF_SIGNED_LESS_THAN_OR_EQUAL) {
             pos = branchSignedGreaterThan();
         } else {
-            kpanic("Armv8btAsm::doIf unhandled op: %d", op);
+            kpanic_fmt("Armv8btAsm::doIf unhandled op: %d", op);
         }
         ifBlock();
         writeJumpAmount(pos, this->bufferPos);
@@ -2524,7 +2524,7 @@ void Armv8btAsm::doIf(U8 reg, U32 value, DoIfOperator op, std::function<void(voi
         } else if (op == DO_IF_SIGNED_LESS_THAN_OR_EQUAL) {
             pos = branchSignedLessThanOrEqual();
         } else {
-            kpanic("Armv8btAsm::doIf unhandled op: %d", op);
+            kpanic_fmt("Armv8btAsm::doIf unhandled op: %d", op);
         }
         elseBlock();
         if (ifBlock) {
@@ -2554,7 +2554,7 @@ void Armv8btAsm::getDF(U8 dst, U32 width) {
         shiftSignedRegRightWithValue32(dst, dst, 29);
         orValue32(dst, dst, 4);
     } else {
-        kpanic("Armv8btAsm::getDF bad width %d", width);
+        kpanic_fmt("Armv8btAsm::getDF bad width %d", width);
     }
     releaseTmpReg(tmpReg);
 }
@@ -2598,7 +2598,7 @@ void Armv8btAsm::vMemMultiple(U8 dst, U8 base, U32 numberOfRegs, U8 thirdByte, b
     } else if (numberOfRegs == 4) {
         regCount = 0x20;
     } else {
-        kpanic("Armv8btAsm::vMemMultiple128 numberOfRegs needs to be between 1 and 4: %d", numberOfRegs);
+        kpanic_fmt("Armv8btAsm::vMemMultiple128 numberOfRegs needs to be between 1 and 4: %d", numberOfRegs);
     }
     write8(regCount | (U8)(base >> 3));
     write8(thirdByte);
@@ -2686,7 +2686,7 @@ void Armv8btAsm::vReadMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     } else if (lsl == 3) {
         write8((U8)(base >> 3) | 0x78);
     } else {
-        kpanic("Armv8btAsm::vReadMem64RegOffset lsl must be 0 or 3: %d", lsl);
+        kpanic_fmt("Armv8btAsm::vReadMem64RegOffset lsl must be 0 or 3: %d", lsl);
     }
     write8(0x60 | offsetReg);
     write8(0xfc);
@@ -2700,7 +2700,7 @@ void Armv8btAsm::vWriteMem64RegOffset(U8 dst, U8 base, U8 offsetReg, U32 lsl) {
     } else if (lsl == 3) {
         write8((U8)(base >> 3) | 0x78);
     } else {
-        kpanic("Armv8btAsm::vWriteMem64RegOffset lsl must be 0 or 3: %d", lsl);
+        kpanic_fmt("Armv8btAsm::vWriteMem64RegOffset lsl must be 0 or 3: %d", lsl);
     }
     write8(0x20 | offsetReg);
     write8(0xfc);
@@ -2932,7 +2932,7 @@ void Armv8btAsm::vLoadConst(U8 dst, U64 value, VectorWidth width) {
             write8(0x6f);
         }
     } else {
-        kpanic("Armv8btAsm::vLoadConst not implemented for width: %d", width);
+        kpanic_fmt("Armv8btAsm::vLoadConst not implemented for width: %d", width);
     }
 }
 
@@ -3021,7 +3021,7 @@ void Armv8btAsm::vZipFromLow128(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         write8(0xc0 | src2);
         write8(0x4e);
     } else {
-        kpanic("Armv8btAsm::vZipFromLow128 invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vZipFromLow128 invalid width: %d", width);
     }    
 }
 
@@ -3039,7 +3039,7 @@ void Armv8btAsm::vZipFromHigh128(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else if (width == D2) {
         type = 0xc0;
     } else {
-        kpanic("Armv8btAsm::vZipFromLow128 invalid: %d", width);
+        kpanic_fmt("Armv8btAsm::vZipFromLow128 invalid: %d", width);
     }
     write8(type | src2);
     write8(0x4e);
@@ -3061,7 +3061,7 @@ void Armv8btAsm::vUnzipOdds(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // UZP2 v0.2D, v0.2D, v0.2D
         write8(0xC0 | src2);
     } else {
-        kpanic("Armv8btAsm::vUnzipOdds invalid: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnzipOdds invalid: %d", width);
     }
     
     write8(0x4e);
@@ -3083,7 +3083,7 @@ void Armv8btAsm::vUnzipEvens(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // UZP1 v0.2D, v0.2D, v0.2D
         write8(0xC0 | src2);
     } else {
-        kpanic("Armv8btAsm::vUnzipEvens invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnzipEvens invalid width: %d", width);
     }
 
     write8(0x4e);
@@ -3098,7 +3098,7 @@ void Armv8btAsm::vTbx(U8 dst, U8 src, U8 srcCount, U8 srcIndex, VectorWidth widt
     } else if (width == B16) {
         write8(0x4e);
     } else {
-        kpanic("Armv8btAsm::vTbx invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vTbx invalid width: %d", width);
     }        
 }
 
@@ -3135,7 +3135,7 @@ void Armv8btAsm::vCmpGreaterThan(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             write8(0xe0 | src2);
             write8(0x4e);
         } else {
-            kpanic("Armv8btAsm::vCmpGreaterThan invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vCmpGreaterThan invalid width: %d", width);
         }        
     } else {        
         write8(dst | (U8)(src1 << 5));
@@ -3145,7 +3145,7 @@ void Armv8btAsm::vCmpGreaterThan(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // CMGT d0, d0, d0
             type = 0xe0;
         } else {
-            kpanic("Armv8btAsm::vCmpGreaterThan(scaler) invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vCmpGreaterThan(scaler) invalid width: %d", width);
         }
         write8(type | src2);
         write8(0x5e);
@@ -3170,7 +3170,7 @@ void Armv8btAsm::vCmpEqual(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // CMEQ v0.2d, v0.2d, v0.2d
             type = 0xe0;
         } else {
-            kpanic("Armv8btAsm::vCmpEqual invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vCmpEqual invalid width: %d", width);
         }
         write8(type | src2);
         write8(0x6e);
@@ -3182,7 +3182,7 @@ void Armv8btAsm::vCmpEqual(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // CMEQ d0, d0, d0
             type = 0xe0;
         } else {
-            kpanic("Armv8btAsm::vCmpEqual(scaler) invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vCmpEqual(scaler) invalid width: %d", width);
         }
         write8(type | src2);
         write8(0x7e);
@@ -3217,7 +3217,7 @@ void Armv8btAsm::vUnsignedMin(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         write8(0xa0 | src2);
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vUnsignedMin invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedMin invalid width: %d", width);
     }
 }
 
@@ -3249,7 +3249,7 @@ void Armv8btAsm::vSignedMin(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         write8(0xa0 | src2);
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vSignedMin invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedMin invalid width: %d", width);
     }
 }
 
@@ -3281,7 +3281,7 @@ void Armv8btAsm::vUnsignedMax(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         write8(0xa0 | src2);
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vUnsignedMax invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedMax invalid width: %d", width);
     }
 }
 
@@ -3313,7 +3313,7 @@ void Armv8btAsm::vSignedMax(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         write8(0xa0 | src2);
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vSignedMax invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedMax invalid width: %d", width);
     }
 }
 
@@ -3345,7 +3345,7 @@ void Armv8btAsm::vUnsignedRoundedAverage(U8 dst, U8 src1, U8 src2, VectorWidth w
         write8(0xa0 | src2);
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vUnsignedMax invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedMax invalid width: %d", width);
     }
 }
 
@@ -3361,7 +3361,7 @@ void Armv8btAsm::vSignExtend64To128(U8 dst, U8 src, VectorWidth width) {
     } else if (width == S4) {
         write8(0x20);
     } else {
-        kpanic("Armv8btAsm::vSignExtend64To128 invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignExtend64To128 invalid width: %d", width);
     }
     write8(0x0f);
 }
@@ -3483,7 +3483,7 @@ void Armv8btAsm::vSignedSaturateToSignedNarrowToLowerAndClear(U8 dst, U8 src, Ve
         write8(0x21);
         write8(0x5e);
     } else {
-        kpanic("Armv8btAsm::vSignedSaturateToSignedNarrowToLowerAndClear invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedSaturateToSignedNarrowToLowerAndClear invalid width: %d", width);
     }
 }
 
@@ -3500,7 +3500,7 @@ void Armv8btAsm::vSignedSaturateToSignedNarrowToUpperAndKeep(U8 dst, U8 src, Vec
         // SQXTN2 v0.16b, v0.8h
         write8(0x21);
     } else {
-        kpanic("Armv8btAsm::vSignedSaturateToSignedNarrowToUpperAndKeep invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedSaturateToSignedNarrowToUpperAndKeep invalid width: %d", width);
     }
     write8(0x4e);
 }
@@ -3518,7 +3518,7 @@ void Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToLowerAndClear(U8 dst, U8 src
         // UQXTN v0.8b, v0.8h
         write8(0x21);
     } else {
-        kpanic("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToLowerAndClear invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToLowerAndClear invalid width: %d", width);
     }
     write8(isWidthVector(width) ? 0x2e : 0x7e);
 }
@@ -3536,7 +3536,7 @@ void Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToUpperAndKeep(U8 dst, U8 src,
         // UQXTN2 v0.16b, v0.8h
         write8(0x21);
     } else {
-        kpanic("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToUpperAndKeep invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToUpperAndKeep invalid width: %d", width);
     }
     write8(0x6e);
 }
@@ -3554,7 +3554,7 @@ void Armv8btAsm::vSignedSaturateToUnsignedNarrowToLowerAndClear(U8 dst, U8 src, 
         // SQXTUN v0.8b, v0.8h
         write8(0x21);
     } else {
-        kpanic("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToLowerAndClear invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToLowerAndClear invalid width: %d", width);
     }
     write8(isWidthVector(width) ? 0x2e : 0x7e);
 }
@@ -3572,7 +3572,7 @@ void Armv8btAsm::vSignedSaturateToUnsignedNarrowToUpperAndKeep(U8 dst, U8 src, V
         // SQXTUN2 v0.16b, v0.8h
         write8(0x21);
     } else {
-        kpanic("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToUpperAndKeep invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedSaturateToUnsignedNarrowToUpperAndKeep invalid width: %d", width);
     }
     write8(0x6e);
 }
@@ -3664,7 +3664,7 @@ void Armv8btAsm::vDup(U8 dst, U8 src, U8 srcIndex, VectorWidth width) {
         write8(0x08 | (srcIndex<<4));
         write8(0x4e);
     } else {
-        kpanic("Armv8btAsm::vDup width must be 1, 2, 4, or 8: %d", width);
+        kpanic_fmt("Armv8btAsm::vDup width must be 1, 2, 4, or 8: %d", width);
     }    
 }
 
@@ -3704,7 +3704,7 @@ void Armv8btAsm::vNeg(U8 dst, U8 src, VectorWidth width) {
         write8(0xe0);
         write8(0x7e);
     } else {
-        kpanic("Armv8btAsm::vNeg invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vNeg invalid width: %d", width);
     }    
 }
 
@@ -3732,7 +3732,7 @@ void Armv8btAsm::vAddAcrossVectorToScaler(U8 dst, U8 src, VectorWidth width) {
         write8(0x31);
         write8(0x4e);
     } else {
-        kpanic("Armv8btAsm::vAddAcrossVectorToScaler invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vAddAcrossVectorToScaler invalid width: %d", width);
     }    
 }
 
@@ -3760,7 +3760,7 @@ void Armv8btAsm::vUnsignedAddPairsLong(U8 dst, U8 src, VectorWidth width) {
         write8(0x20);
         write8(0x6e);
     } else {
-        kpanic("Armv8btAsm::vUnsignedAddPairsLong invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedAddPairsLong invalid width: %d", width);
     }
 }
 
@@ -3788,7 +3788,7 @@ void Armv8btAsm::vUnsignedAddAcrossVectLong(U8 dst, U8 src, VectorWidth width) {
         write8(0x30);
         write8(0x6e);
     } else {
-        kpanic("Armv8btAsm::vUnsignedAddAcrossVectLong invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedAddAcrossVectLong invalid width: %d", width);
     }
 }
 
@@ -3820,7 +3820,7 @@ void Armv8btAsm::vAddPairs(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         write8(0xa0 | src2);
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vAddPairs invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vAddPairs invalid width: %d", width);
     }
 }
 
@@ -3852,7 +3852,7 @@ void Armv8btAsm::vUnsignedAbsoluteDifference(U8 dst, U8 src1, U8 src2, VectorWid
         write8(0xa0 | src2);
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vUnsignedAbsoluteDifference invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedAbsoluteDifference invalid width: %d", width);
     }
 }
 
@@ -3884,7 +3884,7 @@ void Armv8btAsm::vMul(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         write8(0xa0 | src2);
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vMul invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vMul invalid width: %d", width);
     }    
 }
 
@@ -3901,7 +3901,7 @@ void Armv8btAsm::vUnsignedMulLongLower(U8 dst, U8 src1, U8 src2, VectorWidth wid
         // UMULL v0.2d, v0.2s, v0.2s
         write8(0xa0 | src2);
     } else {
-        kpanic("Armv8btAsm::vUnsignedMulLongLower invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedMulLongLower invalid width: %d", width);
     }
     write8(0x2e);
 }
@@ -3919,7 +3919,7 @@ void Armv8btAsm::vUnsignedMulLongUpper(U8 dst, U8 src1, U8 src2, VectorWidth wid
         // UMULL2 v0.2d, v0.4s, v0.4s
         write8(0xa0 | src2);
     } else {
-        kpanic("Armv8btAsm::vUnsignedMulLongLower invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vUnsignedMulLongLower invalid width: %d", width);
     }
     write8(0x6e);
 }
@@ -3937,7 +3937,7 @@ void Armv8btAsm::vSignedMulLongLower(U8 dst, U8 src1, U8 src2, VectorWidth width
         // SMULL v0.2d, v0.2s, v0.2s
         write8(0xa0 | src2);
     } else {
-        kpanic("Armv8btAsm::vSignedMulLongLower invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedMulLongLower invalid width: %d", width);
     }
     write8(0x0e);
 }
@@ -3955,7 +3955,7 @@ void Armv8btAsm::vSignedMulLongUpper(U8 dst, U8 src1, U8 src2, VectorWidth width
         // SMULL2 v0.2d, v0.4s, v0.4s
         write8(0xa0 | src2);
     } else {
-        kpanic("Armv8btAsm::vSignedMulLongUpper invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedMulLongUpper invalid width: %d", width);
     }
     write8(0x4e);
 }
@@ -3989,12 +3989,12 @@ void Armv8btAsm::vUnsignedSaturatingAdd(U8 dst, U8 src1, U8 src2, VectorWidth wi
             write8(0xe0 | src2);
             write8(0x6e);
         } else {
-            kpanic("Armv8btAsm::vUnsignedSaturatingAdd invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vUnsignedSaturatingAdd invalid width: %d", width);
         }
     } else {
         // uqadd d0, d0, d0
         if (width != D_scaler) {
-            kpanic("Armv8btAsm::vUnsignedSaturatingAdd invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vUnsignedSaturatingAdd invalid width: %d", width);
         }
         write8(dst | (U8)(src1 << 5));
         write8(0x2c | (U8)(src1 >> 3));
@@ -4032,12 +4032,12 @@ void Armv8btAsm::vSignedSaturatingAdd(U8 dst, U8 src1, U8 src2, VectorWidth widt
             write8(0xe0 | src2);
             write8(0x4e);
         } else {
-            kpanic("Armv8btAsm::vSignedSaturatingAdd invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vSignedSaturatingAdd invalid width: %d", width);
         }
     } else {
         // sqadd d0, d0, d0
         if (width != D_scaler) {
-            kpanic("Armv8btAsm::vSignedSaturatingAdd invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vSignedSaturatingAdd invalid width: %d", width);
         }
         write8(dst | (U8)(src1 << 5));
         write8(0x2c | (U8)(src1 >> 3));
@@ -4078,11 +4078,11 @@ void Armv8btAsm::vAdd(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             write8(0xe0 | src2);
             write8(0x4e);
         } else {
-            kpanic("Armv8btAsm::vAdd invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vAdd invalid width: %d", width);
         }        
     } else {
         if (width != D_scaler) {
-            kpanic("Armv8btAsm::vAdd invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vAdd invalid width: %d", width);
         }
         write8(dst | (U8)(src1 << 5));
         write8(0x84 | (U8)(src1 >> 3));
@@ -4120,12 +4120,12 @@ void Armv8btAsm::vUnsignedSaturatingSub(U8 dst, U8 src1, U8 src2, VectorWidth wi
             write8(0xe0 | src2);
             write8(0x6e);
         } else {
-            kpanic("Armv8btAsm::vUnsignedSaturatingSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vUnsignedSaturatingSub invalid width: %d", width);
         }        
     } else {
         // uqsub d0, d0, d0
         if (width != D_scaler) {
-            kpanic("Armv8btAsm::vUnsignedSaturatingSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vUnsignedSaturatingSub invalid width: %d", width);
         }
         write8(dst | (U8)(src1 << 5));
         write8(0x2c | (U8)(src1 >> 3));
@@ -4163,12 +4163,12 @@ void Armv8btAsm::vSignedSaturatingSub(U8 dst, U8 src1, U8 src2, VectorWidth widt
             write8(0xe0 | src2);
             write8(0x4e);
         } else {
-            kpanic("Armv8btAsm::vSignedSaturatingSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vSignedSaturatingSub invalid width: %d", width);
         }
     } else {
         // sqsub d0, d0, d0
         if (width != D_scaler) {
-            kpanic("Armv8btAsm::vSignedSaturatingSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vSignedSaturatingSub invalid width: %d", width);
         }
         write8(dst | (U8)(src1 << 5));
         write8(0x2c | (U8)(src1 >> 3));
@@ -4210,12 +4210,12 @@ void Armv8btAsm::vSub(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             write8(0xe0 | src2);
             write8(0x6e);
         } else {
-            kpanic("Armv8btAsm::vSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vSub invalid width: %d", width);
         }        
     } else {
         // sub d0, d0, d0
         if (width != D_scaler) {
-            kpanic("Armv8btAsm::vSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::vSub invalid width: %d", width);
         }
         write8(dst | (U8)(src1 << 5));
         write8(0x84 | (U8)(src1 >> 3));
@@ -4236,7 +4236,7 @@ void Armv8btAsm::vOr(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // orr v0.8b, v0.8b, v0.8b
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vAnd invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vAnd invalid width: %d", width);
     }
 }
 
@@ -4251,7 +4251,7 @@ void Armv8btAsm::vXor(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // EOR v0.8b, v0.8b, v0.8b
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vAnd invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vAnd invalid width: %d", width);
     }
 }
 
@@ -4266,7 +4266,7 @@ void Armv8btAsm::vAnd(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // and v0.8b, v0.8b, v0.8b
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vAnd invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vAnd invalid width: %d", width);
     }
 }
 
@@ -4281,7 +4281,7 @@ void Armv8btAsm::vAndNot(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // bic v0.8b, v0.8b, v0.8b
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vAndNot invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vAndNot invalid width: %d", width);
     }
 }
 
@@ -4296,7 +4296,7 @@ void Armv8btAsm::vNot(U8 dst, U8 src, VectorWidth width) {
         // not v0.8b, v0.8b
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vNot invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vNot invalid width: %d", width);
     }
 }
 
@@ -4335,7 +4335,7 @@ void Armv8btAsm::vSignedShiftRightValue(U8 dst, U8 src, U8 amount, VectorWidth w
         write8(0x08 | (U8)(8 - amount));
         write8(0x4f);
     } else {
-        kpanic("Armv8btAsm::vSignedShiftRightValue invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedShiftRightValue invalid width: %d", width);
     }    
 }
 
@@ -4356,7 +4356,7 @@ void Armv8btAsm::vShiftLeftValue(U8 dst, U8 src, U8 amount, VectorWidth width) {
     } else if (width == B16) {
         write8(0x08 | (U8)(amount));
     } else {
-        kpanic("Armv8btAsm::vShiftLeftValue invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vShiftLeftValue invalid width: %d", width);
     }
     write8(0x4f);
 }
@@ -4378,7 +4378,7 @@ void Armv8btAsm::vShiftRightValue(U8 dst, U8 src, U8 amount, VectorWidth width) 
     } else if (width == B16) {
         write8(0x08 | (U8)(8 - amount));
     } else {
-        kpanic("Armv8btAsm::vShiftRightValue invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vShiftRightValue invalid width: %d", width);
     }
     write8(0x6f);
 }
@@ -4419,7 +4419,7 @@ void Armv8btAsm::vShiftWithReg(U8 dst, U8 src, U8 srcAmounts, VectorWidth width)
         write8(0x20 | srcAmounts);
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vShiftWithReg invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vShiftWithReg invalid width: %d", width);
     }    
 }
 
@@ -4455,7 +4455,7 @@ void Armv8btAsm::vSignedShiftWithReg(U8 dst, U8 src, U8 srcAmounts, VectorWidth 
         write8(0x20 | srcAmounts);
         write8(0x0e);
     } else {
-        kpanic("Armv8btAsm::vSignedShiftWithReg invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vSignedShiftWithReg invalid width: %d", width);
     }    
 }
 
@@ -4476,7 +4476,7 @@ void Armv8btAsm::vShiftRightValueAndNarrow(U8 dst, U8 src, U8 amount, VectorWidt
         // SHRN v0.8b, v0.8h, 1
         write8(0x08 | (U8)(8 - amount));
     } else {
-        kpanic("Armv8btAsm::vShiftRightValueAndNarrow invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vShiftRightValueAndNarrow invalid width: %d", width);
     }
     write8(0x0f);
 }
@@ -4491,7 +4491,7 @@ void Armv8btAsm::vSelectBit(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else if (width == B8) {
         write8(0x2e);
     } else {
-        kpanic("Armv8btAsm::vShiftRightValueAndNarrow invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::vShiftRightValueAndNarrow invalid width: %d", width);
     }
 }
 
@@ -4527,7 +4527,7 @@ void Armv8btAsm::fCmpEqual(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else if (width == S4 || width == S_scaler) {
         write8(0x20 | src2);
     } else {
-        kpanic("Armv8btAsm::fCmpEqual invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fCmpEqual invalid width: %d", width);
     }
     // FCMEQ v0.2d, v0.2d, v0.2d
     // FCMEQ d0, d0, d0        
@@ -4542,7 +4542,7 @@ void Armv8btAsm::fCmpGreaterThanOrEqual(U8 dst, U8 src1, U8 src2, VectorWidth wi
     } else if (width == S4 || width == S_scaler) {
         write8(0x20 | src2);
     } else {
-        kpanic("Armv8btAsm::fCmpGreaterThanOrEqual invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fCmpGreaterThanOrEqual invalid width: %d", width);
     }
     // FCMGE v0.2d, v0.2d, v0.2d
     // FCMGE d0, d0, d0        
@@ -4557,7 +4557,7 @@ void Armv8btAsm::fCmpGreaterThan(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else if (width == S4 || width == S_scaler) {
         write8(0xa0 | src2);
     } else {
-        kpanic("Armv8btAsm::fCmpGreaterThan invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fCmpGreaterThan invalid width: %d", width);
     }
     // FCMGT v0.2d, v0.2d, v0.2d
     // FCMGT d0, d0, d0        
@@ -4572,7 +4572,7 @@ void Armv8btAsm::fCmpLessThanOrEqual(U8 dst, U8 src1, U8 src2, VectorWidth width
     } else if (width == S4 || width == S_scaler) {
         write8(0x20 | src1);
     } else {
-        kpanic("Armv8btAsm::fCmpLessThanOrEqual invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fCmpLessThanOrEqual invalid width: %d", width);
     }
     // FCMLE v0.2d, v0.2d, v0.2d
     // FCMLE d0, d0, d0        
@@ -4587,7 +4587,7 @@ void Armv8btAsm::fCmpLessThan(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else if (width == S4 || width == S_scaler) {
         write8(0xa0 | src1);
     } else {
-        kpanic("Armv8btAsm::fCmpLessThan invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fCmpLessThan invalid width: %d", width);
     }
     // FCMLT v0.2d, v0.2d, v0.2d
     // FCMLT d0, d0, d0        
@@ -4605,7 +4605,7 @@ void Armv8btAsm::fSqrt(U8 dst, U8 src, VectorWidth width) {
             // FSQRT v0.2d, v0.2d
             write8(0xe1);
         } else {
-            kpanic("Armv8btAsm::fSqrt invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fSqrt invalid width: %d", width);
         }
         write8(0x6e);
     } else {
@@ -4618,7 +4618,7 @@ void Armv8btAsm::fSqrt(U8 dst, U8 src, VectorWidth width) {
             // FSQRT d0, d0
             write8(0x61);
         } else {
-            kpanic("Armv8btAsm::fSqrt invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fSqrt invalid width: %d", width);
         }
         write8(0x1e);
     }
@@ -4634,7 +4634,7 @@ void Armv8btAsm::fRsqrt(U8 dst, U8 src, VectorWidth width) {
         // FRSQRTE d0, d0
         write8(0xe1);
     } else {
-        kpanic("Armv8btAsm::fRsqrt invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fRsqrt invalid width: %d", width);
     }
     write8(isWidthVector(width) ?0x6e:0x7e);
 }
@@ -4658,7 +4658,7 @@ void Armv8btAsm::fAbs(U8 dst, U8 src, VectorWidth width) {
         write8(0xc0 | (U8)(src >> 3));
         write8(0x60);
     } else {
-        kpanic("Armv8btAsm::fAbs invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fAbs invalid width: %d", width);
     }
     write8(isWidthVector(width) ? 0x4e : 0x1e);
 }
@@ -4682,7 +4682,7 @@ void Armv8btAsm::fNeg(U8 dst, U8 src, VectorWidth width) {
         write8(0x40 | (U8)(src >> 3));
         write8(0x61);
     } else {
-        kpanic("Armv8btAsm::fNeg invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fNeg invalid width: %d", width);
     }
     write8(isWidthVector(width) ? 0x6e : 0x1e);
 }
@@ -4697,7 +4697,7 @@ void Armv8btAsm::fReciprocal(U8 dst, U8 src, VectorWidth width) {
         // FRECPE d0, d0
         write8(0xe1);
     } else {
-        kpanic("Armv8btAsm::fReciprocal invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fReciprocal invalid width: %d", width);
     }
     write8(isWidthVector(width) ?0x4e:0x5e);
 }
@@ -4710,7 +4710,7 @@ void Armv8btAsm::fAdd(U8 dst, U8 src1, U8 src2, VectorWidth width) {
     } else if (width == D2 || width == D_scaler) {
         write8(0x60 | src2);
     } else {
-        kpanic("Armv8btAsm::fAdd invalid: %d", width);
+        kpanic_fmt("Armv8btAsm::fAdd invalid: %d", width);
     }
     write8(isWidthVector(width) ?0x4e:0x1e);
 }
@@ -4726,7 +4726,7 @@ void Armv8btAsm::fSub(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // fsub v0.2d, v0.2d, v0.2d
             write8(0xe0 | src2);
         } else {
-            kpanic("Armv8btAsm::fSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fSub invalid width: %d", width);
         }
         write8(0x4e);
     } else {
@@ -4739,7 +4739,7 @@ void Armv8btAsm::fSub(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // fsub d0, d0, d0
             write8(0x60 | src2);
         } else {
-            kpanic("Armv8btAsm::fSub invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fSub invalid width: %d", width);
         }
         write8(0x1e);
     }
@@ -4755,7 +4755,7 @@ void Armv8btAsm::fMul(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // fmul d0, d0, d0
         write8(0x60 | src2);
     } else {
-        kpanic("Armv8btAsm::fMul invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fMul invalid width: %d", width);
     }
     write8(isWidthVector(width) ? 0x6e:0x1e);
 }
@@ -4770,7 +4770,7 @@ void Armv8btAsm::fDiv(U8 dst, U8 src1, U8 src2, VectorWidth width) {
         // fdiv d0, d0, d0
         write8(0x60 | src2);
     } else {
-        kpanic("Armv8btAsm::fdiv invalid width: %d", width);
+        kpanic_fmt("Armv8btAsm::fdiv invalid width: %d", width);
     }
     write8(isWidthVector(width) ?0x6e:0x1e);
 }
@@ -4786,7 +4786,7 @@ void Armv8btAsm::fMin(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // FMINNM v0.4s, v0.4s, v0.4s
             write8(0xa0 | src2);
         } else {
-            kpanic("Armv8btAsm::fMin invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fMin invalid width: %d", width);
         }
         write8(0x4e);
     } else {
@@ -4799,7 +4799,7 @@ void Armv8btAsm::fMin(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // FMINNM s0, s0, s0
             write8(0x20 | src2);
         } else {
-            kpanic("Armv8btAsm::fMin invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fMin invalid width: %d", width);
         }
         write8(0x1e);
     }
@@ -4816,7 +4816,7 @@ void Armv8btAsm::fMax(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // FMAXNM v0.4s, v0.4s, v0.4s
             write8(0x20 | src2);
         } else {
-            kpanic("Armv8btAsm::fMax invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fMax invalid width: %d", width);
         }
         write8(0x4e);
     } else {
@@ -4829,7 +4829,7 @@ void Armv8btAsm::fMax(U8 dst, U8 src1, U8 src2, VectorWidth width) {
             // FMAXNM s0, s0, s0
             write8(0x20 | src2);
         } else {
-            kpanic("Armv8btAsm::fMax invalid width: %d", width);
+            kpanic_fmt("Armv8btAsm::fMax invalid width: %d", width);
         }
         write8(0x1e);
     }
@@ -4851,7 +4851,7 @@ void Armv8btAsm::vReleaseTmpReg(U8 reg) {
 }
 
 static void arm_invalidOp(CPU* cpu, U32 op) {
-    klog("arm_invalidOp: 0x%X", op);
+    klog_fmt("arm_invalidOp: 0x%X", op);
     cpu->thread->signalIllegalInstruction(5);
 }
 
@@ -4914,12 +4914,12 @@ void Armv8btAsm::translateInstruction() {
 
     for (int i = 0; i < xNumberOfTmpRegs; i++) {
         if (this->tmpRegInUse[i]) {
-            kpanic("op(%x) leaked tmp reg", this->currentOp->originalOp);
+            kpanic_fmt("op(%x) leaked tmp reg", this->currentOp->originalOp);
         }
     }
     for (int i = 0; i < vNumberOfTmpRegs; i++) {
         if (this->vTmpRegInUse[i]) {
-            kpanic("op(%x) leaked vtmp reg", this->currentOp->originalOp);
+            kpanic_fmt("op(%x) leaked vtmp reg", this->currentOp->originalOp);
         }
     }
 }

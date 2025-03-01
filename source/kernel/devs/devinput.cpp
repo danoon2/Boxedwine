@@ -219,7 +219,7 @@ U32 DevInput::ioctl(KThread* thread, U32 request) {
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
             if (len<4)
-                kpanic("Bad length for EVIOCGVERSION: %d", len);
+                kpanic_fmt("Bad length for EVIOCGVERSION: %d", len);
             memory->writed(buffer, this->version);
             return 4;
         }
@@ -233,7 +233,7 @@ U32 DevInput::ioctl(KThread* thread, U32 request) {
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
             if (len!=8)
-                kpanic("Bad length for EVIOCGID: %d",len);
+                kpanic_fmt("Bad length for EVIOCGID: %d",len);
             memory->writew(buffer, this->bustype);
             memory->writew(buffer + 2, this->vendor);
             memory->writew(buffer + 4, this->product);
@@ -265,7 +265,7 @@ U32 DevInput::ioctl(KThread* thread, U32 request) {
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
             if (len<4)
-                kpanic("Bad length for EVIOCGBIT: %d", len);
+                kpanic_fmt("Bad length for EVIOCGBIT: %d", len);
             memory->writed(buffer, this->prop);
             return 4;
         }
@@ -291,7 +291,7 @@ U32 DevInput::ioctl(KThread* thread, U32 request) {
             U32 len = (request & 0x1fff0000) >> 16;
             U32 buffer = IOCTL_ARG1;
             if (len<4)
-                kpanic("Bad length for EVIOCGBIT: %d", len);
+                kpanic_fmt("Bad length for EVIOCGBIT: %d", len);
             memory->writed(buffer, this->mask);
             return 4;
         }
@@ -329,7 +329,7 @@ void DevInput::setAsync(bool isAsync) {
     KProcessPtr process = KThread::currentThread()->process;
     if (isAsync) {
         if (this->asyncProcessId && this->asyncProcessId!=process->id) {
-            kpanic("touch_setAsync only supports one process: %d tried to attached but %d already has it", process->id, this->asyncProcessId);
+            kpanic_fmt("touch_setAsync only supports one process: %d tried to attached but %d already has it", process->id, this->asyncProcessId);
         } else {
             this->asyncProcessId = process->id;
             // :TODO: pass in fildes

@@ -350,7 +350,7 @@ VkBool32 VKAPI_PTR boxed_vkDebugReportCallbackEXT(VkDebugReportFlagsEXT flags, V
     if (pMessage) {
         klog(pMessage);
     } else {
-        klog("vkDebugReportCallbackEXT %d", messageCode);
+        klog_fmt("vkDebugReportCallbackEXT %d", messageCode);
     }
     return VK_TRUE;
 }
@@ -388,7 +388,7 @@ U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo
             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
                 if (sizeof(VkDescriptorImageInfo) > pCreateInfo->s.pDescriptorUpdateEntries[i].stride) {
                     // because of padding, this can be 20 or 24
-                    kpanic("calculateUpdateDescriptorSetWithTemplateDataSize sizeof(VkDescriptorBufferInfo) %d > stride", sizeof(VkDescriptorImageInfo), pCreateInfo->s.pDescriptorUpdateEntries[i].stride);
+                    kpanic_fmt("calculateUpdateDescriptorSetWithTemplateDataSize sizeof(VkDescriptorBufferInfo) %d > stride", sizeof(VkDescriptorImageInfo), pCreateInfo->s.pDescriptorUpdateEntries[i].stride);
                 }
                 break;
 
@@ -397,7 +397,7 @@ U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
                 if (sizeof(VkDescriptorBufferInfo) != 24) {
-                    kpanic("calculateUpdateDescriptorSetWithTemplateDataSize unexpected sizeof(VkDescriptorBufferInfo) %d", sizeof(VkDescriptorBufferInfo));
+                    kpanic_fmt("calculateUpdateDescriptorSetWithTemplateDataSize unexpected sizeof(VkDescriptorBufferInfo) %d", sizeof(VkDescriptorBufferInfo));
                 }
                 break;
 
@@ -421,7 +421,7 @@ U32 calculateUpdateDescriptorSetWithTemplateDataSize(BoxedVulkanInfo* pBoxedInfo
             {
                 static bool showOnce;
                 if (!showOnce) {
-                    kwarn("calculateUpdateDescriptorSetWithTemplateDataSize unexpected descriptorType %x", pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorType);
+                    kwarn_fmt("calculateUpdateDescriptorSetWithTemplateDataSize unexpected descriptorType %x", pCreateInfo->s.pDescriptorUpdateEntries[i].descriptorType);
                     showOnce = true;
                 }
             }
@@ -444,7 +444,7 @@ void initVulkan() {
         }        
 
         if (SDL_Vulkan_LoadLibrary(NULL)) {
-            kpanic("Failed to load vulkan: %s\n", SDL_GetError());
+            kpanic_fmt("Failed to load vulkan: %s\n", SDL_GetError());
         }
         pvkGetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
         pvkCreateInstance = (PFN_vkCreateInstance)pvkGetInstanceProcAddr(VK_NULL_HANDLE, "vkCreateInstance");
@@ -487,11 +487,11 @@ void callVulkan(CPU* cpu, U32 index) {
         if (int9ACallback[index]) {
             int9ACallback[index](cpu);
         } else {
-            kpanic("Vulkan tried to call missing function: %d", index);
+            kpanic_fmt("Vulkan tried to call missing function: %d", index);
         }
     } else 
 #endif
     {
-        kpanic("Vulkan not compiled into Boxedwine: %d", index);
+        kpanic_fmt("Vulkan not compiled into Boxedwine: %d", index);
     }
 }

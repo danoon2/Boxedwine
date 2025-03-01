@@ -225,7 +225,7 @@ U32 XTextProperty::byteLen(KMemory* memory) {
 				result += 4;
 				break;
 			default:
-				kpanic("XTextProperty.len bad format %d", format);
+				kpanic_fmt("XTextProperty.len bad format %d", format);
 			}
 			if (v == 0) {
 				break;

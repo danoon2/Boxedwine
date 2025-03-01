@@ -573,7 +573,7 @@ static void x11_MbTextListToTextProperty(CPU* cpu) {
     // Display* display = X11::getDisplay(thread, ARG1);
     XTextProperty property;
     if (ARG4 == 0 && ARG4 != 3) {
-        kpanic("x11_MbTextListToTextProperty style = %d not handled", ARG4);
+        kpanic_fmt("x11_MbTextListToTextProperty style = %d not handled", ARG4);
     }
     XTextProperty::create(thread, XA_STRING, ARG2, ARG3, &property);
     property.write(memory, ARG5);
@@ -1047,7 +1047,7 @@ static void x11_ChangeProperty(CPU* cpu) {
     if (mode == PropModeReplace) {
         window->setProperty(propertyAtom, typeAtom, format, nelements * format / 8, ARG7, true);        
     } else {
-        kpanic("x11_ChangeProperty mode=%d", mode);
+        kpanic_fmt("x11_ChangeProperty mode=%d", mode);
     }
 }
 
@@ -1148,7 +1148,7 @@ static void x11_CheckTypedWindowEvent(CPU* cpu) {
         return;
     }
     XEvent event = { 0 };
-    if (data->findAndRemoveEvent(window->id, ARG3, event)) {
+    if (data->findAndRemoveEvent(window->id, (S32)ARG3, event)) {
         memory->memcpy(ARG4, &event, sizeof(XEvent));
         EAX = True;
     } else {
@@ -2958,7 +2958,7 @@ void x11_CursorLibraryLoadCursor(CPU* cpu) {
     } else if (fileName == "question_arrow") {
         shape = 92; // XC_question_arrow
     } else {
-        klog("x11_CursorLibraryLoadCursor failed to find system cursor: %s", fileName.c_str());
+        klog_fmt("x11_CursorLibraryLoadCursor failed to find system cursor: %s", fileName.c_str());
         EAX = 68;
         return;
     }
@@ -3189,10 +3189,10 @@ void callX11(CPU* cpu, U32 index) {
         if (int9BCallback[index]) {
             int9BCallback[index](cpu);
         } else {
-            kpanic("x11 tried to call missing function: %d", index);
+            kpanic_fmt("x11 tried to call missing function: %d", index);
         }
     } else
     {
-        kpanic("x11 not compiled into Boxedwine: %d", index);
+        kpanic_fmt("x11 not compiled into Boxedwine: %d", index);
     }
 }

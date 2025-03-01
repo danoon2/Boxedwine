@@ -95,7 +95,7 @@ bool FsFileNode::remove() {
         BString newNativePath = FsFileNode::getNativeTmpPath();
 
         if (::rename(nativePath.c_str(), newNativePath.c_str())!=0) {
-            klog("could not rename %s", nativePath.c_str());
+            klog_fmt("could not rename %s", nativePath.c_str());
         }
 
         this->nativePath = newNativePath;

@@ -100,7 +100,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         } else if (fmt == 1) {
             this->channels = 2;
         } else {
-            kpanic("SNDCTL_DSP_STEREO wasn't expecting a value of %d", fmt);
+            kpanic_fmt("SNDCTL_DSP_STEREO wasn't expecting a value of %d", fmt);
         }
         if (write)
             memory->writed(IOCTL_ARG1, this->channels - 1);

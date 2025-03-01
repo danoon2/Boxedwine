@@ -632,7 +632,7 @@ public class VkHostMarshalType {
                 out.append("        memory->memcpy((U8*)s->data.valueString, strAddress, len + 1);\n");
                 out.append("        break; }\n");
                 out.append("    default:\n");
-                out.append("        kpanic(\"MarshalVkPerformanceValueINTEL::read unknown s->type %d\", s->type);\n");
+                out.append("        kpanic_fmt(\"MarshalVkPerformanceValueINTEL::read unknown s->type %d\", s->type);\n");
                 out.append("    }\n");
                 out.append("    address += 8;\n");
                 paramsData.add(new MarshalParamData("s.data", false));
@@ -646,7 +646,7 @@ public class VkHostMarshalType {
                 out.append("        s->info.pShaderInfo = p;\n");
                 out.append("        MarshalVkIndirectExecutionSetShaderInfoEXT::read(pBoxedInfo, memory, address, p);\n");
                 out.append("    } else {\n");
-                out.append("        kpanic(\"MarshalVkIndirectExecutionSetCreateInfoEXT::read unknown s->type %d\", s->type);\n");
+                out.append("        kpanic_fmt(\"MarshalVkIndirectExecutionSetCreateInfoEXT::read unknown s->type %d\", s->type);\n");
                 out.append("    }\n");
                 out.append("    address += 4;\n");
             } else if (t.name.equals("VkIndirectCommandsLayoutTokenEXT") && param.name.equals("data")) {
@@ -721,7 +721,7 @@ public class VkHostMarshalType {
                 out.append("        MarshalVkDescriptorAddressInfoEXT::read(pBoxedInfo, memory, paramAddress, p);\n");
                 out.append("        s->data.pStorageBuffer = p;\n");
                 out.append("    } else {\n");
-                out.append("        kpanic(\"MarshalVkDescriptorGetInfoEXT::read unknown s->type %d\", s->type);\n");
+                out.append("        kpanic_fmt(\"MarshalVkDescriptorGetInfoEXT::read unknown s->type %d\", s->type);\n");
                 out.append("    }\n");
                 out.append("    address += 8;\n");
             } else if (t.name.equals("VkDebugReportCallbackCreateInfoEXT") && param.name.equals("pfnCallback")) {
@@ -853,7 +853,7 @@ public class VkHostMarshalType {
             out.append("        kpanic(\"MarshalVkPerformanceValueINTEL::write unhandled types: VK_PERFORMANCE_VALUE_TYPE_STRING_INTEL\");\n");
             out.append("        break;\n");
             out.append("    default:\n");
-            out.append("        kpanic(\"MarshalVkPerformanceValueINTEL::write unknown s->type %d\", s->type);\n");
+            out.append("        kpanic_fmt(\"MarshalVkPerformanceValueINTEL::write unknown s->type %d\", s->type);\n");
             out.append("    }\n");
             out.append("    address += 8;\n");
             return;
@@ -864,7 +864,7 @@ public class VkHostMarshalType {
             out.append("    } else if (s->type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_SHADER_OBJECTS_EXT) {\n");
             out.append("        MarshalVkIndirectExecutionSetShaderInfoEXT::write(pBoxedInfo, memory, address, (VkIndirectExecutionSetShaderInfoEXT*)s->info.pShaderInfo);\n");
             out.append("    } else {\n");
-            out.append("        kpanic(\"MarshalVkIndirectExecutionSetCreateInfoEXT::write unknown s->type %d\", s->type);\n");
+            out.append("        kpanic_fmt(\"MarshalVkIndirectExecutionSetCreateInfoEXT::write unknown s->type %d\", s->type);\n");
             out.append("    }\n");
             return;
         }
@@ -1089,7 +1089,7 @@ public class VkHostMarshalType {
             out.append("    } else if (s.type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_SHADER_OBJECTS_EXT) {\n");
             out.append("        delete s.info.pShaderInfo;\n");
             out.append("    } else {\n");
-            out.append("        kpanic(\"MarshalVkIndirectExecutionSetCreateInfoEXT::MarshalVkIndirectExecutionSetCreateInfoEXT unknown s.type %d\", s.type);\n");
+            out.append("        kpanic_fmt(\"MarshalVkIndirectExecutionSetCreateInfoEXT::MarshalVkIndirectExecutionSetCreateInfoEXT unknown s.type %d\", s.type);\n");
             out.append("    }\n");
         }
         if (t.name.equals("VkIndirectCommandsLayoutTokenEXT")) {
@@ -1123,7 +1123,7 @@ public class VkHostMarshalType {
             out.append("    } else if (s.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {\n");
             out.append("        delete s.data.pStorageBuffer;\n");
             out.append("    } else {\n");
-            out.append("        kpanic(\"MarshalVkDescriptorGetInfoEXT::~MarshalVkDescriptorGetInfoEXT unknown s.type %d\", s.type);\n");
+            out.append("        kpanic_fmt(\"MarshalVkDescriptorGetInfoEXT::~MarshalVkDescriptorGetInfoEXT unknown s.type %d\", s.type);\n");
             out.append("    }\n");
         }
         out.append("}\n");

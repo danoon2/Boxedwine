@@ -227,7 +227,7 @@ U32 BOXEDWINE_RECORDER_QUIT() {
             return 111;
         } else {
             klog("script: failed");
-            klog("  nextCommand is: %s", Player::instance->nextCommand.c_str());
+            klog_fmt("  nextCommand is: %s", Player::instance->nextCommand.c_str());
             KNativeScreenPtr screen = KNativeSystem::getScreen();
             if (screen) {
                 screen->screenShot(B("failed.bmp"), nullptr, 0);

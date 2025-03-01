@@ -82,7 +82,7 @@ public:
 		case AFMT_MPEG:
 			return AUDIO_U8;
 		default:
-			kpanic("KNativeAudioSdl Unknow audio format %d", format);
+			kpanic_fmt("KNativeAudioSdl Unknow audio format %d", format);
 			return 0;
 		}
 	}
@@ -189,7 +189,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
     }
 #endif
 	if (SDL_OpenAudio(&requested, &this->got) < 0) {
-		klog("Failed to open audio: %s", SDL_GetError());
+		klog_fmt("Failed to open audio: %s", SDL_GetError());
 	}
 	sdlSilence = this->got.silence;
 	sdlAudioOpen = true;
@@ -206,7 +206,7 @@ void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	if (this->got.size) {
 		//this->dspFragSize = this->got.size;
 	}
-	klog("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
+	klog_fmt("openAudio: freq=%d(got %d) format=%x(got %x) channels=%d(got %d)", this->want.freq, this->got.freq, this->want.format, this->got.format, this->want.channels, this->got.channels);
 }
 
 void KDspAudioSdl::closeAudioFromAudioThread() {

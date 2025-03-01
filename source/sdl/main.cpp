@@ -73,9 +73,9 @@ int boxedmain(int argc, const char **argv) {
 #ifdef _DEBUG
     U32 cpuCount = Platform::getCpuCount();
     if (cpuCount==1) {
-        klog("%d MHz CPU detected", Platform::getCpuFreqMHz());
+        klog_fmt("%d MHz CPU detected", Platform::getCpuFreqMHz());
     } else {
-        klog("%dx %d MHz CPUs detected", cpuCount, Platform::getCpuFreqMHz());
+        klog_fmt("%dx %d MHz CPUs detected", cpuCount, Platform::getCpuFreqMHz());
     }
 #endif
 

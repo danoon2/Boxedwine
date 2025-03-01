@@ -37,7 +37,7 @@ bool Fs::initFileSystem(const BString& rootPath) {
     }
 
     if (MKDIR(rootPath.c_str())==0) {
-        klog("Created root directory: %s", rootPath.c_str());
+        klog_fmt("Created root directory: %s", rootPath.c_str());
     }
 
     std::shared_ptr<FsNode> parent(nullptr);

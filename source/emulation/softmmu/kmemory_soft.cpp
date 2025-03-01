@@ -207,7 +207,7 @@ bool KMemoryData::isPageAllocated(U32 page) {
 }
 
 void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
-    BOXEDWINE_CRITICAL_SECTION(memory->mutex);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     for (U32 i = page; i < page + pageCount; i++) {
         mmu[i].flags = 0;
         mmu[i].setPage(this, i, PageType::None, (RamPage)0);
@@ -419,7 +419,7 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
         mmu[pageIndex].setPageType(this, pageIndex, PageType::Code);
         onPageChanged(pageIndex);
     } else {
-        kpanic("Unhandled code caching page type: %d", static_cast<int>(mmu[pageIndex].getPageType()));
+        kpanic_fmt("Unhandled code caching page type: %d", static_cast<int>(mmu[pageIndex].getPageType()));
         codePage = nullptr;
     }
     return codePage;
@@ -430,9 +430,9 @@ void KMemory::logPageFault(KThread* thread, U32 address) {
     CPU* cpu = thread->cpu;
 
     BString name = process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);
-    klog("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32));
+    klog_fmt("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32));
 
-    klog("Page Fault at %.8X", address);
+    klog_fmt("Page Fault at %.8X", address);
     klog("Valid address ranges:");
     for (U32 i = 0; i < K_NUMBER_OF_PAGES; i++) {
         if (!start) {
@@ -441,7 +441,7 @@ void KMemory::logPageFault(KThread* thread, U32 address) {
             }
         } else {
             if (data->getPage(i) == invalidPage) {
-                klog("    %.8X - %.8X", start * K_PAGE_SIZE, i * K_PAGE_SIZE);
+                klog_fmt("    %.8X - %.8X", start * K_PAGE_SIZE, i * K_PAGE_SIZE);
                 start = 0;
             }
         }

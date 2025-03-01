@@ -13,10 +13,10 @@ XDrawable::~XDrawable() {
 U32 XDrawable::getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U32 planeMask, U32 format, U32 redMask, U32 greenMask, U32 blueMask) {
 	U32 image = thread->process->alloc(thread, sizeof(XImage));
 	if (planeMask != AllPlanes) {
-		kpanic("XDrawable::createXImage wasn't expecting planeMask = %x", planeMask);
+		kpanic_fmt("XDrawable::createXImage wasn't expecting planeMask = %x", planeMask);
 	}
 	if (format != ZPixmap) {
-		kpanic("XDrawable::createXImage wasn't expecting format = %x", format);
+		kpanic_fmt("XDrawable::createXImage wasn't expecting format = %x", format);
 	}
 	U32 bytesPerLine = calculateBytesPerLine(width, visual->bits_per_rgb);
 	U32 len = bytesPerLine * height;
@@ -63,12 +63,12 @@ void XDrawable::setSize(U32 width, U32 height) {
 
 int XDrawable::putImage(KThread* thread, const std::shared_ptr<XGC>& gc, XImage* image, S32 src_x, S32 src_y, S32 dest_x, S32 dest_y, U32 width, U32 height) {
 	if (gc->values.function != GXcopy) {
-		kwarn("XPixmap::putImage function not supported %d", gc->values.function);
+		kwarn_fmt("XPixmap::putImage function not supported %d", gc->values.function);
 	}
 	return copyImageData(thread, gc, image->data, image->bytes_per_line, image->bits_per_pixel, src_x, src_y, dest_x, dest_y, width, height);
 }
 
-int XDrawable::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
+int XDrawable::copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, S32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height) {
 	if (bits_per_pixel != this->visual->bits_per_rgb) {
 		return BadMatch;
 	}
@@ -167,7 +167,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 				p += bytes_per_line / 4;
 			}
 		} else {
-			kpanic("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
+			kpanic_fmt("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
 		}
 	} else if (y1 == y2) {
 		if (y1 >= (S32)h) {
@@ -182,7 +182,7 @@ int XDrawable::drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1,
 				p++;
 			}
 		} else {
-			kwarn("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
+			kwarn_fmt("XDrawable::drawLine depth %d not supported", visual->bits_per_rgb);
 		}
 	} else {
 		klog("XDrawable::drawLine diag line not supported");

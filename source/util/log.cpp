@@ -27,6 +27,10 @@
 
 static BOXEDWINE_MUTEX logMutex;
 
+void kpanic(const char* msg) {
+    internal_kpanic(BString::copy(msg));
+}
+
 void internal_kpanic(BString msg) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(logMutex);
     if (KSystem::logFile.isOpen()) {
@@ -45,6 +49,18 @@ void internal_kpanic(BString msg) {
         KNativeThread::sleep(5000);
     }
     exit(1);
+}
+
+void kwarn(const char* msg) {
+    internal_log(BString::copy(msg) + "\n", stdout);
+}
+
+void klog(const char* msg) {
+    internal_log(BString::copy(msg) + "\n", stdout);
+}
+
+void klog_nonewline(const char* msg) {
+    internal_log(BString::copy(msg), stdout);
 }
 
 void internal_log(BString msg, FILE* f) {

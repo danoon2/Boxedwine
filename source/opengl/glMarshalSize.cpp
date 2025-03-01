@@ -49,7 +49,7 @@ U32 getDataSize(GLenum type) {
     case GL_T4F_C4F_N3F_V4F:
         return 60;
     default:
-        kpanic("glcommon.c getDataSize unknown type: %d", type);
+        kpanic_fmt("glcommon.c getDataSize unknown type: %d", type);
         return 4;
     }
 }
@@ -585,7 +585,7 @@ int getSize(GLenum pname) {
           return results;
       }      
       default:
-          klog("Unknown pname for get: %d", pname);
+          klog_fmt("Unknown pname for get: %d", pname);
           return 1;
    }
 }
@@ -686,7 +686,7 @@ GLint components_in_format(GLenum format )
       case GL_DU8DV8_ATI:
          return 2;
       default:
-          kpanic("Opengl components_in_format %d", format);
+          kpanic_fmt("Opengl components_in_format %d", format);
          return -1;
    }
 }
@@ -776,7 +776,7 @@ U32 getMap1Count(GLenum target) {
     case GL_MAP1_TEXTURE_COORD_4:
         return 4;
     default:
-        kpanic("unknown target in getMap1Count: %d", target);
+        kpanic_fmt("unknown target in getMap1Count: %d", target);
         return 0;
     }
 }
@@ -797,7 +797,7 @@ U32 getMap2Count(GLenum target) {
     case GL_MAP2_TEXTURE_COORD_4:
         return 4;
     default:
-        kpanic("unknown target in getMap2Count: %d", target);
+        kpanic_fmt("unknown target in getMap2Count: %d", target);
         return 0;
     }
 }

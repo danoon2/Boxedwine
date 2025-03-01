@@ -211,7 +211,7 @@ U32 DevSequencer::writeNative(U8* buffer, U32 len) {
             }
             MIDI_RawOutByte(buffer[i+2], buffer[i+1]);
         } else {
-            klog("Unhandled midi msg: %X", buffer[i]);
+			klog_fmt("Unhandled midi msg: %X", buffer[i]);
         }
     }
     return len;

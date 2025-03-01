@@ -1564,7 +1564,7 @@ static void logRR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
         cpu->logFile.write(",");
         outR8(op->rm, cpu);
     } else {
-        kpanic("unknown width: %d in logRR", inst->width);
+        kpanic_fmt("unknown width: %d in logRR", inst->width);
     }
 }
 
@@ -1584,7 +1584,7 @@ static void logRE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
         cpu->logFile.write(",");
         outE8(op, cpu);
     } else {
-        kpanic("unknown width: %d in logRE", inst->width);
+        kpanic_fmt("unknown width: %d in logRE", inst->width);
     }
 }
 
@@ -1604,7 +1604,7 @@ static void logER(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
         cpu->logFile.write(",");
         outR8(op->reg, cpu);
     } else {
-        kpanic("unknown width: %d in logER", inst->width);
+        kpanic_fmt("unknown width: %d in logER", inst->width);
     }
 }
 
@@ -1624,7 +1624,7 @@ static void logRE8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
         cpu->logFile.write(",");
         outE8(op, cpu);
     } else {
-        kpanic("unknown width: %d in logRE8", inst->width);
+        kpanic_fmt("unknown width: %d in logRE8", inst->width);
     }
 }
 
@@ -1644,7 +1644,7 @@ static void logRR8(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
         cpu->logFile.write(",");
         outR8(op->rm, cpu);
     } else {
-        kpanic("unknown width: %d in logRR8", inst->width);
+        kpanic_fmt("unknown width: %d in logRR8", inst->width);
     }
 }
 
@@ -1664,7 +1664,7 @@ static void logRE16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
         cpu->logFile.write(",");
         outE16(op, cpu);
     } else {
-        kpanic("unknown width: %d in logRE16", inst->width);
+        kpanic_fmt("unknown width: %d in logRE16", inst->width);
     }
 }
 
@@ -1684,7 +1684,7 @@ static void logRR16(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
         cpu->logFile.write(",");
         outR16(op->rm, cpu);
     } else {
-        kpanic("unknown width: %d in logRR16", inst->width);
+        kpanic_fmt("unknown width: %d in logRR16", inst->width);
     }
 }
 
@@ -1698,7 +1698,7 @@ static void logR(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
     } else if (inst->width==8) {
         outR8(op->reg, cpu);
     } else {
-        kpanic("unknown width: %d in logR", inst->width);
+        kpanic_fmt("unknown width: %d in logR", inst->width);
     }
 }
 
@@ -1714,7 +1714,7 @@ static void logE(const LogInstruction* inst, DecodedOp* op, CPU* cpu) {
     } else if (inst->width==64) {
         outE64(op, cpu);
     } else {
-        kpanic("unknown width: %d in logE", inst->width);
+        kpanic_fmt("unknown width: %d in logE", inst->width);
     }
 }
 

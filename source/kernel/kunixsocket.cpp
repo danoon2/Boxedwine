@@ -198,7 +198,7 @@ U32 KUnixSocketObject::write(KThread* thread, U32 buffer, U32 len) {
 U32 KUnixSocketObject::writeNative(U8* buffer, U32 len) {
     if (this->type == K_SOCK_DGRAM) {
         if (!strcmp(this->destAddress.data, "/dev/log")) {
-            klog("%s", buffer);
+            klog_fmt("%s", buffer);
         }
         return len;
     }
@@ -289,7 +289,7 @@ U32 KUnixSocketObject::read(KThread* thread, U32 buffer, U32 len, U32 flags) {
         flags &= ~K_MSG_PEEK;
     }
     if (flags) {
-        kwarn("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
+        kwarn_fmt("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
     }
 
     U32 count = 0;
@@ -527,10 +527,10 @@ U32 KUnixSocketObject::connect(KThread* thread, const KFileDescriptorPtr& fd, U3
                 return 0;
             }
         } else {
-            kpanic("connect not implemented for domain %d", this->domain);
+            kpanic_fmt("connect not implemented for domain %d", this->domain);
         }
     } else {
-        kwarn("connect not implemented for type %d", this->type);
+        kwarn_fmt("connect not implemented for type %d", this->type);
         return -K_ECONNREFUSED;
     }
     // should never get here
@@ -608,7 +608,7 @@ U32 KUnixSocketObject::getsockname(KThread* thread, const KFileDescriptorPtr& fd
         memory->writed(plen, 2 + (U32)strlen(this->destAddress.data) + 1);
         return 0;
     }
-    kwarn("KUnixSocketObject::getsockname not implemented for domain %d", this->domain);
+    kwarn_fmt("KUnixSocketObject::getsockname not implemented for domain %d", this->domain);
     return 0;
 }
 
@@ -681,10 +681,10 @@ U32 KUnixSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& fd,
             case K_SO_ATTACH_FILTER:
                 break;
             default:
-                kwarn("KUnixSocketObject::setsockopt name %d not implemented", name);
+                kwarn_fmt("KUnixSocketObject::setsockopt name %d not implemented", name);
         }
     } else {
-        kwarn("KUnixSocketObject::setsockopt level %d not implemented", level);
+        kwarn_fmt("KUnixSocketObject::setsockopt level %d not implemented", level);
     }
     return 0;
 }
@@ -724,11 +724,11 @@ U32 KUnixSocketObject::getsockopt(KThread* thread, const KFileDescriptorPtr& fd,
             memory->writed(value + 4, thread->process->userId);
             memory->writed(value + 8, thread->process->groupId);
         } else {
-            kwarn("KUnixSocketObject::getsockopt name %d not implemented", name);
+            kwarn_fmt("KUnixSocketObject::getsockopt name %d not implemented", name);
             return -K_EINVAL;
         }
     } else {
-        kwarn("KUnixSocketObject::getsockopt level %d not implemented", level);
+        kwarn_fmt("KUnixSocketObject::getsockopt level %d not implemented", level);
         return -K_EINVAL;
     }
     return 0;
@@ -752,13 +752,13 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
         if (this->type == K_SOCK_STREAM) {
             return K_ENOTCONN;
         }
-        kpanic("KUnixSocketObject::sendmsg not implemented for type: %d", this->type);
+        kpanic_fmt("KUnixSocketObject::sendmsg not implemented for type: %d", this->type);
         return 0;
     }
     bool noSignal = (flags & K_MSG_NOSIGNAL) != 0;
     flags &= ~K_MSG_NOSIGNAL;
     if (flags) {
-        kwarn("KUnixSocketObject::sendmsg unhandled flag=%x", flags);
+        kwarn_fmt("KUnixSocketObject::sendmsg unhandled flag=%x", flags);
     }
     BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(con->lockCond);
     if (this->outClosed) {
@@ -773,11 +773,11 @@ U32 KUnixSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, U3
 
         readCMsgHdr(thread, hdr.msg_control, &cmsg);
         if (cmsg.cmsg_level != K_SOL_SOCKET) {
-            kpanic("KUnixSocketObject::sendmsg control level %d not implemented", cmsg.cmsg_level);
+            kpanic_fmt("KUnixSocketObject::sendmsg control level %d not implemented", cmsg.cmsg_level);
         } else if (cmsg.cmsg_type != K_SCM_RIGHTS) {
-            kpanic("KUnixSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_level);
+            kpanic_fmt("KUnixSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_level);
         } else if ((cmsg.cmsg_len & 3) != 0) {
-            kpanic("KUnixSocketObject::sendmsg control len %d not implemented", cmsg.cmsg_len);
+            kpanic_fmt("KUnixSocketObject::sendmsg control len %d not implemented", cmsg.cmsg_len);
         }
 
         for (U32 i=0;i<hdr.msg_controllen/16;i++) {

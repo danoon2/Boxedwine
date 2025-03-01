@@ -12571,10 +12571,9 @@ VkBaseOutStructure* vulkanGetNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memor
             return (VkBaseOutStructure*)p;
         }
        default:
-            kpanic("vulkanGetNextPtr not implemented for %d", type);
+            kpanic_fmt("vulkanGetNextPtr not implemented for %d", type);
             return nullptr;
     }
-    return nullptr;
 }
 void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, const void* p) {
     if (address == 0) {
@@ -15955,7 +15954,7 @@ void vulkanWriteNextPtr(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 addres
             break;
         }
        default:
-            kpanic("vulkanWriteNextPtr not implemented for %d", type);
+            kpanic_fmt("vulkanWriteNextPtr not implemented for %d", type);
     }
 }
 #endif

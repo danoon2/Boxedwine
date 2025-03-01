@@ -170,11 +170,11 @@ U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
 
     if (af!=K_AF_UNIX) {
-        kwarn("socketpair with adress family %d not implemented", af);
+        kwarn_fmt("socketpair with adress family %d not implemented", af);
         return -1;
     }
     if (type!=K_SOCK_DGRAM && type!=K_SOCK_STREAM) {
-        kwarn("socketpair with type %d not implemented", type);
+        kwarn_fmt("socketpair with type %d not implemented", type);
         return -1;
     }
     fd1 = ksocket(af, type, protocol);
@@ -202,7 +202,7 @@ U32 ksocketpair(KThread* thread, U32 af, U32 type, U32 protocol, U32 socks, U32 
         thread->process->fcntrl(thread, fd2, K_F_SETFL, K_O_NONBLOCK);
     }
     if (flags & ~(K_O_CLOEXEC|K_O_NONBLOCK)) {
-        kwarn("Unknow flags sent to pipe2: %X", flags);
+        kwarn_fmt("Unknow flags sent to pipe2: %X", flags);
     }
     return 0;
 }

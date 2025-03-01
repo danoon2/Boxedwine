@@ -17,7 +17,7 @@ public:
 	int drawLine(KThread* thread, const std::shared_ptr<XGC>& gc, S32 x1, S32 y1, S32 x2, S32 y2);
 	int copy(KThread* thread, const std::shared_ptr<XGC>& gc, const std::shared_ptr<XDrawable>& src, S32 srcX, S32 srcY, U32 width, U32 height, S32 dstX, S32 dstY);
 
-	int copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, U32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height);
+	int copyImageData(KThread* thread, const std::shared_ptr<XGC>& gc, U32 data, U32 bytes_per_line, S32 bits_per_pixel, S32 src_x, S32 src_y, S32 dst_x, S32 dst_y, U32 width, U32 height);
 
 	U32 getImage(KThread* thread, S32 x, S32 y, U32 width, U32 height, U32 planeMask, U32 format, U32 redMask, U32 greenMask, U32 blueMask);
 
@@ -25,7 +25,7 @@ public:
 	U32 height() { return h; }
 	U32 getDepth() { return depth; }
 	U32 getBytesPerLine() { return bytes_per_line; }
-	U32 getBitsPerPixel() { return visual->bits_per_rgb; }
+	S32 getBitsPerPixel() { return visual->bits_per_rgb; }
 
 	void setSize(U32 width, U32 height);
 	

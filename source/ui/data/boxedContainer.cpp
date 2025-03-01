@@ -22,7 +22,7 @@ bool BoxedContainer::load(BString dirPath) {
         std::vector<BString> parts;
         mount.split('|', parts);
         if (parts.size() != 2) {
-            kwarn("Failed to parse container %s mount command %s", this->name.c_str(), mount.c_str());
+            kwarn_fmt("Failed to parse container %s mount command %s", this->name.c_str(), mount.c_str());
             break;
         }
         this->mounts.push_back(MountInfo(parts[0], parts[1], parts[0].length() == 1));

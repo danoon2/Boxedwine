@@ -212,7 +212,7 @@ U32 Platform::getPagePermissionGranularity() {
 
 U32 Platform::allocateNativeMemory(U64 address) {
     if (mprotect((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, PROT_READ | PROT_WRITE) < 0) {
-        kpanic("allocNativeMemory mprotect failed: %s", strerror(errno));
+        kpanic_fmt("allocNativeMemory mprotect failed: %s", strerror(errno));
     }
     return 0;
 }
@@ -248,7 +248,7 @@ static bool isAddressRangeInUse(void* p, U64 len) {
 static bool isAddressRangeInUse(void* p, U64 len) {
     FILE* file = fopen("/proc/self/maps", "r");
     if (!file) {
-        kpanic("reservereNext4GBMemory : cannot open /proc/self/maps, %s\n", strerror(errno));
+        kpanic_fmt("reservereNext4GBMemory : cannot open /proc/self/maps, %s\n", strerror(errno));
         return false;
     }
 
@@ -307,7 +307,7 @@ BString Platform::procStat() {
 U8* Platform::reserveNativeMemory64k(U32 count) {
     U8* result = (U8*)mmap(NULL, 64 * 1024 * count, PROT_NONE, MAP_ANONYMOUS | MAP_PRIVATE , -1, 0);
     if (result == MAP_FAILED) {
-        kpanic("reserveNativeMemory64k: failed to commit memory : %s", strerror(errno));
+        kpanic_fmt("reserveNativeMemory64k: failed to commit memory : %s", strerror(errno));
     }
     return result;
 }
@@ -345,7 +345,7 @@ U8* Platform::alloc64kBlock(U32 count, bool executable) {
     }
     U8* result = (U8*)mmap(NULL, 64 * 1024 * count, prot, MAP_ANONYMOUS | MAP_PRIVATE | MAP_BOXEDWINE, -1, 0);
     if (result == MAP_FAILED) {
-        kpanic("alloc64kBlock: failed to commit memory : %s", strerror(errno));
+        kpanic_fmt("alloc64kBlock: failed to commit memory : %s", strerror(errno));
     }
     return result;
 }
@@ -397,7 +397,7 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         for (U32 i = 0; i < count; i++) {
             CPU_SET(i, &mask);
         }
-        klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, count);
+        klog_fmt("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, count);
 
         sched_setaffinity((pid_t)thread->cpu->nativeHandle, sizeof(cpu_set_t), &mask);
     }

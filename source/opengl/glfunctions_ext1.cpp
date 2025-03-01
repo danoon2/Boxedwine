@@ -99,7 +99,7 @@ void glcommon_glApplyFramebufferAttachmentCMAAINTEL(CPU* cpu) {
         kpanic("ext_glApplyFramebufferAttachmentCMAAINTEL is NULL");
     {
     GL_FUNC(ext_glApplyFramebufferAttachmentCMAAINTEL)();
-    GL_LOG ("glApplyFramebufferAttachmentCMAAINTEL");
+    GL_LOG_NO_FMT("glApplyFramebufferAttachmentCMAAINTEL");
     }
 }
 void glcommon_glApplyTextureEXT(CPU* cpu) {
@@ -197,7 +197,7 @@ void glcommon_glBeginFragmentShaderATI(CPU* cpu) {
         kpanic("ext_glBeginFragmentShaderATI is NULL");
     {
     GL_FUNC(ext_glBeginFragmentShaderATI)();
-    GL_LOG ("glBeginFragmentShaderATI");
+    GL_LOG_NO_FMT("glBeginFragmentShaderATI");
     }
 }
 void glcommon_glBeginOcclusionQueryNV(CPU* cpu) {
@@ -277,7 +277,7 @@ void glcommon_glBeginVertexShaderEXT(CPU* cpu) {
         kpanic("ext_glBeginVertexShaderEXT is NULL");
     {
     GL_FUNC(ext_glBeginVertexShaderEXT)();
-    GL_LOG ("glBeginVertexShaderEXT");
+    GL_LOG_NO_FMT ("glBeginVertexShaderEXT");
     }
 }
 void glcommon_glBeginVideoCaptureNV(CPU* cpu) {
@@ -773,7 +773,7 @@ void glcommon_glBlendBarrierKHR(CPU* cpu) {
         kpanic("ext_glBlendBarrierKHR is NULL");
     {
     GL_FUNC(ext_glBlendBarrierKHR)();
-    GL_LOG ("glBlendBarrierKHR");
+    GL_LOG_NO_FMT ("glBlendBarrierKHR");
     }
 }
 void glcommon_glBlendBarrierNV(CPU* cpu) {
@@ -781,7 +781,7 @@ void glcommon_glBlendBarrierNV(CPU* cpu) {
         kpanic("ext_glBlendBarrierNV is NULL");
     {
     GL_FUNC(ext_glBlendBarrierNV)();
-    GL_LOG ("glBlendBarrierNV");
+    GL_LOG_NO_FMT("glBlendBarrierNV");
     }
 }
 void glcommon_glBlendColor(CPU* cpu) {
@@ -1037,7 +1037,7 @@ void glcommon_glBufferRegionEnabled(CPU* cpu) {
         kpanic("ext_glBufferRegionEnabled is NULL");
     {
     EAX=GL_FUNC(ext_glBufferRegionEnabled)();
-    GL_LOG ("glBufferRegionEnabled");
+    GL_LOG_NO_FMT ("glBufferRegionEnabled");
     }
 }
 void glcommon_glBufferStorage(CPU* cpu) {
@@ -2457,7 +2457,7 @@ void glcommon_glCreateProgram(CPU* cpu) {
         kpanic("ext_glCreateProgram is NULL");
     {
     EAX=GL_FUNC(ext_glCreateProgram)();
-    GL_LOG ("glCreateProgram");
+    GL_LOG_NO_FMT ("glCreateProgram");
     }
 }
 void glcommon_glCreateProgramObjectARB(CPU* cpu) {
@@ -2465,7 +2465,7 @@ void glcommon_glCreateProgramObjectARB(CPU* cpu) {
         kpanic("ext_glCreateProgramObjectARB is NULL");
     {
     EAX=HANDLE_TO_INDEX(GL_FUNC(ext_glCreateProgramObjectARB)());
-    GL_LOG ("glCreateProgramObjectARB");
+    GL_LOG_NO_FMT("glCreateProgramObjectARB");
     }
 }
 void glcommon_glCreateProgramPipelines(CPU* cpu) {
@@ -3614,7 +3614,7 @@ void glcommon_glEndConditionalRender(CPU* cpu) {
         kpanic("ext_glEndConditionalRender is NULL");
     {
     GL_FUNC(ext_glEndConditionalRender)();
-    GL_LOG ("glEndConditionalRender");
+    GL_LOG_NO_FMT("glEndConditionalRender");
     }
 }
 void glcommon_glEndConditionalRenderNV(CPU* cpu) {
@@ -3622,7 +3622,7 @@ void glcommon_glEndConditionalRenderNV(CPU* cpu) {
         kpanic("ext_glEndConditionalRenderNV is NULL");
     {
     GL_FUNC(ext_glEndConditionalRenderNV)();
-    GL_LOG ("glEndConditionalRenderNV");
+    GL_LOG_NO_FMT("glEndConditionalRenderNV");
     }
 }
 void glcommon_glEndConditionalRenderNVX(CPU* cpu) {
@@ -3630,7 +3630,7 @@ void glcommon_glEndConditionalRenderNVX(CPU* cpu) {
         kpanic("ext_glEndConditionalRenderNVX is NULL");
     {
     GL_FUNC(ext_glEndConditionalRenderNVX)();
-    GL_LOG ("glEndConditionalRenderNVX");
+    GL_LOG_NO_FMT("glEndConditionalRenderNVX");
     }
 }
 void glcommon_glEndFragmentShaderATI(CPU* cpu) {
@@ -3638,7 +3638,7 @@ void glcommon_glEndFragmentShaderATI(CPU* cpu) {
         kpanic("ext_glEndFragmentShaderATI is NULL");
     {
     GL_FUNC(ext_glEndFragmentShaderATI)();
-    GL_LOG ("glEndFragmentShaderATI");
+    GL_LOG_NO_FMT("glEndFragmentShaderATI");
     }
 }
 void glcommon_glEndOcclusionQueryNV(CPU* cpu) {
@@ -3646,7 +3646,7 @@ void glcommon_glEndOcclusionQueryNV(CPU* cpu) {
         kpanic("ext_glEndOcclusionQueryNV is NULL");
     {
     GL_FUNC(ext_glEndOcclusionQueryNV)();
-    GL_LOG ("glEndOcclusionQueryNV");
+    GL_LOG_NO_FMT("glEndOcclusionQueryNV");
     }
 }
 void glcommon_glEndPerfMonitorAMD(CPU* cpu) {
@@ -3694,7 +3694,7 @@ void glcommon_glEndTransformFeedback(CPU* cpu) {
         kpanic("ext_glEndTransformFeedback is NULL");
     {
     GL_FUNC(ext_glEndTransformFeedback)();
-    GL_LOG ("glEndTransformFeedback");
+    GL_LOG_NO_FMT("glEndTransformFeedback");
     }
 }
 void glcommon_glEndTransformFeedbackEXT(CPU* cpu) {
@@ -3702,7 +3702,7 @@ void glcommon_glEndTransformFeedbackEXT(CPU* cpu) {
         kpanic("ext_glEndTransformFeedbackEXT is NULL");
     {
     GL_FUNC(ext_glEndTransformFeedbackEXT)();
-    GL_LOG ("glEndTransformFeedbackEXT");
+    GL_LOG_NO_FMT("glEndTransformFeedbackEXT");
     }
 }
 void glcommon_glEndTransformFeedbackNV(CPU* cpu) {
@@ -3710,7 +3710,7 @@ void glcommon_glEndTransformFeedbackNV(CPU* cpu) {
         kpanic("ext_glEndTransformFeedbackNV is NULL");
     {
     GL_FUNC(ext_glEndTransformFeedbackNV)();
-    GL_LOG ("glEndTransformFeedbackNV");
+    GL_LOG_NO_FMT("glEndTransformFeedbackNV");
     }
 }
 void glcommon_glEndVertexShaderEXT(CPU* cpu) {
@@ -3718,7 +3718,7 @@ void glcommon_glEndVertexShaderEXT(CPU* cpu) {
         kpanic("ext_glEndVertexShaderEXT is NULL");
     {
     GL_FUNC(ext_glEndVertexShaderEXT)();
-    GL_LOG ("glEndVertexShaderEXT");
+    GL_LOG_NO_FMT("glEndVertexShaderEXT");
     }
 }
 void glcommon_glEndVideoCaptureNV(CPU* cpu) {
@@ -3774,7 +3774,7 @@ void glcommon_glEvaluateDepthValuesARB(CPU* cpu) {
         kpanic("ext_glEvaluateDepthValuesARB is NULL");
     {
     GL_FUNC(ext_glEvaluateDepthValuesARB)();
-    GL_LOG ("glEvaluateDepthValuesARB");
+    GL_LOG_NO_FMT("glEvaluateDepthValuesARB");
     }
 }
 void glcommon_glExecuteProgramNV(CPU* cpu) {
@@ -3856,7 +3856,7 @@ void glcommon_glFinishTextureSUNX(CPU* cpu) {
         kpanic("ext_glFinishTextureSUNX is NULL");
     {
     GL_FUNC(ext_glFinishTextureSUNX)();
-    GL_LOG ("glFinishTextureSUNX");
+    GL_LOG_NO_FMT("glFinishTextureSUNX");
     }
 }
 void glcommon_glFlushMappedBufferRange(CPU* cpu) {
@@ -3905,7 +3905,7 @@ void glcommon_glFlushRasterSGIX(CPU* cpu) {
         kpanic("ext_glFlushRasterSGIX is NULL");
     {
     GL_FUNC(ext_glFlushRasterSGIX)();
-    GL_LOG ("glFlushRasterSGIX");
+    GL_LOG_NO_FMT("glFlushRasterSGIX");
     }
 }
 void glcommon_glFlushStaticDataIBM(CPU* cpu) {
@@ -3929,7 +3929,7 @@ void glcommon_glFlushVertexArrayRangeNV(CPU* cpu) {
         kpanic("ext_glFlushVertexArrayRangeNV is NULL");
     {
     GL_FUNC(ext_glFlushVertexArrayRangeNV)();
-    GL_LOG ("glFlushVertexArrayRangeNV");
+    GL_LOG_NO_FMT("glFlushVertexArrayRangeNV");
     }
 }
 void glcommon_glFogCoordFormatNV(CPU* cpu) {
@@ -4185,7 +4185,7 @@ void glcommon_glFrameTerminatorGREMEDY(CPU* cpu) {
         kpanic("ext_glFrameTerminatorGREMEDY is NULL");
     {
     GL_FUNC(ext_glFrameTerminatorGREMEDY)();
-    GL_LOG ("glFrameTerminatorGREMEDY");
+    GL_LOG_NO_FMT("glFrameTerminatorGREMEDY");
     }
 }
 void glcommon_glFrameZoomSGIX(CPU* cpu) {
@@ -5541,7 +5541,7 @@ void glcommon_glGetGraphicsResetStatus(CPU* cpu) {
         kpanic("ext_glGetGraphicsResetStatus is NULL");
     {
     EAX=GL_FUNC(ext_glGetGraphicsResetStatus)();
-    GL_LOG ("glGetGraphicsResetStatus");
+    GL_LOG_NO_FMT("glGetGraphicsResetStatus");
     }
 }
 void glcommon_glGetGraphicsResetStatusARB(CPU* cpu) {
@@ -5549,7 +5549,7 @@ void glcommon_glGetGraphicsResetStatusARB(CPU* cpu) {
         kpanic("ext_glGetGraphicsResetStatusARB is NULL");
     {
     EAX=GL_FUNC(ext_glGetGraphicsResetStatusARB)();
-    GL_LOG ("glGetGraphicsResetStatusARB");
+    GL_LOG_NO_FMT("glGetGraphicsResetStatusARB");
     }
 }
 void glcommon_glGetHandleARB(CPU* cpu) {
@@ -5676,7 +5676,7 @@ void glcommon_glGetInstrumentsSGIX(CPU* cpu) {
         kpanic("ext_glGetInstrumentsSGIX is NULL");
     {
     EAX=GL_FUNC(ext_glGetInstrumentsSGIX)();
-    GL_LOG ("glGetInstrumentsSGIX");
+    GL_LOG_NO_FMT("glGetInstrumentsSGIX");
     }
 }
 void glcommon_glGetInteger64i_v(CPU* cpu) {

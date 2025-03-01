@@ -358,7 +358,7 @@ void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWid
                 outb(0xbe);
                 outb(0xC0 | (src << 3) | dst);
             } else {
-                kpanic("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
+                kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
             }
         } else if (dstWidth==DYN_16bit) {
             if (srcWidth==DYN_8bit) {
@@ -367,10 +367,10 @@ void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWid
                 outb(0xbe);
                 outb(0xC0 | (src << 3) | dst);
             } else {
-                kpanic("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
+                kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
             }           
         } else {
-            kpanic("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
+            kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
         }
         if (doneWithSrcReg) {
             regUsed[src] = false;
@@ -397,7 +397,7 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
             }
             outb(0xC0 | (src << 3) | dst);
         }  else {
-            kpanic("unknown dstWidth in x32CPU::movToRegFromReg %d", dstWidth);
+            kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromReg %d", dstWidth);
         }
     } else {
         if (dstWidth==DYN_32bit) {
@@ -410,7 +410,7 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
                 outb(0xb6);
                 outb(0xC0 | (dst << 3) | src);
             } else {
-                kpanic("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
+                kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
             }
         } else if (dstWidth==DYN_16bit) {
             if (srcWidth==DYN_8bit) {
@@ -419,10 +419,10 @@ void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidt
                 outb(0xb6);
                 outb(0xC0 | (dst << 3) | src);
             } else {
-                kpanic("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
+                kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
             }           
         } else {
-            kpanic("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
+            kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
         }
     }
     if (doneWithSrcReg) {
@@ -441,7 +441,7 @@ void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
     } else if (width == DYN_8bit) {
         outb(0x8a);
     } else {
-        kpanic("unknown dstWidth in x32CPU::movToRegFromCpu %d", width);
+        kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromCpu %d", width);
     }
 
     if (srcOffset<=127) {
@@ -463,7 +463,7 @@ void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg
     } else if (width == DYN_8bit) {
         outb(0x88);
     } else {
-        kpanic("unknown dstWidth in x32CPU::movToCpuFromReg %d", width);
+        kpanic_fmt("unknown dstWidth in x32CPU::movToCpuFromReg %d", width);
     }
     if (dstOffset<=127) {
         outb(0x47|(reg << 3));
@@ -495,7 +495,7 @@ void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     } else if (dstWidth == DYN_8bit) {
         outb(0xc6);
     } else {
-        kpanic("unknown dstWidth in x32CPU::movToCpu %d", dstWidth);
+        kpanic_fmt("unknown dstWidth in x32CPU::movToCpu %d", dstWidth);
     }
 
     if (dstOffset<=127) {
@@ -513,7 +513,7 @@ void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     } else if (dstWidth == DYN_8bit) {
         outb(imm);
     } else {
-        kpanic("unknown width in x32CPU::movToCpu %d", dstWidth);
+        kpanic_fmt("unknown width in x32CPU::movToCpu %d", dstWidth);
     }
 }
 
@@ -716,7 +716,7 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     } else if (width == DYN_8bit) {
         address = readb;
     } else {
-        kpanic("unknown width in x32CPU::movFromMem %d", width);
+        kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
     }
 
     outb(0xe8);
@@ -752,7 +752,7 @@ void pushValue(U32 arg, DynCallParamType argType) {
         outb(0x0f);
         outb(0xb6);
         if (arg>=4) {
-            kpanic("x32CPU: invalid arg: %d for DYN_PARAM_REG_8", arg);
+            kpanic_fmt("x32CPU: invalid arg: %d for DYN_PARAM_REG_8", arg);
         }
         outb(0xC0 | (arg) | (arg<<3));
 
@@ -853,7 +853,7 @@ void pushValue(U32 arg, DynCallParamType argType) {
         outb(0x50);
         break;
     default:
-        kpanic("x32CPU: unknown argType: %d", argType);
+        kpanic_fmt("x32CPU: unknown argType: %d", argType);
         break;
     }
 }
@@ -1073,7 +1073,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
             outb(reg1 | (reg2 << 3));
         }
     } else {
-        kpanic("x32CPU::movToMem unknown param type: %d", paramType);
+        kpanic_fmt("x32CPU::movToMem unknown param type: %d", paramType);
     }
     if (pushedReg2) {
         outb(0x58+reg2);
@@ -1110,7 +1110,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     } else if (width == DYN_8bit) {
         address = writeb;
     } else {
-        kpanic("unknown width in x32CPU::movToMem %d", width);
+        kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
     }    
 
     outb(0xe8);
@@ -1146,7 +1146,7 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWit
     else if (width==DYN_32bit)
         paramType = DYN_PARAM_REG_32;
     else
-        kpanic("unknown width %d in x32CPU::movToMemFromReg", width);
+        kpanic_fmt("unknown width %d in x32CPU::movToMemFromReg", width);
 
     movToMem(addressReg, width, reg, paramType, doneWithReg);   
     if (doneWithAddressReg) {
@@ -1167,7 +1167,7 @@ void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAd
     else if (width==DYN_32bit)
         paramType = DYN_PARAM_CONST_32;
     else
-        kpanic("unknown width %d in x32CPU::movToMemFromImm", width);
+        kpanic_fmt("unknown width %d in x32CPU::movToMemFromImm", width);
 
     movToMem(addressReg, width, imm, paramType, false);    
     if (doneWithAddressReg) {
@@ -1181,35 +1181,35 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
     if (argCount>=5) {
         if (isParamTypeReg(arg5Type) && doneWithArg5) {
             if (arg5>=4)
-                kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg5, arg5Type);
+                kpanic_fmt("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg5, arg5Type);
             regDone[arg5] = true;
         }
     }
     if (argCount>=4) {
         if (isParamTypeReg(arg4Type) && doneWithArg4) {
             if (arg4>=4)
-                kpanic("x32CPU::callHostFunction bad param 4: arg=%d argType=%d", arg4, arg4Type);
+                kpanic_fmt("x32CPU::callHostFunction bad param 4: arg=%d argType=%d", arg4, arg4Type);
             regDone[arg4] = true;
         }
     }
     if (argCount>=3) {
         if (isParamTypeReg(arg3Type) && doneWithArg3) {
             if (arg3>=4)
-                kpanic("x32CPU::callHostFunction bad param 3: arg=%d argType=%d", arg3, arg3Type);
+                kpanic_fmt("x32CPU::callHostFunction bad param 3: arg=%d argType=%d", arg3, arg3Type);
             regDone[arg3] = true;
         }
     }
     if (argCount>=2) {
         if (isParamTypeReg(arg2Type) && doneWithArg2) {
             if (arg2>=4)
-                kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg2, arg2Type);
+                kpanic_fmt("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg2, arg2Type);
             regDone[arg2] = true;
         }
     }
     if (argCount>=1) {
         if (isParamTypeReg(arg1Type) && doneWithArg1) {
             if (arg1>=4)
-                kpanic("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg1, arg1Type);
+                kpanic_fmt("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg1, arg1Type);
             regDone[arg1] = true;
         }
     } 
@@ -1327,7 +1327,7 @@ void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
             i=6;
             break;
         default:
-            kpanic("unhandled op in x32CPU::instRegIMM %c", inst);
+            kpanic_fmt("unhandled op in x32CPU::instRegIMM %c", inst);
             break;
     }
     // add reg, imm
@@ -1353,12 +1353,12 @@ void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
         outb(0xC0 | i << 3 | reg);
         outb((U8)imm);
     } else {
-        kpanic("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
+        kpanic_fmt("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
     }
 }
 void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
     if (dstOffset>127)
-        kpanic("x32CPU::instCPUReg register offset expected to be less than 128: %d", dstOffset);
+        kpanic_fmt("x32CPU::instCPUReg register offset expected to be less than 128: %d", dstOffset);
 
     if (inst == '<' || inst == '>' || inst == ')') {
         U8 group;
@@ -1404,7 +1404,7 @@ void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool don
             i=0x31;
             break;
         default:
-            kpanic("unhandled op in x32CPU::instCPUReg %c", inst);
+            kpanic_fmt("unhandled op in x32CPU::instCPUReg %c", inst);
             break;
     }
     // add [offset], rm
@@ -1419,7 +1419,7 @@ void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool don
         outb(i-1);
         outb(0x47 | rm << 3);
     } else {
-        kpanic("unknown regWidth in x32CPU::instCPUReg + %d", regWidth);
+        kpanic_fmt("unknown regWidth in x32CPU::instCPUReg + %d", regWidth);
     }    
     outb((U8)dstOffset);
     if (doneWithRmReg) {
@@ -1428,7 +1428,7 @@ void instCPUReg(char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool don
 }
 void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
     if (dstOffset>127)
-        kpanic("x32CPU::instCPUImm register offset expected to be less than 128: %d", dstOffset);
+        kpanic_fmt("x32CPU::instCPUImm register offset expected to be less than 128: %d", dstOffset);
 
     if (inst == '<' || inst == '>' || inst == ')') {
         U8 group;
@@ -1498,7 +1498,7 @@ void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
             i=6;
             break;
         default:
-            kpanic("unhandled op in x32CPU::instCPUImm %c", inst);
+            kpanic_fmt("unhandled op in x32CPU::instCPUImm %c", inst);
             break;
     }
     // add [reg], imm
@@ -1528,7 +1528,7 @@ void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm) {
         outb((U8)dstOffset);
         outb((U8)imm);
     } else {
-        kpanic("unknown regWidth in x32CPU::instCPUImm + %d", regWidth);
+        kpanic_fmt("unknown regWidth in x32CPU::instCPUImm + %d", regWidth);
     }    
 }
 
@@ -1624,7 +1624,7 @@ void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWi
             i = 0x31;
             break;
         default:
-            kpanic("unhandled op in x32CPU::instRegReg %c", inst);
+            kpanic_fmt("unhandled op in x32CPU::instRegReg %c", inst);
             break;
         }
         // add reg, imm
@@ -1642,7 +1642,7 @@ void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWi
             outb(0xC0 | rm << 3 | reg);
         }
         else {
-            kpanic("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
+            kpanic_fmt("unknown regWidth in x32CPU::instRegImm + %d", regWidth);
         }
     }
     if (doneWithRmReg) {
@@ -1665,7 +1665,7 @@ void instReg(char inst, DynReg reg, DynWidth regWidth) {
             outb(0xf6);
             outb(0xd0+reg);   
         } else {
-            kpanic("unhandled regWidth in x32CPU::instReg %d", regWidth);
+            kpanic_fmt("unhandled regWidth in x32CPU::instReg %d", regWidth);
         }
         break;
     case '-':
@@ -1680,11 +1680,11 @@ void instReg(char inst, DynReg reg, DynWidth regWidth) {
             outb(0xf6);
             outb(0xd8+reg);   
         } else {
-            kpanic("unhandled regWidth in x32CPU::instReg %d", regWidth);
+            kpanic_fmt("unhandled regWidth in x32CPU::instReg %d", regWidth);
         }
         break;
     default:
-        kpanic("unhandled op in x32CPU::instReg %c", inst);
+        kpanic_fmt("unhandled op in x32CPU::instReg %c", inst);
         break;
     }
 }
@@ -1725,7 +1725,7 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth) {
         } else if (regWidth==DYN_8bit) {
             outb(0xf6); 
         } else {
-            kpanic("unhandled regWidth in x32CPU::instCPU %d", regWidth);
+            kpanic_fmt("unhandled regWidth in x32CPU::instCPU %d", regWidth);
         }
         if (dstOffset<128) {
             outb(0x57);
@@ -1744,7 +1744,7 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth) {
         } else if (regWidth==DYN_8bit) {
             outb(0xf6);  
         } else {
-            kpanic("unhandled regWidth in x32CPU::instCPU %d", regWidth);
+            kpanic_fmt("unhandled regWidth in x32CPU::instCPU %d", regWidth);
         }
         if (dstOffset<128) {
             outb(0x5f);
@@ -1755,7 +1755,7 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth) {
         }
         break;
     default:
-        kpanic("unhandled op in x32CPU::instCPU %c", inst);
+        kpanic_fmt("unhandled op in x32CPU::instCPU %c", inst);
         break;
     }
 }
@@ -1770,7 +1770,7 @@ void startIf(DynReg reg, DynCondition condition, bool doneWithReg) {
     } else if (condition==DYN_EQUALS_ZERO) {
         outb(0x75); // jnz, jump over not true
     } else {
-        kpanic("x32CPU::startIf unknown condition %d", condition);
+        kpanic_fmt("x32CPU::startIf unknown condition %d", condition);
     }
 
     ifJump.push_back(outBufferPos);
@@ -1794,7 +1794,7 @@ void endIf() {
     U32 pos = ifJump.back();
     U32 amount = outBufferPos-pos-1;
     if (amount>127) {
-        kpanic("x32CPU::endIf large if/else blocks not supported: %d", amount);
+        kpanic_fmt("x32CPU::endIf large if/else blocks not supported: %d", amount);
     }
     ifJump.pop_back();
     outBuffer[pos] = (U8)(amount);
@@ -1802,7 +1802,7 @@ void endIf() {
 
 void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
     if (reg>=4) {
-        kpanic("x32CPU::evaluateToRegFromRegs doesn't support reg %d", reg);
+        kpanic_fmt("x32CPU::evaluateToRegFromRegs doesn't support reg %d", reg);
     }
     // cmp left, right
     if (isRightConst) {
@@ -1815,7 +1815,7 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
                 outb(0x66);
                 outb(0x83);
             } else {
-                kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+                kpanic_fmt("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
             }
             outb(0xf8 | left);
             outb((U8)rightConst);
@@ -1832,7 +1832,7 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
                     outb(0x3c);
                     outb((U8)rightConst);
                 } else {
-                    kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+                    kpanic_fmt("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
                 }
             } else {
                 if (regWidth==DYN_32bit) {
@@ -1849,7 +1849,7 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
                     outb(0xf8 | left);
                     outb((U8)rightConst);
                 } else {
-                    kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+                    kpanic_fmt("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
                 }                                
             }            
         }
@@ -1862,7 +1862,7 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
         } else if (regWidth==DYN_8bit) {
             outb(0x38);
         } else {
-            kpanic("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
+            kpanic_fmt("x32CPU::evaluateToRegFromRegs reg width %d", regWidth);
         }
         outb(0xc0 | right | (left << 3));
     }
@@ -1911,7 +1911,7 @@ void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst
         outb(0xc0+reg);
         break;
     default:
-        kpanic("x32CPU::evaluateToRegFromRegs unknown condition %d", condition);
+        kpanic_fmt("x32CPU::evaluateToRegFromRegs unknown condition %d", condition);
     }
     if (dstWidth!=DYN_8bit) {
         movToRegFromReg(reg, dstWidth, reg, DYN_8bit, false);
@@ -2176,7 +2176,7 @@ void x32_callback(DynamicData* data, DecodedOp* op) {
 }
 
 void x32_invalid_op(DynamicData* data, DecodedOp* op) {
-    kpanic("Invalid instruction %x\n", op->inst);
+    kpanic_fmt("Invalid instruction %x\n", op->inst);
 }
 
 static pfnDynamicOp x32Ops[NUMBER_OF_OPS];
@@ -2264,7 +2264,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #endif
                 x32Ops[o->inst](&data, o);
                 if (ifJump.size()) {
-                    kpanic("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
+                    kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
                 }
                 if (data.skipToOp) {
                     o = data.skipToOp;

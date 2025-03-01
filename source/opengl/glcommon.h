@@ -24,7 +24,9 @@
 #include <inttypes.h>
 
 //#define GL_LOG klog
-#define GL_LOG if (0) klog
+#define GL_LOG if (0) klog_fmt
+#define GL_LOG_NO_FMT if (0) klog
+
 
 #ifdef BOXEDWINE_OPENGL_ES
 #define GL_FUNC(name) es_##name
@@ -157,6 +159,7 @@ float fARG(CPU* cpu, U32 arg);
 double dARG(CPU* cpu, int address);
 
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func pgl##func;
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func pgl##func;
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func pgl##func;
 #define GL_EXT_FUNCTION(func, RET, PARAMS) typedef RET (OPENGL_CALL_TYPE *gl##func##_func)PARAMS; extern gl##func##_func ext_gl##func;
 

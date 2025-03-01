@@ -410,7 +410,7 @@ bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rec
 #ifdef BOXEDWINE_RECORDER
     if (!recordBuffer) {
         if (filepath.length()) {
-            klog("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
+            klog_fmt("failed to save screenshot, %s, because recorderBuffer was NULL", filepath.c_str());
         }
         return false;
     }
@@ -433,7 +433,7 @@ bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rec
         gMask = 0x07E0;
         bMask = 0x001F;
     } else {
-        kpanic("Unhandled bpp for screen shot: %d", bpp);
+        kpanic_fmt("Unhandled bpp for screen shot: %d", bpp);
     }
     if (rect) {
         int inPitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
@@ -488,7 +488,7 @@ bool KNativeScreenSDL::internalScreenShot(const BString& filepath, SDL_Rect* rec
     }
 
     if (!s) {
-        klog("sdlScreenshot: %s", SDL_GetError());
+        klog_fmt("sdlScreenshot: %s", SDL_GetError());
         if (pixels) {
             delete[] pixels;
         }
@@ -536,7 +536,7 @@ bool KNativeScreenSDL::saveBmp(const BString& filepath, U8* buffer, U32 bpp, U32
         gMask = 0x07E0;
         bMask = 0x001F;
     } else {
-        kpanic("Unhandled bpp for screen shot: %d", bpp);
+        kpanic_fmt("Unhandled bpp for screen shot: %d", bpp);
     }
     int pitch = (screenWidth() * ((bpp + 7) / 8) + 3) & ~3;
     U32 len = pitch * screenHeight();
@@ -640,7 +640,7 @@ void KNativeScreenSDL::setCursor(const std::shared_ptr<XCursor>& cursor) {
             sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
             break;
         default:
-            klog("KNativeScreenSDL::setCursor cursor shape not defined for %d", cursor->shape);
+            klog_fmt("KNativeScreenSDL::setCursor cursor shape not defined for %d", cursor->shape);
             sdlCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
             break;
         }
@@ -727,7 +727,7 @@ void KNativeScreenSDL::recreateMainWindow() {
 
         window = SDL_CreateWindow("BoxedWine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, cx, cy, flags);
         if (!window) {
-            klog("SDL_CreateWindow failed: %s", SDL_GetError());
+            klog_fmt("SDL_CreateWindow failed: %s", SDL_GetError());
         }
         if (!(flags & SDL_WINDOW_VULKAN)) {
 #if defined(BOXEDWINE_LINUX) || defined(__EMSCRIPTEN__)

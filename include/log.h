@@ -22,11 +22,13 @@
 void internal_log(BString msg, FILE* f);
 void internal_kpanic(BString msg);
 
+void kpanic(const char* msg);
+
 template <class... Args>
 #ifdef BOXEDWINE_MSVC
 __declspec(noreturn)
 #endif
-void kpanic(const char* format, Args&&... args) {
+void kpanic_fmt(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
 	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
@@ -34,8 +36,22 @@ void kpanic(const char* format, Args&&... args) {
 	internal_kpanic(msg);
 }
 
+void kwarn(const char* msg);
+
 template <class... Args>
-void kwarn(const char* format, Args&&... args) {
+void kwarn_fmt(const char* format, Args&&... args) {
+	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
+	BString msg(size + 1, '\0');
+	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
+	msg += "\n";
+	internal_log(msg, stdout);
+}
+
+void klog(const char* msg);
+void klog_nonewline(const char* msg);
+
+template <class... Args>
+void klog_fmt(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
 	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
@@ -44,16 +60,7 @@ void kwarn(const char* format, Args&&... args) {
 }
 
 template <class... Args>
-void klog(const char* format, Args&&... args) {
-	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
-	BString msg(size + 1, '\0');
-	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);
-	msg += "\n";
-	internal_log(msg, stdout);
-}
-
-template <class... Args>
-void klog_nonewline(const char* format, Args&&... args) {
+void klog_nonewline_fmt(const char* format, Args&&... args) {
 	auto size = std::snprintf(nullptr, 0, format, std::forward<Args>(args)...);
 	BString msg(size + 1, '\0');
 	std::snprintf(msg.str(), size + 1, format, std::forward<Args>(args)...);

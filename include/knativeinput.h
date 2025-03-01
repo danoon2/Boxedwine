@@ -15,6 +15,8 @@
 
 class KNativeInput {
 public:
+    virtual ~KNativeInput() {}
+
     virtual void setScreenSize(U32 cx, U32 cy) = 0;
     virtual U32 screenWidth() = 0;
     virtual U32 screenHeight() = 0;    

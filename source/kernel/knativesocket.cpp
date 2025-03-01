@@ -51,9 +51,9 @@ int maxSocketId;
 
 BString socketAddressName(KMemory* memory, U32 address, U32 len);
 #ifdef _DEBUG
-#define LOG_SOCK if (1) klog
+#define LOG_SOCK if (1) klog_fmt
 #else
-#define LOG_SOCK if (0) klog
+#define LOG_SOCK if (0) klog_fmt
 #endif
 
 #ifdef BOXEDWINE_MULTI_THREADED
@@ -80,7 +80,7 @@ void updateWaitingList() {
         bool errorSet = false;
 #ifndef BOXEDWINE_MSVC
         if (s->nativeSocket>=FD_SETSIZE) {
-            kpanic("updateWaitingList %s socket is too large to select on", s->nativeSocket);
+            kpanic_fmt("updateWaitingList %s socket is too large to select on", s->nativeSocket);
         }
 #endif
         if (s->readingCond->parentsCount()) {
@@ -614,7 +614,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         }
         return -1;
 #else
-        struct ifreq ifr = { 0 };
+        struct ifreq ifr = { };
         thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
         U32 result = ::ioctl(this->nativeSocket, SIOCGIFHWADDR, &ifr);
         if (result) {
@@ -636,7 +636,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         }
         return 0;
 #else
-        struct ifreq ifr = { 0 };
+        struct ifreq ifr = { };
         thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
         U32 result = ::ioctl(this->nativeSocket, SIOCGIFFLAGS, &ifr);
         if (result) {
@@ -658,7 +658,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         thread->memory->writew(address + K_IFNAMSIZ, (U16)addresses->Mtu);
         return 0;
 #else
-        struct ifreq ifr = { 0 };
+        struct ifreq ifr = { };
         thread->memory->memcpy(ifr.ifr_name, address, K_IFNAMSIZ);
         U32 result = ::ioctl(this->nativeSocket, SIOCGIFMTU, &ifr);
         if (result) {
@@ -669,7 +669,7 @@ U32 KNativeSocketObject::ioctl(KThread* thread, U32 request) {
         return 0;
 #endif
     } else {
-        kwarn("KNativeSocketObject::ioctl request=%x not implemented", request);
+        kwarn_fmt("KNativeSocketObject::ioctl request=%x not implemented", request);
     }
     return -K_ENOTTY;
 }
@@ -1094,7 +1094,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& f
 #endif
             break;
         default:
-            kwarn("KNativeSocketObject::setsockopt IPPROTO_IP name %d not implemented", name);
+            kwarn_fmt("KNativeSocketObject::setsockopt IPPROTO_IP name %d not implemented", name);
             return -K_EINVAL;
         }
     }
@@ -1132,7 +1132,7 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& f
 #endif
             break;
         default:
-            kwarn("KNativeSocketObject::setsockopt IPPROTO_TCP name %d not implemented", name);
+            kwarn_fmt("KNativeSocketObject::setsockopt IPPROTO_TCP name %d not implemented", name);
             return -K_EINVAL;
         }
     } else if (level == K_SOL_SOCKET) {
@@ -1210,11 +1210,11 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& f
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (const char*)&v, 4);
                 break;
             default:
-                kwarn("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
+                kwarn_fmt("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
                 return -K_EINVAL;
         }
     } else {
-        kwarn("KNativeSocketObject::setsockopt level %d not implemented", level);
+        kwarn_fmt("KNativeSocketObject::setsockopt level %d not implemented", level);
         return -K_EINVAL;
     }
     this->error = 0;
@@ -1340,11 +1340,11 @@ U32 KNativeSocketObject::getsockopt(KThread* thread, const KFileDescriptorPtr& f
                 memory->writed(value, type);
             }
         } else {
-            kwarn("KNativeSocketObject::getsockopt name %d not implemented", name);
+            kwarn_fmt("KNativeSocketObject::getsockopt name %d not implemented", name);
             return -K_EINVAL;
         }
     } else {
-        kwarn("KNativeSocketObject::getsockopt level %d not implemented", level);
+        kwarn_fmt("KNativeSocketObject::getsockopt level %d not implemented", level);
         return -K_EINVAL;
     }
     LOG_SOCK("%x native socket: %x getsockopt level=%x name=%x value=%x result=%x", thread->id, nativeSocket, level, name, retrievedValue, result);
@@ -1366,11 +1366,11 @@ U32 KNativeSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, 
 
         readCMsgHdr(thread, hdr.msg_control, &cmsg);
         if (cmsg.cmsg_level != K_SOL_SOCKET) {
-            kwarn("KNativeSocketObject::sendmsg control level %d not implemented", cmsg.cmsg_level);
+            kwarn_fmt("KNativeSocketObject::sendmsg control level %d not implemented", cmsg.cmsg_level);
         } else if (cmsg.cmsg_type != K_SCM_RIGHTS) {
-            kwarn("KNativeSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_level);
+            kwarn_fmt("KNativeSocketObject::sendmsg control type %d not implemented", cmsg.cmsg_level);
         } else if ((cmsg.cmsg_len & 3) != 0) {
-            kwarn("KNativeSocketObject::sendmsg control len %d not implemented", cmsg.cmsg_len);
+            kwarn_fmt("KNativeSocketObject::sendmsg control len %d not implemented", cmsg.cmsg_len);
         }
         if (hdr.msg_controllen>0) {
             kwarn("KNativeSocketObject::sendmsg does not support sending file handles");
@@ -1400,7 +1400,7 @@ U32 KNativeSocketObject::sendmsg(KThread* thread, const KFileDescriptorPtr& fd, 
         nativeFlags |= MSG_OOB;
     flags &= ~K_MSG_NOSIGNAL;
     if (flags & (~1)) {
-        kwarn("KNativeSocketObject::sendmsg unsupported flags: %d", flags);
+        kwarn_fmt("KNativeSocketObject::sendmsg unsupported flags: %d", flags);
     }
 
     U32 result;
@@ -1432,7 +1432,7 @@ U32 KNativeSocketObject::recvmsg(KThread* thread, const KFileDescriptorPtr& fd, 
             flags &= ~K_MSG_PEEK;
         }
         if (flags) {
-            kwarn("KNativeSocketObject::recvmsg unhandled flag %x", flags);
+            kwarn_fmt("KNativeSocketObject::recvmsg unhandled flag %x", flags);
         }
     }
     readMsgHdr(thread, address, &hdr);    
@@ -1490,7 +1490,7 @@ U32 KNativeSocketObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U
         flags &= ~K_MSG_NOSIGNAL;
     }
     if (flags) {
-        kwarn("KNativeSocketObject::sendto unsupported flags: %d", flags);
+        kwarn_fmt("KNativeSocketObject::sendto unsupported flags: %d", flags);
     }
     if (dest_addr) {
         readSockAddrIn(&dest, memory, dest_addr);
@@ -1521,7 +1521,7 @@ U32 KNativeSocketObject::recvfrom(KThread* thread, const KFileDescriptorPtr& fd,
     if (flags & K_MSG_PEEK)
         nativeFlags|=MSG_PEEK;
     if (flags & (~3)) {
-        kwarn("krecvfrom unsupported flags: %d", flags);
+        kwarn_fmt("krecvfrom unsupported flags: %d", flags);
     }
     int inLen=0;
     socklen_t outLen=0;

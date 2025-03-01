@@ -46,7 +46,7 @@ void* KVulkdanSDLImpl::createVulkanSurface(const XWindowPtr& wnd, void* instance
     }
 #endif
     if (!result) {
-        kwarn("Failed to create vulkan surface: %s\n", SDL_GetError());
+        kwarn_fmt("Failed to create vulkan surface: %s\n", SDL_GetError());
     }
 	return (void*)result;
 }

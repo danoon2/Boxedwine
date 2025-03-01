@@ -30,7 +30,7 @@ void KSigAction::writeSigAction(KMemory* memory, U32 address, U32 sigsetSize) {
     else if (sigsetSize==8)
         memory->writeq(address + 12, this->mask);
     else
-        klog("writeSigAction: can't handle sigsetSize=%d", sigsetSize);
+        klog_fmt("writeSigAction: can't handle sigsetSize=%d", sigsetSize);
 }
 
 void KSigAction::readSigAction(KMemory* memory, U32 address, U32 sigsetSize) {
@@ -42,7 +42,7 @@ void KSigAction::readSigAction(KMemory* memory, U32 address, U32 sigsetSize) {
     else if (sigsetSize==8)
         this->mask = memory->readq(address + 12);
     else
-        klog("readSigAction: can't handle sigsetSize=%d", sigsetSize);
+        klog_fmt("readSigAction: can't handle sigsetSize=%d", sigsetSize);
 }
 
 void KSignal::setBlocking(bool blocking) {
@@ -267,7 +267,7 @@ U32 syscall_signalfd4(KThread* thread, S32 fildes, U32 mask, U32 maskSize, U32 f
     } else if (maskSize==8) {
         s->mask = memory->readq(mask);
     } else {
-        kpanic("syscall_signalfd4 unknown mask size: %d", maskSize);
+        kpanic_fmt("syscall_signalfd4 unknown mask size: %d", maskSize);
     }
     s->blocking = (fd->accessFlags & K_O_NONBLOCK) == 0;
     return fd->handle;

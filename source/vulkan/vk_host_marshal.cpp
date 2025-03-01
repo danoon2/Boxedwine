@@ -12897,7 +12897,7 @@ void MarshalVkPerformanceValueINTEL::read(BoxedVulkanInfo* pBoxedInfo, KMemory* 
         memory->memcpy((U8*)s->data.valueString, strAddress, len + 1);
         break; }
     default:
-        kpanic("MarshalVkPerformanceValueINTEL::read unknown s->type %d", s->type);
+        kpanic_fmt("MarshalVkPerformanceValueINTEL::read unknown s->type %d", s->type);
     }
     address += 8;
 }
@@ -12922,7 +12922,7 @@ void MarshalVkPerformanceValueINTEL::write(BoxedVulkanInfo* pBoxedInfo, KMemory*
         kpanic("MarshalVkPerformanceValueINTEL::write unhandled types: VK_PERFORMANCE_VALUE_TYPE_STRING_INTEL");
         break;
     default:
-        kpanic("MarshalVkPerformanceValueINTEL::write unknown s->type %d", s->type);
+        kpanic_fmt("MarshalVkPerformanceValueINTEL::write unknown s->type %d", s->type);
     }
     address += 8;
 }
@@ -16632,7 +16632,7 @@ void MarshalVkIndirectExecutionSetCreateInfoEXT::read(BoxedVulkanInfo* pBoxedInf
         s->info.pShaderInfo = p;
         MarshalVkIndirectExecutionSetShaderInfoEXT::read(pBoxedInfo, memory, address, p);
     } else {
-        kpanic("MarshalVkIndirectExecutionSetCreateInfoEXT::read unknown s->type %d", s->type);
+        kpanic_fmt("MarshalVkIndirectExecutionSetCreateInfoEXT::read unknown s->type %d", s->type);
     }
     address += 4;
 }
@@ -16648,7 +16648,7 @@ void MarshalVkIndirectExecutionSetCreateInfoEXT::write(BoxedVulkanInfo* pBoxedIn
     } else if (s->type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_SHADER_OBJECTS_EXT) {
         MarshalVkIndirectExecutionSetShaderInfoEXT::write(pBoxedInfo, memory, address, (VkIndirectExecutionSetShaderInfoEXT*)s->info.pShaderInfo);
     } else {
-        kpanic("MarshalVkIndirectExecutionSetCreateInfoEXT::write unknown s->type %d", s->type);
+        kpanic_fmt("MarshalVkIndirectExecutionSetCreateInfoEXT::write unknown s->type %d", s->type);
     }
 }
 MarshalVkIndirectExecutionSetCreateInfoEXT::~MarshalVkIndirectExecutionSetCreateInfoEXT() {
@@ -16658,7 +16658,7 @@ MarshalVkIndirectExecutionSetCreateInfoEXT::~MarshalVkIndirectExecutionSetCreate
     } else if (s.type == VK_INDIRECT_EXECUTION_SET_INFO_TYPE_SHADER_OBJECTS_EXT) {
         delete s.info.pShaderInfo;
     } else {
-        kpanic("MarshalVkIndirectExecutionSetCreateInfoEXT::MarshalVkIndirectExecutionSetCreateInfoEXT unknown s.type %d", s.type);
+        kpanic_fmt("MarshalVkIndirectExecutionSetCreateInfoEXT::MarshalVkIndirectExecutionSetCreateInfoEXT unknown s.type %d", s.type);
     }
 }
 void MarshalVkGeneratedCommandsInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkGeneratedCommandsInfoEXT* s) {
@@ -22789,7 +22789,7 @@ void MarshalVkDescriptorGetInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* m
         MarshalVkDescriptorAddressInfoEXT::read(pBoxedInfo, memory, paramAddress, p);
         s->data.pStorageBuffer = p;
     } else {
-        kpanic("MarshalVkDescriptorGetInfoEXT::read unknown s->type %d", s->type);
+        kpanic_fmt("MarshalVkDescriptorGetInfoEXT::read unknown s->type %d", s->type);
     }
     address += 8;
 }
@@ -22817,7 +22817,7 @@ MarshalVkDescriptorGetInfoEXT::~MarshalVkDescriptorGetInfoEXT() {
     } else if (s.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
         delete s.data.pStorageBuffer;
     } else {
-        kpanic("MarshalVkDescriptorGetInfoEXT::~MarshalVkDescriptorGetInfoEXT unknown s.type %d", s.type);
+        kpanic_fmt("MarshalVkDescriptorGetInfoEXT::~MarshalVkDescriptorGetInfoEXT unknown s.type %d", s.type);
     }
 }
 void MarshalVkBufferCaptureDescriptorDataInfoEXT::read(BoxedVulkanInfo* pBoxedInfo, KMemory* memory, U32 address, VkBufferCaptureDescriptorDataInfoEXT* s) {

@@ -81,7 +81,7 @@ U32 KMemory::mmap(KThread* thread, U32 addr, U32 len, S32 prot, S32 flags, FD fi
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
     if (flags & (K_MAP_FIXED | K_MAP_FIXED_NOREPLACE)) {
         if (addr & (K_PAGE_SIZE - 1)) {
-            klog("tried to call mmap with invalid address: %X", addr);
+            klog_fmt("tried to call mmap with invalid address: %X", addr);
             return -K_EINVAL;
         }
         if (flags & K_MAP_FIXED_NOREPLACE) {
@@ -194,7 +194,7 @@ U32 KMemory::mprotect(KThread* thread, U32 address, U32 len, U32 prot) {
 
 U32 KMemory::mremap(KThread* thread, U32 oldaddress, U32 oldsize, U32 newsize, U32 flags) {
     if (flags > 1) {
-        kpanic("mremap not implemented: flags=%X", flags);
+        kpanic_fmt("mremap not implemented: flags=%X", flags);
     }
     // is page aligned
     if (oldaddress & 0xFFF) {

@@ -125,7 +125,7 @@ void XSetWindowAttributes::copyWithMask(XSetWindowAttributes* attributes, U32 va
 	}
 }
 
-XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual) : XDrawable(width, height, depth, visual, true), parent(parent), left(x), top(y), displayId(displayId), c_class(c_class), border_width(border_width) {
+XWindow::XWindow(U32 displayId, const XWindowPtr& parent, U32 width, U32 height, U32 depth, U32 x, U32 y, U32 c_class, U32 border_width, const VisualPtr& visual) : XDrawable(width, height, depth, visual, true), displayId(displayId), c_class(c_class), parent(parent), left(x), top(y), border_width(border_width) {
 	if (parent) {
 		attributes.border_pixmap = parent->attributes.border_pixmap;
 		attributes.colormap = parent->attributes.colormap;
@@ -542,7 +542,7 @@ int XWindow::handleNetWmStatePropertyEvent(const XEvent& event) {
 		if (event.xclient.data.l[0] == 0) {
 			for (U32 i = 0; i < count; i++) {
 				for (U32 j = 0; j < existingCount; j++) {
-					if (event.xclient.data.l[i + 1] == values[j]) {
+					if (event.xclient.data.l[i + 1] == (S32)values[j]) {
 						values[j] = 0;
 						removedCount++;
 					}
@@ -574,7 +574,7 @@ int XWindow::handleNetWmStatePropertyEvent(const XEvent& event) {
 			for (U32 i = 0; i < count; i++) {
 				bool found = false;
 				for (U32 j = 0; j < existingCount; j++) {
-					if (event.xclient.data.l[i + 1] == values[j]) {
+					if (event.xclient.data.l[i + 1] == (S32)values[j]) {
 						found = true;
 						break;
 					}
@@ -834,6 +834,7 @@ int XWindow::reparentWindow(const XWindowPtr& parent, S32 x, S32 y) {
 		event.xreparent.y = y;
 		event.xreparent.serial = data->getNextEventSerial();
 		event.xreparent.override_redirect = this->attributes.override_redirect;
+		data->putEvent(event);
 
 		if (XServer::getServer()->trace) {
 			BString log;

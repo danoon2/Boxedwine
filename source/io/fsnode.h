@@ -26,6 +26,7 @@ public:
         Timer
     };
     FsNode(Type type, U32 id, U32 rdev, BString path, BString link, BString nativePath, bool isDirectory, std::shared_ptr<FsNode> parent);
+    virtual ~FsNode() {}
 
     virtual U32 rename(BString path)=0; //return 0 if success, else errno
     virtual bool remove()=0;

@@ -78,8 +78,16 @@ void sysLog1(U32 type, CPU* cpu, const char* msg, Args ... args) {
     }
 }
 
+void sysLog1_nofmt(U32 type, CPU* cpu, const char* msg) {
+    if (type & syscallMask) {
+        printf("%.4X/%.4X %s ", cpu->thread->process->id, cpu->thread->id, cpu->thread->process->name.c_str());
+        klog_nonewline(msg);
+    }
+}
+
 #define SYS_LOG if (syscallMask) sysLog
 #define SYS_LOG1 if (syscallMask) sysLog1
+#define SYS_LOG1_NO_FMT if (syscallMask) sysLog1_nofmt
 
 static U32 syscall_exit(CPU* cpu, U32 eipCount) {
     SYS_LOG1(SYSCALL_PROCESS, cpu, "exit: status=%d", ARG1);
@@ -253,7 +261,7 @@ static U32 syscall_access(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_sync(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_FILE, cpu, "sync:");
+    SYS_LOG1_NO_FMT(SYSCALL_FILE, cpu, "sync:");
     U32 result = 0; 
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X) IGNOREDED\n", result, result);
     return result;
@@ -500,7 +508,7 @@ static U32 syscall_statfs(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_ioperm(CPU* cpu, U32 eipCount) {	    
 #ifdef _DEBUG
-    klog("ioperm not implemented: from=0x%X len=%d on=%d", ARG1, ARG2, ARG3);
+    klog_fmt("ioperm not implemented: from=0x%X len=%d on=%d", ARG1, ARG2, ARG3);
 #endif
     U32 result = 0;
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "ioperm: from=%X num=%d turn_on=%X result=%d(0x%X) IGNORED\n", ARG1, ARG2, ARG3, result, result);
@@ -582,7 +590,7 @@ static U32 syscall_socketcall(CPU* cpu, U32 eipCount) {
             break;
         //case 18: // SYS_ACCEPT4
         default:
-            kpanic("Unknown socket syscall: %d",ARG1);
+            kpanic_fmt("Unknown socket syscall: %d",ARG1);
     }
     SYS_LOG(SYSCALL_SOCKET, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -638,7 +646,7 @@ static U32 syscall_ipc(CPU* cpu, U32 eipCount) {
         SYS_LOG1(SYSCALL_SYSTEM|SYSCALL_MEMORY, cpu, "ipc: IPCOP_shmctl shmid=%d cmd=%d buf=%X", ARG2, ARG3, ARG5);
         result = KSystem::shmctl(cpu->thread, ARG2, ARG3, ARG5);
     } else {
-        kpanic("__NR_ipc op %d not implemented", ARG1);
+        kpanic_fmt("__NR_ipc op %d not implemented", ARG1);
         result = 0;
     }
     SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
@@ -652,7 +660,7 @@ static U32 syscall_fsync(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_sigreturn(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_SIGNAL, cpu, "sigreturn:");
+    SYS_LOG1_NO_FMT(SYSCALL_SIGNAL, cpu, "sigreturn:");
     U32 result = cpu->thread->sigreturn();
     SYS_LOG(SYSCALL_SIGNAL, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -1264,7 +1272,7 @@ static U32 syscall_fgetxattr(CPU* cpu, U32 eipCount) {
 
 static U32 syscall_flistxattr(CPU* cpu, U32 eipCount) {
     U32 result = -K_ENOTSUP;
-    SYS_LOG1(SYSCALL_SYSTEM, cpu, "flistxattr: result = ENOTSUP IGNORED\n");
+    SYS_LOG1_NO_FMT(SYSCALL_SYSTEM, cpu, "flistxattr: result = ENOTSUP IGNORED\n");
     return result;
 }
 
@@ -2280,7 +2288,7 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         cpu->thread->startSignal = false;
         result = -K_CONTINUE;
         // I saw this once with multi-thread normal cpu core and firefight, it was from syscall 4 (write)
-        klog("syscall %d was not interrupted correctly by signal", syscallNo);
+        klog_fmt("syscall %d was not interrupted correctly by signal", syscallNo);
     }
 #endif
     if (result==(U32)(-K_CONTINUE)) {

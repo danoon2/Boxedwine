@@ -168,7 +168,7 @@ void Armv8btCPU::writeJumpAmount(BtData* data, U32 pos, U32 toLocation, U8* offs
     S32 amount = (S32)(toLocation) >> 2;
     if (offset[pos + 3] == 0x14) {
         if (amount > 0xFFFFFF) {
-            kpanic("Armv8btCPU::writeJumpAmount in large jump not supported: %d", amount);
+            kpanic_fmt("Armv8btCPU::writeJumpAmount in large jump not supported: %d", amount);
         }
         offset[pos] = (U8)amount;
         offset[pos + 1] = (U8)(amount >> 8);
@@ -176,13 +176,13 @@ void Armv8btCPU::writeJumpAmount(BtData* data, U32 pos, U32 toLocation, U8* offs
         offset[pos + 3] |= (U8)((amount >> 24) & 3);
     } else if (offset[pos + 3] == 0x34 || offset[pos + 3] == 0x35) {
         if (amount >= 0x40000 || amount <= -0x40000) {
-            kpanic("Armv8btCPU::writeJumpAmount in large jump not supported: %d", amount);
+            kpanic_fmt("Armv8btCPU::writeJumpAmount in large jump not supported: %d", amount);
         }
         offset[pos] |= (U8)(amount << 5);
         offset[pos + 1] = (U8)(amount >> 3);
         offset[pos + 2] = (U8)(amount >> 11);
     } else {
-        kpanic("Armv8btCPU::writeJumpAmount unknown jump: %d", offset[pos + 3]);
+        kpanic_fmt("Armv8btCPU::writeJumpAmount unknown jump: %d", offset[pos + 3]);
     }
 }
 

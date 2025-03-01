@@ -298,10 +298,10 @@ U32 KNetLinkObject::setsockopt(KThread* thread, const KFileDescriptorPtr& fd, U3
         case K_SO_ATTACH_FILTER:
             break;
         default:
-            kwarn("KUnixSocketObject::setsockopt name %d not implemented", name);
+            kwarn_fmt("KUnixSocketObject::setsockopt name %d not implemented", name);
         }
     } else {
-        kwarn("KUnixSocketObject::setsockopt level %d not implemented", level);
+        kwarn_fmt("KUnixSocketObject::setsockopt level %d not implemented", level);
     }
     return 0;
 }
@@ -328,11 +328,11 @@ U32 KNetLinkObject::getsockopt(KThread* thread, const KFileDescriptorPtr& fd, U3
                 kpanic("KNetLinkObject::getsockopt K_SO_TYPE expecting len of 4");
             memory->writed(value, this->type);
         } else {
-            kwarn("KUnixSocketObject::getsockopt name %d not implemented", name);
+            kwarn_fmt("KUnixSocketObject::getsockopt name %d not implemented", name);
             return -K_EINVAL;
         }
     } else {
-        kwarn("KUnixSocketObject::getsockopt level %d not implemented", level);
+        kwarn_fmt("KUnixSocketObject::getsockopt level %d not implemented", level);
         return -K_EINVAL;
     }
     return 0;
@@ -630,7 +630,7 @@ U32 KNetLinkObject::sendto(KThread* thread, const KFileDescriptorPtr& fd, U32 me
 U32 KNetLinkObject::recvfrom(KThread* thread, const KFileDescriptorPtr& fd, U32 buffer, U32 length, U32 flags, U32 address, U32 address_len) {
     if (address == 0) {
         if (flags) {
-            kpanic("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
+            kpanic_fmt("KUnixSocketObject::recvfrom unhandled flags=%x", flags);
         }
         return read(thread, buffer, length);
     }

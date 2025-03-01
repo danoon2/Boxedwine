@@ -158,7 +158,7 @@ void dynamic_retn32(DynamicData* data, DecodedOp* op) {
     movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); blockDone();
 }
 void dynamic_invalid(DynamicData* data, DecodedOp* op) {
-    kpanic("Dyn:Invalid instruction %x\n", op->inst);
+    kpanic_fmt("Dyn:Invalid instruction %x\n", op->inst);
 }
 void dynamic_int80(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)ksyscall, false, 2, 0, DYN_PARAM_CPU, false, op->len, DYN_PARAM_CONST_32, false);

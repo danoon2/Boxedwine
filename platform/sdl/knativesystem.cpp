@@ -37,7 +37,7 @@ bool KNativeSystem::init(VideoOption videoOption, bool allowAudio) {
         flags |= SDL_INIT_AUDIO;
     }
     if (SDL_Init(flags) != 0) {
-        klog("SDL_Init Error: %s", SDL_GetError());
+        klog_fmt("SDL_Init Error: %s", SDL_GetError());
         return false;
     }
     return true;

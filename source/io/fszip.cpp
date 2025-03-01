@@ -46,11 +46,11 @@ bool FsZip::init(BString zipPath, BString mount) {
 
         this->zipfile = unzOpen(zipPath.c_str());
         if (!this->zipfile) {
-            klog("Could not load zip file: %s", zipPath.c_str());
+            klog_fmt("Could not load zip file: %s", zipPath.c_str());
         }
 
         if (unzGetGlobalInfo( this->zipfile, &global_info ) != UNZ_OK) {
-            klog("Could not read file global info from zip file: %s", zipPath.c_str());
+            klog_fmt("Could not read file global info from zip file: %s", zipPath.c_str());
             unzClose( this->zipfile );
             return false;
         }
@@ -62,7 +62,7 @@ bool FsZip::init(BString zipPath, BString mount) {
 
             tmp[0] = '/';
             if ( unzGetCurrentFileInfo(this->zipfile, &file_info, tmp + 1, MAX_FILEPATH_LEN - 1, nullptr, 0, nullptr, 0 ) != UNZ_OK ) {
-                klog("Could not read file info from zip file: %s", zipPath.c_str());
+                klog_fmt("Could not read file info from zip file: %s", zipPath.c_str());
                 delete[] zipInfo;
                 unzClose( zipfile );
                 return false;

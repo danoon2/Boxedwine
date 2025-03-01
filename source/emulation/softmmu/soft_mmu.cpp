@@ -84,7 +84,7 @@ Page* Page::getPage(PageType type) {
     case PageType::CopyOnWrite:
         return &copyOnWritePage;
     default:
-        kpanic("age::getPage unknown type: %d", (U32)type);
+        kpanic_fmt("age::getPage unknown type: %d", (U32)type);
         return nullptr;
     }
 }

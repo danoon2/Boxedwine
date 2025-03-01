@@ -24,6 +24,8 @@
 
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG)
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG)
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
 #undef GL_EXT_FUNCTION
@@ -193,7 +195,7 @@ U32 getLargestIndexInType(GLenum type, GLsizei count, GLvoid* p) {
     case GL_UNSIGNED_SHORT: return getLargestValue<GLushort>((GLushort*)p, count);
     case GL_UNSIGNED_INT: return getLargestValue<GLuint>((GLuint*)p, count);
     default:
-        kpanic("marshalType unknown type: %d", type);
+        kpanic_fmt("marshalType unknown type: %d", type);
         return 0;
     }
 }
@@ -220,9 +222,9 @@ void glcommon_glDrawElements(CPU* cpu) {
 }
 
 void printOpenGLInfo() {
-    klog("GL Vendor: %s", (const char*)GL_FUNC(pglGetString)(GL_VENDOR));
-    klog("GL Renderer: %s", (const char*)GL_FUNC(pglGetString)(GL_RENDERER));
-    klog("GL Version: %s", (const char*)GL_FUNC(pglGetString)(GL_VERSION));
+    klog_fmt("GL Vendor: %s", (const char*)GL_FUNC(pglGetString)(GL_VENDOR));
+    klog_fmt("GL Renderer: %s", (const char*)GL_FUNC(pglGetString)(GL_RENDERER));
+    klog_fmt("GL Version: %s", (const char*)GL_FUNC(pglGetString)(GL_VERSION));
 }
 
 // GLAPI const GLubyte* APIENTRY glGetString( GLenum name ) {
@@ -376,7 +378,7 @@ void glcommon_glGetMapdv(CPU* cpu) {
         break;
     }
     default:
-        kpanic("glGetMapdv unknown query: %d", query);
+        kpanic_fmt("glGetMapdv unknown query: %d", query);
     }	
 }
 
@@ -412,7 +414,7 @@ void glcommon_glGetMapfv(CPU* cpu) {
         break;
     }
     default:
-        kpanic("glGetMapfv unknown query: %d", query);
+        kpanic_fmt("glGetMapfv unknown query: %d", query);
     }	
 }
 
@@ -448,7 +450,7 @@ void glcommon_glGetMapiv(CPU* cpu) {
         break;
     }
     default:
-        kpanic("glGetMapfv unknown query: %d", query);
+        kpanic_fmt("glGetMapfv unknown query: %d", query);
     }	
 }
 
@@ -503,7 +505,7 @@ void glcommon_glReadPixels(CPU* cpu) {
 }
 
 void OPENGL_CALL_TYPE debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
-    klog("%s", message);
+    klog_fmt("%s", message);
 }
 
 void glcommon_glSamplePass(CPU* cpu) {
@@ -687,14 +689,14 @@ void gl_common_XChooseVisual(CPU* cpu) {
     U32 cStencilBits = 0;
     bool doubleBuffer = false;
 
-    while (value = cpu->memory->readd(address)) {
+    while ((value = cpu->memory->readd(address))) {
         if (value == GLX_RGBA) {
             colorType = K_PFD_TYPE_RGBA;
         } else if (value == GLX_DOUBLEBUFFER) {
             doubleBuffer = true;
         } 
         else {
-            kpanic("gl_common_XChooseVisual unhandled attribute %d", value);
+            kpanic_fmt("gl_common_XChooseVisual unhandled attribute %d", value);
         }
         address += 4;
     }    
@@ -879,7 +881,7 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
     U32 address = ARG3;
     U32 value;
 
-    while (value = cpu->memory->readd(address)) {
+    while ((value = cpu->memory->readd(address))) {
         if (value == GLX_BUFFER_SIZE) {
             bufferSize = cpu->memory->readd(address + 4);
             address += 4;
@@ -911,7 +913,7 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
             renderType = cpu->memory->readd(address + 4);
             address += 4;
         } else {
-            kpanic("gl_common_XChooseFBConfig unhandled attribute %d", value);
+            kpanic_fmt("gl_common_XChooseFBConfig unhandled attribute %d", value);
         }
         address += 4;
     }
@@ -919,9 +921,6 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
     std::vector<CLXFBConfigPtr> foundCfgs;
     server->iterateFbConfigs([=, &foundCfgs](const CLXFBConfigPtr& cfg) {
         if (samples && samples > cfg->glPixelFormat->samples) {
-            return true;
-        }
-        if (sampleBuffers && sampleBuffers > cfg->glPixelFormat->sampleBuffers) {
             return true;
         }
         if (cAuxBits && cAuxBits > cfg->glPixelFormat->pf.cAuxBuffers) {
@@ -1030,7 +1029,7 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
         } else if (cfg->glPixelFormat->pf.iPixelType == K_PFD_TYPE_COLORINDEX) {
             memory->writed(ARG4, GLX_COLOR_INDEX_BIT);
         } else {
-            kpanic("gl_common_XGetFBConfigAttrib unhandled GLX_RENDER_TYPE %x", cfg->glPixelFormat->pf.iPixelType);
+            kpanic_fmt("gl_common_XGetFBConfigAttrib unhandled GLX_RENDER_TYPE %x", cfg->glPixelFormat->pf.iPixelType);
         }
         break;
     case GLX_BUFFER_SIZE:
@@ -1097,7 +1096,7 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
         EAX = 1;
         return;
     default:
-        kpanic("gl_common_XGetFBConfigAttrib attribute not handled: %x", attribute);
+        kpanic_fmt("gl_common_XGetFBConfigAttrib attribute not handled: %x", attribute);
     }
     EAX = Success;
 
@@ -1289,7 +1288,7 @@ void gl_common_XCreateContextAttribsARB(CPU* cpu) {
             attribList += 4;
             break;
         default:
-            kpanic("gl_common_XCreateContextAttribsARB unhandled attribute %x", attrib);
+            kpanic_fmt("gl_common_XCreateContextAttribsARB unhandled attribute %x", attrib);
         }
     }
     EAX = KNativeSystem::getOpenGL()->glCreateContext(thread, cfg->glPixelFormat, major, minor, profile, flags, share_context);
@@ -1316,6 +1315,9 @@ void gl_common_XSwapBuffers(CPU* cpu) {
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl##func##_func pgl##func;
 
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl##func##_func pgl##func;
+
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS) gl##func##_func pgl##func;
 
@@ -1326,7 +1328,10 @@ void gl_common_XSwapBuffers(CPU* cpu) {
 
 // create the functions that will make the OpenGL call, these will be assigned into gl_callback
 #undef GL_FUNCTION
-#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) void glcommon_gl##func(CPU* cpu) { PRE GL_FUNC(pgl##func)ARGS; POST; GL_LOG LOG;} 
+#define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) void glcommon_gl##func(CPU* cpu) { PRE GL_FUNC(pgl##func)ARGS; POST; GL_LOG_NO_FMT LOG;} 
+
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) void glcommon_gl##func(CPU* cpu) { PRE GL_FUNC(pgl##func)ARGS; POST; GL_LOG LOG;} 
 
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS)
@@ -1349,6 +1354,9 @@ void gl_init(BString allowExtensions) {
 
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl_callback[func] = glcommon_gl##func;
+
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) gl_callback[func] = glcommon_gl##func;
 
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS) gl_callback[func] = glcommon_gl##func;
@@ -1408,6 +1416,6 @@ void callOpenGL(CPU* cpu, U32 index) {
     } else 
 #endif
 {
-        kpanic("Uknown int 99 call: %d", index);
+        kpanic_fmt("Uknown int 99 call: %d", index);
     }
 }

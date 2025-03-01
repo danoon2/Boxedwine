@@ -4412,7 +4412,7 @@ void glcommon_glPauseTransformFeedback(CPU* cpu) {
         kpanic("ext_glPauseTransformFeedback is NULL");
     {
     GL_FUNC(ext_glPauseTransformFeedback)();
-    GL_LOG ("glPauseTransformFeedback");
+    GL_LOG_NO_FMT("glPauseTransformFeedback");
     }
 }
 void glcommon_glPauseTransformFeedbackNV(CPU* cpu) {
@@ -4420,7 +4420,7 @@ void glcommon_glPauseTransformFeedbackNV(CPU* cpu) {
         kpanic("ext_glPauseTransformFeedbackNV is NULL");
     {
     GL_FUNC(ext_glPauseTransformFeedbackNV)();
-    GL_LOG ("glPauseTransformFeedbackNV");
+    GL_LOG_NO_FMT("glPauseTransformFeedbackNV");
     }
 }
 void glcommon_glPixelDataRangeNV(CPU* cpu) {
@@ -4700,7 +4700,7 @@ void glcommon_glPopDebugGroup(CPU* cpu) {
         kpanic("ext_glPopDebugGroup is NULL");
     {
     GL_FUNC(ext_glPopDebugGroup)();
-    GL_LOG ("glPopDebugGroup");
+    GL_LOG_NO_FMT ("glPopDebugGroup");
     }
 }
 void glcommon_glPopGroupMarkerEXT(CPU* cpu) {
@@ -4708,7 +4708,7 @@ void glcommon_glPopGroupMarkerEXT(CPU* cpu) {
         kpanic("ext_glPopGroupMarkerEXT is NULL");
     {
     GL_FUNC(ext_glPopGroupMarkerEXT)();
-    GL_LOG ("glPopGroupMarkerEXT");
+    GL_LOG_NO_FMT("glPopGroupMarkerEXT");
     }
 }
 void glcommon_glPresentFrameDualFillNV(CPU* cpu) {
@@ -4756,7 +4756,7 @@ void glcommon_glPrimitiveRestartNV(CPU* cpu) {
         kpanic("ext_glPrimitiveRestartNV is NULL");
     {
     GL_FUNC(ext_glPrimitiveRestartNV)();
-    GL_LOG ("glPrimitiveRestartNV");
+    GL_LOG_NO_FMT ("glPrimitiveRestartNV");
     }
 }
 void glcommon_glPrioritizeTexturesEXT(CPU* cpu) {
@@ -6404,7 +6404,7 @@ void glcommon_glReleaseShaderCompiler(CPU* cpu) {
         kpanic("ext_glReleaseShaderCompiler is NULL");
     {
     GL_FUNC(ext_glReleaseShaderCompiler)();
-    GL_LOG ("glReleaseShaderCompiler");
+    GL_LOG_NO_FMT("glReleaseShaderCompiler");
     }
 }
 void glcommon_glRenderbufferStorage(CPU* cpu) {
@@ -6676,7 +6676,7 @@ void glcommon_glResizeBuffersMESA(CPU* cpu) {
         kpanic("ext_glResizeBuffersMESA is NULL");
     {
     GL_FUNC(ext_glResizeBuffersMESA)();
-    GL_LOG ("glResizeBuffersMESA");
+    GL_LOG_NO_FMT("glResizeBuffersMESA");
     }
 }
 void glcommon_glResolveDepthValuesNV(CPU* cpu) {
@@ -6684,7 +6684,7 @@ void glcommon_glResolveDepthValuesNV(CPU* cpu) {
         kpanic("ext_glResolveDepthValuesNV is NULL");
     {
     GL_FUNC(ext_glResolveDepthValuesNV)();
-    GL_LOG ("glResolveDepthValuesNV");
+    GL_LOG_NO_FMT("glResolveDepthValuesNV");
     }
 }
 void glcommon_glResumeTransformFeedback(CPU* cpu) {
@@ -6692,7 +6692,7 @@ void glcommon_glResumeTransformFeedback(CPU* cpu) {
         kpanic("ext_glResumeTransformFeedback is NULL");
     {
     GL_FUNC(ext_glResumeTransformFeedback)();
-    GL_LOG ("glResumeTransformFeedback");
+    GL_LOG_NO_FMT("glResumeTransformFeedback");
     }
 }
 void glcommon_glResumeTransformFeedbackNV(CPU* cpu) {
@@ -6700,7 +6700,7 @@ void glcommon_glResumeTransformFeedbackNV(CPU* cpu) {
         kpanic("ext_glResumeTransformFeedbackNV is NULL");
     {
     GL_FUNC(ext_glResumeTransformFeedbackNV)();
-    GL_LOG ("glResumeTransformFeedbackNV");
+    GL_LOG_NO_FMT("glResumeTransformFeedbackNV");
     }
 }
 void glcommon_glRotatexOES(CPU* cpu) {

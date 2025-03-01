@@ -20,7 +20,7 @@ U32 marshalTypeSize(U32 type) {
     case GL_UNSIGNED_INT: return 4;
     case GL_INT: return 4;
     default:
-        kpanic("marshalType unknown type: %d", type);
+        kpanic_fmt("marshalType unknown type: %d", type);
         return 1;
     }
 }
@@ -70,7 +70,7 @@ GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
             data = marshalArray<GLint>(cpu, address, count);
             break;
         default:
-            kpanic("marshalType unknown type: %d", type);
+            kpanic_fmt("marshalType unknown type: %d", type);
     }
     return data;
 }
@@ -110,7 +110,7 @@ void marshalBackType(CPU* cpu, U32 type, U32 count, GLvoid* buffer, U32 address)
             marshalBackArray<GLint>(cpu, (GLint*)buffer, address, count);
             break;
         default:
-            kpanic("marshalType unknown type: %d", type);
+            kpanic_fmt("marshalType unknown type: %d", type);
     }
 }
 
@@ -163,7 +163,7 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     case GL_FLOAT:
         return marshalArray<GLfloat>(cpu, pixel, len);
     default:
-        kpanic("glcommongl.c marshalPixels uknown type: %d", type);
+        kpanic_fmt("glcommongl.c marshalPixels uknown type: %d", type);
         return nullptr;
     }
 }
@@ -254,7 +254,7 @@ U32 getPixelsLen(bool read, U32 is3d, GLsizei width, GLsizei height, GLsizei dep
         bytes_per_comp = 0;
         break;
     default:
-        kpanic("glcommongl.c marshalBackPixels uknown type: %d", type);
+        kpanic_fmt("glcommongl.c marshalBackPixels uknown type: %d", type);
     }
     return bytes_per_row * (height + skipRows) * (depth + skipImages);
 }
@@ -287,7 +287,7 @@ GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U3
             return marshalArray<GLuint>(cpu, pixels, len / 4);
         }
     }
-    kpanic("glcommongl.c marshalPixels unknown bytes_per_comp %d", bytes_per_comp);
+    kpanic_fmt("glcommongl.c marshalPixels unknown bytes_per_comp %d", bytes_per_comp);
     return nullptr;
 }
 
@@ -333,7 +333,7 @@ void marshalBackPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 address, 
             marshalBackArray<GLuint>(cpu, (GLuint*)pixels, address, len / 4);
         }
     } else {
-        kpanic("glcommongl.c marshalBackPixels unknown bytes_per_comp %d", bytes_per_comp);
+        kpanic_fmt("glcommongl.c marshalBackPixels unknown bytes_per_comp %d", bytes_per_comp);
     }
 }
 
@@ -444,10 +444,11 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
 static U32 nextSyncId = 0;
 static BHashTable<U32, GLsync> getGLSync;
 static BHashTable<GLsync, U32> getGLSyncId;
+static BOXEDWINE_MUTEX glSyncMutex;
 
 U32 marshalBackSync(CPU* cpu, GLsync sync) {
-    //klog("marshalBackSync not implemented");
 #ifdef BOXEDWINE_64
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(glSyncMutex);
     U32 result = 0;
     if (getGLSyncId.get(sync, result)) {
         return result;
@@ -462,8 +463,8 @@ U32 marshalBackSync(CPU* cpu, GLsync sync) {
 }
 
 GLsync marshalSync(CPU* cpu, U32 sync, bool done) {
-    //klog("marshalSync not implemented");
 #ifdef BOXEDWINE_64
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(glSyncMutex);
     GLsync result = getGLSync.get(sync);
     if (result && done) {
         getGLSync.remove(sync);
@@ -471,7 +472,7 @@ GLsync marshalSync(CPU* cpu, U32 sync, bool done) {
     }
     return result;
 #else
-    return (GLsync)(U32)sync;
+    return (GLsync)sync;
 #endif
 }
 
@@ -514,7 +515,7 @@ GLvoid** marshalpp(CPU* cpu, U32 buffer, U32 count, U32 sizes, S32 bytesPerCount
 }
 
 void* marshalunhandled(const char* func, const char* param, CPU* cpu, U32 address) {
-    klog("%s parameter in OpenGL function, %s, was not marshalled", func, param);
+    klog_fmt("%s parameter in OpenGL function, %s, was not marshalled", func, param);
     return nullptr;
 }
 

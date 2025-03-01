@@ -27,7 +27,7 @@ U32 cpuOffset(U32 r, DynWidth width) {
     else if (width==DYN_32bit)
         return CPU::offsetofReg16(r);
     else {
-        kpanic("dynamic cpuOffset unexpected width: %d", width);
+        kpanic_fmt("dynamic cpuOffset unexpected width: %d", width);
         return 0;
     }
 }
@@ -40,7 +40,7 @@ U32 cpuOffsetResult(DynWidth width) {
     else if (width==DYN_32bit)
         return CPU_OFFSET_OF(result.u32);
     else {
-        kpanic("dynamic cpuOffsetResult unexpected width: %d", width);
+        kpanic_fmt("dynamic cpuOffsetResult unexpected width: %d", width);
         return 0;
     }
 }
@@ -53,7 +53,7 @@ U32 cpuOffsetDst(DynWidth width) {
     else if (width==DYN_32bit)
         return CPU_OFFSET_OF(dst.u32);
     else {
-        kpanic("dynamic cpuOffsetDst unexpected width: %d", width);
+        kpanic_fmt("dynamic cpuOffsetDst unexpected width: %d", width);
         return 0;
     }
 }
@@ -66,7 +66,7 @@ U32 cpuOffsetSrc(DynWidth width) {
     else if (width==DYN_32bit)
         return CPU_OFFSET_OF(src.u32);
     else {
-        kpanic("dynamic cpuOffsetSrc unexpected width: %d", width);
+        kpanic_fmt("dynamic cpuOffsetSrc unexpected width: %d", width);
         return 0;
     }
 }
@@ -879,7 +879,7 @@ DynWidth getWidthOfCondition(const LazyFlags* flags) {
         return DYN_16bit;
     if (flags->width==8)
         return DYN_8bit;
-    kpanic("getWidthOfCondition: invalid flag width: %d", flags->width);
+    kpanic_fmt("getWidthOfCondition: invalid flag width: %d", flags->width);
     return DYN_32bit;
 }
 
@@ -894,7 +894,7 @@ void genNZ(const LazyFlags* flags, DynReg reg) {
         movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else {
-        kpanic("setConditionInReg: unknown condition width: %d", width);
+        kpanic_fmt("setConditionInReg: unknown condition width: %d", width);
     }
 }
 
@@ -910,7 +910,7 @@ void genZ(const LazyFlags* flags, DynReg reg) {
         movToRegFromCpu(reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
         evaluateToReg(reg, DYN_32bit, reg, true, DYN_NOT_SET, 0, DYN_8bit, DYN_EQUALS, false, false);
     } else {
-        kpanic("setConditionInReg: unknown condition width: %d", width);
+        kpanic_fmt("setConditionInReg: unknown condition width: %d", width);
     }
 }
 
@@ -928,7 +928,7 @@ void genS(const LazyFlags* flags, DynReg reg) {
         instRegImm('&', reg, DYN_8bit, 0x80);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);            
     } else {
-        kpanic("setConditionInReg: unknown condition width: %d", width);
+        kpanic_fmt("setConditionInReg: unknown condition width: %d", width);
     }
 }
 
@@ -1055,7 +1055,7 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
     case LE: callHostFunction((void*)common_condition_le, true, 1, 0, DYN_PARAM_CPU, false); break;
     case NLE: callHostFunction((void*)common_condition_nle, true, 1, 0, DYN_PARAM_CPU, false); break;
     default:
-        kpanic("setConditionInReg: unknown condition %d", condition);
+        kpanic_fmt("setConditionInReg: unknown condition %d", condition);
     }
 }
 

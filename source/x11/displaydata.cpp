@@ -34,7 +34,7 @@ void DisplayData::putEvent(const XEvent& event, bool inFront) {
 	}
 }
 
-bool DisplayData::findAndRemoveEvent(U32 window, U32 type, XEvent& event) {
+bool DisplayData::findAndRemoveEvent(U32 window, S32 type, XEvent& event) {
 #ifdef BOXEDWINE_MULTI_THREADED
 	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(eventMutex);
 #endif

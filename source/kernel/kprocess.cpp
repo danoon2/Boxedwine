@@ -416,9 +416,9 @@ static void setupThreadStack(KThread* thread, CPU* cpu, BString programName, con
     cpu->push32(0);	
     writeStackString(thread, cpu, programName.c_str());
     if (args.size()>MAX_ARG_COUNT)
-        kpanic("Too many args: %d is max", MAX_ARG_COUNT);
+        kpanic_fmt("Too many args: %d is max", MAX_ARG_COUNT);
     if (env.size()>MAX_ARG_COUNT)
-        kpanic("Too many env: %d is max", MAX_ARG_COUNT);
+        kpanic_fmt("Too many env: %d is max", MAX_ARG_COUNT);
     //klog("env");
     for (size_t i=0;i<env.size();i++) {
         writeStackString(thread, cpu, env[i].c_str());
@@ -550,7 +550,7 @@ KThread* KProcess::startProcess(BString currentDirectory, const std::vector<BStr
     std::shared_ptr<FsNode> node = Fs::getNodeFromLocalPath(currentDirectory, argValues[0], true);
 
     if (!node) {
-        kwarn("Could not find %s", argValues[0].c_str());
+        kwarn_fmt("Could not find %s", argValues[0].c_str());
         return nullptr;
     }
 
@@ -1008,7 +1008,7 @@ U32 KProcess::unlinkFile(BString path) {
         return -K_ENOENT;
     }
     if (!node->remove()) {
-        kwarn("failed to remove file: errno=%d", errno);
+        kwarn_fmt("failed to remove file: errno=%d", errno);
         return -K_EBUSY;
     }
     return 0;
@@ -1196,7 +1196,7 @@ U32 KProcess::dup2(FD fildes, FD fildes2) {
     KFileDescriptorPtr fd2 = this->getFileDescriptor(fildes2);
     if (fd2) {        
         if (fd2.use_count()>2) { // 1 in this->fds and 1 for fd2
-            kpanic("Not sure what to do on a dup2 where the refcount is %d", fd2.use_count());
+            kpanic_fmt("Not sure what to do on a dup2 where the refcount is %d", fd2.use_count());
         }
         clearFdHandle(fd2->handle);
     } 
@@ -1394,7 +1394,7 @@ U32 KProcess::fstatfs64(FD fildes, U32 address) {
 U32 KProcess::setitimer(U32 which, U32 newValue, U32 oldValue) {
 
     if (which != 0) { // ITIMER_REAL
-        kpanic("setitimer which=%d not supported", which);
+        kpanic_fmt("setitimer which=%d not supported", which);
     }
     if (oldValue) {
         U32 remaining = this->timer.millies - KSystem::getMilliesSinceStart();
@@ -1543,7 +1543,7 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
             vm = true;
         }
         if (flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)) {
-            kpanic("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
+            kpanic_fmt("KProcess::clone - unhandled flag 0x%X", (U32)(flags & ~(K_CLONE_CHILD_SETTID|K_CLONE_CHILD_CLEARTID|K_CLONE_PARENT_SETTID)));
         }
         KProcessPtr newProcess = KProcess::create();
         newProcess->memory = KMemory::create(newProcess.get());
@@ -1627,7 +1627,7 @@ U32 KProcess::clone(KThread* thread, U32 flags, U32 child_stack, U32 ptid, U32 t
         scheduleThread(newThread);
         return this->id;
     } else {
-        kpanic("sys_clone does not implement flags: %X", flags);
+        kpanic_fmt("sys_clone does not implement flags: %X", flags);
         return 0;
     }
     return -K_ENOSYS;
@@ -1850,7 +1850,7 @@ U32 KProcess::prctl(U32 option, U32 arg2) {
     } else if (option == 38) { // PR_SET_NO_NEW_PRIVS
         return 0;
     } else {
-        kwarn("prctl not implemented for option: %d", option);
+        kwarn_fmt("prctl not implemented for option: %d", option);
     }
     return -1;
 }
@@ -2086,7 +2086,7 @@ U32 KProcess::fcntrl(KThread* thread, FD fildes, U32 cmd, U32 arg) {
             return -K_EINVAL;
         }
         default:
-            kwarn("fcntl: unknown command: %d", cmd);
+            kwarn_fmt("fcntl: unknown command: %d", cmd);
             return -K_EINVAL;
     }
 }
@@ -2341,7 +2341,7 @@ U32 KProcess::statx(FD dirfd, BString path, U32 flags, U32 mask, U32 buf) {
         result = getCurrentDirectoryFromDirFD(dirfd, dir);
     }
     if (result) {
-        if (result == -K_ENOTDIR) {
+        if ((S32)result == -K_ENOTDIR) {
             KFileDescriptorPtr fd = this->getFileDescriptor(dirfd);
             if (fd->kobject->type == KTYPE_UNIX_SOCKET) {
                 std::shared_ptr<KUnixSocketObject> s = std::dynamic_pointer_cast<KUnixSocketObject>(fd->kobject);
@@ -2423,7 +2423,7 @@ U32 KProcess::unlinkat(FD dirfd, BString path, U32 flags) {
         return -K_ENOTEMPTY;
     } else {
         if (!node->remove()) {
-            kwarn("filed to remove file: errno=%d", errno);
+            kwarn_fmt("filed to remove file: errno=%d", errno);
             return -K_EBUSY;
         }
         return 0;
@@ -2713,12 +2713,12 @@ void KProcess::printStack() {
         CPU* cpu=thread->cpu;
         
         if (thread->waitingCond) {            
-            klog("  thread %X WAITING %s", thread->id, thread->waitingCond->name.c_str());
+            klog_fmt("  thread %X WAITING %s", thread->id, thread->waitingCond->name.c_str());
         } else {
-            klog("  thread %X RUNNING", thread->id);
+            klog_fmt("  thread %X RUNNING", thread->id);
             BString name = this->getModuleName(cpu->seg[CS].address+cpu->eip.u32);
 
-            klog("    0x%08d %s", this->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
+            klog_fmt("    0x%08d %s", this->getModuleEip(cpu->seg[CS].address+cpu->eip.u32), name.length()?name.c_str():"Unknown");
         }
         ChangeThread c(thread);
         cpu->walkStack(cpu->eip.u32, EBP, 6);
@@ -2796,7 +2796,7 @@ void KProcess::printMappedFiles() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mappedFilesMutex);
     for (auto& n : this->mappedFiles) {
         const std::shared_ptr<MappedFile>& mappedFile = n.value;
-        klog("    %.8X - %.8X (offset=%x) %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, (U32)mappedFile->offset, mappedFile->file->openFile->node->path.c_str());
+        klog_fmt("    %.8X - %.8X (offset=%x) %s\n", mappedFile->address, mappedFile->address+(int)mappedFile->len, (U32)mappedFile->offset, mappedFile->file->openFile->node->path.c_str());
     }
 }
 

@@ -173,7 +173,7 @@ int getFPUCode(int code) {
     case FPE_FLTUND: return K_FPE_FLTUND;
     case FPE_FLTRES: return K_FPE_FLTRES;
     case FPE_FLTINV: return K_FPE_FLTINV;
-    default: klog("getFPUCode unhandled code %d", code); return 0;
+    default: klog_fmt("getFPUCode unhandled code %d", code); return 0;
     }
 }
 
@@ -201,7 +201,7 @@ void signalHandler() {
         op->dealloc(true);
         return;
     }
-    kpanic("unhandled exception %d", cpu->exceptionSigNo);
+    kpanic_fmt("unhandled exception %d", cpu->exceptionSigNo);
 }
 
 #endif

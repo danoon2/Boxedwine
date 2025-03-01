@@ -1194,7 +1194,7 @@ void X64Asm::writeToEFromReg(U8 rm, U8 reg, bool isRegRex, U8 bytes) {
     } else if (bytes==4) {
         this->op = 0x89;
     } else {
-        kpanic("writeToEFromReg didn't handle toBytes: %d", bytes);
+        kpanic_fmt("writeToEFromReg didn't handle toBytes: %d", bytes);
     }
     rm = (rm & ~0x38) | (reg << 3);
     translateRM(rm, false, true, false, false, 0);
@@ -1765,7 +1765,7 @@ void X64Asm::lockParamReg(U8 paramReg, bool paramRex) {
         }
         this->param4InUse = true;        
     } else {
-        kpanic("X64Asm::lockParamReg unknown param %d", paramReg);
+        kpanic_fmt("X64Asm::lockParamReg unknown param %d", paramReg);
     }
 }
 
@@ -1792,7 +1792,7 @@ void X64Asm::unlockParamReg(U8 paramReg, bool paramRex) {
             used = true;
         }
     } else {
-        kpanic("X64Asm::lockParamReg unknown param %d", paramReg);
+        kpanic_fmt("X64Asm::lockParamReg unknown param %d", paramReg);
     }
     if (used) {
         if (paramRex && paramReg == HOST_TMP) {
@@ -3721,9 +3721,9 @@ void X64Asm::verr(U8 rm) {
 }
 
 static void x64_invalidOp(CPU* cpu, U32 op) {
-    klog("x64_invalidOp: 0x%X", op);
+    klog_fmt("x64_invalidOp: 0x%X", op);
     BString name = cpu->thread->process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);
-    klog("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X\n", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), cpu->thread->process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32));
+    klog_fmt("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X\n", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), cpu->thread->process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32));
     cpu->thread->signalIllegalInstruction(5);
 }
 
@@ -3733,7 +3733,7 @@ void X64Asm::invalidOp(U32 op) {
 }
 
 static void x64_errorMsg(const char* msg) {
-    kpanic("%s", msg);
+    kpanic(msg);
 }
 
 void X64Asm::errorMsg(const char* msg) {

@@ -1087,15 +1087,15 @@ void XServer::initVisuals() {
             CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
 
             // try to match a real format with a default
-            if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+            if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == (U32)vis32->bits_per_rgb) {
                 vis32->ext_data = format->id;
                 cfg->visualId = vis32->visualid;
                 vis32 = nullptr;
-            } else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+            } else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == (U32)vis16->bits_per_rgb) {
                 vis16->ext_data = format->id;
                 cfg->visualId = vis16->visualid;
                 vis16 = nullptr;
-            } else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+            } else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == (U32)vis8->bits_per_rgb) {
                 vis8->ext_data = format->id;
                 cfg->visualId = vis8->visualid;
                 vis8 = nullptr;
@@ -1125,19 +1125,19 @@ void XServer::initVisuals() {
             CLXFBConfigPtr cfg = std::make_shared<CLXFBConfig>();
             
             // try to match a real format with a default
-            if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+            if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == (U32)vis32->bits_per_rgb) {
                 vis32->ext_data = format->id;
                 cfg->visualId = vis32->visualid;
                 vis32 = nullptr;
-            } else if (vis24 && rMask == vis24->red_mask && gMask == vis24->green_mask && bMask == vis24->blue_mask && depth == vis24->bits_per_rgb) {
+            } else if (vis24 && rMask == vis24->red_mask && gMask == vis24->green_mask && bMask == vis24->blue_mask && depth == (U32)vis24->bits_per_rgb) {
                 vis24->ext_data = format->id;
                 cfg->visualId = vis24->visualid;
                 vis24 = nullptr;
-            } else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+            } else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == (U32)vis16->bits_per_rgb) {
                 vis16->ext_data = format->id;
                 cfg->visualId = vis16->visualid;
                 vis16 = nullptr;
-            } else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+            } else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == (U32)vis8->bits_per_rgb) {
                 vis8->ext_data = format->id;
                 cfg->visualId = vis8->visualid;
                 vis8 = nullptr;
@@ -1164,13 +1164,13 @@ void XServer::initVisuals() {
 		U32 depth = pf->cColorBits;
 
 		// try to match a real format with a default
-		if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == vis32->bits_per_rgb) {
+		if (vis32 && rMask == vis32->red_mask && gMask == vis32->green_mask && bMask == vis32->blue_mask && depth == (U32)vis32->bits_per_rgb) {
 			vis32->ext_data = i;
 			vis32 = nullptr;
-		} else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == vis16->bits_per_rgb) {
+		} else if (vis16 && rMask == vis16->red_mask && gMask == vis16->green_mask && bMask == vis16->blue_mask && depth == (U32)vis16->bits_per_rgb) {
 			vis16->ext_data = i;
 			vis16 = nullptr;
-		} else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == vis8->bits_per_rgb) {
+		} else if (vis8 && rMask == vis8->red_mask && gMask == vis8->green_mask && bMask == vis8->blue_mask && depth == (U32)vis8->bits_per_rgb) {
 			vis8->ext_data = i;
 			vis8 = nullptr;
 		} else {

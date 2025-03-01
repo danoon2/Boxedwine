@@ -187,7 +187,7 @@ U32 KSystem::ugetrlimit(KThread * thread, U32 resource, U32 rlim) {
             memory->writed(rlim + 4, MAX_ADDRESS_SPACE);
             break;
         default:
-            kpanic("ugetrlimit resource %d not implemented", resource);
+            kpanic_fmt("ugetrlimit resource %d not implemented", resource);
     }
     return 0;
 }
@@ -204,7 +204,7 @@ U32 KSystem::clock_gettime(KThread* thread, U32 clock_id, U32 tp) {
         memory->writed(tp, (U32)(diff / 1000000l));
         memory->writed(tp + 4, (U32)(diff % 1000000l) * 1000);
     } else {
-        kpanic("Unknown clock id for clock_gettime: %d",clock_id);
+        kpanic_fmt("Unknown clock id for clock_gettime: %d",clock_id);
     }
     return 0;
 }
@@ -223,7 +223,7 @@ U32 KSystem::clock_gettime64(KThread* thread, U32 clock_id, U32 tp) {
         memory->writed(tp + 8, (U32)(diff % 1000000l) * 1000);
     }
     else {
-        kpanic("Unknown clock id for clock_gettime64: %d", clock_id);
+        kpanic_fmt("Unknown clock id for clock_gettime64: %d", clock_id);
     }
     return 0;
 }
@@ -319,7 +319,7 @@ void KSystem::printStacks() {
     for (auto& n : KSystem::processes) {
         const KProcessPtr& process = n.value;
 
-        klog("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine.c_str());
+        klog_fmt("process %X %s%s", process->id, process->terminated?"TERMINATED ":"", process->commandLine.c_str());
         process->printStack();
     }
 }
@@ -332,7 +332,7 @@ U32 KSystem::kill(S32 pid, U32 signal) {
         if (pid>0) {        
             process = KSystem::processes[pid];
         } else if (pid == 0 || pid == -1) {
-            kpanic("kill with pid = %d not implemented", pid);
+            kpanic_fmt("kill with pid = %d not implemented", pid);
         } else {
             process = KSystem::processes[-pid];
         }
@@ -698,7 +698,7 @@ U32 KSystem::shmctl(KThread* thread, U32 shmid, U32 cmd, U32 buf) {
         memory->writew(buf, 0); buf += 2;
         memory->writed(buf, 0);
     } else {
-        kpanic("Unknown syscall_shmctl cmd=%X", cmd);
+        kpanic_fmt("Unknown syscall_shmctl cmd=%X", cmd);
     }
     return 0;
 }
@@ -725,7 +725,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_CPU set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_CPU set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -736,7 +736,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_FSIZE set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_FSIZE set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -747,7 +747,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_DATA set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_DATA set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -758,7 +758,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_STACK set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_STACK set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -769,7 +769,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_CORE set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_CORE set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -780,7 +780,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_RSS set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_RSS set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -791,7 +791,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_NPROC set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_NPROC set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -802,7 +802,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_NOFILE set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_NOFILE set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -813,7 +813,7 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
@@ -824,12 +824,12 @@ U32 KSystem::prlimit64(KThread* thread, U32 pid, U32 resource, U32 newlimit, U32
             }
 #ifdef _DEBUG
             if (newlimit!=0) {
-                klog("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
+                klog_fmt("prlimit64 RLIMIT_AS set=%d ignored", (U32)memory->readq(newlimit));
             }
 #endif
             break;
         default:
-            kpanic("prlimit64 resource %d not handled", resource);
+            kpanic_fmt("prlimit64 resource %d not handled", resource);
     }
     return 0;
 }

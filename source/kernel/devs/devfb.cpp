@@ -311,11 +311,11 @@ void fbSetupScreenForOpenGL(int width, int height, int depth) {
     destroySDL2();
     sdlWindow = SDL_CreateWindow("", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     if (!sdlWindow) {
-        kpanic("SDL_CreateWindow failed: %s", SDL_GetError());
+        kpanic_fmt("SDL_CreateWindow failed: %s", SDL_GetError());
     }
     sdlContext = SDL_GL_CreateContext(sdlWindow);
     if (!sdlWindow) {
-        kpanic("SDL_GL_CreateContext failed: %s", SDL_GetError());
+        kpanic_fmt("SDL_GL_CreateContext failed: %s", SDL_GetError());
     }
     bOpenGL = 1;
 }

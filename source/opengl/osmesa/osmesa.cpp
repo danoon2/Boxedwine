@@ -384,6 +384,9 @@ static void* pDLL;
 #undef GL_FUNCTION
 #define GL_FUNCTION(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
 
+#undef GL_FUNCTION_FMT
+#define GL_FUNCTION_FMT(func, RET, PARAMS, ARGS, PRE, POST, LOG) pgl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
+
 #undef GL_FUNCTION_CUSTOM
 #define GL_FUNCTION_CUSTOM(func, RET, PARAMS) pgl##func = (gl##func##_func)pOSMesaGetProcAddress("gl" #func);
 
@@ -395,7 +398,7 @@ static void initMesaOpenGL() {
         BString libPath = KSystem::exePath + LIBRARY_NAME;
         pDLL = SDL_LoadObject(LIBRARY_NAME);
         if (!pDLL) {
-            klog("Failed to load %s %s", libPath.c_str(), SDL_GetError());
+            klog_fmt("Failed to load %s %s", libPath.c_str(), SDL_GetError());
             return;
         }
     }

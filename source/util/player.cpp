@@ -40,7 +40,7 @@ void Player::readCommand() {
     } else if (results.size() == 1) {
         this->nextCommand = results[0];
     } else {
-        klog("malformed script.  Line = %s", line.c_str());
+        klog_fmt("malformed script.  Line = %s", line.c_str());
 #ifdef BOXEDWINE_MULTI_THREADED
         KSystem::destroy();
 #endif
@@ -48,7 +48,7 @@ void Player::readCommand() {
     }    
     this->lastCommandTime = KSystem::getMicroCounter();
     if (this->nextCommand.length()==0) {
-        klog("malformed script.  Line = %s", line.c_str());
+        klog_fmt("malformed script.  Line = %s", line.c_str());
 #ifdef BOXEDWINE_MULTI_THREADED
         KSystem::destroy();
 #endif
@@ -64,15 +64,15 @@ bool Player::start(BString directory) {
     instance->lastCommandTime = 0;
     instance->lastScreenRead = 0;
     if (!instance->file.isOpen()) {
-        klog("script not found: %s error=%d(%s)", script.c_str(), errno, strerror(errno));
+        klog_fmt("script not found: %s error=%d(%s)", script.c_str(), errno, strerror(errno));
         exit(100);
     } else {
-        klog("using script: %s", script.c_str());
+        klog_fmt("using script: %s", script.c_str());
     }
     instance->readCommand();
     instance->version = instance->nextValue;
     if (instance->version!="2") {
-        klog("script is wrong version, was expecting 2 and instead got %s", instance->version.c_str());
+        klog_fmt("script is wrong version, was expecting 2 and instead got %s", instance->version.c_str());
         exit(99);
     }
     instance->readCommand();
@@ -174,7 +174,7 @@ void Player::runSlice() {
         std::vector<BString> items;
         this->nextValue.split(',', items);
         if (items.size()!=2) {
-            klog("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
+            klog_fmt("script: %s MOVETO should have 2 values: %s", this->directory.c_str(), this->nextValue.c_str());
             exit(99);
         }
         input->mouseMove(atoi(items[0].c_str()), atoi(items[1].c_str()), false);
@@ -209,7 +209,7 @@ void Player::runSlice() {
         std::vector<BString> items;
         this->nextValue.split(',', items);
         if (items.size()!=3) {
-            klog("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
+            klog_fmt("script: %s %s should have 3 values: %s", this->directory.c_str(), this->nextCommand.c_str(), this->nextValue.c_str());
             exit(99);
         }
         input->mouseButton((this->nextCommand=="MOUSEDOWN")?1:0, atoi(items[0].c_str()), atoi(items[1].c_str()), atoi(items[2].c_str()));
@@ -219,7 +219,7 @@ void Player::runSlice() {
         instance->readCommand();
     } else if (this->nextCommand=="WAIT") {
         if (KSystem::getMicroCounter()>this->lastCommandTime+1000000l*this->nextValue.toInt64()) {
-            klog("script: done waiting %s", this->nextValue.c_str());
+            klog_fmt("script: done waiting %s", this->nextValue.c_str());
             instance->readCommand();            
         }
     } else if (this->nextCommand=="DONE") {
@@ -263,7 +263,7 @@ void Player::runSlice() {
             }            
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
-                klog("script: screen shot matched, %s", fileName.c_str());
+                klog_fmt("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
                 this->timerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
@@ -297,7 +297,7 @@ void Player::runSlice() {
             }
             std::unique_lock<std::mutex> boxedWineCriticalSection(comparingCondMutex);
             if (comparingPixels == COMPARING_PIXELS_SUCCESS) {
-                klog("script: screen shot matched, %s", fileName.c_str());
+                klog_fmt("script: screen shot matched, %s", fileName.c_str());
                 this->instance->readCommand();
                 this->timerWhileWaiting = 0;
                 this->lastCommandTime += 4000000; // sometimes the screen isn't ready for input even though you can see it
@@ -324,7 +324,7 @@ void Player::runSlice() {
         }
     }
     if (KSystem::getMicroCounter()>this->lastCommandTime+1000000*60*5) {
-        klog("script timed out %s", this->directory.c_str());
+        klog_fmt("script timed out %s", this->directory.c_str());
         if (this->nextCommand == "SCREENSHOT") {
             std::vector<BString> items;
             this->nextValue.split(',', items);

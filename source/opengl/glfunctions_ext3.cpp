@@ -151,7 +151,7 @@ void glcommon_glStartInstrumentsSGIX(CPU* cpu) {
         kpanic("ext_glStartInstrumentsSGIX is NULL");
     {
     GL_FUNC(ext_glStartInstrumentsSGIX)();
-    GL_LOG ("glStartInstrumentsSGIX");
+    GL_LOG_NO_FMT("glStartInstrumentsSGIX");
     }
 }
 void glcommon_glStateCaptureNV(CPU* cpu) {
@@ -327,7 +327,7 @@ void glcommon_glTagSampleBufferSGIX(CPU* cpu) {
         kpanic("ext_glTagSampleBufferSGIX is NULL");
     {
     GL_FUNC(ext_glTagSampleBufferSGIX)();
-    GL_LOG ("glTagSampleBufferSGIX");
+    GL_LOG_NO_FMT ("glTagSampleBufferSGIX");
     }
 }
 void glcommon_glTangent3bEXT(CPU* cpu) {
@@ -1167,7 +1167,7 @@ void glcommon_glTextureBarrier(CPU* cpu) {
         kpanic("ext_glTextureBarrier is NULL");
     {
     GL_FUNC(ext_glTextureBarrier)();
-    GL_LOG ("glTextureBarrier");
+    GL_LOG_NO_FMT ("glTextureBarrier");
     }
 }
 void glcommon_glTextureBarrierNV(CPU* cpu) {
@@ -1175,7 +1175,7 @@ void glcommon_glTextureBarrierNV(CPU* cpu) {
         kpanic("ext_glTextureBarrierNV is NULL");
     {
     GL_FUNC(ext_glTextureBarrierNV)();
-    GL_LOG ("glTextureBarrierNV");
+    GL_LOG_NO_FMT("glTextureBarrierNV");
     }
 }
 void glcommon_glTextureBuffer(CPU* cpu) {
@@ -2591,7 +2591,7 @@ void glcommon_glUnlockArraysEXT(CPU* cpu) {
         kpanic("ext_glUnlockArraysEXT is NULL");
     {
     GL_FUNC(ext_glUnlockArraysEXT)();
-    GL_LOG ("glUnlockArraysEXT");
+    GL_LOG_NO_FMT("glUnlockArraysEXT");
     }
 }
 void glcommon_glUnmapBuffer(CPU* cpu) {
@@ -2690,7 +2690,7 @@ void glcommon_glVDPAUFiniNV(CPU* cpu) {
         kpanic("ext_glVDPAUFiniNV is NULL");
     {
     GL_FUNC(ext_glVDPAUFiniNV)();
-    GL_LOG ("glVDPAUFiniNV");
+    GL_LOG_NO_FMT ("glVDPAUFiniNV");
     }
 }
 void glcommon_glVDPAUGetSurfaceivNV(CPU* cpu) {

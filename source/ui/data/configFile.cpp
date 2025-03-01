@@ -12,7 +12,7 @@ ConfigFile::ConfigFile(BString fileName) {
         std::vector<BString> parts;
         line.split('=', parts);
         if (parts.size() < 2) {
-            kwarn("%s has a malformed key/value pair", fileName.c_str());
+            kwarn_fmt("%s has a malformed key/value pair", fileName.c_str());
         } else {
             parts[0] = parts[0].trim();
             parts[1] = parts[1].trim();

@@ -177,7 +177,7 @@ BString Platform::procStat() {
     kSYSTEM_PROCESSOR_PERFORMANCE_INFORMATION* spt = new kSYSTEM_PROCESSOR_PERFORMANCE_INFORMATION[cpuCount];
     status = NtQuerySystemInformation(SystemProcessorPerformanceInformation, (PVOID)spt, sizeof spt[0] * cpuCount, NULL);
     if (!NT_SUCCESS(status))
-        klog("NtQuerySystemInformation(SystemProcessorPerformanceInformation), status %x", status);
+        klog_fmt("NtQuerySystemInformation(SystemProcessorPerformanceInformation), status %x", status);
     else {
         U64 user_time = 0ULL;
         U64 kernel_time = 0ULL;
@@ -216,12 +216,12 @@ BString Platform::procStat() {
 
         status = NtQuerySystemInformation(SystemPerformanceInformation, (PVOID)spi, sizeof_spi, NULL);
         if (!NT_SUCCESS(status)) {
-            klog("NtQuerySystemInformation(SystemPerformanceInformation) status %x", status);
+            klog_fmt("NtQuerySystemInformation(SystemPerformanceInformation) status %x", status);
             memset(spi, 0, sizeof_spi);
         }
         status = NtQuerySystemInformation(SystemTimeOfDayInformation, (PVOID)&stodi, sizeof stodi, NULL);
         if (!NT_SUCCESS(status)) {
-            klog("NtQuerySystemInformation(SystemTimeOfDayInformation), status %x", status);
+            klog_fmt("NtQuerySystemInformation(SystemTimeOfDayInformation), status %x", status);
         }
     }
     if (!NT_SUCCESS(status)) {
@@ -581,7 +581,7 @@ U32 Platform::getPageAllocationGranularity() {
 
         GetSystemInfo(&sSysInfo);
         if ((sSysInfo.dwAllocationGranularity & K_PAGE_SIZE) != 0) {
-            kpanic("Unexpected host allocation granularity size: %d", sSysInfo.dwAllocationGranularity);
+            kpanic_fmt("Unexpected host allocation granularity size: %d", sSysInfo.dwAllocationGranularity);
         }
         granularity = sSysInfo.dwAllocationGranularity;
     }
@@ -596,7 +596,7 @@ U32 Platform::allocateNativeMemory(U64 address) {
     if (!VirtualAlloc((void*)address, getPageAllocationGranularity() << K_PAGE_SHIFT, MEM_COMMIT, PAGE_READWRITE)) {
         LPSTR messageBuffer = nullptr;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("allocateNativeMemory: failed to commit memory: page=%x : %s", address, messageBuffer);
+        kpanic_fmt("allocateNativeMemory: failed to commit memory: page=%x : %s", address, messageBuffer);
     }
     return 0;
 }
@@ -606,7 +606,7 @@ void Platform::releaseNativeMemory(void* address, U64 len) {
     if (!VirtualFree(address, 0, MEM_RELEASE)) {
         LPSTR messageBuffer = nullptr;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("failed to release executable memory: %s", messageBuffer);
+        kpanic_fmt("failed to release executable memory: %s", messageBuffer);
     }
 }
 
@@ -617,7 +617,7 @@ U8* Platform::alloc64kBlock(U32 count, bool executable) {
     if (!result) {
         LPSTR messageBuffer = nullptr;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("alloc64kBlock: failed to commit memory : %s", messageBuffer);
+        kpanic_fmt("alloc64kBlock: failed to commit memory : %s", messageBuffer);
     }
     return result;
 }
@@ -627,7 +627,7 @@ U8* Platform::reserveNativeMemory64k(U32 count) {
     if (!result) {
         LPSTR messageBuffer = nullptr;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("reserveNativeMemory: failed to commit memory : %s", messageBuffer);
+        kpanic_fmt("reserveNativeMemory: failed to commit memory : %s", messageBuffer);
     }
     return result;
 }
@@ -637,7 +637,7 @@ void Platform::commitNativeMemoryPage(void* address) {
     if (!result) {
         LPSTR messageBuffer = nullptr;
         FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("reserveNativeMemory: failed to commit memory : %s", messageBuffer);
+        kpanic_fmt("reserveNativeMemory: failed to commit memory : %s", messageBuffer);
     }
 }
 
@@ -661,7 +661,7 @@ U32 Platform::updateNativePermission(U64 address, U32 permission, U32 len) {
     if (!VirtualProtect((void*)address, len, proto, &oldProtect)) {
         LPSTR messageBuffer = nullptr;
         size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&messageBuffer, 0, nullptr);
-        kpanic("failed to protect memory: %s", messageBuffer);
+        kpanic_fmt("failed to protect memory: %s", messageBuffer);
     }
     return 0;
 }
@@ -704,8 +704,8 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         } else {
             mask = (1l << count) - 1;
         }
-        klog("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, mask);
-        SetThreadAffinityMask((HANDLE)thread->cpu->nativeHandle, mask);
+        klog_fmt("Process %s (PID=%d) set thread %d cpu affinity to %X", thread->process->name.c_str(), thread->process->id, thread->id, mask);
+        SetThreadAffinityMask((HANDLE)thread->cpu->nativeHandle, (DWORD_PTR)mask);
     }
 }
 #endif
