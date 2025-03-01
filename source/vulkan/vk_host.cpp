@@ -3979,7 +3979,7 @@ void vk_CmdPushDescriptorSetWithTemplate(CPU* cpu) {
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)cpu->memory->readq(ARG2);
     VkPipelineLayout layout = (VkPipelineLayout)cpu->memory->readq(ARG3);
     uint32_t set = (uint32_t)ARG4;
-    void* pData;
+    void* pData = nullptr;
     kpanic("vkCmdPushDescriptorSetWithTemplate not implemented");
     pBoxedInfo->pvkCmdPushDescriptorSetWithTemplate(commandBuffer, descriptorUpdateTemplate, layout, set, pData);
 }
@@ -3989,7 +3989,7 @@ void vk_CmdPushDescriptorSetWithTemplateKHR(CPU* cpu) {
     VkDescriptorUpdateTemplate descriptorUpdateTemplate = (VkDescriptorUpdateTemplate)cpu->memory->readq(ARG2);
     VkPipelineLayout layout = (VkPipelineLayout)cpu->memory->readq(ARG3);
     uint32_t set = (uint32_t)ARG4;
-    void* pData;
+    void* pData = nullptr;
     kpanic("vkCmdPushDescriptorSetWithTemplateKHR not implemented");
     pBoxedInfo->pvkCmdPushDescriptorSetWithTemplateKHR(commandBuffer, descriptorUpdateTemplate, layout, set, pData);
 }
@@ -4665,7 +4665,7 @@ void vk_GetMemoryHostPointerPropertiesEXT(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkExternalMemoryHandleTypeFlagBits handleType = (VkExternalMemoryHandleTypeFlagBits)ARG2;
-    void* pHostPointer;
+    void* pHostPointer = nullptr;
     kpanic("vkGetMemoryHostPointerPropertiesEXT not implemented");
     MarshalVkMemoryHostPointerPropertiesEXT pMemoryHostPointerProperties(pBoxedInfo, cpu->memory, ARG4);
     EAX = (U32)pBoxedInfo->pvkGetMemoryHostPointerPropertiesEXT(device, handleType, pHostPointer, &pMemoryHostPointerProperties.s);
@@ -4879,7 +4879,7 @@ void vk_CmdDrawIndexedIndirectCountAMD(CPU* cpu) {
 void vk_CmdSetCheckpointNV(CPU* cpu) {
     VkCommandBuffer commandBuffer = (VkCommandBuffer)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
-    void* pCheckpointMarker;
+    void* pCheckpointMarker = nullptr;
     kpanic("vkCmdSetCheckpointNV not implemented");
     pBoxedInfo->pvkCmdSetCheckpointNV(commandBuffer, pCheckpointMarker);
 }
@@ -7512,7 +7512,7 @@ void vk_GetBufferOpaqueCaptureDescriptorDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkBufferCaptureDescriptorDataInfoEXT local_pInfo(pBoxedInfo, cpu->memory, ARG2);
     VkBufferCaptureDescriptorDataInfoEXT* pInfo = &local_pInfo.s;
-    void* pData;
+    void* pData = nullptr;
     kpanic("vkGetBufferOpaqueCaptureDescriptorDataEXT not implemented");
     EAX = (U32)pBoxedInfo->pvkGetBufferOpaqueCaptureDescriptorDataEXT(device, pInfo, pData);
 }
@@ -7522,7 +7522,7 @@ void vk_GetImageOpaqueCaptureDescriptorDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkImageCaptureDescriptorDataInfoEXT local_pInfo(pBoxedInfo, cpu->memory, ARG2);
     VkImageCaptureDescriptorDataInfoEXT* pInfo = &local_pInfo.s;
-    void* pData;
+    void* pData = nullptr;
     kpanic("vkGetImageOpaqueCaptureDescriptorDataEXT not implemented");
     EAX = (U32)pBoxedInfo->pvkGetImageOpaqueCaptureDescriptorDataEXT(device, pInfo, pData);
 }
@@ -7532,7 +7532,7 @@ void vk_GetImageViewOpaqueCaptureDescriptorDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkImageViewCaptureDescriptorDataInfoEXT local_pInfo(pBoxedInfo, cpu->memory, ARG2);
     VkImageViewCaptureDescriptorDataInfoEXT* pInfo = &local_pInfo.s;
-    void* pData;
+    void* pData = nullptr;
     kpanic("vkGetImageViewOpaqueCaptureDescriptorDataEXT not implemented");
     EAX = (U32)pBoxedInfo->pvkGetImageViewOpaqueCaptureDescriptorDataEXT(device, pInfo, pData);
 }
@@ -7542,7 +7542,7 @@ void vk_GetSamplerOpaqueCaptureDescriptorDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkSamplerCaptureDescriptorDataInfoEXT local_pInfo(pBoxedInfo, cpu->memory, ARG2);
     VkSamplerCaptureDescriptorDataInfoEXT* pInfo = &local_pInfo.s;
-    void* pData;
+    void* pData = nullptr;
     kpanic("vkGetSamplerOpaqueCaptureDescriptorDataEXT not implemented");
     EAX = (U32)pBoxedInfo->pvkGetSamplerOpaqueCaptureDescriptorDataEXT(device, pInfo, pData);
 }
@@ -7552,7 +7552,7 @@ void vk_GetAccelerationStructureOpaqueCaptureDescriptorDataEXT(CPU* cpu) {
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     MarshalVkAccelerationStructureCaptureDescriptorDataInfoEXT local_pInfo(pBoxedInfo, cpu->memory, ARG2);
     VkAccelerationStructureCaptureDescriptorDataInfoEXT* pInfo = &local_pInfo.s;
-    void* pData;
+    void* pData = nullptr;
     kpanic("vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT not implemented");
     EAX = (U32)pBoxedInfo->pvkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT(device, pInfo, pData);
 }
@@ -7694,7 +7694,7 @@ void vk_GetDescriptorSetHostMappingVALVE(CPU* cpu) {
     VkDevice device = (VkDevice)getVulkanPtr(cpu->memory, ARG1);
     BoxedVulkanInfo* pBoxedInfo = getInfoFromHandle(cpu->memory, ARG1);
     VkDescriptorSet descriptorSet = (VkDescriptorSet)cpu->memory->readq(ARG2);
-    void** ppData;
+    void** ppData = nullptr;
     kpanic("vkGetDescriptorSetHostMappingVALVE not implemented");
     pBoxedInfo->pvkGetDescriptorSetHostMappingVALVE(device, descriptorSet, ppData);
 }

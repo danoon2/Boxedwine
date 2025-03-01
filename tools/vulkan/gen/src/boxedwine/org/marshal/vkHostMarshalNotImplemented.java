@@ -16,7 +16,7 @@ public class vkHostMarshalNotImplemented extends VkHostMarshal {
         }
         out.append(" ");
         out.append(param.name);
-        out.append(";\n");
+        out.append(" = nullptr;\n");
 
         out.append("    kpanic(\""+fn.name+" not implemented\");\n");
         System.out.println(fn.name + " incomplete");
