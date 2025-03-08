@@ -33,6 +33,7 @@ void ramPageRetain(RamPage page);
 U32 ramPageUseCount(RamPage page);
 void ramPageMarkSystem(RamPage page, bool isSystem);
 bool ramPageIsSystem(RamPage page);
+bool ramPageIsNative(RamPage page);
 
 void shutdownRam();
 

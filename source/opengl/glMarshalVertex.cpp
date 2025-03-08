@@ -35,7 +35,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
 #ifndef UNALIGNED_MEMORY
         if (count == 0 || available > datasize) {
             if (p->marshal_size) {
-                free(p->marshal);
+                delete[] p->marshal;
             }         
             p->marshal = cpu->memory->getRamPtr(p->ptr, datasize, false);
             p->marshal_size = 0;
@@ -61,7 +61,7 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
         cpu->memory->memcpy(p->marshal, p->ptr, datasize);
     } else {
         if (p->marshal_size) {
-            free(p->marshal);
+            delete[] p->marshal;
             p->marshal_size = 0;
         }
         p->marshal = (U8*)(uintptr_t)p->ptr;
@@ -70,11 +70,17 @@ U32 updateVertexPointer(CPU* cpu, OpenGLVetexPointer* p, U32 count) {
 }
 
 void updateVertexPointers(CPU* cpu, U32 count) {
-    if (cpu->thread->glVertextPointer.refreshEachCall) {  
+    if (cpu->thread->glVertextPointer.refreshEachCall) {
         if (updateVertexPointer(cpu, &cpu->thread->glVertextPointer, count))
             GL_FUNC(pglVertexPointer)(cpu->thread->glVertextPointer.size, cpu->thread->glVertextPointer.type, cpu->thread->glVertextPointer.stride, cpu->thread->glVertextPointer.marshal);
     }
-    
+    for (auto& vp : cpu->thread->glVertextPointersByIndex) {
+        if (vp.value->refreshEachCall) {
+            if (updateVertexPointer(cpu, vp.value.get(), count))
+                GL_FUNC(ext_glVertexAttribPointer)(vp.key, vp.value->size, vp.value->type, vp.value->normalized ? GL_TRUE : GL_FALSE, vp.value->stride, vp.value->marshal);
+        }
+    }
+
     if (cpu->thread->glNormalPointer.refreshEachCall) {
         cpu->thread->glNormalPointer.size = cpu->thread->glVertextPointer.size;
         if (updateVertexPointer(cpu, &cpu->thread->glNormalPointer, count))
@@ -138,18 +144,32 @@ void updateVertexPointers(CPU* cpu, U32 count) {
     }
 }
 
-GLvoid* marshalVetextPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr) {
+GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr) {
     if (ARRAY_BUFFER()) {        
         cpu->thread->glVertextPointer.refreshEachCall = 0;
         return (GLvoid*)(uintptr_t)ptr;
     } else {
-        cpu->thread->glVertextPointer.size = size;
-        cpu->thread->glVertextPointer.type = type;
-        cpu->thread->glVertextPointer.stride = stride;
-        cpu->thread->glVertextPointer.ptr = ptr;
-        cpu->thread->glVertextPointer.refreshEachCall = 1;
-        updateVertexPointer(cpu, &cpu->thread->glVertextPointer, 0);
-        return cpu->thread->glVertextPointer.marshal;
+        OpenGLVetexPointer* p;
+
+        if (index == 0) {
+            p = &cpu->thread->glVertextPointer;
+        }
+        else {
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(index);
+            if (!found) {
+                found = std::make_shared<OpenGLVetexPointer>();
+                cpu->thread->glVertextPointersByIndex.set(index, found);
+            }
+            p = found.get();
+        }
+        p->size = size;
+        p->type = type;
+        p->stride = stride;
+        p->ptr = ptr;
+        p->refreshEachCall = 0;
+        p->normalized = normalized != GL_FALSE;
+        updateVertexPointer(cpu, p, 0);
+        return p->marshal;
     }
 }
 

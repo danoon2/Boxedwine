@@ -44,6 +44,7 @@ public:
     void protectPage(KThread* thread, U32 i, U32 permissions);
     void setPagesInvalid(U32 page, U32 pageCount);
     bool isPageAllocated(U32 page);
+    bool isPageNative(U32 page);
     void execvReset();    
     void onPageChanged(U32 page);
 

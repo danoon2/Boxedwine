@@ -3167,6 +3167,17 @@ void glcommon_glDisableVertexAttribArray(CPU* cpu) {
     if (!ext_glDisableVertexAttribArray)
         kpanic("ext_glDisableVertexAttribArray is NULL");
     {
+        OpenGLVetexPointer* p = nullptr;
+        if (ARG2 == 0) {
+            p = &cpu->thread->glVertextPointer;
+        } else {
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG2);
+            p = found.get();
+        }
+        if (p) {
+            p->refreshEachCall = 0;
+        }
+
     GL_FUNC(ext_glDisableVertexAttribArray)(ARG1);
     GL_LOG ("glDisableVertexAttribArray GLuint index=%d",ARG1);
     }
@@ -3391,7 +3402,9 @@ void glcommon_glDrawElementsInstancedBaseVertexBaseInstance(CPU* cpu) {
     if (!ext_glDrawElementsInstancedBaseVertexBaseInstance)
         kpanic("ext_glDrawElementsInstancedBaseVertexBaseInstance is NULL");
     {
-    GL_FUNC(ext_glDrawElementsInstancedBaseVertexBaseInstance)(ARG1, ARG2, ARG3, ELEMENT_ARRAY_BUFFER()?(GLvoid*)pARG4:marshalType(cpu, ARG3, ARG2, ARG4), ARG5, ARG6, ARG7);
+        GLsizei count = ARG2;
+        updateVertexPointers(cpu, count);
+    GL_FUNC(ext_glDrawElementsInstancedBaseVertexBaseInstance)(ARG1, count, ARG3, ELEMENT_ARRAY_BUFFER()?(GLvoid*)pARG4:marshalType(cpu, ARG3, count, ARG4), ARG5, ARG6, ARG7);
     GL_LOG ("glDrawElementsInstancedBaseVertexBaseInstance GLenum mode=%d, GLsizei count=%d, GLenum type=%d, const void* indices=%.08x, GLsizei instancecount=%d, GLint basevertex=%d, GLuint baseinstance=%d",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6,ARG7);
     }
 }
@@ -3431,8 +3444,9 @@ void glcommon_glDrawRangeElements(CPU* cpu) {
     if (!ext_glDrawRangeElements)
         kpanic("ext_glDrawRangeElements is NULL");
     {
-    GL_FUNC(ext_glDrawRangeElements)(ARG1, ARG2, ARG3, ARG4, ARG5, ELEMENT_ARRAY_BUFFER()?(GLvoid*)pARG6:marshalType(cpu, ARG5, ARG4, ARG6));
-    GL_LOG ("glDrawRangeElements GLenum mode=%d, GLuint start=%d, GLuint end=%d, GLsizei count=%d, GLenum type=%d, const void* indices=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6);
+        updateVertexPointers(cpu, ARG3 + 1);
+        GL_LOG("glDrawRangeElements GLenum mode=%d, GLuint start=%d, GLuint end=%d, GLsizei count=%d, GLenum type=%d, const void* indices=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6);
+    GL_FUNC(ext_glDrawRangeElements)(ARG1, ARG2, ARG3, ARG4, ARG5, ELEMENT_ARRAY_BUFFER()?(GLvoid*)pARG6:marshalType(cpu, ARG5, ARG3+1, ARG6));    
     }
 }
 void glcommon_glDrawRangeElementsBaseVertex(CPU* cpu) {
@@ -3607,6 +3621,17 @@ void glcommon_glEnableVertexAttribArray(CPU* cpu) {
     if (!ext_glEnableVertexAttribArray)
         kpanic("ext_glEnableVertexAttribArray is NULL");
     {
+        OpenGLVetexPointer* p = nullptr;
+        if (ARG2 == 0) {
+            p = &cpu->thread->glVertextPointer;
+        }
+        else {
+            OpenGLVetexPointerPtr found = cpu->thread->glVertextPointersByIndex.get(ARG2);
+            p = found.get();
+        }
+        if (p) {
+            p->refreshEachCall = 1;
+        }
     GL_FUNC(ext_glEnableVertexAttribArray)(ARG1);
     GL_LOG ("glEnableVertexAttribArray GLuint index=%d",ARG1);
     }
@@ -4864,7 +4889,7 @@ void glcommon_glGetAttachedObjectsARB(CPU* cpu) {
         kpanic("ext_glGetAttachedObjectsARB is NULL");
     {
         MarshalReadWrite<GLsizei> count(cpu, ARG3, 1);
-        GLhandleARB* p2=marshalhandle(cpu, ARG4, ARG2);
+        GLhandleARB* p2=(GLhandleARB*)marshalhandle(cpu, ARG4, ARG2);
         GL_FUNC(ext_glGetAttachedObjectsARB)(INDEX_TO_HANDLE(hARG1), ARG2, count.getPtr(), p2);
         marshalBackhandle(cpu, ARG4, p2, ARG2);
         GL_LOG ("glGetAttachedObjectsARB GLhandleARB containerObj=%d, GLsizei maxCount=%d, GLsizei* count=%.08x, GLhandleARB* obj=%.08x",ARG1,ARG2,ARG3,ARG4);
@@ -5913,7 +5938,8 @@ void glcommon_glGetMinmax(CPU* cpu) {
     if (!ext_glGetMinmax)
         kpanic("ext_glGetMinmax is NULL");
     {
-    GL_FUNC(ext_glGetMinmax)(ARG1, bARG2, ARG3, ARG4, marshalArray<GLbyte>(cpu, ARG5, get_bytes_per_pixel(ARG3, ARG4)*2));
+        MarshalReadWrite<GLbyte> buffer(cpu, ARG5, get_bytes_per_pixel(ARG3, ARG4) * 2);
+    GL_FUNC(ext_glGetMinmax)(ARG1, bARG2, ARG3, ARG4, buffer.getPtr());
     GL_LOG ("glGetMinmax GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
     }
 }
@@ -5921,7 +5947,9 @@ void glcommon_glGetMinmaxEXT(CPU* cpu) {
     if (!ext_glGetMinmaxEXT)
         kpanic("ext_glGetMinmaxEXT is NULL");
     {
-    GL_FUNC(ext_glGetMinmaxEXT)(ARG1, bARG2, ARG3, ARG4, marshalArray<GLbyte>(cpu, ARG5, get_bytes_per_pixel(ARG3, ARG4) * 2));
+        MarshalReadWrite<GLbyte> buffer(cpu, ARG5, get_bytes_per_pixel(ARG3, ARG4) * 2);
+
+    GL_FUNC(ext_glGetMinmaxEXT)(ARG1, bARG2, ARG3, ARG4, buffer.getPtr());
     GL_LOG ("glGetMinmaxEXT GLenum target=%d, GLboolean reset=%d, GLenum format=%d, GLenum type=%d, void* values=%.08x",ARG1,bARG2,ARG3,ARG4,ARG5);
     }
 }
@@ -7072,7 +7100,9 @@ void glcommon_glGetShaderInfoLog(CPU* cpu) {
     if (!ext_glGetShaderInfoLog)
         kpanic("ext_glGetShaderInfoLog is NULL");
     {
-    GL_FUNC(ext_glGetShaderInfoLog)(ARG1, ARG2, (GLsizei*)marshalp(cpu, 0, ARG3, 0), (GLchar*)marshalp(cpu, 0, ARG4, 0));
+        MarshalReadWrite<GLsizei> lengthBuffer(cpu, ARG3, 1);
+        MarshalReadWrite<GLchar> infoBuffer(cpu, ARG4, 2);
+        GL_FUNC(ext_glGetShaderInfoLog)(ARG1, ARG2, lengthBuffer.getPtr(), infoBuffer.getPtr());
     GL_LOG ("glGetShaderInfoLog GLuint shader=%d, GLsizei bufSize=%d, GLsizei* length=%.08x, GLchar* infoLog=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -7272,7 +7302,7 @@ void glcommon_glGetTextureImage(CPU* cpu) {
     if (!ext_glGetTextureImage)
         kpanic("ext_glGetTextureImage is NULL");
     {
-    GL_FUNC(ext_glGetTextureImage)(ARG1, ARG2, ARG3, ARG4, ARG5, (void*)marshalp(cpu, 0, ARG6, 0));
+    GL_FUNC(ext_glGetTextureImage)(ARG1, ARG2, ARG3, ARG4, ARG5, (void*)marshalp(cpu, 0, ARG6, ARG5));
     GL_LOG ("glGetTextureImage GLuint texture=%d, GLint level=%d, GLenum format=%d, GLenum type=%d, GLsizei bufSize=%d, void* pixels=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6);
     }
 }
@@ -7280,7 +7310,20 @@ void glcommon_glGetTextureImageEXT(CPU* cpu) {
     if (!ext_glGetTextureImageEXT)
         kpanic("ext_glGetTextureImageEXT is NULL");
     {
-    GL_FUNC(ext_glGetTextureImageEXT)(ARG1, ARG2, ARG3, ARG4, ARG5, (void*)marshalp(cpu, 0, ARG6, 0));
+        GLuint texture = ARG1;
+        GLenum target = ARG2;
+        GLint level = ARG3;
+        GLenum format = ARG4;
+        GLenum type = ARG5;
+        GLsizei width = 0;
+        GLsizei height = 0;
+
+        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
+        GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
+
+        MarshalReadWritePackedPixels values(cpu, 2, width, height, 1, format, type, ARG6);
+
+    GL_FUNC(ext_glGetTextureImageEXT)(texture, target, level, format, type, values.getPtr());
     GL_LOG ("glGetTextureImageEXT GLuint texture=%d, GLenum target=%d, GLint level=%d, GLenum format=%d, GLenum type=%d, void* pixels=%.08x",ARG1,ARG2,ARG3,ARG4,ARG5,ARG6);
     }
 }

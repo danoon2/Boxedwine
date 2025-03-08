@@ -43,8 +43,8 @@ U32 marshalTypeSize(U32 type) {
     }
 }
 
-GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
-    GLvoid* data= nullptr;
+const GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
+    const GLvoid* data= nullptr;
 
     if (!address)
         return nullptr;
@@ -53,7 +53,7 @@ GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address) {
     U32 page = address >> K_PAGE_SHIFT;
     U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
     if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
-        return (GLvoid*)cpu->memory->getRamPtr(address, len, false);
+        return (const GLvoid*)cpu->memory->getRamPtr(address, len, false);
     }
 
     switch (type) {
@@ -140,12 +140,12 @@ MarshalReadWriteType::~MarshalReadWriteType() {
 
 GLvoid* MarshalReadWriteType::getPtr() {
     if (!buffer) {
-        buffer = marshalType(cpu, type, count, address);
+        buffer = (GLvoid*)marshalType(cpu, type, count, address);
     }
     return buffer;
 }
 
-GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
+const GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     int len = components_in_format (format);
     
     if (!pixel)
@@ -186,7 +186,7 @@ GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel) {
     }
 }
 
-U32 getPixelsLen(bool read, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, int& bytes_per_comp, int& isSigned) {
+U32 getPixelsLen(bool read, U32 dimensions, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, int& bytes_per_comp, int& isSigned) {
     int bytes_per_row = 0;
     int remainder = 0;
 
@@ -201,7 +201,7 @@ U32 getPixelsLen(bool read, U32 is3d, GLsizei width, GLsizei height, GLsizei dep
         GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_PIXELS, &skipPixels);
         GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_ROWS, &skipRows);
         GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
-        if (is3d) {
+        if (dimensions == 3) {
             GL_FUNC(pglGetIntegerv)(GL_UNPACK_SKIP_IMAGES, &skipImages);
         }
     } else {
@@ -209,7 +209,7 @@ U32 getPixelsLen(bool read, U32 is3d, GLsizei width, GLsizei height, GLsizei dep
         GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_PIXELS, &skipPixels);
         GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_ROWS, &skipRows);
         GL_FUNC(pglGetIntegerv)(GL_PACK_ALIGNMENT, &alignment);
-        if (is3d) {
+        if (dimensions == 3) {
             GL_FUNC(pglGetIntegerv)(GL_PACK_SKIP_IMAGES, &skipImages);
         }
     }
@@ -272,12 +272,12 @@ U32 getPixelsLen(bool read, U32 is3d, GLsizei width, GLsizei height, GLsizei dep
         bytes_per_comp = 0;
         break;
     default:
-        kpanic_fmt("glcommongl.c marshalBackPixels uknown type: %d", type);
+        kpanic_fmt("glcommongl.c getPixelsLen uknown type: %d", type);
     }
     return bytes_per_row * (height + skipRows) * (depth + skipImages);
 }
 
-GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U32 len) {
+const GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U32 len) {
     if (bytes_per_comp == 0) {
         return marshalArray<GLfloat>(cpu, pixels, len / 4);
     } else if (bytes_per_comp == 1) {
@@ -309,13 +309,13 @@ GLvoid* marshalPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 pixels, U3
     return nullptr;
 }
 
-GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels, U32 xoffset, U32 yoffset, U32 level) {
+const GLvoid* marshalPixels(CPU* cpu, U32 dimensions, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels, U32 xoffset, U32 yoffset, U32 level, U32 zoffset) {
     if (!pixels) {
         return nullptr;
     }
     int bytes_per_comp = 0;
     int isSigned = 0;
-    GLint w = width + xoffset;
+    GLint w = width;
     GLint h = height;
     GLint alignment = 0;
     GL_FUNC(pglGetIntegerv)(GL_UNPACK_ALIGNMENT, &alignment);
@@ -324,8 +324,7 @@ GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei
         h = (h + alignment - 1) / alignment * alignment; // I don't see any specs on this, but it will crash if I don't do this
         w = (w + alignment - 1) / alignment * alignment;
     }
-    U32 len = getPixelsLen(true, is3d, w, h, depth, format, type, bytes_per_comp, isSigned);
-
+    U32 len = getPixelsLen(true, dimensions, w, h, depth, format, type, bytes_per_comp, isSigned);
     return marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
 }
 
@@ -355,17 +354,6 @@ void marshalBackPixels(CPU* cpu, int bytes_per_comp, int isSigned, U32 address, 
     }
 }
 
-void marshalBackPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 address, GLvoid* pixels) {
-    if (!pixels) {
-        return;
-    }
-
-    int bytes_per_comp = 0;
-    int isSigned = 0;
-    U32 len = getPixelsLen(false, is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
-    marshalBackPixels(cpu, bytes_per_comp, isSigned, address, pixels, len);    
-}
-
 MarshalReadWritePackedPixels::~MarshalReadWritePackedPixels() {
     if (buffer) {
         marshalBackPixels(cpu, bytes_per_comp, isSigned, pixels, buffer, len);
@@ -377,7 +365,7 @@ GLvoid* MarshalReadWritePackedPixels::getPtr() {
         return (GLvoid*)(uintptr_t)(pixels);
     }
     if (!buffer) {
-        len = getPixelsLen(false, is3d, width, height, depth, format, type, bytes_per_comp, isSigned);
+        len = getPixelsLen(false, dimensions, width, height, depth, format, type, bytes_per_comp, isSigned);
         if (!len) {
             return (GLvoid*)(U64)pixels;
         }
@@ -386,7 +374,7 @@ GLvoid* MarshalReadWritePackedPixels::getPtr() {
         if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
             return (GLvoid*)cpu->memory->getRamPtr(pixels, len, true);
         }
-        buffer = marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
+        buffer = (void*)marshalPixels(cpu, bytes_per_comp, isSigned, pixels, len);
     }
     return buffer;
 }
@@ -451,8 +439,8 @@ GLvoid* marshalp(CPU* cpu, U32 instance, U32 buffer, U32 len) {
     if (buffer <0x10000) {
         return (GLvoid*)(uintptr_t)buffer;
     }
-    if ((buffer & 0xFFF) + len > 0xFFF) {
-        return marshalArray<GLubyte>(cpu, buffer, len);
+    if (len != 0) {
+        return (GLvoid*)marshalArray<GLubyte>(cpu, buffer, len);
     }
     // :TODO: a lot of work needs to be done here, marshalp needs to be removed and instead marshal the correct type of array, like marshalf.
     // This is also important to make things work with UNALIGNED_MEMORY
@@ -567,7 +555,7 @@ void* marshalDrawArraysIndirectBindlessCommandNV(CPU* cpu, U32 address, U32 coun
 }
 
 #ifndef DISABLE_GL_EXTENSIONS
-GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, U32 image) {
+const GLvoid* marshalGetConvolutionFilter(CPU* cpu, U32 target, U32 format, U32 type, U32 image) {
     GLint width = 0;
     GLint height = 0;
     //U32 len = 0;
@@ -619,7 +607,7 @@ const char* glcommon_glLightv_print_name(GLenum e) {
     return buffer.c_str();
 }
 
-const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer) {
+const char* glcommon_glLightv_print_buffer(GLenum e, const GLfloat* buffer) {
     thread_local static char tmp[64]; // static so that it can be returned
 
     switch (e) {
@@ -749,7 +737,7 @@ void marshalDeleteHandleIndex(U32 i) {
 GLhandleARB* bufferhandle;
 U32 bufferhandle_len;
 
-GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
+const GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
     if (!address)
         return NULL;
     if (bufferhandle && bufferhandle_len<count) {
@@ -779,7 +767,7 @@ void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count) {
     }
 }
 #else
-GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
+const GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count) {
     return marshalArray<GLhandleARB, 4>(cpu, address, count);
 }
 

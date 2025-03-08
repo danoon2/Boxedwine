@@ -223,6 +223,10 @@ bool KMemoryData::isPageAllocated(U32 page) {
     return mmu[page].getPageType() != PageType::None;
 }
 
+bool KMemoryData::isPageNative(U32 page) {
+    return mmu[page].getPageType() == PageType::Ram && ramPageIsNative(mmu[page].getRamPageIndex());
+}
+
 void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     for (U32 i = page; i < page + pageCount; i++) {
@@ -532,11 +536,13 @@ U8* KMemory::lockReadOnlyMemory(U32 address, U32 len) {
     p->address = address;
     p->readOnly = true;
     memcpy(p->p, address, len);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockedMemoryMutex);
     lockedMemory.set(p->p, p);
     return p->p;
 }
 
 void KMemory::unlockMemory(U8 * lockedPointer) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockedMemoryMutex);
     std::shared_ptr<LockedMemory> p = lockedMemory.get(lockedPointer);
     if (p) {
         if (!p->readOnly) {
@@ -564,6 +570,7 @@ U8* KMemory::lockReadWriteMemory(U32 address, U32 len) {
     p->address = address;
     p->readOnly = false;
     memcpy(p->p, address, len);
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockedMemoryMutex);
     lockedMemory.set(p->p, p);
     return p->p;
 }

@@ -105,7 +105,12 @@ U32  KUnixSocketObject::setLock(KFileLock* lock, bool wait) {
 }
 
 bool KUnixSocketObject::isOpen() {
-    return this->listening || !connection.expired();
+    if (this->listening) {
+        return true;
+    }
+    // connection.expired is not thread safe and we can't add a CS on lockCond here, it will dead lock, hopefully this works better
+    std::shared_ptr<KUnixSocketObject> con = this->connection.lock();
+    return con != nullptr;
 }
 
 bool KUnixSocketObject::isReadReady() {

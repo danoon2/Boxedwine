@@ -179,6 +179,35 @@ void glcommon_glDisableClientState(CPU* cpu) {
     }
 }
 
+void glcommon_glEnableClientState(CPU* cpu) {
+    GLenum cap = ARG1;
+    GL_FUNC(pglEnableClientState)(cap);
+    if (cap == GL_COLOR_ARRAY) {
+        cpu->thread->glColorPointer.refreshEachCall = 1;
+    }
+    else if (cap == GL_EDGE_FLAG_ARRAY) {
+        cpu->thread->glEdgeFlagPointer.refreshEachCall = 1;
+    }
+    else if (cap == GL_FOG_COORD_ARRAY) {
+        cpu->thread->glFogPointer.refreshEachCall = 1;
+    }
+    else if (cap == GL_INDEX_ARRAY) {
+        cpu->thread->glIndexPointer.refreshEachCall = 1;
+    }
+    else if (cap == GL_NORMAL_ARRAY) {
+        cpu->thread->glNormalPointer.refreshEachCall = 1;
+    }
+    else if (cap == GL_SECONDARY_COLOR_ARRAY) {
+        cpu->thread->glSecondaryColorPointer.refreshEachCall = 1;
+    }
+    else if (cap == GL_TEXTURE_COORD_ARRAY) {
+        cpu->thread->glTexCoordPointer.refreshEachCall = 1;
+    }
+    else if (cap == GL_VERTEX_ARRAY) {
+        cpu->thread->glVertextPointer.refreshEachCall = 1;
+    }
+}
+
 template <typename T>
 U32 getLargestValue(T* p, U32 count) {
     U32 result = 0;
@@ -190,7 +219,7 @@ U32 getLargestValue(T* p, U32 count) {
     return result;
 }
 
-U32 getLargestIndexInType(GLenum type, GLsizei count, GLvoid* p) {
+U32 getLargestIndexInType(GLenum type, GLsizei count, const GLvoid* p) {
     switch (type) {
     case GL_UNSIGNED_BYTE: return getLargestValue<GLubyte>((GLubyte*)p, count);
     case GL_UNSIGNED_SHORT: return getLargestValue<GLushort>((GLushort*)p, count);
@@ -206,10 +235,10 @@ void glcommon_glDrawElements(CPU* cpu) {
     GLsizei count = ARG2;
     GLenum type = ARG3;
     U32 indices = ARG4;
-    GLvoid* p = nullptr;
+    const GLvoid* p = nullptr;
 
     if (ELEMENT_ARRAY_BUFFER()) {
-        p = (GLvoid*)pARG4;
+        p = (const GLvoid*)pARG4;
         // :TODO: is this correct to use this count?
         updateVertexPointers(cpu, count);
         GL_LOG("glDrawElements mode=%x count=%d type=%x", mode, count, type);
@@ -326,7 +355,7 @@ void glcommon_glGetTexImage(CPU* cpu) {
 
     GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_WIDTH, &width);
     GL_FUNC(pglGetTexLevelParameteriv)(target, level, GL_TEXTURE_HEIGHT, &height);
-    MarshalReadWritePackedPixels pixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG5);
+    MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG5);
     GL_FUNC(pglGetTexImage)(target, level, format, type, pixels.getPtr());
 }
 
@@ -464,7 +493,7 @@ void glcommon_glTexSubImage2D(CPU* cpu) {
     GLsizei height = ARG6;
     GLenum format = ARG7;
     GLenum type = ARG8;
-    const GLvoid* pixels = PIXEL_UNPACK_BUFFER() ? (GLvoid*)pARG9 : marshalPixels(cpu, target == GL_TEXTURE_3D, width, height, 1, format, type, ARG9, xoffset, yoffset, level);
+    const GLvoid* pixels = PIXEL_UNPACK_BUFFER() ? (GLvoid*)pARG9 : marshalPixels(cpu, target == GL_TEXTURE_3D ? 3 : 2, width, height, 1, format, type, ARG9, xoffset, yoffset, level);
 
     GL_LOG("glTexSubImage2D GLenum target=%x, GLint level=%d, GLint xoffset=%d, GLint yoffset=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%x, GLenum type=%x, const GLvoid* pixels=%x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7, ARG8, ARG9);
     GL_FUNC(pglTexSubImage2D)(target, level, xoffset, yoffset, width, height, format, type, pixels);
@@ -501,7 +530,7 @@ void glcommon_glReadPixels(CPU* cpu) {
 
     GL_LOG("glReadPixels GLint x=%d, GLint y=%d, GLsizei width=%d, GLsizei height=%d, GLenum format=%d, GLenum type=%d, GLvoid *pixels=%.08x", ARG1, ARG2, ARG3, ARG4, ARG5, ARG6, ARG7);
 
-    MarshalReadWritePackedPixels pixels(cpu, 0, width, height, 1, format, type, ARG7);
+    MarshalReadWritePackedPixels pixels(cpu, 2, width, height, 1, format, type, ARG7);
     GL_FUNC(pglReadPixels)(ARG1, ARG2, width, height, format, type, pixels.getPtr());
 }
 
@@ -843,7 +872,7 @@ void gl_common_XQueryExtensionsString(CPU* cpu) {
     if (thread->process->glxStringExtensions) {
         EAX = thread->process->glxStringExtensions;
     }
-    const char* s = "GLX_ARB_multisample GLX_SGIX_fbconfig GLX_ARB_create_context WGL_ARB_create_context_profile GLX_ARB_create_context_no_error";
+    const char* s = "GLX_ARB_multisample GLX_SGIX_fbconfig GLX_ARB_create_context GLX_ARB_create_context_profile WGL_ARB_create_context_profile GLX_ARB_create_context_no_error";
     thread->process->glxStringExtensions = thread->process->alloc(thread, (U32)strlen(s) + 1);
     thread->memory->memcpy(thread->process->glxStringExtensions, s, (U32)strlen(s) + 1);
     EAX = thread->process->glxStringExtensions;

@@ -207,6 +207,10 @@ bool ramPageIsSystem(RamPage page) {
     return refCounts[page.value].isSystem != 0;
 }
 
+bool ramPageIsNative(RamPage page) {
+    return refCounts[page.value].isNative != 0;
+}
+
 U8* ramPageGet(RamPage page) {
     return ramPages[page.value];
 }

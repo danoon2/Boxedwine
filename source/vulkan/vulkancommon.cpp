@@ -78,7 +78,7 @@ U32 createVulkanPtr(KMemory* memory, void* value, BoxedVulkanInfo* info) {
 #include "vkfuncs.h" 
         info->instance = (VkInstance)value;
 
-#ifdef _DEBUG
+#ifdef _DEBUG1
         KNativeSystem::getScreen()->showWindow(true);
         PFN_vkCreateDebugUtilsMessengerEXT debugFunc = (PFN_vkCreateDebugUtilsMessengerEXT)pvkGetInstanceProcAddr((VkInstance)value, "vkCreateDebugUtilsMessengerEXT");
         VkDebugUtilsMessengerCreateInfoEXT createInfo;
@@ -274,7 +274,7 @@ void vk_CreateInstance(CPU* cpu) {
             pCreateInfo->ppEnabledExtensionNames = p;
         }
     }
-#ifdef _DEBUG
+#ifdef _DEBUG1
     if (!containsDebug) {
         char** p = new char*[pCreateInfo->enabledExtensionCount + 1];
         memcpy(p, pCreateInfo->ppEnabledExtensionNames, sizeof(char*) * (pCreateInfo->enabledExtensionCount));

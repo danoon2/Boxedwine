@@ -288,6 +288,10 @@ bool KMemory::isPageAllocated(U32 page) {
     return data->isPageAllocated(page);
 }
 
+bool KMemory::isPageNative(U32 page) {
+    return data->isPageNative(page);
+}
+
 bool KMemory::canWrite(U32 address, U32 len) {
     bool result = true;
 

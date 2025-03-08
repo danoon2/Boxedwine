@@ -92,6 +92,7 @@ public:
     void unmapNativeMemory(U32 address, U32 size);
 
     bool isPageAllocated(U32 page);
+    bool isPageNative(U32 page);
     bool canWrite(U32 address, U32 len);
     bool canRead(U32 address, U32 len);
 
@@ -175,6 +176,7 @@ private:
     };
 
     BHashTable< U8*, std::shared_ptr<LockedMemory>> lockedMemory;
+    BOXEDWINE_MUTEX lockedMemoryMutex;
 };
 
 #endif

@@ -192,7 +192,7 @@ KOpenGLSdl::~KOpenGLSdl() {
     shownGlWindows = 0;
 }
 
-void SDLGlWindow::showWindow(bool show) {        
+void SDLGlWindow::showWindow(bool show) {
     if (show) {        
         KOpenGLSdlPtr gl = std::dynamic_pointer_cast<KOpenGLSdl>(KNativeSystem::getOpenGL());
         if (gl) {

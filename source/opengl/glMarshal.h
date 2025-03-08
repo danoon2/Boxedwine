@@ -64,7 +64,7 @@ void marshalBackArray(CPU* cpu, T* buffer, U32 address, U32 count) {
 }
 
 template <typename T, U32 readSize = sizeof(T)>
-T* marshalArray(CPU* cpu, U32 address, U32 count) {
+const T* marshalArray(CPU* cpu, U32 address, U32 count) {
     thread_local static T** buffer;
     thread_local static U32* bufferLen;
     thread_local static U32 indexCount;
@@ -81,6 +81,9 @@ T* marshalArray(CPU* cpu, U32 address, U32 count) {
     U32 pageStop = (address + len - 1) >> K_PAGE_SHIFT;
     if (page == pageStop && cpu->memory->canRead(page)) {
         return (T*)cpu->memory->getRamPtr(address, len, false);
+    }
+    if (cpu->memory->isPageNative(page)) {
+        return (T*)cpu->memory->getRamPtr(address, 1, false);
     }
     if (!buffer) {
         buffer = new T * [index + 1];
@@ -167,7 +170,10 @@ public:
             if (page == pageStop && cpu->memory->canRead(page) && cpu->memory->canWrite(page)) {
                 return (T*)cpu->memory->getRamPtr(address, len, true);
             }
-            buffer = marshalArray<T>(cpu, address, count);
+            if (cpu->memory->isPageNative(page)) {
+                return (T*)cpu->memory->getRamPtr(address, 1, true);
+            }
+            buffer = (T*)marshalArray<T>(cpu, address, count);
         }
         return buffer;
     }
@@ -210,7 +216,7 @@ const T** marshalszArray(CPU* cpu, U32 count, U32 address, U32 addressLengths) {
             }
             len = cpu->memory->strlen(strAddress);
         }
-        bufferszArray[i] = marshalArray<GLchar>(cpu, strAddress, len + 1);
+        bufferszArray[i] = (GLchar*)marshalArray<GLchar>(cpu, strAddress, len + 1);
     }
     return (const T**)bufferszArray;
 }
@@ -223,20 +229,20 @@ inline const GLchar* marshalsz(CPU* cpu, U32 address) {
 // GL_4_BYTES, GL_FLOAT, GL_UNSIGNED_INT, GL_INT
 //
 // base on the type, the correct marshal function will be called
-GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address);
+const GLvoid* marshalType(CPU* cpu, U32 type, U32 count, U32 address);
 
 // will call the correct marshal function based on the type the count passed to the marshal
 // function will be set to the correct number to include all the data for a single pixel for the format
-GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel);
+const GLvoid* marshalPixel(CPU* cpu, GLenum format, GLenum type, U32 pixel);
 
 // Used by glBitmap, glDrawPixels, glTexImage1D, glTexImage2D, glTexSubImage1D, glTexSubImage2D
 //
 // This will take into account packing, like GL_UNPACK_ROW_LENGTH, GL_UNPACK_SKIP_PIXELS, GL_UNPACK_SKIP_ROWS,
 // GL_UNPACK_ALIGNMENT, GL_PACK_SKIP_IMAGES
-GLvoid* marshalPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels, U32 xoffset=0, U32 yoffset=0, U32 level=0);
+const GLvoid* marshalPixels(CPU* cpu, U32 dimensions, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type,  U32 pixels, U32 xoffset=0, U32 yoffset=0, U32 level=0, U32 zoffset=0);
 
 void updateVertexPointers(CPU* cpu, U32 count);
-GLvoid* marshalVetextPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
+GLvoid* marshalVetextPointer(CPU* cpu, GLuint index, GLboolean normalized, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalNormalPointer(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalColorPointer(CPU* cpu, GLint size, GLenum type, GLsizei stride, U32 ptr);
 GLvoid* marshalIndexPointer(CPU* cpu,  GLenum type, GLsizei stride, U32 ptr);
@@ -250,7 +256,7 @@ GLvoid* marshalFogPointerEXT(CPU* cpu, GLenum type, GLsizei stride, U32 ptr);
 const GLvoid* marshalInterleavedPointer(CPU* cpu, GLenum format, GLsizei stride, U32 ptr);
 
 U32 getDataSize(GLenum type);
-
+U32 getMarshalParamCount(GLenum pname);
 U32 marshalGetColorTableWidth(U32 target);
 U32 marshalGetColorTableWidthEXT(U32 target);
 U32 marshalGetColorTableWidthSGI(U32 target);
@@ -263,16 +269,16 @@ U32 marshalGetConvolutionHeight(U32 target);
 GLint components_in_format(GLenum format );
 GLsizei marshalHistogramWidth(GLenum target);
 
-inline GLintptr* marshalip(CPU* cpu, U32 address, U32 count) {
+inline const GLintptr* marshalip(CPU* cpu, U32 address, U32 count) {
     return marshalArray<GLintptr, 4>(cpu, address, count);
 }
 
-inline GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count) {
+inline const GLsizeiptr* marshalsip(CPU* cpu, U32 address, U32 count) {
     return marshalArray<GLsizeiptr, 4>(cpu, address, count);
 }
 
 // GLhandleARB is a U32 on Win32, but on Mac it is a void*
-GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count);
+const GLhandleARB* marshalhandle(CPU* cpu, U32 address, U32 count);
 void marshalBackhandle(CPU* cpu, U32 address, GLhandleARB* buffer, U32 count);
 
 GLsync marshalSync(CPU* cpu, U32 sync, bool done=false);
@@ -329,7 +335,7 @@ void marshalDeleteHandleIndex(U32 i);
 
 // logging
 const char* glcommon_glLightv_print_pname(GLenum e);
-const char* glcommon_glLightv_print_buffer(GLenum e, GLfloat* buffer);
+const char* glcommon_glLightv_print_buffer(GLenum e, const GLfloat* buffer);
 const char* glcommon_glLightv_print_name(GLenum e);
 const char* glcommon_glClear_mask(GLbitfield mask);
 
@@ -380,7 +386,7 @@ public:
                     return (T*)cpu->memory->getRamPtr(address, len, true);
                 }
             }
-            buffer = marshalArray<T>(cpu, address, count);
+            buffer = (T*)marshalArray<T>(cpu, address, count);
         }
         return buffer;
     }
@@ -388,7 +394,7 @@ public:
 
 class MarshalReadWritePackedPixels {
     CPU* cpu = nullptr;
-    U32 is3d;
+    U32 dimensions;
     GLsizei width;
     GLsizei height;
     GLsizei depth;
@@ -401,7 +407,7 @@ class MarshalReadWritePackedPixels {
     int isSigned = 0;
     U32 len = 0;
 public:
-    MarshalReadWritePackedPixels(CPU* cpu, U32 is3d, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels) : cpu(cpu), is3d(is3d), width(width), height(height), depth(depth), format(format), type(type), pixels(pixels) {
+    MarshalReadWritePackedPixels(CPU* cpu, U32 dimensions, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLenum type, U32 pixels) : cpu(cpu), dimensions(dimensions), width(width), height(height), depth(depth), format(format), type(type), pixels(pixels) {
         packed = PIXEL_PACK_BUFFER();
     }
 

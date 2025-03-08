@@ -551,6 +551,9 @@ int getSize(GLenum pname) {
       case GL_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
       case GL_MAX_FRAGMENT_ATOMIC_COUNTER_BUFFERS:
       case GL_MAX_COMBINED_ATOMIC_COUNTER_BUFFERS:
+      case GL_CONTEXT_FLAGS:
+      case GL_RESET_NOTIFICATION_STRATEGY_ARB:
+      case GL_MAX_MULTISAMPLE_COVERAGE_MODES_NV:
         return 1;
       case GL_DEPTH_BOUNDS_EXT:
       case GL_DEPTH_RANGE:
@@ -601,7 +604,12 @@ int getSize(GLenum pname) {
           GLint results;
           pglGetIntegerv(GL_NUM_COMPRESSED_TEXTURE_FORMATS_ARB, &results);
           return results;
-      }      
+      }
+      case GL_MULTISAMPLE_COVERAGE_MODES_NV: {
+          GLint results;
+          pglGetIntegerv(GL_MAX_MULTISAMPLE_COVERAGE_MODES_NV, &results);
+          return results;
+      }
       default:
           klog_fmt("Unknown pname for get: %d", pname);
           return 1;
@@ -825,6 +833,46 @@ GLint glcommon_glGetPixelMap_size(GLenum map) {
 
     GL_FUNC(pglGetIntegerv)(map, &len);
     return len;
+}
+
+U32 getMarshalParamCount(GLenum pname) {
+    switch (pname) {
+    case GL_DEPTH_STENCIL_TEXTURE_MODE:
+    case GL_TEXTURE_BASE_LEVEL:
+    case GL_TEXTURE_COMPARE_FUNC:
+    case GL_TEXTURE_COMPARE_MODE:
+    case GL_TEXTURE_LOD_BIAS:
+    case GL_TEXTURE_MIN_FILTER:
+    case GL_TEXTURE_MIN_LOD:
+    case GL_TEXTURE_MAG_FILTER:
+    case GL_TEXTURE_MAX_LEVEL:
+    case GL_TEXTURE_MAX_LOD:
+    case GL_TEXTURE_SWIZZLE_A:
+    case GL_TEXTURE_SWIZZLE_B:
+    case GL_TEXTURE_SWIZZLE_G:
+    case GL_TEXTURE_SWIZZLE_R:
+    case GL_TEXTURE_SWIZZLE_RGBA:
+    case GL_TEXTURE_WRAP_R:
+    case GL_TEXTURE_WRAP_S:
+    case GL_TEXTURE_WRAP_T:
+
+    case GL_VERTEX_ATTRIB_ARRAY_ENABLED:
+    case GL_VERTEX_ATTRIB_ARRAY_SIZE:
+    case GL_VERTEX_ATTRIB_ARRAY_STRIDE:
+    case GL_VERTEX_ATTRIB_ARRAY_TYPE:
+    case GL_VERTEX_ATTRIB_ARRAY_NORMALIZED:
+    case GL_VERTEX_ATTRIB_ARRAY_INTEGER:
+    case GL_VERTEX_ATTRIB_ARRAY_LONG:
+    case GL_VERTEX_ATTRIB_ARRAY_DIVISOR:
+    case GL_VERTEX_ATTRIB_RELATIVE_OFFSET:
+
+        return 1;
+    case GL_TEXTURE_BORDER_COLOR:
+        return 4;
+    default:
+        kpanic_fmt("unknown pname in getMarshalParamCount: 0x%x", pname);
+        return 0;
+    }
 }
 
 #ifndef DISABLE_GL_EXTENSIONS

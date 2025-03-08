@@ -165,7 +165,9 @@ void glcommon_glGetVertexArrayIndexed64iv(CPU* cpu) {
     if (!ext_glGetVertexArrayIndexed64iv)
         kpanic("ext_glGetVertexArrayIndexed64iv is NULL");
     {
-    GL_FUNC(ext_glGetVertexArrayIndexed64iv)(ARG1, ARG2, ARG3, (GLint64*)marshalp(cpu, 0, ARG4, 0));
+        MarshalReadWrite<GLint64> buffer(cpu, ARG4, getMarshalParamCount(ARG3));
+
+    GL_FUNC(ext_glGetVertexArrayIndexed64iv)(ARG1, ARG2, ARG3, buffer.getPtr());
     GL_LOG ("glGetVertexArrayIndexed64iv GLuint vaobj=%d, GLuint index=%d, GLenum pname=%d, GLint64* param=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -173,7 +175,8 @@ void glcommon_glGetVertexArrayIndexediv(CPU* cpu) {
     if (!ext_glGetVertexArrayIndexediv)
         kpanic("ext_glGetVertexArrayIndexediv is NULL");
     {
-    GL_FUNC(ext_glGetVertexArrayIndexediv)(ARG1, ARG2, ARG3, (GLint*)marshalp(cpu, 0, ARG4, 0));
+        MarshalReadWrite<GLint> buffer(cpu, ARG4, getMarshalParamCount(ARG3));
+    GL_FUNC(ext_glGetVertexArrayIndexediv)(ARG1, ARG2, ARG3, buffer.getPtr());
     GL_LOG ("glGetVertexArrayIndexediv GLuint vaobj=%d, GLuint index=%d, GLenum pname=%d, GLint* param=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -181,7 +184,8 @@ void glcommon_glGetVertexArrayIntegeri_vEXT(CPU* cpu) {
     if (!ext_glGetVertexArrayIntegeri_vEXT)
         kpanic("ext_glGetVertexArrayIntegeri_vEXT is NULL");
     {
-    GL_FUNC(ext_glGetVertexArrayIntegeri_vEXT)(ARG1, ARG2, ARG3, (GLint*)marshalp(cpu, 0, ARG4, 0));
+        MarshalReadWrite<GLint> buffer(cpu, ARG4, getMarshalParamCount(ARG3));
+    GL_FUNC(ext_glGetVertexArrayIntegeri_vEXT)(ARG1, ARG2, ARG3, buffer.getPtr());
     GL_LOG ("glGetVertexArrayIntegeri_vEXT GLuint vaobj=%d, GLuint index=%d, GLenum pname=%d, GLint* param=%.08x",ARG1,ARG2,ARG3,ARG4);
     }
 }
@@ -189,7 +193,8 @@ void glcommon_glGetVertexArrayIntegervEXT(CPU* cpu) {
     if (!ext_glGetVertexArrayIntegervEXT)
         kpanic("ext_glGetVertexArrayIntegervEXT is NULL");
     {
-    GL_FUNC(ext_glGetVertexArrayIntegervEXT)(ARG1, ARG2, (GLint*)marshalp(cpu, 0, ARG3, 0));
+        MarshalReadWrite<GLint> buffer(cpu, ARG3, getMarshalParamCount(ARG2));
+    GL_FUNC(ext_glGetVertexArrayIntegervEXT)(ARG1, ARG2, buffer.getPtr());
     GL_LOG ("glGetVertexArrayIntegervEXT GLuint vaobj=%d, GLenum pname=%d, GLint* param=%.08x",ARG1,ARG2,ARG3);
     }
 }
@@ -1737,13 +1742,6 @@ void glcommon_glMapBufferRange(CPU* cpu) {
     {
     void* ret=GL_FUNC(ext_glMapBufferRange)(ARG1, ARG2, ARG3, ARG4);
 
-    if (ARG4 & GL_MAP_COHERENT_BIT) {
-        static int shown;
-        if (shown<100) {
-            klog("glMapBufferRange with GL_MAP_COHERENT_BIT not supported");
-            shown++;
-        }
-    }
     EAX=mapBufferRange(cpu, ARG1, ret, ARG2, ARG3);
 
     GL_LOG ("glMapBufferRange GLenum target=%d, GLintptr offset=%d, GLsizeiptr length=%d, GLbitfield access=%d",ARG1,ARG2,ARG3,ARG4);

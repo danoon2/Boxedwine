@@ -35,7 +35,9 @@ public:
     U8* marshal = nullptr;
     U32 marshal_size = 0;
     U32 refreshEachCall = 0;
+    bool normalized = false;
 };
+typedef std::shared_ptr<OpenGLVetexPointer> OpenGLVetexPointerPtr;
 
 class KProcess;
 class Memory;
@@ -139,7 +141,8 @@ public:
     U32 currentContext = 0;
     U32 glLastError = 0;
     bool log = false; // syscalls
-    OpenGLVetexPointer glVertextPointer;
+    OpenGLVetexPointer glVertextPointer; // 0 index
+    BHashTable<U32, OpenGLVetexPointerPtr> glVertextPointersByIndex; // indexes greater than 0
     OpenGLVetexPointer glNormalPointer;
     OpenGLVetexPointer glFogPointer;
     OpenGLVetexPointer glFogPointerEXT;
