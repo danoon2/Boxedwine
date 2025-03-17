@@ -207,13 +207,20 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, bool followOpNext) {
 		// not a real instruction so don't map into page->ops
 		if (op->inst == Done)
 			return;
+#ifdef _DEBUG
+		if (op->eip != address) {
+			kpanic("oops");
+		}
+#endif
 		page->ops[offset] = op;
+		address += op->len;
 		activeOps++;
 		if (!followOpNext) {
 			break;
 		}		
 		if (op->inst == JIT) {
 			op = op->next;
+			address += op->len;
 		}
 		offset += op->len;
 		prevOp = op;

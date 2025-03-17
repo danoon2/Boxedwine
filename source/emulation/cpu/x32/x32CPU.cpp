@@ -2167,7 +2167,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
     if (op->imm == 0) {
 #else
-    if (op->imm == 50 && count < 300) {
+    if (op->imm == 50 && count < 800) {
 #endif
         count++;
         if (0) {
@@ -2186,9 +2186,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
                 return;
             }
             U32 a = cpu->getEipAddress();
-            if (cpu->getEipAddress() == 0xd045e800) {
-                int ii = 0;
-            }
+
             DecodedOp* fullFunction = decodeFunction((NormalCPU*)cpu, cpu->getEipAddress(), cpu->isBig(), opCount, decodedLen);
             if (!fullFunction) {
                 op->next->pfn(cpu, op->next);
@@ -2268,7 +2266,8 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             for (DynamicJump& jmp : data.jumps) {
                 U32 bufferIndex = 0;
 
-                if (!data.eipToBufferPos.get(jmp.eip, bufferIndex)) {                    
+                if (!data.eipToBufferPos.get(jmp.eip, bufferIndex)) {          
+                    fullFunction = decodeFunction((NormalCPU*)cpu, cpu->getEipAddress(), cpu->isBig(), opCount, decodedLen);
                     cpu->thread->seg_access(cpu->eip.u32, true, false);
                     kpanic("x32CPU firstDynamicOp");
                 }

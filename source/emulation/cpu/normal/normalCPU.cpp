@@ -419,6 +419,7 @@ DecodedOp* NormalCPU::getNextOp(bool callTarget) {
         if (!op) {
             U32 opCount = 0;
             U32 eipLen = 0;
+
             op = decodeBlock(this, startIp, this->isBig(), opCount, eipLen);
 
             DecodedOp* nextOp = op;
@@ -431,6 +432,9 @@ DecodedOp* NormalCPU::getNextOp(bool callTarget) {
                 jitOp->pfn = firstOp;
                 jitOp->inst = JIT;
                 jitOp->next = op;
+#ifdef _DEBUG
+                jitOp->eip = op->eip;
+#endif
                 jitOp->len = 0; // needs to be 0 so that code that loops won't count it as part of the address running total
                 op = jitOp;
             }

@@ -1489,7 +1489,7 @@ public:
 #ifdef _DEBUG
     Instruction inst;
     Instruction lastInst;
-    U32 lastEip;
+    U32 eip;
 #else
     U16 inst;
 #endif

@@ -6059,6 +6059,7 @@ void DecodedOp::reset() {
     this->repZero = 0;
     this->repNotZero = 0;
     this->pfn = nullptr;
+    this->eip = 0;
 }
 DecodedOp* DecodedOp::alloc() {
     return freeOps.get();
@@ -6187,9 +6188,6 @@ DecodedOp* decodeFunction(DecodeBlockCallback* callback, U32 eip, bool isBig, U3
         bool calculatedBranchTarget = (instructionInfo[op->inst].branch & DECODE_BRANCH_NO_CACHE);
 
         opCount++;
-        if (address == 0xd041b81b) {
-            int ii = 0;
-        }
         eipToOp.set(address, op);
         bool isReturn = (op->inst == Retn32 || op->inst == Retn16 || op->inst == Retn32Iw || op->inst == Retn16Iw);
         bool isDirectJump = op->inst == JmpJb || op->inst == JmpJw || op->inst == JmpJd;
@@ -6201,9 +6199,6 @@ DecodedOp* decodeFunction(DecodeBlockCallback* callback, U32 eip, bool isBig, U3
         }
         if ((furthestJmp < address + op->len) && isReturn) {
             break;
-        }
-        if (((address & 0xfff) == 0x097) && isJump) {
-            int ii = 0;
         }
         if (branch1 && op->inst != CallJw && op->inst != CallJd) {
             DecodedOp* destOp = callback->getDecodedOp(address + op->len + op->imm);
@@ -6222,12 +6217,12 @@ DecodedOp* decodeFunction(DecodeBlockCallback* callback, U32 eip, bool isBig, U3
         }
         address += op->len;
         bool skippedOps = false;
-        if (isDirectJump) {            
+        if (isDirectJump && !op->next) {            
             U32 found = 0;
             // is next instruction valid
             if (!jumps.get(address, found)) {                
                 // libc memchr will leave some bytes in the function unused, maybe for alignment reasons?
-                // in this case jump to the next know good spot
+                // in this case jump to the next known good spot
                 U32 nextClosestAddress = 0xffffffff;
                 for (auto& keyValue : jumps) {
                     if (keyValue.key >= address && keyValue.key < nextClosestAddress) {
@@ -6263,17 +6258,37 @@ DecodedOp* decodeFunction(DecodeBlockCallback* callback, U32 eip, bool isBig, U3
         }        
         if (!op->next || op->inst == Done) {
             op->next = callback->getDecodedOp(address);
+#ifdef _DEBUG
+            if (op->next && op->next->eip != address) {
+                kpanic("oops");
+            }
+#endif
             if (!op->next) {
                 U32 count = 0;
                 U32 len = 0;
                 op->next = decodeBlock(callback, address, isBig, count, len);
+#ifdef _DEBUG
+                if (op->next && op->next->eip != address) {
+                    kpanic("oops");
+                }
+#endif
             }
         }
         DecodedOp* prevOp = op;
         op = op->next;
+#ifdef _DEBUG
+        if (op->eip != address) {
+            kpanic("oops");
+        }
+#endif
         if (skippedOps) {
             prevOp->next = nullptr;
         }
+#ifdef _DEBUG
+        if (op->inst == Invalid) {
+            kpanic("oops");
+        }
+#endif
     }    
     decodedLen = address - eip;
     return result;
@@ -6327,10 +6342,9 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
             d.opCode = 0;
             d.ea16 = 1;
         }
-        op->lastEip = d.eip;
-        if (op->lastEip == 0xd0512b96) {
-            int ii = 0;
-        }
+#ifdef _DEBUG
+        op->eip = d.eip;
+#endif
         d.inst = d.opCode + d.fetch8();
         if (!decoder[d.inst]) {
             op->inst = Invalid;
