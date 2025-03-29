@@ -548,6 +548,12 @@ bool StartUpArgs::apply() {
     }
     KSystem::videoOption = this->videoOption;
     KSystem::soundEnabled = this->soundEnabled;
+#ifdef __EMSCRIPTEN__
+    if (KSystem::soundEnabled) {
+        KSystem::soundEnabled = false;
+        KSystem::enableSoundAfterMouseClick = true;
+    }
+#endif
     KNativeSystem::initWindow(this->screenCx, this->screenCy, this->screenBpp, this->sdlScaleX, this->sdlScaleY, this->sdlScaleQuality, this->sdlFullScreen, this->vsync);
     KNativeAudio::init();
 #ifdef BOXEDWINE_OPENGL

@@ -19,20 +19,32 @@
 #ifndef __KDSPAUDIO_H__
 #define __KDSPAUDIO_H__
 
+class KDspAudio;
+typedef std::shared_ptr<KDspAudio> KDspAudioPtr;
+typedef std::weak_ptr<KDspAudio> KDspAudioWeakPtr;
+
 class KDspAudio {
 public:
-	static std::shared_ptr<KDspAudio> createDspAudio();
+	static KDspAudioPtr createDspAudio();
 	static void shutdown();
 
-	virtual ~KDspAudio() {}
+	virtual ~KDspAudio();
 
 	virtual void openAudio(U32 format, U32 freq, U32 channels) = 0;
+	virtual void soundEnabled() = 0;
 	virtual bool isOpen() = 0;
 	virtual void closeAudio() = 0;
 	virtual U32 writeAudio(U8* data, U32 len) = 0;
 	virtual U32 getFragmentSize() = 0;
 	virtual U32 getBufferSize() = 0;
 	virtual U32 getBufferCapacity() = 0;
+
+	U32 id = 0;
+
+	static BOXEDWINE_MUTEX mutex;
+	static BHashTable<U32, KDspAudioWeakPtr> openAudios;
+
+	static void iterateOpenAudio(std::function<void(KDspAudioPtr&)> callback);
 };
 
 #endif

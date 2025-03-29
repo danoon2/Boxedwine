@@ -61,6 +61,7 @@ public:
 	}
 
 	void openAudio(U32 format, U32 freq, U32 channels) override;
+	void soundEnabled() override;
 	bool isOpen() override { return this->open; }
 	void closeAudio() override;
 	U32 writeAudio(U8* data, U32 len) override;
@@ -107,6 +108,7 @@ public:
 	SDL_AudioSpec want = { 0 };
 	SDL_AudioSpec got = { 0 };
 	SDL_AudioCVT cvt = { 0 };
+	U32 openedFormat = 0;
 	int cvtBufLen = 0;
 	int cvtBufPos = 0;
 	unsigned char* cvtBuf = nullptr;
@@ -186,12 +188,19 @@ void audioCallback(void* userdata, U8* stream, S32 len) {
 	}
 }
 
+void KDspAudioSdl::soundEnabled() {
+	if (this->open) {
+		openAudio(this->openedFormat, this->want.freq, this->want.channels);
+	}
+}
+
 void KDspAudioSdl::openAudio(U32 format, U32 freq, U32 channels) {
 	//want.samples = 4096;    
 	this->want.callback = audioCallback;
 	this->want.format = getSdlFormat(format);
 	this->want.freq = freq;
 	this->want.channels = channels;
+	this->openedFormat = format;
 
 	if (!KSystem::soundEnabled) {
 		sdlAudioOpen = true;
@@ -307,8 +316,32 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 	return len;	
 }
 
-std::shared_ptr<KDspAudio> KDspAudio::createDspAudio() {
-	return std::make_shared<KDspAudioSdl>();
+static U32 nextId = 0;
+BOXEDWINE_MUTEX KDspAudio::mutex;
+BHashTable<U32, KDspAudioWeakPtr> KDspAudio::openAudios;
+
+KDspAudioPtr KDspAudio::createDspAudio() {
+	KDspAudioPtr result = std::make_shared<KDspAudioSdl>();	
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+	result->id = nextId++;
+	KDspAudioWeakPtr weak = result;
+	openAudios.set(result->id, weak);
+	return result;
+}
+
+KDspAudio::~KDspAudio() {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+	openAudios.remove(this->id);
+}
+
+void KDspAudio::iterateOpenAudio(std::function<void(KDspAudioPtr&)> callback) {
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+	for (auto& it : openAudios) {
+		KDspAudioPtr audio = it.value.lock();
+		if (audio) {
+			callback(audio);
+		}
+	}
 }
 
 void KDspAudio::shutdown() {

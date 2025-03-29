@@ -86,6 +86,7 @@ public:
     static VideoOption videoOption;
     static BString openglLib;
     static bool soundEnabled;
+    static bool enableSoundAfterMouseClick;
     static U32 pentiumLevel;
 	static bool shutingDown;
     static U32 killTime;

@@ -35,6 +35,7 @@ U32 KSystem::skipFrameFPS = 0;
 VideoOption KSystem::videoOption = VIDEO_NORMAL;
 BString KSystem::openglLib;
 bool KSystem::soundEnabled = true;
+bool KSystem::enableSoundAfterMouseClick = false;
 unsigned int KSystem::nextThreadId=10;
 BHashTable<U32, KProcessPtr > KSystem::processes;
 BHashTable<BString, std::shared_ptr<MappedFileCache> > KSystem::fileCache;

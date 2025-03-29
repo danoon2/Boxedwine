@@ -23,6 +23,7 @@
 #include "devinput.h"
 #include "knativeinputSDL.h"
 #include "knativesystem.h"
+#include "kdspaudio.h"
 
 U32 sdlCustomEvent;
 
@@ -96,6 +97,13 @@ bool KNativeInputSDL::mouseWheel(int amount, int x, int y) {
 }
 
 bool KNativeInputSDL::mouseButton(U32 down, U32 button, int x, int y) {
+    if (KSystem::enableSoundAfterMouseClick) {
+        KSystem::enableSoundAfterMouseClick = false;
+        KSystem::soundEnabled = true;
+        KDspAudio::iterateOpenAudio([](KDspAudioPtr& audio) {
+            audio->soundEnabled();
+            });
+    }
     x = xFromScreen(x);
     y = yFromScreen(y);
 
