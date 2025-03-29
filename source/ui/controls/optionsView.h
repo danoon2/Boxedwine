@@ -57,6 +57,7 @@ private:
 	std::shared_ptr<LayoutComboboxControl> scaleControl;
 	std::shared_ptr<LayoutComboboxControl> openGlControl;
 	std::shared_ptr<LayoutCheckboxControl> automationControl;
+	std::shared_ptr<LayoutCheckboxControl> cacheFilesControl;
 
 	// Display
 	std::shared_ptr<LayoutComboboxControl> themeControl;

@@ -114,6 +114,7 @@ public:
     bool enableDXVK = false;
     bool disableHideCursor = false;
     bool forceRelativeMouse = false;
+    bool cacheReads = false;
 
 private:
     bool workingDirSet = false;

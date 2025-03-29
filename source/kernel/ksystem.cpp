@@ -61,6 +61,7 @@ std::shared_ptr<FsNode> KSystem::procNode;
 U32 KSystem::wineMajorVersion;
 bool KSystem::disableHideCursor = false;
 bool KSystem::forceRelativeMouse = false;
+bool KSystem::cacheReads = false;
 
 #if defined(BOXEDWINE_X64) && !defined(BOXEDWINE_USE_SSE_FOR_FPU)
 bool KSystem::useF64 = false;

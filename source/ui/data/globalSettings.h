@@ -173,6 +173,7 @@ public:
     static BString alternativeOpenGlLocation();
     static BString alternativeOpenGlUrl();
     static U32 alternativeOpenGlDownloadSizeMB();
+    static bool cacheReads() { return GlobalSettings::enabledCachedReadFiles; }
 
     static StartUpArgs startUpArgs;
 
@@ -226,6 +227,7 @@ private:
     static int lastScreenY;
     static U32 defaultOpenGL;
     static bool enabledAutomation;
+    static bool enabledCachedReadFiles;
 };
 
 #endif

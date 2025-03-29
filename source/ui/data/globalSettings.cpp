@@ -77,6 +77,7 @@ int GlobalSettings::lastScreenX;
 int GlobalSettings::lastScreenY;
 U32 GlobalSettings::defaultOpenGL = OPENGL_TYPE_DEFAULT;
 bool GlobalSettings::enabledAutomation = false;
+bool GlobalSettings::enabledCachedReadFiles = false;
 
 void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::largeFontBold = nullptr;
@@ -124,6 +125,7 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::lastScreenY = config.readInt(B("WindowY"), 0);
     GlobalSettings::defaultOpenGL = config.readInt(B("OpenGL"), OPENGL_TYPE_DEFAULT);
     GlobalSettings::enabledAutomation = config.readBool(B("EnableAutomation"), false);
+    GlobalSettings::enabledCachedReadFiles = config.readBool(B("EnabledCachedReadFiles"), false);
 
     if (!Fs::doesNativePathExist(configFilePath)) {
         saveConfig();
@@ -199,6 +201,8 @@ void GlobalSettings::saveConfig() {
     config.writeInt(B("WindowY"), GlobalSettings::lastScreenY);
     config.writeInt(B("OpenGL"), GlobalSettings::defaultOpenGL);
     config.writeBool(B("EnableAutomation"), GlobalSettings::enabledAutomation);
+    config.writeBool(B("EnabledCachedReadFiles"), GlobalSettings::enabledCachedReadFiles);
+   
     config.saveChanges();
 }
 

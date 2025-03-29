@@ -38,13 +38,14 @@ If your application needs to be installed and sets registry entries or installs 
 	
 3.  Decide which file system you want to use.  
 	a. You can use boxedwine.zip that is used in the ski32 demo
+		
 	b. Or you can use a full file system of your choosing.
 
 	The pros of using boxedwine.zip is that you will have a small file system.  The cons are that this small file system had some files removed in order to make it that small, so not all applications will work with it.  But a lot of applications and games should work with it just fine.  All the Demos in the Boxedwine UI work with it.
 	
     I'd recommend trying boxedwine.zip unless you know it won't work for you.
 
-4.  If you want to use a full file system continue with the following steps, but substitute boxedwine.zip with your full file system of choice or rename that file system boxedwine.zip.
+4.  If you want to use a full file system continue with the following steps, but substitute boxedwine.zip with your full file system of choice or rename that file system to boxedwine.zip.
 	
 5.  You need to copy boxedwine.zip to the FileSystems2 folder in the Boxedwine data folder, you can find the location of the data folder in the Boxedwine UI under the Options tab.  On Windows this is "%APPDATA%\Boxedwine"
 	
@@ -56,7 +57,7 @@ If your application needs to be installed and sets registry entries or installs 
 	
 9.  Now go to the Container that has your installed application.  You can find this folder in the Boxedwine UI by going to the Containers tab and selecting your app on the left.  On the right hand side you will see "Storage Location", if you hit the "Open" Boxedwine should take your computer to that folder.  In that folder open "root".  There should be a subfolder called "home" there.  Using whatever zip tools you prefer, like 7zip, copy the home folder to boxedwine.zip, this will merge the new home folder contents with the existing home folder in boxedwine.zip.
 	
-10.  You now have a boxedwine.zip file system that contains your installed game and you should be able to run this on the web.
+10.  You now have a boxedwine.zip file system that contains your installed application and you should be able to run this on the web.
 
 When it comes to running the application you just installed, probably the easiest way will be to create a bat file in home/username directory of boxedwine.zip.  For example, if you followed the above steps with the Caesar 3 demo, your games is installed in home\username\.wine\drive_c\SIERRA\CAESAR3DEMO inside boxedwine.zip.  A suitable bat file to run this will look like
 

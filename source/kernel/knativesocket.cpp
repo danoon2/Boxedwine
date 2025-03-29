@@ -248,60 +248,92 @@ S32 translateNativeSocketError(const std::shared_ptr<KNativeSocketObject>& s, in
     if (error == WSAENOTCONN) {
         result = -K_ENOTCONN;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ENOTCONN", result);
-    } else if (error == WSAEWOULDBLOCK) {
+    }
+    else if (error == WSAEWOULDBLOCK) {
         result = -K_EWOULDBLOCK;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EWOULDBLOCK", result);
-    } else if (error == WSAETIMEDOUT) {
+    }
+    else if (error == WSAETIMEDOUT) {
         result = -K_ETIMEDOUT;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ETIMEDOUT", result);
-    } else if (error == WSAECONNRESET) {
+    }
+    else if (error == WSAECONNRESET) {
         result = -K_ECONNRESET;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNRESET", result);
-    } else if (error == WSAEDESTADDRREQ) {
+    }
+    else if (error == WSAEDESTADDRREQ) {
         result = -K_EDESTADDRREQ;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EDESTADDRREQ", result);
-    } else if (error == WSAEHOSTUNREACH) {
+    }
+    else if (error == WSAEHOSTUNREACH) {
         result = -K_EHOSTUNREACH;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EHOSTUNREACH", result);
-    } else if (error == WSAECONNREFUSED) {
+    }
+    else if (error == WSAECONNREFUSED) {
         result = -K_ECONNREFUSED;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNREFUSED", result);
-    } else if (error == WSAEISCONN) {
+    }
+    else if (error == WSAEISCONN) {
         result = -K_EISCONN;
-        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNREFUSED", result);
-    } else if (error == WSAEMSGSIZE) {
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EISCONN", result);
+    }
+    else if (error == WSAEMSGSIZE) {
         result = -K_EMSGSIZE;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EMSGSIZE", result);
-    } else {
+    }
+    else {
         result = -K_EIO;
         LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EIO", result);
     }
 
 #else 
-    if (error == ENOTCONN)
+    if (error == ENOTCONN) {
         result = -K_ENOTCONN;
-    else if (error == EWOULDBLOCK)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ENOTCONN", error);
+    }
+    else if (error == EWOULDBLOCK) {
         result = -K_EWOULDBLOCK;
-    else if (error == ETIMEDOUT)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EWOULDBLOCK", error);
+    }
+    else if (error == ETIMEDOUT) {
         result = -K_ETIMEDOUT;
-    else if (error == ECONNRESET)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ETIMEDOUT", error);
+    }
+    else if (error == ECONNRESET) {
         result = -K_ECONNRESET;
-    else if (error == EDESTADDRREQ)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNRESET", error);
+    }
+    else if (error == EDESTADDRREQ) {
         result = -K_EDESTADDRREQ;
-    else if (error == EHOSTUNREACH)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EDESTADDRREQ", error);
+    }
+    else if (error == EHOSTUNREACH) {
         result = -K_EHOSTUNREACH;
-    else if (error == EISCONN)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EHOSTUNREACH", error);
+    }
+    else if (error == EISCONN) {
         result = -K_EISCONN;
-    else if (error == ECONNREFUSED)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EISCONN", error);
+    }
+    else if (error == ECONNREFUSED) {
         result = -K_ECONNREFUSED;
-    else if (error == EMSGSIZE)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "ECONNREFUSED", error);
+    } else if (error == EMSGSIZE) {
         result = -K_EMSGSIZE;
-    else if (error == EAFNOSUPPORT)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EMSGSIZE", error);
+    } else if (error == EAFNOSUPPORT) {
         result = -K_EAFNOSUPPORT;
-    else if (error == EINPROGRESS)
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EAFNOSUPPORT", error);
+    } else if (error == EINPROGRESS) {
         result = -K_EINPROGRESS;
-    else
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EINPROGRESS", error);
+    } else if (error == EPERM) {
+        result = -K_EPERM;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "EPERM", error);
+    } else {
         result = -K_EIO;
+        LOG_SOCK("  native socket: %x error %s(%x)", s->nativeSocket, "UKNOWN/EIO", error);
+    }
 #endif
     return result;
 }
@@ -383,6 +415,7 @@ KNativeSocketObject::KNativeSocketObject(U32 domain, U32 type, U32 protocol) : K
         nativeProtocol = IPPROTO_IP;
     }
     this->nativeSocket = (S32)socket(AF_INET, nativeType, nativeProtocol);
+    LOG_SOCK("%x native socket: %x open nativeType=%x nativeProtocol=%x", KThread::currentThread()->id, nativeSocket, nativeType, nativeProtocol);
 #ifndef BOXEDWINE_MULTI_THREADED
     setNativeBlocking(this->nativeSocket, false);
 #endif

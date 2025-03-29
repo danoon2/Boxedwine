@@ -154,6 +154,7 @@ void BoxedContainer::launch(const std::vector<BString>& args, BString labelForWa
     GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
+    GlobalSettings::startUpArgs.cacheReads = GlobalSettings::cacheReads();
     this->launch();
     GlobalSettings::startUpArgs.addArgs(args);
     GlobalSettings::startUpArgs.readyToLaunch = true;
@@ -168,6 +169,7 @@ void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
+    GlobalSettings::startUpArgs.cacheReads = GlobalSettings::cacheReads();
     std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
     GlobalSettings::startUpArgs.addZip(fs->filePath);
     BString root = GlobalSettings::getRootFolder(this);

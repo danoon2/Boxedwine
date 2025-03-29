@@ -266,6 +266,9 @@ std::vector<BString> StartUpArgs::buildArgs() {
     if (this->forceRelativeMouse) {
         args.push_back(B("-forceRelativeMouse"));
     }
+    if (this->cacheReads) {
+        args.push_back(B("-cacheReads"));
+    }
     for (auto& a : this->args) {
         args.push_back(a);
     }
@@ -282,6 +285,7 @@ bool StartUpArgs::apply() {
 #endif
     KSystem::disableHideCursor = this->disableHideCursor;
     KSystem::forceRelativeMouse = this->forceRelativeMouse;
+    KSystem::cacheReads = this->cacheReads;
     KSystem::pentiumLevel = this->pentiumLevel;
     KSystem::pollRate = this->pollRate;
     if (KSystem::pollRate < 0) {
@@ -801,7 +805,10 @@ bool StartUpArgs::parseStartupArgs(int argc, const char **argv) {
             this->disableHideCursor = true;
         } else if (!strcmp(argv[i], "-forceRelativeMouse")) {
             this->forceRelativeMouse = true;
-        } else if (!strcmp(argv[i], "-dxvk")) {
+        }  else if (!strcmp(argv[i], "-cacheReads")) {
+            this->cacheReads = true;
+        }
+        else if (!strcmp(argv[i], "-dxvk")) {
             BString dxvk;
             dxvk = argv[i + 1];
             this->enableDXVK = dxvk.startsWith('t', true) || (dxvk == "1") || dxvk.startsWith('y', true);

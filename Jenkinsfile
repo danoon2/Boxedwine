@@ -31,6 +31,7 @@ pipeline {
                         sh '''#!/bin/bash
                             source ~/emsdk/emsdk_env.sh
                             cd project/emscripten
+                            make clean
                             make test
                             killall -9 python3
                             cd Build/Test
@@ -48,6 +49,7 @@ pipeline {
                         }
                         dir("project/linux") {
                             sh '''#!/bin/bash
+                                make clean
                                 make test || exit
                                 ./Build/Test/boxedwine || exit
                                 make testMultiThreaded || exit
@@ -81,6 +83,7 @@ pipeline {
                         }
                         dir("project/linux") {
                             sh '''#!/bin/bash
+                                make clean
                                 make testMultiThreaded || exit
                                 ./Build/TestMultiThreaded/boxedwine
                             '''
@@ -130,7 +133,8 @@ pipeline {
                                 source ~/emsdk/emsdk_env.sh
                                 set -x
                                 rm -rf Deploy
-                                make
+                                make clean
+                                make multiThreaded
                                 if [ ! -f "Build/Release/boxedwine.wasm" ] 
                                 then
                                     echo "boxedwine.wasm DOES NOT exists."
@@ -163,6 +167,7 @@ pipeline {
                                 rm Build/MultiThreaded/boxedwine
                                 rm Build/Release/boxedwine
                                 rm Build/Deploy/Linux64/boxedwine
+                                make clean
                                 make release
                                 make multiThreaded
                                 mkdir -p Build/Deploy/Linux64
@@ -226,8 +231,9 @@ pipeline {
                         dir("project/linux") {
                             sh '''#!/bin/bash
                                 rm Build/MultiThreaded/boxedwine
-                                rm Deploy/LinuxArm64/boxedwine
+                                rm Deploy/LinuxArm64/boxedwine                                
                                 mkdir -p Deploy/LinuxArm64
+                                make clean
                                 make multiThreaded
                                 if [ ! -f "Build/MultiThreaded/boxedwine" ] 
                                 then

@@ -167,8 +167,10 @@ U64 FsFileNode::length() {
 }
 
 BString FsFileNode::getLink() {
-#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__) && defined(BOXED_MOVE_TOUCHED_ZIP_FILES_TO_HOST)
-    ensurePathIsLocal(false);
+#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
+    if (KSystem::cacheReads) {
+        ensurePathIsLocal(false);
+    }
 #endif
     return this->link; 
 }
@@ -207,8 +209,8 @@ FsOpenNode* FsFileNode::open(U32 flags) {
     if ((flags & K_O_ACCMODE)==K_O_RDONLY) {
         openFlags|=O_RDONLY;
         // make the file local so that it will load faster (no inflate and weird seeking logic)
-#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__) && defined(BOXED_MOVE_TOUCHED_ZIP_FILES_TO_HOST)
-        if (this->zipNode) {
+#if defined(BOXEDWINE_ZLIB) && !defined(__EMSCRIPTEN__)
+        if (KSystem::cacheReads && this->zipNode) {
             ensurePathIsLocal(false);
         }
 #endif

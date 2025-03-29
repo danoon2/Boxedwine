@@ -192,6 +192,12 @@ void OptionsView::createGeneralTab() {
     };
 #endif
 
+    cacheFilesControl = section->addCheckbox(Msg::OPTIONSVIEW_ENABLE_COPY_TOUCHED_FILES_LABEL, Msg::OPTIONSVIEW_ENABLE_COPY_TOUCHED_FILES_HELP, GlobalSettings::enabledCachedReadFiles);
+    cacheFilesControl->onChange = [this]() {
+        GlobalSettings::enabledCachedReadFiles = this->cacheFilesControl->isChecked();
+        GlobalSettings::saveConfig();
+        };
+
     std::shared_ptr<LayoutSection> bottomSection = model->addSection();
     bottomSection->addSeparator();
     BString deleteLabel;

@@ -551,19 +551,23 @@ std::shared_ptr<U8[]> extractIconFromExe(BString nativeExePath, int size, int* w
     if (!f.isOpen()) {
         return nullptr;
     }
-    unsigned char* buffer = new unsigned char[32*1024];
-    U32 read = (U32)f.read(buffer, 32 * 1024);
+    const int BUFFER_SIZE = 128 * 1024;
+    unsigned char* buffer = new unsigned char[BUFFER_SIZE];
+    U32 read = (U32)f.read(buffer, BUFFER_SIZE);
     if (buffer[0]!='M' || buffer[1]!='Z') {
+        delete[] buffer;
         return nullptr;
     }
     U32 nextHeader = READD(buffer, 60);    // e_lfanew File address of new exe header
     if (nextHeader>read-1) {
+        delete[] buffer;
         return nullptr;
     }
     std::vector<IconInfo> icons;
     if (buffer[nextHeader]=='N' && buffer[nextHeader+1]=='E') {
         ImageOs2Header* header = (ImageOs2Header*)(buffer+nextHeader);
         if (header->ne_rsrctab >= header->ne_restab) {
+            delete[] buffer;
             return nullptr;
         }
         f.setPos(nextHeader + header->ne_rsrctab);
@@ -635,12 +639,13 @@ std::shared_ptr<U8[]> extractIconFromExe(BString nativeExePath, int size, int* w
 
             if (resourceSize) {
                 f.setPos(rawOffset);
-                read = f.read(buffer, 32*1024);
-                readResourceDirectory(f, resourceRVA, rawOffset, buffer, 0, 32*1024, (ImageResourceDirectory*)buffer, 0, false, icons);                                
+                read = f.read(buffer, BUFFER_SIZE);
+                readResourceDirectory(f, resourceRVA, rawOffset, buffer, 0, BUFFER_SIZE, (ImageResourceDirectory*)buffer, 0, false, icons);
             }
         } else if (optionalHeader->Magic == 0x020b) {
             kwarn("Icon 20b not implemented");
         } else {
+            delete[] buffer;
             return nullptr;
         }                
     }
@@ -658,7 +663,9 @@ std::shared_ptr<U8[]> extractIconFromExe(BString nativeExePath, int size, int* w
                 bestIcon = icons[i];
             }
         }
+        delete[] buffer;
         return parseIcon(f, bestIcon, width, height);
     }
+    delete[] buffer;
     return nullptr;
 }

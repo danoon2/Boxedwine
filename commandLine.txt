@@ -19,6 +19,8 @@ This will load the file system from wine.zip and write the changes to c:\root
 
 -bpp X : Value must be 16 or 32.  Most games are fine with 32-bit.
 
+-cacheReads : will copy files from zip file system to host local file system when reading a file.  By default only files opened for write get cached.
+
 -cpuAffinity X : For multi-threaded builds, this will set the CPU affinity for the app/game.  Normally you should just pass in 1 if this is needed.  Some older games that use multiple threads sometimes require this.
 
 -ddrawOverride path : will enabled CNC DDraw wrapper for the path passed in.  The path needs to be the full emulated file system path, for example, /home/username/.wine/drive_c/mdkperf/PERF_W95.EXE
