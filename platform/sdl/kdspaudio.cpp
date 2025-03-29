@@ -100,6 +100,8 @@ public:
 			return AUDIO_U16MSB;
 		case AFMT_MPEG:
 			return AUDIO_U8;
+        case AFMT_FLOAT:
+                return AUDIO_F32LSB;
 		default:
 			kpanic_fmt("KNativeAudioSdl Unknow audio format %d", format);
 			return 0;

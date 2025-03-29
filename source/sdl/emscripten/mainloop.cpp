@@ -52,17 +52,11 @@ static BString getSize(int pages)
 extern int allocatedRamPages;
 void mainloop() {
     isMainThread = true;
-    while (platformThreadCount) {
-        U32 timeout = 250;
         U32 t = KSystem::getMilliesSinceStart();
         U32 nextTimer = getNextTimer();
         if (nextTimer == 0) {
             runTimers();
-        } else if (nextTimer < timeout) {
-            timeout = nextTimer;
         }
-
-        bool timedout = KNativeSystem::getCurrentInput()->waitForEvent(timeout) == false;
            
         if (lastTitleUpdate + 5000 < t) {
             lastTitleUpdate = t;
@@ -79,15 +73,7 @@ void mainloop() {
         }
         if (!KNativeSystem::getCurrentInput()->processEvents()) {
             KNativeSystem::cleanup();
-            return;
         }
-        if (KNativeSystem::getScreen()->presentedSinceLastCheck()) {
-            break;
-        }
-        if (timedout) {
-            break;
-        }
-    };
 }
 
 void waitForProcessToFinish(const std::shared_ptr<KProcess>& process, KThread* thread) {

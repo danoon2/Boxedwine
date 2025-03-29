@@ -141,6 +141,9 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         case AFMT_MPEG:
 			this->format = AFMT_U8;
             break;
+        case AFMT_FLOAT:
+            this->format = AFMT_FLOAT;
+            break;
         }
         if (write)
             memory->writed(IOCTL_ARG1, this->format);
@@ -170,7 +173,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
         klog("DevDsp::ioctl was not expecting SNDCTL_DSP_SETFRAGMENT");
         return 0;
     case 0x500B: // SNDCTL_DSP_GETFMTS
-        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE);
+        memory->writed(IOCTL_ARG1, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT);
         return 0;
 
 		//typedef struct audio_buf_info {
@@ -249,7 +252,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, -1); p+=4; // int pid;
             memory->writed(p, PCM_CAP_OUTPUT); p+=4; // int caps;			/* PCM_CAP_INPUT, PCM_CAP_OUTPUT */
             memory->writed(p, 0); p+=4; // int iformats
-            memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE); p+=4; // int oformats;
+            memory->writed(p, AFMT_U8 | AFMT_S16_LE | AFMT_S16_BE | AFMT_S8 | AFMT_U16_BE | AFMT_FLOAT); p+=4; // int oformats;
             memory->writed(p, 0); p+=4; // int magic;			/* Reserved for internal use */
             memory->strcpy(p, ""); p+=64; // oss_cmd_t cmd;		/* Command using the device (if known) */
             memory->writed(p, 0); p+=4; // int card_number;
@@ -259,7 +262,7 @@ U32 DevDsp::ioctl(KThread* thread, U32 request) {
             memory->writed(p, 1); p+=4; // int enabled;			/* 1=enabled, 0=device not ready at this moment */
             memory->writed(p, 0); p+=4; // int flags;			/* For internal use only - no practical meaning */
             memory->writed(p, 11025); p += 4; // int min_rate
-            memory->writed(p, 44100); p+=4; // max_rate;	/* Sample rate limits */
+            memory->writed(p, 48000); p+=4; // max_rate;	/* Sample rate limits */
             memory->writed(p, 1); p+=4; // int min_channels
             memory->writed(p, 2); p+=4; // max_channels;	/* Number of channels supported */
             memory->writed(p, 0); p+=4; // int binding;			/* DSP_BIND_FRONT, etc. 0 means undefined */
