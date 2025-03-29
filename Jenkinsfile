@@ -135,17 +135,17 @@ pipeline {
                                 rm -rf Deploy
                                 make clean
                                 make multiThreaded
-                                if [ ! -f "Build/Release/boxedwine.wasm" ] 
+                                if [ ! -f "Build/MultiThreaded/boxedwine.wasm" ] 
                                 then
                                     echo "boxedwine.wasm DOES NOT exists."
                                     exit 999
                                 fi
                                 mkdir -p Deploy/Web
-                                cp Build/Release/boxedwine.html Deploy/Web
+                                cp Build/MultiThreaded/boxedwine.html Deploy/Web
                                 cp boxedwine.css Deploy/Web
                                 cp boxedwine-shell.js Deploy/Web
-                                cp Build/Release/boxedwine.js Deploy/Web
-                                cp Build/Release/boxedwine.wasm Deploy/Web
+                                cp Build/MultiThreaded/boxedwine.js Deploy/Web
+                                cp Build/MultiThreaded/boxedwine.wasm Deploy/Web
                                 cp /var/www/buildfiles/* Deploy/Web
                             ''' 
                         }
