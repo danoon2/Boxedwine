@@ -4,6 +4,7 @@
         let STORAGE_MEMORY = "MEMORY";
 
         let DEFAULT_AUTO_RUN = true;
+        let DEFAULT_LOAD_DESKTOP = false;
         let DEFAULT_SOUND_ENABLED = true;
         let DEFAULT_APP_DIRECTORY = "/home/username/.wine/dosdevices/c:/files";
         let DEFAULT_BPP = 32;
@@ -19,6 +20,8 @@
         Config.persist_d_drive = true;
         Config.showUploadDownload = false;
         Config.WorkingDir = "";
+        Config.loadDesktop = false;
+        Config.appSubfolder = "";
 				
         var isRunning = false;
         var ExeFileTimer = null;
@@ -31,6 +34,7 @@
         function setConfiguration() {
             Config.appDirPrefix = DEFAULT_APP_DIRECTORY;
             Config.isAutoRunSet = getAutoRun();
+            Config.loadDesktop = getLoadDesktop();
             Config.rootZipFile = getRootZipFile("root"); //MANUAL:"base.zip";
             Config.extraZipFiles = getZipFileList("overlay"); //MANUAL:"dlls.zip;fonts.zip";
             Config.appZipFile = getAppZipFile("app"); //MANUAL:"chomp.zip";
@@ -200,6 +204,20 @@
             }
             console.log("setting auto run to: "+auto);
             return auto;
+        }        
+        function getLoadDesktop() {
+            var loadDesktop =  getParameter("desktop");
+            if(!allowParameterOverride()){
+                loadDesktop = DEFAULT_LOAD_DESKTOP;
+            }else if(loadDesktop == "true") {
+                loadDesktop = true;
+            }else if(loadDesktop == "false"){
+                loadDesktop = false;
+            }else{
+                loadDesktop = DEFAULT_LOAD_DESKTOP;
+            }
+            console.log("setting load Desktop to: "+loadDesktop);
+            return loadDesktop;
         }
         function getPayload(param) {
             var payload =  getParameter(param);
@@ -314,6 +332,16 @@
                 callback();
             }else if(Config.appZipFile.length > 0){
             	loadFile(Config.locateAppBaseUrl, Config.appZipFile, (uint8Array) => {
+            		if (Config.Program.length > 0) {            	
+            			let zipEntries = getZipEntries(uint8Array);
+            		    let folder = Config.appZipFile.toLowerCase().endsWith('.zip') ?
+            		    	 Config.appZipFile.substring(0, Config.appZipFile.length - 4) : Config.appZipFile;
+            			let executablePathAndFilename = folder + "/" + Config.Program;
+            			let exeFileList = zipEntries.filter(e => !e.directory && e.filename === executablePathAndFilename);
+            			if (exeFileList.length == 1) {
+            				Config.appSubfolder = folder;
+            			}
+            		}
             		createFile("/", Config.appZipFile, uint8Array);
             		callback();
             	});
@@ -572,18 +600,24 @@
                 params.push(Config.envProp);
             }
 
-            if(Config.WorkingDir.length > 0){
-                params.push("-w");
-                params.push(Config.WorkingDir);
-            }else if(Config.appPayload.length > 0 && Config.Program.length > 0 && Config.Program.substring(0 ,1) != "/"){
-                params.push("-w");
-                params.push(Config.appDirPrefix);
-            }else if(Config.appZipFile.length > 0 && Config.Program.length > 0 && Config.Program.substring(0 ,1) != "/"){
-                params.push("-w");
-                params.push(Config.appDirPrefix);
+			if (!Config.loadDesktop) {
+            	if(Config.WorkingDir.length > 0){
+                	params.push("-w");
+                	params.push(Config.WorkingDir);
+            	}else if(Config.appPayload.length > 0 && Config.Program.length > 0 && Config.Program.substring(0 ,1) != "/"){
+                	params.push("-w");
+                	params.push(Config.appDirPrefix);
+            	}else if(Config.appZipFile.length > 0 && Config.Program.length > 0 && Config.Program.substring(0 ,1) != "/"){
+                	params.push("-w");
+                	if (Config.appSubfolder.length > 0) {
+                		params.push(Config.appDirPrefix + "/" + Config.appSubfolder);                
+                	} else {
+                		params.push(Config.appDirPrefix);
+                	}
+            	}
             }
         	params.push("/bin/wine");
-            if(Config.Program.length > 0){
+            if(Config.Program.length > 0 && !Config.loadDesktop){
                 if (Config.Program.endsWith('.bat')) {
                     params.push("cmd");
                     params.push("/c");
@@ -893,3 +927,59 @@ function readFiles(currentDir, files) {
         }
     });
 }
+
+
+/** code from https://github.com/Rob--W/zipinfo.js MIT license
+ **/
+function getZipEntries(data) {
+  var view = new DataView(data.buffer, data.byteOffset, data.length);
+  var entriesLeft = 0;
+  var offset = 0;
+  var endoffset = data.length;
+  // Find EOCD (0xFFFF is the maximum size of an optional trailing comment).
+  for (var i = data.length - 22, ii = Math.max(0, i - 0xFFFF); i >= ii; --i) {
+    if (data[i] === 0x50 && data[i + 1] === 0x4b &&
+      data[i + 2] === 0x05 && data[i + 3] === 0x06) {
+        endoffset = i;
+        offset = view.getUint32(i + 16, true);
+        entriesLeft = view.getUint16(i + 8, true);
+        break;
+      }
+  }
+  var entries = [{
+    directory: true,
+    filename: '/',
+    uncompressedSize: 0,
+    centralDirectoryStart: offset,
+  }];
+  if (offset >= data.length || offset <= 0) {
+    // EOCD not found or malformed. Try to recover if possible (the result is
+    // most likely going to be incomplete or bogus, but we can try...).
+    offset = -1;
+    entriesLeft = 0xFFFF;
+    while (++offset < data.length && data[offset] !== 0x50 &&
+      data[offset + 1] !== 0x4b && data[offset + 2] !== 0x01 &&
+        data[offset + 3] !== 0x02);
+  }
+  endoffset -= 46;  // 46 = minimum size of an entry in the central directory.
+  while (--entriesLeft >= 0 && offset < endoffset) {
+    if (view.getUint32(offset) != 0x504b0102) {
+      break;
+    }
+    var bitFlag = view.getUint16(offset + 8, true);
+    var uncompressedSize = view.getUint32(offset + 24, true);
+    var fileNameLength = view.getUint16(offset + 28, true);
+    var extraFieldLength = view.getUint16(offset + 30, true);
+    var fileCommentLength = view.getUint16(offset + 32, true);
+    var filename = data.subarray(offset + 46, offset + 46 + fileNameLength);
+    var utfLabel = (bitFlag & 0x800) ? 'utf-8' : 'ascii';
+    filename = new TextDecoder(utfLabel).decode(filename);
+    entries.push({
+      directory: filename.endsWith('/'),
+      filename: filename,
+      uncompressedSize: uncompressedSize,
+    });
+    offset += 46 + fileNameLength + extraFieldLength + fileCommentLength;
+  }
+  return entries;
+};
