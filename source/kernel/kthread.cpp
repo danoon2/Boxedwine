@@ -29,19 +29,22 @@
 
 thread_local KThread* KThread::runningThread;
 
-BOXEDWINE_MUTEX_NR KThread::futexesMutex;
-
 KThread::~KThread() {  
     for (auto& callback : callbacksOnExit) {
         callback(id);
     }
-    this->cleanup();
+    this->internalCleanup();
     CPU* cpu = this->cpu;
     this->cpu = nullptr;
     delete cpu;
 }
 
 void KThread::cleanup() {
+    memory->threadCleanup(id);
+    internalCleanup();
+}
+
+void KThread::internalCleanup() {
     {
         BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(this->waitingForSignalToEndCond);
         BOXEDWINE_CONDITION_SIGNAL_ALL(this->waitingForSignalToEndCond);
@@ -57,7 +60,7 @@ void KThread::cleanup() {
         this->waitThreadNode.remove();
         this->waitingCond = nullptr;
     }
-#endif
+#endif    
     this->clearFutexes();    
     this->exitRobustList();
     this->robustList = 0;
@@ -68,6 +71,7 @@ void KThread::cleanup() {
 }
 
 void KThread::reset() {
+    memory->threadCleanup(id);
     this->clearFutexes();
     this->cpu->reset();
     this->alternateStack = 0;
@@ -121,8 +125,8 @@ KThread::KThread(U32 id, const KProcessPtr& process) :
     }
     //BString tmp = BString::valueOf(id);
     //tmp += ".txt";
-    //if (id==0x1c)
-    //this->cpu->logFile = fopen(tmp.c_str(), "w");
+    //if (id==11)
+    //this->cpu->logFile.createNew(tmp);
 }
 
 bool KThread::isLdtEmpty(struct user_desc* desc) {
@@ -239,11 +243,16 @@ U32 KThread::signal(U32 signal, bool wait) {
 struct futex {
 public:
     futex() : cond(std::make_shared<BoxedWineCondition>(B("futex"))) {}
+
+    U32 mask = 0;
+
+    // these 5 fields are only updated when cond is held
     KThread* thread = nullptr;
     U64 address = 0;  
-    U32 expireTimeInMillies = 0;
-    U32 mask = 0;
+    U32 expireTimeInMillies = 0;    
     bool wake = false;
+    bool waiting = false;
+
     BOXEDWINE_CONDITION cond;
 };
 
@@ -263,16 +272,20 @@ struct futex* getFutex(KThread* thread, U64 address) {
 }
 
 struct futex* allocFutex(KThread* thread, U64 address, U32 millies) {
-    BOXEDWINE_CRITICAL_SECTION;
     int i=0;
 
     for (i=0;i<MAX_FUTEXES;i++) {
         if (system_futex[i].thread== nullptr) {
+            BOXEDWINE_CRITICAL_SECTION(system_futex[i].cond);
+            if (system_futex[i].thread != nullptr) {
+                continue;
+            }
             system_futex[i].thread = thread;
             system_futex[i].address = address;
             system_futex[i].expireTimeInMillies = millies;
             system_futex[i].wake = false;
             system_futex[i].mask = 0;
+            system_futex[i].waiting = false;
             return &system_futex[i];
         }
     }
@@ -288,10 +301,12 @@ void freeFutex(struct futex* f) {
 void KThread::clearFutexes() {
     U32 i;
 
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION_MUTEX(KThread::futexesMutex);
     for (i=0;i<MAX_FUTEXES;i++) {
         if (system_futex[i].thread == this) {
-            freeFutex(&system_futex[i]);
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
+            if (system_futex[i].thread == this) {
+                freeFutex(&system_futex[i]);
+            }
         }
     }
 }
@@ -314,11 +329,10 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
     if (cmd == FUTEX_REQUEUE || cmd == FUTEX_CMP_REQUEUE ||
         cmd == FUTEX_CMP_REQUEUE_PI || cmd == FUTEX_WAKE_OP)
         val2 = (u32)(unsigned long)utime;
-        */
-    BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION_MUTEX(KThread::futexesMutex);
+        */    
     if (cmd ==FUTEX_WAIT || cmd == FUTEX_WAIT_BITSET) {
-        //klog("%x/%x futux WAIT addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
-        struct futex* f=getFutex(this, ramAddress);
+        //klog_fmt("%x/%x futux WAIT addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
+        struct futex* f;
         U32 expireTime = 0xFFFFFFFF;
 
         if (pTime != 0) {
@@ -341,14 +355,17 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
                     expireTime = seconds * 1000 + nano / 1000000;
                 } else {
                     expireTime = (U32)((seconds * 1000 + nano / 1000000) - KSystem::getSystemTimeAsMicroSeconds() / 1000);
-                }                                
+                }
             }
             expireTime += KSystem::getMilliesSinceStart();
         }
-        if (!f) {            
+
+        f = getFutex(this, ramAddress);
+
+        if (!f) {
             U32 currentValue = memory->readd(addr);
             if (currentValue != value) {
-                //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
+                //klog_fmt("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
                 return -K_EWOULDBLOCK;
             }
 
@@ -357,38 +374,50 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
                 f->mask = val3;
             }
         }
+
+        // The loading of the futex word's value, the comparison of that value
+        // with the expected value, and the actual blocking will happen
+        // atomically and will be totally ordered with respect to concurrent
+        // operations performed by other threads on the same futex word.
+        BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(f->cond);
+
+        if (f->address != ramAddress || f->thread != this) {
+            int ii = 0;
+        }
+
+        U32 currentValue = memory->readd(addr);
+        if (currentValue != value) {
+            //klog_fmt("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE 2nd try %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
+            freeFutex(f);
+            return -K_EWOULDBLOCK;
+        }
+        f->waiting = true;
         while (true) {                        
             if (this->pendingSignals) {
                 // I know this is a nested if statement, but it makes setting a break point easier
                 if (runSignals()) {
-                    //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x RAN SIGNAL", id, process->id, addr, op, value, (U32)ramAddress);
+                    //klog_fmt("   %x/%x futux addr=%x op=%x val=%x ram=%x RAN SIGNAL", id, process->id, addr, op, value, (U32)ramAddress);
                     freeFutex(f);
                     return -K_CONTINUE;
                 }
-            }
+            }            
             if (f->wake) {
                 freeFutex(f);
                 return 0;
-            }
-            U32 currentValue = memory->readd(addr);
-            if (currentValue != value) {
-                //klog("   %x/%x futux addr=%x op=%x val=%x ram=%x NEW VALUE 2nd try %x", id, process->id, addr, op, value, (U32)ramAddress, currentValue);
-                freeFutex(f);
-                return -K_EWOULDBLOCK;
-            }
+            }            
             if (f->expireTimeInMillies<0x7FFFFFFF) {
                 S32 diff = f->expireTimeInMillies - KSystem::getMilliesSinceStart();
                 if (diff<=0) {
                     freeFutex(f);
                     return -K_ETIMEDOUT;
                 }
-                //klog("   %x/%x futux SLEEPING %x addr=%x op=%x val=%x ram=%x", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress);
+                //klog_fmt("   %x/%x futux SLEEPING %x addr=%x op=%x val=%x ram=%x", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress);
                 BOXEDWINE_CONDITION_WAIT_TIMEOUT(f->cond, (U32)diff);
-                //klog("   %x/%x futux DONE SLEEPING %x addr=%x op=%x val=%x ram=%x wake=%d", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress, f->wake);
+                //klog_fmt("   %x/%x futux DONE SLEEPING %x addr=%x op=%x val=%x ram=%x wake=%d", id, process->id, (U32)diff, addr, op, value, (U32)ramAddress, f->wake);
             } else {
-                //klog("   %x/%x futux SLEEPING addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
+                //klog_fmt("   %x/%x futux SLEEPING addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
                 BOXEDWINE_CONDITION_WAIT(f->cond);
-                //klog("   %x/%x futux DONE SLEEPING addr=%x op=%x val=%x ram=%x wake=%d", id, process->id, addr, op, value, (U32)ramAddress, f->wake);
+                //klog_fmt("   %x/%x futux DONE SLEEPING addr=%x op=%x val=%x ram=%x wake=%d", id, process->id, addr, op, value, (U32)ramAddress, f->wake);
             }
 #ifdef BOXEDWINE_MULTI_THREADED
 			if (this->terminating) {
@@ -404,23 +433,32 @@ U32 KThread::futex(U32 addr, U32 op, U32 value, U32 pTime, U32 val2, U32 val3, b
         }
     } else if (cmd ==FUTEX_WAKE || cmd == FUTEX_WAKE_BITSET) {
         U32 count = 0;
-        //klog("%x/%x futux wake addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
+        //klog_fmt("%x/%x futux wake addr=%x op=%x val=%x ram=%x", id, process->id, addr, op, value, (U32)ramAddress);
         {            
-            for (int i = 0; i < MAX_FUTEXES && count < value; i++) {
+            for (int i = 0; i < MAX_FUTEXES && count < value; i++) {                
+                if (!system_futex[i].thread) {
+                    continue;
+                }
+                BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
                 if (!system_futex[i].thread) {
                     continue;
                 }
                 bool processCheck = (!isPrivate || system_futex[i].thread->process->id == this->process->id);
                 bool addressCheck = system_futex[i].address == ramAddress;
                 bool maskCheck = ((cmd != FUTEX_WAKE_BITSET) || (system_futex[i].mask & val3));
+                bool waiting = system_futex[i].waiting; // there is a small gap when waiting on a futex between creating the futex and getting the lock for this to be false
                 if (processCheck && addressCheck && !system_futex[i].wake && maskCheck) {
+                    if (!waiting) {
+                        int ii = 0;
+                        continue;
+                    }
                     system_futex[i].wake = true;
                     BOXEDWINE_CONDITION_SIGNAL(system_futex[i].cond);
                     count++;
                 }
             }
         }
-        //klog("    %x/%x futux wake finished addr=%x op=%x val=%x ram=%x count=%d", id, process->id, addr, op, value, (U32)ramAddress, count);
+        //klog_fmt("    %x/%x futux wake finished addr=%x op=%x val=%x ram=%x count=%d", id, process->id, addr, op, value, (U32)ramAddress, count);
         return count;
     } else {
         kwarn_fmt("syscall __NR_futex op %d not implemented", op);
@@ -662,12 +700,11 @@ static U8 fetchByte(void* data, U32* eip) {
 void KThread::signalTrap(U32 code) {
     KSigAction* action = &this->process->sigActions[K_SIGTRAP];
     if (action->handlerAndSigAction == K_SIG_DFL) {
-        DecodedBlock block;
-        decodeBlock(fetchByte, memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, &block);
+        DecodedOp* op = cpu->getNextOp();
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->originalOp);
 #else
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->inst);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
 #endif
     }
     memset(this->process->sigActions[K_SIGTRAP].sigInfo, 0, sizeof(this->process->sigActions[K_SIGTRAP].sigInfo));
@@ -680,12 +717,11 @@ void KThread::signalTrap(U32 code) {
 void KThread::signalIllegalInstruction(int code) {
     KSigAction* action = &this->process->sigActions[K_SIGILL];
     if (action->handlerAndSigAction == K_SIG_DFL) {
-        DecodedBlock block;
-        decodeBlock(fetchByte, memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, &block);
+        DecodedOp* op = cpu->getNextOp();
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->originalOp);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s: (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->originalOp);
 #else
-        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, block.op->name(), block.op->inst);
+        kpanic_fmt("%s tid=%04X eip=%08X Illegal instruction but no signal handler set up for it: %s (%X)", process->name.c_str(), cpu->thread->id, cpu->eip.u32, op->name(), op->inst);
 #endif
     }
     memset(this->process->sigActions[K_SIGILL].sigInfo, 0, sizeof(this->process->sigActions[K_SIGILL].sigInfo));
@@ -1107,7 +1143,7 @@ void OPCALL onExitSignal(CPU* cpu, DecodedOp* op) {
     }
 
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
-    cpu->nextBlock = cpu->getNextBlock();
+    cpu->nextOp = cpu->getNextOp();
 #endif
     /*
     if (action->flags & K_SA_RESTORER) {

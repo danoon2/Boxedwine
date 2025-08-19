@@ -69,18 +69,14 @@ void dynamic_cmpsb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)cmpsb16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB8) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)cmpsb16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)cmpsb32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB8) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)cmpsb32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
         }
     }
     INCREMENT_EIP(data, op);
@@ -89,18 +85,14 @@ void dynamic_cmpsw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)cmpsw16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB16) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)cmpsw16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)cmpsw32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB16) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)cmpsw32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
         }
     }
     INCREMENT_EIP(data, op);
@@ -109,18 +101,14 @@ void dynamic_cmpsd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)cmpsd16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB32) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)cmpsd16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)cmpsd32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB32) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)cmpsd32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
         }
     }
     INCREMENT_EIP(data, op);
@@ -225,18 +213,14 @@ void dynamic_scasb_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)scasb16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB8) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)scasb16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)scasb32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB8) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)scasb32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
         }
     }
     INCREMENT_EIP(data, op);
@@ -245,18 +229,14 @@ void dynamic_scasw_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)scasw16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB16) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)scasw16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)scasw32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB16) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)scasw32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
         }
     }
     INCREMENT_EIP(data, op);
@@ -265,18 +245,14 @@ void dynamic_scasd_op(DynamicData* data, DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)scasd16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB32) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)scasd16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
             callHostFunction((void*)scasd32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            if (data->currentLazyFlags!=FLAGS_SUB32) data->currentLazyFlags=0;
         } else { 
             callHostFunction((void*)scasd32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
         }
     }
     INCREMENT_EIP(data, op);

@@ -30,7 +30,7 @@ void MMU::setPageType(KMemoryData* mem, U32 page, PageType type) {
 
 void MMU::setPage(KMemoryData* mem, U32 page, PageType type, RamPage ram) {
     if (getPageType() == PageType::Code && type != PageType::Code) {
-        mem->codeCache.removeBlockAt(page << K_PAGE_SHIFT, K_PAGE_SIZE);
+        mem->opCache.remove(page << K_PAGE_SHIFT, K_PAGE_SIZE, false);
     }
     if (type == PageType::None) {
         if (ramIndex && getPageType() != PageType::File) {

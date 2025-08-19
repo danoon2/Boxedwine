@@ -2265,7 +2265,9 @@ void ksyscall(CPU* cpu, U32 eipCount) {
     if (cpu->thread->pendingSignals) {
         // I know this is a nested if statement, but it makes setting a break point easier
         if (cpu->thread->runSignals()) {
-            cpu->nextBlock = nullptr;
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
+            cpu->nextOp = cpu->getNextOp();
+#endif
             return;
         }
     }
@@ -2302,7 +2304,6 @@ void ksyscall(CPU* cpu, U32 eipCount) {
         EAX = result;
         cpu->eip.u32+=eipCount;
     }
-    cpu->nextBlock = nullptr;
     cpu->thread->kernelTime += KSystem::getMicroCounter() - startTime;
 }
 

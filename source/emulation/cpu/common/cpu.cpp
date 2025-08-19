@@ -95,8 +95,7 @@ void CPU::reset() {
     this->lazyFlags = FLAGS_NONE;
     this->stackNotMask = 0;
     this->stackMask = 0xFFFFFFFF;
-    this->nextBlock = nullptr;
-    this->delayedFreeBlock = nullptr;
+    this->nextOp = nullptr;
 #ifdef BOXEDWINE_MULTI_THREADED
     this->tmpLockAddress = 0;
 #endif
@@ -1161,6 +1160,25 @@ U32 CPU::writeCrx(U32 which, U32 value) {
     return 1;
 }
 
+bool CPU::shouldContinue(U32 eip) {
+    return this->memory->getDecodedOp(eip) == nullptr;
+}
+
+DecodedOp** CPU::getOpLocation(U32 eip) {
+    return this->memory->getDecodedOpLocation(eip);
+}
+
+U8 CPU::fetchByte(U32* eip) {
+    if (*eip - this->seg[CS].address == 0xFFFF && !this->isBig()) {
+        kpanic("eip wrapped around.");
+    }
+    return this->memory->readb((*eip)++);
+}
+
+DecodedOp* CPU::getNextOp(U32 flags) {
+    return getOp(getEipAddress(), flags);
+}
+
 #ifdef BOXEDWINE_DYNAMIC
 U32 CPU::offsetofReg32(U32 index) {
     switch (index) {
@@ -1377,11 +1395,11 @@ void common_log(CPU* cpu, DecodedOp* op) {
     op->log(cpu);
 }
 
-DecodedBlock* common_getNextBlock(CPU* cpu) {
+DecodedOp* common_getNextOp(CPU* cpu) {
     if (cpu->thread->terminating) {
         return nullptr;
     }
-    return cpu->getNextBlock();
+    return cpu->getNextOp();
 }
 
 U32 common_readCrx(CPU* cpu, U32 which, U32 reg) {

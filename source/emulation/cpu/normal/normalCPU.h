@@ -25,18 +25,16 @@ class NormalCPU : public CPU {
 public:
     NormalCPU(KMemory* memory);
 
-    static void clearCache();
-
     // from CPU
     void run() override;
-    DecodedBlock* getNextBlock() override;
+    DecodedOp* getOp(U32 eip, U32 flags) override;
 
-    static OpCallback getFunctionForOp(DecodedOp* op);
+    // helper for decoder
+    bool isValidReadAddress(U32 address);
 
-    static DecodedBlock* getBlockForInspectionButNotUsed(CPU* cpu, U32 address, bool big);
-    static DecodedOp* decodeSingleOp(CPU* cpu, U32 address);
+    static OpCallback getFunctionForOp(DecodedOp* op, bool* canJIT = nullptr);
 
-    OpCallback firstOp;
+    OpCallback firstOp;    
 };
 
 #endif

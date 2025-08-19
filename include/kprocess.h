@@ -274,6 +274,9 @@ public:
     std::vector<U32> glStringsiExtensionsOffset;
     U32 glxStringExtensions = 0;
     U32 numberOfExtensions = 0;
+#ifdef BOXEDWINE_DYNAMIC
+    OpCallback startJITOp = nullptr;
+#endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;
     void* reTranslateChunkAddress = nullptr; // will be called when the program tries to jump to memory that hasn't been translated yet or needs to be retranslated

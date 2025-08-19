@@ -448,6 +448,7 @@ const InstructionInfo instructionInfo[] = {
     {DECODE_BRANCH_NO_CACHE, 64, 0, 0, 0, 0, 1}, // Retf32
     // not sure about the read/write for this, these will run a signal which will push a bunch of stuff on the stack
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // Invalid 
+    {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // UD2
     {DECODE_BRANCH_NO_CACHE, 0, 1, 0, 0, 0, 0}, // Int3,
     {DECODE_BRANCH_NO_CACHE, 1, 1, 0, 0, 0, 0}, // Int80 Syscall
     {0, 1, 1, 0, 0, 0, 0}, // Int99 OpenGL callback
@@ -1392,10 +1393,87 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, 0, 0, 0}, // ShufpdXmmXmm
     {0, 128, 0, 0, 0, 0}, // ShufpdXmmE128
     {0, 0, 0, 0, 0, 0}, // Pause
-
+    {0, 64, 64, ZF, 0, 0, 0}, // CmpXchg8b_Lock,
+    {0, 32, 32, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgE32R32_Lock,
+    {0, 16, 16, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgE16R16_Lock,
+    {0, 8, 8, CF|OF|AF|ZF|SF|PF, 0, 0, 0}, // CmpXchgE8R8_Lock,
+    {0, 8, 8, 0, 0, 0, 0}, // XchgE8R8_Lock,
+    {0, 16, 16, 0, 0, 0, 0}, // XchgE16R16_Lock,
+    {0, 32, 32, 0, 0, 0, 0}, // XchgE32R32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XaddR8E8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, //     XaddR16E16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XaddR32E32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AddE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AddE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AddE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AddE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AddE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AddE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SubE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SubE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SubE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SubE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SubE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SubE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // XorE32I32_Lock,
+    {0, 8, 8, AF|ZF|SF|OF|PF, 0, 0, 0}, // IncE8_Lock,
+    {0, 16, 16, AF|ZF|SF|OF|PF, 0, 0, 0}, // IncE16_Lock,
+    {0, 32, 32, AF|ZF|SF|OF|PF, 0, 0, 0}, // IncE32_Lock,
+    {0, 8, 8, AF|ZF|SF|OF|PF, 0, 0, 0}, // DecE8_Lock,
+    {0, 16, 16, AF|ZF|SF|OF|PF, 0, 0, 0}, // DecE16_Lock,
+    {0, 32, 32, AF|ZF|SF|OF|PF, 0, 0, 0}, // DecE32_Lock,
+    {0, 8, 8, 0, 0, 0, 0}, // NotE8_Lock,
+    {0, 16, 16, 0, 0, 0, 0}, // NotE16_Lock,
+    {0, 32, 32, 0, 0, 0, 0}, // NotE32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // NegE8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // NegE16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // NegE32_Lock,
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtsE16R16_Lock,
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtsE16_Lock,
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtsE32R32_Lock,
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtsE32_Lock,
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtrE16R16_Lock,
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtrE16_Lock,
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtrE32R32_Lock,
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtrE32_Lock,
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtcE16R16_Lock,
+    {0, 16, 16, CF, 0, OF|SF|AF|PF, 0}, // BtcE16_Lock,
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtcE32R32_Lock,
+    {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtcE32_Lock,    
+    { 0, 0, 0, 0, 0, 0 }, // None
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Callback
     {DECODE_BRANCH_NO_CACHE, 0, 0, 0, 0, 0}, // Done
-    {0, 0, 0, 0, 0, 0} // Custom1
+    {0, 0, 0, 0, 0, 0}, // Custom1
+    { 0, 0, 0, 0, 0, 0 } // TestEnd
 };
 
 // for now, kept out of emscript to keep size down
@@ -1497,11 +1575,11 @@ static void outEA32(DecodedOp* op, CPU* cpu) {
             cpu->logFile.write((op->sibScale==1)?"1":"2");
         }
     }
-    if (op->disp) {
+    if (op->data.disp) {
         if (added) {
             cpu->logFile.write("+");
         }
-        cpu->logFile.writeFormat("%X",op->disp);
+        cpu->logFile.writeFormat("%X",op->data.disp);
     }
 }
 
@@ -1523,11 +1601,11 @@ static void outEA16(DecodedOp* op, CPU* cpu) {
         outR16(op->sibIndex, cpu);
         added = true;
     }
-    if (op->disp) {
+    if (op->data.disp) {
         if (added) {
             cpu->logFile.write("+");
         }
-        cpu->logFile.write("%X", op->disp);
+        cpu->logFile.write("%X", op->data.disp);
     }
 }
 
@@ -2266,6 +2344,7 @@ const LogInstruction instructionLog[] = {
     {"Retf", 16, logName},
     {"Retf", 32, logName},    
     {"Invalid", 0, logName},
+    {"UD2", 0, logName },
     {"Int3", 0, logName},
     {"Int80 Syscall", 0, logName},
     {"Int99 OpenGL", 0, logName},
@@ -3210,7 +3289,84 @@ const LogInstruction instructionLog[] = {
     {"Packuswb", 128, logXmmE},
     {"Shufpd", 0, logXmmXmm},
     {"Shufpd", 128, logXmmE},
-    {"Pause", 0, logName}
+    {"Pause", 0, logName},
+    // lock instructions
+    {"L CmpXchg8b", 64, logE},
+    {"L CmpXchg", 32, logER},
+    {"L CmpXchg", 16, logER},
+    {"L CmpXchg", 8, logER},
+    {"L Xchg", 8, logER},
+    {"L Xchg", 16, logER},
+    {"L Xchg", 32, logER},
+    {"L Xadd", 8, logRE},
+    {"L Xadd", 16, logRE},
+    {"L Xadd", 32, logRE},
+    {"L Add", 8, logER},
+    {"L Add", 8, logE, true},
+    {"L Add", 16, logER},
+    {"L Add", 16, logE, true},
+    {"L Add", 32, logER},
+    {"L Add", 32, logE, true},
+    {"L Or", 8, logER},
+    {"L Or", 8, logE, true},
+    {"L Or", 16, logER},
+    {"L Or", 16, logE, true},
+    {"L Or", 32, logER},
+    {"L Or", 32, logE, true},
+    {"L Adc", 8, logER},
+    {"L Adc", 8, logE, true},
+    {"L Adc", 16, logER},
+    {"L Adc", 16, logE, true},
+    {"L Adc", 32, logER},
+    {"L Adc", 32, logE, true},
+    {"L Sbb", 8, logER},
+    {"L Sbb", 8, logE, true},
+    {"L Sbb", 16, logER},
+    {"L Sbb", 16, logE, true},
+    {"L Sbb", 32, logER},
+    {"L Sbb", 32, logE, true},
+    {"L And", 8, logER},
+    {"L And", 8, logE, true},
+    {"L And", 16, logER},
+    {"L And", 16, logE, true},
+    {"L And", 32, logER},
+    {"L And", 32, logE, true},
+    {"L Sub", 8, logER},
+    {"L Sub", 8, logE, true},
+    {"L Sub", 16, logER},
+    {"L Sub", 16, logE, true},
+    {"L Sub", 32, logER},
+    {"L Sub", 32, logE, true},
+    {"L Xor", 8, logER},
+    {"L Xor", 8, logE, true},
+    {"L Xor", 16, logER},
+    {"L Xor", 16, logE, true},
+    {"L Xor", 32, logER},
+    {"L Xor", 32, logE, true},
+    {"L Inc", 8, logE},
+    {"L Inc", 16, logE},
+    {"L Inc", 32, logE},
+    {"L Dec", 8, logE},
+    {"L Dec", 16, logE},
+    {"L Dec", 32, logE},
+    {"L Not", 8, logE},
+    {"L Not", 16, logE},
+    {"L Not", 32, logE},
+    {"L Neg", 8, logE},
+    {"L Neg", 16, logE},
+    {"L Neg", 32, logE},
+    {"L Bts", 16, logER},
+    {"L Bts", 16, logE, true},
+    {"L Bts", 32, logER},
+    {"L Bts", 32, logE, true},
+    {"L Btr", 16, logER},
+    {"L Btr", 16, logE, true},
+    {"L Btr", 32, logER},
+    {"L Btr", 32, logE, true},
+    {"L Btc", 16, logER},
+    {"L Btc", 16, logE, true},
+    {"L Btc", 32, logER},
+    {"L Btc", 32, logE, true},
 };
 #endif
 class DecodeData {
@@ -3228,8 +3384,7 @@ public:
     U16 fetch16();
     U32 fetch32();
 
-    pfnFetchByte fetchByte = nullptr;
-    void* fetchByteData = nullptr;
+    DecodeBlockCallback* callback = nullptr;
     U32 eip = 0;
     U32 opCountSoFarInThisBlock = 0;
     U8 opLen = 0;
@@ -3246,14 +3401,14 @@ void decodeEa16(DecodeData* data, DecodedOp* op, U8 rm) {
         case 0x03: op->base=data->ss; op->rm=regBP; op->sibIndex=regDI; break;
         case 0x04: op->base=data->ds; op->rm=regSI; op->sibIndex=regZero; break;
         case 0x05: op->base=data->ds; op->rm=regDI; op->sibIndex=regZero; break;
-        case 0x06: op->base=data->ds; op->rm=regZero;op->disp = (S16)data->fetch16(); op->sibIndex=regZero; op->sibIndex=regZero; break;
+        case 0x06: op->base=data->ds; op->rm=regZero;op->data.disp = (S16)data->fetch16(); op->sibIndex=regZero; op->sibIndex=regZero; break;
         case 0x07: op->base=data->ds; op->rm=regBX; op->sibIndex=regZero; break;
         }
     } else {
         if (rm<0x80) {
-            op->disp = (S8)data->fetch8();
+            op->data.disp = (S8)data->fetch8();
         } else {
-            op->disp = (S16)data->fetch16();
+            op->data.disp = (S16)data->fetch16();
         }
         switch (rm & 7) {
         case 0x00: op->base=data->ds; op->rm=regBX; op->sibIndex=regSI; break;
@@ -3285,7 +3440,7 @@ U32 SibE2Reg[8] = {regAX, regCX, regDX, regBX, regZero, regBP, regSI, regDI};
     case 4:
         op->base=data->ss; op->rm=regSP;break;
     case 5:
-        op->base = data->ds; op->rm=regZero;op->disp = data->fetch32();break;
+        op->base = data->ds; op->rm=regZero;op->data.disp = data->fetch32();break;
     case 6:
         op->base=data->ds; op->rm=regSI;break;
     case 7:
@@ -3331,7 +3486,7 @@ void decodeEa32(DecodeData* data, DecodedOp* op, U8 rm) {
         case 0x02: op->base=data->ds; op->rm = regDX; break;
         case 0x03: op->base=data->ds; op->rm = regBX; break;
         case 0x04: Sib0(data, op); break;
-        case 0x05: op->base=data->ds; op->rm = regZero; op->disp = data->fetch32(); break;
+        case 0x05: op->base=data->ds; op->rm = regZero; op->data.disp = data->fetch32(); break;
         case 0x06: op->base=data->ds; op->rm = regSI; break;
         case 0x07: op->base=data->ds; op->rm = regDI; break;
         }
@@ -3347,9 +3502,9 @@ void decodeEa32(DecodeData* data, DecodedOp* op, U8 rm) {
         case 0x07: op->base=data->ds; op->rm = regDI; break;
         }
         if (rm<0x80) {
-            op->disp = (S8)data->fetch8();
+            op->data.disp = (S8)data->fetch8();
         } else {
-            op->disp = data->fetch32();
+            op->data.disp = data->fetch32();
         }
     }
 }
@@ -3721,6 +3876,10 @@ public:
             op->inst = Int9A;
         else if (op->imm == 0x9b)
             op->inst = Int9B;
+#ifdef __TEST
+        else if (op->imm == 0x97)
+            op->inst = TestEnd;
+#endif
         else
             op->inst = IntIb;
     }
@@ -3737,9 +3896,9 @@ public:
         op->rm=regZero; 
         op->sibIndex=regZero; 
         if (data->ea16) {
-            op->disp = data->fetch16();
+            op->data.disp = data->fetch16();
         } else {
-            op->disp = data->fetch32();
+            op->data.disp = data->fetch32();
         }
     }
 
@@ -3847,7 +4006,7 @@ public:
     }
     void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
-        op->disp = data->fetch16();
+        op->data.disp = data->fetch16();
         op->imm = data->fetch16();
     }
 
@@ -3862,7 +4021,7 @@ public:
     }
     void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = reg;
-        op->disp = data->fetch32();
+        op->data.disp = data->fetch32();
         op->imm = data->fetch16();
     }
 
@@ -4337,7 +4496,7 @@ public:
     void decode(DecodeData* data, DecodedOp* op) const override {
         op->inst = this->reg;
         op->imm = data->fetch16();
-        op->disp = data->fetch8() & 0x1f;
+        op->data.disp = data->fetch8() & 0x1f;
     }
 
 private:
@@ -5524,11 +5683,11 @@ DecodeInst decodeOutDxAl(OutDxAl);                               // OUT Dx,AL
 DecodeInst decodeOutDxAx(OutDxAx);                               // OUT Dx,AX
 DecodeInst decodeOutDxEax(OutDxEax);                               // OUT Dx,EAX
 
-DecodeInst decodeCallJw(CallJw, 16);                             // CALL Jw 
+DecodeInst decodeCallJw(CallJw, 16, 32);                         // CALL Jw 
 DecodeInst decodeCallJd(CallJd, 32);                             // CALL Jd 
 DecodeInst decodeJmpJd(JmpJd, 32);                               // JMP Jd 
-DecodeInst decodeJmpJw(JmpJw, 16);                               // JMP Jw 
-DecodeInst decodeJmpJb(JmpJb, 8);                                // JMP Jb 
+DecodeInst decodeJmpJw(JmpJw, 16, 32);                           // JMP Jw 
+DecodeInst decodeJmpJb(JmpJb, 8, 32);                            // JMP Jb 
 
 DecodeLock decodeLock;                                           // LOCK
 DecodeRepNZ decodeRepNZ;                                         // REPNZ
@@ -5537,6 +5696,8 @@ DecodeRepZ decodeRepZ;                                           // REPZ
 DecodeRMr decodeLar16(LarR16R16, LarR16E16);                      // LAR
 DecodeRMr decodeLsl16(LslR16R16, LslR16E16);                      // LSL
 DecodeRMr decodeLsl32(LslR32R32, LslR32E32);                      // LSL
+
+DecodeInst decodeUD2(UD2);                                        // UD2
 
 DecodeRMr decodeCmovO_16(CmovO_R16R16, CmovO_R16E16);             // CMOVO
 DecodeRMr decodeCmovNO_16(CmovNO_R16R16, CmovNO_R16E16);          // CMOVNO
@@ -5971,7 +6132,7 @@ const Decode* const decoder[] = {
     &decodeClc, &decodeStc, &decodeCli, &decodeSti, &decodeCld, &decodeStd, &decodeGroup4_8, &decodeGroup5_32,
     // 0x300
     &decodeGroup6_32, &decodeGroup7_32, nullptr, &decodeLsl32, nullptr, nullptr, nullptr, nullptr,
-    nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+    nullptr, nullptr, nullptr, &decodeUD2, nullptr, nullptr, nullptr, nullptr,
     // 0x310
     &sseMov0x310, &sseMov0x311, &sseMov0x312, &sseMov0x313, &sseUnpcklp, &sseUnpckhp, &sseMov0x316, &sseMov0x317,
     &seePrefetch, &nopRm, &nopRm, &nopRm, &nopRm, &nopRm, &nopRm, &decodeHintNop,
@@ -6021,7 +6182,7 @@ const Decode* const decoder[] = {
 
 U8 DecodeData::fetch8() {
     this->opLen++;
-    return this->fetchByte(this->fetchByteData, &this->eip);
+    return this->callback->fetchByte(&this->eip);
 }
 
 U16 DecodeData::fetch16() {
@@ -6034,6 +6195,20 @@ U32 DecodeData::fetch32() {
 
 static PtrPool<DecodedOp> freeOps;
 
+void OPCALL normal_done(CPU* cpu, DecodedOp* op);
+
+static DecodedOp* doneOp;
+
+DecodedOp* DecodedOp::allocDone() {
+    if (!doneOp) {
+        DecodedOp* result = alloc();
+        result->inst = Done;
+        result->pfn = normal_done;
+        doneOp = result;
+    }
+    return doneOp;
+}
+
 DecodedOp::DecodedOp() {
     this->reset();
 }
@@ -6044,7 +6219,8 @@ void DecodedOp::clearCache() {
 
 void DecodedOp::reset() {
     this->next = nullptr;
-    this->disp = 0;
+    this->data.nextJump = nullptr;
+    this->data.disp = 0;
     this->imm = 0;
     this->reg = 0;
     this->rm = 0;
@@ -6055,23 +6231,38 @@ void DecodedOp::reset() {
     this->lock = 0;
     this->repZero = 0;
     this->repNotZero = 0;
-    this->pfn = nullptr;
+    this->pfn = nullptr;    
+    this->flags = 0;
+#ifdef _DEBUG
+    this->eip = 0;
+#endif
+#if !defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_DYNAMIC)
+    this->blockOpCount = 0;
+#else
+    this->runCount = 0;
+#endif
+#ifdef BOXEDWINE_DYNAMIC
+    this->pfnJitCode = nullptr;
+#endif
 }
 DecodedOp* DecodedOp::alloc() {
-    return freeOps.get();   
+    return freeOps.get();
 }
 
-void DecodedOp::dealloc(bool deallocNext) {
+void DecodedOp::dealloc() {
+    if (this == doneOp) {
+        return;
+    }
 #ifdef _DEBUG
     if (this->inst == InstructionCount) {
         kpanic("tried to dealloc a DecodedOp that was already deallocated");
     }
 #endif
-    if (deallocNext && this->next) {
-        this->next->dealloc(deallocNext);
+    // special deallocs for these since they don't mapped into the code page, they just hang at the end of a string of ops
+    // so that I don't have to always check if next is valid
+    if (this->next && this->next->inst == Done) {
+        this->next->dealloc();
     }
-    this->next = nullptr;
-    this->inst = InstructionCount;
     freeOps.put(this);
 }
 
@@ -6087,175 +6278,270 @@ bool DecodedOp::isStringOp() {
     return false;
 }
 
+bool DecodedOp::isBranch() {
+    return instructionInfo[inst].branch != 0;
+}
+
+bool DecodedOp::isDirectBranch() {
+    return (instructionInfo[inst].branch & DECODE_BRANCH_1) != 0;
+}
+
+bool DecodedOp::isIndirectJump() {
+    return this->inst == JmpE16 || this->inst == JmpE32 || this->inst == JmpR16 || this->inst == JmpR32;
+}
+
 bool DecodedOp::isFpuOp() {
-   return (this->inst>=FADD_ST0_STj && this->inst<=FISTP_QWORD_INTEGER) || this->inst == Fxsave || this->inst == Fxrstor;
+    return (this->inst >= FADD_ST0_STj && this->inst <= FISTP_QWORD_INTEGER) || this->inst == Fxsave || this->inst == Fxrstor;
 }
 
 bool DecodedOp::isMmxOp() {
     return (this->inst >= PunpcklbwMmx && this->inst <= PadddE64) || (instructionInfo[this->inst].extra & INST_MMX_READ) | (instructionInfo[this->inst].extra & INST_MMX_WRITE);
 }
 
-bool DecodedOp::needsToSetFlags(CPU* cpu) {
-    U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
-    return DecodedOp::getNeededFlags(cpu->currentBlock, this, needsToSet)!=0;
+bool DecodedOp::isRet() {
+    return inst == Retn32 || inst == Retn16 || inst == Retn32Iw || inst == Retn16Iw;
 }
 
-U32 DecodedOp::getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth) {
-    DecodedOp* n = op->next;
-    DecodedOp* lastOp = op;
+bool DecodedOp::isCall() {
+    return inst == CallE16 || inst == CallE32 || inst == CallJd || inst == CallJw || inst == CallR16 || inst == CallR32;
+}
 
-    while (n && flags) {
+bool DecodedOp::isDirectJump() {
+    return inst == JmpJb || inst == JmpJw || inst == JmpJd;
+}
+
+bool DecodedOp::needsToSetFlags(CPU* cpu) {
+    U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
+    return next->getNeededFlags(needsToSet) != 0;
+}
+
+U32 DecodedOp::getNeededFlagsAfter(U32 flags, U32 depth) {
+    if (instructionInfo[inst].branch & DECODE_BRANCH_1) {
+        bool conditionalBranch = (instructionInfo[inst].branch & DECODE_BRANCH_2) != 0;
+        if (!conditionalBranch) {
+            if (data.nextJump && *(data.nextJump)) {
+                return (*(data.nextJump))->getNeededFlags(flags);
+            }
+            return flags;
+        } else {
+            if (data.nextJump && *(data.nextJump)) {
+                U32 needsToSet1 = next->getNeededFlags(flags);
+                U32 needsToSet2 = (*(data.nextJump))->getNeededFlags(flags);
+                return needsToSet1 | needsToSet2;
+            }
+            return flags;
+        }
+    }
+    return next->getNeededFlags(flags);
+}
+
+U32 DecodedOp::getNeededFlags(U32 flags, U32 depth) {
+    DecodedOp* n = this;
+
+    while (n && flags && depth) {
+        if (instructionInfo[n->inst].branch & DECODE_BRANCH_NO_CACHE) {
+            // RTC will return flags in a retn instruction
+            return flags;
+        }
+        // does the next instruction use a flag we are looking for
         if (instructionInfo[n->inst].flagsUsed & flags) {
             U32 result = instructionInfo[n->inst].flagsUsed & flags;
-            flags &= ~ instructionInfo[n->inst].flagsSets;
-            flags &= ~ instructionInfo[n->inst].flagsUndefined;
+
+            // remove flags we are looking for that the next instruction sets
+            // since the instruction uses it, the caller doesn't need to set it
+            flags &= ~instructionInfo[n->inst].flagsSets;
+            // remove flags we are looking for that the next instruction declares is undefined
+            flags &= ~instructionInfo[n->inst].flagsUndefined;
+            // remove flags we are looking for that the next instruction uses
+            // since the caller has to set this flag for this instruction, don't continue the search for that flags
             flags &= ~result;
-            if (flags && op->next) {
-                result |= DecodedOp::getNeededFlags(block, op->next, flags, depth);
+            // are there any flags the caller might need to set that we haven't found an answer for yet
+            if (flags && n->next) {
+                result |= getNeededFlagsAfter(flags, depth);
             }
             return result;
         }
         if (!(instructionInfo[n->inst].flagsSets & MAYBE)) {
-            flags &= ~ instructionInfo[n->inst].flagsSets;
-            flags &= ~ instructionInfo[n->inst].flagsUndefined;
+            flags &= ~instructionInfo[n->inst].flagsSets;
+            flags &= ~instructionInfo[n->inst].flagsUndefined;
         }
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        if (instructionInfo[n->inst].branch) {
-            break;
-        }
-#endif
-        lastOp = n;
-        n = n->next;
-    }
-    if (flags && (instructionInfo[lastOp->inst].branch & DECODE_BRANCH_1) && depth>0) {
-        // :TODO: maybe decode the missing branch?
-        if (block->next1 && (block->next2 || !(instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2))) {
-            U32 needsToSet1 = DecodedOp::getNeededFlags(block->next1, block->next1->op, flags, depth-1);          
 
-            U32 needsToSet2 = 0;
-            if ((instructionInfo[lastOp->inst].branch & DECODE_BRANCH_2)) {
-                needsToSet2 = flags;
-                // :TODO: maybe decode the missing branch?
-                if (block->next2) {
-                    needsToSet2 = (DecodedOp::getNeededFlags(block->next2, block->next2->op, flags, depth-1));
+        if (instructionInfo[n->inst].branch & DECODE_BRANCH_1) {
+            bool conditionalBranch = (instructionInfo[n->inst].branch & DECODE_BRANCH_2) != 0;
+            if (!conditionalBranch) {
+                if (n->data.nextJump) {
+                    n = *(n->data.nextJump);
+                    depth--;
+                } else {
+                    return flags;
                 }
+            } else {
+                if (n->data.nextJump && *(n->data.nextJump)) {
+                    U32 needsToSet1 = n->next->getNeededFlags(flags, depth - 1);
+                    U32 needsToSet2 = (*(n->data.nextJump))->getNeededFlags(flags, depth - 1);
+                    return needsToSet1 | needsToSet2;
+                }
+                return flags;
             }
-            flags = needsToSet1 | needsToSet2;
+        } else {
+            n = n->next;
         }
     }
     return flags;
 }
 
-static DecodedBlockFromNode* freeFromNodes;
-static BOXEDWINE_MUTEX freeFromNodesMutex;
-
-DecodedBlockFromNode* DecodedBlockFromNode::alloc() {
-    DecodedBlockFromNode* result = nullptr;
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeFromNodesMutex);
-
-    if (freeFromNodes) {
-        result = freeFromNodes;
-        freeFromNodes = freeFromNodes->next;
-    } else {
-        DecodedBlockFromNode* nodes = new DecodedBlockFromNode[1024];
-
-        freeFromNodes = &nodes[1];
-        freeFromNodes->next = nullptr;
-        for (int i=2;i<1024;i++) {
-            nodes[i].next = freeFromNodes;
-            freeFromNodes = &nodes[i];            
-        }
-        result = &nodes[0];
+#ifdef BOXEDWINE_MULTI_THREADED
+static void translateToLockInstruction(DecodedOp* op) {
+#define INIT_CPU_LOCK(e, f) case e: op->inst = e##_Lock; break;
+    switch (op->inst) {
+#include "common/cpu_init_lock.h"
     }
-    result->next = nullptr;
-    result->block = nullptr;
-    return result;
 }
-void DecodedBlockFromNode::dealloc() {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(freeFromNodesMutex);
-    this->next = freeFromNodes;
-    this->block = nullptr;
-    freeFromNodes = this;
-}
+#endif
 
-void DecodedBlock::addReferenceFrom(DecodedBlock* block) {
-    DecodedBlockFromNode* node = DecodedBlockFromNode::alloc();
-    node->block = block;
-    node->next = this->referencedFrom;
-    this->referencedFrom = node;
-}
+// currently decoding switch statements won't work, op->inst == JmpE16 || op->inst == JmpE32 || op->inst == JmpR16 || op->inst == JmpR32
+bool decodeFunction(DecodeBlockCallback* callback, U32 eip, std::vector<DecodedFunctionOp>& ops) {
+    BHashTable<U32, DecodedOp*> completedEipToOp;
+    DecodedOp* result = callback->getOp(eip, 0);
+    BHashTable<U32, DecodedOp*> todoJumps;
 
-DecodedOp* DecodedBlock::getOp(U32 eip) {
-    DecodedOp* op = this->op;
-    if (op->len == 0) {
-        op = op->next;
-    }
-    U32 opEip = this->address;
+    U32 address = eip;
+    DecodedOp* op = result;
+    bool containsAtLeastOnReturn = false;
+
     while (op) {
-        if (opEip == eip) {
-            return op;
+        bool branch1 = (instructionInfo[op->inst].branch & DECODE_BRANCH_1);
+        bool hasNext = true;
+
+#ifdef _DEBUG
+        if (op->eip != address) {
+            kpanic("");
         }
-        opEip += op->len;
-        op = op->next;
+#endif
+        completedEipToOp.set(address, op);
+
+        if (op->isRet()) {
+            containsAtLeastOnReturn = true;
+        }
+        address += op->len;
+        if (branch1 && op->inst != CallJw && op->inst != CallJd) {
+            DecodedOp* destOp = nullptr;
+            U32 destAddress = address + op->imm;
+
+            // aoe installer triggers isValidReadAddress == false
+            if (!completedEipToOp.get(destAddress, destOp) && callback->isValidReadAddress(destAddress)) {
+                destOp = callback->getOp(destAddress, 0);
+            }
+            if (!destOp) {
+                return false;
+            }
+            op->data.nextJump = callback->getOpLocation(destAddress);
+
+            if (!completedEipToOp.contains(destAddress)) {                
+                if (op->isDirectJump()) {
+                    op = destOp;
+                    address = destAddress;
+                    continue;
+                } else {
+                    todoJumps.set(destAddress, destOp);
+                }
+            }
+            if (op->isDirectJump()) {
+                hasNext = false;
+            }
+        }
+        // :TODO: about 75% of the functions that are requested for JIT have calls
+        if (op->isCall() && (!op->next || op->next->inst == Done)) {
+            hasNext = false;
+        }
+        if (op->flags & OP_FLAG_NO_JIT) {
+            return false;
+        }
+        if (hasNext && !op->isRet()) {
+            DecodedOp* o = op;
+            if (!op->next) {
+                op->next = callback->getOp(address, 0);
+            }
+            if (op == op->next) {
+                return false; // I have seen this with invalid instructions
+            }
+            op = op->next;
+            continue;
+        }
+        op = nullptr;
+        for (auto& it : todoJumps) {
+            if (completedEipToOp.contains(it.key)) {
+                todoJumps.remove(it.key);
+                continue;
+            }
+            op = it.value;
+            address = it.key;
+            todoJumps.remove(it.key);
+            break;
+        }
     }
-    return nullptr;
+    if (!containsAtLeastOnReturn) {
+        return false;
+    }
+    for (auto& it : completedEipToOp) {
+        ops.push_back(DecodedFunctionOp(it.key, it.value));
+    }
+    std::sort(ops.begin(), ops.end(), [](const DecodedFunctionOp& a, const DecodedFunctionOp& b) {
+        return a.address < b.address;
+    });
+    return true;
 }
 
-void DecodedBlock::removeReferenceFrom(DecodedBlock* block) {
-    DecodedBlockFromNode* from = this->referencedFrom;
-	DecodedBlockFromNode* prev = nullptr;
-
-	while (from) {
-		if (from->block == block) {
-			DecodedBlockFromNode* removed = from;
-
-			if (prev) {					
-				prev->next = from->next;					
-			} else {
-				this->referencedFrom = from->next;
-			}
-			from = from->next;
-			removed->dealloc();
-			continue;
-		}
-		prev = from;
-		from = from->next;
-	}
-}
-
-void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block) {
-    DecodeData d;    
+DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen) {
+    DecodeData d;
     DecodedOp* op = DecodedOp::alloc();
+    DecodedOp* result = op;
+    U32 furtherestDirectJump = 0;
+    U32 startOfOp = 0;
 
-    d.fetchByte = fetchByte;
-    d.fetchByteData = fetchByteData;
+    d.callback = callback;
     d.eip = eip;
     d.opCountSoFarInThisBlock = 0;
 
-    block->op = op;
-    block->bytes = 0;
-    block->opCount = 0;
+    decodedLen = 0;
+    opCount = 0;
+
     while (1) {
+        startOfOp = d.eip;
+
         d.opLen = 0;
         d.ds = DS;
         d.ss = SS;
         if (isBig) {
             d.opCode = 0x200;
             d.ea16 = 0;
-        } else {
+        }
+        else {
             d.opCode = 0;
             d.ea16 = 1;
         }
-        d.inst = d.opCode+d.fetch8(); 
+#ifdef _DEBUG
+        op->eip = d.eip;
+#endif
+        d.inst = d.opCode + d.fetch8();
         if (!decoder[d.inst]) {
             op->inst = Invalid;
-        } else {
+        }
+        else {
             decoder[d.inst]->decode(&d, op);
             // per x86 spec, this has an implicit lock
             if (op->inst == XchgE8R8 || op->inst == XchgE16R16 || op->inst == XchgE32R32) {
                 op->lock = true;
             }
+#ifdef BOXEDWINE_MULTI_THREADED
+            if (op->lock) {
+                translateToLockInstruction(op);
+            }
+#endif
         }
+#ifdef _DEBUG
+        op->lastInst = op->inst;
+#endif
         if (op->inst == Invalid) {
 #if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
             op->originalOp = d.inst;
@@ -6263,23 +6549,43 @@ void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBi
             break;
         }
         d.opCountSoFarInThisBlock++;
-        block->opCount++;
-        if (maxLen && d.opLen+block->bytes>maxLen) {
-            op->inst = Done;
-            op->len = 0;
+#ifdef __TEST
+        if (op->inst == TestEnd) {
             break;
         }
+#endif
         op->len = d.opLen;
         op->ea16 = d.ea16;
-        block->bytes += d.opLen;        
+        decodedLen += d.opLen;
+        opCount++;
 #if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
         op->originalOp = d.inst;
-#endif
-        if ((maxInstructions && maxInstructions<=block->opCount) || instructionInfo[op->inst].branch || (stopIfThrowsException && instructionInfo[op->inst].throwsException))
+#endif        
+        if (instructionInfo[op->inst].branch & DECODE_BRANCH_1) {
+            op->data.nextJump = callback->getOpLocation(d.eip + op->imm);
+        }
+        if (!callback->shouldContinue(d.eip)) {
             break;
+        }
+        // is it the last call or return, if so, then stop
+        if (((instructionInfo[op->inst].branch & DECODE_BRANCH_NO_CACHE) || op->inst == CallJd || op->inst == CallJw) && d.eip > furtherestDirectJump) {
+            break;
+        }
+        if (opCount > 1000) {
+            op->next = DecodedOp::allocDone();
+            op->flags |= OP_FLAG_END_LONG_BLOCK; // :TODO: no one uses this, but in the future, maybe consider linking the instruction before a done, with the next instruction.
+            break;
+        }
+        if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1)) {
+            break;
+        }
+        if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1) && ((S32)op->imm) > 0) {
+            furtherestDirectJump = d.eip + op->imm;
+        }
         op->next = DecodedOp::alloc();
         op = op->next;
     }
+    return result;
 }
 
 const char* DecodedOp::name() {
@@ -6298,7 +6604,7 @@ void DecodedOp::log(CPU* cpu) {
         cpu->logFile.writeFormat("%04X %08X ", cpu->thread->id, cpu->eip.u32);
         instructionLog[this->inst].pfnFormat(&instructionLog[this->inst], this, cpu);
         if (instructionLog[this->inst].imm) {
-            if (instructionLog[this->inst].pfnFormat!=logName)
+            if (instructionLog[this->inst].pfnFormat != logName)
                 cpu->logFile.write(",");
             switch (instructionLog[this->inst].width) {
             case -16:
@@ -6313,11 +6619,11 @@ void DecodedOp::log(CPU* cpu) {
             default:
                 cpu->logFile.writeFormat("%X", this->imm);
                 break;
-            }        
+            }
         }
         U64 endPos = cpu->logFile.getPos();
-        if (endPos-pos<55) {
-            cpu->logFile.write(B("                                                       ").substr(0, (U32)(55-(endPos-pos))));
+        if (endPos - pos < 55) {
+            cpu->logFile.write(B("                                                       ").substr(0, (U32)(55 - (endPos - pos))));
         }
         cpu->logFile.writeFormat(" EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X SS=%.8X DS=%.8X FLAGS=%.8X\n", EAX, ECX, EDX, EBX, ESP, EBP, ESI, EDI, cpu->seg[SS].address, cpu->seg[DS].address, cpu->flags);
         cpu->logFile.flush();

@@ -95,55 +95,55 @@ void dynamic_movs16e16(DynamicData* data, DecodedOp* op) {
     movFromMem(DYN_16bit, DYN_ADDRESS, true);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    blockDone();
+    blockDone(data, true);
     endIf();
     INCREMENT_EIP(data, op);
 }
 void dynamic_movs16r16(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    blockDone();
+    blockDone(data, true);
     endIf();
     INCREMENT_EIP(data, op);
 }
 void dynamic_movAlOb(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_DEST, CPU::offsetofSegAddress(op->base), DYN_32bit);
-    instRegImm('+', DYN_DEST, DYN_32bit, op->disp);
+    instRegImm('+', DYN_DEST, DYN_32bit, op->data.disp);
     movFromMem(DYN_8bit, DYN_DEST, true);
     movToCpuFromReg(CPU_OFFSET_OF(reg[0].u8), DYN_CALL_RESULT, DYN_8bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_movAxOw(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_DEST, CPU::offsetofSegAddress(op->base), DYN_32bit);
-    instRegImm('+', DYN_DEST, DYN_32bit, op->disp);
+    instRegImm('+', DYN_DEST, DYN_32bit, op->data.disp);
     movFromMem(DYN_16bit, DYN_DEST, true);
     movToCpuFromReg(CPU_OFFSET_OF(reg[0].u16), DYN_CALL_RESULT, DYN_16bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_movEaxOd(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_DEST, CPU::offsetofSegAddress(op->base), DYN_32bit);
-    instRegImm('+', DYN_DEST, DYN_32bit, op->disp);
+    instRegImm('+', DYN_DEST, DYN_32bit, op->data.disp);
     movFromMem(DYN_32bit, DYN_DEST, true);
     movToCpuFromReg(CPU_OFFSET_OF(reg[0].u32), DYN_CALL_RESULT, DYN_32bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_movObAl(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_DEST, CPU::offsetofSegAddress(op->base), DYN_32bit);
-    instRegImm('+', DYN_DEST, DYN_32bit, op->disp);
+    instRegImm('+', DYN_DEST, DYN_32bit, op->data.disp);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[0].u8), DYN_8bit);
     movToMemFromReg(DYN_DEST, DYN_SRC, DYN_8bit, true, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_movOwAx(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_DEST, CPU::offsetofSegAddress(op->base), DYN_32bit);
-    instRegImm('+', DYN_DEST, DYN_32bit, op->disp);
+    instRegImm('+', DYN_DEST, DYN_32bit, op->data.disp);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[0].u16), DYN_16bit);
     movToMemFromReg(DYN_DEST, DYN_SRC, DYN_16bit, true, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_movOdEax(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_DEST, CPU::offsetofSegAddress(op->base), DYN_32bit);
-    instRegImm('+', DYN_DEST, DYN_32bit, op->disp);
+    instRegImm('+', DYN_DEST, DYN_32bit, op->data.disp);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[0].u32), DYN_32bit);
     movToMemFromReg(DYN_DEST, DYN_SRC, DYN_32bit, true, true);
     INCREMENT_EIP(data, op);
@@ -199,7 +199,7 @@ void dynamic_movGdSxE16(DynamicData* data, DecodedOp* op) {
 void dynamic_movRdCRx(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_readCrx, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    blockDone();
+    blockDone(data, true);
     endIf();
     INCREMENT_EIP(data, op);
 }
@@ -207,7 +207,7 @@ void dynamic_movCRxRd(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
     callHostFunction((void*)common_writeCrx, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, DYN_SRC, DYN_PARAM_REG_32, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    blockDone();
+    blockDone(data, true);
     endIf();
     INCREMENT_EIP(data, op);
 }

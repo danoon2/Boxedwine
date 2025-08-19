@@ -39,15 +39,19 @@ void CodePage::writeb(MMU* mmu, U32 address, U8 value) {
         KThread::currentThread()->seg_access(address, false, true);
     }
     if (value != this->readb(mmu, address)) {
-        KMemory* memory = KThread::currentThread()->memory;
+        KThread* thread = KThread::currentThread();
+        KMemory* memory = thread->memory;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         U8 currentValue = this->readb(mmu, address);
         if (currentValue == value) {
             return;
         }
-        memory->removeCodeBlock(address, 1);
+        bool currentJitRemoved = memory->removeCode(address, 1, true);
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         Page::getRWPage()->writeb(mmu, address, value);
+        if (currentJitRemoved) {
+            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+        }
     }
 }
 
@@ -57,7 +61,8 @@ void CodePage::writew(MMU* mmu, U32 address, U16 value) {
     }
     U16 currentValue = this->readw(mmu, address);
     if (value != currentValue) {
-        KMemory* memory = KThread::currentThread()->memory;
+        KThread* thread = KThread::currentThread();
+        KMemory* memory = thread->memory;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         currentValue = this->readw(mmu, address);
         if (value == currentValue) {
@@ -75,9 +80,12 @@ void CodePage::writew(MMU* mmu, U32 address, U16 value) {
             }
             len++;
         }
-        memory->removeCodeBlock(startAddress, len);
+        bool currentJitRemoved = memory->removeCode(startAddress, len, true);
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writew(mmu, address, value);
+        if (currentJitRemoved) {
+            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+        }
     }
 }
 
@@ -87,7 +95,8 @@ void CodePage::writed(MMU* mmu, U32 address, U32 value) {
     }
     U32 currentValue = this->readd(mmu, address);
     if (value != currentValue) {
-        KMemory* memory = KThread::currentThread()->memory;
+        KThread* thread = KThread::currentThread();
+        KMemory* memory = thread->memory;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         currentValue = this->readd(mmu, address);
         if (value == currentValue) {
@@ -117,9 +126,12 @@ void CodePage::writed(MMU* mmu, U32 address, U32 value) {
             }
             endAddress = address + 3;
         }
-        memory->removeCodeBlock(startAddress, endAddress - startAddress + 1);
+        bool currentJitRemoved = memory->removeCode(startAddress, endAddress - startAddress + 1, true);
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writed(mmu, address, value);
+        if (currentJitRemoved) {
+            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+        }
     }
 }
 
@@ -135,10 +147,14 @@ U8* CodePage::getRamPtr(MMU* mmu, U32 page, bool write, bool force, U32 offset, 
         if (!len && !offset) {
             len = K_PAGE_SIZE;
         }
-        KMemory* memory = KThread::currentThread()->memory;
+        KThread* thread = KThread::currentThread();
+        KMemory* memory = thread->memory;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
-        memory->removeCodeBlock((page << K_PAGE_SHIFT) + offset, len);
+        bool currentJitRemoved = memory->removeCode((page << K_PAGE_SHIFT) + offset, len, true);
         onDemmand(mmu, page);
+        if (currentJitRemoved) {
+            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+        }
         return Page::getRWPage()->getRamPtr(mmu, page, write, force, offset, len);
     }
     return nullptr;

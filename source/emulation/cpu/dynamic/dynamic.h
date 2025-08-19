@@ -21,15 +21,24 @@
 
 #include "../common/cpu.h"
 
+class DynamicJump {
+public:
+    DynamicJump() = default;
+    DynamicJump(U32 eip, U32 bufferPos) : eip(eip), bufferPos(bufferPos) {}
+    U32 eip = 0;
+    U32 bufferPos = 0;
+};
+
 class DynamicData {
 public:
-    DynamicData() : cpu(NULL), skipToOp(NULL), block(NULL), skipEipUpdateLen(0), done(false), currentLazyFlags(NULL) {}
-    CPU* cpu;
-    DecodedOp* skipToOp;
-    DecodedBlock* block;
-    U32 skipEipUpdateLen;
-    bool done;
-    const LazyFlags* currentLazyFlags;
+    CPU* cpu = nullptr;
+    DecodedOp* firstOp = nullptr;
+
+    bool done = false;
+    bool isFunction = false;
+    std::vector<DynamicJump> jumps;
+    BHashTable<U32, U32> eipToBufferPos;
+    U32 currentEip = 0;
 };
 
 typedef void (*pfnDynamicOp)(DynamicData* data, DecodedOp* op);

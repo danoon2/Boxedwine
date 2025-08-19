@@ -124,32 +124,32 @@ void OPCALL normal_movs16r16(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_movAlOb(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    AL = cpu->memory->readb(cpu->seg[op->base].address+op->disp);
+    AL = cpu->memory->readb(cpu->seg[op->base].address+op->data.disp);
     NEXT();
 }
 void OPCALL normal_movAxOw(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    AX = cpu->memory->readw(cpu->seg[op->base].address+op->disp);
+    AX = cpu->memory->readw(cpu->seg[op->base].address+op->data.disp);
     NEXT();
 }
 void OPCALL normal_movEaxOd(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    EAX = cpu->memory->readd(cpu->seg[op->base].address+op->disp);
+    EAX = cpu->memory->readd(cpu->seg[op->base].address+op->data.disp);
     NEXT();
 }
 void OPCALL normal_movObAl(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->memory->writeb(cpu->seg[op->base].address+op->disp, AL);
+    cpu->memory->writeb(cpu->seg[op->base].address+op->data.disp, AL);
     NEXT();
 }
 void OPCALL normal_movOwAx(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->memory->writew(cpu->seg[op->base].address+op->disp, AX);
+    cpu->memory->writew(cpu->seg[op->base].address+op->data.disp, AX);
     NEXT();
 }
 void OPCALL normal_movOdEax(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->memory->writed(cpu->seg[op->base].address+op->disp, EAX);
+    cpu->memory->writed(cpu->seg[op->base].address+op->data.disp, EAX);
     NEXT();
 }
 void OPCALL normal_movGwXzR8(CPU* cpu, DecodedOp* op) {

@@ -155,6 +155,9 @@ void KProcess::onExec(KThread* thread) {
     this->hasSetSeg[FS] = true;
     this->hasSetStackMask = false;
 
+#ifdef BOXEDWINE_DYNAMIC
+    startJITOp = nullptr;
+#endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     returnToLoopAddress = nullptr;
     reTranslateChunkAddress = nullptr;
@@ -237,7 +240,7 @@ void KProcess::deleteThread(KThread* thread) {
     if (this->threads.size() == 0) {
         cleanupProcess();
         delete this->memory; // this might call KThread::currentThread, so don't delete thread before this
-        this->memory = nullptr;        
+        this->memory = nullptr; 
     }
     delete thread;
     // don't call into getProcess while holding threadsCondition

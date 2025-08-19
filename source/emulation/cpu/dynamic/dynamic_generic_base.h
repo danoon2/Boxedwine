@@ -840,11 +840,13 @@ void incrementEip(DynamicData* data, DecodedOp* op) {
     instCPUImm('+', offsetof(CPU, eip.u32), DYN_32bit, len);
 }
 
-void blockDone() {
+void blockDone(DynamicData* data, bool returnEarly) {
     // cpu->nextBlock = cpu->getNextBlock();
     callHostFunction((void*)common_getNextBlock, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromRegPtr(offsetof(CPU, nextBlock), DYN_CALL_RESULT, true);
-    endBlock();
+    if (returnEarly) {
+        endBlock();
+    }
 }
 
 static DecodedBlock* updateNext1(CPU* cpu) {
@@ -989,10 +991,7 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
             if (ifJump.size()) {
                 kpanic("dyn::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
             }
-            if (data.skipToOp) {
-                o = data.skipToOp;
-                data.skipToOp = NULL;
-            } else if (data.done) {
+            if (data.done) {
 #ifndef __TEST
 #ifdef _DEBUG
                 //f (o->next)

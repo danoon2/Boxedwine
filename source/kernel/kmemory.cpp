@@ -449,3 +449,38 @@ void KMemory::iteratePages(U32 address, U32 len, std::function<bool(U32 page)> c
 U32 KMemory::getPageFlags(U32 page) {
     return data->mmu[page].flags;
 }
+
+DecodedOp** KMemory::getDecodedOpLocation(U32 address) {
+    return data->opCache.getLocation(address);
+}
+
+DecodedOp* KMemory::getDecodedOp(U32 address) {
+    return data->opCache.get(address);
+}
+
+void KMemory::threadCleanup(U32 threadId) {
+    if (data) {
+        data->opCache.threadCleanup(threadId);
+    }
+}
+
+void KMemory::clearOpCache() {
+    data->opCache.clear();
+}
+
+bool KMemory::removeCode(U32 address, U32 len, bool becauseOfWrite) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
+    return data->opCache.remove(address, len, becauseOfWrite);
+}
+
+void KMemory::addCode_nolock(U32 address, U32 len, DecodedOp* op, bool followOpNext) {
+    iteratePages(address, len, [this](U32 page) {
+        this->data->getOrCreateCodePage(page << K_PAGE_SHIFT);
+        return true;
+        });
+    data->opCache.add(op, address, followOpNext);
+}
+
+bool KMemory::isAddressDynamic(U32 address, U32 len) {
+    return data->opCache.isAddressDynamic(address, len);
+}

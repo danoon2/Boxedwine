@@ -25,7 +25,7 @@ void OPCALL normal_inc8_reg(CPU* cpu, DecodedOp* op) {
     *cpu->reg8[op->reg] = cpu->result.u8;
     NEXT();
 }
-void OPCALL normal_inc8_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc8_mem8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -44,7 +44,7 @@ void OPCALL normal_inc16_reg(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u16 = cpu->result.u16;
     NEXT();
 }
-void OPCALL normal_inc16_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_inc16_mem16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -82,7 +82,7 @@ void OPCALL normal_dec8_reg(CPU* cpu, DecodedOp* op) {
     *cpu->reg8[op->reg] = cpu->result.u8;
     NEXT();
 }
-void OPCALL normal_dec8_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec8_mem8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();
@@ -101,7 +101,7 @@ void OPCALL normal_dec16_reg(CPU* cpu, DecodedOp* op) {
     cpu->reg[op->reg].u16 = cpu->result.u16;
     NEXT();
 }
-void OPCALL normal_dec16_mem32(CPU* cpu, DecodedOp* op) {
+void OPCALL normal_dec16_mem16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 eaa = eaa(cpu, op);
     cpu->oldCF=cpu->getCF();

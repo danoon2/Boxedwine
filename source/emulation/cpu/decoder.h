@@ -19,8 +19,8 @@
 #ifndef __CPU_DECODER_H__
 #define __CPU_DECODER_H__
 
-#define eaa1(cpu, op) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
-#define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
+#define eaa1(cpu, op) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->data.disp)
+#define eaa3(cpu, op) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->data.disp
 #define eaa(cpu, op) (op->ea16)?(eaa1(cpu, op)):(eaa3(cpu, op))
 
 #define CF		0x00000001
@@ -478,7 +478,8 @@ enum Instruction {
     Retn32,
     Retf16,
     Retf32,
-    Invalid, 
+    Invalid,
+    UD2,
     Int3,
     Int80,
     Int99,
@@ -1424,10 +1425,88 @@ enum Instruction {
     ShufpdXmmE128,
     Pause,
 
+    CmpXchg8b_Lock,
+    CmpXchgE32R32_Lock,
+    CmpXchgE16R16_Lock,
+    CmpXchgE8R8_Lock,
+    XchgE8R8_Lock,
+    XchgE16R16_Lock,
+    XchgE32R32_Lock,
+    XaddR8E8_Lock,
+    XaddR16E16_Lock,
+    XaddR32E32_Lock,
+    AddE8R8_Lock,
+    AddE8I8_Lock,
+    AddE16R16_Lock,
+    AddE16I16_Lock,
+    AddE32R32_Lock,
+    AddE32I32_Lock,
+    OrE8R8_Lock,
+    OrE8I8_Lock,
+    OrE16R16_Lock,
+    OrE16I16_Lock,
+    OrE32R32_Lock,
+    OrE32I32_Lock,
+    AdcE8R8_Lock,
+    AdcE8I8_Lock,
+    AdcE16R16_Lock,
+    AdcE16I16_Lock,
+    AdcE32R32_Lock,
+    AdcE32I32_Lock,
+    SbbE8R8_Lock,
+    SbbE8I8_Lock,
+    SbbE16R16_Lock,
+    SbbE16I16_Lock,
+    SbbE32R32_Lock,
+    SbbE32I32_Lock,
+    AndE8R8_Lock,
+    AndE8I8_Lock,
+    AndE16R16_Lock,
+    AndE16I16_Lock,
+    AndE32R32_Lock,
+    AndE32I32_Lock,
+    SubE8R8_Lock,
+    SubE8I8_Lock,
+    SubE16R16_Lock,
+    SubE16I16_Lock,
+    SubE32R32_Lock,
+    SubE32I32_Lock,
+    XorE8R8_Lock,
+    XorE8I8_Lock,
+    XorE16R16_Lock,
+    XorE16I16_Lock,
+    XorE32R32_Lock,
+    XorE32I32_Lock,
+    IncE8_Lock,
+    IncE16_Lock,
+    IncE32_Lock,
+    DecE8_Lock,
+    DecE16_Lock,
+    DecE32_Lock,
+    NotE8_Lock,
+    NotE16_Lock,
+    NotE32_Lock,
+    NegE8_Lock,
+    NegE16_Lock,
+    NegE32_Lock,
+    BtsE16R16_Lock,
+    BtsE16_Lock,
+    BtsE32R32_Lock,
+    BtsE32_Lock,
+    BtrE16R16_Lock,
+    BtrE16_Lock,
+    BtrE32R32_Lock,
+    BtrE32_Lock,
+    BtcE16R16_Lock,
+    BtcE16_Lock,
+    BtcE32R32_Lock,
+    BtcE32_Lock,
+
     None,
     Callback,
     Done,
     Custom1,
+    TestEnd,
     InstructionCount
 };
 
@@ -1463,31 +1542,47 @@ public:
 extern const InstructionInfo instructionInfo[];
 
 class DecodedOp;
-class DecodedBlock;
 
 typedef void (OPCALL *OpCallback)(CPU* cpu, DecodedOp* op);
 
+// direct jump does not read memory, so will never use disp (used by mem, enter)
+union DecodedData {
+    DecodedOp** nextJump;
+    U32 disp;
+};
+
+// 32-bit build, this is 32 bytes
 class DecodedOp {
-public:    
+public:
     static DecodedOp* alloc();
     static void clearCache();
+    static DecodedOp* allocDone();
 
     DecodedOp();
 
-    void dealloc(bool deallocNext);    
+    void dealloc();
     void log(CPU* cpu);
     bool needsToSetFlags(CPU* cpu);
     bool isFpuOp();
     bool isMmxOp();
     bool isStringOp();
+    bool isBranch();
+    bool isDirectBranch();
+    bool isDirectJump();
+    bool isIndirectJump();
+    bool isCall();
+    bool isRet();
     const char* name();
 
-    static U32 getNeededFlags(DecodedBlock* block, DecodedOp* op, U32 flags, U32 depth=2);
+    U32 getNeededFlags(U32 flags, U32 depth = 4);
+    U32 getNeededFlagsAfter(U32 flags, U32 depth = 4);
 
     DecodedOp* next;
-    OpCallback pfn;
-
-    U32 disp;
+    // by making this a double pointer (address to where to find the op instead of the op itself), multiple jumps can point to that
+    // location and if the op there gets updated, we won't have to try to figure out all the jumps to it that need to be updated
+    DecodedData data;
+    OpCallback pfn;    
+    OpCallback pfnJitCode;
 
     U32 imm;
 
@@ -1497,62 +1592,53 @@ public:
 #endif
 #ifdef _DEBUG
     Instruction inst;
+    Instruction lastInst;
+    U32 eip;
 #else
     U16 inst;
 #endif
     U8 reg;
-    U8 rm;        
+    U8 rm;
 
-    U8 base;
-    U8 sibIndex;	
-    U8 sibScale;    
-    U8 len; // guaranteed to be 15 bytes or less
+    U8 base: 4;
+    U8 sibIndex: 4;
+    U8 sibScale: 4;
+    U8 len: 4; // guaranteed to be 15 bytes or less
 
-    U8 lock;
-    U8 repZero;
-    U8 repNotZero;    
-    U8 ea16;
+    U8 lock: 1;
+    U8 repZero: 1;
+    U8 repNotZero: 1;
+    U8 ea16: 1;
+    U8 flags : 4;
+
+#if defined(BOXEDWINE_MULTI_THREADED) || !defined(BOXEDWINE_DYNAMIC)
+    U8 runCount;
+#else
+    U8 blockOpCount;
+#endif
 
     void reset();
 };
 
-typedef U8 (*pfnFetchByte)(void* data, U32* pEip);
-
-class DecodedBlockFromNode {
+class DecodeBlockCallback {
 public:
-    static DecodedBlockFromNode* alloc();
-    virtual void dealloc();
-
-    DecodedBlock* block = nullptr;
-    DecodedBlockFromNode* next = nullptr;
+    virtual U8 fetchByte(U32* eip) = 0;
+    virtual bool shouldContinue(U32 eip) = 0;
+    virtual DecodedOp** getOpLocation(U32 eip) = 0;
+    virtual DecodedOp* getOp(U32 eip, U32 flags) = 0;
+    virtual bool isValidReadAddress(U32 address) = 0;
 };
 
-class DecodedBlock {
-public:       
-    virtual ~DecodedBlock() {}
+DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen);
 
-    DecodedBlock() = default;
-    DecodedOp* op = nullptr;
-    U32 opCount = 0;
-    U32 bytes = 0;
-    U32 runCount = 0;
+struct DecodedFunctionOp {
+    DecodedFunctionOp() {}
+    DecodedFunctionOp(U32 address, DecodedOp* op) : address(address), op(op) {}
+
     U32 address = 0;
-    
-    DecodedBlock* next1 = nullptr;
-    DecodedBlock* next2 = nullptr;    
-
-    virtual void run(CPU* cpu) {};
-    virtual void dealloc(bool delayed) {};
-
-    void addReferenceFrom(DecodedBlock* block);
-    void removeReferenceFrom(DecodedBlock* block);
-    
-    U32 getEip() { return address; }
-    U32 getEipLen() { return bytes; }
-    DecodedOp* getOp(U32 eip);
-protected:
-    DecodedBlockFromNode* referencedFrom = nullptr;    
+    DecodedOp* op = nullptr;
 };
-void decodeBlock(pfnFetchByte fetchByte, void* fetchByteData, U32 eip, bool isBig, U32 maxInstructions, U32 maxLen, U32 stopIfThrowsException, DecodedBlock* block);
+
+bool decodeFunction(DecodeBlockCallback* callback, U32 eip, std::vector<DecodedFunctionOp>& ops);
 
 #endif

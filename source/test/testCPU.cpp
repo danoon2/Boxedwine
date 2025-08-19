@@ -55,6 +55,7 @@ __m128i floatTo128(float f1, float f2, float f3, float f4) {
 }
 #endif
 
+#define LOCK_PREFIX 0xf0
 #define PAGES_PER_SEG 32
 
 KMemory* memory;
@@ -186,13 +187,17 @@ void newInstruction(int flags) {
     EBP=0;
     ESI=0;
     EDI=0;
-    cpu->eip.u32=0;       
+    cpu->eip.u32=0;
+    memory->clearOpCache();
 }
 
-void newInstruction(int instruction, int flags, U8 prefix = 0) {    
+void newInstruction(int instruction, int flags, U8 prefix = 0, U8 prefix2 = 0) {    
     newInstruction(flags);
     if (prefix) {
         pushCode8(prefix);
+    }
+    if (prefix2) {
+        pushCode8(prefix2);
     }
     if (instruction > 0xFF) {
         pushCode8(0x0F);
@@ -200,8 +205,8 @@ void newInstruction(int instruction, int flags, U8 prefix = 0) {
     pushCode8(instruction & 0xFF);
 }
 
-void newInstructionWithRM(int instruction, int rm, int flags, U8 prefix = 0) {
-    newInstruction(instruction, flags, prefix);
+void newInstructionWithRM(int instruction, int rm, int flags, U8 prefix = 0, U8 prefix2 = 0) {
+    newInstruction(instruction, flags, prefix, prefix2);
     pushCode8(rm);
 }
 
@@ -215,27 +220,21 @@ void useFlags() {
     pushCode8(0x02);
 }
 
-void runTestCPU() {    
+void runTestCPU() {
+    pushCode8(0xcd);
+    pushCode8(0x97); // will cause TestEnd specific return code to be inserted
+
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #ifdef BOXEDWINE_X64
     process->emulateFPU = !cpu->isBig();
 #endif
-    pushCode8(0xcd);
-    pushCode8(0x97); // will cause TEST specific return code to be inserted
     ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
     cpu->run();
-#else
-    pushCode8(0x70); // jump causes the decoder to stop building the block
-    pushCode8(0);
-    pushCode8(0x70); // jump will fetch the next block as well
-    pushCode8(0);
-    cpu->nextBlock = cpu->getNextBlock();    
+#else    
+    cpu->nextOp = cpu->getNextOp();
     do {
         cpu->run();
-        if (!cpu->nextBlock) {
-            cpu->nextBlock = cpu->getNextBlock();
-        }
-    } while (cpu->nextBlock->op->inst != JumpO && (cpu->nextBlock->op->inst != Custom1 || cpu->nextBlock->op->next->inst != JumpO));
+    } while (cpu->nextOp->inst != TestEnd);
 
 #endif    
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
@@ -357,7 +356,7 @@ void assertResult(struct Data* data, CPU* cpu, int instruction, U32 resultvar1, 
 #define E8(rm) (E(rm) % 4)
 #define G8(rm) (G(rm) % 4)
 
-void Eb(int instruction, int which, struct Data* data) {	
+void Eb(int instruction, int which, struct Data* data, bool includeLock = false) {	
     while (data->valid) {
         int eb;
         int rm;
@@ -389,39 +388,46 @@ void Eb(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, *reg, 0, E8(rm), -1, 0, 8, true);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writeb(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readb(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8);
-        
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        
-        // this will generate flags so the above code can ignore flag generation
-        // cmp eax, 0
-        pushCode8(0x83);
-        pushCode8(0xf8);
-        pushCode8(0);
-        
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writeb(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readb(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8, true);
+        for (int lock = 0; lock < 3; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 offset = lock == 2 ? 201 : 200;
+
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readb(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 8);
+
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+
+            // this will generate flags so the above code can ignore flag generation
+            // cmp eax, 0
+            pushCode8(0x83);
+            pushCode8(0xf8);
+            pushCode8(0);
+
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readb(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 8, true);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
@@ -615,7 +621,7 @@ void EbCl(int instruction, int which, struct Data* data) {
     }
 }
 
-void EbIb(int instruction, int which, struct Data* data, bool address32) {
+void EbIb(int instruction, int which, struct Data* data, bool address32, bool includeLock = false) {
     while (data->valid) {
         int eb;
         int rm;
@@ -634,26 +640,33 @@ void EbIb(int instruction, int which, struct Data* data, bool address32) {
             assertResult(data, cpu, instruction, *e, 0, E8(rm), -1, 0, 8);
         }
 
-        rm = (which << 3);
-        if (address32) {
-            rm += 5;
-        } else {
-            rm += 6;
+        for (int lock = 0; lock < 3; lock++) {
+            rm = (which << 3);
+            if (address32) {
+                rm += 5;
+            } else {
+                rm += 6;
+            }
+            bool isBig = cpu->big ? true : false;
+            bool needPrefix = address32 != isBig;
+            newInstructionWithRM(instruction, rm, data->flags, (needPrefix ? 0x67 : 0), lock ? LOCK_PREFIX : 0);
+            U16 offset = lock == 2 ? 201 : 200;
+
+            if (address32) {
+                pushCode32(offset);
+            } else {
+                pushCode16(offset);
+            }
+            pushCode8(data->var2);
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writeb(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readb(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 8);
+            if (!includeLock) {
+                break;
+            }
         }
-        bool isBig = cpu->big ? true : false;
-        bool needPrefix = address32 != isBig;
-        newInstructionWithRM(instruction, rm, data->flags, (needPrefix ? 0x67 : 0));
-        if (address32) {
-            pushCode32(200);
-        } else {
-            pushCode16(200);
-        }
-        pushCode8(data->var2);
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writeb(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readb(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 8);
         data++;
     }
 }
@@ -674,7 +687,7 @@ void EbRegIb(int instruction, U8* e, int rm, struct Data* data) {
     }
 }
 
-void EbGb(int instruction, struct Data* data) {
+void EbGb(int instruction, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int eb;
         int gb;
@@ -701,29 +714,36 @@ void EbGb(int instruction, struct Data* data) {
             }
         }
 
-        for (gb = 0; gb < 8; gb++) {
-            U8* g;
-            U32 result;
+        for (int lock = 0; lock < 3; lock++) {
+            for (gb = 0; gb < 8; gb++) {
+                U8* g;
+                U32 result;
 
-            rm = (gb << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-            memory->writeb(cpu->seg[DS].address + 200, data->var1);
-            g = cpu->reg8[G(rm)];
-            cpu->reg[G8(rm)].u32 = DEFAULT;
-            *g=data->var2;
-            runTestCPU();
-            result = memory->readb(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, *g, G8(rm), -1, cpu->seg[DS].address + 200, 8);
+                rm = (gb << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 offset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(offset);
+                else
+                    pushCode16(offset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+                memory->writeb(cpu->seg[DS].address + offset, data->var1);
+                g = cpu->reg8[G(rm)];
+                cpu->reg[G8(rm)].u32 = DEFAULT;
+                *g = data->var2;
+                runTestCPU();
+                result = memory->readb(cpu->seg[DS].address + offset);
+                assertResult(data, cpu, instruction, result, *g, G8(rm), -1, cpu->seg[DS].address + offset, 8);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
@@ -782,7 +802,7 @@ void GbEb(int instruction, struct Data* data) {
     }
 }
 
-void Ew(int instruction, int which, struct Data* data) {
+void Ew(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ew;
         int rm;
@@ -814,40 +834,46 @@ void Ew(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, reg->u16, 0, E(rm), -1, 0, 16, true);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writew(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readw(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
-        
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        
-        // this will generate flags so the above code can ignore flag generation
-        // cmp eax, 0
-        pushCode8(0x83);
-        pushCode8(0xf8);
-        pushCode8(0);
-        
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writew(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readw(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16, true);
-        
+        for (int lock = 0; lock < 3; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 offset = lock == 2 ? 201 : 200;
+
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writew(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readw(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16);
+
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+
+            // this will generate flags so the above code can ignore flag generation
+            // cmp eax, 0
+            pushCode8(0x83);
+            pushCode8(0xf8);
+            pushCode8(0);
+
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writew(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readw(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16, true);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
@@ -905,7 +931,7 @@ void EwCl(int instruction, int which, struct Data* data) {
     }
 }
 
-void EwIx(int instruction, int which, struct Data* data) {
+void EwIx(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ew;
         int rm;
@@ -928,22 +954,29 @@ void EwIx(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, e->u16, 0, E(rm), -1, 0, 16);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        pushCode8(data->var2);
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writew(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readw(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
+        for (int lock = 0; lock < 3; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 offset = lock == 2 ? 201 : 200;
+
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+            pushCode8(data->var2);
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writew(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readw(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
@@ -973,7 +1006,7 @@ void EwRegIb(int instruction, int ew, struct Data* data) {
     }
 }
 
-void EwIb(int instruction, int which, struct Data* data) {
+void EwIb(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ew;
         int rm;
@@ -992,27 +1025,34 @@ void EwIb(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, e->u16, 0, E(rm), -1, 0, 16);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        pushCode8(data->var2);
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writew(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readw(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
+        for (int lock = 0; lock < 3; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 offset = lock == 2 ? 201 : 200;
+
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+            pushCode8(data->var2);
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writew(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readw(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
 
-void EwIw(int instruction, int which, struct Data* data) {
+void EwIw(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ew;
         int rm;
@@ -1031,27 +1071,34 @@ void EwIw(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, e->u16, 0, E(rm), -1, 0, 16);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        pushCode16(data->var2);
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writew(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readw(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 16);
+        for (int lock = 0; lock < 3; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 offset = lock == 2 ? 201 : 200;
+
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+            pushCode16(data->var2);
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writew(cpu->seg[DS].address + offset, data->var1);
+            runTestCPU();
+            result = memory->readw(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
 
-void EwGw(int instruction, struct Data* data, U8 prefix = 0) {
+void EwGw(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = false) {
     while (data->valid) {
         int ew;
         int gw;
@@ -1078,29 +1125,36 @@ void EwGw(int instruction, struct Data* data, U8 prefix = 0) {
             }
         }
 
-        for (gw = 0; gw < 8; gw++) {
-            Reg* g;
-            U32 result;
+        for (int lock = 0; lock < 3; lock++) {
+            for (gw = 0; gw < 8; gw++) {
+                Reg* g;
+                U32 result;
 
-            rm = (gw << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags, prefix);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-            memory->writew(cpu->seg[DS].address + 200, data->var1);
-            g = &cpu->reg[G(rm)];
-            g->u32 = DEFAULT;
-            g->u16 = data->var2;
-            runTestCPU();
-            result = memory->readw(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + 200, 16);
+                rm = (gw << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : prefix);
+                U16 offset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(offset);
+                else
+                    pushCode16(offset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+                memory->writew(cpu->seg[DS].address + offset, data->var1);
+                g = &cpu->reg[G(rm)];
+                g->u32 = DEFAULT;
+                g->u16 = data->var2;
+                runTestCPU();
+                result = memory->readw(cpu->seg[DS].address + offset);
+                assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + offset, 16);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
@@ -1328,7 +1382,7 @@ void EwGwCl(int instruction, struct Data* data) {
     }
 }
 
-void EwGwEffective(int instruction, struct Data* data) {
+void EwGwEffective(int instruction, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ew;
         int gw;
@@ -1355,39 +1409,46 @@ void EwGwEffective(int instruction, struct Data* data) {
             }
         }
 
-        for (gw = 0; gw < 8; gw++) {
-            Reg* g;
-            U32 result;
-            int offset = 0;
+        for (int lock = 0; lock < 3; lock++) {
+            for (gw = 0; gw < 8; gw++) {
+                Reg* g;
+                U32 result;
+                int offset = 0;
 
-            rm = (gw << 3);
-            if (cpu->big) {
-                offset = (data->var2 >> 5)*4;
-                rm += 5; 
-            } else {
-                offset = (data->var2 >> 4)*2;
-                rm += 6;
+                rm = (gw << 3);
+                if (cpu->big) {
+                    offset = (data->var2 >> 5) * 4;
+                    rm += 5;
+                } else {
+                    offset = (data->var2 >> 4) * 2;
+                    rm += 6;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 addressOffset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset + offset, DEFAULT);
+                memory->writew(cpu->seg[DS].address + addressOffset + offset, data->var1);
+                g = &cpu->reg[G(rm)];
+                g->u32 = DEFAULT;
+                g->u16 = data->var2;
+                runTestCPU();
+                result = memory->readw(cpu->seg[DS].address + addressOffset + offset);
+                assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 16);
             }
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200+offset, DEFAULT);
-            memory->writew(cpu->seg[DS].address + 200+offset, data->var1);
-            g = &cpu->reg[G(rm)];
-            g->u32 = DEFAULT;
-            g->u16 = data->var2;
-            runTestCPU();
-            result = memory->readw(cpu->seg[DS].address + 200 + offset);
-            assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + 200 + offset, 16);
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
 }
 
-void EdGdEffective(int instruction, struct Data* data) {
+void EdGdEffective(int instruction, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int gd;
@@ -1412,31 +1473,38 @@ void EdGdEffective(int instruction, struct Data* data) {
             }
         }
 
-        for (gd = 0; gd < 8; gd++) {
-            Reg* g;
-            U32 result;
-            int offset = 0;
+        for (int lock = 0; lock < 3; lock++) {
+            for (gd = 0; gd < 8; gd++) {
+                Reg* g;
+                U32 result;
+                int offset = 0;
 
-            rm = (gd << 3);
-            if (cpu->big) {
-                offset = (data->var2 >> 5)*4;
-                rm += 5; 
-            } else {
-                offset = (data->var2 >> 4)*2;
-                rm += 6;
+                rm = (gd << 3);
+                if (cpu->big) {
+                    offset = (data->var2 >> 5) * 4;
+                    rm += 5;
+                } else {
+                    offset = (data->var2 >> 4) * 2;
+                    rm += 6;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 addressOffset = lock == 2 ? 202 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset + offset, data->var1);
+                g = &cpu->reg[G(rm)];
+                g->u32 = data->var2;
+                runTestCPU();
+                result = memory->readd(cpu->seg[DS].address + addressOffset + offset);
+                assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 32);
             }
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200+offset, data->var1);
-            g = &cpu->reg[G(rm)];
-            g->u32 = data->var2;
-            runTestCPU();
-            result = memory->readd(cpu->seg[DS].address + 200 + offset);
-            assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + 200 + offset, 32);
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
@@ -1543,7 +1611,7 @@ void EdSw(int instruction, struct Data* data) {
     }
 }
 
-void GwEw(int instruction, struct Data* data) {
+void GwEw(int instruction, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ew;
         int gw;
@@ -1570,35 +1638,42 @@ void GwEw(int instruction, struct Data* data) {
             }
         }
 
-        for (gw = 0; gw < 8; gw++) {
-            U32 result;
-            Reg* g;
+        for (int lock = 0; lock < 3; lock++) {
+            for (gw = 0; gw < 8; gw++) {
+                U32 result;
+                Reg* g;
 
-            rm = (gw << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-            memory->writew(cpu->seg[DS].address + 200, data->var2);
-            g = &cpu->reg[gw];
-            g->u32 = DEFAULT;
-            g->u16 = data->var1;
-            runTestCPU();
-            result = memory->readw(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, g->u16, result, gw, -1, cpu->seg[DS].address + 200, 16);
+                rm = (gw << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 addressOffset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, DEFAULT);
+                memory->writew(cpu->seg[DS].address + addressOffset, data->var2);
+                g = &cpu->reg[gw];
+                g->u32 = DEFAULT;
+                g->u16 = data->var1;
+                runTestCPU();
+                result = memory->readw(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, g->u16, result, gw, -1, cpu->seg[DS].address + addressOffset, 16);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
 }
 
-void Ed(int instruction, int which, struct Data* data) {
+void Ed(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int rm;
@@ -1628,38 +1703,44 @@ void Ed(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, reg->u32, 0, ed, -1, 0, 32, true);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        memory->writed(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readd(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32);
-        
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        
-        // this will generate flags so the above code can ignore flag generation
-        // cmp eax, 0
-        pushCode8(0x83);
-        pushCode8(0xf8);
-        pushCode8(0);
-        
-        memory->writed(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readd(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32, true);
-        
+        for (int lock = 0; lock < 3; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 addressOffset = lock == 2 ? 202 : 200;
+
+            if (cpu->big)
+                pushCode32(addressOffset);
+            else
+                pushCode16(addressOffset);
+            memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+            runTestCPU();
+            result = memory->readd(cpu->seg[DS].address + addressOffset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + addressOffset, 32);
+
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            if (cpu->big)
+                pushCode32(addressOffset);
+            else
+                pushCode16(addressOffset);
+
+            // this will generate flags so the above code can ignore flag generation
+            // cmp eax, 0
+            pushCode8(0x83);
+            pushCode8(0xf8);
+            pushCode8(0);
+
+            memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+            runTestCPU();
+            result = memory->readd(cpu->seg[DS].address + addressOffset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + addressOffset, 32, true);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
@@ -1715,7 +1796,7 @@ void EdCl(int instruction, int which, struct Data* data) {
     }
 }
 
-void EdIx(int instruction, int which, struct Data* data) {
+void EdIx(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int rm;
@@ -1737,26 +1818,33 @@ void EdIx(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, e->u32, 0, -1, -1, 0, 0);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        pushCode8(data->var2);
-        memory->writed(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readd(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);
+        for (int lock = 0; lock < 2; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 addressOffset = lock == 2 ? 202 : 200;
+
+            if (cpu->big)
+                pushCode32(addressOffset);
+            else
+                pushCode16(addressOffset);
+            pushCode8(data->var2);
+            memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+            runTestCPU();
+            result = memory->readd(cpu->seg[DS].address + addressOffset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
 
-void EdIb(int instruction, int which, struct Data* data) {
+void EdIb(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int rm;
@@ -1774,22 +1862,29 @@ void EdIb(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, e->u32, 0, ed, -1, 0, 32);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        pushCode8(data->var2);
-        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
-        memory->writed(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readd(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + 200, 32);
+        for (int lock = 0; lock < 2; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 addressOffset = lock == 2 ? 202 : 200;
+
+            if (cpu->big)
+                pushCode32(addressOffset);
+            else
+                pushCode16(addressOffset);
+            pushCode8(data->var2);
+            memory->writed(cpu->seg[DS].address + addressOffset, DEFAULT);
+            memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+            runTestCPU();
+            result = memory->readd(cpu->seg[DS].address + addressOffset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + addressOffset, 32);
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
@@ -1805,7 +1900,7 @@ void EdRegId(int instruction, Reg* e, int ed, struct Data* data) {
     }
 }
 
-void EdId(int instruction, int which, struct Data* data) {
+void EdId(int instruction, int which, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int rm;
@@ -1823,26 +1918,34 @@ void EdId(int instruction, int which, struct Data* data) {
             assertResult(data, cpu, instruction, e->u32, 0, -1, -1, 0, 0);
         }
 
-        rm = (which << 3);
-        if (cpu->big)
-            rm += 5;
-        else
-            rm += 6;
-        newInstructionWithRM(instruction, rm, data->flags);
-        if (cpu->big)
-            pushCode32(200);
-        else
-            pushCode16(200);
-        pushCode32(data->var2);
-        memory->writed(cpu->seg[DS].address + 200, data->var1);
-        runTestCPU();
-        result = memory->readd(cpu->seg[DS].address + 200);
-        assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);
+        for (int lock = 0; lock < 2; lock++) {
+            rm = (which << 3);
+            if (cpu->big)
+                rm += 5;
+            else
+                rm += 6;
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            U16 addressOffset = lock == 2 ? 202 : 200;
+
+            if (cpu->big)
+                pushCode32(addressOffset);
+            else
+                pushCode16(addressOffset);
+            pushCode32(data->var2);
+            memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+            runTestCPU();
+            result = memory->readd(cpu->seg[DS].address + addressOffset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, 0, 0);            
+
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
 
-void EdGd(int instruction, struct Data* data, U8 prefix = 0) {
+void EdGd(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int gd;
@@ -1867,33 +1970,40 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0) {
             }
         }
 
-        for (gd = 0; gd < 8; gd++) {
-            Reg* g;
-            U32 result;
+        for (int lock = 0; lock < 2; lock++) {
+            for (gd = 0; gd < 8; gd++) {
+                Reg* g;
+                U32 result;
 
-            rm = (gd << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags, prefix);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, data->var1);
-            g = &cpu->reg[gd];
-            g->u32 = data->var2;
-            runTestCPU();
-            result = memory->readd(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, g->u32, -1, -1, 0, 0);
+                rm = (gd << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : prefix);
+                U16 addressOffset = lock == 2 ? 202 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+                g = &cpu->reg[gd];
+                g->u32 = data->var2;
+                runTestCPU();
+                result = memory->readd(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, result, g->u32, -1, -1, 0, 0);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
 }
 
-void EdGdEax(int instruction, struct Data* data) {
+void EdGdEax(int instruction, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int gd;
@@ -1919,34 +2029,41 @@ void EdGdEax(int instruction, struct Data* data) {
             }
         }
 
-        for (gd = 1; gd < 8; gd++) {
-            Reg* g;
-            U32 result;
+        for (int lock = 0; lock < 3; lock++) {
+            for (gd = 1; gd < 8; gd++) {
+                Reg* g;
+                U32 result;
 
-            rm = (gd << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, data->var1);
-            g = &cpu->reg[gd];
-            g->u32 = data->var2;
-            EAX = data->constant;
-            runTestCPU();
-            result = memory->readd(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, EAX, -1, -1, 0, 0);
+                rm = (gd << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 addressOffset = lock == 2 ? 202 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+                g = &cpu->reg[gd];
+                g->u32 = data->var2;
+                EAX = data->constant;
+                runTestCPU();
+                result = memory->readd(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, result, EAX, -1, -1, 0, 0);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
 }
 
-void EwGwAx(int instruction, struct Data* data) {
+void EwGwAx(int instruction, struct Data* data, bool includeLock) {
     while (data->valid) {
         int ew;
         int gw;
@@ -1973,34 +2090,41 @@ void EwGwAx(int instruction, struct Data* data) {
             }
         }
 
-        for (gw = 1; gw < 8; gw++) {
-            Reg* g;
-            U32 result;
+        for (int lock = 0; lock < 3; lock++) {
+            for (gw = 1; gw < 8; gw++) {
+                Reg* g;
+                U32 result;
 
-            rm = (gw << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, data->var1);
-            g = &cpu->reg[gw];
-            g->u32 = data->var2;
-            AX = data->constant;
-            runTestCPU();
-            result = memory->readw(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, AX, -1, -1, 0, 0);
+                rm = (gw << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 addressOffset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+                g = &cpu->reg[gw];
+                g->u32 = data->var2;
+                AX = data->constant;
+                runTestCPU();
+                result = memory->readw(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, result, AX, -1, -1, 0, 0);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
 }
 
-void EbGbAl(int instruction, struct Data* data) {
+void EbGbAl(int instruction, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int eb;
         int gb;
@@ -2027,28 +2151,35 @@ void EbGbAl(int instruction, struct Data* data) {
             }
         }
 
-        for (gb = 1; gb < 8; gb++) {
-            U8* g;
-            U32 result;
+        for (int lock = 0; lock < 2; lock++) {
+            for (gb = 1; gb < 8; gb++) {
+                U8* g;
+                U32 result;
 
-            rm = (gb << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, data->var1);
-            g = cpu->reg8[gb];
-            *g = (U8)data->var2;
-            AL = data->constant;
-            runTestCPU();
-            result = memory->readb(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, result, AL, -1, -1, 0, 0);
+                rm = (gb << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 addressOffset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+                g = cpu->reg8[gb];
+                *g = (U8)data->var2;
+                AL = data->constant;
+                runTestCPU();
+                result = memory->readb(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, result, AL, -1, -1, 0, 0);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
@@ -2109,7 +2240,7 @@ void EdGdCl(int instruction, struct Data* data) {
     }
 }
 
-void GdEd(int instruction, struct Data* data) {
+void GdEd(int instruction, struct Data* data, bool includeLock = false) {
     while (data->valid) {
         int ed;
         int gd;
@@ -2134,27 +2265,34 @@ void GdEd(int instruction, struct Data* data) {
             }
         }
 
-        for (gd = 0; gd < 8; gd++) {
-            Reg* g;
-            U32 result;
+        for (int lock = 0; lock < 2; lock++) {
+            for (gd = 0; gd < 8; gd++) {
+                Reg* g;
+                U32 result;
 
-            rm = (gd << 3);
-            if (cpu->big)
-                rm += 5;
-            else
-                rm += 6;
-            newInstructionWithRM(instruction, rm, data->flags);
-            if (cpu->big)
-                pushCode32(200);
-            else
-                pushCode16(200);
-            pushConstant(data);
-            memory->writed(cpu->seg[DS].address + 200, data->var2);
-            g = &cpu->reg[gd];
-            g->u32 = data->var1;
-            runTestCPU();
-            result = memory->readd(cpu->seg[DS].address + 200);
-            assertResult(data, cpu, instruction, g->u32, result, -1, -1, 0, 0);
+                rm = (gd << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                U16 addressOffset = lock == 2 ? 202 : 200;
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, data->var2);
+                g = &cpu->reg[gd];
+                g->u32 = data->var1;
+                runTestCPU();
+                result = memory->readd(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, g->u32, result, -1, -1, 0, 0);
+            }
+            if (!includeLock) {
+                break;
+            }
         }
         data++;
     }
@@ -4488,10 +4626,10 @@ static struct Data movSignExtend16to32[] = {
 #define STR_TEST(esiStr, editStr, startECX, OP, checkEndFlags, endCF, endZF, newECX)
 #endif
 
-void testAdd0x000() {cpu->big = false;EbGb(0x00, addb);}
-void testAdd0x200() {cpu->big = true;EbGb(0x00, addb);X86_TEST(add, addb, al, cl)}
-void testAdd0x001() {cpu->big = false;EwGw(0x01, addw);X86_TEST(add, addw, ax, cx)}
-void testAdd0x201() {cpu->big = true;EdGd(0x01, addd);X86_TEST(add, addd, eax, ecx)}
+void testAdd0x000() {cpu->big = false;EbGb(0x00, addb, true);}
+void testAdd0x200() {cpu->big = true;EbGb(0x00, addb, true);X86_TEST(add, addb, al, cl)}
+void testAdd0x001() {cpu->big = false;EwGw(0x01, addw, 0, true);X86_TEST(add, addw, ax, cx)}
+void testAdd0x201() {cpu->big = true;EdGd(0x01, addd, 0, true);X86_TEST(add, addd, eax, ecx)}
 void testAdd0x002() {cpu->big = false;GbEb(0x02, addb);}
 void testAdd0x202() {cpu->big = true;GbEb(0x02, addb);}
 void testAdd0x003() {cpu->big = false;GwEw(0x03, addw);}
@@ -4501,10 +4639,10 @@ void testAdd0x204() {cpu->big = true;AlIb(0x04, addb);}
 void testAdd0x005() {cpu->big = false;AxIw(0x05, addw);}
 void testAdd0x205() {cpu->big = true;EaxId(0x05, addd);}
 
-void testOr0x008() {cpu->big = false;EbGb(0x08, orb);}
-void testOr0x208() {cpu->big = true;EbGb(0x08, orb);X86_TEST(or, orb, al, cl)}
-void testOr0x009() {cpu->big = false;EwGw(0x09, orw);X86_TEST(or, orw, ax, cx)}
-void testOr0x209() {cpu->big = true;EdGd(0x09, ord);X86_TEST(or, ord, eax, ecx)}
+void testOr0x008() {cpu->big = false;EbGb(0x08, orb, true);}
+void testOr0x208() {cpu->big = true;EbGb(0x08, orb, true);X86_TEST(or, orb, al, cl)}
+void testOr0x009() {cpu->big = false;EwGw(0x09, orw, 0, true);X86_TEST(or, orw, ax, cx)}
+void testOr0x209() {cpu->big = true;EdGd(0x09, ord, 0, true);X86_TEST(or, ord, eax, ecx)}
 void testOr0x00a() {cpu->big = false;GbEb(0x0a, orb);}
 void testOr0x20a() {cpu->big = true;GbEb(0x0a, orb);}
 void testOr0x00b() {cpu->big = false;GwEw(0x0b, orw);}
@@ -4515,10 +4653,10 @@ void testOr0x00d() {cpu->big = false;AxIw(0x0d, orw);}
 void testOr0x20d() {cpu->big = true;EaxId(0x0d, ord);}
 
 // :TODO: add test for adc for doing add then adc to make sure CF carries over correctly for dynamic cores
-void testAdc0x010() {cpu->big = false;EbGb(0x10, adcb);}
-void testAdc0x210() {cpu->big = true;EbGb(0x10, addb);X86_TEST(adc, adcb, al, cl)}
-void testAdc0x011() {cpu->big = false;EwGw(0x11, adcw);X86_TEST(adc, adcw, ax, cx)}
-void testAdc0x211() {cpu->big = true;EdGd(0x11, adcd);X86_TEST(adc, adcd, eax, ecx)}
+void testAdc0x010() {cpu->big = false;EbGb(0x10, adcb, true);}
+void testAdc0x210() {cpu->big = true;EbGb(0x10, addb, true);X86_TEST(adc, adcb, al, cl)}
+void testAdc0x011() {cpu->big = false;EwGw(0x11, adcw, 0, true);X86_TEST(adc, adcw, ax, cx)}
+void testAdc0x211() {cpu->big = true;EdGd(0x11, adcd, 0, true);X86_TEST(adc, adcd, eax, ecx)}
 void testAdc0x012() {cpu->big = false;GbEb(0x12, adcb);}
 void testAdc0x212() {cpu->big = true;GbEb(0x12, adcb);}
 void testAdc0x013() {cpu->big = false;GwEw(0x13, adcw);}
@@ -4528,10 +4666,10 @@ void testAdc0x214() {cpu->big = true;AlIb(0x14, adcb);}
 void testAdc0x015() {cpu->big = false;AxIw(0x15, adcw);}
 void testAdc0x215() {cpu->big = true;EaxId(0x15, adcd);}
 
-void testSbb0x018() {cpu->big = false;EbGb(0x18, sbbb);}
-void testSbb0x218() {cpu->big = true;EbGb(0x18, sbbb);X86_TEST(sbb, sbbb, al, cl)}
-void testSbb0x019() {cpu->big = false;EwGw(0x19, sbbw);X86_TEST(sbb, sbbw, ax, cx)}
-void testSbb0x219() {cpu->big = true;EdGd(0x19, sbbd);X86_TEST(sbb, sbbd, eax, ecx)}
+void testSbb0x018() {cpu->big = false;EbGb(0x18, sbbb, true);}
+void testSbb0x218() {cpu->big = true;EbGb(0x18, sbbb, true);X86_TEST(sbb, sbbb, al, cl)}
+void testSbb0x019() {cpu->big = false;EwGw(0x19, sbbw, 0, true);X86_TEST(sbb, sbbw, ax, cx)}
+void testSbb0x219() {cpu->big = true;EdGd(0x19, sbbd, 0, true);X86_TEST(sbb, sbbd, eax, ecx)}
 void testSbb0x01a() {cpu->big = false;GbEb(0x1a, sbbb);}
 void testSbb0x21a() {cpu->big = true;GbEb(0x1a, sbbb);}
 void testSbb0x01b() {cpu->big = false;GwEw(0x1b, sbbw);}
@@ -4541,10 +4679,10 @@ void testSbb0x21c() {cpu->big = true;AlIb(0x1c, sbbb);}
 void testSbb0x01d() {cpu->big = false;AxIw(0x1d, sbbw);}
 void testSbb0x21d() {cpu->big = true;EaxId(0x1d, sbbd);}
 
-void testAnd0x020() {cpu->big = false;EbGb(0x20, andb);}
-void testAnd0x220() {cpu->big = true;EbGb(0x20, andb);X86_TEST(and, andb, al, cl)}
-void testAnd0x021() {cpu->big = false;EwGw(0x21, andw);X86_TEST(and, andw, ax, cx)}
-void testAnd0x221() {cpu->big = true;EdGd(0x21, andd);X86_TEST(and, andd, eax, ecx)}
+void testAnd0x020() {cpu->big = false;EbGb(0x20, andb, true);}
+void testAnd0x220() {cpu->big = true;EbGb(0x20, andb, true);X86_TEST(and, andb, al, cl)}
+void testAnd0x021() {cpu->big = false;EwGw(0x21, andw, 0, true);X86_TEST(and, andw, ax, cx)}
+void testAnd0x221() {cpu->big = true;EdGd(0x21, andd, 0, true);X86_TEST(and, andd, eax, ecx)}
 void testAnd0x022() {cpu->big = false;GbEb(0x22, andb);}
 void testAnd0x222() {cpu->big = true;GbEb(0x22, andb);}
 void testAnd0x023() {cpu->big = false;GwEw(0x23, andw);}
@@ -4557,10 +4695,10 @@ void testAnd0x225() {cpu->big = true;EaxId(0x25, andd);}
 void testDaa0x027() {cpu->big = false;EbReg(0x27, 0, daa);}
 void testDaa0x227() {cpu->big = true;EbReg(0x27, 0, daa);}
 
-void testSub0x028() {cpu->big = false;EbGb(0x28, subb);}
-void testSub0x228() {cpu->big = true;EbGb(0x28, subb);X86_TEST(sub, subb, al, cl)}
-void testSub0x029() {cpu->big = false;EwGw(0x29, subw);X86_TEST(sub, subw, ax, cx)}
-void testSub0x229() {cpu->big = true;EdGd(0x29, subd);X86_TEST(sub, subd, eax, ecx)}
+void testSub0x028() {cpu->big = false;EbGb(0x28, subb, true);}
+void testSub0x228() {cpu->big = true;EbGb(0x28, subb, true);X86_TEST(sub, subb, al, cl)}
+void testSub0x029() {cpu->big = false;EwGw(0x29, subw, 0, true);X86_TEST(sub, subw, ax, cx)}
+void testSub0x229() {cpu->big = true;EdGd(0x29, subd, 0, true);X86_TEST(sub, subd, eax, ecx)}
 void testSub0x02a() {cpu->big = false;GbEb(0x2a, subb);}
 void testSub0x22a() {cpu->big = true;GbEb(0x2a, subb);}
 void testSub0x02b() {cpu->big = false;GwEw(0x2b, subw);}
@@ -4573,10 +4711,10 @@ void testSub0x22d() {cpu->big = true;EaxId(0x2d, subd);}
 void testDas0x02f() {cpu->big = false;EbReg(0x2f, 0, das);}
 void testDas0x22f() {cpu->big = true;EbReg(0x2f, 0, das);}
 
-void testXor0x030() {cpu->big = false;EbGb(0x30, xorb);}
-void testXor0x230() {cpu->big = true;EbGb(0x30, xorb);X86_TEST(xor, xorb, al, cl)}
-void testXor0x031() {cpu->big = false;EwGw(0x31, xorw);X86_TEST(xor, xorw, ax, cx)}
-void testXor0x231() {cpu->big = true;EdGd(0x31, xord);X86_TEST(xor, xord, eax, ecx)}
+void testXor0x030() {cpu->big = false;EbGb(0x30, xorb, true);}
+void testXor0x230() {cpu->big = true;EbGb(0x30, xorb, true);X86_TEST(xor, xorb, al, cl)}
+void testXor0x031() {cpu->big = false;EwGw(0x31, xorw, 0, true);X86_TEST(xor, xorw, ax, cx)}
+void testXor0x231() {cpu->big = true;EdGd(0x31, xord, 0, true);X86_TEST(xor, xord, eax, ecx)}
 void testXor0x032() {cpu->big = false;GbEb(0x32, xorb);}
 void testXor0x232() {cpu->big = true;GbEb(0x32, xorb);}
 void testXor0x033() {cpu->big = false;GwEw(0x33, xorw);}
@@ -4901,6 +5039,42 @@ void testJ(U8 instruction, U32 flags, bool jumped) {
     }
 }
 
+void testJumpCmp(U8 instruction, U32 value1, U32 value2, bool jumped) {
+    // cmp eax, value2    
+    newInstructionWithRM(0x81, 0xf9, 0);
+    EAX = 0;
+    ECX = value1;
+    if (cpu->big) {
+        pushCode32(value2);
+    }
+    else {
+        pushCode16(value2);
+    }
+
+    if (instruction > 0xFF) {
+        pushCode8(0x0F);
+    }
+    pushCode8(instruction & 0xFF);
+    pushCode8(2); // jmp over next add
+
+    // add al, 0x2
+    pushCode8(0x04);
+    pushCode8(0x02);
+
+    // add al, 0x3
+    pushCode8(0x04);
+    pushCode8(0x03);
+
+    runTestCPU();
+
+    if (jumped) {
+        assertTrue(AL == 3);
+    }
+    else {
+        assertTrue(AL == 5);
+    }
+}
+
 void testJO(U8 instruction) {
     testJ(instruction, OF, true);
     testJ(instruction, CF, false);
@@ -4946,6 +5120,13 @@ void testJB(U8 instruction) {
     testJ(instruction, AF, false);
     testJ(instruction, ZF, false);
     testJ(instruction, SF, false);
+
+    // if below (CF=1)
+    testJumpCmp(instruction, 0, 0, false);
+    testJumpCmp(instruction, 1, 0, false);
+    testJumpCmp(instruction, 0xffffffff, 0, false);
+    testJumpCmp(instruction, 0, 1, true);
+    testJumpCmp(instruction, 0, 0xffffffff, true);
 }
 
 void testNJB(U8 instruction) {
@@ -4955,6 +5136,13 @@ void testNJB(U8 instruction) {
     testJ(instruction, AF, true);
     testJ(instruction, ZF, true);
     testJ(instruction, SF, true);
+
+    // if not below (CF=0)
+    testJumpCmp(instruction, 0, 0, true);
+    testJumpCmp(instruction, 1, 0, true);
+    testJumpCmp(instruction, 0xffffffff, 0, true);
+    testJumpCmp(instruction, 0, 1, false);
+    testJumpCmp(instruction, 0, 0xffffffff, false);
 }
 
 void testJB0x72() {
@@ -4984,6 +5172,14 @@ void testJZ(U8 instruction) {
     testJ(instruction, AF, false);
     testJ(instruction, CF, false);
     testJ(instruction, SF, false);
+
+    // if zero (ZF=1)
+    testJumpCmp(instruction, 0, 0, true);
+    testJumpCmp(instruction, 1, 0, false);
+    testJumpCmp(instruction, 0xffffffff, 0, false);
+    testJumpCmp(instruction, 0, 1, false);
+    testJumpCmp(instruction, 0, 0xffffffff, false);
+    testJumpCmp(instruction, 0xffffffff, 0xffffffff, true);
 }
 
 void testJNZ(U8 instruction) {
@@ -4993,6 +5189,14 @@ void testJNZ(U8 instruction) {
     testJ(instruction, AF, true);
     testJ(instruction, CF, true);
     testJ(instruction, SF, true);
+
+    // if not zero (ZF=9)
+    testJumpCmp(instruction, 0, 0, false);
+    testJumpCmp(instruction, 1, 0, true);
+    testJumpCmp(instruction, 0xffffffff, 0, true);
+    testJumpCmp(instruction, 0, 1, true);
+    testJumpCmp(instruction, 0, 0xffffffff, true);
+    testJumpCmp(instruction, 0xffffffff, 0xffffffff, false);
 }
 
 void testJZ0x74() {
@@ -5025,6 +5229,13 @@ void testJBE(U8 instruction) {
     testJ(instruction, PF, false);
     testJ(instruction, AF, false);    
     testJ(instruction, SF, false);
+
+    // if below or equal (CF=1 or ZF=1)
+    testJumpCmp(instruction, 0, 0, true);
+    testJumpCmp(instruction, 1, 0, false);
+    testJumpCmp(instruction, 0xffffffff, 0, false);
+    testJumpCmp(instruction, 0, 1, true);
+    testJumpCmp(instruction, 0, 0xffffffff, true);
 }
 
 void testJNBE(U8 instruction) {
@@ -5037,6 +5248,13 @@ void testJNBE(U8 instruction) {
     testJ(instruction, PF, true);
     testJ(instruction, AF, true);
     testJ(instruction, SF, true);
+
+    // if not below or equal (CF=0 and ZF=0).
+    testJumpCmp(instruction, 0, 0, false);
+    testJumpCmp(instruction, 1, 0, true);
+    testJumpCmp(instruction, 0xffffffff, 0, true);
+    testJumpCmp(instruction, 0, 1, false);
+    testJumpCmp(instruction, 0, 0xffffffff, false);
 }
 
 void testJBE0x76() {
@@ -5066,6 +5284,13 @@ void testJS(U8 instruction) {
     testJ(instruction, PF, false);
     testJ(instruction, AF, false);
     testJ(instruction, ZF, false);
+
+    // if sign(SF = 1)
+    testJumpCmp(instruction, 0, 0, false);
+    testJumpCmp(instruction, 1, 0, false);
+    testJumpCmp(instruction, 0, 1, true);
+    testJumpCmp(instruction, 1, 0xffffffff, false);
+    testJumpCmp(instruction, 0xffffffff, 1, true);
 }
 
 void testJNS(U8 instruction) {
@@ -5075,6 +5300,13 @@ void testJNS(U8 instruction) {
     testJ(instruction, PF, true);
     testJ(instruction, AF, true);
     testJ(instruction, ZF, true);
+
+    // if not sign(SF = 0)
+    testJumpCmp(instruction, 0, 0, true);
+    testJumpCmp(instruction, 1, 0, true);
+    testJumpCmp(instruction, 0, 1, false);
+    testJumpCmp(instruction, 1, 0xffffffff, true);
+    testJumpCmp(instruction, 0xffffffff, 1, false);
 }
 
 void testJS0x78() {
@@ -5155,6 +5387,13 @@ void testJL(U8 instruction) {
     testJ(instruction, OF | CF, true);
     testJ(instruction, OF | AF, true);
     testJ(instruction, OF | ZF, true);
+
+    // signed: if less (SF<>OF)
+    testJumpCmp(instruction, 0, 0, false);
+    testJumpCmp(instruction, 1, 0, false);
+    testJumpCmp(instruction, 0, 1, true);
+    testJumpCmp(instruction, 1, 0xffffffff, false);
+    testJumpCmp(instruction, 0xffffffff, 1, true);
 }
 
 // SF == OF
@@ -5171,6 +5410,13 @@ void testJNL(U8 instruction) {
     testJ(instruction, OF | CF, false);
     testJ(instruction, OF | AF, false);
     testJ(instruction, OF | ZF, false);
+
+    // signed: if not less (SF=OF)
+    testJumpCmp(instruction, 0, 0, true);
+    testJumpCmp(instruction, 1, 0, true);
+    testJumpCmp(instruction, 0, 1, false);
+    testJumpCmp(instruction, 1, 0xffffffff, true);
+    testJumpCmp(instruction, 0xffffffff, 1, false);
 }
 
 void testJL0x7c() {
@@ -5213,6 +5459,14 @@ void testJLE(U8 instruction) {
     testJ(instruction, OF | PF, true);
     testJ(instruction, OF | CF, true);
     testJ(instruction, OF | AF, true);
+
+    // signed: if less or equal (ZF=1 or SF<>OF)
+    testJumpCmp(instruction, 0, 0, true);
+    testJumpCmp(instruction, 1, 0, false);
+    testJumpCmp(instruction, 0, 1, true);
+    testJumpCmp(instruction, 1, 0xffffffff, false);
+    testJumpCmp(instruction, 0xffffffff, 1, true);
+    testJumpCmp(instruction, 0xffffffff, 0xffffffff, true);
 }
 
 // !ZF && SF == OF
@@ -5230,6 +5484,14 @@ void testJNLE(U8 instruction) {
     testJ(instruction, OF | PF, false);
     testJ(instruction, OF | CF, false);
     testJ(instruction, OF | AF, false);
+
+    // signed: if not less or equal (ZF=0 and SF=OF)
+    testJumpCmp(instruction, 0, 0, false);
+    testJumpCmp(instruction, 1, 0, true);
+    testJumpCmp(instruction, 0, 1, false);
+    testJumpCmp(instruction, 1, 0xffffffff, true);
+    testJumpCmp(instruction, 0xffffffff, 1, false);
+    testJumpCmp(instruction, 0xffffffff, 0xffffffff, false);
    
 }
 
@@ -5255,97 +5517,97 @@ void testJNLE0x27f() {
 
 void testGrp10x080() {
     cpu->big = false;
-    EbIb(0x80, 0, addb);
-    EbIb(0x80, 1, orb);
-    EbIb(0x80, 2, adcb);
-    EbIb(0x80, 3, sbbb);
-    EbIb(0x80, 4, andb);
-    EbIb(0x80, 5, subb);
-    EbIb(0x80, 6, xorb);
+    EbIb(0x80, 0, addb, false, true);
+    EbIb(0x80, 1, orb, false, true);
+    EbIb(0x80, 2, adcb, false, true);
+    EbIb(0x80, 3, sbbb, false, true);
+    EbIb(0x80, 4, andb, false, true);
+    EbIb(0x80, 5, subb, false, true);
+    EbIb(0x80, 6, xorb, false, true);
     EbIb(0x80, 7, cmpb);
 }
 
 void testGrp10x280() {
     cpu->big = true;
-    EbIb(0x80, 0, addb);
-    EbIb(0x80, 1, orb);
-    EbIb(0x80, 2, adcb);
-    EbIb(0x80, 3, sbbb);
-    EbIb(0x80, 4, andb);
-    EbIb(0x80, 5, subb);
-    EbIb(0x80, 6, xorb);
+    EbIb(0x80, 0, addb, true, true);
+    EbIb(0x80, 1, orb, true, true);
+    EbIb(0x80, 2, adcb, true, true);
+    EbIb(0x80, 3, sbbb, true, true);
+    EbIb(0x80, 4, andb, true, true);
+    EbIb(0x80, 5, subb, true, true);
+    EbIb(0x80, 6, xorb, true, true);
     EbIb(0x80, 7, cmpb);
 }
 
 void testGrp10x081() {
     cpu->big = false;
-    EwIw(0x81, 0, addw);
-    EwIw(0x81, 1, orw);
-    EwIw(0x81, 2, adcw);
-    EwIw(0x81, 3, sbbw);
-    EwIw(0x81, 4, andw);
-    EwIw(0x81, 5, subw);
-    EwIw(0x81, 6, xorw);
+    EwIw(0x81, 0, addw, true);
+    EwIw(0x81, 1, orw, true);
+    EwIw(0x81, 2, adcw, true);
+    EwIw(0x81, 3, sbbw, true);
+    EwIw(0x81, 4, andw, true);
+    EwIw(0x81, 5, subw, true);
+    EwIw(0x81, 6, xorw, true);
     EwIw(0x81, 7, cmpw);
 }
 
 void testGrp10x082() {
     cpu->big = false;
-    EbIb(0x82, 0, addb);
-    EbIb(0x82, 1, orb);
-    EbIb(0x82, 2, adcb);
-    EbIb(0x82, 3, sbbb);
-    EbIb(0x82, 4, andb);
-    EbIb(0x82, 5, subb);
-    EbIb(0x82, 6, xorb);
+    EbIb(0x82, 0, addb, false, true);
+    EbIb(0x82, 1, orb, false, true);
+    EbIb(0x82, 2, adcb, false, true);
+    EbIb(0x82, 3, sbbb, false, true);
+    EbIb(0x82, 4, andb, false, true);
+    EbIb(0x82, 5, subb, false, true);
+    EbIb(0x82, 6, xorb, false, true);
     EbIb(0x82, 7, cmpb);
 }
 
 void testGrp10x282() {
     cpu->big = true;
-    EbIb(0x82, 0, addb);
-    EbIb(0x82, 1, orb);
-    EbIb(0x82, 2, adcb);
-    EbIb(0x82, 3, sbbb);
-    EbIb(0x82, 4, andb);
-    EbIb(0x82, 5, subb);
-    EbIb(0x82, 6, xorb);
+    EbIb(0x82, 0, addb, true, true);
+    EbIb(0x82, 1, orb, true, true);
+    EbIb(0x82, 2, adcb, true, true);
+    EbIb(0x82, 3, sbbb, true, true);
+    EbIb(0x82, 4, andb, true, true);
+    EbIb(0x82, 5, subb, true, true);
+    EbIb(0x82, 6, xorb, true, true);
     EbIb(0x82, 7, cmpb);
 }
 
 void testGrp10x281() {
     cpu->big = true;
-    EdId(0x81, 0, addd);
-    EdId(0x81, 1, ord);
-    EdId(0x81, 2, adcd);
-    EdId(0x81, 3, sbbd);
-    EdId(0x81, 4, andd);
-    EdId(0x81, 5, subd);
-    EdId(0x81, 6, xord);
+    EdId(0x81, 0, addd, true);
+    EdId(0x81, 1, ord, true);
+    EdId(0x81, 2, adcd, true);
+    EdId(0x81, 3, sbbd, true);
+    EdId(0x81, 4, andd, true);
+    EdId(0x81, 5, subd, true);
+    EdId(0x81, 6, xord, true);
     EdId(0x81, 7, cmpd);
 }
 
 void testGrp10x083() {
     cpu->big = false;
-    EwIx(0x83, 0, addw);
-    EwIx(0x83, 1, orw);
-    EwIx(0x83, 2, adcw);
-    EwIx(0x83, 3, sbbw);
-    EwIx(0x83, 4, andw);
-    EwIx(0x83, 5, subw);
-    EwIx(0x83, 6, xorw);
+    EwIx(0x83, 0, addw, true);
+    EwIx(0x83, 1, orw, true);
+    EwIx(0x83, 2, adcw, true);
+    EwIx(0x83, 3, sbbw, true);
+    EwIx(0x83, 4, andw, true);
+    EwIx(0x83, 5, subw, true);
+    EwIx(0x83, 6, xorw, true);
     EwIx(0x83, 7, cmpw);
 }
 
 void testGrp10x283() {
     cpu->big = true;
-    EdIx(0x83, 0, addd);
-    EdIx(0x83, 1, ord);
-    EdIx(0x83, 2, adcd);
-    EdIx(0x83, 3, sbbd);
-    EdIx(0x83, 4, andd);
-    EdIx(0x83, 5, subd);
-    EdIx(0x83, 6, xord);
+    EdIx(0x83, 0, addd, true);
+    EdIx(0x83, 1, ord, true);
+    EdIx(0x83, 2, adcd, true);
+    EdIx(0x83, 3, sbbd, true);
+    EdIx(0x83, 4, andd, true);
+    EdIx(0x83, 5, subd, true);
+    EdIx(0x83, 6, xord, true);
     EdIx(0x83, 7, cmpd);
 }
 
@@ -7080,8 +7342,8 @@ void testGrp30x0f6() {
     cpu->big = false;
     EbIb(0xf6, 0, testb);
     EbIb(0xf6, 1, testb);
-    Eb(0xf6, 2, notb);
-    Eb(0xf6, 3, negb);
+    Eb(0xf6, 2, notb, true);
+    Eb(0xf6, 3, negb, true);
     EbAlAx(0xf6, 4, mulAl, false);
     EbAlAx(0xf6, 5, imulAl, false);
     EbAlAx(0xf6, 6, divAl, true);
@@ -7092,8 +7354,8 @@ void testGrp30x2f6() {
     cpu->big = true;
     EbIb(0xf6, 0, testb);
     EbIb(0xf6, 1, testb);
-    Eb(0xf6, 2, notb);
-    Eb(0xf6, 3, negb);
+    Eb(0xf6, 2, notb, true);
+    Eb(0xf6, 3, negb, true);
     EbAlAx(0xf6, 4, mulAl, false);
     EbAlAx(0xf6, 5, imulAl, false);
     EbAlAx(0xf6, 6, divAl, true);
@@ -7104,8 +7366,8 @@ void testGrp30x0f7() {
     cpu->big = false;
     EwIw(0xf7, 0, testw);
     EwIw(0xf7, 1, testw);
-    Ew(0xf7, 2, notw);
-    Ew(0xf7, 3, negw);
+    Ew(0xf7, 2, notw, true);
+    Ew(0xf7, 3, negw, true);
     EwAxDx(0xf7, 4, mulAx, false);
     EwAxDx(0xf7, 5, imulAx, false);
     EwAxDx(0xf7, 6, divAx, true);
@@ -7116,8 +7378,8 @@ void testGrp30x2f7() {
     cpu->big = true;
     EdId(0xf7, 0, testd);
     EdId(0xf7, 1, testd);
-    Ed(0xf7, 2, notd);
-    Ed(0xf7, 3, negd);
+    Ed(0xf7, 2, notd, true);
+    Ed(0xf7, 3, negd, true);
     EdEaxEdx(0xf7, 4, mulEax, false);
     EdEaxEdx(0xf7, 5, imulEax, false);
     EdEaxEdx(0xf7, 6, divEax, true);
@@ -7131,14 +7393,14 @@ void testStc0x2f8() {cpu->big=true;EbReg(0xf9, 0, stc);}
 
 void testGrp40x0fe() {
     cpu->big=false;
-    Eb(0xfe, 0, incb);
-    Eb(0xfe, 1, decb);
+    Eb(0xfe, 0, incb, true);
+    Eb(0xfe, 1, decb, true);
 }
 
 void testGrp40x2fe() {
     cpu->big=true;
-    Eb(0xfe, 0, incb);
-    Eb(0xfe, 1, decb);
+    Eb(0xfe, 0, incb, true);
+    Eb(0xfe, 1, decb, true);
 }
 
 void testPushE16() {
@@ -7607,8 +7869,8 @@ void testJmpFarE32() {
 
 void testGrp50x0ff() {
     cpu->big=false;
-    Ew(0xff, 0, incw);
-    Ew(0xff, 1, decw);
+    Ew(0xff, 0, incw, true);
+    Ew(0xff, 1, decw, true);
     testCallE16(); // 2
     testCallFarE16(); // 3
     testJmpE16(); // 4
@@ -7618,8 +7880,8 @@ void testGrp50x0ff() {
 
 void testGrp50x2ff() {
     cpu->big=true;
-    Ed(0xff, 0, incd);
-    Ed(0xff, 1, decd);    
+    Ed(0xff, 0, incd, true);
+    Ed(0xff, 1, decd, true);
     testCallE32(); // 2
     testCallFarE32(); // 3
     testJmpE32(); // 4
@@ -7641,25 +7903,25 @@ void testBt0x3a3() {
 
 void testBtr0x1b3() {
     cpu->big = false;
-    EwGwEffective(0x1b3, btrw);
+    EwGwEffective(0x1b3, btrw, true);
     X86_TEST(btr, btrw, ax, cx);
 }
 
 void testBtr0x3b3() {
     cpu->big = true;
-    EdGdEffective(0x3b3, btrd);
+    EdGdEffective(0x3b3, btrd, true);
     X86_TEST(btr, btrd, eax, ecx);
 }
 
 void testBtc0x1bb() {
     cpu->big = false;
-    EwGwEffective(0x1bb, btcw);
+    EwGwEffective(0x1bb, btcw, true);
     X86_TEST(btc, btcw, ax, cx);
 }
 
 void testBtc0x3bb() {
     cpu->big = true;
-    EdGdEffective(0x3bb, btcd);
+    EdGdEffective(0x3bb, btcd, true);
     X86_TEST(btc, btcd, eax, ecx);
 }
 
@@ -7686,17 +7948,17 @@ void testBsr0x3bd() {
 void testGroup80x1ba() {
     cpu->big = false;
     EwIb(0x1ba, 4, btw);
-    EwIb(0x1ba, 5, btsw);
-    EwIb(0x1ba, 6, btrw);
-    EwIb(0x1ba, 7, btcw);
+    EwIb(0x1ba, 5, btsw, true);
+    EwIb(0x1ba, 6, btrw, true);
+    EwIb(0x1ba, 7, btcw, true);
 }
 
 void testGroup80x3ba() {
     cpu->big = true;
     EdIb(0x3ba, 4, btd);
-    EdIb(0x3ba, 5, btsd);
-    EdIb(0x3ba, 6, btrd);
-    EdIb(0x3ba, 7, btcd);
+    EdIb(0x3ba, 5, btsd, true);
+    EdIb(0x3ba, 6, btrd, true);
+    EdIb(0x3ba, 7, btcd, true);
 }
 
 void testShld0x1a4() {
@@ -7727,12 +7989,12 @@ void testShld0x3a5() {
 
 void testBts0x1ab() {
     cpu->big=false;
-    EwGwEffective(0x1ab, btsw);
+    EwGwEffective(0x1ab, btsw, true);
 }
 
 void testBts0x3ab() {
     cpu->big=true;
-    EdGdEffective(0x1ab, btsd);
+    EdGdEffective(0x1ab, btsd, true);
 }
 
 void testShrd0x1ac() {
@@ -7797,7 +8059,7 @@ static struct Data cmpxchgd[] = {
 
 void testCmpXchg0x3b0() {
     cpu->big = true;
-    EbGbAl(0x3b0, cmpxchgd);
+    EbGbAl(0x3b0, cmpxchgd, true);
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     {
         struct Data* data = cmpxchgd;
@@ -7846,12 +8108,12 @@ void testCmpXchg0x3b0() {
 
 void testCmpXchg0x1b0() {
     cpu->big = false;
-    EbGbAl(0x1b0, cmpxchgd);
+    EbGbAl(0x1b0, cmpxchgd, true);
 }
 
 void testCmpXchg0x1b1() {
     cpu->big = false;
-    EwGwAx(0x1b1, cmpxchgd);
+    EwGwAx(0x1b1, cmpxchgd, true);
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     {
         struct Data* data = cmpxchgd;
@@ -7900,7 +8162,7 @@ void testCmpXchg0x1b1() {
 
 void testCmpXchg0x3b1() {
     cpu->big=true;
-    EdGdEax(0x3b1, cmpxchgd);
+    EdGdEax(0x3b1, cmpxchgd, true);
 #if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
     {  
         struct Data* data = cmpxchgd;
@@ -7980,98 +8242,105 @@ void testMovGdSx160x3bf() {
 void testCmpXchg8b0x3c7() {
     cpu->big = true;
     // test with and without the flag being needed, dynamic cores may optimize the solution if ZF will be ignored
-    for (int setsFlags = 0; setsFlags < 2; setsFlags++) {
-        for (int usesFlags = 0; usesFlags < 2; usesFlags++) {
-            if (setsFlags) {
-                newInstructionWithRM(0x3c7, 13, CF);
-            } else {
-                // add esi, edi
-                newInstructionWithRM(0x01, 0xfe, 0);
-                // will cause CF to be set
-                ESI = 0xFFFFFFFF;
-                EDI = 1;
-                pushCode8(0x0f);
-                pushCode8(0xc7);
-                pushCode8(13);
-            }
-            pushCode32(200);
-            if (!usesFlags) {
-                // add esi, edi
-                pushCode8(0x01);
-                pushCode8(0xfe);
-            }
-            EAX = 0x44444444;
-            EDX = 0x55555555;
-            EBX = 0x66666666;
-            ECX = 0x77777777;
+    for (int lock = 0; lock < 3; lock++) {
+        for (int setsFlags = 0; setsFlags < 2; setsFlags++) {
+            for (int usesFlags = 0; usesFlags < 2; usesFlags++) {
+                if (setsFlags) {
+                    newInstructionWithRM(0x3c7, 13, CF, lock ? LOCK_PREFIX : 0);
+                } else {
+                    // add esi, edi
+                    newInstructionWithRM(0x01, 0xfe, 0);
+                    // will cause CF to be set
+                    ESI = 0xFFFFFFFF;
+                    EDI = 1;
+                    if (lock) {
+                        pushCode8(LOCK_PREFIX);
+                    }
+                    pushCode8(0x0f);
+                    pushCode8(0xc7);
+                    pushCode8(13);
+                }
+                U32 offset = lock == 2 ? 202 : 200;
 
-            memory->writeq(cpu->seg[DS].address + 200, 0x5555555544444444);
-            runTestCPU();
-            U64 result = memory->readq(cpu->seg[DS].address + 200);
-            assertTrue(result == 0x7777777766666666);
-            if (usesFlags) {
-                assertTrue(cpu->flags & ZF);
-                assertTrue(cpu->flags & CF);
-            }
-            assertTrue(EDX == 0x55555555);
-            assertTrue(EAX == 0x44444444);
+                pushCode32(offset);
+                if (!usesFlags) {
+                    // add esi, edi
+                    pushCode8(0x01);
+                    pushCode8(0xfe);
+                }
+                EAX = 0x44444444;
+                EDX = 0x55555555;
+                EBX = 0x66666666;
+                ECX = 0x77777777;
 
-            if (setsFlags) {
-                newInstructionWithRM(0x3c7, 13, CF);
-            } else {
-                // add esi, edi
-                newInstructionWithRM(0x01, 0xfe, 0);
-                // will cause CF to be set
-                ESI = 0xFFFFFFFF;
-                EDI = 1;
-                pushCode8(0x0f);
-                pushCode8(0xc7);
-                pushCode8(13);
-            }
-            pushCode32(200);
-            if (!usesFlags) {
-                // add esi, edi
-                pushCode8(0x01);
-                pushCode8(0xfe);
-            }
+                memory->writeq(cpu->seg[DS].address + offset, 0x5555555544444444);
+                runTestCPU();
+                U64 result = memory->readq(cpu->seg[DS].address + offset);
+                assertTrue(result == 0x7777777766666666);
+                if (usesFlags) {
+                    assertTrue(cpu->flags & ZF);
+                    assertTrue(cpu->flags & CF);
+                }
+                assertTrue(EDX == 0x55555555);
+                assertTrue(EAX == 0x44444444);
 
-            EAX = 0x44444444;
-            EDX = 0x55555555;
-            EBX = 0x66666666;
-            ECX = 0x77777777;
+                if (setsFlags) {
+                    newInstructionWithRM(0x3c7, 13, CF);
+                } else {
+                    // add esi, edi
+                    newInstructionWithRM(0x01, 0xfe, 0);
+                    // will cause CF to be set
+                    ESI = 0xFFFFFFFF;
+                    EDI = 1;
+                    pushCode8(0x0f);
+                    pushCode8(0xc7);
+                    pushCode8(13);
+                }
+                pushCode32(offset);
+                if (!usesFlags) {
+                    // add esi, edi
+                    pushCode8(0x01);
+                    pushCode8(0xfe);
+                }
 
-            memory->writeq(cpu->seg[DS].address + 200, 0x5555555044444440);
-            runTestCPU();
-            result = memory->readq(cpu->seg[DS].address + 200);
-            assertTrue(result == 0x5555555044444440);
-            if (usesFlags) {
-                assertTrue((cpu->flags & ZF) == 0);
-                assertTrue(cpu->flags & CF);
+                EAX = 0x44444444;
+                EDX = 0x55555555;
+                EBX = 0x66666666;
+                ECX = 0x77777777;
+
+                memory->writeq(cpu->seg[DS].address + offset, 0x5555555044444440);
+                runTestCPU();
+                result = memory->readq(cpu->seg[DS].address + offset);
+                assertTrue(result == 0x5555555044444440);
+                if (usesFlags) {
+                    assertTrue((cpu->flags & ZF) == 0);
+                    assertTrue(cpu->flags & CF);
+                }
+                assertTrue(EDX == 0x55555550);
+                assertTrue(EAX == 0x44444440);
             }
-            assertTrue(EDX == 0x55555550);
-            assertTrue(EAX == 0x44444440);
         }
     }
 }
 
 void testXaddb0x1c0() {
     cpu->big = false;
-    EbGb(0x1c0, xaddb);
+    EbGb(0x1c0, xaddb, true);
 }
 
 void testXaddb0x3c0() {
     cpu->big = true;
-    EbGb(0x3c0, xaddb);
+    EbGb(0x3c0, xaddb, true);
 }
 
 void testXaddw0x1c1() {
     cpu->big = false;
-    EwGw(0x1c1, xaddw);
+    EwGw(0x1c1, xaddw, 0, true);
 }
 
 void testXaddd0x3c1() {
     cpu->big = true;
-    EdGd(0x3c1, xaddd);
+    EdGd(0x3c1, xaddd, 0, true);
     X86_TEST(xadd, xaddd, eax, ecx)
 }
 
@@ -8698,6 +8967,47 @@ void testCmovNLE0x34f() {
     doTestCmov(0x34f, true, OF, 0x7fffffff, 0xffffffff);
 }
 
+void doTestSet(U32 instruction, U32 value1, U32 value2, bool isSet) {
+    for (U32 ed = 0; ed < 8; ed++) {
+        Reg* e;
+
+        U8 rm = ed | 0xC0;
+
+        // cmp ed, value2
+        newInstructionWithRM(0x81, 0xf8 | (ed % 4), 0);
+        if (cpu->big) {
+            pushCode32(value2);
+        }
+        else {
+            pushCode16(value2);
+        }
+        pushCode8(0x0F);
+        pushCode8(instruction & 0xFF);
+        pushCode8(rm);
+        
+        e = &cpu->reg[ed % 4];
+        e->u32 = value1;
+        runTestCPU();
+
+        if (isSet) {
+            if (ed > 3) {
+                assertTrue(e->u32 == ((value1 & 0xffff00ff) | 0x00000100));
+            }
+            else {
+                assertTrue(e->u32 == ((value1 & 0xffffff00) | 0x00000001));
+            }
+        }
+        else {
+            if (ed > 3) {
+                assertTrue(e->u32 == (value1 & 0xffff00ff));
+            }
+            else {
+                assertTrue(e->u32 == (value1 & 0xffffff00));
+            }
+        }
+    }
+}
+
 void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTriggersFlag, U32 cmpValueThatDoesNotTriggerFlag) {
     for (U32 setFlags = 0; setFlags < 2; setFlags++) {
         for (U32 useFlags = 0; useFlags < 2; useFlags++) {
@@ -8790,7 +9100,6 @@ void doTestSet(U32 instruction, bool isNotFlag, U32 flags, U32 cmpValueThatTrigg
             }
         }
     }
-    runTestCPU();
 }
 
 void testSetO0x190() {
@@ -8826,6 +9135,7 @@ void testSetB0x392() {
 void testSetNB0x193() {
     cpu->big = 0;
     doTestSet(0x193, true, CF, 0x3333, 0x1333);
+    doTestSet(0x193, 0x11112222, 0x22222222, true);
 }
 
 void testSetNB0x393() {
@@ -10848,12 +11158,7 @@ int runCpuTests() {
     run(testSelfModifying, "Self Modifiying Code");
     run(testSelfModifyingMovsb, "Self Modifiying Code using movsb");
     run(testSelfModifyingFront, "Self Modifying Code Same Block(Previous)");    
-    // BOXEDWINE_DYNAMIC has no way to exit early out of its current block
-#ifdef BOXEDWINE_DYNAMIC
-    printf("Self Modifying Code Same Block(Next) ... Skipping\n");
-#else
     run(testSelfModifyingBack, "Self Modifying Code Same Block(Next)");
-#endif
 #ifdef BOXEDWINE_MULTI_THREADED
     run(testLockedInc, "Multi-threaded locked inc");
 #endif

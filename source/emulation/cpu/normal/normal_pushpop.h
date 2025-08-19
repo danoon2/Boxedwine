@@ -35,7 +35,15 @@ void OPCALL normal_pushEw_mem(CPU* cpu, DecodedOp* op){
 }
 void OPCALL normal_popEw_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->memory->writew(eaa(cpu, op), cpu->pop16());
+    U32 oldEsp = ESP;
+    U16 value = cpu->pop16();
+    U32 address = eaa(cpu, op); // eaa must be calculated after esp is incremented in pop16
+    try {
+        cpu->memory->writew(address, value);
+    } catch (...) {
+        ESP = oldEsp;
+        throw;
+    }
     NEXT();
 }
 void OPCALL normal_pushEd_reg(CPU* cpu, DecodedOp* op){
@@ -53,9 +61,22 @@ void OPCALL normal_pushEd_mem(CPU* cpu, DecodedOp* op){
     cpu->push32(cpu->memory->readd(eaa(cpu, op)));
     NEXT();
 }
+
+// Intel spec
+// If the ESP register is used as a base register for addressing a destination operand in memory, the POP instruction computes the 
+// effective address of the operand after it increments the ESP register. For the case of a 16-bit stack where ESP wraps to 0H as 
+// a result of the POP instruction, the resulting location of the memory write is processor-family-specific.
 void OPCALL normal_popEd_mem(CPU* cpu, DecodedOp* op){
     START_OP(cpu, op);
-    cpu->memory->writed(eaa(cpu, op), cpu->pop32());
+    U32 oldEsp = ESP;
+    U32 value = cpu->pop32();
+    U32 address = eaa(cpu, op);
+    try {
+        cpu->memory->writed(address, value);
+    } catch (...) {
+        ESP = oldEsp;
+        throw;
+    }
     NEXT();
 }
 void OPCALL normal_pushSeg16(CPU* cpu, DecodedOp* op){

@@ -18,8 +18,8 @@
 
 #include "boxedwine.h"
 
-#define eaa1_bit(cpu, op, offset) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp + (offset))
-#define eaa3_bit(cpu, op, offset) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp + (offset)
+#define eaa1_bit(cpu, op, offset) cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->data.disp + (offset))
+#define eaa3_bit(cpu, op, offset) cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->data.disp + (offset)
 #define eaa_bit(cpu, op, offset) (op->ea16)?(eaa1_bit(cpu, op, offset)):(eaa3_bit(cpu, op, offset))
 
 // BT/BTR/BTE/BTS affected OF flags prior to Pentium 2

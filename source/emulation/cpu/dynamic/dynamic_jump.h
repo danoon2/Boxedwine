@@ -16,163 +16,99 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
+void dynamic_jumpIfRegSet(DynamicData* data, DecodedOp* op, DynReg reg = DYN_CALL_RESULT, DynWidth regWidth = DYN_32bit) {
+    if (data->isFunction) {
+        INCREMENT_EIP(data, op->len + op->imm);
+        jumpIf(data, reg, DYN_NOT_EQUALS_ZERO, true, data->currentEip + op->len + op->imm, regWidth);
+        INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
+    } else {
+        startIf(reg, DYN_EQUALS_ZERO, true, regWidth);
+        INCREMENT_EIP(data, op->len);
+        blockNext2(data, op);
+        startElse();
+        INCREMENT_EIP(data, op->imm + op->len);
+        blockNext1(data, op);
+        endIf();
+    }
+}
+
+void dynamic_jumpIfRegNotSet(DynamicData* data, DecodedOp* op, DynReg reg = DYN_CALL_RESULT, DynWidth regWidth = DYN_32bit) {
+    if (data->isFunction) {
+        INCREMENT_EIP(data, op->len + op->imm);
+        jumpIf(data, reg, DYN_EQUALS_ZERO, true, data->currentEip + op->len + op->imm, regWidth);
+        INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
+    } else {
+        startIf(reg, DYN_NOT_EQUALS_ZERO, true, regWidth);
+        INCREMENT_EIP(data, op->len);
+        blockNext2(data, op);
+        startElse();
+        INCREMENT_EIP(data, op->imm + op->len);
+        blockNext1(data, op);
+        endIf();
+    }
+}
+
 void dynamic_jumpO(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, O, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpNO(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, O, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegNotSet(data, op);
 }
 void dynamic_jumpB(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, B, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpNB(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, B, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegNotSet(data, op);
 }
 void dynamic_jumpZ(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegNotSet(data, op);
 }
 void dynamic_jumpNZ(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpBE(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, BE, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpNBE(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, BE, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegNotSet(data, op);
 }
 void dynamic_jumpS(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, S, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpNS(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, S, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegNotSet(data, op);
 }
 void dynamic_jumpP(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, P, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpNP(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, NP, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpL(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, L, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpNL(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, L, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegNotSet(data, op);
 }
 void dynamic_jumpLE(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, LE, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegSet(data, op);
 }
 void dynamic_jumpNLE(DynamicData* data, DecodedOp* op) {
     setConditionInReg(data, LE, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
-    INCREMENT_EIP(data, op->len);
-    blockNext2();
-    startElse();
-    INCREMENT_EIP(data, op->imm+op->len);
-    blockNext1();
-    endIf();
+    dynamic_jumpIfRegNotSet(data, op);
 }

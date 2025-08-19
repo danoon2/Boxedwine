@@ -172,6 +172,7 @@ public:
 
     U32 condStartWaitTime = 0;
 private:
+    void internalCleanup();
     void exitRobustList();
     U32 handleFutexDeath(U32 uaddr, bool pi, bool pending_op);
 

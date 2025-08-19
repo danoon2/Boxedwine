@@ -32,9 +32,20 @@ void dynamic_pushEw_mem(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_popEw_mem(DynamicData* data, DecodedOp* op) {    
+    // save current ESP
+    movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+    // pop stack
     callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
+    // calculate write address
     calculateEaa(op, DYN_ADDRESS);
+    // set ESP back to original ESP before it was incremented in case the write throws an exception
+    movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+    movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
+    // do write
     movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true);
+    // restore to calculated ESP from common_pop16 after write succeeds
+    movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_DEST, DYN_32bit, true);
+
     INCREMENT_EIP(data, op);
 }
 void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
@@ -52,8 +63,8 @@ void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
 void dynamic_popEd_reg(DynamicData* data, DecodedOp* op) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
-        movToCpuFromMem(CPU::offsetofReg32(op->reg), DYN_32bit, DYN_ADDRESS, true, true);
-        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4); // increment before assign, in case esp=pop32()
+        movToCpuFromMem(CPU::offsetofReg32(op->reg), DYN_32bit, DYN_ADDRESS, true, true);        
     } else {
         callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
         movToCpuFromReg(CPU::offsetofReg32(op->reg), DYN_CALL_RESULT, DYN_32bit, true);
@@ -77,13 +88,32 @@ void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
         movFromMem(DYN_32bit, DYN_SRC, true);
-        calculateEaa(op, DYN_ADDRESS);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);
+        // address calculation happens after ESP is incremented, but we don't want it committed
+        // before the write happens in case the write throws an exception, iexplorer.exe will exercise 
+        // that esp needs to be increated before calculateEaa
+        if (op->rm == 4 || op->sibIndex == 4) {
+            instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+            calculateEaa(op, DYN_ADDRESS);
+            instCPUImm('-', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+        } else {
+            calculateEaa(op, DYN_ADDRESS);
+        }
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);                
         instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
     } else {
-        callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
+        // save current esp
+        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        // pop stack
+        callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);        
+        // calculate write address
         calculateEaa(op, DYN_ADDRESS);
+        // set ESP back to original ESP before it was incremented in case the write throws an exception
+        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
+        // do write
         movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);
+        // restore to calculated ESP from common_pop32 after write succeeds
+        movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_DEST, DYN_32bit, true);
     }
     INCREMENT_EIP(data, op);
 }
@@ -95,7 +125,7 @@ void dynamic_popSeg16(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_peek16, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    blockDone();
+    blockDone(data, true);
     endIf();
     movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(stackMask), DYN_32bit);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
@@ -116,7 +146,7 @@ void dynamic_popSeg32(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_peek32, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    blockDone();
+    blockDone(data, true);
     endIf();
     movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(stackMask), DYN_32bit);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
@@ -164,14 +194,12 @@ void dynamic_popf16(DynamicData* data, DecodedOp* op) {
     movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NONE);
     callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
     callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, FMASK_ALL & 0xFFFF, DYN_PARAM_CONST_16, false);
-    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
 void dynamic_popf32(DynamicData* data, DecodedOp* op) {
     movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NONE);
     callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
     callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, FMASK_ALL, DYN_PARAM_CONST_32, false);
-    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
 void dynamic_pushf16(DynamicData* data, DecodedOp* op) {

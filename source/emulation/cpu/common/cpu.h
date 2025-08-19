@@ -182,7 +182,14 @@ union SSE {
     simde__m128i pi;
 };
 
-class CPU {
+#define OP_FLAG_CALL_TARGET 1
+#define OP_FLAG_JIT 2
+#define OP_FLAG_NO_JIT 4
+#define OP_FLAG_END_LONG_BLOCK 8
+
+#define JIT_RUN_COUNT 50
+
+class CPU: public DecodeBlockCallback {
 public:
     static CPU* allocCPU(KMemory* memory);
 
@@ -235,10 +242,6 @@ public:
     KThread* thread = nullptr;
     KMemory* memory = nullptr;
     BWriteFile logFile;
-
-    DecodedBlock* nextBlock = nullptr;
-    DecodedBlock* delayedFreeBlock = nullptr;
-    DecodedBlock* currentBlock = nullptr;
 
     bool getCF();
     bool getSF();
@@ -301,13 +304,21 @@ public:
 
     U32 getEipAddress();
 
-    virtual void run()=0;
-    virtual DecodedBlock* getNextBlock() = 0;
+    DecodedOp* nextOp = nullptr;
+
+    virtual void run()=0;    
     virtual void restart() {}
     virtual void setSeg(U32 index, U32 address, U32 value);
 
     bool isBig() {return this->big!=0;}
     virtual void setIsBig(U32 value);
+
+    DecodedOp* getNextOp(U32 flags = 0);
+
+    // from DecodeBlockCallback
+    U8 fetchByte(U32* eip) override;
+    bool shouldContinue(U32 eip) override;
+    DecodedOp** getOpLocation(U32 eip) override;    
 
 #ifdef BOXEDWINE_MULTI_THREADED
     U64 nativeHandle = 0;
@@ -365,7 +376,7 @@ void common_iret(CPU* cpu, U32 big, U32 oldEip);
 void common_enter(CPU* cpu, U32 big, U32 bytes, U32 level);
 void common_rdtsc(CPU* cpu, U32 extra);
 void common_log(CPU* cpu, DecodedOp* op);
-DecodedBlock* common_getNextBlock(CPU* cpu);
+DecodedOp* common_getNextOp(CPU* cpu);
 U32 common_readCrx(CPU* cpu, U32 which, U32 reg);
 U32 common_writeCrx(CPU* cpu, U32 which, U32 value);
 #endif

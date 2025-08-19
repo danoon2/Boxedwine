@@ -27,31 +27,21 @@ static void platformThread(CPU* cpu) {
     KThread::setCurrentThread(cpu->thread);
     KProcessPtr process = KSystem::getProcess(cpu->thread->process->id);
 
+    cpu->nextOp = cpu->getNextOp();
+
     while (true) {
         try {
-            if (!cpu->nextBlock) {
-                cpu->nextBlock = cpu->getNextBlock();
-            }
             cpu->run();
         } catch (...) {
-            cpu->nextBlock = nullptr;
+            if (!cpu->thread->terminating) {
+                cpu->nextOp = cpu->getNextOp();
+            }
         }
 #ifdef __TEST
-        if (cpu->nextBlock) {
-            DecodedOp* o = cpu->nextBlock->op;
-            bool found = false;
-
-            while (o) {
-                if (o->inst == IntIb && o->imm == 0x97) {
-                    found = true;
-                }
-                o = o->next;
-            }
-            if (!found) {
-                continue;
-            }
+        if (cpu->nextOp->inst == TestEnd) {
+            return;
         }
-        return;
+        continue;
 #else
         if (cpu->thread->process->terminated) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
@@ -84,6 +74,7 @@ void joinThread(KThread* thread) {
 }
 #endif
 
+void platformSetThreadDescription(KThread* thread);
 void scheduleThread(KThread* thread) {
     platformThreadCount++;
     CPU* cpu = thread->cpu;
@@ -92,6 +83,9 @@ void scheduleThread(KThread* thread) {
 #else
     std::thread cppThread = std::thread(platformThread, cpu);
     cpu->nativeHandle = (U64)cppThread.native_handle();
+#ifdef _DEBUG
+    platformSetThreadDescription(thread);
+#endif
     cppThread.detach();
 #endif
     if (!thread->process->isSystemProcess() && KSystem::cpuAffinityCountForApp) {
@@ -125,6 +119,7 @@ void terminateOtherThread(const KProcessPtr& process, U32 threadId) {
 
 void terminateCurrentThread(KThread* thread) {
     thread->terminating = true;
+    throw 3;
 }
 
 void unscheduleThread(KThread* thread) {

@@ -97,22 +97,22 @@ void OPCALL normal_cwq(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_callAp(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->call(0, op->imm, op->disp, cpu->eip.u32+op->len);
+    cpu->call(0, op->imm, op->data.disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_callFar(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->call(1, op->imm, op->disp, cpu->eip.u32+op->len);
+    cpu->call(1, op->imm, op->data.disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_jmpAp(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->jmp(0, op->imm, op->disp, cpu->eip.u32+op->len);
+    cpu->jmp(0, op->imm, op->data.disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_jmpFar(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->jmp(1, op->imm, op->disp, cpu->eip.u32+op->len);
+    cpu->jmp(1, op->imm, op->data.disp, cpu->eip.u32+op->len);
     NEXT_DONE();
 }
 void OPCALL normal_retf16(CPU* cpu, DecodedOp* op) {
@@ -175,6 +175,11 @@ void OPCALL normal_retn32(CPU* cpu, DecodedOp* op) {
     NEXT_DONE();
 }
 void OPCALL normal_invalid(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    cpu->thread->signalIllegalInstruction(5);
+    NEXT_DONE();
+}
+void OPCALL normal_ud2(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->thread->signalIllegalInstruction(5);
     NEXT_DONE();
@@ -287,12 +292,12 @@ void OPCALL normal_cpuid(CPU* cpu, DecodedOp* op) {
 }
 void OPCALL normal_enter16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->enter(0, op->imm, op->disp);
+    cpu->enter(0, op->imm, op->data.disp);
     NEXT();
 }
 void OPCALL normal_enter32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
-    cpu->enter(1, op->imm, op->disp);
+    cpu->enter(1, op->imm, op->data.disp);
     NEXT();
 }
 void OPCALL normal_leave16(CPU* cpu, DecodedOp* op) {
@@ -434,13 +439,13 @@ void OPCALL normal_callJw(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->push16(cpu->eip.u32 + op->len);
     cpu->eip.u32 += (S16)op->imm;
-    NEXT_BRANCH1();
+    NEXT_BRANCH1_CALL();
 }
 void OPCALL normal_callJd(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->push32(cpu->eip.u32 + op->len);
     cpu->eip.u32 += (S32)op->imm;
-    NEXT_BRANCH1();
+    NEXT_BRANCH1_CALL();
 }
 void OPCALL normal_jmp8(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
@@ -462,28 +467,28 @@ void OPCALL normal_callR16(CPU* cpu, DecodedOp* op) {
     U16 dest = cpu->reg[op->reg].u16;
     cpu->push16(cpu->eip.u32+op->len);
     cpu->eip.u32 = dest;
-    NEXT_DONE();
+    NEXT_DONE_CALL();
 }
 void OPCALL normal_callR32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 dest = cpu->reg[op->reg].u32;
     cpu->push32(cpu->eip.u32+op->len);
     cpu->eip.u32 = dest;
-    NEXT_DONE();
+    NEXT_DONE_CALL();
 }
 void OPCALL normal_callE16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 neweip = cpu->memory->readw(eaa(cpu, op));
     cpu->push16(cpu->eip.u32+op->len);
     cpu->eip.u32 = neweip;
-    NEXT_DONE();
+    NEXT_DONE_CALL();
 }
 void OPCALL normal_callE32(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U32 neweip = cpu->memory->readd(eaa(cpu, op));
     cpu->push32(cpu->eip.u32+op->len);
     cpu->eip.u32 = neweip;
-    NEXT_DONE();
+    NEXT_DONE_CALL();
 }
 void OPCALL normal_jmpR16(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

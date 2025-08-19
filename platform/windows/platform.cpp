@@ -709,6 +709,13 @@ void Platform::setCpuAffinityForThread(KThread* thread, U32 count) {
         SetThreadAffinityMask((HANDLE)thread->cpu->nativeHandle, (DWORD_PTR)mask);
     }
 }
+
+void platformSetThreadDescription(KThread* thread) {
+    BString s = BString::valueOf(thread->id) + " " + thread->process->name;
+    wchar_t tmp[256];
+    s.w_str(tmp, 256);
+    SetThreadDescription((HANDLE)thread->cpu->nativeHandle, tmp);
+}
 #endif
 
 #ifdef BOXEDWINE_X64

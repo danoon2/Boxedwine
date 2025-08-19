@@ -17,13 +17,7 @@
  */
 
 #include "boxedwine.h"
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-#define NEXT_BRANCH1()
-#define NEXT_BRANCH2()
-#else
-#define NEXT_BRANCH1() if (!cpu->currentBlock->next1) {cpu->currentBlock->next1 = cpu->getNextBlock(); cpu->currentBlock->next1->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next1
-#define NEXT_BRANCH2() if (!cpu->currentBlock->next2) {cpu->currentBlock->next2 = cpu->getNextBlock(); cpu->currentBlock->next2->addReferenceFrom(cpu->currentBlock);} cpu->nextBlock = cpu->currentBlock->next2
-#endif
+
 U32 common_bound16(CPU* cpu, U32 reg, U32 address){
     if (cpu->reg[reg].u16<cpu->memory->readw(address) || cpu->reg[reg].u16>cpu->memory->readw(address+2)) {
         cpu->prepareException(EXCEPTION_BOUND, 0);
@@ -60,86 +54,11 @@ void common_intIb(CPU* cpu){
 void common_int3(CPU* cpu) {
     cpu->thread->signalTrap(1);// 1=TRAP_BRKPT
 }
+void common_ud2(CPU* cpu) {
+    cpu->thread->signalIllegalInstruction(5);// 5=ILL_PRVOPC  // :TODO: just a guess
+}
 void common_cpuid(CPU* cpu){
     cpu->cpuid();
-}
-void common_loopnz32(CPU* cpu, U32 offset1, U32 offset2) {
-    ECX--;
-    if (ECX!=0 && !cpu->getZF()) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
-}
-void common_loopnz(CPU* cpu, U32 offset1, U32 offset2){
-    CX--;
-    if (CX!=0 && !cpu->getZF()) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
-}
-void common_loopz32(CPU* cpu, U32 offset1, U32 offset2) {
-    ECX--;
-    if (ECX!=0 && cpu->getZF()) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
-}
-void common_loopz(CPU* cpu, U32 offset1, U32 offset2){
-    CX--;
-    if (CX!=0 && cpu->getZF()) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
-}
-void common_loop32(CPU* cpu, U32 offset1, U32 offset2) {
-    ECX--;
-    if (ECX!=0) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
-}
-void common_loop(CPU* cpu, U32 offset1, U32 offset2){
-    CX--;
-    if (CX!=0) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
-}
-void common_jcxz32(CPU* cpu, U32 offset1, U32 offset2) {
-    if (ECX==0) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
-}
-void common_jcxz(CPU* cpu, U32 offset1, U32 offset2){
-    if (CX==0) {
-        cpu->eip.u32+=offset1;
-        NEXT_BRANCH1();
-    } else {
-        cpu->eip.u32+=offset2;
-        NEXT_BRANCH2();
-    }
 }
 void common_larr16r16(CPU* cpu, U32 dstReg, U32 srcReg){
     cpu->reg[dstReg].u16 = cpu->lar(cpu->reg[srcReg].u16, cpu->reg[dstReg].u16);
@@ -183,42 +102,6 @@ void common_verr(CPU* cpu, U32 selector){
 void common_verw(CPU* cpu, U32 selector){
     cpu->verw(selector);
 }
-
-#ifdef BOXEDWINE_MULTI_THREADED
-void common_cmpxchg8b_lock(CPU* cpu, U32 address) {    
-    BOXEDWINE_CRITICAL_SECTION;
-
-    U64 value1 = ((U64)EDX) << 32 | EAX;
-    U64 value2 = cpu->memory->readq(address);
-    cpu->fillFlags();
-    if (value1 == value2) {
-        cpu->addZF();
-        cpu->memory->writed(address, EBX);
-        cpu->memory->writed(address + 4, ECX);
-    } else {
-        cpu->removeZF();
-        EDX = (U32)(value2 >> 32);
-        EAX = (U32)value2;
-    }
-    /*
-    U64 expected = ((U64)EDX) << 32 | EAX;
-    U64 value = ((U64)ECX) << 32 | EBX;
-
-    cpu->fillFlags();
-
-    LockData64* p = (LockData64*)cpu->memory->getRamPtr(address, 8, true);
-    std::atomic_ref<U64> mem(p->data);
-
-    if (mem.compare_exchange_strong(expected, value)) {
-        cpu->addZF();
-    } else {
-        cpu->removeZF();
-        EDX = (U32)(expected >> 32);
-        EAX = (U32)expected;
-    }
-    */
-}
-#endif
 
 void common_cmpxchg8b(CPU* cpu, U32 address){
     U64 value1 = ((U64)EDX) << 32 | EAX;
