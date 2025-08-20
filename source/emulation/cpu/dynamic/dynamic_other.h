@@ -144,7 +144,7 @@ void dynamic_lahf(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_salc(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
+    dynamic_getCF(data);    
     instReg('-', DYN_CALL_RESULT, DYN_32bit);
     movToCpuFromReg(CPU_OFFSET_OF(reg[0].u8), DYN_CALL_RESULT, DYN_8bit, true);
     INCREMENT_EIP(data, op);
@@ -188,8 +188,7 @@ void dynamic_int80(DynamicData* data, DecodedOp* op) {
         blockDone(data, false);
     } else {
         movToRegFromCpu(DYN_CALL_RESULT, CPU_OFFSET_OF(eip.u32), DYN_32bit);
-        instRegImm('-', DYN_CALL_RESULT, DYN_32bit, data->currentEip + op->len);
-        startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true, DYN_32bit, false);
+        startIfCmpValue(DYN_CALL_RESULT, data->currentEip + op->len, DYN_EQUALS_ZERO, DYN_32bit, true);
         blockDone(data, true);
         endIf();
     }
@@ -303,10 +302,12 @@ void dynamic_loopnz(DynamicData* data, DecodedOp* op) {
     //    NEXT_BRANCH2();
     //}
     DynWidth width = op->ea16 ? DYN_16bit : DYN_32bit;
+
+    setConditionInReg(data, NZ, DYN_SRC); // setConditionInReg uses DYN_DEST as tmp, so this call must be first
+
     movToRegFromCpu(DYN_DEST, cpuOffset(1, width), width);
     instRegImm('-', DYN_DEST, width, 1);
-    movToCpuFromReg(cpuOffset(1, width), DYN_DEST, width, false);
-    setConditionInReg(data, NZ, DYN_SRC);
+    movToCpuFromReg(cpuOffset(1, width), DYN_DEST, width, false);    
 
     // if nz flag, then set 1 in DYN_SRC
     evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_NOT_EQUALS, false, false);
@@ -327,10 +328,12 @@ void dynamic_loopz(DynamicData* data, DecodedOp* op) {
     //    NEXT_BRANCH2();
     //}
     DynWidth width = op->ea16 ? DYN_16bit : DYN_32bit;
+
+    setConditionInReg(data, Z, DYN_SRC); // setConditionInReg uses DYN_DEST as tmp, so this call must be first
+
     movToRegFromCpu(DYN_DEST, cpuOffset(1, width), width);
     instRegImm('-', DYN_DEST, width, 1);
     movToCpuFromReg(cpuOffset(1, width), DYN_DEST, width, false);
-    setConditionInReg(data, Z, DYN_SRC);
 
     // if z flag, then set 1 in DYN_SRC
     evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_NOT_EQUALS, false, false);
@@ -714,6 +717,7 @@ void dynamic_bswap32(DynamicData* data, DecodedOp* op) {
 void dynamic_cmpxchgg8b(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     callHostFunction((void*)common_cmpxchg8b, false, 2, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
+    data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
 void dynamic_loadSegment16(DynamicData* data, DecodedOp* op) {

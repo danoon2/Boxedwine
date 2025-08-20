@@ -139,6 +139,7 @@ void movToCpuPtr(U32 dstOffset, DYN_PTR_SIZE imm) {movToCpu(dstOffset, DYN_32bit
 
 // from CPU
 void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width);
+void movToRegFromCpuPtr(DynReg reg, U32 srcOffset) { movToRegFromCpu(reg, srcOffset, DYN_32bit); }
 
 // from Mem to DYN_READ_RESULT
 void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg);
@@ -162,7 +163,9 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth);
 
 // if conditions
 void jumpIf(DynamicData* data, DynReg reg, DynCondition condition, bool doneWithReg, U32 address, DynWidth regWidth = DYN_32bit);
-void startIf(DynReg reg, DynCondition condition, bool doneWithReg, DynWidth regWidth = DYN_32bit, bool needTestInstruction = true);
+void startIf(DynReg reg, DynCondition condition, bool doneWithReg, DynWidth regWidth = DYN_32bit);
+void startIfCmpValue(DynReg reg, U32 value, bool isEqual, DynWidth regWidth, bool doneWithReg);
+void startIfCmpPtr(DynReg reg, DYN_PTR_SIZE value, bool isEqual, bool doneWithReg);
 void startIf(DynReg reg, DynReg reg2, bool isEqual, DynWidth regWidth, bool doneWithReg, bool doneWithReg2);
 void startElse();
 void endIf();
@@ -192,6 +195,10 @@ void blockDoneJump(DynamicData* data);
 void incrementEip(DynamicData* data, DecodedOp* op);
 void incrementEip(DynamicData* data, U32 len);
 
+// per instruction, not per block.  
+// will allow us to determine if ecx or edx needs to be saved before calling an external function
+bool regUsed[4];
+
 #include "../normal/instructions.h"
 #include "../common/common_arith.h"
 #include "../common/common_pushpop.h"
@@ -220,10 +227,6 @@ static U32 outBufferPos;
 
 static std::vector<U32> patch;
 static std::vector<U32> ifJump;
-
-// per instruction, not per block.  
-// will allow us to determine if ecx or edx needs to be saved before calling an external function
-bool regUsed[4]; 
 
 void ensureBufferSize(U32 grow) {
     if (!outBuffer) {
@@ -1827,6 +1830,46 @@ void jumpIf(DynamicData* data, DynReg reg, DynCondition condition, bool doneWith
         regUsed[reg] = false;
 }
 
+void startIfCmpValue(DynReg reg, U32 value, bool isEqual, DynWidth regWidth, bool doneWithReg) {
+    S32 sValue = (S32)value;
+    bool isOneByte = sValue >= -128 && sValue <= 127;
+
+    // cmp reg, value
+    if (regWidth == DYN_8bit) {
+        outb(0x80);
+        outb(0xf8 | reg | (reg << 3));
+        outb((U8)value);
+    } else {
+        if (regWidth == DYN_16bit) {
+            outb(0x66);
+        }
+        outb(isOneByte ? 0x83 : 0x81);
+        outb(0xf8 | reg);
+        if (isOneByte) {
+            outb((U8)value);
+        } else if (regWidth == DYN_16bit) {
+            outw((U16)value);
+        } else {
+            outd(value);
+        }
+    }    
+
+    if (isEqual) {
+        outb(0x75);
+    } else {
+        outb(0x74);
+    }
+
+    ifJump.push_back(outBufferPos);
+    outb(0); // jump over amount
+    if (doneWithReg)
+        regUsed[reg] = false;
+}
+
+void startIfCmpPtr(DynReg reg, DYN_PTR_SIZE value, bool isEqual, bool doneWithReg) {
+    startIfCmpValue(reg, value, isEqual, DYN_32bit, doneWithReg);
+}
+
 void startIf(DynReg reg, DynReg reg2, bool isEqual, DynWidth regWidth, bool doneWithReg, bool doneWithReg2) {
 
     // cmp reg, reg2
@@ -1855,19 +1898,17 @@ void startIf(DynReg reg, DynReg reg2, bool isEqual, DynWidth regWidth, bool done
         regUsed[reg2] = false;
 }
 
-void startIf(DynReg reg, DynCondition condition, bool doneWithReg, DynWidth regWidth, bool needTestInstruction) {
-    if (needTestInstruction) {
-        // test reg, reg
-        if (regWidth == DYN_8bit) {
-            outb(0x84);
-            outb(0xc0 | reg | (reg << 3));
-        } else {
-            if (regWidth == DYN_16bit) {
-                outb(0x66);
-            }
-            outb(0x85);
-            outb(0xc0 | reg | (reg << 3));
+void startIf(DynReg reg, DynCondition condition, bool doneWithReg, DynWidth regWidth) {
+    // test reg, reg
+    if (regWidth == DYN_8bit) {
+        outb(0x84);
+        outb(0xc0 | reg | (reg << 3));
+    } else {
+        if (regWidth == DYN_16bit) {
+            outb(0x66);
         }
+        outb(0x85);
+        outb(0xc0 | reg | (reg << 3));
     }
     if (condition==DYN_NOT_EQUALS_ZERO) {
         outb(0x74); // jz, jump over if not true
@@ -2496,6 +2537,9 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
                 emulatedLen += fop.op->len;
                 data.eipToBufferPos.set(data.currentEip, outBufferPos);
                 //callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)fop.op, DYN_PARAM_CONST_PTR, false);
+                if (branchTargets.contains(fop.address)) {
+                    data.currentLazyFlags = nullptr;
+                }
                 x32Ops[fop.op->inst](&data, fop.op);
                 fop.op->pfn = cpu->thread->process->startJITOp;
                 if (ifJump.size()) {
