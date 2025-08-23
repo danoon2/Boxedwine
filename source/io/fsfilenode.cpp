@@ -76,6 +76,10 @@ bool FsFileNode::remove() {
     bool result = false;
     bool exists = Fs::doesNativePathExist(this->nativePath);
 
+    if (!exists) {
+        this->removeNodeFromParent();
+        return true;
+    }
 #ifdef BOXEDWINE_ZLIB
     if (zipNode) {
         std::shared_ptr<FsZip> fsZip = zipNode->fsZip.lock();

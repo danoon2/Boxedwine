@@ -174,28 +174,27 @@ U32 KEPoll::ctl(KMemory* memory, U32 op, FD fd, U32 address) {
 
 U32 KEPoll::wait(KThread* thread, U32 events, U32 maxevents, U32 timeout) {
     S32 result = 0;
-    thread_local static KPollData pollData[256];
     U32 pollCount=0;
     KMemory* memory = thread->memory;
 
+    thread->pollData.clear();
     for( const auto& n : this->data ) {
-        if (pollCount>=256) {
-            kpanic("Wasn't expect a poll count of more than 256");
-            break;
-        }
         Data* next = n.value;
-        pollData[pollCount].events = next->events;
-        pollData[pollCount].fd = next->fd;
-        pollData[pollCount].data = next->data;
+        KPollData pollData;
+        
+        pollData.events = next->events;
+        pollData.fd = next->fd;
+        pollData.data = next->data;
+        thread->pollData.push_back(pollData);
         pollCount++;	
     }
-    result = internal_poll(thread, pollData, pollCount, timeout);
+    result = internal_poll(thread, thread->pollData.data(), pollCount, timeout);
     if (result >= 0) {
         result = 0;
-        for (U32 i=0;i<pollCount;i++) {
-            if (pollData[i].revents!=0) {
-                memory->writed(events + result * 12, pollData[i].revents);        
-                memory->writeq(events + result * 12 + 4, pollData[i].data);
+        for (KPollData& data : thread->pollData) {
+            if (data.revents!=0) {
+                memory->writed(events + result * 12, data.revents);
+                memory->writeq(events + result * 12 + 4, data.data);
                 result++;
                 if (result>=(S32)maxevents) {
                     kwarn("possible starvation in epoll, more events are ready than can be received.");

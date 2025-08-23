@@ -137,6 +137,8 @@ public:
 
     BHashTable<U32, std::shared_ptr<KThreadGlContext>> glContext;
     BString name;
+
+    std::vector<KPollData> pollData;
 public:
     U32 currentContext = 0;
     U32 glLastError = 0;
