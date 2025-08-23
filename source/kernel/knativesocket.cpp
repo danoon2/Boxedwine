@@ -1259,6 +1259,17 @@ U32 KNativeSocketObject::setsockopt(KThread* thread, const KFileDescriptorPtr& f
                 v = memory->readd(value);
                 ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_BROADCAST, (const char*)&v, 4);
                 break;
+            case K_SO_LINGER: // steam installer triggered this
+                if (len != 8) {
+                    kpanic("KNativeSocketObject::setsockopt SO_LINGER expecting len of 8");
+                }
+                {
+                    struct linger l;
+                    l.l_onoff = memory->readd(value);
+                    l.l_linger = memory->readd(value + 4);
+                    ::setsockopt(this->nativeSocket, SOL_SOCKET, SO_LINGER, (const char*)&l, 8);
+                }
+                break;
             default:
                 kwarn_fmt("KNativeSocketObject::setsockopt SOL_SOCKET name %d not implemented", name);
                 return -K_EINVAL;

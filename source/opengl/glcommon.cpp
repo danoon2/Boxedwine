@@ -902,6 +902,9 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
     U32 cAlphaBits = 0;
     U32 cDepthBits = 0;
     U32 cStencilBits = 0;
+    U32 cRedBits = 0;
+    U32 cBlueBits = 0;
+    U32 cGreenBits = 0;
     U32 cAuxBits = 0;
     U32 doubleBuffer = GLX_DONT_CARE;
     U32 sampleBuffers = 0;
@@ -926,6 +929,15 @@ void gl_common_XChooseFBConfig(CPU* cpu) {
             address += 4;
         } else if (value == GLX_AUX_BUFFERS) {
             cAuxBits = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_RED_SIZE) {
+            cRedBits = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_GREEN_SIZE) {
+            cGreenBits = cpu->memory->readd(address + 4);
+            address += 4;
+        } else if (value == GLX_BLUE_SIZE) {
+            cBlueBits = cpu->memory->readd(address + 4);
             address += 4;
         } else if (value == GLX_DOUBLEBUFFER) {
             doubleBuffer = cpu->memory->readd(address + 4);
