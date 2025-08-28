@@ -17,7 +17,6 @@
  */
 
 #include "boxedwine.h"
-#include "btCodeChunk.h"
 #include "btCpu.h"
 #include "btData.h"
 #include "ksignal.h"
@@ -30,6 +29,17 @@
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
 typedef void (*StartCPU)();
+
+static_assert(sizeof(DecodedOpPageCache) == sizeof(DecodedOp*) * K_PAGE_SIZE, "binary translator assumes sizeof(DecodedOpPageCache) ");
+
+BtCPU::BtCPU(KMemory* memory) : NormalCPU(memory) {
+    opCache = (DecodedOp***)&memory->data->opCache.pageData[0];
+}
+
+void BtCPU::reset() {
+    NormalCPU::reset();
+    opCache = (DecodedOp***)&memory->data->opCache.pageData[0];
+}
 
 void BtCPU::run() {
     while (true) {
@@ -64,7 +74,7 @@ void BtCPU::run() {
     }
 }
 
-std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
+void* BtCPU::translateChunk(U32 ip) {
     BtData* firstPass = getData1();
     firstPass->ip = ip;
     firstPass->startOfDataIp = ip;
@@ -79,10 +89,11 @@ std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
     translateData(secondPass, firstPass);
     S32 failedJumpOpIndex = this->preLinkCheck(secondPass);
 
-    if (failedJumpOpIndex == -1) {
-        std::shared_ptr<BtCodeChunk> chunk = secondPass->commit(false);
-        link(secondPass, chunk);
-        return chunk;
+    if (failedJumpOpIndex == -1) {        
+        void* result = secondPass->commit(memory);
+        link(secondPass, result);
+        secondPass->makeLive((U8*)result);
+        return result;
     }
     else {
         firstPass->reset();
@@ -98,24 +109,30 @@ std::shared_ptr<BtCodeChunk> BtCPU::translateChunk(U32 ip) {
         secondPass->stopAfterInstruction = failedJumpOpIndex;
         translateData(secondPass, firstPass);
 
-        std::shared_ptr<BtCodeChunk> chunk = secondPass->commit(false);
-        link(secondPass, chunk);
-        return chunk;
+        void* result = secondPass->commit(memory);
+
+        link(secondPass, result);
+        secondPass->makeLive((U8*)result);
+        return result;
     }
 }
 
+void BtCPU::clearTranslatedChunk(DecodedOp* op) {
+}
+
 U64 BtCPU::reTranslateChunk() {
-    KMemoryData* mem = getMemData(memory);
 #ifndef __TEST
     // only one thread at a time can update the host code pages and related date like opToAddressPages
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
 #endif
-    std::shared_ptr<BtCodeChunk> chunk = mem->getCodeChunkContainingEip(this->eip.u32 + this->seg[CS].address);
-    if (chunk) {
-        chunk->releaseAndRetranslate();
+    DecodedOp* op = getNextOp();
+    if (op->blockStart) {
+        DecodedOp* chunk = op->blockStart;
+        clearTranslatedChunk(chunk);
+        translateEip(chunk->eip - seg[CS].address);
     }
 
-    U64 result = (U64)mem->getExistingHostAddress(this->eip.u32 + this->seg[CS].address);
+    U64 result = (U64)op->pfnJitCode;
     if (result == 0) {
         result = (U64)this->translateEip(this->eip.u32);
     }
@@ -130,35 +147,16 @@ static U8 fetchByte(void* p, U32* eip) {
     return memory->readb((*eip)++);
 }
 
-DecodedOp* BtCPU::getOp(U32 eip, bool existing) {
-    KMemoryData* mem = getMemData(memory);
-
-    if (this->isBig()) {
-        eip += this->seg[CS].address;
-    }
-    else {
-        eip = this->seg[CS].address + (eip & 0xFFFF);
-    }
-    if (!existing || mem->getExistingHostAddress(eip)) {
-        thread_local static DecodedBlock* block = new DecodedBlock();
-        decodeBlock(fetchByte, memory, eip, this->isBig(), 4, 64, 1, block);
-        return block->op;
-    }
-    return nullptr;
-}
-
 void* BtCPU::translateEipInternal(U32 ip) {
     if (!this->isBig()) {
         ip = ip & 0xFFFF;
     }
     U32 address = this->seg[CS].address + ip;
-    KMemoryData* mem = getMemData(memory);
-    void* result = mem->getExistingHostAddress(address);
+    DecodedOp* op = getOp(address, 0);
+    void* result = op->pfnJitCode;
 
     if (!result) {
-        std::shared_ptr<BtCodeChunk> chunk = this->translateChunk(ip);
-        result = chunk->getHostAddress();
-        chunk->makeLive();
+        result = translateChunk(ip);
     }
     return result;
 }
@@ -209,30 +207,12 @@ U64 BtCPU::handleFpuException(int code) {
 
 U64 BtCPU::handleAccessException(DecodedOp* op) {
 #ifdef BOXEDWINE_4K_PAGE_SIZE
-    U32 address = getEipAddress();
-    CodeBlock block = getMemData(memory)->getCodeChunkContainingEip(address);
-    if (block->startTimeForExceptionTracking + 1000 < KSystem::getMilliesSinceStart()) {
-        block->startTimeForExceptionTracking = KSystem::getMilliesSinceStart();
-        block->exceptionCount = 0;
-    }
-    Page* page = getMemData(memory)->getPage(address >> K_PAGE_SHIFT);
-    block->exceptionCount++;
-    if (block->exceptionCount > 1000 && !block->retranslatedForException) {
+    if (op->exceptionCount < 0xff) {
+        op->exceptionCount++;
+    } else {        
+        U32 eip = op->blockStart->eip;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
-        if (!block->retranslatedForException) {
-            use4kMemCheck = false;
-            block->releaseAndRetranslate();
-            block = getMemData(memory)->getCodeChunkContainingEip(address);
-            if (!block) {
-                // the above block might have been retranslated into a smaller block that no longer contains address
-                this->translateEip(this->eip.u32);
-                block = getMemData(memory)->getCodeChunkContainingEip(address);
-            }
-            if (block) {
-                block->retranslatedForException = true;
-            }
-            use4kMemCheck = true;
-        }
+        memory->removeCodeBlock(op->blockStart, false);
     }
 #endif
     try {
@@ -278,10 +258,6 @@ void BtCPU::wakeThreadIfWaiting() {
     }
 }
 
-DecodedBlock* BtCPU::getNextBlock() {
-    return nullptr;
-}
-
 S32 BtCPU::preLinkCheck(BtData* data) {
     for (S32 i = 0; i < (S32)data->todoJump.size(); i++) {
         U32 eip = this->seg[CS].address + data->todoJump[i].eip;
@@ -298,21 +274,6 @@ S32 BtCPU::preLinkCheck(BtData* data) {
         }
     }
     return -1;
-}
-
-U64 BtCPU::getIpFromEip() {
-    U32 a = this->getEipAddress();
-    KMemoryData* mem = getMemData(memory);
-
-    U64 result = (U64)mem->getExistingHostAddress(a);
-    if (!result) {
-        this->translateEip(this->eip.u32);
-        result = (U64)mem->getExistingHostAddress(a);
-    }
-    if (result == 0) {
-        kpanic("BtCPU::getIpFromEip failed to translate code");
-    }
-    return result;
 }
 
 U64 BtCPU::handleMissingCode(U32 page, U32 offset) {

@@ -783,10 +783,8 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_arith.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_bit.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_fpu.h" />
@@ -852,7 +850,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.h" />
@@ -931,6 +928,7 @@
     <ClInclude Include="..\..\..\..\source\util\bfile.h" />
     <ClInclude Include="..\..\..\..\source\util\bhashtable.h" />
     <ClInclude Include="..\..\..\..\source\util\bheap.h" />
+    <ClInclude Include="..\..\..\..\source\util\bnativeheap.h" />
     <ClInclude Include="..\..\..\..\source\util\bstring.h" />
     <ClInclude Include="..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\source\util\fileutils.h" />
@@ -2752,10 +2750,8 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_sse_shuffle.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps_string.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btData.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_arith.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_bit.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_fpu.cpp" />
@@ -2778,7 +2774,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.cpp" />
@@ -3097,6 +3092,7 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\bfile.cpp" />
     <ClCompile Include="..\..\..\..\source\util\bheap.cpp" />
+    <ClCompile Include="..\..\..\..\source\util\bnativeheap.cpp" />
     <ClCompile Include="..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\source\util\crc.cpp" />
     <ClCompile Include="..\..\..\..\source\util\fileutils.cpp" />

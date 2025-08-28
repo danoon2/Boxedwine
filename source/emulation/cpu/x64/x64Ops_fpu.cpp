@@ -76,7 +76,7 @@ public:
 class PushPopFlags {
 public:
 	PushPopFlags(X64Asm* data) : data(data) {
-		needFlags = data->currentOp ? (DecodedOp::getNeededFlags(data->currentBlock, data->currentOp, CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[data->currentOp->inst].flagsUsed != 0) : true;
+		needFlags = data->currentOp ? (data->currentOp->getNeededFlags(CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[data->currentOp->inst].flagsUsed != 0) : true;
 		if (needFlags) {
 			U8 flagsReg = data->getTmpReg();
 			data->pushFlagsToReg(flagsReg, true, true);

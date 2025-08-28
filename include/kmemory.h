@@ -19,7 +19,6 @@
 #ifndef __KMEMORY_H__
 #define __KMEMORY_H__
 
-class KMemory;
 #ifdef BOXEDWINE_DYNAMIC
 class DynamicMemory;
 #endif
@@ -46,7 +45,6 @@ class DecodedOp;
 class Page;
 class KMemoryData;
 class KProcess;
-class BtMemory;
 
 #ifdef BOXEDWINE_MULTI_THREADED   
 struct LockData8 {
@@ -138,18 +136,23 @@ public:
     DecodedOp* getDecodedOp(U32 address);
     DecodedOp** getDecodedOpLocation(U32 address);
 
-    void addCode_nolock(U32 address, U32 len, DecodedOp* op, bool followOpNext);
+    void addCode_nolock(U32 address, U32 len, DecodedOp* op, U32 opCount);
     bool removeCode(U32 address, U32 len, bool becauseOfWrite);
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    void removeCodeBlock(DecodedOp* op, bool clearOps = true);
+#endif
     bool isAddressDynamic(U32 address, U32 len);
     void threadCleanup(U32 threadId);
     void clearOpCache();
 
+    void* allocCodeMemory(U32 len);
+    bool isCode(void* p);
+
     BOXEDWINE_MUTEX mutex;
-    KMemoryData* deleteOnNextLoop = nullptr;
+    KMemoryData* deleteOnNextLoop = nullptr;    
 private:
     friend KMemoryData* getMemData(KMemory* memory);
     friend KMemoryData;
-    friend BtMemory;        
     friend class BtCPU;
 
     KMemoryData* data;    
@@ -169,7 +172,7 @@ private:
     };
 
     BHashTable< U8*, std::shared_ptr<LockedMemory>> lockedMemory;
-    BOXEDWINE_MUTEX lockedMemoryMutex;
+    BOXEDWINE_MUTEX lockedMemoryMutex;    
 };
 
 #endif

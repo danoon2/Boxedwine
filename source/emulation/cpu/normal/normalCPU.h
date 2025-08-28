@@ -29,10 +29,12 @@ public:
     void run() override;
     DecodedOp* getOp(U32 eip, U32 flags) override;
 
+    DecodedOp* decodeOneOp(U32 eip);
+
     // helper for decoder
     bool isValidReadAddress(U32 address);
 
-    static OpCallback getFunctionForOp(DecodedOp* op, bool* canJIT = nullptr);
+    static OpCallback getFunctionForOp(DecodedOp* op);
 
     OpCallback firstOp;    
 };

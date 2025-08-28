@@ -22,7 +22,6 @@
 #include "x64Ops.h"
 #include "x64CPU.h"
 #include "x64Asm.h"
-#include "x64CodeChunk.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 
@@ -41,7 +40,7 @@ x64CPU::x64CPU(KMemory* memory) : BtCPU(memory), data1(this), data2(this) {
     }
     largeAddressJumpInstruction = 0xCE24FF43;
     pageJumpInstruction = 0x0A8B4566;
-    pageOffsetJumpInstruction = 0xCA148B4F;
+    pageOffsetJumpInstruction = 0xCA148B4F;    
 }
 
 void x64CPU::setSeg(U32 index, U32 address, U32 value) {
@@ -85,64 +84,55 @@ void* x64CPU::init() {
     data.writeToRegFromValue(7, false, EDI, 4);        
     
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
-    data.doJmp(false);
-    std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
-    void* result = chunk->getHostAddress();
+    data.jmpAddress(cpu->eip.u32);
+    void* result = data.commit(memory);
     //link(&data, chunk);
     this->pendingCodePages.clear();    
-    this->eipToHostInstructionPages = mem->eipToHostInstructionPages;
 
     if (!this->thread->process->returnToLoopAddress) {
         X64Asm returnData(this);
         returnData.restoreNativeState();
         returnData.write8(0xfc); // cld
         returnData.write8(0xc3); // retn
-        std::shared_ptr<BtCodeChunk> chunk2 = returnData.commit(true);
-        this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
+        this->thread->process->returnToLoopAddress = returnData.commit(memory);
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
 
     if (!this->thread->process->reTranslateChunkAddress) {
         X64Asm translateData(this);
         translateData.createCodeForRetranslateChunk();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->reTranslateChunkAddress = chunk3->getHostAddress();
+        this->thread->process->reTranslateChunkAddress = translateData.commit(memory);
     }
     this->reTranslateChunkAddress = this->thread->process->reTranslateChunkAddress;
     if (!this->thread->process->syncToHostAddress) {
         X64Asm translateData(this);
         translateData.createCodeForSyncToHost();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->syncToHostAddress = chunk3->getHostAddress();
+        this->thread->process->syncToHostAddress = translateData.commit(memory);
     }
     this->syncToHostAddress = this->thread->process->syncToHostAddress;
     if (!this->thread->process->syncFromHostAddress) {
         X64Asm translateData(this);
         translateData.createCodeForSyncFromHost();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->syncFromHostAddress = chunk3->getHostAddress();
+        this->thread->process->syncFromHostAddress = translateData.commit(memory);
     }
     this->syncFromHostAddress = this->thread->process->syncFromHostAddress;    
     if (!this->thread->process->doSingleOpAddress) {
         X64Asm translateData(this);
         translateData.createCodeForDoSingleOp();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
+        this->thread->process->doSingleOpAddress = translateData.commit(memory);
     }
     this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         X64Asm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary(true);
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
+        this->thread->process->jmpAndTranslateIfNecessary = translateData.commit(memory);
     }
     this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
         X64Asm translateData(this);
         translateData.createCodeForRunSignal();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->runSignalAddress = chunk3->getHostAddress();
+        this->thread->process->runSignalAddress = translateData.commit();
     }
 #endif
     return result;
@@ -180,22 +170,16 @@ void x64CPU::postTestRun() {
 void x64CPU::addReturnFromTest() {
     X64Asm data(this);
     data.addReturnFromTest();
-    data.commit(true);
+    data.commit(memory);
 }
 #endif
 
-void x64CPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
-    if (!fromChunk) {
-        kpanic("x64CPU::link fromChunk missing");
-    }
+void x64CPU::link(BtData* data, void* hostAddress) {
     for (auto& todoJump : data->todoJump) {
         U32 eip = seg[CS].address + todoJump.eip;
-        U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+todoJump.bufferPos;
+        U8* offset = (U8*)hostAddress + todoJump.bufferPos;
 
-        U8* host = (U8*)fromChunk->getHostFromEip(eip);
-        if (!host) {
-            kpanic("x64CPU::link can not link into the middle of an instruction");
-        }
+        U8* host = (U8*)hostAddress +  data->getHostOffsetFromEip(eip);
         data->write32Buffer(offset, (U32)(host - offset - 4));            
     }
 }
@@ -253,71 +237,29 @@ void x64CPU::saveToFxState(U32 inst) {
 #endif
 }
 
+// winfish seems to jump into the middle of an instruction which changes it from cmp to mov
 void x64CPU::translateData(BtData* data, BtData* firstPass) {
     KMemoryData* mem = getMemData(memory);
   
     data->firstPass = firstPass;
     data->currentOp = nullptr;
-    data->currentBlock = nullptr;
+    data->firstOp = nullptr;
     DecodedOp* prevOp = nullptr;
 
-    while (1) {  
-        U32 address = this->seg[CS].address+data->ip;
-        void* hostAddress = mem->getExistingHostAddress(address);
-        if (!data->currentOp) {
-            U32 address = this->seg[CS].address + data->ip;
-            DecodedBlock* prev = data->currentBlock;
-            if (prev) {
-                data->currentBlock = nullptr; // don't chain to an existing block
-            } else {
-                std::shared_ptr<BtCodeChunk> chunk = memory->findCodeBlockContaining(address, 1);
-                if (chunk) {
-                    data->currentBlock = chunk->block;
-                    if (data->currentBlock) {
-                        data->currentOp = data->currentBlock->getOp(address);
-                        if (!data->currentOp) {
-                            // winfish seems to jump into the middle of an instruction which changes it from cmp to mov
-                            data->currentBlock = nullptr;
-                        }
-                    } else {
-                        int ii = 0;
-                    }
-                }
-            }
-            if (!data->currentBlock) {
-                data->currentBlock = NormalCPU::getBlockForInspectionButNotUsed(this, address, big);
-                if (prev) {
-                    prev->bytes += data->currentBlock->bytes;
-                    prevOp->next = data->currentBlock->op;
-
-                    data->currentBlock->op = nullptr;
-                    data->currentBlock->dealloc(false);
-                    data->currentBlock = prev;
-                }
-            }
-            data->currentOp = data->currentBlock->getOp(address);
+    while (1) { 
+        U32 address = this->seg[CS].address + data->ip;
+        data->currentOp = getOp(address, 0);
+        if (prevOp && !prevOp->next) {
+            prevOp->next = data->currentOp;
         }
+        if (!data->firstOp) {
+            data->firstOp = data->currentOp;
+        }        
+        void* hostAddress = data->currentOp->pfnJitCode;
         if (hostAddress) {
             data->jumpTo(data->ip);
             break;
         }
-#ifndef __TEST
-        KMemoryData* mem = getMemData(memory);
-        if (mem->codeCache.isAddressDynamic(address, data->currentOp->len)) {
-            if (data->startOfDataIp == data->startOfOpIp) {
-                data->mapAddress(address, data->bufferPos);
-
-                data->translateInstruction();
-                U32 savedIp = data->ip;
-                data->ip = data->startOfOpIp;
-                ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
-                data->ip = savedIp; // so that emulatedLen in chunk is correct
-            } else {
-                ((X64Asm*)data)->emulateSingleOp(data->currentOp, true);
-            }
-            break;
-        }
-#endif
         data->mapAddress(address, data->bufferPos);
         data->translateInstruction();
         if (data->done || data->currentOp->inst == Invalid) {
@@ -328,28 +270,23 @@ void x64CPU::translateData(BtData* data, BtData* firstPass) {
         }
         data->resetForNewOp();
         prevOp = data->currentOp;
-        data->currentOp = data->currentOp->next;
     }  
 }
 
 extern bool writesFlags[InstructionCount];
 
 void common_runSingleOp(x64CPU* cpu) {
-    U32 address = cpu->getEipAddress();
     cpu->updateFlagsFromX64();
-    DecodedOp* op = cpu->currentSingleOp;
+    DecodedOp* op = cpu->getNextOp();
     bool deallocOp = false;
-    bool dynamic = cpu->arg5 != 0;
-    if (dynamic) {
-        try {
-            op = NormalCPU::decodeSingleOp(cpu, address);
-        } catch (...) {
-            op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
-        }
+
+    if (op->flags & OP_FLAG_EMULATED_OP) {
+        op = cpu->decodeOneOp(cpu->getEipAddress());
         deallocOp = true;
     } else if (!op) {
         kpanic("common_runSingleOp oops");
     }
+    cpu->updateFlagsFromX64();
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
     for (U32 i = 0; i < 8; i++) {
         cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
@@ -402,8 +339,7 @@ void common_runSingleOp(x64CPU* cpu) {
     cpu->fillFlags();
     cpu->updateX64Flags();
     if (deallocOp) {
-        op->dealloc(true);
+        op->dealloc();
     }
-    cpu->currentBlock = nullptr;
 }
 #endif

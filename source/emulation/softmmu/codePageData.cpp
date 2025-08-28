@@ -24,6 +24,7 @@
 
 #define FIRST_INDEX_SIZE 0x400
 #define SECOND_INDEX_SIZE 0x400
+// if these change, fix X64Asm::jmpReg and any other binary translators
 #define GET_FIRST_INDEX_FROM_PAGE(page) (page >> 10)
 #define GET_SECOND_INDEX_FROM_PAGE(page) (page & 0x3ff);
 
@@ -40,9 +41,6 @@ DecodedOpPageCache::~DecodedOpPageCache() {
 			activeOps--;
 		}
 	}
-	if (writeCounts) {
-		delete[] writeCounts;
-	}
 }
 
 static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
@@ -54,6 +52,7 @@ BOXEDWINE_MUTEX DecodedOpCache::lock;
 
 DecodedOpCache::DecodedOpCache() {
 	memset(pageData, 0, sizeof(pageData));
+	memset(writeCounts, 0, sizeof(writeCounts));
 }
 
 DecodedOpCache::~DecodedOpCache() {
@@ -86,12 +85,7 @@ DecodedOp* DecodedOpCache::get(U32 address) {
 }
 
 bool DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
-	U32 pageIndex = address >> K_PAGE_SHIFT;	
-
-	DecodedOpPageCache* page = getPageCache(pageIndex, false);
-	if (!page) {
-		return false;
-	}
+	U32 pageIndex = address >> K_PAGE_SHIFT;		
 	U32 offset = address & K_PAGE_MASK;
 	U32 end = offset + len;
 	bool result = false;
@@ -102,9 +96,14 @@ bool DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 		len = todo;
 		end = K_PAGE_SIZE;
 	}
-	if (becauseOfWrite && !page->writeCounts) {
-		page->writeCounts = new U8[K_PAGE_SIZE];
-		memset(page->writeCounts, 0, K_PAGE_SIZE);
+
+	DecodedOpPageCache* page = getPageCache(pageIndex, false);
+	if (!page) {
+		return false;
+	}
+	U8* pageWriteCounts = nullptr;
+	if (becauseOfWrite) {
+		pageWriteCounts = getWriteCounts(pageIndex, true);
 	}
 #ifdef BOXEDWINE_DYNAMIC	
 	if (removeJITCode(address, len)) { // remove JIT before op
@@ -114,12 +113,17 @@ bool DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	KThread* thread = KThread::currentThread();
 	for (U32 i = offset; i < end; i++) {
 		if (page->ops[i]) {
+			if (page->ops[i]->pfnJitCode || page->ops[i]->blockStart) {
+				int ii = 0;
+			}
 			pendingDeallocs[thread->id].push_back(page->ops[i]);
 			page->ops[i] = nullptr;
 			activeOps--;
 		}
-		if (becauseOfWrite && (page->writeCounts[i] < MAX_DYNAMIC_COUNT)) {
-			page->writeCounts[i]++;			
+		if (becauseOfWrite) {
+			if ((pageWriteCounts[i] < MAX_DYNAMIC_COUNT)) {
+				pageWriteCounts[i]++;
+			}
 		}
 	}
 	return result;
@@ -161,7 +165,8 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address, bool
 	if (previousOp) {
 		// does previousOp span into address, if so then remove it
 		if (previousOpAddress + previousOp->len > address) {
-			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;
+			DecodedOp* op = previousPageCache->ops[previousOpAddress & K_PAGE_MASK];
+			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
 #ifdef BOXEDWINE_DYNAMIC
 			if (removeJITCode(previousOpAddress, previousOp->len) && removedCurrentJitBlock) {
 				*removedCurrentJitBlock = true;
@@ -198,6 +203,38 @@ void DecodedOpCache::clearPendingDeallocs(U32 threadId) {
 	}
 }
 
+void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, void* pData) {
+	U32 previousOpAddress = 0;
+	DecodedOpPageCache* prevPage = nullptr;
+	DecodedOp* previousOp = getPreviousOp(address, &previousOpAddress, &prevPage);
+
+	if (previousOp) {
+		// does previousOp span into address
+		if (previousOpAddress + previousOp->len > address) {
+			callback(previousOp, pData);
+		}
+	}
+
+	while (len) {
+		U32 pageIndex = address >> K_PAGE_SHIFT;
+		U32 offset = address & K_PAGE_MASK;
+		U32 todo = len;
+		if (todo > K_PAGE_SIZE - offset) {
+			todo = K_PAGE_SIZE - offset;
+		}
+		DecodedOpPageCache* page = getPageCache(pageIndex, false);
+		if (page) {			
+			for (U32 i = offset; i < offset + todo; i++) {
+				if (page->ops[i]) {
+					callback(page->ops[i], pData);
+				}
+			}
+		}
+		address += todo;
+		len -= todo;
+	}
+}
+
 bool DecodedOpCache::remove(U32 address, U32 len, bool becauseOfWrite) {
 	bool result = false;
 	DecodedOp* prev = getPreviousOpAndRemoveIfOverlapping(address, &result);
@@ -219,10 +256,17 @@ void DecodedOpCache::removeAll() {
 			delete[] pageData[firstIndex];
 			pageData[firstIndex] = nullptr;
 		}
+		if (writeCounts[firstIndex]) {
+			for (U32 secondIndex = 0; secondIndex < SECOND_INDEX_SIZE; secondIndex++) {
+				delete writeCounts[firstIndex][secondIndex];
+			}
+			delete[] writeCounts[firstIndex];
+			writeCounts[firstIndex] = nullptr;
+		}
 	}
 }
 
-void DecodedOpCache::add(DecodedOp* op, U32 address, bool followOpNext) {
+void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
 	U32 pageIndex = address >> K_PAGE_SHIFT;
 	DecodedOpPageCache* page = getPageCache(pageIndex, true);
 	U32 offset = address & K_PAGE_MASK;
@@ -252,11 +296,12 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, bool followOpNext) {
 		page->ops[offset] = op;
 		address += op->len;
 		activeOps++;
-		if (!followOpNext) {
-			break;
-		}
+		opCount--;		
 		offset += op->len;
 		prevOp = op;
+		if (opCount == 0) {
+			break;
+		}
 		op = op->next;
 		if (offset >= K_PAGE_SIZE) {
 			pageIndex++;
@@ -264,15 +309,13 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, bool followOpNext) {
 			offset -= K_PAGE_SIZE;
 		}
 	}
-	if (followOpNext) {
-		prevOp->next = get((pageIndex << K_PAGE_SHIFT) +  offset);
-	}
+	prevOp->next = get((pageIndex << K_PAGE_SHIFT) +  offset);	
 }
 
 bool DecodedOpCache::isAddressDynamic(U32 address, U32 len) {
 	U32 pageIndex = address >> K_PAGE_SHIFT;
-	DecodedOpPageCache* page = getPageCache(pageIndex, false);
-	if (!page) {
+	U8* pageWriteCounts = getWriteCounts(pageIndex, false);
+	if (!pageWriteCounts) {
 		return false;
 	}
 	U32 offset = address & K_PAGE_MASK;
@@ -282,14 +325,12 @@ bool DecodedOpCache::isAddressDynamic(U32 address, U32 len) {
 		U32 todo = K_PAGE_SIZE - offset;
 		if (isAddressDynamic((pageIndex + 1) << K_PAGE_SHIFT, len - todo)) {
 			return true;
-	}
+		}
 		end = K_PAGE_SIZE;
-}
-	if (page->writeCounts) {
-		for (U32 i = offset; i < end; i++) {
-			if (page->writeCounts[i] == MAX_DYNAMIC_COUNT) {
-				return true;
-			}
+	}
+	for (U32 i = offset; i < end; i++) {
+		if (pageWriteCounts[i] == MAX_DYNAMIC_COUNT) {
+			return true;
 		}
 	}
 	return false;
@@ -318,6 +359,35 @@ DecodedOpPageCache* DecodedOpCache::getPageCache(U32 pageIndex, bool create) {
 		if (!result) {
 			result = new DecodedOpPageCache();
 			pageData[firstIndex][secondIndex] = result;
+		}
+	}
+	return result;
+}
+
+U8* DecodedOpCache::getWriteCounts(U32 pageIndex, bool create) {
+	U32 firstIndex = GET_FIRST_INDEX_FROM_PAGE(pageIndex);
+	U32 secondIndex = GET_SECOND_INDEX_FROM_PAGE(pageIndex);
+	U8** first = writeCounts[firstIndex];
+	U8* result = nullptr;
+	if (first) {
+		result = first[secondIndex];
+	}
+	if (!result && create) {
+		BOXEDWINE_CRITICAL_SECTION;
+		if (!first) {
+			first = writeCounts[firstIndex];
+		}
+		if (first) {
+			result = first[secondIndex];
+		}
+		if (!first) {
+			writeCounts[firstIndex] = new U8* [SECOND_INDEX_SIZE];
+			memset(writeCounts[firstIndex], 0, sizeof(U8*) * SECOND_INDEX_SIZE);
+		}
+		if (!result) {
+			result = new U8[K_PAGE_SIZE];
+			memset(result, 0, sizeof(U8) * K_PAGE_SIZE);
+			writeCounts[firstIndex][secondIndex] = result;
 		}
 	}
 	return result;

@@ -280,9 +280,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp">
       <Filter>source\emulation\cpu</Filter>
     </ClCompile>
@@ -466,9 +463,6 @@
     <ClCompile Include="..\..\..\..\source\ui\controls\helpView.cpp">
       <Filter>source\ui\controls</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\platform\sdl\kdspaudio.cpp">
       <Filter>platform\sdl</Filter>
     </ClCompile>
@@ -504,9 +498,6 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp">
       <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\source\util\bfile.cpp">
       <Filter>source\util</Filter>
@@ -913,6 +904,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\common_lock.cpp">
       <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\util\bnativeheap.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1287,9 +1281,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Ops.h">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.h">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_sse.h">
       <Filter>source\emulation\cpu\normal</Filter>
     </ClInclude>
@@ -1515,9 +1506,6 @@
     <ClInclude Include="..\..\..\..\source\ui\controls\helpView.h">
       <Filter>source\ui\controls</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
@@ -1562,9 +1550,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h">
       <Filter>source\emulation\cpu\dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\ptrpool.h">
       <Filter>source\util</Filter>
@@ -1802,6 +1787,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\common\common_lock.h">
       <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\util\bnativeheap.h">
+      <Filter>source\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

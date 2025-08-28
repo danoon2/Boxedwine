@@ -102,7 +102,7 @@ void FilePage::onDemmand(MMU* mmu, U32 pageIndex) {
             pageType = PageType::CopyOnWrite;
         }
     }
-    mmu->setPage(getMemData(thread->memory), pageIndex, pageType, ramPage);
+    mmu->setPage(thread->memory, pageIndex, pageType, ramPage);
     ramPageRelease(ramPage); // setPageType retained ramPage
     getMemData(thread->memory)->onPageChanged(pageIndex);
 }

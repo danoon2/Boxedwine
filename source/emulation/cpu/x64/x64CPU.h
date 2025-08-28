@@ -21,7 +21,6 @@
 
 #ifdef BOXEDWINE_X64
 #include "../common/cpu.h"
-#include "x64CodeChunk.h"
 #include "../binaryTranslation/btCpu.h"
 #include "x64Asm.h"
 
@@ -82,7 +81,7 @@ public:
 
     // from BtCPU
     void* init() override;
-    void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) override;
+    void link(BtData* data, void* hostAddress) override;
     void translateData(BtData* data, BtData* firstPass = nullptr) override;
 protected:
     BtData* getData1() override { data1.reset(); return &data1; }
@@ -101,7 +100,6 @@ public:
     void saveToFxState(U32 inst);
 
     U32 negSegAddress[6] = { 0 };
-	U8*** eipToHostInstructionPages = nullptr;
     U32 arg5 = 0;
     U32 currentHostFlags = 0;
     U32 instructionStoredFlags = 0;
@@ -111,7 +109,8 @@ public:
     U32 sseControlStateTmp2 = 0;
     U64 originalCpuRegs[16] = { 0 };
     void* reTranslateChunkAddress = nullptr;    
-    void* jmpAndTranslateIfNecessary = nullptr;
+    void* jmpAndTranslateIfNecessary = nullptr;    
+
     static bool hasBMI2;
 
 #ifdef _DEBUG

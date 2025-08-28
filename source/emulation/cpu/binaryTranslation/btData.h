@@ -36,7 +36,8 @@ class BtData {
 public:
     BtData();
     virtual ~BtData();    
-    std::shared_ptr<BtCodeChunk> commit(bool makeLive);
+    void* commit(KMemory* memory);
+    void makeLive(U8* hostAddress);
 
     U32 ip = 0;
     U32 startOfDataIp = 0;
@@ -58,13 +59,14 @@ public:
     S32 stopAfterInstruction = -1;
 
     DecodedOp* currentOp = nullptr;
-    DecodedBlock* currentBlock = nullptr;
+    DecodedOp* firstOp = nullptr;
 
     BtData* firstPass = nullptr;
     bool needLargeIfJmpReg = false;
 
     void mapAddress(U32 ip, U32 bufferPos);
     U8 calculateEipLen(U32 eip);
+    U32 getHostOffsetFromEip(U32 ip);
 
     void write8(U8 data);
     void write16(U16 data);
@@ -78,8 +80,6 @@ public:
     virtual void resetForNewOp() = 0;
     virtual void translateInstruction() = 0;
     virtual void reset();
-protected:
-    virtual std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) = 0;
 };
 
 #endif

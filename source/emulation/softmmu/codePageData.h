@@ -40,10 +40,11 @@ class DecodedOpPageCache {
 public:
 	DecodedOpPageCache();
 	~DecodedOpPageCache();
-
-	U8* writeCounts = nullptr;
+	
 	DecodedOp* ops[K_PAGE_SIZE];
 };
+
+typedef void (*OpCacheCallback)(DecodedOp* op, void* pData);
 
 class DecodedOpCache {
 public:
@@ -54,7 +55,8 @@ public:
 	DecodedOp** getLocation(U32 address);
 	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address, bool* removedCurrentJitBlock = nullptr);
 	bool remove(U32 address, U32 len, bool becauseOfWrite);	
-	void add(DecodedOp* op, U32 address, bool followOpNext);
+	void iterateOps(U32 address, U32 len, OpCacheCallback callback, void* pData);
+	void add(DecodedOp* op, U32 address, U32 opCount);
 	bool isAddressDynamic(U32 address, U32 len);
 #ifdef BOXEDWINE_DYNAMIC
 	static BOXEDWINE_MUTEX lock;
@@ -68,11 +70,14 @@ public:
 	void clear();
 
 private:
+	friend class BtCPU;
 	void removeAll();
 	bool removeStartAt(U32 address, U32 len, bool becauseOfWrite);
 	DecodedOp* getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage);
 	DecodedOpPageCache* getPageCache(U32 pageIndex, bool create);
 	DecodedOpPageCache** pageData[0x400];
+	U8* getWriteCounts(U32 pageIndex, bool create);
+	U8** writeCounts[0x400];
 	void clearPendingDeallocs(U32 threadId);
 
 	std::map<U32, DecodedOpJIT> jitCode;

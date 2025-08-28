@@ -24,13 +24,13 @@
 #include "soft_copy_on_write_page.h"
 #include "kmemory_soft.h"
 
-void MMU::setPageType(KMemoryData* mem, U32 page, PageType type) {
-    setPage(mem, page, type, (RamPage)ramIndex);
+void MMU::setPageType(KMemory* memory, U32 page, PageType type) {
+    setPage(memory, page, type, (RamPage)ramIndex);
 }
 
-void MMU::setPage(KMemoryData* mem, U32 page, PageType type, RamPage ram) {
+void MMU::setPage(KMemory* memory, U32 page, PageType type, RamPage ram) {
     if (getPageType() == PageType::Code && type != PageType::Code) {
-        mem->opCache.remove(page << K_PAGE_SHIFT, K_PAGE_SIZE, false);
+        memory->removeCode(page << K_PAGE_SHIFT, K_PAGE_SIZE, false);
     }
     if (type == PageType::None) {
         if (ramIndex && getPageType() != PageType::File) {

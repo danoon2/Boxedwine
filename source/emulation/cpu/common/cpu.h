@@ -185,7 +185,7 @@ union SSE {
 #define OP_FLAG_CALL_TARGET 1
 #define OP_FLAG_JIT 2
 #define OP_FLAG_NO_JIT 4
-#define OP_FLAG_END_LONG_BLOCK 8
+#define OP_FLAG_EMULATED_OP 8
 
 #define JIT_RUN_COUNT 50
 
@@ -201,9 +201,6 @@ public:
     U32 flags = 0;
     Reg eip;
     U8* reg8[9];
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-    DecodedOp* currentSingleOp = nullptr;
-#endif
     ALIGN(SSE xmm[8], 16);
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR) && defined(BOXEDWINE_X64)
@@ -296,7 +293,7 @@ public:
     U32 lar(U32 selector, U32 ar);
     void walkStack(U32 eip, U32 ebp, U32 indent);
     void clone(CPU* from);
-    void reset();
+    virtual void reset();
     void verr(U32 selector);
     void verw(U32 selector);
     U32 readCrx(U32 which, U32 reg);
@@ -318,7 +315,7 @@ public:
     // from DecodeBlockCallback
     U8 fetchByte(U32* eip) override;
     bool shouldContinue(U32 eip) override;
-    DecodedOp** getOpLocation(U32 eip) override;    
+    DecodedOp** getOpLocation(U32 eip) override;        
 
 #ifdef BOXEDWINE_MULTI_THREADED
     U64 nativeHandle = 0;

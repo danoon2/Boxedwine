@@ -1581,19 +1581,20 @@ public:
     // by making this a double pointer (address to where to find the op instead of the op itself), multiple jumps can point to that
     // location and if the op there gets updated, we won't have to try to figure out all the jumps to it that need to be updated
     DecodedData data;
-    OpCallback pfn;    
+    OpCallback pfn;  
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    void* pfnJitCode;
+#elif defined(BOXEDWINE_DYNAMIC)
     OpCallback pfnJitCode;
-
+#endif
     U32 imm;
 
-#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
-    U16 originalOp;
-    U32 extra; // used by DecodeGrp8_16/DecodeGrp8_32
+#if defined (_DEBUG) || defined(BOXEDWINE_BINARY_TRANSLATOR)
+    U32 eip;
 #endif
 #ifdef _DEBUG
     Instruction inst;
-    Instruction lastInst;
-    U32 eip;
+    Instruction lastInst;    
 #else
     U16 inst;
 #endif
@@ -1617,6 +1618,20 @@ public:
     U8 blockOpCount;
 #endif
 
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    DecodedOp* blockStart;
+    U16 blockOpCount;
+    U16 blockLen; // emulated code length of the block
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    U8 exceptionCount; // if this instruction writes to a code page a lot which causes an exception, we can track it and use a slightly slower path without throwing an exception
+    U8 pad;
+#else
+    U16 pad;
+#endif
+#endif
+#if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
+    U16 originalOp;
+#endif
     void reset();
 };
 
@@ -1629,7 +1644,7 @@ public:
     virtual bool isValidReadAddress(U32 address) = 0;
 };
 
-DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen);
+DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen, U32 maxOpCount = 0xFFFFFFFF);
 
 struct DecodedFunctionOp {
     DecodedFunctionOp() {}

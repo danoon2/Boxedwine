@@ -45,7 +45,7 @@ KMemoryData* getMemData(KMemory* memory) {
 }
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-KMemoryData::KMemoryData(KMemory* memory) : BtMemory(memory), memory(memory), mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }
+KMemoryData::KMemoryData(KMemory* memory) : memory(memory), mmuReadPtrAdjusted{ 0 }, mmuWritePtrAdjusted{ 0 }
 #ifdef BOXEDWINE_4K_PAGE_SIZE
 , mmuReadPtr{ 0 }
 , mmuWritePtr{ 0 }
@@ -66,12 +66,18 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory)
 }
 
 KMemoryData::~KMemoryData() {
+    codeMemory.freeAll();
+    opCache.clear();
     setPagesInvalid(0, K_NUMBER_OF_PAGES);
 #ifdef BOXEDWINE_DYNAMIC
     if (dynamicMemory) {
         delete dynamicMemory;
     }
 #endif
+}
+
+bool KMemoryData::isPageValid(U32 page) {
+    return getPage(page) == invalidPage;
 }
 
 void KMemoryData::onPageChanged(U32 index) {
@@ -147,7 +153,7 @@ void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permis
     if (ramPages) {
         for (U32 i = 0; i < pageCount; i++) {
             mmu[page + i].setFlags(permissions);
-            this->mmu[page + i].setPage(this, page + i, PageType::Ram, ramPages[i]);
+            this->mmu[page + i].setPage(memory, page + i, PageType::Ram, ramPages[i]);
             onPageChanged(page + i);
         }
     } else if (mappedFile) {
@@ -157,13 +163,13 @@ void KMemoryData::allocPages(KThread* thread, U32 page, U32 pageCount, U8 permis
 
         for (U32 i = 0; i < pageCount; i++) {
             mmu[page + i].setFlags(permissions);
-            this->mmu[page + i].setPage(this, page + i, PageType::File, (RamPage)mappedFile->key);
+            this->mmu[page + i].setPage(memory, page + i, PageType::File, (RamPage)mappedFile->key);
             onPageChanged(page + i);
         }
     } else {
         for (U32 i = 0; i < pageCount; i++) {
             mmu[page + i].setFlags(permissions);
-            this->mmu[page + i].setPage(this, page + i, PageType::Ram, (RamPage)0);
+            this->mmu[page + i].setPage(memory, page + i, PageType::Ram, (RamPage)0);
             onPageChanged(page + i);
         }
     }
@@ -231,7 +237,7 @@ void KMemoryData::setPagesInvalid(U32 page, U32 pageCount) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
     for (U32 i = page; i < page + pageCount; i++) {
         mmu[i].flags = 0;
-        mmu[i].setPage(this, i, PageType::None, (RamPage)0);
+        mmu[i].setPage(memory, i, PageType::None, (RamPage)0);
         onPageChanged(i);
     }
 }
@@ -240,171 +246,6 @@ void KMemoryData::execvReset() {
     setPagesInvalid(0, K_NUMBER_OF_PAGES);
     opCache.clear();
     this->allocPages(KThread::currentThread(), CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
-}
-
-U64 KMemory::readq(U32 address) {
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-    if ((address & 0xFFF) < 0xFF9) {
-        int index = address >> 12;
-        MMU& mmu = data->mmu[index];
-        if (mmu.canReadRam) {
-            return *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
-        }
-    }
-#endif
-    return readd(address) | ((U64)readd(address + 4) << 32);
-}
-
-U32 KMemory::readd(U32 address) {
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        MMU& mmu = data->mmu[index];
-        if (mmu.canReadRam)
-            return *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
-#endif
-        return data->mmu[index].getPage()->readd(&data->mmu[index], address);
-    } else {
-        return readb(address) | (readb(address + 1) << 8) | (readb(address + 2) << 16) | (readb(address + 3) << 24);
-    }
-}
-
-U16 KMemory::readw(U32 address) {
-    if ((address & 0xFFF) < 0xFFF) {
-        int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        MMU& mmu = data->mmu[index];
-        if (mmu.canReadRam)
-            return *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF]));
-#endif
-        return data->mmu[index].getPage()->readw(&data->mmu[index], address);
-    }
-    return readb(address) | (readb(address + 1) << 8);
-}
-
-U8 KMemory::readb(U32 address) {
-    int index = address >> 12;
-#if !defined(BOXEDWINE_BINARY_TRANSLATOR)
-    MMU& mmu = data->mmu[index];
-    if (mmu.canReadRam)
-        return ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF];
-#endif
-    return data->mmu[index].getPage()->readb(&data->mmu[index], address);
-}
-
-void KMemory::writeq(U32 address, U64 value) {
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-    if ((address & 0xFFF) < 0xFF9) {
-        int index = address >> 12;
-        MMU& mmu = data->mmu[index];
-        if (mmu.canWriteRam) {
-            *(U64*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-            return;
-        }
-    }
-#endif
-    writed(address, (U32)value); writed(address + 4, (U32)(value >> 32));
-}
-
-void KMemory::writed(U32 address, U32 value) {
-    if ((address & 0xFFF) < 0xFFD) {
-        int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        MMU& mmu = data->mmu[index];
-        if (mmu.canWriteRam)
-            *(U32*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-        else
-#endif
-            data->mmu[index].getPage()->writed(&data->mmu[index], address, value);
-    } else {
-        writeb(address, value);
-        writeb(address + 1, value >> 8);
-        writeb(address + 2, value >> 16);
-        writeb(address + 3, value >> 24);
-    }
-}
-
-void KMemory::writew(U32 address, U16 value) {
-    if ((address & 0xFFF) < 0xFFF) {
-        int index = address >> 12;
-#if !defined(UNALIGNED_MEMORY) && !defined(BOXEDWINE_BINARY_TRANSLATOR)
-        MMU& mmu = data->mmu[index];
-        if (mmu.canWriteRam)
-            *(U16*)(&(ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF])) = value;
-        else
-#endif
-            data->mmu[index].getPage()->writew(&data->mmu[index], address, value);
-    } else {
-        writeb(address, (U8)value);
-        writeb(address + 1, (U8)(value >> 8));
-    }
-}
-
-void KMemory::writeb(U32 address, U8 value) {
-    int index = address >> 12;
-#if !defined(BOXEDWINE_BINARY_TRANSLATOR)
-    MMU& mmu = data->mmu[index];
-    if (mmu.canWriteRam)
-        ramPageGet((RamPage)mmu.ramIndex)[address & 0xFFF] = value;
-    else
-#endif
-        data->mmu[index].getPage()->writeb(&data->mmu[index], address, value);
-}
-
-U8* KMemory::getRamPtr(U32 address, U32 len, bool write, bool futex) {
-    U32 index = address >> K_PAGE_SHIFT;
-    U32 offset = address & K_PAGE_MASK;
-
-    if (len + offset > K_PAGE_SIZE) {
-        kpanic("KMemory::getRamPtr");
-    }
-    U8* result = data->mmu[index].getPage()->getRamPtr(&data->mmu[index], index, write, true, offset, len);
-    if (result && futex) {
-        data->mmu[index].flags |= PAGE_FUTEX;
-    }
-    return result;
-}
-
-void KMemory::clone(KMemory* from, bool vfork) {
-    // don't allow changes to the from pages while we are cloning
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(from->mutex);
-    if (vfork) {
-        delete this->data;
-        this->data = from->data;
-        return;
-    }
-
-    for (int i = 0; i < 0x100000; i++) {
-        if (mapShared(i)) {
-            data->mmu[i].getPage()->onDemmand(&data->mmu[i], i);
-        }
-    }
-
-    ::memcpy(data->mmu, from->data->mmu, sizeof(data->mmu));
-
-    for (int i = 0; i < 0x100000; i++) {
-        MMU& mmu = data->mmu[i];
-
-        RamPage ramPageIndex = mmu.getRamPageIndex();
-        if (ramPageIndex.value) {
-            ramPageRetain(ramPageIndex);
-
-            if (!mapShared(i) && (mmu.flags & PAGE_FUTEX)) {
-                RamPage ramPage = ramPageAlloc();
-                ::memcpy(ramPageGet(ramPage), ramPageGet(ramPageIndex), K_PAGE_SIZE);
-                mmu.setPage(data, i, PageType::Ram, ramPage);
-                ramPageRelease(ramPage); // setPage retains
-            } else if (mmu.getPageType() == PageType::Code) {
-                // CodePage will check copy on write
-                //mmu.setPageType(PageType::CopyOnWrite);                
-            } else {
-                mmu.setPageType(data, i, PageType::CopyOnWrite);
-                from->data->mmu[i].setPageType(from->data, i, PageType::CopyOnWrite);
-                from->data->onPageChanged(i);
-            }
-        }
-        data->onPageChanged(i);
-    }
 }
 
 CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
@@ -418,162 +259,11 @@ CodePage* KMemoryData::getOrCreateCodePage(U32 address) {
         mmu[pageIndex].getPage()->onDemmand(&mmu[pageIndex], pageIndex);
         return getOrCreateCodePage(address);
     } else if (type == PageType::Ram || type == PageType::CopyOnWrite) {
-        mmu[pageIndex].setPageType(this, pageIndex, PageType::Code);
+        mmu[pageIndex].setPageType(memory, pageIndex, PageType::Code);
         onPageChanged(pageIndex);
     } else {
         kpanic_fmt("Unhandled code caching page type: %d", static_cast<int>(mmu[pageIndex].getPageType()));
         codePage = nullptr;
     }
     return codePage;
-}
-
-void KMemory::logPageFault(KThread* thread, U32 address) {
-    U32 start = 0;
-    CPU* cpu = thread->cpu;
-
-    BString name = process->getModuleName(cpu->seg[CS].address + cpu->eip.u32);
-    klog_fmt("%.8X EAX=%.8X ECX=%.8X EDX=%.8X EBX=%.8X ESP=%.8X EBP=%.8X ESI=%.8X EDI=%.8X %s at %.8X", cpu->seg[CS].address + cpu->eip.u32, cpu->reg[0].u32, cpu->reg[1].u32, cpu->reg[2].u32, cpu->reg[3].u32, cpu->reg[4].u32, cpu->reg[5].u32, cpu->reg[6].u32, cpu->reg[7].u32, name.c_str(), process->getModuleEip(cpu->seg[CS].address + cpu->eip.u32));
-
-    klog_fmt("Page Fault at %.8X", address);
-    klog("Valid address ranges:");
-    for (U32 i = 0; i < K_NUMBER_OF_PAGES; i++) {
-        if (!start) {
-            if (data->getPage(i) != invalidPage) {
-                start = i;
-            }
-        } else {
-            if (data->getPage(i) == invalidPage) {
-                klog_fmt("    %.8X - %.8X", start * K_PAGE_SIZE, i * K_PAGE_SIZE);
-                start = 0;
-            }
-        }
-    }
-    klog("Mapped Files:");
-    process->printMappedFiles();
-    cpu->walkStack(cpu->eip.u32, EBP, 2);
-    kpanic("pf");
-}
-
-void KMemory::performOnMemory(U32 address, U32 len, bool readOnly, std::function<bool(U8* ram, U32 len)> callback) {
-    if (!len) {
-        return;
-    }
-    U32 pageIndex = address >> K_PAGE_SHIFT;
-    Page* page = data->getPage(pageIndex);
-    U32 offset = address & K_PAGE_MASK;
-    U32 todo = len;
-    if (todo > K_PAGE_SIZE - offset) {
-        todo = K_PAGE_SIZE - offset;
-    }
-
-    U8* ram = page->getRamPtr(&data->mmu[pageIndex], pageIndex, !readOnly, true, offset, todo);
-    if (!ram) {
-        kpanic("KMemory::performOnMemory failed to get ram");
-    }
-    if (!callback(ram, todo)) {
-        return;
-    }
-    address += todo;
-    len -= todo;
-
-    while (len > K_PAGE_SIZE) {
-        pageIndex++;
-        page = data->getPage(pageIndex);
-        ram = page->getRamPtr(&data->mmu[pageIndex], pageIndex, !readOnly, true, 0, K_PAGE_SIZE);
-        if (!ram) {
-            kpanic("KMemory::performOnMemory failed to get ram");
-        }
-        if (!callback(ram, K_PAGE_SIZE)) {
-            return;
-        }
-        address += K_PAGE_SIZE;
-        len -= K_PAGE_SIZE;
-    }
-
-    if (len > 0) {
-        pageIndex++;
-        page = data->getPage(pageIndex);
-        ram = page->getRamPtr(&data->mmu[pageIndex], pageIndex, !readOnly, true, 0, len);
-        if (!ram) {
-            kpanic("KMemory::performOnMemory failed to get ram");
-        }
-        callback(ram, len);
-    }
-}
-
-// This doesn't mean the data can't be changed by another thread, it just means the pointer will stay valid
-U8* KMemory::lockReadOnlyMemory(U32 address, U32 len) {
-    U32 pageIndex = address >> K_PAGE_SHIFT;
-    Page* page = data->getPage(pageIndex);
-    U32 offset = address & K_PAGE_MASK;
-
-    // if we cross a page boundry then we will need to make a copy
-    if (len <= K_PAGE_SIZE - offset) {
-        return page->getRamPtr(&data->mmu[pageIndex], pageIndex, false, true, offset, len);
-    }
-    std::shared_ptr<LockedMemory> p = std::make_shared<LockedMemory>();
-    p->p = new U8[len];
-    p->len = len;
-    p->address = address;
-    p->readOnly = true;
-    memcpy(p->p, address, len);
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockedMemoryMutex);
-    lockedMemory.set(p->p, p);
-    return p->p;
-}
-
-void KMemory::unlockMemory(U8 * lockedPointer) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockedMemoryMutex);
-    std::shared_ptr<LockedMemory> p = lockedMemory.get(lockedPointer);
-    if (p) {
-        if (!p->readOnly) {
-            memcpy(p->address, p->p, p->len);
-        }
-        lockedMemory.remove(lockedPointer);
-    }
-}
-
-U8* KMemory::lockReadWriteMemory(U32 address, U32 len) {
-    U32 pageIndex = address >> K_PAGE_SHIFT;
-    Page* page = data->getPage(pageIndex);
-    U32 offset = address & K_PAGE_MASK;
-
-    // if we cross a page boundry then we will need to make a copy
-    if (len <= K_PAGE_SIZE - offset) {
-        U8* result = page->getRamPtr(&data->mmu[pageIndex], pageIndex, true, true, offset, len);
-        if (result) {
-            return result;
-        }
-    }
-    std::shared_ptr<LockedMemory> p = std::make_shared<LockedMemory>();
-    p->p = new U8[len];
-    p->len = len;
-    p->address = address;
-    p->readOnly = false;
-    memcpy(p->p, address, len);
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(lockedMemoryMutex);
-    lockedMemory.set(p->p, p);
-    return p->p;
-}
-
-void KMemory::unmapNativeMemory(U32 address, U32 size) {
-    unmap(address - K_PAGE_SIZE, size + 2 * K_PAGE_SIZE);
-}
-
-U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
-    U32 result = 0;
-    U32 pageCount = (size + K_PAGE_SIZE - 1) >> K_PAGE_SHIFT;
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
-    if (!data->reserveAddress(ADDRESS_PROCESS_MMAP_START, pageCount + 2, &result, false, true, PAGE_MAPPED)) {
-        return 0;
-    }
-    result++; // guard page
-    for (U32 i = 0; i < pageCount; i++) {
-        MMU& mmu = data->mmu[result + i];
-        mmu.setFlags(PAGE_MAPPED | PAGE_READ | PAGE_WRITE);
-        RamPage ramPage = ramPageAllocNative((U8*)hostAddress + K_PAGE_SIZE * i);
-        mmu.setPage(data, result + i, PageType::Ram, ramPage);
-        ramPageRelease(ramPage); // setPage retains
-    }
-    return result << K_PAGE_SHIFT;
 }

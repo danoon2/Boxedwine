@@ -21,7 +21,6 @@
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 
 #include "btData.h"
-#include "btCodeChunk.h"
 
 BtData::BtData() {
     this->ipAddress = this->ipAddressBuffer;
@@ -130,6 +129,15 @@ U8 BtData::calculateEipLen(U32 eip) {
     return 0;
 }
 
+U32 BtData::getHostOffsetFromEip(U32 ip) {
+    for (U32 i = 0; i < this->ipAddressCount; i++) {
+        if (this->ipAddress[i] == ip) {
+            return this->ipAddressBufferPos[i];
+        }
+    }
+    return 0;
+}
+
 void BtData::mapAddress(U32 ip, U32 bufferPos) {
     if (this->ipAddressCount >= this->ipAddressBufferSize) {
         U32* ipAddressOld = this->ipAddress;
@@ -153,13 +161,35 @@ void BtData::mapAddress(U32 ip, U32 bufferPos) {
     this->ipAddressBufferPos[this->ipAddressCount++] = bufferPos;
 }
 
-std::shared_ptr<BtCodeChunk> BtData::commit(bool makeLive) {
-    std::shared_ptr<BtCodeChunk> chunk = createChunk(this->ipAddressCount, this->ipAddress, this->ipAddressBufferPos, this->buffer, this->bufferPos, this->startOfDataIp, this->ip - this->startOfDataIp, false);
-    chunk->block = this->currentBlock;
-    if (makeLive) {
-        chunk->makeLive();
-    }
-    return chunk;
+void* BtData::commit(KMemory* memory) {
+    void* result = memory->allocCodeMemory(bufferPos);
+    memcpy(result, this->buffer, bufferPos);
+    Platform::writeCodeToMemory(result, bufferPos, [result, this]() {
+        memcpy(result, this->buffer, bufferPos);
+        });
+    return result;
 }
 
+void BtData::makeLive(U8* hostAddress) {
+    DecodedOp* op = firstOp;
+    if (firstOp->blockOpCount) {
+        kpanic("BtData::makeLive blockOpCount");
+    }
+    op->blockOpCount = 0;
+    op->blockLen = calculatedEipLen;
+    for (U32 i = 0; i < ipAddressCount; i++) {
+        if (op->eip == ipAddress[i]) {
+            if (op->blockStart) {
+                kpanic("BtData::makeLive blockStart");
+            }
+            if (op->pfnJitCode) {
+                kpanic("BtData::makeLive pfnJitCode");
+            }
+            op->pfnJitCode = hostAddress + this->ipAddressBufferPos[i];            
+            op->blockStart = firstOp;
+            firstOp->blockOpCount++;
+            op = op->next;
+        }
+    }
+}
 #endif

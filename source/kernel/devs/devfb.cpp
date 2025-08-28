@@ -489,7 +489,7 @@ U32 DevFB::map(KThread* thread, U32 address, U32 len, S32 prot, S32 flags, U64 o
             kpanic("Something else got mapped into the framebuffer address");
         }
         RamPage ram = ramPageAllocNative(screenPixels + (i << K_PAGE_SHIFT));
-        mmu.setPage(getMemData(memory), i + pageStart, PageType::Ram, ram);
+        mmu.setPage(memory, i + pageStart, PageType::Ram, ram);
         mmu.setFlags(flags);
         ramPageRelease(ram); // setPage retains
     }    

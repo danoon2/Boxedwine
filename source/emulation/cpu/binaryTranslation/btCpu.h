@@ -25,13 +25,15 @@ class BtCodeChunk;
 
 #define CPU_OFFSET_CURRENT_OP (U32)(offsetof(BtCPU, currentSingleOp))
 
-class BtCPU : public CPU {
+#include "../normal/normalCPU.h"
+
+class BtCPU : public NormalCPU {
 public:
-    BtCPU(KMemory* memory) : CPU(memory) {}
+    BtCPU(KMemory* memory);
 
     // from CPU
     void run() override;
-    DecodedBlock* getNextBlock() override;
+    void reset() override;
 
     virtual void* init() = 0; // called from run
     
@@ -53,9 +55,9 @@ public:
 #endif
     std::vector<U32> pendingCodePages;
 
-    std::shared_ptr<BtCodeChunk> translateChunk(U32 ip);
+    void* translateChunk(U32 ip);
     virtual void translateData(BtData* data, BtData* firstPass = nullptr) = 0;
-    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) = 0;
+    virtual void link(BtData* data, void* hostAddress) = 0;
     void* translateEipInternal(U32 ip);
 #ifdef __TEST
     virtual void postTestRun() = 0;
@@ -63,7 +65,6 @@ public:
 
     U64 reTranslateChunk();
     U64 handleMissingCode(U32 page, U32 offset);        
-    DecodedOp* getOp(U32 eip, bool existing);
     void* translateEip(U32 ip);    
     void makePendingCodePagesReadOnly();
     U64 startException(U64 address, bool readAddress);
@@ -72,12 +73,13 @@ public:
     void startThread();
     void wakeThreadIfWaiting();    
     S32 preLinkCheck(BtData* data); // returns the index of the jump that failed
+    void clearTranslatedChunk(DecodedOp* op);
 
     U32 largeAddressJumpInstruction = 0;
     U32 pageJumpInstruction = 0;
     U32 pageOffsetJumpInstruction = 0;
+    DecodedOp*** opCache = nullptr;
 protected:
-    U64 getIpFromEip();
     virtual BtData* getData1() = 0;
     virtual BtData* getData2() = 0;
 };

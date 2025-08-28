@@ -36,7 +36,6 @@ CPU::CPU(KMemory* memory) : memory(memory) {
     this->fpu.reset();
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    currentSingleOp = nullptr;
 #if defined(BOXEDWINE_X64)
     memset(memcheckqq, 0xff, sizeof(memcheckqq));
     for (int i = 0; i < 15; i++) {

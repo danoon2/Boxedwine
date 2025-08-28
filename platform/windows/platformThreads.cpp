@@ -154,10 +154,13 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     if (cpu != (BtCPU*)ep->ContextRecord->R13) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
-    KMemoryData* mem = getMemData(cpu->memory);
-    bool inBinaryTranslator = mem->isAddressExecutable((U8*)ep->ContextRecord->Rip);
+    bool inBinaryTranslator = cpu->memory->isCode((U8*)ep->ContextRecord->Rip);
 
     if (!inBinaryTranslator) {
+        if (cpu->exitToStartThreadLoop) {
+            ep->ContextRecord->Rip = cpu->exitToStartThreadLoop;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
         // might be in a c++ exception
         //
         // motorhead installer will trigger this a few time
@@ -192,7 +195,7 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
         // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler        
-        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        DecodedOp* op = cpu->getNextOp();
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
@@ -201,7 +204,6 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         //
         // I'm not sure why, but setting the fpu state causes some stability issues so for now this is the band-aid
         syncToException(ep, op->isFpuOp() || op->isMmxOp());
-        op->dealloc(true);
         return EXCEPTION_CONTINUE_EXECUTION;
     }
     return EXCEPTION_CONTINUE_SEARCH;

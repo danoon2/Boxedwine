@@ -62,8 +62,6 @@ public:
     
     // from BtData
     void resetForNewOp() override;
-protected:
-    std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) override;
 
 public:
     U8 fetch8();

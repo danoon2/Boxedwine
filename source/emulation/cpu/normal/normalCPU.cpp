@@ -47,6 +47,8 @@
 #define NEXT_DONE() 
 #define NEXT_BRANCH1() cpu->eip.u32+=op->len
 #define NEXT_BRANCH2() cpu->eip.u32+=op->len
+#define NEXT_DONE_CALL()
+#define NEXT_BRANCH1_CALL() cpu->eip.u32+=op->len
 #else
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
@@ -162,12 +164,20 @@ NormalCPU::NormalCPU(KMemory* memory) : CPU(memory) {
 #endif
 }
 
-OpCallback NormalCPU::getFunctionForOp(DecodedOp* op, bool* canJIT) {
+OpCallback NormalCPU::getFunctionForOp(DecodedOp* op) {
     return normalOps[op->inst];
 }
 
 bool NormalCPU::isValidReadAddress(U32 address) {
     return memory->canRead(address >> K_PAGE_SHIFT);
+}
+
+DecodedOp* NormalCPU::decodeOneOp(U32 eip) {
+    U32 opCount = 0;
+    U32 eipLen;
+    DecodedOp* result = decodeBlock(this, eip, this->isBig(), opCount, eipLen);
+    result->pfn = getFunctionForOp(result);
+    return result;
 }
 
 DecodedOp* NormalCPU::getOp(U32 startIp, U32 flags) {
@@ -187,12 +197,13 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 flags) {
             op = decodeBlock(this, startIp, this->isBig(), opCount, eipLen);
 
             DecodedOp* nextOp = op;
-            bool canJIT = true;
 
             while (nextOp) {
                 if (!nextOp->pfn) {
-                    nextOp->pfn = getFunctionForOp(nextOp, &canJIT);
-                    nextOp->pfnJitCode = nullptr;
+                    nextOp->pfn = getFunctionForOp(nextOp);
+                }
+                if (nextOp->pfnJitCode) {
+                    int ii = 0;
                 }
                 if (memory->isAddressDynamic(address, nextOp->len)) {
                     nextOp->flags |= OP_FLAG_NO_JIT;
@@ -201,7 +212,7 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 flags) {
                 address += nextOp->len;
                 nextOp = nextOp->next;
             }
-            this->thread->memory->addCode_nolock(startIp, eipLen, op, true);            
+            this->thread->memory->addCode_nolock(startIp, eipLen, op, opCount);            
         }
     }
     op->flags |= flags;

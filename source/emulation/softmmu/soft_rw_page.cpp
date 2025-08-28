@@ -135,7 +135,7 @@ U8* RWPage::internalGetRamPtr(MMU* mmu, U32 address, bool write) {
         if (mmu->ramIndex == 0) {
             RamPage ram = ramPageAlloc();
             U32 pageIndex = address >> K_PAGE_SHIFT;
-            mmu->setPage(getMemData(memory), pageIndex, PageType::Ram, ram);
+            mmu->setPage(memory, pageIndex, PageType::Ram, ram);
             ramPageRelease(ram);
             getMemData(memory)->onPageChanged(address >> K_PAGE_SHIFT);
         }
@@ -158,7 +158,7 @@ void RWPage::onDemmand(MMU* mmu, U32 pageIndex) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         if (mmu->ramIndex == 0) {
             RamPage ram = ramPageAlloc();
-            mmu->setPage(getMemData(memory), pageIndex, PageType::Ram, ram);
+            mmu->setPage(memory, pageIndex, PageType::Ram, ram);
             ramPageRelease(ram);
             getMemData(memory)->onPageChanged(pageIndex);
         }

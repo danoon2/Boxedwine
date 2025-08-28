@@ -262,21 +262,21 @@ const InstructionInfo instructionInfo[] = {
     {0, 0, 0, CF, 0, OF|SF|AF|PF, 0}, // BtcR32, 
     {0, 32, 32, CF, 0, OF|SF|AF|PF, 0}, // BtcE32,
 
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlR16R16
-    {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlE16R16
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlR16R16
+    {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlE16R16
     {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClR16R16
     {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClE16R16
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrR16R16
-    {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrE16R16
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrR16R16
+    {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrE16R16
     {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClR16R16
     {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClE16R16
 
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlR32R32
-    {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshlE32R32
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlR32R32
+    {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlE32R32
     {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClR32R32
     {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshlClE32R32
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrR32R32
-    {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // DshrE32R32
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrR32R32
+    {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrE32R32
     {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClR32R32
     {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF, 0}, // DshrClE32R32
 
@@ -1415,18 +1415,18 @@ const InstructionInfo instructionInfo[] = {
     {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE16I16_Lock,
     {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE32R32_Lock,
     {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // OrE32I32_Lock,
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE8R8_Lock,
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE8I8_Lock,
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE16R16_Lock,
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE16I16_Lock,
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE32R32_Lock,
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AdcE32I32_Lock,
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE8R8_Lock,
-    {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE8I8_Lock,
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE16R16_Lock,
-    {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE16I16_Lock,
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE32R32_Lock,
-    {0, 32, 32, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // SbbE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // AdcE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // AdcE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // AdcE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // AdcE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // AdcE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // AdcE32I32_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // SbbE8R8_Lock,
+    {0, 8, 8, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // SbbE8I8_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // SbbE16R16_Lock,
+    {0, 16, 16, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // SbbE16I16_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // SbbE32R32_Lock,
+    {0, 32, 32, CF|AF|ZF|SF|OF|PF, CF, 0, 0}, // SbbE32I32_Lock,
     {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE8R8_Lock,
     {0, 8, 8, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE8I8_Lock,
     {0, 16, 16, CF|AF|ZF|SF|OF|PF, 0, 0, 0}, // AndE16R16_Lock,
@@ -4456,12 +4456,7 @@ public:
         case 0x07: func(data, op, rm, BtcR16, BtcE16); break;
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        op->extra = data->fetch8() & 15;
-        op->imm = 1 << op->extra;
-#else
         op->imm = 1 << (data->fetch8() & 15);
-#endif
     }
 };
 
@@ -4477,12 +4472,7 @@ public:
         case 0x07: func(data, op, rm, BtcR32, BtcE32); break;
         default: op->inst = Invalid; op->reg = rm; op->imm = data->inst; break;
         }	
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-        op->extra = data->fetch8() & 31;
-        op->imm = 1 << op->extra;
-#else
         op->imm = 1 << (data->fetch8() & 31);
-#endif
     }
 };
 
@@ -6241,8 +6231,15 @@ void DecodedOp::reset() {
 #else
     this->runCount = 0;
 #endif
-#ifdef BOXEDWINE_DYNAMIC
+#if defined(BOXEDWINE_DYNAMIC) || defined(BOXEDWINE_BINARY_TRANSLATOR)
     this->pfnJitCode = nullptr;
+#endif
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+    blockStart = nullptr;
+    blockOpCount = 0;
+#ifdef BOXEDWINE_4K_PAGE_SIZE
+    exceptionCount = 0;
+#endif
 #endif
 }
 DecodedOp* DecodedOp::alloc() {
@@ -6492,7 +6489,7 @@ bool decodeFunction(DecodeBlockCallback* callback, U32 eip, std::vector<DecodedF
     return true;
 }
 
-DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen) {
+DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen, U32 maxOpCount) {
     DecodeData d;
     DecodedOp* op = DecodedOp::alloc();
     DecodedOp* result = op;
@@ -6520,7 +6517,7 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
             d.opCode = 0;
             d.ea16 = 1;
         }
-#ifdef _DEBUG
+#if defined (_DEBUG) || defined (BOXEDWINE_BINARY_TRANSLATOR)
         op->eip = d.eip;
 #endif
         d.inst = d.opCode + d.fetch8();
@@ -6567,13 +6564,15 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         if (!callback->shouldContinue(d.eip)) {
             break;
         }
+        if (opCount > maxOpCount) {
+            break;
+        }
         // is it the last call or return, if so, then stop
         if (((instructionInfo[op->inst].branch & DECODE_BRANCH_NO_CACHE) || op->inst == CallJd || op->inst == CallJw) && d.eip > furtherestDirectJump) {
             break;
         }
         if (opCount > 1000) {
             op->next = DecodedOp::allocDone();
-            op->flags |= OP_FLAG_END_LONG_BLOCK; // :TODO: no one uses this, but in the future, maybe consider linking the instruction before a done, with the next instruction.
             break;
         }
         if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1)) {

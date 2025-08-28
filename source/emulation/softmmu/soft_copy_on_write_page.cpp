@@ -66,10 +66,10 @@ void CopyOnWritePage::onDemmand(MMU* mmu, U32 pageIndex) {
         RamPage currentRamPage = mmu->getRamPageIndex();
 
         memcpy(ramPageGet(ramIndex), ramPageGet(currentRamPage), K_PAGE_SIZE);
-        mmu->setPage(getMemData(memory), pageIndex, PageType::Ram, ramIndex);
+        mmu->setPage(memory, pageIndex, PageType::Ram, ramIndex);
         ramPageRelease(ramIndex);
     } else {
-        mmu->setPageType(getMemData(memory), pageIndex, PageType::Ram);
+        mmu->setPageType(memory, pageIndex, PageType::Ram);
     }
     getMemData(memory)->onPageChanged(pageIndex);
 }

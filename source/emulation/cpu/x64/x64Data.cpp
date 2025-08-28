@@ -21,7 +21,6 @@
 #ifdef BOXEDWINE_X64
 
 #include "x64Data.h"
-#include "x64CodeChunk.h"
 #include "x64CPU.h"
 
 X64Data::X64Data(x64CPU* cpu) : cpu(cpu) {
@@ -92,10 +91,6 @@ void X64Data::resetForNewOp() {
     this->skipWriteOp = false;
     this->isG8bitWritten = false;
     this->flagsWrittenToInstructionStoredFlags = false;
-}
-
-std::shared_ptr<BtCodeChunk> X64Data::createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
-    return std::make_shared<X64CodeChunk>(instructionCount, eipInstructionAddress, hostInstructionIndex, hostInstructionBuffer, hostInstructionBufferLen, eip, eipLen, dynamic);
 }
 
 #endif

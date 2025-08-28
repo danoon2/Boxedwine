@@ -44,7 +44,7 @@
 #define CPU_OFFSET_FS (U32)(offsetof(CPU, seg[FS].value))
 #define CPU_OFFSET_GS (U32)(offsetof(CPU, seg[GS].value))
 
-#define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, eipToHostInstructionPages))
+#define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, opCache))
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
@@ -200,6 +200,7 @@ public:
 #endif
 
     U8 getTmpReg();
+    U8 getTmp4();
     bool isTmpRegAvailable();
     void releaseTmpReg(U8 reg);
     bool isTmpReg(U8 tmpReg);
@@ -254,7 +255,8 @@ public:
     void addTodoLinkJump(U32 eip);       
     void doLoop(U32 eip);
     void doLoop16(U8 inst, U32 eip);
-    void jmpReg(U8 reg, bool isRex, bool mightNeedCS);
+    void jmpTmp4(bool mightNeedCS);
+    void jmpAddress(U32 eip);
     void jmpNativeReg(U8 reg, bool isRegRex);
     void shiftRightReg(U8 reg, bool isRegRex, U8 shiftAmount, bool arith = false, bool is64bit = false);
     void shiftLeftReg(U8 reg, bool isRegRex, U8 shiftAmount);
