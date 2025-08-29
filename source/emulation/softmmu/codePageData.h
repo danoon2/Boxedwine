@@ -58,6 +58,7 @@ public:
 	void iterateOps(U32 address, U32 len, OpCacheCallback callback, void* pData);
 	void add(DecodedOp* op, U32 address, U32 opCount);
 	bool isAddressDynamic(U32 address, U32 len);
+	void clearPageWriteCounts(U32 pageIndex);
 #ifdef BOXEDWINE_DYNAMIC
 	static BOXEDWINE_MUTEX lock;
 

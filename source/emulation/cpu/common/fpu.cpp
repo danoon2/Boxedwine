@@ -255,9 +255,10 @@ void FPU::ST80(CPU* cpu, U32 addr, int reg) {
 }
 
 void FPU::LD80(U32 reg, U64 low, U16 high) {
-    extFloat80_t& f80 = getReg(reg);
+    extFloat80_t& f80 = regs[reg];
     f80.signif = low;
     f80.signExp = high;
+    isRegCached[reg] = false;
 }
 
 void FPU::ST80(U32 reg, U64* pLow, U64* pHigh) {
@@ -308,9 +309,10 @@ double FPU::FROUND(double in) {
 }
 
 void FPU::FLD_F80(U64 low, S16 high) {
-    extFloat80_t& f80 = getReg(this->top);
+    extFloat80_t& f80 = regs[this->top];
     f80.signif = low;
     f80.signExp = high;
+    isRegCached[this->top] = false;
 }
 
 void FPU::FLD_I16(S16 value, int store_to) {

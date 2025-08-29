@@ -364,6 +364,16 @@ DecodedOpPageCache* DecodedOpCache::getPageCache(U32 pageIndex, bool create) {
 	return result;
 }
 
+void DecodedOpCache::clearPageWriteCounts(U32 pageIndex) {
+	U32 firstIndex = GET_FIRST_INDEX_FROM_PAGE(pageIndex);
+	U32 secondIndex = GET_SECOND_INDEX_FROM_PAGE(pageIndex);
+	U8** first = writeCounts[firstIndex];
+	U8* result = nullptr;
+	if (first && first[secondIndex]) {
+		memset(first[secondIndex], 0, sizeof(K_PAGE_SIZE));
+	}
+}
+
 U8* DecodedOpCache::getWriteCounts(U32 pageIndex, bool create) {
 	U32 firstIndex = GET_FIRST_INDEX_FROM_PAGE(pageIndex);
 	U32 secondIndex = GET_SECOND_INDEX_FROM_PAGE(pageIndex);
@@ -373,7 +383,6 @@ U8* DecodedOpCache::getWriteCounts(U32 pageIndex, bool create) {
 		result = first[secondIndex];
 	}
 	if (!result && create) {
-		BOXEDWINE_CRITICAL_SECTION;
 		if (!first) {
 			first = writeCounts[firstIndex];
 		}

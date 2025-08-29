@@ -205,16 +205,19 @@ U64 BtCPU::handleFpuException(int code) {
     return result;
 }
 
-U64 BtCPU::handleAccessException(DecodedOp* op) {
+U64 BtCPU::handleAccessException(DecodedOp* op) {    
 #ifdef BOXEDWINE_4K_PAGE_SIZE
     if (op->exceptionCount < 0xff) {
         op->exceptionCount++;
-    } else {        
+    } else if (op->blockStart) {        
         U32 eip = op->blockStart->eip;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         memory->removeCodeBlock(op->blockStart, false);
     }
 #endif
+    if (!op->pfnJitCode) {
+        translateEip(op->eip - seg[CS].address);
+    }
     try {
         op->pfn(this, op);
     } catch (...) {

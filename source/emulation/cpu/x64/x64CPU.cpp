@@ -286,7 +286,6 @@ void common_runSingleOp(x64CPU* cpu) {
     } else if (!op) {
         kpanic("common_runSingleOp oops");
     }
-    cpu->updateFlagsFromX64();
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
     for (U32 i = 0; i < 8; i++) {
         cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;

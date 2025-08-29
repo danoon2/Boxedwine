@@ -89,7 +89,7 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU = true) {
         }
         return;
     }
-    klog("fpu/mmx should not get here");
+
 #ifdef BOXEDWINE_USE_SSE_FOR_FPU
     if (cpu->fpu.isMMXInUse) {
 #else

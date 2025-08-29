@@ -144,6 +144,7 @@ public:
     bool isAddressDynamic(U32 address, U32 len);
     void threadCleanup(U32 threadId);
     void clearOpCache();
+    void clearPageWriteCounts(U32 pageIndex);
 
     void* allocCodeMemory(U32 len);
     bool isCode(void* p);

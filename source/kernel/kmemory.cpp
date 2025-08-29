@@ -531,6 +531,11 @@ bool KMemory::removeCode(U32 address, U32 len, bool becauseOfWrite) {
     return data->opCache.remove(address, len, becauseOfWrite);
 }
 
+void KMemory::clearPageWriteCounts(U32 pageIndex) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
+    data->opCache.clearPageWriteCounts(pageIndex);
+}
+
 void KMemory::addCode_nolock(U32 address, U32 len, DecodedOp* op, U32 opCount) {
     iteratePages(address, len, [this](U32 page) {
         this->data->getOrCreateCodePage(page << K_PAGE_SHIFT);
