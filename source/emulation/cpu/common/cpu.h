@@ -235,6 +235,7 @@ public:
     U32 cr0 = 0;
     U32 stackNotMask = 0;
     U32 stackMask = 0;
+    U32 fpuDirtyFlags = 0;
 
     KThread* thread = nullptr;
     KMemory* memory = nullptr;

@@ -184,59 +184,6 @@ void x64CPU::link(BtData* data, void* hostAddress) {
     }
 }
 
-void x64CPU::loadFxState(U32 inst) {
-    for (U32 i = 0; i < 8; i++) {
-        this->xmm[i].pd.u64[0] = this->fpuState.xmm[i].low;
-        this->xmm[i].pd.u64[1] = this->fpuState.xmm[i].high;
-    }
-#ifdef BOXEDWINE_USE_SSE_FOR_FPU
-    if (this->fpu.isMMXInUse) {
-        klog("mmx");
-        for (U32 i = 0; i < 8; i++) {
-            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
-        }
-    }
-#else
-    if (!this->thread->process->emulateFPU) {
-        U16 controlWord = this->fpuState.fcw;
-        U16 statusWord = this->fpuState.fsw;
-        U8 tag = ((x64CPU*)this)->fpuState.ftw;
-        this->fpu.SetCW(controlWord);
-        this->fpu.SetSW(statusWord);
-        this->fpu.SetTagFromAbridged(tag);
-
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - this->fpu.GetTop()) & 7;
-            fpu.LD80(i, this->fpuState.st_mm[index].low, (U16)this->fpuState.st_mm[index].high);
-        }
-    }
-#endif
-}
-
-void x64CPU::saveToFxState(U32 inst) {
-    for (U32 i = 0; i < 8; i++) {
-        this->fpuState.xmm[i].low = this->xmm[i].pd.u64[0];
-        this->fpuState.xmm[i].high = this->xmm[i].pd.u64[1];
-    }
-#ifdef BOXEDWINE_USE_SSE_FOR_FPU
-    if (this->fpu.isMMXInUse) {
-        for (U32 i = 0; i < 8; i++) {
-            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
-        }
-    }
-#else
-    if (!this->thread->process->emulateFPU) {
-        this->fpuState.fcw = this->fpu.CW();
-        this->fpuState.fsw = this->fpu.SW();
-        this->fpuState.ftw = this->fpu.GetAbridgedTag(this);
-        for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - this->fpu.GetTop()) & 7;
-            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[index].low, (U64*)&this->fpuState.st_mm[index].high);
-        }
-    }
-#endif
-}
-
 // winfish seems to jump into the middle of an instruction which changes it from cmp to mov
 void x64CPU::translateData(BtData* data, BtData* firstPass) {
     KMemoryData* mem = getMemData(memory);
@@ -287,24 +234,26 @@ void common_runSingleOp(x64CPU* cpu) {
         kpanic("common_runSingleOp oops");
     }
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
-    for (U32 i = 0; i < 8; i++) {
-        cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
-        cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
-        if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
-            cpu->fpu.LD80(i, cpu->fpuState.st_mm[i].low, (U16)cpu->fpuState.st_mm[i].high);
-        }
-    }
-    if (!cpu->thread->process->emulateFPU) {
-        U16 controlWord = cpu->fpuState.fcw;
-        U16 statusWord = cpu->fpuState.fsw;
-        U8 tag = cpu->fpuState.ftw;
-        cpu->fpu.SetCW(controlWord);
-        cpu->fpu.SetSW(statusWord);
-        cpu->fpu.SetTagFromAbridged(tag);
-
+    if (cpu->fpuDirtyFlags) {
         for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            cpu->fpu.LD80(i, cpu->fpuState.st_mm[index].low, (U16)cpu->fpuState.st_mm[index].high);
+            cpu->xmm[i].pd.u64[0] = cpu->fpuState.xmm[i].low;
+            cpu->xmm[i].pd.u64[1] = cpu->fpuState.xmm[i].high;
+            if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
+                cpu->fpu.LD80(i, cpu->fpuState.st_mm[i].low, (U16)cpu->fpuState.st_mm[i].high);
+            }
+        }
+        if (!cpu->thread->process->emulateFPU) {
+            U16 controlWord = cpu->fpuState.fcw;
+            U16 statusWord = cpu->fpuState.fsw;
+            U8 tag = cpu->fpuState.ftw;
+            cpu->fpu.SetCW(controlWord);
+            cpu->fpu.SetSW(statusWord);
+            cpu->fpu.SetTagFromAbridged(tag);
+
+            for (U32 i = 0; i < 8; i++) {
+                U32 index = (i - cpu->fpu.GetTop()) & 7;
+                cpu->fpu.LD80(i, cpu->fpuState.st_mm[index].low, (U16)cpu->fpuState.st_mm[index].high);
+            }
         }
     }
 #endif
@@ -314,24 +263,29 @@ void common_runSingleOp(x64CPU* cpu) {
     }
     try {
         op->pfn(cpu, op);
+        if (op->isFpuOp() || op->isMmxOp() || op->isSSEOp()) {
+            cpu->fpuDirtyFlags = true;
+        }
     } catch (...) {
         int ii = 0;
     }
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
-    for (U32 i = 0; i < 8; i++) {
-        cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
-        cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
-        if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
-            cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[i].low, (U64*)&cpu->fpuState.st_mm[i].high);
-        }
-    }
-    if (!cpu->thread->process->emulateFPU) {
-        cpu->fpuState.fcw = cpu->fpu.CW();
-        cpu->fpuState.fsw = cpu->fpu.SW();
-        cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag(cpu);
+    if (cpu->fpuDirtyFlags) {
         for (U32 i = 0; i < 8; i++) {
-            U32 index = (i - cpu->fpu.GetTop()) & 7;
-            cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
+            cpu->fpuState.xmm[i].low = cpu->xmm[i].pd.u64[0];
+            cpu->fpuState.xmm[i].high = cpu->xmm[i].pd.u64[1];
+            if (cpu->fpu.isMMXInUse && cpu->thread->process->emulateFPU) {
+                cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[i].low, (U64*)&cpu->fpuState.st_mm[i].high);
+            }
+        }
+        if (!cpu->thread->process->emulateFPU) {
+            cpu->fpuState.fcw = cpu->fpu.CW();
+            cpu->fpuState.fsw = cpu->fpu.SW();
+            cpu->fpuState.ftw = cpu->fpu.GetAbridgedTag(cpu);
+            for (U32 i = 0; i < 8; i++) {
+                U32 index = (i - cpu->fpu.GetTop()) & 7;
+                cpu->fpu.ST80(i, (U64*)&cpu->fpuState.st_mm[index].low, (U64*)&cpu->fpuState.st_mm[index].high);
+            }
         }
     }
 #endif

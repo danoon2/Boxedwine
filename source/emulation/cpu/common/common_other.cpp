@@ -155,6 +155,7 @@ void common_fxrstor(CPU* cpu, U32 address) {
         cpu->xmm[i].pi.u64[0] = cpu->memory->readq(address+160+i*16);
         cpu->xmm[i].pi.u64[1] = cpu->memory->readq(address+168+i*16);
     }
+    cpu->fpuDirtyFlags = 1;
 }
 
 void common_xsave(CPU* cpu, U32 address) {

@@ -6291,6 +6291,10 @@ bool DecodedOp::isFpuOp() {
     return (this->inst >= FADD_ST0_STj && this->inst <= FISTP_QWORD_INTEGER) || this->inst == Fxsave || this->inst == Fxrstor;
 }
 
+bool DecodedOp::isSSEOp() {
+    return (this->inst >= AddpsXmm && this->inst <= ShufpdXmmE128);
+}
+
 bool DecodedOp::isMmxOp() {
     return (this->inst >= PunpcklbwMmx && this->inst <= PadddE64) || (instructionInfo[this->inst].extra & INST_MMX_READ) | (instructionInfo[this->inst].extra & INST_MMX_WRITE);
 }

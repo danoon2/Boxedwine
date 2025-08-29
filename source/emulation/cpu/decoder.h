@@ -1565,6 +1565,7 @@ public:
     bool needsToSetFlags(CPU* cpu);
     bool isFpuOp();
     bool isMmxOp();
+    bool isSSEOp();
     bool isStringOp();
     bool isBranch();
     bool isDirectBranch();

@@ -2121,11 +2121,14 @@ void X64Asm::createCodeForSyncFromHost() {
         }
     }, nullptr, false, true, false, 0x74, 0x75);
 #else
-    write8(0x41);
-    write8(0x0f);
-    write8(0xae);
-    write8(0x80 | HOST_CPU);
-    write32(CPU_OFFSET_FPU_STATE);
+    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_DIRTY, 4, false);
+    doNotIf(tmpReg, true, 0, [this]() {
+        write8(0x41);
+        write8(0x0f);
+        write8(0xae);
+        write8(0x80 | HOST_CPU);
+        write32(CPU_OFFSET_FPU_STATE);
+        }, nullptr);
 #endif    
     releaseTmpReg(tmpReg);
     write8(0xc3); // ret
@@ -2173,11 +2176,15 @@ void X64Asm::createCodeForSyncToHost() {
         }
     }, nullptr, false, true, false, 0x74, 0x75); 
 #else
-    write8(0x41);
-    write8(0x0f);
-    write8(0xae);
-    write8(0x88 | HOST_CPU);
-    write32(CPU_OFFSET_FPU_STATE);
+    writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_DIRTY, 4, false);
+    doNotIf(tmpReg, true, 0, [this]() {
+        write8(0x41);
+        write8(0x0f);
+        write8(0xae);
+        write8(0x88 | HOST_CPU);
+        write32(CPU_OFFSET_FPU_STATE);
+        writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_DIRTY, 4, false);
+        }, nullptr);
 #endif
 
     writeToRegFromMem(tmpReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_HOST_FLAGS, 2, false);
@@ -2336,6 +2343,10 @@ void X64Asm::callHost(void* pfn, U8 tmp, bool internal) {
     unlockParamReg(PARAM_2_REG, PARAM_2_REX);
     unlockParamReg(PARAM_3_REG, PARAM_3_REX);
     unlockParamReg(PARAM_4_REG, PARAM_4_REX);
+}
+
+void X64Asm::doNotIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags, bool generateCmp, bool releaseRegAfterCmp) {
+    doIf(reg, isRexReg, equalsValue, ifBlock, elseBlock, keepFlags, generateCmp, releaseRegAfterCmp, 0x74, 0x75);
 }
 
 void X64Asm::doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags, bool generateCmp, bool releaseRegAfterCmp, U8 nz, U8 z) {
@@ -5145,6 +5156,9 @@ void X64Asm::translateInstruction() {
         return;
     }
     this->currentOp->flags &= ~OP_FLAG_EMULATED_OP;
+    if (this->currentOp->isFpuOp() || this->currentOp->isMmxOp() || this->currentOp->isSSEOp()) {
+        writeToMemFromValue(1, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_DIRTY, 1, false);
+    }
     while (1) {
         this->op = this->fetch8();
         this->inst = this->baseOp + this->op;

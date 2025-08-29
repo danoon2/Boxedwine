@@ -55,6 +55,7 @@
 #define CPU_OFFSET_FPU_TAG (U32)(offsetof(CPU, fpu.tags[0]))
 #define CPU_OFFSET_FPU_SW (U32)(offsetof(CPU, fpu.sw))
 #define CPU_OFFSET_INSTRUCTION_FLAGS (U32)(offsetof(x64CPU, instructionStoredFlags))
+#define CPU_OFFSET_FPU_DIRTY (U32)(offsetof(x64CPU, fpuDirtyFlags))
 
 typedef void (*PFN_FPU_REG)(CPU* cpu, U32 reg);
 typedef void (*PFN_FPU_ADDRESS)(CPU* cpu, U32 address);
@@ -227,6 +228,7 @@ public:
     void minSyncRegsToHost();
     void adjustStack(U8 tmpReg, S32 bytes);
     void doIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags = false, bool generateCmp = true, bool releaseRegAfterCmp = false, U8 nz = 0x75, U8 z = 0x74);
+    void doNotIf(U8 reg, bool isRexReg, U32 equalsValue, std::function<void(void)> ifBlock, std::function<void(void)> elseBlock, bool keepFlags = false, bool generateCmp = true, bool releaseRegAfterCmp = false);
     void setPF_onAL(U8 flagReg);
     void setZF_onAL(U8 flagReg);
     void setSF_onAL(U8 flagReg);

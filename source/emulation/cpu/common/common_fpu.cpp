@@ -1130,6 +1130,7 @@ void common_FST_DOUBLE_REAL_Pop(CPU* cpu, U32 address) {
 
 void common_FRSTOR(CPU* cpu, U32 address) {
     cpu->fpu.FRSTOR(cpu, address);
+    cpu->fpuDirtyFlags = true;
 #ifdef LOG_FPU
     flog("FRSTOR @%.08X", address);
     cpu->fpu.LOG_STACK();
