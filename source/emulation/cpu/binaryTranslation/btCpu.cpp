@@ -74,6 +74,42 @@ void BtCPU::run() {
     }
 }
 
+// winfish seems to jump into the middle of an instruction which changes it from cmp to mov
+void BtCPU::translateData(BtData* data, BtData* firstPass) {
+    KMemoryData* mem = getMemData(memory);
+
+    data->firstPass = firstPass;
+    data->currentOp = nullptr;
+    data->firstOp = nullptr;
+    DecodedOp* prevOp = nullptr;
+
+    while (1) {
+        U32 address = this->seg[CS].address + data->ip;
+        data->currentOp = getOp(address, 0);
+        if (prevOp && !prevOp->next) {
+            prevOp->next = data->currentOp;
+        }
+        if (!data->firstOp) {
+            data->firstOp = data->currentOp;
+        }
+        void* hostAddress = data->currentOp->pfnJitCode;
+        if (hostAddress) {
+            data->jumpTo(data->ip);
+            break;
+        }
+        data->mapAddress(address, data->bufferPos);
+        data->translateInstruction();
+        if (data->done || data->currentOp->inst == Invalid) {
+            break;
+        }
+        if (data->stopAfterInstruction != -1 && (int)data->ipAddressCount == data->stopAfterInstruction) {
+            break;
+        }
+        data->resetForNewOp();
+        prevOp = data->currentOp;
+    }
+}
+
 void* BtCPU::translateChunk(U32 ip) {
     BtData* firstPass = getData1();
     firstPass->ip = ip;
@@ -206,7 +242,6 @@ U64 BtCPU::handleFpuException(int code) {
 }
 
 U64 BtCPU::handleAccessException(DecodedOp* op) {    
-#ifdef BOXEDWINE_4K_PAGE_SIZE
     if (op->exceptionCount < 0xff) {
         op->exceptionCount++;
     } else if (op->blockStart) {        
@@ -214,9 +249,23 @@ U64 BtCPU::handleAccessException(DecodedOp* op) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
         memory->removeCodeBlock(op->blockStart, false);
     }
-#endif
+    // 0x21c900 good
+    // 0x21C800 bad
+
+    /*
+    *   exception 21c8c0
+        exception 21c8e1
+        exception 21c830
+    */
     if (!op->pfnJitCode) {
-        translateEip(op->eip - seg[CS].address);
+        //klog_fmt("exception %x", eip.u32);
+        //if (eip.u32 >= 0x21c8e1) {
+            if (eip.u32 == 0x21c8e1) {
+                int ii = 0;
+            } else {
+                translateEip(eip.u32);
+            }
+
     }
     try {
         op->pfn(this, op);
@@ -311,19 +360,12 @@ void unscheduleThread(KThread* thread) {
 #include "../x64/x64CPU.h"
 
 #if !defined(BOXEDWINE_X64)
-void common_runSingleOp(BtCPU* cpu) {           
-    U32 address = cpu->eip.u32;
-
-    if (cpu->isBig()) {
-        address += cpu->seg[CS].address;
-    } else {
-        address = cpu->seg[CS].address + (address & 0xFFFF);
-    }
-
-    DecodedOp* op = cpu->currentSingleOp;
+void common_runSingleOp(BtCPU* cpu) {
+    DecodedOp* op = cpu->getNextOp();
     bool deallocOp = false;
-    if (!op) {
-        op = NormalCPU::decodeSingleOp(cpu, address);
+
+    if (op->flags & OP_FLAG_EMULATED_OP) {
+        op = cpu->decodeOneOp(cpu->getEipAddress());
         deallocOp = true;
     } else if (!op) {
         kpanic("common_runSingleOp oops");
@@ -337,7 +379,7 @@ void common_runSingleOp(BtCPU* cpu) {
     cpu->fillFlags();
     cpu->returnHostAddress = (U64)cpu->translateEip(cpu->eip.u32);
     if (deallocOp) {
-        op->dealloc(true);
+        op->dealloc();
     }
 }
 #endif

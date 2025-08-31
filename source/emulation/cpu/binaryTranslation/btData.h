@@ -23,6 +23,8 @@
 
 #include "btCpu.h"
 
+#define CPU_OFFSET_OP_PAGES (U32)(offsetof(BtCPU, opCache))
+
 class TodoJump {
 public:
     TodoJump() = default;
@@ -36,7 +38,7 @@ class BtData {
 public:
     BtData();
     virtual ~BtData();    
-    void* commit(KMemory* memory);
+    virtual void* commit(KMemory* memory);
     void makeLive(U8* hostAddress);
 
     U32 ip = 0;
@@ -67,6 +69,7 @@ public:
     void mapAddress(U32 ip, U32 bufferPos);
     U8 calculateEipLen(U32 eip);
     U32 getHostOffsetFromEip(U32 ip);
+    bool needsToPreverveFlags();
 
     void write8(U8 data);
     void write16(U16 data);

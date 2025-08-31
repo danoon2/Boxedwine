@@ -2030,7 +2030,7 @@ void opPushSeg16(Armv8btAsm* data) {
 }
 
 void opPopSeg16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
@@ -2042,7 +2042,7 @@ void opPushSeg32(Armv8btAsm* data) {
 }
 
 void opPopSeg32(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
@@ -2074,8 +2074,10 @@ void opPopR32(Armv8btAsm* data) {
     data->popNativeReg32(data->getNativeReg(data->currentOp->reg));
 }
 void opPopE16(Armv8btAsm* data) {    
-    U8 tmpReg = data->getTmpReg();    
+    U8 tmpReg = data->getTmpReg();
+    data->popStack16(); // ESP needs to be set before calculating address
     U8 addressReg = data->getAddressReg();
+    data->pushStack16(xESP, xESP); // put ESP back so that if the writeMemory failes, we have the correct ESP
     data->peekNativeReg16(tmpReg, false);  
     data->writeMemory(addressReg, tmpReg, 16, true);
     // only adjust stack after the write succeeds (winfish depends on this)
@@ -2085,7 +2087,9 @@ void opPopE16(Armv8btAsm* data) {
 }
 void opPopE32(Armv8btAsm* data) {    
     U8 tmpReg = data->getTmpReg();
+    data->popStack32(); // ESP needs to be set before calculating address
     U8 addressReg = data->getAddressReg();
+    data->pushStack32(xESP, xESP); // put ESP back so that if the writeMemory failes, we have the correct ESP
     data->peekNativeReg32(tmpReg);
     data->writeMemory(addressReg, tmpReg, 32, true);
     // only adjust stack after the write succeeds 
@@ -2320,28 +2324,28 @@ void opArplMem32(Armv8btAsm* data) {
 }
 
 void opDaa(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
 void opDas(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opAaa(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opAas(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opAam(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opAad(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
@@ -2648,12 +2652,12 @@ void opMovE16S16(Armv8btAsm* data) {
 }
 
 void opMovS16R16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
 void opMovS16E16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
@@ -2661,12 +2665,12 @@ void opMovS16E16(Armv8btAsm* data) {
 void opMovAlOb(Armv8btAsm* data) {
     if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->data.disp);
         data->readMemory(tmp, tmp, 8, true);
         data->movRegToReg8(tmp, 0);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        U8 tmp = data->getRegWithConst(data->currentOp->data.disp);
         data->readMemory(tmp, tmp, 8, true);
         data->movRegToReg8(tmp, 0);
         data->releaseTmpReg(tmp);
@@ -2675,12 +2679,12 @@ void opMovAlOb(Armv8btAsm* data) {
 void opMovAxOw(Armv8btAsm* data) {
     if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->data.disp);
         data->readMemory(tmp, tmp, 16, true);
         data->movRegToReg(xEAX, tmp, 16, false);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        U8 tmp = data->getRegWithConst(data->currentOp->data.disp);
         data->readMemory(tmp, tmp, 16, true);
         data->movRegToReg(xEAX, tmp, 16, false);
         data->releaseTmpReg(tmp);
@@ -2689,11 +2693,11 @@ void opMovAxOw(Armv8btAsm* data) {
 void opMovEaxOd(Armv8btAsm* data) {
     if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->data.disp);
         data->readMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        U8 tmp = data->getRegWithConst(data->currentOp->data.disp);
         data->readMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     }
@@ -2701,11 +2705,11 @@ void opMovEaxOd(Armv8btAsm* data) {
 void opMovObAl(Armv8btAsm* data) {
     if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->data.disp);
         data->writeMemory(tmp, xEAX, 8, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        U8 tmp = data->getRegWithConst(data->currentOp->data.disp);
         data->writeMemory(tmp, xEAX, 8, true);
         data->releaseTmpReg(tmp);
     }
@@ -2713,11 +2717,11 @@ void opMovObAl(Armv8btAsm* data) {
 void opMovOwAx(Armv8btAsm* data) {
     if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->data.disp);
         data->writeMemory(tmp, xEAX, 16, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        U8 tmp = data->getRegWithConst(data->currentOp->data.disp);
         data->writeMemory(tmp, xEAX, 16, true);
         data->releaseTmpReg(tmp);
     }
@@ -2725,11 +2729,11 @@ void opMovOwAx(Armv8btAsm* data) {
 void opMovOdEax(Armv8btAsm* data) {
     if (KThread::currentThread()->process->hasSetSeg[data->currentOp->base]) {
         U8 tmp = data->getTmpReg();
-        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->disp);
+        data->addValue32(tmp, data->getSegReg(data->currentOp->base), data->currentOp->data.disp);
         data->writeMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     } else {
-        U8 tmp = data->getRegWithConst(data->currentOp->disp);
+        U8 tmp = data->getRegWithConst(data->currentOp->data.disp);
         data->writeMemory(tmp, xEAX, 32, true);
         data->releaseTmpReg(tmp);
     }
@@ -2846,21 +2850,21 @@ void opCwq(Armv8btAsm* data) {
     data->shiftSignedRegRightWithValue32(xEDX, xEAX, 31);
 }
 void opCallAp(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
 void opCallFar(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
 void opJmpAp(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opJmpFar(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opWait(Armv8btAsm* data) {
@@ -2920,7 +2924,7 @@ static void doRetn32(Armv8btAsm* data, U32 bytes) {
     data->done = true;
 }
 static void doRetf(Armv8btAsm* data, U32 big) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opRetn16Iw(Armv8btAsm* data) {
@@ -2975,7 +2979,7 @@ void opInt80(Armv8btAsm* data) {
     data->doJmp(false);
 }
 void opInt99(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opIntIb(Armv8btAsm* data) {
@@ -2991,19 +2995,23 @@ void opIntIb(Armv8btAsm* data) {
     }
 }
 void opInt9A(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opInt9B(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opIntO(Armv8btAsm* data) {
     data->invalidOp(data->currentOp->originalOp);
     data->done = true;
 }
+void opUD2(Armv8btAsm* data) {
+    data->signalIllegalInstruction(5);
+}
+
 static void doIret(Armv8btAsm* data, U32 big, U32 eip) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opIret(Armv8btAsm* data) {
@@ -3189,7 +3197,7 @@ void opCPUID(Armv8btAsm* data) {
 
 static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {    
     if (level != 0) {
-        data->emulateSingleOp(data->currentOp);
+        data->emulateSingleOp();
         data->done = true;
     } else {
         if (big) {
@@ -3210,11 +3218,11 @@ static void doEnter(Armv8btAsm* data, bool big, U32 bytes, U32 level) {
 
 void opEnter16(Armv8btAsm* data) {
     //kpanic("Need to test");
-    doEnter(data, false, data->currentOp->imm, data->currentOp->disp);
+    doEnter(data, false, data->currentOp->imm, data->currentOp->data.disp);
 }
 void opEnter32(Armv8btAsm* data) {
     //kpanic("Need to test");
-    doEnter(data, true, data->currentOp->imm, data->currentOp->disp);
+    doEnter(data, true, data->currentOp->imm, data->currentOp->data.disp);
 }
 void opLeave16(Armv8btAsm* data) {
     // kpanic("Need to test");
@@ -3232,7 +3240,7 @@ void opLeave32(Armv8btAsm* data) {
 }
 
 void doLoadSegment(Armv8btAsm* data, bool big) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
@@ -3433,8 +3441,7 @@ void opCallJw(Armv8btAsm* data) {
     // cpu->eip.u32 += (S16)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg16(tmpReg);
-    data->loadConst(xBranchEip, (data->ip + (S16)data->currentOp->imm) & 0xFFFF);
-    data->jmpRegToxBranchEip(false);
+    data->jmpAddress((data->ip + (S16)data->currentOp->imm) & 0xFFFF);
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
@@ -3444,8 +3451,7 @@ void opCallJd(Armv8btAsm* data) {
     // cpu->eip.u32 += (S32)op->imm;
     U8 tmpReg = data->getRegWithConst(data->ip);
     data->pushNativeReg32(tmpReg);
-    data->loadConst(xBranchEip, data->ip + (S32)(data->currentOp->imm));
-    data->jmpRegToxBranchEip(false);
+    data->jmpAddress(data->ip + (S32)(data->currentOp->imm));
     data->releaseTmpReg(tmpReg);
     data->done = true;
 }
@@ -3524,11 +3530,11 @@ void opCallE32(Armv8btAsm* data) {
     data->done = true;
 }
 void opCallFarE16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opCallFarE32(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opJmpR16(Armv8btAsm* data) {
@@ -3566,36 +3572,36 @@ void opJmpE32(Armv8btAsm* data) {
     data->done = true;
 }
 void opJmpFarE16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opJmpFarE32(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
 void opLarR16R16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opLarR16E16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opLslR16R16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opLslR16E16(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opLslR32R32(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 void opLslR32E32(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     data->done = true;
 }
 
@@ -4219,10 +4225,15 @@ void opCmpXchg8b(Armv8btAsm* data) {
     //     EDX = (U32)(value2 >> 32);
     //     EAX = (U32)value2;
     // }
-    U32 flags = DecodedOp::getNeededFlags(data->currentBlock, data->currentOp, CF | SF | PF | AF | OF | ZF);
+    U32 flags = data->flagsNeeded();
     
     U8 addressReg = data->getAddressReg();    
     U8 tmpReg = data->getTmpReg();
+
+    // in case of data alignment exception
+    data->loadConst(tmpReg, data->startOfOpIp);
+    data->writeMem32ValueOffset(tmpReg, xCPU, CPU_OFFSET_EIP);
+
     data->addRegs64(tmpReg, xEAX, xEDX, 32);
 
     U8 memReg = data->getHostMem(addressReg, 64, true);
@@ -4230,12 +4241,13 @@ void opCmpXchg8b(Armv8btAsm* data) {
     data->releaseHostMem(memReg);
 
     U32 restartPos = data->bufferPos;
+
     data->readMemory(addressReg, xSrc, 64, false, data->currentOp->lock != 0);
     data->cmpRegs64(tmpReg, xSrc);
     data->doIf(0, 0, DO_IF_EQUAL, [restartPos, addressReg, data, flags]() {
         U8 tmpReg2 = data->getTmpReg();
         data->addRegs64(tmpReg2, xEBX, xECX, 32);        
-        data->writeMemory(addressReg, tmpReg2, 64, false, data->currentOp->lock != 0, xSrc, restartPos, false);
+        data->writeMemory(addressReg, tmpReg2, 64, false, data->currentOp->lock != 0, xSrc, restartPos, false, true);
         if (flags & ZF) {
             data->orValue32(xFLAGS, xFLAGS, ZF);
         }
@@ -4260,7 +4272,7 @@ void opBswap32(Armv8btAsm* data) {
 }
 
 void opEmms(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
     /*
     U8 tmpReg = data->getRegWithConst(0);
 
@@ -4281,11 +4293,11 @@ void opEmms(Armv8btAsm* data) {
 }
 
 void opFxsave(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
 }
 
 void opFxrstor(Armv8btAsm* data) {
-    data->emulateSingleOp(data->currentOp);
+    data->emulateSingleOp();
 }
 
 void opLdmxcsr(Armv8btAsm* data) {
@@ -6170,7 +6182,35 @@ void opCustom1(Armv8btAsm* data) {
     kpanic("armv8btOps.opCustom1 should not have been called");
 }
 
-Armv8btOp armv8btEncoder[InstructionCount] = {
+void opTestEnd(Armv8btAsm* data) {
+#ifdef __TEST
+    data->addReturnFromTest();
+    data->done = true;
+#endif
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Armv8btOp armv8btEncoder[] = {
     opAddR8E8,
     opAddE8R8,
     opAddR8R8,
@@ -6186,7 +6226,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opAddR32R32,
     opAddR32I32,
     opAddE32I32,
-
     opOrR8E8,
     opOrE8R8,
     opOrR8R8,
@@ -6202,7 +6241,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opOrR32R32,
     opOrR32I32,
     opOrE32I32,
-
     opAdcR8E8,
     opAdcE8R8,
     opAdcR8R8,
@@ -6218,7 +6256,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opAdcR32R32,
     opAdcR32I32,
     opAdcE32I32,
-
     opSbbR8E8,
     opSbbE8R8,
     opSbbR8R8,
@@ -6234,7 +6271,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opSbbR32R32,
     opSbbR32I32,
     opSbbE32I32,
-
     opAndR8E8,
     opAndE8R8,
     opAndR8R8,
@@ -6250,7 +6286,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opAndR32R32,
     opAndR32I32,
     opAndE32I32,
-
     opSubR8E8,
     opSubE8R8,
     opSubR8R8,
@@ -6266,7 +6301,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opSubR32R32,
     opSubR32I32,
     opSubE32I32,
-
     opXorR8E8,
     opXorE8R8,
     opXorR8R8,
@@ -6282,7 +6316,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opXorR32R32,
     opXorR32I32,
     opXorE32I32,
-
     opCmpR8E8,
     opCmpE8R8,
     opCmpR8R8,
@@ -6298,7 +6331,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opCmpR32R32,
     opCmpR32I32,
     opCmpE32I32,
-
     opTestE8R8,
     opTestR8R8,
     opTestR8I8,
@@ -6311,86 +6343,72 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opTestR32R32,
     opTestR32I32,
     opTestE32I32,
-
     opNotR8,
     opNotE8,
     opNotR16,
     opNotE16,
     opNotR32,
     opNotE32,
-
     opNegR8,
     opNegE8,
     opNegR16,
     opNegE16,
     opNegR32,
     opNegE32,
-
     opMulR8,
     opMulE8,
     opMulR16,
     opMulE16,
     opMulR32,
     opMulE32,
-
     opIMulR8,
     opIMulE8,
     opIMulR16,
     opIMulE16,
     opIMulR32,
     opIMulE32,
-
     opDivR8,
     opDivE8,
     opDivR16,
     opDivE16,
     opDivR32,
     opDivE32,
-
     opIDivR8,
     opIDivE8,
     opIDivR16,
     opIDivE16,
     opIDivR32,
     opIDivE32,
-
     opXchgR8R8,
     opXchgE8R8,
     opXchgR16R16,
     opXchgE16R16,
     opXchgR32R32,
     opXchgE32R32,
-
     opBtR16R16,
     opBtE16R16,
     opBtR32R32,
     opBtE32R32,
-
     opBtsR16R16,
     opBtsE16R16,
     opBtsR32R32,
     opBtsE32R32,
-
     opBtrR16R16,
     opBtrE16R16,
     opBtrR32R32,
     opBtrE32R32,
-
     opBsfR16R16,
     opBsfR16E16,
     opBsfR32R32,
     opBsfR32E32,
-
     opBsrR16R16,
     opBsrR16E16,
     opBsrR32R32,
     opBsrR32E32,
-
     opBtcR16R16,
     opBtcE16R16,
     opBtcR32R32,
     opBtcE32R32,
-
     opBtR16,
     opBtE16,
     opBtsR16,
@@ -6399,7 +6417,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opBtrE16,
     opBtcR16,
     opBtcE16,
-
     opBtR32,
     opBtE32,
     opBtsR32,
@@ -6408,7 +6425,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opBtrE32,
     opBtcR32,
     opBtcE32,
-
     opDshlR16R16,
     opDshlE16R16,
     opDshlClR16R16,
@@ -6417,7 +6433,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opDshrE16R16,
     opDshrClR16R16,
     opDshrClE16R16,
-
     opDshlR32R32,
     opDshlE32R32,
     opDshlClR32R32,
@@ -6426,89 +6441,72 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opDshrE32R32,
     opDshrClR32R32,
     opDshrClE32R32,
-
     opDimulR16R16,
     opDimulR16E16,
     opDimulR32R32,
     opDimulR32E32,
-
     opCmpXchgR8R8,
     opCmpXchgE8R8,
     opCmpXchgR16R16,
     opCmpXchgE16R16,
     opCmpXchgR32R32,
     opCmpXchgE32R32,
-
     opIncR8,
     opIncR16,
     opIncR32,
     opIncE8,
     opIncE16,
     opIncE32,
-
     opDecR8,
     opDecR16,
     opDecR32,
     opDecE8,
     opDecE16,
     opDecE32,
-
     opPushSeg16,
     opPopSeg16,
     opPushSeg32,
     opPopSeg32,
-
     opPushR16,
     opPushR32,
     opPushE16,
     opPushE32,
-
     opPopR16,
     opPopR32,
     opPopE16,
     opPopE32,
-
     opPushA16,
     opPushA32,
     opPopA16,
     opPopA32,
-
     opPush16,
     opPush32,
-
     opPushF16,
     opPushF32,
     opPopF16,
     opPopF32,
-
     opBound16,
     opBound32,
-
     opArplReg,
     opArplMem,
     opArplReg32,
     opArplMem32,
-
     opDaa,
     opDas,
     opAaa,
     opAas,
     opAam,
     opAad,
-
     opImulR16E16,
     opImulR16R16,
     opImulR32E32,
     opImulR32R32,
-
     opInsb,
     opInsw,
     opInsd,
-
     opOutsb,
     opOutsw,
     opOutsd,
-
     opJumpO,
     opJumpNO,
     opJumpB,
@@ -6525,7 +6523,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opJumpNL,
     opJumpLE,
     opJumpNLE,
-
     opMovR8R8,
     opMovE8R8,
     opMovR8E8,
@@ -6541,41 +6538,33 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opMovR32E32,
     opMovR32I32,
     opMovE32I32,
-
     opMovR16S16,
     opMovR32S16,
     opMovE16S16,
     opMovS16R16,
     opMovS16E16,
-
     opMovAlOb,
     opMovAxOw,
     opMovEaxOd,
     opMovObAl,
     opMovOwAx,
     opMovOdEax,
-
     opMovGwXzR8,
     opMovGwXzE8,
     opMovGwSxR8,
     opMovGwSxE8,
-
     opMovGdXzR8,
     opMovGdXzE8,
     opMovGdSxR8,
     opMovGdSxE8,
-
     opMovGdXzR16,
     opMovGdXzE16,
     opMovGdSxR16,
     opMovGdSxE16,
-
     opMovRdCRx,
     opMovCRxRd,
-
     opLeaR16,
     opLeaR32,
-
     opNop,
     opCwd,
     opCwq,
@@ -6594,6 +6583,7 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opRetf16,
     opRetf32,
     opInvalid,
+    opUD2,
     opInt3,
     opInt80,
     opInt99,
@@ -6615,15 +6605,12 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opStd,
     opRdtsc,
     opCPUID,
-
     opEnter16,
     opEnter32,
     opLeave16,
     opLeave32,
-
     opLoadSegment16,
     opLoadSegment32,
-
     opMovsb,
     opMovsw,
     opMovsd,
@@ -6639,7 +6626,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opScasb,
     opScasw,
     opScasd,
-
     opRolR8I8,
     opRolE8I8,
     opRorR8I8,
@@ -6654,7 +6640,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opShrE8I8,
     opSarR8I8,
     opSarE8I8,
-
     opRolR16I8,
     opRolE16I8,
     opRorR16I8,
@@ -6669,7 +6654,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opShrE16I8,
     opSarR16I8,
     opSarE16I8,
-
     opRolR32I8,
     opRolE32I8,
     opRorR32I8,
@@ -6684,7 +6668,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opShrE32I8,
     opSarR32I8,
     opSarE32I8,
-
     opRolR8Cl,
     opRolE8Cl,
     opRorR8Cl,
@@ -6699,7 +6682,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opShrE8Cl,
     opSarR8Cl,
     opSarE8Cl,
-
     opRolR16Cl,
     opRolE16Cl,
     opRorR16Cl,
@@ -6714,7 +6696,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opShrE16Cl,
     opSarR16Cl,
     opSarE16Cl,
-
     opRolR32Cl,
     opRolE32Cl,
     opRorR32Cl,
@@ -6729,7 +6710,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opShrE32Cl,
     opSarR32Cl,
     opSarE32Cl,
-
     opFADD_ST0_STj,
     opFMUL_ST0_STj,
     opFCOM_STi,
@@ -6746,7 +6726,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFSUBR_SINGLE_REAL,
     opFDIV_SINGLE_REAL,
     opFDIVR_SINGLE_REAL,
-
     opFLD_STi,
     opFXCH_STi,
     opFNOP,
@@ -6785,7 +6764,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFLDCW,
     opFNSTENV,
     opFNSTCW,
-
     opFCMOV_ST0_STj_CF,
     opFCMOV_ST0_STj_ZF,
     opFCMOV_ST0_STj_CF_OR_ZF,
@@ -6799,7 +6777,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFISUBR_DWORD_INTEGER,
     opFIDIV_DWORD_INTEGER,
     opFIDIVR_DWORD_INTEGER,
-
     opFCMOV_ST0_STj_NCF,
     opFCMOV_ST0_STj_NZF,
     opFCMOV_ST0_STj_NCF_AND_NZF,
@@ -6814,7 +6791,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFIST_DWORD_INTEGER_Pop,
     opFLD_EXTENDED_REAL,
     opFSTP_EXTENDED_REAL,
-
     opFADD_STi_ST0,
     opFMUL_STi_ST0,
     opFSUBR_STi_ST0,
@@ -6829,7 +6805,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFSUBR_DOUBLE_REAL,
     opFDIV_DOUBLE_REAL,
     opFDIVR_DOUBLE_REAL,
-
     opFFREE_STi,
     opFST_STi,
     opFUCOM_STi,
@@ -6841,7 +6816,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFRSTOR,
     opFNSAVE,
     opFNSTSW,
-
     opFADD_STi_ST0_Pop,
     opFMUL_STi_ST0_Pop,
     opFCOMPP,
@@ -6857,7 +6831,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFISUBR_WORD_INTEGER,
     opFIDIV_WORD_INTEGER,
     opFIDIVR_WORD_INTEGER,
-
     opFFREEP_STi,
     opFNSTSW_AX,
     opFUCOMI_ST0_STj_Pop,
@@ -6870,12 +6843,10 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opFILD_QWORD_INTEGER,
     opFBSTP_PACKED_BCD,
     opFISTP_QWORD_INTEGER,
-
     opLoopNZ,
     opLoopZ,
     opLoop,
     opJcxz,
-
     opInAlIb,
     opInAxIb,
     opInEaxIb,
@@ -6888,7 +6859,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opOutDxAl,
     opOutDxAx,
     opOutDxEax,
-
     opCallJw,
     opCallJd,
     opJmpJw,
@@ -6906,14 +6876,12 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opJmpE32,
     opJmpFarE16,
     opJmpFarE32,
-
     opLarR16R16,
     opLarR16E16,
     opLslR16R16,
     opLslR16E16,
     opLslR32R32,
     opLslR32E32,
-
     opCmovO_R16R16,
     opCmovO_R16E16,
     opCmovNO_R16R16,
@@ -6946,7 +6914,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opCmovLE_R16E16,
     opCmovNLE_R16R16,
     opCmovNLE_R16E16,
-
     opCmovO_R32R32,
     opCmovO_R32E32,
     opCmovNO_R32R32,
@@ -6979,7 +6946,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opCmovLE_R32E32,
     opCmovNLE_R32R32,
     opCmovNLE_R32E32,
-
     opSetO_R8,
     opSetO_E8,
     opSetNO_R8,
@@ -7012,7 +6978,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opSetLE_E8,
     opSetNLE_R8,
     opSetNLE_E8,
-
     opSLDTReg,
     opSLDTE16,
     opSTRReg,
@@ -7025,7 +6990,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opVERRE16,
     opVERWR16,
     opVERWE16,
-
     opSGDT,
     opSIDT,
     opLGDT,
@@ -7035,7 +6999,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opLMSWRreg,
     opLMSW,
     opINVLPG,
-
     opXaddR8R8,
     opXaddR8E8,
     opXaddR16R16,
@@ -7044,7 +7007,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opXaddR32E32,
     opCmpXchg8b,
     opBswap32,
-
     opPunpcklbwMmx,
     opPunpcklbwE64,
     opPunpcklwdMmx,
@@ -7150,7 +7112,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opPaddwE64,
     opPadddMmx,
     opPadddE64,
-
     opFxsave, // P2+
     opFxrstor, // P2+
     opLdmxcsr, // P3+ SSE1
@@ -7161,8 +7122,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opMfence, // P4+ SSE2
     opSfence, // P3+ SSE1
     opClflush, // P4+ SSE2
-
-    // SSE1
     opAddpsXmm,
     opAddpsE128,
     opAddssXmm,
@@ -7300,8 +7259,6 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opComissXmmE32,
     opUcomissXmmXmm,
     opUcomissXmmE32,
-
-    // SSE2
     opAddpdXmmXmm,
     opAddpdXmmE128,
     opAddsdXmmXmm,
@@ -7538,11 +7495,88 @@ Armv8btOp armv8btEncoder[InstructionCount] = {
     opShufpdXmmXmm,
     opShufpdXmmE128,
     opPause,
+    opCmpXchg8b,
+    opCmpXchgE32R32,
+    opCmpXchgE16R16,
+    opCmpXchgE8R8,
+    opXchgE8R8,
+    opXchgE16R16,
+    opXchgE32R32,
+    opXaddR8E8,
+    opXaddR16E16,
+    opXaddR32E32,
+    opAddE8R8,
+    opAddE8I8,
+    opAddE16R16,
+    opAddE16I16,
+    opAddE32R32,
+    opAddE32I32,
+    opOrE8R8,
+    opOrE8I8,
+    opOrE16R16,
+    opOrE16I16,
+    opOrE32R32,
+    opOrE32I32,
+    opAdcE8R8,
+    opAdcE8I8,
+    opAdcE16R16,
+    opAdcE16I16,
+    opAdcE32R32,
+    opAdcE32I32,
+    opSbbE8R8,
+    opSbbE8I8,
+    opSbbE16R16,
+    opSbbE16I16,
+    opSbbE32R32,
+    opSbbE32I32,
+    opAndE8R8,
+    opAndE8I8,
+    opAndE16R16,
+    opAndE16I16,
+    opAndE32R32,
+    opAndE32I32,
+    opSubE8R8,
+    opSubE8I8,
+    opSubE16R16,
+    opSubE16I16,
+    opSubE32R32,
+    opSubE32I32,
+    opXorE8R8,
+    opXorE8I8,
+    opXorE16R16,
+    opXorE16I16,
+    opXorE32R32,
+    opXorE32I32,
+    opIncE8,
+    opIncE16,
+    opIncE32,
+    opDecE8,
+    opDecE16,
+    opDecE32,
+    opNotE8,
+    opNotE16,
+    opNotE32,
+    opNegE8,
+    opNegE16,
+    opNegE32,
+    opBtsE16R16,
+    opBtsE16,
+    opBtsE32R32,
+    opBtsE32,
+    opBtrE16R16,
+    opBtrE16,
+    opBtrE32R32,
+    opBtrE32,
+    opBtcE16R16,
+    opBtcE16,
+    opBtcE32R32,
+    opBtcE32,
 
     opNone,
     opCallback,
     opDone,
-    opCustom1
+    opCustom1,
+    opTestEnd
 };
 
 #endif

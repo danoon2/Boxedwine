@@ -27,8 +27,9 @@
 #include "../../../../source/emulation/softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 #include "../armv8/llvm_helper.h"
-#include "armv8btCodeChunk.h"
 #include "armv8btCPU.h"
+
+//#define BOXED_NO_EXCEPTIONS
 
 static bool isWidthVector(VectorWidth width) {
     if (width == D_scaler || width == S_scaler) {
@@ -38,7 +39,7 @@ static bool isWidthVector(VectorWidth width) {
 }
 
 U32 Armv8btAsm::flagsNeeded() {
-    return DecodedOp::getNeededFlags(this->currentBlock, this->currentOp, instructionInfo[this->currentOp->inst].flagsSets & ~MAYBE);
+    return (currentOp->next) ? currentOp->next->getNeededFlags(instructionInfo[this->currentOp->inst].flagsSets & ~MAYBE) : CF | SF | OF | ZF | AF | PF;
 }
 
 void Armv8btAsm::pushPair(U8 r1, U8 r2) {
@@ -1254,10 +1255,6 @@ U8 Armv8btAsm::getNativeMmxReg(U8 reg) {
     return reg+8;
 }
 
-U8 Armv8btAsm::getNativeFpuReg(U8 reg) {
-    return reg+8;
-}
-
 U8 Armv8btAsm::getNativeSseReg(U8 reg) {
     return reg;
 }
@@ -1313,10 +1310,10 @@ void Armv8btAsm::calculateAddress16(U8 dst) {
     if (this->currentOp->base != SEG_ZERO) {
         if (this->currentOp->rm == regZero) {
             if (this->currentOp->sibIndex == regZero) {
-                addValue32(dst, getSegReg(this->currentOp->base), (U16)this->currentOp->disp);
+                addValue32(dst, getSegReg(this->currentOp->base), (U16)this->currentOp->data.disp);
             } else {
-                if (this->currentOp->disp) {
-                    addValue32(dst, getNativeReg(this->currentOp->sibIndex), (U16)this->currentOp->disp);
+                if (this->currentOp->data.disp) {
+                    addValue32(dst, getNativeReg(this->currentOp->sibIndex), (U16)this->currentOp->data.disp);
                     andValue32(dst, dst, 0xFFFF);
                     addRegs32(dst, dst, getSegReg(this->currentOp->base));
                 } else {
@@ -1326,8 +1323,8 @@ void Armv8btAsm::calculateAddress16(U8 dst) {
             }
         } else {
             if (this->currentOp->sibIndex == regZero) {
-                if (this->currentOp->disp) {
-                    addValue32(dst, getNativeReg(this->currentOp->rm), (U16)this->currentOp->disp);
+                if (this->currentOp->data.disp) {
+                    addValue32(dst, getNativeReg(this->currentOp->rm), (U16)this->currentOp->data.disp);
                     andValue32(dst, dst, 0xFFFF);
                     addRegs32(dst, dst, getSegReg(this->currentOp->base));
                 } else {
@@ -1336,8 +1333,8 @@ void Armv8btAsm::calculateAddress16(U8 dst) {
                 }
             } else {
                 addRegs32(dst, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex));
-                if (this->currentOp->disp) {
-                    addValue32(dst, dst, (U16)this->currentOp->disp);
+                if (this->currentOp->data.disp) {
+                    addValue32(dst, dst, (U16)this->currentOp->data.disp);
                 }
                 andValue32(dst, dst, 0xFFFF);
                 addRegs32(dst, dst, getSegReg(this->currentOp->base));
@@ -1348,12 +1345,12 @@ void Armv8btAsm::calculateAddress16(U8 dst) {
         U8 tmp = getTmpReg();
         if (this->currentOp->rm == regZero) {
             if (this->currentOp->sibIndex == regZero) {
-                movk(dst, this->currentOp->disp); // intentially movk to keep upper 16-bit
+                movk(dst, this->currentOp->data.disp); // intentially movk to keep upper 16-bit
                 releaseTmpReg(tmp);
                 return;
             } else {
-                if (this->currentOp->disp) {
-                    addValue32(tmp, getNativeReg(this->currentOp->sibIndex), (U16)this->currentOp->disp);
+                if (this->currentOp->data.disp) {
+                    addValue32(tmp, getNativeReg(this->currentOp->sibIndex), (U16)this->currentOp->data.disp);
                 } else {
                     if (dst != getNativeReg(this->currentOp->sibIndex)) {
                         movRegToReg(dst, getNativeReg(this->currentOp->sibIndex), 16, false);
@@ -1364,8 +1361,8 @@ void Armv8btAsm::calculateAddress16(U8 dst) {
             }
         } else {
             if (this->currentOp->sibIndex == regZero) {
-                if (this->currentOp->disp) {
-                    addValue32(tmp, getNativeReg(this->currentOp->rm), (U16)this->currentOp->disp);
+                if (this->currentOp->data.disp) {
+                    addValue32(tmp, getNativeReg(this->currentOp->rm), (U16)this->currentOp->data.disp);
                 } else {
                     if (dst != getNativeReg(this->currentOp->rm)) {
                         movRegToReg(dst, getNativeReg(this->currentOp->rm), 16, false);
@@ -1375,8 +1372,8 @@ void Armv8btAsm::calculateAddress16(U8 dst) {
                 }
             } else {
                 addRegs32(tmp, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex));
-                if (this->currentOp->disp) {
-                    addValue32(tmp, tmp, (U16)this->currentOp->disp);
+                if (this->currentOp->data.disp) {
+                    addValue32(tmp, tmp, (U16)this->currentOp->data.disp);
                 }
             }
         }
@@ -1392,19 +1389,19 @@ void Armv8btAsm::calculateAddress32(U8 dst) {
         if (this->currentOp->sibIndex == regZero) {
             // example lea eax, [0x1234]
             if (needsSeg) {
-                addValue32(dst, getSegReg(this->currentOp->base), this->currentOp->disp);
+                addValue32(dst, getSegReg(this->currentOp->base), this->currentOp->data.disp);
                 needsSeg = false;
             } else {
-                loadConst(dst, this->currentOp->disp);
+                loadConst(dst, this->currentOp->data.disp);
             }
         } else {
-            if (this->currentOp->disp) {
+            if (this->currentOp->data.disp) {
                 // example lea eax, [eax<<2 + 0x1234]
                 if (this->currentOp->sibScale) {
                     shiftRegLeftWithValue32(dst, getNativeReg(this->currentOp->sibIndex), this->currentOp->sibScale);
-                    addValue32(dst, dst, this->currentOp->disp);
+                    addValue32(dst, dst, this->currentOp->data.disp);
                 } else {
-                    addValue32(dst, getNativeReg(this->currentOp->sibIndex), this->currentOp->disp);
+                    addValue32(dst, getNativeReg(this->currentOp->sibIndex), this->currentOp->data.disp);
                 }
             } else {
                 // example lea eax, [eax<<2]
@@ -1413,9 +1410,9 @@ void Armv8btAsm::calculateAddress32(U8 dst) {
         }
     } else {
         if (this->currentOp->sibIndex == regZero) {
-            if (this->currentOp->disp) {
+            if (this->currentOp->data.disp) {
                 // example lea eax, [eax + 0x1234]
-                addValue32(dst, getNativeReg(this->currentOp->rm), this->currentOp->disp);
+                addValue32(dst, getNativeReg(this->currentOp->rm), this->currentOp->data.disp);
             } else {
                 // example lea eax, [eax]
                 if (needsSeg) {
@@ -1429,10 +1426,10 @@ void Armv8btAsm::calculateAddress32(U8 dst) {
                 }
             }
         } else {
-            if (this->currentOp->disp) {
+            if (this->currentOp->data.disp) {
                 // example lea eax, [eax + eax<<2 + 0x1234]
                 addRegs32(dst, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex), this->currentOp->sibScale);
-                addValue32(dst, dst, this->currentOp->disp);
+                addValue32(dst, dst, this->currentOp->data.disp);
             } else {
                 // example lea eax, [eax + eax<<2]
                 addRegs32(dst, getNativeReg(this->currentOp->rm), getNativeReg(this->currentOp->sibIndex), this->currentOp->sibScale);
@@ -1477,7 +1474,7 @@ U8 Armv8btAsm::getHostMem(U8 regEmulatedAddress, U32 width, bool write, bool ski
             });
     }
     doIf(resultReg, 0, DO_IF_EQUAL, [this] {
-        emulateSingleOp(currentOp);
+        emulateSingleOp();
         });
 
     if (needToReleaseTmpReg) {
@@ -1536,7 +1533,7 @@ void Armv8btAsm::readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 wid
         U8 tmpReg = getRegWithConst(width/8 - 1);
         andRegs32(tmpReg, addressReg, tmpReg);
         doIf(tmpReg, 0, DO_IF_NOT_EQUAL, [this]() {
-            emulateSingleOp(currentOp);
+            emulateSingleOp();
             });
         releaseTmpReg(tmpReg);
     }
@@ -1610,7 +1607,7 @@ void Armv8btAsm::fullMemoryBarrier() {
     write8(0xd5);
 }
 
-void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffsetToAddress, bool lock, U8 regWithOriginalValue, U32 restartPos, bool generateMemoryBarrierForLock) {
+void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffsetToAddress, bool lock, U8 regWithOriginalValue, U32 restartPos, bool generateMemoryBarrierForLock, bool eipAlreadySet) {
     if (lock) {
         // :TODO: maybe use ldrx/stxr instead of ldarx/stlxr since we have a dmb ish at the end?
         // stlxr        
@@ -1620,8 +1617,10 @@ void Armv8btAsm::writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffset
         U8 statusReg = getTmpReg();       
 
         // in case of data alignment exception
-        loadConst(statusReg, this->startOfOpIp);
-        writeMem32ValueOffset(statusReg, xCPU, CPU_OFFSET_EIP);
+        if (!eipAlreadySet) {
+            loadConst(statusReg, this->startOfOpIp);
+            writeMem32ValueOffset(statusReg, xCPU, CPU_OFFSET_EIP);
+        }
 
         // addressReg should already be added with xMem
 
@@ -2068,6 +2067,9 @@ void Armv8btAsm::branchNativeRegister(U8 reg) {
 void Armv8btAsm::jmpRegToxBranchEip(bool mightNeedCS) {
     // hard coded regs so that the exception handler will know what to expect
 
+    // so that exception handler will know where to look for next op if any null pointer exceptions happen below
+    writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
+
     if (this->cpu->thread->process->hasSetSeg[CS] || mightNeedCS) {
         U8 tmpReg = getTmpReg();
         addRegs32(tmpReg, xBranchEip, xCS);
@@ -2078,28 +2080,90 @@ void Armv8btAsm::jmpRegToxBranchEip(bool mightNeedCS) {
         andValue32(xOffset, xBranchEip, 0xFFF); // get page offset
         shiftRegRightWithValue32(xPage, xBranchEip, 12); // get page
     }
-    readMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_OP_PAGES); // get offset table pages
-    readMem64RegOffset(xBranch, xBranch, xPage, 3); // get offset table for page
+    // opCache is a 2 dimension array of pointers
+    // see codePageData.cpp
+    // #define GET_FIRST_INDEX_FROM_PAGE(page) (page >> 10)
+    // #define GET_SECOND_INDEX_FROM_PAGE(page) (page & 0x3ff);
+   
+    U8 firstIndexReg = xResult;
+    U8 secondIndexReg = getTmpReg();
 
-    cmpValue64(xBranch, 0);
-    doIf(xBranch, 0, DO_IF_EQUAL, [this] {
-        writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
-        readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
-        branchNativeRegister(xBranch);
-        }, nullptr, nullptr, false, false);
+    shiftRegRightWithValue32(firstIndexReg, xPage, 10);
+    loadConst(secondIndexReg, 0x3ff);
+    andRegs32(secondIndexReg, xPage, secondIndexReg);
 
-    readMem64RegOffset(xBranch, xBranch, xOffset, 3); // read value at offset for page
+    // mov xBranch, [xCPU + CPU_OFFSET_OP_PAGES];
+    readMem64ValueOffset(xPage, xCPU, CPU_OFFSET_OP_PAGES);
 
-    cmpValue64(xBranch, 0);
-    doIf(xBranch, 0, DO_IF_EQUAL, [this] {
-        writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
-        readMem64ValueOffset(xBranch, xCPU, (U32)(offsetof(Armv8btCPU, jmpAndTranslateIfNecessary)));
-        branchNativeRegister(xBranch);
-        }, nullptr, nullptr, false, false);
+    // xBranch = xBranch[firstIndexReg * 8]
+    readMem64RegOffset(xPage, xPage, firstIndexReg, 3);
 
-#ifdef _DEBUG
-    // make it easier to see where we jumped from
-    loadConst(13, this->startOfOpIp);
+#ifdef BOXED_NO_EXCEPTIONS
+    doIf(xPage, 0, DO_IF_EQUAL, [this]() {
+        emulateSingleOp(false);
+        });
+#endif
+    // xBranch = xBranch[secondIndexReg * 8]
+    readMem64RegOffset(xPage, xPage, secondIndexReg, 3);
+
+#ifdef BOXED_NO_EXCEPTIONS
+    doIf(xPage, 0, DO_IF_EQUAL, [this]() {
+        emulateSingleOp(false);
+        });
+#endif
+    // xBranch = xBranch[xOffset * 8]
+    readMem64RegOffset(xPage, xPage, xOffset, 3);
+    // xBranch now contains DecodedOp
+
+#ifdef BOXED_NO_EXCEPTIONS
+    // Quake 2 time demo will crash 3/4 of the way through without this, not sure why
+    doIf(xPage, 0, DO_IF_EQUAL, [this]() {
+        emulateSingleOp(false);
+        });
+#endif
+    readMem64ValueOffset(xPage, xPage, offsetof(DecodedOp, pfnJitCode));
+
+#ifdef BOXED_NO_EXCEPTIONS
+    doIf(xPage, 0, DO_IF_EQUAL, [this]() {
+        emulateSingleOp(false);
+        });
+#else
+    // generate exception if null pointer here instead of in jump
+    readMem64ValueOffset(firstIndexReg, xPage, 0);
+#endif
+    branchNativeRegister(xPage);
+    releaseTmpReg(secondIndexReg);
+}
+
+void Armv8btAsm::jmpAddress(U32 eip) {
+    // once a code cache page is created, it won't be removed except by execv so we can cache it
+    DecodedOp** pDestOp = cpu->memory->getDecodedOpLocation(eip + cpu->seg[CS].address);
+
+    // so that exception handler will know where to look for next op if any null pointer exceptions happen below
+    loadConst(xBranchEip, eip);
+    writeMem32ValueOffset(xBranchEip, xCPU, CPU_OFFSET_EIP);
+
+    // load address where to find decoded op into tmpReg
+    loadConst(xPage, (U64)pDestOp);
+
+    // read DecodedOp into tmpReg
+    readMem64ValueOffset(xPage, xPage, 0);
+
+#ifdef BOXED_NO_EXCEPTIONS
+    // Quake 2 time demo will crash 3/4 of the way through without this, not sure why
+    doIf(xPage, 0, DO_IF_EQUAL, [this]() {
+        emulateSingleOp(false);
+        });
+#endif
+    readMem64ValueOffset(xBranch, xPage, offsetof(DecodedOp, pfnJitCode));
+
+#ifdef BOXED_NO_EXCEPTIONS
+    doIf(xBranch, 0, DO_IF_EQUAL, [this]() {
+        emulateSingleOp(false);
+        });
+#else
+    // generate exception if null pointer here instead of in jump
+    readMem64ValueOffset(xPage, xBranch, 0);
 #endif
     branchNativeRegister(xBranch);
 }
@@ -2140,11 +2204,11 @@ void Armv8btAsm::createCodeForDoSingleOp() {
     branchNativeRegister(xBranch);
 }
 
-void Armv8btAsm::emulateSingleOp(DecodedOp* op) {
-    loadConst(xBranch, this->startOfOpIp);
-    writeMem32ValueOffset(xBranch, xCPU, CPU_OFFSET_EIP);
-    loadConst(xBranch, (U64)op);
-    writeMem64ValueOffset(xBranch, xCPU, CPU_OFFSET_CURRENT_OP);
+void Armv8btAsm::emulateSingleOp(bool updateEip) {
+    if (updateEip) {
+        loadConst(xBranch, this->startOfOpIp);
+        writeMem32ValueOffset(xBranch, xCPU, CPU_OFFSET_EIP);
+    }
     loadConst(xBranch, CPU_OFFSET_DO_SINGLE_OP_ADDRESS);
     readMem64RegOffset(xBranch, xCPU, xBranch);
     branchNativeRegister(xBranch); // we won't return to here
@@ -2198,10 +2262,6 @@ void Armv8btAsm::addTodoLinkJump(U32 eip) {
 }
 
 bool Armv8btAsm::isEipInChunk(U32 eip) {
-    KMemoryData* mem = getMemData(cpu->memory);
-    if (mem->getExistingHostAddress(eip)) {
-        return false;
-    }
     return (this->stopAfterInstruction != (S32)this->ipAddressCount && (this->calculatedEipLen == 0 || (eip >= this->startOfDataIp && eip < this->startOfDataIp + this->calculatedEipLen)));
 }
 
@@ -2236,8 +2296,7 @@ void Armv8btAsm::jumpTo(U32 eip) {
             write8(0x14);
             addTodoLinkJump(eip, 4, false);
         } else */{
-            loadConst(xBranchEip, eip);
-            jmpRegToxBranchEip(false);
+            jmpAddress(eip);
         }
     }
 }
@@ -2465,8 +2524,7 @@ void Armv8btAsm::compareZeroAndBranch(U8 reg, bool isZero, U32 eip) {
     }
     if (!isEipInChunk(eip)) {
         doIf(reg, 0, isZero? DO_IF_EQUAL:DO_IF_NOT_EQUAL, [eip, this] {
-            loadConst(xBranchEip, eip);
-            jmpRegToxBranchEip(false);
+            jmpAddress(eip);
             });
     } else {
         write8(reg);
@@ -4860,7 +4918,7 @@ void Armv8btAsm::vReleaseTmpReg(U8 reg) {
 }
 
 void Armv8btAsm::invalidOp(U32 op) {
-    emulateSingleOp(currentOp);
+    emulateSingleOp();
     done = true;
 }
 
@@ -4872,10 +4930,7 @@ static U8 fetchByte(void* p, U32* eip) {
 static void arm64log(CPU* cpu) {
     if (!cpu->logFile.isOpen())
         return;
-    thread_local static DecodedBlock* block = new DecodedBlock();
-    decodeBlock(fetchByte, cpu->memory, cpu->eip.u32 + cpu->seg[CS].address, cpu->isBig(), 1, K_PAGE_SIZE, 0, block);
-    block->op->log(cpu);
-    block->op->dealloc(false);
+    cpu->getNextOp()->log(cpu);
 }
 
 void Armv8btAsm::logOp(U32 eip) {
@@ -4886,7 +4941,7 @@ void Armv8btAsm::logOp(U32 eip) {
 }
 
 void Armv8btAsm::signalIllegalInstruction(int code) {
-    emulateSingleOp(currentOp);
+    emulateSingleOp();
     done = true;
 }
 

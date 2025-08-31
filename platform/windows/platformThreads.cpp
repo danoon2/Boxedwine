@@ -220,9 +220,8 @@ void syncFromException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     ESI = (U32)ep->ContextRecord->X6;
     EDI = (U32)ep->ContextRecord->X7;
 
-    cpu->flags = (ep->ContextRecord->X8 & (AF | CF | OF | SF | PF | ZF)) | (cpu->flags & DF); // DF is fully kept in sync, so don't override
+    cpu->flags = ep->ContextRecord->X8;
     cpu->lazyFlags = FLAGS_NONE;
-    cpu->eip.u32 = getMemData(cpu->memory)->codeCache.getEipFromHost((U8*)ep->ContextRecord->Pc);
 
     for (int i = 0; i < 8; i++) {
         cpu->xmm[i].pi.u64[0] = ep->ContextRecord->V[i].Low;
@@ -244,8 +243,7 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
     ep->ContextRecord->X6 = ESI;
     ep->ContextRecord->X7 = EDI;
     cpu->fillFlags();
-    ep->ContextRecord->X8 &= ~(AF | CF | OF | SF | PF | ZF);
-    ep->ContextRecord->X8 |= (cpu->flags & (AF | CF | OF | SF | PF | ZF));
+    ep->ContextRecord->X8 = cpu->flags;
 
     for (int i = 0; i < 8; i++) {
         ep->ContextRecord->V[i].Low = cpu->xmm[i].pi.u64[0];
@@ -254,6 +252,14 @@ void syncToException(struct _EXCEPTION_POINTERS* ep, bool includeFPU) {
             ep->ContextRecord->V[i + 8].Low = cpu->fpu.getMMX(i)->q;
         }
     }
+
+    ep->ContextRecord->X22 = cpu->seg[ES].address;
+    ep->ContextRecord->X23 = cpu->seg[CS].address;
+    ep->ContextRecord->X24 = cpu->seg[SS].address;
+    ep->ContextRecord->X25 = cpu->seg[DS].address;
+    ep->ContextRecord->X26 = cpu->seg[FS].address;
+    ep->ContextRecord->X27 = cpu->seg[GS].address;
+    ep->ContextRecord->X28 = cpu->stackMask;
 }
 
 class InException {
@@ -287,14 +293,17 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
     if (cpu != (BtCPU*)ep->ContextRecord->X19) {
         return EXCEPTION_CONTINUE_SEARCH;
     }
-    KMemoryData* mem = getMemData(cpu->memory);
-    bool inBinaryTranslator = mem->isAddressExecutable((U8*)ep->ContextRecord->Pc);
+    bool inBinaryTranslator = cpu->memory->isCode((U8*)ep->ContextRecord->Pc);
 
     if (!inBinaryTranslator) {
         // might be in a c++ exception
         //
         // motorhead installer will trigger this a few time
         // caesar 3 installer will trigger this when it exits
+        if (cpu->exitToStartThreadLoop) {
+            ep->ContextRecord->Pc = cpu->exitToStartThreadLoop;
+            return EXCEPTION_CONTINUE_EXECUTION;
+        }
         return EXCEPTION_CONTINUE_SEARCH;
     }
     syncFromException(ep, true);
@@ -322,9 +331,14 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION || ep->ExceptionRecord->ExceptionCode == EXCEPTION_DATATYPE_MISALIGNMENT) {
-        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        DecodedOp* op = cpu->getNextOp();
+        if (!op->pfnJitCode) {
+            cpu->translateEip(cpu->eip.u32);
+            if (op->pfnJitCode) {
+                ep->ContextRecord->Pc = (U64)op->pfnJitCode;
+            }
+        } 
         ep->ContextRecord->Pc = cpu->handleAccessException(op);
-        op->dealloc(true);
         syncToException(ep, true);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == STATUS_ILLEGAL_INSTRUCTION) {

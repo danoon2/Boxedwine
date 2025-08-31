@@ -6237,9 +6237,7 @@ void DecodedOp::reset() {
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     blockStart = nullptr;
     blockOpCount = 0;
-#ifdef BOXEDWINE_4K_PAGE_SIZE
     exceptionCount = 0;
-#endif
 #endif
 }
 DecodedOp* DecodedOp::alloc() {

@@ -353,7 +353,7 @@ void opBtcE32R32(Armv8btAsm* data) {
 }
 
 void doBitTest(Armv8btAsm* data, U8 valueReg) {
-    data->copyBitsFromSourceAtPositionToDest(xFLAGS, valueReg, data->currentOp->extra, 1);
+    data->copyBitsFromSourceAtPositionToDest(xFLAGS, valueReg, std::countr_zero(data->currentOp->imm), 1);
 }
 
 void doBitMemoryTest(Armv8btAsm* data, U32 width, std::function<void(U8 dst, U8 src)> action) {

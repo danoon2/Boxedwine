@@ -3914,10 +3914,6 @@ void X64Asm::emulateSingleOp(DecodedOp* op, bool dynamic) {
     jmpNativeReg(HOST_TMP2, true);
 }
 
-bool X64Asm::needsToPreverveFlags() {
-    return (currentOp) ? (currentOp->getNeededFlags(CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
-}
-
 void X64Asm::clearDirectionFlag() {
     bool needFlags = needsToPreverveFlags();
     U8 flagsReg = getTmpReg();

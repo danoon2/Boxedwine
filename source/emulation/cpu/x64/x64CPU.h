@@ -81,8 +81,7 @@ public:
 
     // from BtCPU
     void* init() override;
-    void link(BtData* data, void* hostAddress) override;
-    void translateData(BtData* data, BtData* firstPass = nullptr) override;
+    void link(BtData* data, void* hostAddress) override;    
 protected:
     BtData* getData1() override { data1.reset(); return &data1; }
     BtData* getData2() override { data2.reset(); return &data2; }

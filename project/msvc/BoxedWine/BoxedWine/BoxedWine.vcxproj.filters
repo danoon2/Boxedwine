@@ -643,9 +643,6 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
@@ -1690,9 +1687,6 @@
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h">

@@ -24,8 +24,6 @@
 #include "armv8btOps.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
-#include "../binaryTranslation/btCodeChunk.h"
-#include "armv8btCodeChunk.h"
 
 #undef u8
 
@@ -121,54 +119,46 @@ void* Armv8btCPU::init() {
 
     data.calculatedEipLen = 1; // will force the long x64 chunk jump
     data.doJmp(false);
-    std::shared_ptr<BtCodeChunk> chunk = data.commit(true);
-    result = chunk->getHostAddress();
+    result = data.commit(memory);
     //link(&data, chunk);
     this->pendingCodePages.clear();    
-    this->eipToHostInstructionPages = mem->eipToHostInstructionPages;
 
     if (!this->thread->process->returnToLoopAddress) {
         Armv8btAsm returnData(this);
         returnData.restoreNativeState();
         returnData.addReturn();
-        std::shared_ptr<BtCodeChunk> chunk2 = returnData.commit(true);
-        this->thread->process->returnToLoopAddress = chunk2->getHostAddress();
+        this->thread->process->returnToLoopAddress = returnData.commit(memory);
     }
     this->returnToLoopAddress = this->thread->process->returnToLoopAddress;
     if (!this->thread->process->jmpAndTranslateIfNecessary) {
         Armv8btAsm translateData(this);
         translateData.createCodeForJmpAndTranslateIfNecessary();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->jmpAndTranslateIfNecessary = chunk3->getHostAddress();
+        this->thread->process->jmpAndTranslateIfNecessary = translateData.commit(memory);
     }
     this->jmpAndTranslateIfNecessary = this->thread->process->jmpAndTranslateIfNecessary;
     if (!this->thread->process->syncToHostAddress) {
         Armv8btAsm translateData(this);
         translateData.createCodeForSyncToHost();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->syncToHostAddress = chunk3->getHostAddress();
+        this->thread->process->syncToHostAddress = translateData.commit(memory);
     }
     this->syncToHostAddress = this->thread->process->syncToHostAddress;
     if (!this->thread->process->syncFromHostAddress) {
         Armv8btAsm translateData(this);
         translateData.createCodeForSyncFromHost();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->syncFromHostAddress = chunk3->getHostAddress();
+        this->thread->process->syncFromHostAddress = translateData.commit(memory);
     }
     this->syncFromHostAddress = this->thread->process->syncFromHostAddress;
     if (!this->thread->process->doSingleOpAddress) {
         Armv8btAsm translateData(this);
         translateData.createCodeForDoSingleOp();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->doSingleOpAddress = chunk3->getHostAddress();
+        this->thread->process->doSingleOpAddress = translateData.commit(memory);
     }
     this->doSingleOpAddress = this->thread->process->doSingleOpAddress;
 #ifdef BOXEDWINE_POSIX
     if (!this->thread->process->runSignalAddress) {
         Armv8btAsm translateData(this);
         translateData.createCodeForRunSignal();
-        std::shared_ptr<BtCodeChunk> chunk3 = translateData.commit(true);
-        this->thread->process->runSignalAddress = chunk3->getHostAddress();
+        this->thread->process->runSignalAddress = translateData.commit(memory);
     }
 #endif
     return result;
@@ -178,7 +168,7 @@ void* Armv8btCPU::init() {
 void Armv8btCPU::addReturnFromTest() {
     Armv8btAsm data(this);
     data.addReturnFromTest();
-    data.commit(true);
+    data.commit(memory);
 }
 #endif
 
@@ -204,96 +194,25 @@ void Armv8btCPU::writeJumpAmount(BtData* data, U32 pos, U32 toLocation, U8* offs
     }
 }
 
-void Armv8btCPU::link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk) {
-    if (!fromChunk) {
-        kpanic("Armv8btCPU::link fromChunk missing");
-    }
-    for (U32 i=0;i<data->todoJump.size();i++) {
-        U32 eip = this->seg[CS].address+data->todoJump[i].eip;
-        U8* offset = (U8*)fromChunk->getHostAddress()+offsetIntoChunk+data->todoJump[i].bufferPos;
-        U8* host = (U8*)fromChunk->getHostFromEip(eip);
+void Armv8btCPU::link(BtData* data, void* hostAddress) {
+    for (auto& todoJump : data->todoJump) {
+        // todoJump.eip is where we are jumping to
+        // todoJump.bufferPos is offset in host memory of instruction doing the jump
+        U32 eip = this->seg[CS].address + todoJump.eip;
+        U32 offset = data->getHostOffsetFromEip(eip) - todoJump.bufferPos;
 
-        if (!host) {
-            kpanic("Armv8btCPU::link can not link into the middle of an instruction");
-        }
 #ifdef BOXEDWINE_MAC_JIT
         if (__builtin_available(macOS 11.0, *)) {
             pthread_jit_write_protect_np(false);
         }
 #endif
-        writeJumpAmount(data, data->todoJump[i].bufferPos, (U32)(host - offset), (U8*)fromChunk->getHostAddress() + offsetIntoChunk);
+        writeJumpAmount(data, todoJump.bufferPos, offset, (U8*)hostAddress);
 #ifdef BOXEDWINE_MAC_JIT
         if (__builtin_available(macOS 11.0, *)) {
             pthread_jit_write_protect_np(true);
         }
 #endif
     }
-}
-
-void Armv8btCPU::translateData(BtData* data, BtData* firstPass) {
-    KMemoryData* mem = getMemData(memory);
-    data->currentOp = nullptr;
-    data->currentBlock = nullptr;
-    DecodedOp* prevOp = nullptr;
-    while (1) {
-        U32 address = this->seg[CS].address+data->ip;
-        void* hostAddress = mem->getExistingHostAddress(address);
-        if (hostAddress) {
-            data->jumpTo(data->ip);
-            break;
-        }
-        if (!data->currentOp) {            
-            DecodedBlock* prev = data->currentBlock;
-            if (prev) {
-                data->currentBlock = nullptr; // don't chain to an existing block
-            } else {
-                std::shared_ptr<BtCodeChunk> chunk = memory->findCodeBlockContaining(address, 1);
-                if (chunk) {
-                    data->currentBlock = chunk->block;
-                    if (data->currentBlock) {
-                        data->currentOp = data->currentBlock->getOp(address);
-                        if (!data->currentOp) {
-                            // winfish seems to jump into the middle of an instruction which changes it from cmp to mov
-                            data->currentBlock = nullptr;
-                        }
-                    }
-                }
-            }
-            if (!data->currentBlock) {
-                data->currentBlock = NormalCPU::getBlockForInspectionButNotUsed(this, address, big);
-                if (prev) {
-                    prev->bytes += data->currentBlock->bytes;
-                    prevOp->next = data->currentBlock->op;
-                    data->currentBlock->op = nullptr;
-                    data->currentBlock->dealloc(false);
-                    data->currentBlock = prev;
-                }
-            }
-            data->currentOp = data->currentBlock->getOp(address);
-        }
-        data->mapAddress(address, data->bufferPos);
-        // add a mapping so that if they skip the 1 byte lock they will get mapped to the lock version anyway, libc seems to want to skip the lock sometimes in order to improve performance by a tiny bit
-        if (data->currentOp->lock) {
-            data->mapAddress(address+1, data->bufferPos);
-        }
-        if (firstPass) {
-            // :TODO: find a way without a cast
-            Armv8btAsm* a = (Armv8btAsm*)(firstPass);
-            if (a->fpuTopRegSet && !a->fpuOffsetRegSet) {
-                a->getFpuTopReg();
-            }
-        }
-        data->translateInstruction();
-        if (data->done) {
-            break;
-        }
-        if (data->stopAfterInstruction!=-1 && (int)data->ipAddressCount==data->stopAfterInstruction) {
-            break;
-        }               
-        data->resetForNewOp();
-        prevOp = data->currentOp;
-        data->currentOp = data->currentOp->next;
-    }            
 }
 
 #endif

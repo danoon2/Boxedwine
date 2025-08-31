@@ -770,7 +770,6 @@
     <ClInclude Include="..\..\..\..\platform\sdl\sdlcallback.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.h" />
@@ -2737,7 +2736,6 @@
     <ClCompile Include="..\..\..\..\platform\windows\winmidi.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\arm8btFlags.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp" />
-    <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btData.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\armv8bt\armv8btOps.cpp" />

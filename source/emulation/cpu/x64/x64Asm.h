@@ -44,7 +44,6 @@
 #define CPU_OFFSET_FS (U32)(offsetof(CPU, seg[FS].value))
 #define CPU_OFFSET_GS (U32)(offsetof(CPU, seg[GS].value))
 
-#define CPU_OFFSET_OP_PAGES (U32)(offsetof(x64CPU, opCache))
 #define CPU_OFFSET_EIP (U32)(offsetof(x64CPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(x64CPU, fromEip))
 #define CPU_OFFSET_EXIT_TO_START_LOOP (U32)(offsetof(x64CPU, exitToStartThreadLoop))
@@ -322,7 +321,6 @@ private:
     void cmps(U32 width, bool hasSrc);
 
     void getRamPage(U8 memReg, U8 pageReg, bool isWrite);
-    bool needsToPreverveFlags();
 
     // a bit of a hack to get get popd and popw to work since the address calculation should used the updated (E)SP after the pop, but it should be committed until after the write
     std::function<void()> postCalculateMemory;

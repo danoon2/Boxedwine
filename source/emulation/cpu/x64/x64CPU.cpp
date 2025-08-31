@@ -184,42 +184,6 @@ void x64CPU::link(BtData* data, void* hostAddress) {
     }
 }
 
-// winfish seems to jump into the middle of an instruction which changes it from cmp to mov
-void x64CPU::translateData(BtData* data, BtData* firstPass) {
-    KMemoryData* mem = getMemData(memory);
-  
-    data->firstPass = firstPass;
-    data->currentOp = nullptr;
-    data->firstOp = nullptr;
-    DecodedOp* prevOp = nullptr;
-
-    while (1) { 
-        U32 address = this->seg[CS].address + data->ip;
-        data->currentOp = getOp(address, 0);
-        if (prevOp && !prevOp->next) {
-            prevOp->next = data->currentOp;
-        }
-        if (!data->firstOp) {
-            data->firstOp = data->currentOp;
-        }        
-        void* hostAddress = data->currentOp->pfnJitCode;
-        if (hostAddress) {
-            data->jumpTo(data->ip);
-            break;
-        }
-        data->mapAddress(address, data->bufferPos);
-        data->translateInstruction();
-        if (data->done || data->currentOp->inst == Invalid) {
-            break;
-        }
-        if (data->stopAfterInstruction!=-1 && (int)data->ipAddressCount==data->stopAfterInstruction) {
-            break;
-        }
-        data->resetForNewOp();
-        prevOp = data->currentOp;
-    }  
-}
-
 extern bool writesFlags[InstructionCount];
 
 void common_runSingleOp(x64CPU* cpu) {

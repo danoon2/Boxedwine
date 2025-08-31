@@ -120,7 +120,7 @@ static void hostReadDouble(Armv8btAsm* data,U8 vReg, U8 indexReg) {
 	U8 tmpReg = data->getTmpReg();
 	isRegCached(data, indexReg, tmpReg);
 	data->doIf(tmpReg, 0, DO_IF_EQUAL, [data]() {
-		data->emulateSingleOp(data->currentOp);
+		data->emulateSingleOp();
 	}, [data, vReg, indexReg]() {
 		data->vReadMem64RegOffset(vReg, data->getFpuOffset(), indexReg, 3);
 	});

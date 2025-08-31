@@ -56,7 +56,7 @@ public:
     std::vector<U32> pendingCodePages;
 
     void* translateChunk(U32 ip);
-    virtual void translateData(BtData* data, BtData* firstPass = nullptr) = 0;
+    virtual void translateData(BtData* data, BtData* firstPass = nullptr);
     virtual void link(BtData* data, void* hostAddress) = 0;
     void* translateEipInternal(U32 ip);
 #ifdef __TEST

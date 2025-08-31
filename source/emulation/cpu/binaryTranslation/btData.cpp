@@ -129,6 +129,10 @@ U8 BtData::calculateEipLen(U32 eip) {
     return 0;
 }
 
+bool BtData::needsToPreverveFlags() {
+    return (currentOp) ? (currentOp->getNeededFlags(CF | PF | SF | ZF | AF | OF) != 0 || instructionInfo[currentOp->inst].flagsUsed != 0) : true;
+}
+
 U32 BtData::getHostOffsetFromEip(U32 ip) {
     for (U32 i = 0; i < this->ipAddressCount; i++) {
         if (this->ipAddress[i] == ip) {

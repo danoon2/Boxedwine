@@ -1623,12 +1623,8 @@ public:
     DecodedOp* blockStart;
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
-#ifdef BOXEDWINE_4K_PAGE_SIZE
     U8 exceptionCount; // if this instruction writes to a code page a lot which causes an exception, we can track it and use a slightly slower path without throwing an exception
     U8 pad;
-#else
-    U16 pad;
-#endif
 #endif
 #if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
     U16 originalOp;

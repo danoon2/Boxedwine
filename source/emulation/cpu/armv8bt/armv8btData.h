@@ -31,6 +31,7 @@ public:
     Armv8btData(Armv8btCPU* cpu);    
 
     void resetForNewOp() override;
+    void* commit(KMemory* memory) override;
 
     Armv8btCPU* cpu;
 
@@ -40,8 +41,6 @@ public:
     void clearCachedFpuRegs();
 
     virtual void reset() override;
-protected:
-    virtual std::shared_ptr<BtCodeChunk> createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) override;
 };
 #endif
 #endif

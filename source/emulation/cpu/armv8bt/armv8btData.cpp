@@ -21,8 +21,6 @@
 #ifdef BOXEDWINE_ARMV8BT
 
 #include "armv8btAsm.h"
-#include "../binaryTranslation/btCodeChunk.h"
-#include "armv8btCodeChunk.h"
 
 Armv8btData::Armv8btData(Armv8btCPU* cpu) : cpu(cpu) {
     this->resetForNewOp();
@@ -45,10 +43,16 @@ void Armv8btData::reset() {
 
 void Armv8btData::resetForNewOp() {
     this->startOfOpIp = this->ip;
+    // don't cache between instruction, what if we jumped to the next instruction without running the first instruction that filled the cache.
+    clearCachedFpuRegs();
+    this->fpuTopRegSet = false;
+    this->fpuOffsetRegSet = false;
 }
 
-std::shared_ptr<BtCodeChunk> Armv8btData::createChunk(U32 instructionCount, U32* eipInstructionAddress, U32* hostInstructionIndex, U8* hostInstructionBuffer, U32 hostInstructionBufferLen, U32 eip, U32 eipLen, bool dynamic) {
-    return std::make_shared<Armv8CodeChunk>(instructionCount, eipInstructionAddress, hostInstructionIndex, hostInstructionBuffer, hostInstructionBufferLen, eip, eipLen, dynamic);
+void* Armv8btData::commit(KMemory* memory) {
+    void* result = BtData::commit(memory);
+    Platform::clearInstructionCache(result, bufferPos);
+    return result;
 }
 
 #endif

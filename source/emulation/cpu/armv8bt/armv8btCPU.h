@@ -32,7 +32,6 @@ public:
     virtual void* init() override;
 
     U8* parity_lookup;                
-	U8*** eipToHostInstructionPages;    
 
     SSE sseConstants[6];
 
@@ -49,8 +48,7 @@ public:
     void addReturnFromTest();
 #endif
 
-    virtual void link(BtData* data, std::shared_ptr<BtCodeChunk>& fromChunk, U32 offsetIntoChunk = 0) override;
-    virtual void translateData(BtData* data, BtData* firstPass = nullptr) override;
+    virtual void link(BtData* data, void* hostAddress) override;
 
     virtual void setSeg(U32 index, U32 address, U32 value) override;
 

@@ -159,8 +159,6 @@ typedef enum {
 
 #define CPU_OFFSET_MEM (U32)(offsetof(Armv8btCPU, memOffset))
 #define CPU_OFFSET_NEG_MEM (U32)(offsetof(Armv8btCPU, negMemOffset))
-#define CPU_OFFSET_OP_PAGES (U32)(offsetof(Armv8btCPU, eipToHostInstructionPages))
-#define CPU_OFFSET_EIP_HOST_MAPPING (U32)(offsetof(Armv8btCPU, eipToHostInstructionAddressSpaceMapping))
 
 #define CPU_OFFSET_EIP (U32)(offsetof(Armv8btCPU, eip.u32))
 #define CPU_OFFSET_EIP_FROM (U32)(offsetof(Armv8btCPU, fromEip))
@@ -196,7 +194,6 @@ public:
     U8 getTmpReg();
     void releaseTmpReg(U8 reg);
     U8 getNativeReg(U8 reg);
-    U8 getNativeFpuReg(U8 reg);
     U8 getNativeMmxReg(U8 reg);
     U8 getNativeSseReg(U8 reg);
     U8 getReadNativeReg8(U8 reg);
@@ -215,7 +212,7 @@ public:
 	void restoreNativeState();
     void addReturn();
     void createCodeForDoSingleOp();
-    void emulateSingleOp(DecodedOp* op);
+    void emulateSingleOp(bool updateEIP = true);
     void createCodeForJmpAndTranslateIfNecessary();
     void callRetranslateChunk();
 #ifdef BOXEDWINE_POSIX
@@ -266,6 +263,7 @@ public:
     void writeJumpAmount(U32 pos, U32 toLocation);
     void doJmp(bool mightNeedCS); // jump to current cpu->eip
     void jmpRegToxBranchEip(bool mightNeedCS);
+    void jmpAddress(U32 eip);
     virtual void jumpTo(U32 eip) override; // a jump that could be within the same chunk, this will be filled out when the entire chunk is encoded
     void addTodoLinkJump(U32 eip);
     U8 getRegWithConst(U64 value);
@@ -319,7 +317,7 @@ public:
     // mov to/from memory
     void readWriteMemory(U8 addressReg, U8 readDst, U8 writeSrc, U32 width, std::function<void(void)> pfn, bool lock = false, bool doWrite = true);
     void readMemory(U8 addressReg, U8 dst, U32 width, bool addMemOffsetToAddress, bool lock = false, bool signExtend = false);
-    void writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffsetToAddress, bool lock = false, U8 regWithOriginalValue = 0, U32 restartPos = 0, bool generateMemoryBarrierForLock = true);
+    void writeMemory(U8 addressReg, U8 src, U32 width, bool addMemOffsetToAddress, bool lock = false, U8 regWithOriginalValue = 0, U32 restartPos = 0, bool generateMemoryBarrierForLock = true, bool eipAlreadySet = false);
     void fullMemoryBarrier();
 
     void readMem8ValueOffset(U8 dst, U8 base, S32 offset, bool signExtend = false);
