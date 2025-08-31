@@ -132,7 +132,7 @@ void* x64CPU::init() {
     if (!this->thread->process->runSignalAddress) {
         X64Asm translateData(this);
         translateData.createCodeForRunSignal();
-        this->thread->process->runSignalAddress = translateData.commit();
+        this->thread->process->runSignalAddress = translateData.commit(memory);
     }
 #endif
     return result;
@@ -185,6 +185,59 @@ void x64CPU::link(BtData* data, void* hostAddress) {
 }
 
 extern bool writesFlags[InstructionCount];
+
+void x64CPU::loadFxState(U32 inst) {
+    for (U32 i = 0; i < 8; i++) {
+        this->xmm[i].pd.u64[0] = this->fpuState.xmm[i].low;
+        this->xmm[i].pd.u64[1] = this->fpuState.xmm[i].high;
+    }
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (this->fpu.isMMXInUse) {
+        klog("mmx");
+        for (U32 i = 0; i < 8; i++) {
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
+        }
+    }
+#else
+    if (!this->thread->process->emulateFPU) {
+        U16 controlWord = this->fpuState.fcw;
+        U16 statusWord = this->fpuState.fsw;
+        U8 tag = ((x64CPU*)this)->fpuState.ftw;
+        this->fpu.SetCW(controlWord);
+        this->fpu.SetSW(statusWord);
+        this->fpu.SetTagFromAbridged(tag);
+
+        for (U32 i = 0; i < 8; i++) {
+            U32 index = (i - this->fpu.GetTop()) & 7;
+            fpu.LD80(i, this->fpuState.st_mm[index].low, (U16)this->fpuState.st_mm[index].high);
+        }
+    }
+#endif
+}
+
+void x64CPU::saveToFxState(U32 inst) {
+    for (U32 i = 0; i < 8; i++) {
+        this->fpuState.xmm[i].low = this->xmm[i].pd.u64[0];
+        this->fpuState.xmm[i].high = this->xmm[i].pd.u64[1];
+    }
+#ifdef BOXEDWINE_USE_SSE_FOR_FPU
+    if (this->fpu.isMMXInUse) {
+        for (U32 i = 0; i < 8; i++) {
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[i].low, (U64*)&this->fpuState.st_mm[i].high);
+        }
+    }
+#else
+    if (!this->thread->process->emulateFPU) {
+        this->fpuState.fcw = this->fpu.CW();
+        this->fpuState.fsw = this->fpu.SW();
+        this->fpuState.ftw = this->fpu.GetAbridgedTag(this);
+        for (U32 i = 0; i < 8; i++) {
+            U32 index = (i - this->fpu.GetTop()) & 7;
+            this->fpu.ST80(i, (U64*)&this->fpuState.st_mm[index].low, (U64*)&this->fpuState.st_mm[index].high);
+        }
+    }
+#endif
+}
 
 void common_runSingleOp(x64CPU* cpu) {
     cpu->updateFlagsFromX64();

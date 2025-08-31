@@ -193,7 +193,6 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
         return;
     }
     KThread* currentThread = KThread::currentThread();
-    KMemoryData* mem = getMemData(currentThread->memory);
 
     if (!currentThread) {
         return;
@@ -234,7 +233,6 @@ void signalHandler() {
     BOXEDWINE_CRITICAL_SECTION;
     KThread* currentThread = KThread::currentThread();
     x64CPU* cpu = (x64CPU*)currentThread->cpu;
-    KMemoryData* mem = getMemData(currentThread->memory);
     U64 fpu[8];
 
     U64 result = cpu->startException(cpu->exceptionAddress, cpu->exceptionReadAddress);
@@ -249,7 +247,7 @@ void signalHandler() {
         return;
     }
     if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
-        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        DecodedOp* op = cpu->getNextOp();
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }
@@ -262,10 +260,10 @@ void signalHandler() {
         cpu->updateX64Flags();
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
         if (saveFxState) {
+            cpu->fpuDirtyFlags = 1;
             cpu->saveToFxState(op->inst);
         }
 #endif
-        op->dealloc(true);
         return;
     }
     kpanic_fmt("unhandled exception %d", cpu->exceptionSigNo);

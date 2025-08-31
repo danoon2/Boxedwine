@@ -96,6 +96,10 @@ public:
         this->flags = ((this->currentHostFlags >> 8) & 0xFF) | (this->flags & DF) | ((this->currentHostFlags & 0xFF) ? OF : 0);
     }
 
+    // used by linux
+    void loadFxState(U32 inst);
+    void saveToFxState(U32 inst);
+
     U32 negSegAddress[6] = { 0 };
     U32 arg5 = 0;    
     U32 currentHostFlags = 0;

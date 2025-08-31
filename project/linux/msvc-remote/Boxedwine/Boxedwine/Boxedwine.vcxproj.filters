@@ -88,9 +88,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.cpp">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClCompile>
@@ -457,9 +454,6 @@
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8\llvm_helper.cpp">
       <Filter>source\emulation\cpu\armv8</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\ui\controls\helpView.cpp">
       <Filter>source\ui\control</Filter>
     </ClCompile>
@@ -473,9 +467,6 @@
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.cpp">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.cpp">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.cpp">
@@ -541,9 +532,6 @@
     <ClCompile Include="..\..\..\..\..\source\util\bstring.cpp" />
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.cpp">
       <Filter>source\emulation\softmmu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.cpp">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\util\bfile.cpp">
       <Filter>source\util</Filter>
@@ -904,6 +892,12 @@
     </ClCompile>
     <ClCompile Include="..\..\..\..\..\source\emulation\softmmu\soft_mmu.cpp">
       <Filter>source\emulation\softmmu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\util\bnativeheap.cpp">
+      <Filter>source\util</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\..\source\emulation\cpu\common\common_lock.cpp">
+      <Filter>source\emulation\cpu\common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -1444,9 +1438,6 @@
       <Filter>source\emulation\cpu\x32</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64Asm.h">
-      <Filter>source\emulation\cpu\x64</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CodeChunk.h">
       <Filter>source\emulation\cpu\x64</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\x64\x64CPU.h">
@@ -2064,9 +2055,6 @@
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCpu.h">
       <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btCodeChunk.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\ui\controls\helpView.h">
       <Filter>source\ui\control</Filter>
     </ClInclude>
@@ -2098,9 +2086,6 @@
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btAsm.h">
-      <Filter>source\emulation\cpu\armv8bt</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCodeChunk.h">
       <Filter>source\emulation\cpu\armv8bt</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\armv8bt\armv8btCPU.h">
@@ -2160,9 +2145,6 @@
     <ClInclude Include="..\..\..\..\..\source\util\concurrentqueue.h" />
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\kmemory_soft.h">
       <Filter>source\emulation\softmmu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\binaryTranslation\btMemory.h">
-      <Filter>source\emulation\cpu\binaryTranslation</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\util\ptrpool.h">
       <Filter>source\util</Filter>
@@ -2397,6 +2379,18 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\softmmu\soft_mmu.h">
       <Filter>source\emulation\softmmu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\util\bnativeheap.h">
+      <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\cpu_init_lock.h">
+      <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\normal\normal_lock.h">
+      <Filter>source\emulation\cpu\normal</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_lock.h">
+      <Filter>source\emulation\cpu\common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
