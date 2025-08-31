@@ -6375,7 +6375,7 @@ U32 DecodedOp::getNeededFlags(U32 flags, U32 depth) {
                     return flags;
                 }
             } else {
-                if (n->data.nextJump && *(n->data.nextJump)) {
+                if (n->data.nextJump && *(n->data.nextJump) && n->next) {
                     U32 needsToSet1 = n->next->getNeededFlags(flags, depth - 1);
                     U32 needsToSet2 = (*(n->data.nextJump))->getNeededFlags(flags, depth - 1);
                     return needsToSet1 | needsToSet2;

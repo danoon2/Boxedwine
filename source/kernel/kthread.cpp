@@ -276,7 +276,7 @@ struct futex* allocFutex(KThread* thread, U64 address, U32 millies) {
 
     for (i=0;i<MAX_FUTEXES;i++) {
         if (system_futex[i].thread== nullptr) {
-            BOXEDWINE_CRITICAL_SECTION(system_futex[i].cond);
+            BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(system_futex[i].cond);
             if (system_futex[i].thread != nullptr) {
                 continue;
             }
