@@ -17,7 +17,7 @@
  */
 
 #include "boxedwine.h"
-#if !defined (__EMSCRIPTEN__) && !defined (__TEST)
+#if !defined (__EMSCRIPTEN__) && (!defined (__TEST) || defined (__MACH__))
 #include <thread>
 
 void runInBackgroundThread(std::function<void(void)> f) {

@@ -8249,7 +8249,12 @@ void testMovGdSx160x3bf() {
 void testCmpXchg8b0x3c7() {
     cpu->big = true;
     // test with and without the flag being needed, dynamic cores may optimize the solution if ZF will be ignored
+#if defined(__DEBUG) && defined(__MACH__)
+    // XCode is dumb, we can't set it to automatically ignore a sigsegv since it will be handled in the signal handler
+    for (int lock = 0; lock < 2; lock++) {
+#else
     for (int lock = 0; lock < 3; lock++) {
+#endif
         for (int setsFlags = 0; setsFlags < 2; setsFlags++) {
             for (int usesFlags = 0; usesFlags < 2; usesFlags++) {
                 if (setsFlags) {

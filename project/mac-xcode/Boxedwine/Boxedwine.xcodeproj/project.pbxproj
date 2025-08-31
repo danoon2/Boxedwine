@@ -211,6 +211,19 @@
 		710091632644D44E003413C3 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
 		710091642644D44E003413C3 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
 		710091652644D44E003413C3 /* platformThreads-x64.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 710091562644D44E003413C3 /* platformThreads-x64.cpp */; };
+		7108C9302E64EB9000F6CF63 /* imgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227AC2433EE5300CDBABD /* imgui.cpp */; };
+		7108C9312E64EB9000F6CF63 /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
+		7108C9322E64EB9000F6CF63 /* imgui_widgets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227A42433EE5300CDBABD /* imgui_widgets.cpp */; };
+		7108C9332E64EB9000F6CF63 /* imgui_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228662433EE5300CDBABD /* imgui_draw.cpp */; };
+		7108C9342E64EB9000F6CF63 /* imgui.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227AC2433EE5300CDBABD /* imgui.cpp */; };
+		7108C9352E64EB9000F6CF63 /* imgui_draw.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228662433EE5300CDBABD /* imgui_draw.cpp */; };
+		7108C9362E64EB9000F6CF63 /* imgui_widgets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712227A42433EE5300CDBABD /* imgui_widgets.cpp */; };
+		7108C9372E64EB9000F6CF63 /* imguitinyfiledialogs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228622433EE5300CDBABD /* imguitinyfiledialogs.cpp */; };
+		7108C9382E64EBAD00F6CF63 /* imgui_impl_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7122285E2433EE5300CDBABD /* imgui_impl_sdl.cpp */; };
+		7108C9392E64EBAD00F6CF63 /* imgui_impl_opengl3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228262433EE5300CDBABD /* imgui_impl_opengl3.cpp */; };
+		7108C93A2E64EBAD00F6CF63 /* imgui_impl_sdl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7122285E2433EE5300CDBABD /* imgui_impl_sdl.cpp */; };
+		7108C93B2E64EBAD00F6CF63 /* imgui_impl_opengl3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 712228262433EE5300CDBABD /* imgui_impl_opengl3.cpp */; };
+		7108C93C2E64EC8800F6CF63 /* libcurl.4.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1A5405252A04AB4E0061653D /* libcurl.4.tbd */; };
 		711F834B24534A06008E6A0C /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		7120545E244D074000C3CB1B /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
 		7120545F244D074000C3CB1B /* MacPlatform.m in Sources */ = {isa = PBXBuildFile; fileRef = 7120545D244D074000C3CB1B /* MacPlatform.m */; };
@@ -1216,6 +1229,7 @@
 				7135DC98264EBCD0005D6AA6 /* CoreAudio.framework in Frameworks */,
 				7135DC99264EBCD0005D6AA6 /* AudioToolbox.framework in Frameworks */,
 				7135DC9A264EBCD0005D6AA6 /* ForceFeedback.framework in Frameworks */,
+				7108C93C2E64EC8800F6CF63 /* libcurl.4.tbd in Frameworks */,
 				7135DC9B264EBCD0005D6AA6 /* SDL2.framework in Frameworks */,
 				7135DC9C264EBCD0005D6AA6 /* Carbon.framework in Frameworks */,
 				7135DC9D264EBCD0005D6AA6 /* OpenGL.framework in Frameworks */,
@@ -1823,6 +1837,10 @@
 			);
 			dependencies = (
 			);
+			fileSystemSynchronizedGroups = (
+				7108C4942E64A7FF00F6CF63 /* source */,
+				7108C81E2E64A83200F6CF63 /* include */,
+			);
 			name = BoxedwineTest;
 			productName = BoxedwineTest;
 			productReference = 7135DCA6264EBCD0005D6AA6 /* BoxedwineTest.app */;
@@ -2273,6 +2291,10 @@
 				71B494CC2D4AA1B800A8AB32 /* s_addMagsExtF80.c in Sources */,
 				71B494CD2D4AA1B800A8AB32 /* s_approxRecipSqrt_1Ks.c in Sources */,
 				71B494CF2D4AA1B800A8AB32 /* s_shortShiftLeft128.c in Sources */,
+				7108C9302E64EB9000F6CF63 /* imgui.cpp in Sources */,
+				7108C9312E64EB9000F6CF63 /* imguitinyfiledialogs.cpp in Sources */,
+				7108C9322E64EB9000F6CF63 /* imgui_widgets.cpp in Sources */,
+				7108C9332E64EB9000F6CF63 /* imgui_draw.cpp in Sources */,
 				71B494D02D4AA1B800A8AB32 /* softfloat_state.c in Sources */,
 				71B494D12D4AA1B800A8AB32 /* extF80_to_i32_r_minMag.c in Sources */,
 				71B494D32D4AA1B800A8AB32 /* i64_to_extF80.c in Sources */,
@@ -2283,6 +2305,8 @@
 				71B494E72D4AA1B800A8AB32 /* s_normRoundPackToF64.c in Sources */,
 				71B494E82D4AA1B800A8AB32 /* s_propagateNaNExtF80UI.c in Sources */,
 				71B494ED2D4AA1B800A8AB32 /* s_shortShiftRightJam64.c in Sources */,
+				7108C9382E64EBAD00F6CF63 /* imgui_impl_sdl.cpp in Sources */,
+				7108C9392E64EBAD00F6CF63 /* imgui_impl_opengl3.cpp in Sources */,
 				71B494EE2D4AA1B800A8AB32 /* s_mul64ByShifted32To128.c in Sources */,
 				71B494EF2D4AA1B800A8AB32 /* s_approxRecip32_1.c in Sources */,
 				71B494F22D4AA1B800A8AB32 /* s_countLeadingZeros64.c in Sources */,
@@ -2525,9 +2549,15 @@
 				71B4938D2D4AA1B800A8AB32 /* s_normRoundPackToExtF80.c in Sources */,
 				71B4938E2D4AA1B800A8AB32 /* extF80_to_f32.c in Sources */,
 				71B493902D4AA1B800A8AB32 /* s_normRoundPackToF32.c in Sources */,
+				7108C93A2E64EBAD00F6CF63 /* imgui_impl_sdl.cpp in Sources */,
+				7108C93B2E64EBAD00F6CF63 /* imgui_impl_opengl3.cpp in Sources */,
 				71B493912D4AA1B800A8AB32 /* s_roundToI64.c in Sources */,
 				71B493972D4AA1B800A8AB32 /* s_roundPackToExtF80.c in Sources */,
 				71B493992D4AA1B800A8AB32 /* s_countLeadingZeros32.c in Sources */,
+				7108C9342E64EB9000F6CF63 /* imgui.cpp in Sources */,
+				7108C9352E64EB9000F6CF63 /* imgui_draw.cpp in Sources */,
+				7108C9362E64EB9000F6CF63 /* imgui_widgets.cpp in Sources */,
+				7108C9372E64EB9000F6CF63 /* imguitinyfiledialogs.cpp in Sources */,
 				71B4939F2D4AA1B800A8AB32 /* s_roundToI32.c in Sources */,
 				71B493A42D4AA1B800A8AB32 /* extF80_to_i64.c in Sources */,
 				71B493A52D4AA1B800A8AB32 /* s_normSubnormalExtF80Sig.c in Sources */,
@@ -3208,13 +3238,18 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
 					BOXEDWINE_64,
+					BOXEDWINE_ZLIB,
 					"SDL2=1",
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					__TEST,
-					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_POSIX,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
+					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MAC_JIT,
+					BOXED_NO_EXCEPTIONS,
+					__TEST,
+					__DEBUG,
 				);
 				INFOPLIST_FILE = "BoxedwineTestX64-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3248,13 +3283,17 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					SIMDE_NO_NATIVE,
 					BOXEDWINE_64,
+					BOXEDWINE_ZLIB,
 					"SDL2=1",
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					__TEST,
-					BOXEDWINE_MAC_JIT,
 					BOXEDWINE_POSIX,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
+					BOXEDWINE_CORE_AUDIO,
+					BOXEDWINE_MAC_JIT,
+					BOXED_NO_EXCEPTIONS,
+					__TEST,
 				);
 				INFOPLIST_FILE = "BoxedwineTestX64-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
