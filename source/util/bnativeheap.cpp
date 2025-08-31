@@ -68,14 +68,18 @@ void* BNativeHeap::alloc(U32 len) {
 		U32 count = (len + 4 + BNATIVEHEAD_64K_BLOCK_SIZE - 1) / BNATIVEHEAD_64K_BLOCK_SIZE;
 		
 		U8* result = Platform::alloc64kBlock(count, true);
-		*((U32*)result) = count * BNATIVEHEAD_64K_BLOCK_SIZE;
+        Platform::writeCodeToMemory(result, 4, [result, count]() {
+            *((U32*)result) = count * BNATIVEHEAD_64K_BLOCK_SIZE;
+        });
 		largeBlocks.set(result, count * BNATIVEHEAD_64K_BLOCK_SIZE);
 		return result + 4;
 	}
 	if (buckets.contains(index) && buckets[index].size()) {
 		void* result = buckets[index].back();
 		buckets[index].pop_back();
-		memset(result, 0, len);
+        Platform::writeCodeToMemory(result, len, [result, len]() {
+            memset(result, 0, len);
+        });
 		return result;
 	}
 	U8* address = Platform::alloc64kBlock(1, true);
@@ -83,7 +87,10 @@ void* BNativeHeap::alloc(U32 len) {
 	blocks.push_back(address);
 
 	for (U8* start = address; start < address + BNATIVEHEAD_64K_BLOCK_SIZE; start += size) {
-		*((U32*)start) = index;
+        // on mac, you can't write to mmap'd memory that was allocated for a JIT without unprotecting it
+        Platform::writeCodeToMemory(start, 4, [start, index]() {
+            *((U32*)start) = index;
+        });
 		buckets[index].push_back(start + 4);
 	}
 	return alloc(len);

@@ -202,9 +202,6 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 flags) {
                 if (!nextOp->pfn) {
                     nextOp->pfn = getFunctionForOp(nextOp);
                 }
-                if (nextOp->pfnJitCode) {
-                    int ii = 0;
-                }
                 if (memory->isAddressDynamic(address, nextOp->len)) {
                     nextOp->flags |= OP_FLAG_NO_JIT;
                     nextOp->runCount = JIT_RUN_COUNT + 1;

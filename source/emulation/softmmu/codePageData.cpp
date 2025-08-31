@@ -43,9 +43,6 @@ DecodedOpPageCache::~DecodedOpPageCache() {
 	}
 }
 
-static void OPCALL emptyOp(CPU* cpu, DecodedOp* op) {
-}
-
 #ifdef BOXEDWINE_DYNAMIC
 BOXEDWINE_MUTEX DecodedOpCache::lock;
 #endif

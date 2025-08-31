@@ -23,7 +23,7 @@ class CodePage;
 
 #include "codePageData.h"
 #include "soft_mmu.h"
-#include "../source/util/bnativeheap.h"
+#include "../../source/util/bnativeheap.h"
 
 class KMemoryData {
 public:

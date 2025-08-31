@@ -19,7 +19,7 @@
 #ifndef __FSNODE_H__
 #define __FSNODE_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 #include "kfilelock.h"
 
 // on windows one.txt and One.txt are the same file but on Linux they are different

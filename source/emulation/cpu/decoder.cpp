@@ -6457,7 +6457,6 @@ bool decodeFunction(DecodeBlockCallback* callback, U32 eip, std::vector<DecodedF
             return false;
         }
         if (hasNext && !op->isRet()) {
-            DecodedOp* o = op;
             if (!op->next) {
                 op->next = callback->getOp(address, 0);
             }

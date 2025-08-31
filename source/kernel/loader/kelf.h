@@ -19,7 +19,7 @@
 #ifndef __kelf_H__
 #define __kelf_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 
 #define k_EI_NIDENT 16
 

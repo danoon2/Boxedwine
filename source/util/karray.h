@@ -19,7 +19,7 @@
 #ifndef __KARRAY_H__
 #define __KARRAY_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 
 template <typename T> 
 class KArray {

@@ -84,7 +84,6 @@ void Armv8btCPU::restart() {
 void* Armv8btCPU::init() {
     Armv8btAsm data(this);
     void* result;
-    KMemoryData* mem = getMemData(memory);
     Armv8btCPU* cpu = this;
 
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);

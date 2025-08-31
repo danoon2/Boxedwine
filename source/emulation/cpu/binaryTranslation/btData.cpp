@@ -167,7 +167,6 @@ void BtData::mapAddress(U32 ip, U32 bufferPos) {
 
 void* BtData::commit(KMemory* memory) {
     void* result = memory->allocCodeMemory(bufferPos);
-    memcpy(result, this->buffer, bufferPos);
     Platform::writeCodeToMemory(result, bufferPos, [result, this]() {
         memcpy(result, this->buffer, bufferPos);
         });

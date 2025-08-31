@@ -51,7 +51,7 @@ void initHandlers() {
         //sigaction(SIGTRAP, &sa, &oldsa);
         initializedHandler = true;
 #ifdef __MACH__
-        // proc hand -p true -s false SIGILL
+        // proc hand -p true -s false SIGSEGV
         // proc hand -p true -s false SIGBUS
         // in the debug out put window, (lldb) enter the above 2 commands in order to run while debugging on Mac
 

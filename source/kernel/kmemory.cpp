@@ -511,8 +511,6 @@ static void opCallback(DecodedOp* op, void* p) {
 static void opCallbackCheck(DecodedOp* op, void* p) {
     if (!(op->flags & OP_FLAG_EMULATED_OP)) {
         *((bool*)p) = true;
-    } else {
-        int ii = 0;
     }
 }
 

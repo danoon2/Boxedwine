@@ -21,7 +21,7 @@
 #ifndef __FSZIP_H__
 #define __FSZIP_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 
 #undef OF
 #define STRICTUNZIP

@@ -19,7 +19,7 @@
 #ifndef __SOFT_RAM_H__
 #define __SOFT_RAM_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 
 struct RamPage {
 	U32 value = 0;

@@ -27,6 +27,7 @@ void BoxedTexture::resetAll() {
 	for (auto& t : textures) {
 		t->unload();
 	}
+    textures.clear();
 }
 
 BoxedTexture::BoxedTexture(std::function<void* ()> loadTexture) : texture(nullptr), loadTexture(loadTexture) {

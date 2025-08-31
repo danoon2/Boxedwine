@@ -32,7 +32,7 @@ public:
     DecodedOp* decodeOneOp(U32 eip);
 
     // helper for decoder
-    bool isValidReadAddress(U32 address);
+    bool isValidReadAddress(U32 address) override;
 
     static OpCallback getFunctionForOp(DecodedOp* op);
 

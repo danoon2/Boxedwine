@@ -29,7 +29,8 @@
 #include "../armv8/llvm_helper.h"
 #include "armv8btCPU.h"
 
-//#define BOXED_NO_EXCEPTIONS
+// is set in mac for debug build since their debugger is a pain to turn off jit exceptions
+// #define BOXED_NO_EXCEPTIONS
 
 static bool isWidthVector(VectorWidth width) {
     if (width == D_scaler || width == S_scaler) {

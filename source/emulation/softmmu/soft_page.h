@@ -19,7 +19,7 @@
 #ifndef __SOFT_PAGE_H__
 #define __SOFT_PAGE_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 #include "soft_ram.h"
 
 class KThread;

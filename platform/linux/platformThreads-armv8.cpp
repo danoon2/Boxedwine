@@ -22,7 +22,6 @@
 #include "ksignal.h"
 #include "../../source/emulation/cpu/armv8bt/armv8btCPU.h"
 #include "../../source/emulation/cpu/armv8bt/armv8btAsm.h"
-#include "../../source/emulation/cpu/binaryTranslation/btCodeChunk.h"
 #include "../../source/emulation/softmmu/kmemory_soft.h"
 #include "../../source/emulation/cpu/normal/normalCPU.h"
 #ifdef __MACH__
@@ -90,7 +89,6 @@ void syncFromException(Armv8btCPU* cpu, ucontext_t* context) {
 #endif
     cpu->flags = (U32)context->CONTEXT_REG(xFLAGS);
     cpu->lazyFlags = FLAGS_NONE;
-    cpu->eip.u32 = getMemData(cpu->memory)->codeCache.getEipFromHost((U8*)context->CONTEXT_PC);
     
 #ifdef __MACH__
     for (int i = 0; i < 8; i++) {
@@ -165,6 +163,10 @@ void platformHandler(int sig, siginfo_t* info, void* vcontext) {
     if (cpu != (BtCPU*)context->CONTEXT_REG(xCPU)) {
         return;
     }
+    if (cpu->exitToStartThreadLoop) {
+        context->CONTEXT_PC = (U64)cpu->returnToLoopAddress;
+        return;
+    }
     Armv8btCPU* armCpu = (Armv8btCPU*)cpu;
 
     syncFromException(armCpu, context);
@@ -213,11 +215,10 @@ void signalHandler() {
         return;
     }
     if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
-        DecodedOp* op = NormalCPU::decodeSingleOp(cpu, cpu->getEipAddress());
+        DecodedOp* op = cpu->getNextOp();
 
         cpu->returnHostAddress = cpu->handleAccessException(op);
         cpu->fillFlags();
-        op->dealloc(true);
         return;
     }
     kpanic_fmt("unhandled exception %d", cpu->exceptionSigNo);

@@ -19,7 +19,7 @@
 #ifndef __KSYSTEM_H__
 #define __KSYSTEM_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 #include "pixelformat.h"
 
 #define UID 1

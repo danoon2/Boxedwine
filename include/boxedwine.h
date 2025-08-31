@@ -36,10 +36,11 @@
 #include <iostream>
 #include <thread>
 #include <assert.h>
+#include <algorithm>
 
 #include <errno.h>
 
-#if defined(__MACH__) || defined(BOXEDWINE_NEED_ATOMIC_REF)
+#ifndef __cpp_lib_atomic_ref
 #include "../platform/mac/atomic_ref.h"
 #endif
 
@@ -77,7 +78,7 @@
 #include "../source/util/bstring.h"
 #include "../source/util/bhashtable.h"
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 
 struct int2Float {
     union {

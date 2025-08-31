@@ -19,7 +19,7 @@
 #ifndef __FSOPENNODE_H__
 #define __FSOPENNODE_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 #include "kthread.h"
 
 class FsOpenNode {

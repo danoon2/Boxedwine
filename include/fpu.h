@@ -19,7 +19,7 @@
 #ifndef __FPU_H__
 #define __FPU_H__
 
-#include "platform.h"
+#include "platformBoxedwine.h"
 
 struct FPU_Reg {
     union {
