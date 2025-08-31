@@ -502,6 +502,7 @@ void KMemory::removeCodeBlock(DecodedOp* op, bool clearOps) {
 }
 #endif
 
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
 static void opCallback(DecodedOp* op, void* p) {
     if (op->blockStart) {
         ((KMemory*)p)->removeCodeBlock(op);
@@ -513,7 +514,7 @@ static void opCallbackCheck(DecodedOp* op, void* p) {
         *((bool*)p) = true;
     }
 }
-
+#endif
 bool KMemory::removeCode(U32 address, U32 len, bool becauseOfWrite) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
 #ifdef BOXEDWINE_BINARY_TRANSLATOR

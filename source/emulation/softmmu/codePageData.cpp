@@ -110,9 +110,6 @@ bool DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	KThread* thread = KThread::currentThread();
 	for (U32 i = offset; i < end; i++) {
 		if (page->ops[i]) {
-			if (page->ops[i]->pfnJitCode || page->ops[i]->blockStart) {
-				int ii = 0;
-			}
 			pendingDeallocs[thread->id].push_back(page->ops[i]);
 			page->ops[i] = nullptr;
 			activeOps--;

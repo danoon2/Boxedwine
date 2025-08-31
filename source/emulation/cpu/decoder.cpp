@@ -504,12 +504,12 @@ const InstructionInfo instructionInfo[] = {
     {0, 8, 8, OF|CF, CF, 0, 0}, // RclE8I8
     {0, 0, 0, OF|CF, CF, 0, 0}, // RcrR8I8 
     {0, 8, 8, OF|CF, CF, 0, 0}, // RcrE8I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShlR8I8 
-    {0, 8, 8, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShlE8I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShrR8I8 
-    {0, 8, 8, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShrE8I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // SarR8I8 
-    {0, 8, 8, CF|ZF|SF|OF|PF, 0, AF, 0}, // SarE8I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShlR8I8 
+    {0, 8, 8, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShlE8I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShrR8I8 
+    {0, 8, 8, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShrE8I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // SarR8I8 
+    {0, 8, 8, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // SarE8I8
 
     {0, 0, 0, OF|CF, 0, 0, 0}, // RolR16I8, 
     {0, 16, 16, OF|CF, 0, 0, 0}, // RolE16I8
@@ -519,12 +519,12 @@ const InstructionInfo instructionInfo[] = {
     {0, 16, 16, OF|CF, CF, 0, 0}, // RclE16I8
     {0, 0, 0, OF|CF, CF, 0, 0}, // RcrR16I8 
     {0, 16, 16, OF|CF, CF, 0, 0}, // RcrE16I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShlR16I8 
-    {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShlE16I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShrR16I8 
-    {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShrE16I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // SarR16I8 
-    {0, 16, 16, CF|ZF|SF|OF|PF, 0, AF, 0}, // SarE16I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShlR16I8 
+    {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShlE16I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShrR16I8 
+    {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShrE16I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // SarR16I8 
+    {0, 16, 16, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // SarE16I8
 
     {0, 0, 0, OF|CF, 0, 0, 0}, // RolR32I8 
     {0, 32, 32, OF|CF, 0, 0, 0}, // RolE32I8
@@ -534,12 +534,12 @@ const InstructionInfo instructionInfo[] = {
     {0, 32, 32, OF|CF, CF, 0, 0}, // RclE32I8
     {0, 0, 0, OF|CF, CF, 0, 0}, // RcrR32I8 
     {0, 32, 32, OF|CF, CF, 0, 0}, // RcrE32I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShlR32I8 
-    {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShlE32I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShrR32I8 
-    {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // ShrE32I8
-    {0, 0, 0, CF|ZF|SF|OF|PF, 0, AF, 0}, // SarR32I8 
-    {0, 32, 32, CF|ZF|SF|OF|PF, 0, AF, 0}, // SarE32I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShlR32I8 
+    {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShlE32I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShrR32I8 
+    {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // ShrE32I8
+    {0, 0, 0, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // SarR32I8 
+    {0, 32, 32, CF|ZF|SF|OF|PF|MAYBE, 0, AF|MAYBE, 0}, // SarE32I8
 
     {0, 0, 0, OF|CF, 0, 0, 0}, // RolR8Cl 
     {0, 8, 8, OF|CF, 0, 0, 0}, // RolE8Cl
@@ -6547,15 +6547,15 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
             break;
         }
         d.opCountSoFarInThisBlock++;
+        op->len = d.opLen;
+        op->ea16 = d.ea16;
+        decodedLen += d.opLen;
+        opCount++;
 #ifdef __TEST
         if (op->inst == TestEnd) {
             break;
         }
 #endif
-        op->len = d.opLen;
-        op->ea16 = d.ea16;
-        decodedLen += d.opLen;
-        opCount++;
 #if defined _DEBUG || defined BOXEDWINE_BINARY_TRANSLATOR
         op->originalOp = d.inst;
 #endif        
