@@ -182,7 +182,7 @@ union SSE {
     simde__m128i pi;
 };
 
-#define OP_FLAG_CALL_TARGET 1
+#define OP_FLAG_END_OF_LONG_CHAIN 1
 #define OP_FLAG_JIT 2
 #define OP_FLAG_NO_JIT 4
 #define OP_FLAG_EMULATED_OP 8

@@ -303,7 +303,9 @@ void DecodedOpCache::add(DecodedOp* op, U32 address, U32 opCount) {
 			offset -= K_PAGE_SIZE;
 		}
 	}
-	prevOp->next = get((pageIndex << K_PAGE_SHIFT) +  offset);	
+	if (!(prevOp->flags & OP_FLAG_END_OF_LONG_CHAIN)) {
+		prevOp->next = get((pageIndex << K_PAGE_SHIFT) + offset);
+	}
 }
 
 bool DecodedOpCache::isAddressDynamic(U32 address, U32 len) {

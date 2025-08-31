@@ -52,7 +52,7 @@
 #else
 #define NEXT() cpu->eip.u32+=op->len; op->next->pfn(cpu, op->next);
 #define NEXT_DONE() cpu->nextOp = cpu->getNextOp();
-#define NEXT_DONE_CALL() cpu->nextOp = cpu->getNextOp(OP_FLAG_CALL_TARGET);
+#define NEXT_DONE_CALL() cpu->nextOp = cpu->getNextOp(0);
 
 // if jmp back, then return so that we don't blow the stack
 #define NEXT_BRANCH1()                                      \
@@ -65,7 +65,7 @@
 #define NEXT_BRANCH1_CALL()                                      \
     cpu->eip.u32+=op->len;                                  \
     if (!(*(op->data.nextJump))) {                          \
-        *(op->data.nextJump) = cpu->getNextOp(OP_FLAG_CALL_TARGET);            \
+        *(op->data.nextJump) = cpu->getNextOp(0);            \
     }                                                       \
     cpu->nextOp = *(op->data.nextJump);
 

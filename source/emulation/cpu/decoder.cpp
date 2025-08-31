@@ -6572,10 +6572,15 @@ DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& 
         if (((instructionInfo[op->inst].branch & DECODE_BRANCH_NO_CACHE) || op->inst == CallJd || op->inst == CallJw) && d.eip > furtherestDirectJump) {
             break;
         }
+#ifndef BOXEDWINE_BINARY_TRANSLATOR
+        // the normal core needs this so that we don't blow the stack while calling the next op
         if (opCount > 1000) {
+            // c3 and openttd can trigger this
+            op->flags |= OP_FLAG_END_OF_LONG_CHAIN;
             op->next = DecodedOp::allocDone();
             break;
         }
+#endif
         if ((instructionInfo[op->inst].branch & DECODE_BRANCH_1)) {
             break;
         }
