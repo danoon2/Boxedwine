@@ -99,6 +99,14 @@ void BtCPU::translateData(BtData* data, BtData* firstPass) {
         }
         data->mapAddress(address, data->bufferPos);
         data->translateInstruction();
+        if (data->done) {
+            for (auto& jmp : data->todoJump) {
+                if (jmp.eip == data->ip) {
+                    data->done = false;
+                    break;
+                }
+            }
+        }
         if (data->done || data->currentOp->inst == Invalid) {
             break;
         }
