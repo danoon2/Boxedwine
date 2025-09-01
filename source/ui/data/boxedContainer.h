@@ -45,7 +45,7 @@ public:
     BString getName() { return this->name; }
     BString getDir() { return this->dirPath; }
     std::weak_ptr<FileSystemZip> getFileSystem() {return this->fileSystem;}
-    void setFileSystem(std::shared_ptr<FileSystemZip> fileSystem) { this->fileSystem = fileSystem; }
+    void setFileSystem(std::shared_ptr<FileSystemZip> fileSystem) { this->fileSystem = fileSystem; this->fileSystemZipName = fileSystem->name; }
     BString getFileSystemName();
     BString getSize() {return this->cachedSize;}
 

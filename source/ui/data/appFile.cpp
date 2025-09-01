@@ -107,8 +107,9 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             } else {
                 std::shared_ptr<FileSystemZip> availableWineVer = GlobalSettings::getAvailableFileSystemFromName(option.substr(5), true);
                 if (availableWineVer) {
-                    GlobalSettings::downloadFileSystem(availableWineVer, [container, availableWineVer](bool success) {
-                        container->setFileSystem(availableWineVer);
+                    GlobalSettings::downloadFileSystem(availableWineVer, [container, option](bool success) {
+                        std::shared_ptr<FileSystemZip> wineVer = GlobalSettings::getInstalledFileSystemFromName(option.substr(5), true);
+                        container->setFileSystem(wineVer);
                         container->saveContainer();
                         }
                     );
