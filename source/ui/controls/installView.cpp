@@ -52,7 +52,7 @@ void InstallView::createDemoTab() {
         });
 }
 
-void InstallView::runApps(std::vector<AppFile>& apps) {
+void InstallView::runApps(std::vector<AppFilePtr>& apps) {
     ImGui::PushFont(GlobalSettings::largeFont);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
     SAFE_IMGUI_TEXT(c_getTranslation(Msg::INSTALLVIEW_DEMO_TITLE));
@@ -74,11 +74,11 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
         BString buttonLabel = B("Install");
         ImGui::PushID(&app);            
         if (ImGui::Button(buttonLabel.c_str())) {
-            if (Fs::doesNativePathExist(app.localFilePath)) {
-                app.install();
+            if (Fs::doesNativePathExist(app->localFilePath)) {
+                app->install();
             } else {
-                GlobalSettings::downloadFile(app.filePath, app.localFilePath, app.name, app.size, [&app](bool sucess) {
-                    app.install();
+                GlobalSettings::downloadFile(app->filePath, app->localFilePath, app->name, app->size, [&app](bool sucess) {
+                    app->install();
                     });
             }
         }
@@ -86,17 +86,17 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
         ImGui::SameLine();
         
         //ImGui::SameLine(pos.x + this->wineButtonTotalColumnWidth);
-        BString name = app.name;
+        BString name = app->name;
         BString name2;
-        if (!Fs::doesNativePathExist(app.localFilePath)) {
+        if (!Fs::doesNativePathExist(app->localFilePath)) {
             name2 += "(";
             name2 += getTranslation(Msg::INSTALLVIEW_DEMO_DOWNLOAD_SIZE);
-            name2 += app.size;
+            name2 += app->size;
             name2 += " MB)";
         }
-        if (app.iconTexture) {
+        if (app->iconTexture) {
             float pad = ImGui::GetStyle().FramePadding.y;
-            ImGui::Image(app.iconTexture->getTexture(), ImVec2(ImGui::GetTextLineHeight()+pad*2, ImGui::GetTextLineHeight()+pad*2));
+            ImGui::Image(app->iconTexture->getTexture(), ImVec2(ImGui::GetTextLineHeight()+pad*2, ImGui::GetTextLineHeight()+pad*2));
             ImGui::SameLine();
         }
         SAFE_IMGUI_TEXT(name.c_str());
@@ -108,12 +108,12 @@ void InstallView::runApps(std::vector<AppFile>& apps) {
         ImGui::SetCursorPos(pos);
         SAFE_IMGUI_TEXT(name2.c_str());
         ImGui::PopFont();        
-        if (app.help.length()) {
+        if (app->help.length()) {
             pos = ImGui::GetCursorPos();
             pos.y = y;
             ImGui::SetCursorPos(pos);
             ImGui::SameLine();
-            this->drawToolTip(app.help);
+            this->drawToolTip(app->help);
         }
     }
     ImGui::PopFont();

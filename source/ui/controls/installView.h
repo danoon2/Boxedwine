@@ -29,7 +29,7 @@ public:
 private:
     void createInstallTab(BString initialFileOrDirPath);
     void createDemoTab();
-    void runApps(std::vector<AppFile>& apps);
+    void runApps(std::vector<AppFilePtr>& apps);
     void setContainerName();
     void setWindowsVersionDefault();
 

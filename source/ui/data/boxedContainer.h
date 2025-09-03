@@ -88,6 +88,7 @@ private:
     void getNewDesktopLinkApps(std::vector<BoxedApp>& apps);
     void getNewExeApps(std::vector<BoxedApp>& apps, MountInfo* mount, BString nativeDirectory);
     BString getWindowsVersion2();
+    void ensureFileSystemSet();
 
     std::vector<BoxedApp*> apps;
     BString name;

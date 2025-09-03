@@ -468,6 +468,7 @@ bool StartUpArgs::apply() {
                 klog_fmt("% not mounted because zlib was not compiled in", info.nativePath.c_str());
     #endif
             } else {
+                Fs::makeLocalDirs(info.localPath);
                 std::shared_ptr<FsNode> parent = Fs::getNodeFromLocalPath(B(""), Fs::getParentPath(info.localPath), true);
                 Fs::addRootDirectoryNode(info.localPath, info.nativePath, parent);
             }

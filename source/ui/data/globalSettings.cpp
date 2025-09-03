@@ -40,8 +40,8 @@ BString GlobalSettings::dataFolderLocation;
 std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::fileSystemVersions;
 std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::availableFileSystemVersions;
 std::vector<std::shared_ptr<FileSystemZip>> GlobalSettings::availableFileSystemDependencies;
-std::vector<AppFile> GlobalSettings::demos;
-std::vector<AppFile> GlobalSettings::components;
+std::vector<AppFilePtr> GlobalSettings::demos;
+std::vector<AppFilePtr> GlobalSettings::components;
 int GlobalSettings::iconSize;
 StartUpArgs GlobalSettings::startUpArgs;
 BString GlobalSettings::exePath;
@@ -410,6 +410,36 @@ void GlobalSettings::reloadApps() {
     loadApps();
 }
 
+class MonoInstaller : public AppFile {
+public:
+    MonoInstaller() : AppFile(B("Mono (DotNet 4.8 or lower)"), B("Installer"), B(""), B(""), 0, B(""), B(""), B(""), B("mono"), B(""), B(""), std::vector<BString>()) {}
+
+private:
+    void install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppDownloadTask>& downloads, bool alreadyCheckedWineOption = false) override;
+};
+
+void MonoInstaller::install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppDownloadTask>& downloads, bool alreadyCheckedWineOption) {
+    std::function<bool() > runInstall = [container]() {
+        GlobalSettings::startUpArgs = StartUpArgs(); // reset parameters
+        GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
+        GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
+        GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
+        container->launch();
+        GlobalSettings::startUpArgs.addArg(B("/bin/wine"));
+        GlobalSettings::startUpArgs.addArg(B("wineboot"));
+        GlobalSettings::startUpArgs.addArg(B("-u"));
+        GlobalSettings::startUpArgs.readyToLaunch = true;
+        GlobalSettings::startUpArgs.mountInfo.push_back(MountInfo(B("/home/username/.cache/wine"), GlobalSettings::getDemoFolder(), false));
+
+        runOnMainUI([]() {
+            new WaitDlg(Msg::WAITDLG_LAUNCH_APP_TITLE, getTranslationWithFormat(Msg::WAITDLG_LAUNCH_APP_LABEL, true, B("Mono")));
+            return false;
+            });
+        return true;
+        };
+    runner.push_back(runInstall);
+}
+
 void GlobalSettings::loadFileLists() {
     BOXEDWINE_CRITICAL_SECTION;
 
@@ -500,7 +530,7 @@ void GlobalSettings::loadFileLists() {
                 }
             }
             if (childName.length() && file.length()) {
-                GlobalSettings::demos.push_back(AppFile(childName, installType, icon, file, fileSize, exe, options, help, B(""), installOptions, installExe, args));
+                GlobalSettings::demos.push_back(std::make_shared<AppFile>(childName, installType, icon, file, fileSize, exe, options, help, B(""), installOptions, installExe, args));
             } else {
                 break;
             }
@@ -519,27 +549,28 @@ void GlobalSettings::loadFileLists() {
             std::vector<BString> args;
 
             if (childName.length() && file.length()) {
-                GlobalSettings::components.push_back(AppFile(childName, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, B(""), args));
+                GlobalSettings::components.push_back(std::make_shared<AppFile>(childName, installType, icon, file, fileSize, exe, options, help, optionsName, installOptions, B(""), args));
             } else {
                 break;
             }
         }
     }
+    GlobalSettings::components.push_back(std::make_shared<MonoInstaller>());
     runOnMainUI([]() { // might not have an OpenGL context while starting up
         for (auto& demo : GlobalSettings::getDemos()) {
-            demo.buildIconTexture();
+            demo->buildIconTexture();
         }
         for (auto& component : GlobalSettings::getComponents()) {
-            component.buildIconTexture();
+            component->buildIconTexture();
         }
         return false;
         });
 }
 
-AppFile* GlobalSettings::getComponentByOptionName(BString name) {
+AppFilePtr GlobalSettings::getComponentByOptionName(BString name) {
     for (auto& app : GlobalSettings::components) {
-        if (app.optionsName == name) {
-            return &app;
+        if (app->optionsName == name) {
+            return app;
         }
     }
     return nullptr;
@@ -619,19 +650,19 @@ void GlobalSettings::updateFileList(BString fileLocation) {
                 BString errorMsg;
 
                 for (auto& demo : GlobalSettings::getDemos()) {
-                    if (demo.iconPath.length()) {
-                        int pos = demo.iconPath.lastIndexOf('/');
+                    if (demo->iconPath.length()) {
+                        int pos = demo->iconPath.lastIndexOf('/');
                         if (pos == -1) {
                             return; // :TODO: error msg?
                         }
                         if (!Fs::doesNativePathExist(GlobalSettings::getDemoFolder())) {
                             Fs::makeNativeDirs(GlobalSettings::getDemoFolder());
                         }
-                        if (!Fs::doesNativePathExist(demo.localIconPath)) {
-                            ::downloadFile(demo.iconPath, demo.localIconPath, [](U64 bytesCompleted) {
+                        if (!Fs::doesNativePathExist(demo->localIconPath)) {
+                            ::downloadFile(demo->iconPath, demo->localIconPath, [](U64 bytesCompleted) {
                                 }, nullptr, errorMsg);
                             runOnMainUI([&demo]() {
-                                demo.buildIconTexture();
+                                demo->buildIconTexture();
                                 return false;
                                 });
                         }

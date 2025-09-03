@@ -56,7 +56,7 @@ void AppFile::buildIconTexture() {
     }
 }
 
-void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<BString>& options, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads) {
+void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<BString>& options, std::list< std::function<bool() > >& runner, std::list<AppDownloadTask>& downloads) {
     // :TODO: find dependencies, if there are some then delay the other changes
     bool hasContainerOption = false;
     BString containerDir = container->getDir();
@@ -100,32 +100,17 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
                 app->cpuAffinity = atoi(s.c_str());
             }
         } else if (option.startsWith("wine=")) {
-            std::shared_ptr<FileSystemZip> wineVer = GlobalSettings::getInstalledFileSystemFromName(option.substr(5), true);
-            if (wineVer) {
-                container->setFileSystem(wineVer);
-                hasContainerOption = true;
-            } else {
-                std::shared_ptr<FileSystemZip> availableWineVer = GlobalSettings::getAvailableFileSystemFromName(option.substr(5), true);
-                if (availableWineVer) {
-                    GlobalSettings::downloadFileSystem(availableWineVer, [container, option](bool success) {
-                        std::shared_ptr<FileSystemZip> wineVer = GlobalSettings::getInstalledFileSystemFromName(option.substr(5), true);
-                        container->setFileSystem(wineVer);
-                        container->saveContainer();
-                        }
-                    );
-                }
-            }
+            continue; // should have already been handled
         } else if (option.startsWith("resolution=")) {
             if (app) {
                 app->resolution = option.substr(11);
             }
         } else {
-            AppFile* component = GlobalSettings::getComponentByOptionName(option);
+            AppFilePtr component = GlobalSettings::getComponentByOptionName(option);
             if (component) {
-                if (!Fs::doesNativePathExist(component->localFilePath)) {
-                    downloads.push_back(component);
+                if (component->localFilePath.length() && !Fs::doesNativePathExist(component->localFilePath)) {
+                    downloads.push_back(AppDownloadTask(component));
                 }
-                // :TODO: delay this if a wine version is specified and needs downloading
                 component->install(false, container, runner, downloads);
             }
         }
@@ -161,24 +146,33 @@ void runApps(std::list< std::function<bool() > > runner) {
     }
 }
 
-void downloadNext(std::list< std::function<bool() > > runner, std::list<AppFile*> downloads) {
+void downloadNext(std::list< std::function<bool() > > runner, std::list<AppDownloadTask> downloads) {
     while (downloads.size()) {
-        AppFile* app = downloads.front();
+        AppDownloadTask task = downloads.front();
         downloads.pop_front();
-        if (!Fs::doesNativePathExist(app->localFilePath)) {
-            GlobalSettings::downloadFile(app->filePath, app->localFilePath, app->name, app->size, [runner, downloads](bool sucess) {
-                downloadNext(runner, downloads);
-                });
-            return;
+        if (task.app) {
+            if (!Fs::doesNativePathExist(task.app->localFilePath)) {
+                GlobalSettings::downloadFile(task.app->filePath, task.app->localFilePath, task.app->name, task.app->size, [runner, downloads](bool sucess) {
+                    downloadNext(runner, downloads);
+                    });
+                return;
+            }
+        } else if (task.fs) {
+            if (!GlobalSettings::getInstalledFileSystemFromName(task.fs->name, true)) {
+                GlobalSettings::downloadFileSystem(task.fs, [runner, downloads](bool success) {
+                    downloadNext(runner, downloads);
+                    });
+                return;
+            }
         }
     }
     runApps(runner);
 }
 
-void AppFile::install(bool chooseShortCut, BoxedContainer* container) {    
-    std::list<AppFile*> downloads;
+void AppFile::install(bool chooseShortCut, BoxedContainer* container, bool alreadyCheckedWineOption) {
+    std::list<AppDownloadTask> downloads;
     globalRunner.clear();
-    install(chooseShortCut, container, globalRunner, downloads);
+    install(chooseShortCut, container, globalRunner, downloads, alreadyCheckedWineOption);
     if (downloads.size()) {    
         downloadNext(globalRunner, downloads);
     } else {
@@ -186,10 +180,46 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container) {
     }
 }
 
-void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads) {
-    if (!container) {
+BString AppFile::getFileSystemInstallOption() {
+    for (auto& option : installOptions) {
+        if (option.startsWith("wine=")) {
+            return option.substr(5);
+        }
+    }
+    return BString::empty;
+}
+
+void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppDownloadTask>& downloads, bool alreadyCheckedWineOption) {
+    if (!container) {        
+        std::shared_ptr<FileSystemZip> fs;
+
+        BString wineOption = getFileSystemInstallOption();
+        if (!wineOption.isEmpty()) {
+            fs = GlobalSettings::getInstalledFileSystemFromName(wineOption, true);
+            if (!fs && !alreadyCheckedWineOption) {
+                BString wineOption = getFileSystemInstallOption();
+                if (!wineOption.isEmpty()) {
+                    fs = GlobalSettings::getInstalledFileSystemFromName(wineOption, true);
+                    if (!fs) {
+                        std::shared_ptr<FileSystemZip> availableWineVer = GlobalSettings::getAvailableFileSystemFromName(wineOption, true);
+                        if (availableWineVer) {
+                            downloads.push_back(AppDownloadTask(availableWineVer));
+                            std::function<bool() > restartInstall = [chooseShortCut, container, &runner, &downloads, this]() {
+                                install(chooseShortCut, container, true);
+                                return true;
+                                };
+                            runner.push_back(restartInstall);
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        if (!fs) {
+            fs = GlobalSettings::getFileSystemVersions().front();
+        }
         BString containerFilePath = GlobalSettings::createUniqueContainerPath(this->name);
-        container = BoxedContainer::createContainer(containerFilePath, this->name, GlobalSettings::getFileSystemVersions().front());
+        container = BoxedContainer::createContainer(containerFilePath, this->name, fs);
         BoxedwineData::addContainer(container);
         container->saveContainer();
     }
@@ -283,20 +313,20 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 if (container) {
                     std::vector<BoxedApp> items;
                     container->getNewApps(items);
-                    std::list< std::function<bool() > > r; // for now, post install cannot run anything
-                    std::list<AppFile*> d;                    
+                    std::list< std::function<bool() > > runTasks; // for now, post install cannot run anything
+                    std::list<AppDownloadTask> downloadTasks;
                     for (auto& app : items) {
                         if (app.getCmd() == cmd) {
                             app.setName(appName);
                             app.setArgs(args);
-                            runOptions(container, &app, exeOptions, r, d);
+                            runOptions(container, &app, exeOptions, runTasks, downloadTasks);
                             app.saveApp();
                             app.getContainer()->reload();
                             GlobalSettings::reloadApps();
                             return false;;
                         }
                     }
-                    runOptions(container, nullptr, exeOptions, r, d);
+                    runOptions(container, nullptr, exeOptions, runTasks, downloadTasks);
                     if (chooseShortCut) {
                         new AppChooserDlg(items, [container](BoxedApp app) {
                             gotoView(VIEW_CONTAINERS, container->getDir(), app.getIniFilePath());

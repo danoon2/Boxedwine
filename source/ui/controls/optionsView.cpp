@@ -238,6 +238,7 @@ void OptionsView::loadFileSystemVersions() {
     this->wineButtonTotalColumnWidth = 0;
     this->wineButtonFirstColumnWidth = 0;
     this->fileSystemVersions.clear();
+    this->fileSystemVersionsSorted.clear();
 
     for (auto& fileSystem : GlobalSettings::availableFileSystemVersions) {
         OptionsViewWineVersion v;
@@ -306,7 +307,11 @@ void OptionsView::loadFileSystemVersions() {
         if (width > this->wineButtonTotalColumnWidth) {
             this->wineButtonTotalColumnWidth = width;
         }
+        fileSystemVersionsSorted.push_back(wine.second);
     }
+    std::sort(fileSystemVersionsSorted.rbegin(), fileSystemVersionsSorted.rend(), [](auto& l, auto& r) {
+        return l < r;
+        });
     if (leftColumn > 0 && rightColumn > 0) {
         this->wineButtonFirstColumnWidth = leftColumn + ImGui::GetStyle().ItemSpacing.x;
         this->wineButtonTotalColumnWidth = this->wineButtonFirstColumnWidth + rightColumn + ImGui::GetStyle().ItemSpacing.x;
@@ -330,43 +335,43 @@ void OptionsView::runWineOptions() {
     ImGui::PushFont(GlobalSettings::mediumFont);
     //ImGui::BeginChildFrame(401, size);
     ImGui::Dummy(ImVec2(0.0f, this->extraVerticalSpacing));
-    for (auto& wine : this->fileSystemVersions) {
+    for (auto& wine : this->fileSystemVersionsSorted) {
         ImGui::Dummy(ImVec2(this->extraVerticalSpacing, 0.0f));        
         ImGui::SameLine();
         ImVec2 pos = ImGui::GetCursorPos();
         pos.y += this->extraVerticalSpacing;
         ImGui::SetCursorPos(pos);
-        if (wine.second.availableVersion && !wine.second.currentVersion) {
+        if (wine.availableVersion && !wine.currentVersion) {
             BString buttonLabel = getTranslation(Msg::OPTIONSVIEW_WINE_VERSION_INSTALL);
             buttonLabel += "##";
-            buttonLabel += wine.first;
+            buttonLabel += wine.name;
             if (ImGui::Button(buttonLabel.c_str())) {
-                download(wine.second.availableVersion);
+                download(wine.availableVersion);
             }
             ImGui::SameLine();
-        } else if (wine.second.availableVersion && wine.second.currentVersion && wine.second.currentVersion->fsVersion!=wine.second.availableVersion->fsVersion){
+        } else if (wine.availableVersion && wine.currentVersion && wine.currentVersion->fsVersion!=wine.availableVersion->fsVersion){
             BString buttonLabel = getTranslation(Msg::OPTIONSVIEW_WINE_VERSION_UPDATE);
             buttonLabel += "##";
-            buttonLabel += wine.first;
+            buttonLabel += wine.name;
             if (ImGui::Button(buttonLabel.c_str())) {
-                download(wine.second.availableVersion);
+                download(wine.availableVersion);
             }
             ImGui::SameLine();
         }
-        if (wine.second.currentVersion) {
+        if (wine.currentVersion) {
             ImGui::SameLine(pos.x + this->wineButtonFirstColumnWidth);
             bool buttonPressed = false;
             BString buttonLabel = getTranslation(Msg::OPTIONSVIEW_WINE_VERSION_DELETE);
             buttonLabel += "##";
-            buttonLabel += wine.first;
+            buttonLabel += wine.name;
             if (ImGui::Button(buttonLabel.c_str())) {
                 buttonPressed = true;
             }
             bool yes = false;
-            BString label = getTranslationWithFormat(Msg::OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL, true, wine.first);
-            if (!showYesNoMessageBox("confirm"+wine.first, buttonPressed, c_getTranslation(Msg::GENERIC_DLG_CONFIRM_TITLE), label.c_str(), &yes)) {
+            BString label = getTranslationWithFormat(Msg::OPTIONSVIEW_WINE_VERSION_DELETE_CONFIRM_LABEL, true, wine.name);
+            if (!showYesNoMessageBox("confirm"+wine.name, buttonPressed, c_getTranslation(Msg::GENERIC_DLG_CONFIRM_TITLE), label.c_str(), &yes)) {
                 if (yes) {
-                    Fs::deleteNativeFile(wine.second.currentVersion->filePath);
+                    Fs::deleteNativeFile(wine.currentVersion->filePath);
                     // run later, we don't want to change versions while we are iterating them
                     runOnMainUI([this]()->bool {
                         GlobalSettings::reloadWineVersions();
@@ -378,9 +383,9 @@ void OptionsView::runWineOptions() {
             ImGui::SameLine();
         }     
         ImGui::SameLine(pos.x+this->wineButtonTotalColumnWidth);
-        BString name = wine.first;
+        BString name = wine.name;
         BString name2;
-        OptionsViewWineVersion& version = wine.second;
+        OptionsViewWineVersion& version = wine;
 
         if (version.currentVersion) {
             if (version.availableVersion && version.availableVersion->fsVersion==version.currentVersion->fsVersion) {

@@ -157,9 +157,9 @@ public:
     static int getScreenCy() { return GlobalSettings::screenCy; }
     static void setFontScale(float scale);
     static bool hasIconsFont() {return GlobalSettings::iconFontsLoaded;}
-    static std::vector<AppFile>& getDemos() {return GlobalSettings::demos;}
-    static std::vector<AppFile>& getComponents() { return GlobalSettings::components; }
-    static AppFile* getComponentByOptionName(BString name);
+    static std::vector<AppFilePtr>& getDemos() {return GlobalSettings::demos;}
+    static std::vector<AppFilePtr>& getComponents() { return GlobalSettings::components; }
+    static AppFilePtr getComponentByOptionName(BString name);
     static void downloadFile(BString url, BString filePath, BString name, U32 sizeMB, std::function<void(bool)> onCompleted);
     static void downloadOpenGL(std::function<void(bool)> onCompleted);
     static BString createUniqueContainerPath(BString name);
@@ -206,8 +206,8 @@ private:
     friend class FileSystemZip;
     static std::vector<std::shared_ptr<FileSystemZip>> availableFileSystemVersions;
     static std::vector<std::shared_ptr<FileSystemZip>> availableFileSystemDependencies;
-    static std::vector<AppFile> demos;
-    static std::vector<AppFile> components;
+    static std::vector<AppFilePtr> demos;
+    static std::vector<AppFilePtr> components;
     static bool filesListDownloading;
     static U32 frameDelayMillies; // decrease if we are animating, else this can be pretty large
     static U32 fastFrameRateCount;

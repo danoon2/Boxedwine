@@ -640,6 +640,10 @@ KFileDescriptorPtr KProcess::getFileDescriptor(FD handle) {
     return this->fds[handle];
 }
 
+KFileDescriptor* KProcess::getFileDescriptor_nolock(FD handle) {
+    return this->fds[handle].get();
+}
+
 void KProcess::clearFdHandle(FD handle) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(fdsMutex);
     this->fds.remove(handle);

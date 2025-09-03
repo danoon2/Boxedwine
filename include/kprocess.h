@@ -139,6 +139,7 @@ public:
     U32 getModuleEip(U32 eip);    
     KFileDescriptorPtr allocFileDescriptor(const std::shared_ptr<KObject>& kobject, U32 accessFlags, U32 descriptorFlags, S32 handle, U32 afterHandle);
     KFileDescriptorPtr getFileDescriptor(FD handle);
+    KFileDescriptor* getFileDescriptor_nolock(FD handle);
     void clearFdHandle(FD handle);
     U32 openFile(BString currentDirectory, BString localPath, U32 accessFlags, KFileDescriptorPtr& result);
     bool isStopped();

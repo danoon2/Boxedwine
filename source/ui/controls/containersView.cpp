@@ -139,19 +139,19 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
 
         std::vector<ComboboxItem> components;
         for (auto& component : GlobalSettings::getComponents()) {
-            components.push_back(ComboboxItem(component.name));
+            components.push_back(ComboboxItem(component->name));
         }
         componentsControl = row->addComboBox(components, 0);
 
         std::shared_ptr<LayoutButtonControl> installButton = row->addButton(getTranslation(Msg::INSTALLVIEW_INSTALL_BUTTON_LABEL));
         installButton->onChange = [this]() {
             if (this->saveChanges()) {
-                AppFile& app = GlobalSettings::getComponents()[componentsControl->getSelection()];
-                if (Fs::doesNativePathExist(app.localFilePath)) {
-                    app.install(false, this->currentContainer);
+                AppFilePtr app = GlobalSettings::getComponents()[componentsControl->getSelection()];
+                if (app->filePath.isEmpty() || Fs::doesNativePathExist(app->localFilePath)) {
+                    app->install(false, this->currentContainer);
                 } else {
-                    GlobalSettings::downloadFile(app.filePath, app.localFilePath, app.name, app.size, [&app, this](bool sucess) {
-                        app.install(false, this->currentContainer);
+                    GlobalSettings::downloadFile(app->filePath, app->localFilePath, app->name, app->size, [app, this](bool sucess) {
+                        app->install(false, this->currentContainer);
                         });
                 }
             }
@@ -702,7 +702,21 @@ void ContainersView::setCurrentContainer(BoxedContainer* container) {
     this->currentContainerChanged = false;
     this->currentContainerMountChanged = false;
     section->setTitle(container->getName());
-    containerFileSystemControl->setSelectionByLabel(container->getFileSystemName());
+    BString fsName = container->getFileSystemName();
+    bool fsNameFound = false;
+
+    std::vector<ComboboxItem> wineVersions;
+    for (auto& ver : GlobalSettings::getFileSystemVersions()) {
+        wineVersions.push_back(ComboboxItem(ver->name));
+        if (ver->name == fsName) {
+            fsNameFound = true;
+        }
+    }
+    if (!fsNameFound) {
+        wineVersions.push_back(ComboboxItem(fsName+"*", fsName));
+    }
+    containerFileSystemControl->setOptions(wineVersions);
+    containerFileSystemControl->setSelectionStringValue(fsName);
     containerWindowsVersionControl->setSelectionByLabel(container->getWindowsVersion());
     containerNameControl->setText(container->getName());
     containerLocationControl->setText(container->getDir());

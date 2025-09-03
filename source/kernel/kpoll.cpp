@@ -24,7 +24,7 @@
 static void clearPollData(KThread* thread, KPollData* data, U32 count) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
     for (U32 i = 0; i < count; i++, data++) {
-        KFileDescriptorPtr pFD = thread->process->getFileDescriptor(data->fd);
+        KFileDescriptor* pFD = thread->process->getFileDescriptor_nolock(data->fd);
         if (pFD) {
             pFD->kobject->waitForEvents(thread->pollCond, 0);
         }
@@ -47,11 +47,11 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
             BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(thread->process->fdsMutex);
             // gather locks before we check the data so that we don't miss one
             for (U32 i = 0; i < count; i++) {
-                KFileDescriptorPtr fd;
+                KFileDescriptor* fd;
                 
                 data->revents = 0;
                 if (data->fd >= 0) {
-                    fd = thread->process->getFileDescriptor(data->fd);
+                    fd = thread->process->getFileDescriptor_nolock(data->fd);
                     if (fd) {
                         // even if 0, we still don't want to remove it and should still respond to POLLERR and POLLHUP
                         fd->kobject->waitForEvents(thread->pollCond, data->events | K_POLLERR);
@@ -64,10 +64,10 @@ S32 internal_poll(KThread* thread, KPollData* data, U32 count, U32 timeout) {
 
             data = firstData;
             for (U32 i = 0; i < count; i++) {
-                KFileDescriptorPtr fd;
+                KFileDescriptor* fd;
                 
                 if (data->fd >= 0) {
-                    fd = thread->process->getFileDescriptor(data->fd);
+                    fd = thread->process->getFileDescriptor_nolock(data->fd);
                 }
                 if (fd) {
                     if (!fd->kobject->isOpen()) {

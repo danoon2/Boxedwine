@@ -22,6 +22,19 @@
 class BoxedTexture;
 class BoxedContainer;
 class BoxedApp;
+class FileSystemZip;
+class AppFile;
+
+typedef std::shared_ptr<AppFile> AppFilePtr;
+
+class AppDownloadTask {
+public:
+    AppDownloadTask(AppFilePtr app) : app(app) {}
+    AppDownloadTask(const std::shared_ptr<FileSystemZip>& fs) : fs(fs) {}
+
+    AppFilePtr app = nullptr;
+    std::shared_ptr<FileSystemZip> fs;
+};
 
 class AppFile {
 public:
@@ -44,13 +57,14 @@ public:
     std::shared_ptr<BoxedTexture> iconTexture;
 
     void buildIconTexture();
-    void install(bool chooseShortCut=true, BoxedContainer* container=nullptr);    
+    void install(bool chooseShortCut=true, BoxedContainer* container=nullptr, bool alreadyCheckedWineOption = false);
 
     bool operator<(const AppFile& rhs) const { return name < rhs.name; }
 
 private:
-    static void runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<BString>& options, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads);
-    void install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppFile*>& downloads);
+    static void runOptions(BoxedContainer* container, BoxedApp* app, const std::vector<BString>& options, std::list< std::function<bool() > >& runner, std::list<AppDownloadTask>& downloads);
+    virtual void install(bool chooseShortCut, BoxedContainer* container, std::list< std::function<bool() > >& runner, std::list<AppDownloadTask>& downloads, bool alreadyCheckedWineOption = false);
+    BString getFileSystemInstallOption();
 };
 
 #endif

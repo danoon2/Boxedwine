@@ -145,6 +145,7 @@ BString BoxedContainer::getFileSystemName() {
 }
 
 bool BoxedContainer::doesFileSystemExist() {
+    ensureFileSystemSet();
     std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
     return fs && Fs::doesNativePathExist(fs->filePath);
 }
@@ -165,11 +166,19 @@ void BoxedContainer::launch(const std::vector<BString>& args, BString labelForWa
         });
 }
 
+void BoxedContainer::ensureFileSystemSet() {
+    std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
+    if (!fs) {
+        this->fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->fileSystemZipName);
+    }
+}
+
 void BoxedContainer::launch() {
     GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
     GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
     GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
     GlobalSettings::startUpArgs.cacheReads = GlobalSettings::cacheReads();
+    ensureFileSystemSet();
     std::shared_ptr<FileSystemZip> fs = this->fileSystem.lock();
     GlobalSettings::startUpArgs.addZip(fs->filePath);
     BString root = GlobalSettings::getRootFolder(this);

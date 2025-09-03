@@ -28,6 +28,10 @@ public:
 	std::shared_ptr<FileSystemZip> availableVersion;
 	BString name;
 	BString size;
+
+	bool operator<(const OptionsViewWineVersion& rhs) const {
+		return *availableVersion < *rhs.availableVersion;
+	}
 };
 
 class OptionsView : public BaseView {
@@ -48,7 +52,8 @@ private:
 	const char* wineTitle;
 	float wineButtonTotalColumnWidth = 0.0f;
 	float wineButtonFirstColumnWidth = 0.0f;
-	std::map<BString, OptionsViewWineVersion, std::greater<BString>> fileSystemVersions;
+	std::map<BString, OptionsViewWineVersion> fileSystemVersions;
+	std::vector<OptionsViewWineVersion> fileSystemVersionsSorted;
 
 	// General
 	std::shared_ptr<LayoutTextInputControl> saveLocationControl;
