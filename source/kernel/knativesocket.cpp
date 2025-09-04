@@ -69,7 +69,7 @@ int maxSocketId;
 
 BString socketAddressName(KMemory* memory, U32 address, U32 len);
 #ifdef _DEBUG
-#define LOG_SOCK if (1) klog_fmt
+#define LOG_SOCK if (0) klog_fmt
 #else
 #define LOG_SOCK if (0) klog_fmt
 #endif
