@@ -136,31 +136,6 @@ RamPage ramPageAlloc() {
     return result;
 }
 
-RamPage ramPageAllocNative(U8* native) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
-    bool found = false;
-    U32 foundIndex = 0;
-
-    for (U32 i = 0; i < freeIndexes.size(); i++) {
-        U32 index = freeIndexes.at(i);
-        if (!ramPages[index]) {
-            found = true;
-            foundIndex = index;
-            freeIndexes.erase(freeIndexes.begin() + i);
-            break;
-        }
-    }
-    if (!found) {
-        foundIndex = highWaterIndex++;
-    }
-    ramPages[foundIndex] = native;
-    refCounts[foundIndex].refCount = 1;
-    refCounts[foundIndex].isNative = 1;
-    RamPage result;
-    result.value = foundIndex;
-    return result;
-}
-
 #else
 RamPage ramPageAlloc() {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
@@ -205,6 +180,23 @@ void shutdownRam() {
 }
 
 #endif
+
+RamPage ramPageAllocNativeContinuous(U8* native, U32 pageCount) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
+    U32 ramIndex = highWaterIndex;
+
+    highWaterIndex += pageCount;
+
+    for (U32 i = 0; i < pageCount; i++) {
+        ramPages[ramIndex + i] = native;
+        refCounts[ramIndex + i].refCount = 1;
+        refCounts[ramIndex + i].isNative = 1;
+        native += K_PAGE_SIZE;
+    }
+    RamPage result;
+    result.value = ramIndex;
+    return result;
+}
 
 void ramPageRetain(RamPage page) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(ramMutex);
