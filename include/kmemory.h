@@ -60,6 +60,16 @@ struct LockData64 {
     U64 data;
 };
 #endif
+
+class NativeContinuousMemory {
+public:
+    NativeContinuousMemory(U8* p, U32 address, U32 len) : p(p), address(address), len(len) {}
+    ~NativeContinuousMemory();
+    U8* p;
+    U32 address;
+    U32 len;
+};
+
 class KMemory {
 private:
     KMemory(KProcess* process);
@@ -79,6 +89,7 @@ public:
     U32 mapPages(KThread* thread, U32 startPage, const std::vector<RamPage>& pages, U32 permissions);
     U32 mapNativeMemory(void* hostAddress, U32 size);
     void unmapNativeMemory(U32 address, U32 size);
+    U32 ensureContinuousNative_unsafe(U32 page, U32 pageCount);
 
     bool isPageAllocated(U32 page);
     bool isPageNative(U32 page);
@@ -169,11 +180,13 @@ private:
         U8* p = nullptr;
         U32 len = 0;
         U32 address = 0;
-        bool readOnly = true;;
+        bool readOnly = true;
     };
 
-    BHashTable< U8*, std::shared_ptr<LockedMemory>> lockedMemory;
-    BOXEDWINE_MUTEX lockedMemoryMutex;    
+    BHashTable<U8*, std::shared_ptr<LockedMemory>> lockedMemory;
+    BOXEDWINE_MUTEX lockedMemoryMutex;   
+    
+    std::vector<std::shared_ptr<NativeContinuousMemory>> nativeContinuousMemory;
 };
 
 #endif

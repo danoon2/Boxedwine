@@ -693,9 +693,59 @@ U32 KMemory::mapNativeMemory(void* hostAddress, U32 size) {
         mmu.setFlags(PAGE_MAPPED | PAGE_READ | PAGE_WRITE);
         RamPage ramPage = ramPageAllocNative((U8*)hostAddress + K_PAGE_SIZE * i);
         mmu.setPage(this, result + i, PageType::Ram, ramPage);
+        data->onPageChanged(result + i);
         ramPageRelease(ramPage); // setPage retains
     }
     return result << K_PAGE_SHIFT;
+}
+
+U32 KMemory::ensureContinuousNative_unsafe(U32 page, U32 pageCount) {
+    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex);
+    U8* ram = getRamPtr(page << K_PAGE_SHIFT, K_PAGE_SIZE, false);
+    bool isContinuous = true;
+    U32 chunks = (pageCount + (64 * 1024) - 1) / (64 * 1024);
+
+    // :TODO: what if ram == null
+
+    for (int i = 1; i < chunks * 8; i++) {
+        U8* pageRam = getRamPtr((page + i) << K_PAGE_SHIFT, K_PAGE_SIZE, false);
+        if (ram != pageRam - K_PAGE_SIZE * i) {
+            isContinuous = false;
+            break;
+        }
+    }
+    if (isContinuous) {
+        return pageCount * K_PAGE_SIZE;
+    }    
+    chunks *= 4;
+    U8* nativeMemory = Platform::alloc64kBlock(chunks);
+    U32 allocatedPages = chunks * 8;
+    U32 validPages = 0;
+    for (int i = 0; i < allocatedPages; i++) {
+        if (isPageMapped(i + page)) {
+            validPages++;
+        } else {
+            break;
+        }
+    }
+    // :TODO: not thread safe, what if another thread modifies the memory between memcpy and setPage
+    memcpy(nativeMemory, (page << K_PAGE_SHIFT), (validPages << K_PAGE_SHIFT));
+    RamPage ramPage = ramPageAllocNativeContinuous(nativeMemory, chunks * 8);
+    klog_fmt("ensureContinuousNative %d pages", (U32)(chunks * 8));
+    for (U32 i = 0; i < validPages; i++) {
+        MMU& mmu = data->mmu[page + i];
+        mmu.setPage(this, page + i, mmu.getPageType(), ramPage);
+        data->onPageChanged(page + i);
+        ramPageRelease(ramPage); // setPage retains
+        ramPage.value++;
+    }
+    // :TODO: maybe figure out a way to release the memory when all the ram pages are unmapped rather than waiting for the process to exit?
+    nativeContinuousMemory.push_back(std::make_shared<NativeContinuousMemory>(nativeMemory, page << K_PAGE_SHIFT, allocatedPages << K_PAGE_SHIFT));
+    return validPages * K_PAGE_SIZE;
+}
+
+NativeContinuousMemory::~NativeContinuousMemory() {
+    Platform::releaseNativeMemory(p, len);
 }
 
 U64 KMemory::readq(U32 address) {

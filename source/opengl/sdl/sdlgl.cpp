@@ -421,7 +421,6 @@ bool KOpenGLSdl::glMakeCurrent(KThread* thread, const std::shared_ptr<XDrawable>
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
         context = contextsById.get(contextId);
     }        
-    thread->glVertexPointersLocked = false;
     if (!context) {
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(contextMutex);
         context = contextsById.get(thread->currentContext);

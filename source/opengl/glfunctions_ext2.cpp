@@ -1584,6 +1584,7 @@ void glcommon_glLockArraysEXT(CPU* cpu) {
     if (!ext_glLockArraysEXT)
         kpanic("ext_glLockArraysEXT is NULL");
     {
+        updateVertexPointers(cpu, ARG1 + ARG2);
     GL_FUNC(ext_glLockArraysEXT)(ARG1, ARG2);
     GL_LOG ("glLockArraysEXT GLint first=%d, GLsizei count=%d",ARG1,ARG2);
     }

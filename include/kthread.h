@@ -33,9 +33,11 @@ public:
     U32 count = 0; // used by marshalEdgeFlagPointerEXT
     U32 ptr = 0;
     U8* marshal = nullptr;
+    U32 lastMarshalledPtr = 0;
     U32 marshal_size = 0;
     U32 refreshEachCall = 0;
     bool normalized = false;
+    bool isArrayBuffer = false;
 };
 typedef std::shared_ptr<OpenGLVetexPointer> OpenGLVetexPointerPtr;
 

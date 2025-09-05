@@ -26,6 +26,7 @@ struct RamPage {
 };
 
 RamPage ramPageAlloc();
+RamPage ramPageAllocNativeContinuous(U8* native, U32 pageCount);
 RamPage ramPageAllocNative(U8* native);
 U8* ramPageGet(RamPage page);
 void ramPageRelease(RamPage page);
