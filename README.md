@@ -17,7 +17,7 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 - Mac OpenGL does not work with frame buffers
 - Games after the year 2010 have limitted success at running
 - Newer versions of .NET don't work
-- Joy
+- Joystick support
 
 
 ## Platforms being tested
