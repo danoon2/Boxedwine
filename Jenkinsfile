@@ -212,7 +212,13 @@ pipeline {
                                     echo "bin/Boxedwine.app DOES NOT exists."
                                     exit 999
                                 fi
-                                codesign --force --deep -s "$BOXEDWINE_SIGN_NAME" bin/Boxedwine.app
+                                cd bin
+                                codesign --force --deep --verify --verbose --timestamp --sign "$BOXEDWINE_SIGN_NAME" --options runtime Boxedwine.app
+                                /usr/bin/ditto -c -k --sequesterRsrc --keepParent "Boxedwine.app" "BoxedwineUpload.zip"
+                                xcrun notarytool submit BoxedwineUpload.zip --keychain-profile "$BOXEDWINE_KEYCHAIN_PROFILE" --wait
+                                xcrun stapler staple -v Boxedwine.app
+                                rm BoxedwineUpload
+                                cd ..
                                 mv bin/Boxedwine.app/ Deploy/Mac/
                             '''
                         }
