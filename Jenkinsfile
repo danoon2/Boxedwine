@@ -212,6 +212,7 @@ pipeline {
                                     echo "bin/Boxedwine.app DOES NOT exists."
                                     exit 999
                                 fi
+                                codesign --force --deep -s "$BOXEDWINE_SIGN_NAME" bin/Boxedwine.app
                                 mv bin/Boxedwine.app/ Deploy/Mac/
                             '''
                         }
