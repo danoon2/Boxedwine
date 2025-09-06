@@ -20,7 +20,7 @@
 #define __BOXEDWINE_H__
 
 #define BOXEDWINE_VERSION_STR "25R1"
-#define BOXEDWINE_VERSION_DISPLAY "25.0.0 (pre-beta)"
+#define BOXEDWINE_VERSION_DISPLAY "25.0.0"
 
 #include <vector>
 #include <memory>
