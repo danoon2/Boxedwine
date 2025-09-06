@@ -428,17 +428,30 @@ bool StartUpArgs::apply() {
         }
     }
 
+    // automatically tell wine to use ddraw.dll if its in the same directory as the app being launched
+    // this is a quality of life issue so that the user doesn't have to manually add this with winecfg
+    // gog's hellfire uses this
+    bool foundWineDllOverride = false;
+
+    for (auto& value : envValues) {
+        if (value.startsWith("WINEDLLOVERRIDES")) {
+            foundWineDllOverride = true;
+        }
+    }
+    if (!foundWineDllOverride) {
+        if (args.size() >= 2 && args[0] == "/bin/wine") {
+            std::shared_ptr<FsNode> appNode = Fs::getNodeFromLocalPath(workingDir, args[1], true);
+            if (appNode) {
+                std::shared_ptr<FsNode> parentNode = appNode->getParent().lock();
+                if (parentNode && parentNode->getChildByNameIgnoreCase(B("ddraw.dll"))) {
+                    envValues.push_back(B("WINEDLLOVERRIDES=ddraw=n,b"));
+                    klog("automatically applied WINEDLLOVERRIDES=ddraw=n,b");
+                }
+            }
+        }
+    }
     //envValues.push_back(B("WINEDEBUG=+wgl"));
-
-                            
-    // if this strlen is more than 88 (1 more character than now), then diablo demo will crash before we get to the menu
-    // if I create more env values that are longer it doesn't crash, what is special about this one?
-    
-    //crashes, if I change LD_LIBRARY_PATH to LD_LIBRARY_PATT it works, so it's not the length of the env string, but rather specific to LD_LIBRARY_PATH
-    //envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:/opt/wine/lib");
-
-    //works
-    //envValues.push_back("LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu");        
+     
     if (userId==0) {
         envValues.push_back(B("PATH=/bin:/usr/bin:/usr/local/bin:/sbin:/usr/sbin:/usr/local/sbin"));
     } else {

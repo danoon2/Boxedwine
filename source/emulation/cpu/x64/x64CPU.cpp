@@ -249,6 +249,12 @@ void common_runSingleOp(x64CPU* cpu) {
         deallocOp = true;
     } else if (!op) {
         kpanic("common_runSingleOp oops");
+    } else if (!op->pfnJitCode) {
+        try {
+            cpu->translateEip(cpu->eip.u32);
+        } catch (...) {
+            
+        }
     }
 #ifndef BOXEDWINE_USE_SSE_FOR_FPU
     if (cpu->fpuDirtyFlags) {

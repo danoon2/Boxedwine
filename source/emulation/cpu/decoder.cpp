@@ -6253,11 +6253,6 @@ void DecodedOp::dealloc() {
         kpanic("tried to dealloc a DecodedOp that was already deallocated");
     }
 #endif
-    // special deallocs for these since they don't mapped into the code page, they just hang at the end of a string of ops
-    // so that I don't have to always check if next is valid
-    if (this->next && this->next->inst == Done) {
-        this->next->dealloc();
-    }
     freeOps.put(this);
 }
 

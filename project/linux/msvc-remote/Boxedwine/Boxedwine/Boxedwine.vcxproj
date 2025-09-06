@@ -1595,7 +1595,7 @@
     <ClInclude Include="..\..\..\..\..\include\log.h" />
     <ClInclude Include="..\..\..\..\..\include\meminfo.h" />
     <ClInclude Include="..\..\..\..\..\include\pixelformat.h" />
-    <ClInclude Include="..\..\..\..\..\include\platform.h" />
+    <ClInclude Include="..\..\..\..\..\include\platformBoxedwine.h" />
     <ClInclude Include="..\..\..\..\..\include\platformOpenGL.h" />
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h" />
     <ClInclude Include="..\..\..\..\..\include\player.h" />

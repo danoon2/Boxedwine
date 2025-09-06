@@ -322,6 +322,8 @@
 		718F07682D31C1C600D41270 /* kvulkanSDL.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 718F07622D31C1C600D41270 /* kvulkanSDL.cpp */; };
 		718F076A2D31C20F00D41270 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 718F07692D31C20F00D41270 /* libMoltenVK.dylib */; };
 		718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718F07772D31C23F00D41270 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		71A24F0E2E6BA582007573AB /* libncurses.6.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0312D715DCA00917EF6 /* libncurses.6.dylib */; };
+		71A24F0F2E6BA582007573AB /* libncurses.6.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0312D715DCA00917EF6 /* libncurses.6.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		71B4910C2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E02D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c */; };
 		71B4910D2D4AA1B800A8AB32 /* s_mul64To128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E72D4AA1B800A8AB32 /* s_mul64To128.c */; };
 		71B4910F2D4AA1B800A8AB32 /* f32_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D72D4AA1B800A8AB32 /* f32_to_extF80.c */; };
@@ -829,6 +831,7 @@
 				1A1551FB2632673F006E0C8A /* SDL2.framework in Embed Frameworks */,
 				715CD05B2D715F4400917EF6 /* libLLVM.dylib in Embed Frameworks */,
 				715CD04A2D715DCA00917EF6 /* libxml2.2.dylib in Embed Frameworks */,
+				71A24F0F2E6BA582007573AB /* libncurses.6.dylib in Embed Frameworks */,
 				715CD0402D715DCA00917EF6 /* libiconv.2.dylib in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
@@ -1213,6 +1216,7 @@
 				1AFC47A626489F7700EE5FCC /* CoreMIDI.framework in Frameworks */,
 				71222C7624351CBA00CDBABD /* ForceFeedback.framework in Frameworks */,
 				71222C7724351CBA00CDBABD /* AudioToolbox.framework in Frameworks */,
+				71A24F0E2E6BA582007573AB /* libncurses.6.dylib in Frameworks */,
 				715CD05A2D715F4400917EF6 /* libLLVM.dylib in Frameworks */,
 				71222C7824351CBA00CDBABD /* CoreAudio.framework in Frameworks */,
 				715CD03F2D715DCA00917EF6 /* libiconv.2.dylib in Frameworks */,

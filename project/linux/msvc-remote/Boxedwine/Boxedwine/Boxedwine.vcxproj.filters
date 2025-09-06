@@ -1203,9 +1203,6 @@
     <ClInclude Include="..\..\..\..\..\include\pixelformat.h">
       <Filter>include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\..\include\platform.h">
-      <Filter>include</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\..\include\platformtypes.h">
       <Filter>include</Filter>
     </ClInclude>
@@ -2391,6 +2388,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\..\source\emulation\cpu\common\common_lock.h">
       <Filter>source\emulation\cpu\common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\..\include\platformBoxedwine.h">
+      <Filter>include</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
