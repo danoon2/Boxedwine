@@ -227,20 +227,16 @@ void InstallView::setWindowsVersionDefault() {
     if (fileSystem) {
         windowsVersionControl->setRowHidden(!fileSystem->hasWine());
     }
-    if (ver.startsWith("Wine ")) {
-        ver = ver.substr(5);
-        std::vector<BString> parts;
-        ver.split('.', parts);
-        if (parts.size() > 1) {
-            BString major = parts[0];
-            BString minor = parts[1];
-            if (major < "2" || (major == "2" && minor < "2")) {
-                windowsVersionControl->setSelectionStringValue(B("Windows XP"));
-            } else if (major > "8" || (major == "8" && minor > "0")) {
-                windowsVersionControl->setSelectionStringValue(B("Windows 10"));
-            } else {
-                windowsVersionControl->setSelectionStringValue(B("Windows 7"));
-            }
+    if (fileSystem->hasWine()) {
+        U32 minor = fileSystem->wineMinorVersion;
+        U32 major = fileSystem->wineMajorVersion;
+
+        if (major < 2 || (major == 2 && minor < 2)) {
+            windowsVersionControl->setSelectionStringValue(B("Windows XP"));
+        } else if (major > 8 || (major == 8 && minor > 0)) {
+            windowsVersionControl->setSelectionStringValue(B("Windows 10"));
+        } else {
+            windowsVersionControl->setSelectionStringValue(B("Windows 7"));
         }
     }
 }
@@ -328,13 +324,14 @@ void InstallView::onInstall() {
             container->setWindowsVersion(BoxedwineData::getWinVersions()[windowsVersionIndex]);
             containerCreated = true;
         }
-        container->launch(); // fill out startUpArgs specific to a container        
-        BString path = GlobalSettings::getAutomationFolder(container);
-        if (!Fs::doesNativePathExist(path)) {
-            Fs::makeNativeDirs(path);
+        container->launch(); // fill out startUpArgs specific to a container
+        if (GlobalSettings::isAutomationEnabled()) {
+            BString path = GlobalSettings::getAutomationFolder(container);
+            if (!Fs::doesNativePathExist(path)) {
+                Fs::makeNativeDirs(path);
+            }
+            GlobalSettings::startUpArgs.recordAutomation = path;
         }
-        GlobalSettings::startUpArgs.recordAutomation = path;
-
         if (installType == INSTALL_TYPE_SETUP) {
             GlobalSettings::startUpArgs.addArg(location);
             GlobalSettings::startUpArgs.readyToLaunch = true;

@@ -964,6 +964,14 @@ FileSystemZip::FileSystemZip(BString name, BString wineName, BString fsVersion, 
     }
 }
 
+bool FileSystemZip::hasWineTricks() { 
+#ifdef _DEBUG
+    // experimental, mostly doesn't work well
+    return wineTrickFonts.length() > 0 || wineTrickDlls.length() > 0; 
+#else
+    return false;
+#endif
+}
 BString FileSystemZip::getDependFilePath() const {
     if (this->depend.length()) {
         BString result = GlobalSettings::getFileSystemFolder().stringByApppendingPath(depend);

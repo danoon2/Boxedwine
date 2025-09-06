@@ -376,7 +376,27 @@ void CPU::cpuid() {
             EDX=0x0C040843;
             break;
         case 0x80000000:
+            EAX = 0x80000004;
+            break;
+        case 0x80000001:
             EAX = 0;
+            EBX = 0;
+            ECX = 0;
+            EDX = 0;
+            break;
+        case 0x80000002:
+            // "Boxedwine"
+            EAX = 0x65786F42;
+            EBX = 0x6E697764;
+            ECX = 0x00000065;
+            EDX = 0;
+            break;
+        case 0x80000003:
+        case 0x80000004:
+            EAX = 0;
+            EBX = 0;
+            ECX = 0;
+            EDX = 0;
             break;
         default:
             kwarn_fmt("Unhandled CPUID Function %X", EAX);

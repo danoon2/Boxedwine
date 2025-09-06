@@ -87,7 +87,10 @@ private:
     std::shared_ptr<LayoutComboboxControl> appScaleQualityControl;
     std::shared_ptr<LayoutComboboxControl> appOpenGlControl;
     std::shared_ptr<LayoutTextInputControl> appGlExControl;
+#ifdef _DEBUG
+    // experimental, currently patch for file system not available for wine 9 or later
     std::shared_ptr<LayoutCheckboxControl> appDirectDrawAutoRefreshControl;
+#endif
 };
 
 #endif

@@ -377,6 +377,12 @@ void common_runSingleOp(BtCPU* cpu) {
         deallocOp = true;
     } else if (!op) {
         kpanic("common_runSingleOp oops");
+    } else if (!op->pfnJitCode) {
+        try {
+            cpu->translateEip(cpu->eip.u32);
+        } catch (...) {
+            
+        }
     }
 
     try {

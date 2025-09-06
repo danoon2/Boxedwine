@@ -72,7 +72,7 @@ public:
     BString getDependFilePath() const;
 
     bool hasWine() {return wineMajorVersion > 0;}
-    bool hasWineTricks() {return wineTrickFonts.length() > 0 || wineTrickDlls.length() > 0;}
+    bool hasWineTricks();
 
     BString name;
     int wineVersion = 0; // 6.0 will equal 600, 6.1 will equal 601

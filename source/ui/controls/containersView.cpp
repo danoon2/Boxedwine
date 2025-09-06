@@ -39,7 +39,9 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
         bool renderer = fileSystem->wineVersion > 500;
         containerGdiControl->setRowHidden(renderer);
         containerRendererControl->setRowHidden(!renderer);        
+#ifdef _DEBUG
         appDirectDrawAutoRefreshControl->setReadOnly(atoi(fileSystem->fsVersion.c_str()) < 7 || !fileSystem->hasWine());
+#endif
         Fs::deleteNativeDirAndAllFilesInDir(this->currentContainer->getDir() + Fs::nativePathSeperator + "root" + Fs::nativePathSeperator + "opt" + Fs::nativePathSeperator + "wine");
     };
 
@@ -453,15 +455,16 @@ ContainersView::ContainersView(BString tab, BString app) : BaseView(B("Container
     
     std::shared_ptr<LayoutButtonControl> setButtonControl = row->addButton(getTranslation(Msg::CONTAINER_VIEW_GL_EXT_SET_BUTTON_LABEL));
     setButtonControl->onChange = [this]() {
-        appGlExControl->setText(B("GL_EXT_multi_draw_arrays GL_ARB_vertex_program\nGL_ARB_fragment_program GL_ARB_multitexture\nGL_EXT_secondary_color GL_EXT_texture_lod_bias\nGL_NV_texture_env_combine4 GL_ATI_texture_env_combine3\nGL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine\nGL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc\nGL_ARB_texture_compression GL_EXT_paletted_texture"));
+        appGlExControl->setText(B("GL_EXT_compiled_vertex_array GL_ARB_texture_env_add GL_S3_s3tc GL_EXT_multi_draw_arrays GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_multitexture GL_EXT_secondary_color GL_EXT_texture_lod_bias GL_NV_texture_env_combine4 GL_ATI_texture_env_combine3 GL_EXT_texture_filter_anisotropic GL_ARB_texture_env_combine GL_EXT_texture_env_combine GL_EXT_texture_compression_s3tc GL_ARB_texture_compression GL_EXT_paletted_texture"));
         this->currentAppChanged = true;
     };    
 
+#ifdef _DEBUG
     appDirectDrawAutoRefreshControl = appSection->addCheckbox(Msg::CONTAINER_VIEW_AUTO_REFRESH_LABEL, Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP, false);
     appDirectDrawAutoRefreshControl->onChange = [this]() {
         this->currentAppChanged = true;
     };
-
+#endif
     for (auto& item : BoxedwineData::getContainers()) {
         addTab(item->getDir(), item->getName(), model, [this, item](bool buttonPressed, BaseViewTab& tab) {
             if (buttonPressed) {
@@ -625,7 +628,9 @@ bool ContainersView::saveChanges() {
             this->currentApp->enableDXVK = this->appEnableDXVKControl->isChecked();
             this->currentApp->disableHideCursor = this->appDisableHideCursorControl->isChecked();
             this->currentApp->forceRelativeMouse = this->appForceRelativeMouseControl->isChecked();
+#ifdef _DEBUG
             this->currentApp->autoRefresh = appDirectDrawAutoRefreshControl->isChecked();
+#endif
 #ifdef BOXEDWINE_MULTI_THREADED
             this->currentApp->cpuAffinity = this->appCpuAffinityControl->getSelectionIntValue();
 #endif
@@ -679,11 +684,13 @@ void ContainersView::setCurrentApp(BoxedApp* app) {
     appForceRelativeMouseControl->setCheck(app->forceRelativeMouse);
     appPollRateControl->setText(BString::valueOf(app->pollRate));
     appSkipFramesControl->setText(BString::valueOf(app->skipFramesFPS));
+#ifdef _DEBUG
     appDirectDrawAutoRefreshControl->setCheck(app->autoRefresh);
     std::shared_ptr<FileSystemZip> fileSystem = GlobalSettings::getInstalledFileSystemFromName(this->containerFileSystemControl->getSelectionStringValue());
     bool hasAutoRefresh = fileSystem && atoi(fileSystem->fsVersion.c_str()) >= 7 && fileSystem->hasWine();
     appDirectDrawAutoRefreshControl->setReadOnly(!hasAutoRefresh);
     appDirectDrawAutoRefreshControl->setHelpId(hasAutoRefresh ? Msg::CONTAINER_VIEW_AUTO_REFRESH_HELP : Msg::CONTAINER_VIEW_AUTO_REFRESH_MISSING_HELP);
+#endif
 #ifdef BOXEDWINE_MULTI_THREADED
     appCpuAffinityControl->setSelectionIntValue(app->cpuAffinity);
 #endif

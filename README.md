@@ -7,67 +7,52 @@ Boxedwine is open source and released under the terms of the GNU General Public 
 ## Features
 
 - Runs 16/32-bit Windows programs
-- Works on Windows, MacOSX, Linux, Raspberry Pi and Web
-- Works on x86-64, i686, ARMv7 and ARMv8
-- Can run multiple versions of Wine, from 1.8 to 5.0
-- Tools and games using OpenGL or Direct3D are supported
+- Works on Windows, MacOSX, Linux, and Web
+- Can run multiple versions of Wine, from 3.1 to 10.0
+- Apps and games using OpenGL, Direct3D and Vulkan are supported
 
 ## TODOs
 
-- Networking does not work well
+- Emscripten/Web Boxedwine is still slow, need to implement a JIT.  Multi-threaded build also studders with sound.
 - Mac OpenGL does not work with frame buffers
-- ARMv8 CPU core for Mac M1 and Raspberry Pi still has bugs
-- Games after the year 2000 have limitted success at running
+- Games after the year 2010 have limitted success at running
+- Newer versions of .NET don't work
+- Joy
 
 
 ## Platforms being tested
 
 - Emscripten (WASM)
-- Linux 64-bit
+- Linux 64-bit x86/Arm64
 - MacOSX (ARM)
-- MacOSX (Intel)
-- Raspberry Pi 4 32-bit
-- Raspberry Pi 4 64-bit
 - Windows 32-bit
-- Windows 64-bit
+- Windows 64-bit x86/Arm64
 
 
-## Performance Test using MDK Perf with GDI backend on Wine
+## Performance Test
 
-![This is an image](http://boxedwine.org/mdk.jpg)
+![This is an image](cinebench.jpg)
 
-### Emscripten on Intel i7-6700K on Windows 10
+### Cinebench 11.5 (Multi Core)
 
-- **27** Firefox 81
-- **29** Chrome Version 96.0.4664.110 (Official Build) (64-bit)
+- **6.41** Windows 11 i7-14700 x64 Boxedwine
+- **3.31** Mac OSX Mac Mini M4 Arm64 Boxedwine
+- **1.41** Asahi Linux Mac Mini M1 Arm64 Boxedwine
+- **1.16** Windows 11 i7-14700 x86 Boxedwine
 
+### Cinebench 11.5 (Single Core)
 
-### Mac Mini M1
+- **0.48** Windows 11 i7-14700 x64 Boxedwine
+- **0.59** Mac OSX Mac Mini M4 Arm64 Boxedwine
+- **0.26** Asahi Linux Mac Mini M1 Arm64 Boxedwine
+- **0.08** Windows 11 i7-14700 x86 Boxedwine
 
-- **870** ARMv8 CPU Core
-- **150** x64 CPU Core with Rosetta
+### Quake 2 +timedemo 1 +map demo1.dm2
 
-
-### iMac 2017 3.4GHz i5
-
-- **245** x64 CPU Core
-
-
-### Raspberry Pi 4 64-bit
-
-- **133** ARMv8 CPU Core
-
-
-### Raspberry Pi 4 32-bit
-
-- **14** Normal CPU Core + JIT
-
-
-### Windows 10 on Intel i7-6700K
-
-- **48** Normal CPU Core
-- **64** Normal CPU Core + JIT
-- **985** x64 CPU Core
+- **76.7 fps** Windows 11 i7-14700 x64 Boxedwine
+- **58.4 fps** Mac OSX Mac Mini M4 Arm64 Boxedwine
+- **44.0 fps** Asahi Linux Mac Mini M1 Arm64 Boxedwine
+- **29.5 fps** Windows 11 i7-14700 x86 Boxedwine
 
 ## Documentation
 
