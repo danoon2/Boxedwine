@@ -217,9 +217,10 @@ pipeline {
                                 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "Boxedwine.app" "BoxedwineUpload.zip"
                                 xcrun notarytool submit BoxedwineUpload.zip --keychain-profile "$BOXEDWINE_KEYCHAIN_PROFILE" --wait
                                 xcrun stapler staple -v Boxedwine.app
-                                rm BoxedwineUpload
+                                rm BoxedwineUpload.zip
+                                /usr/bin/ditto -c -k --sequesterRsrc --keepParent "Boxedwine.app" "Boxedwine.zip"
                                 cd ..
-                                mv bin/Boxedwine.app/ Deploy/Mac/
+                                mv bin/Boxedwine.zip Deploy/Mac/
                             '''
                         }
                         dir("project/mac-xcode") {
