@@ -722,7 +722,7 @@ U32 KMemory::ensureContinuousNative_unsafe(U32 page, U32 pageCount) {
     U32 allocatedPages = chunks * 8;
     U32 validPages = 0;
     for (int i = 0; i < allocatedPages; i++) {
-        if (isPageMapped(i + page)) {
+        if (canRead(i + page)) {
             validPages++;
         } else {
             break;
