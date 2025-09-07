@@ -212,8 +212,8 @@ pipeline {
                                     echo "bin/Boxedwine.app DOES NOT exists."
                                     exit 999
                                 fi
-                                cd bin
-                                codesign --force --deep --verify --verbose --timestamp --sign "$BOXEDWINE_SIGN_NAME" --options runtime Boxedwine.app
+                                codesign --force --deep --verify --verbose --timestamp --sign "$BOXEDWINE_SIGN_NAME" --options runtime --entitlements ./Boxedwine/Boxedwine/Boxedwine.entitlements ./bin/Boxedwine.app
+                                cd bin                                
                                 /usr/bin/ditto -c -k --sequesterRsrc --keepParent "Boxedwine.app" "BoxedwineUpload.zip"
                                 xcrun notarytool submit BoxedwineUpload.zip --keychain-profile "$BOXEDWINE_KEYCHAIN_PROFILE" --wait
                                 xcrun stapler staple -v Boxedwine.app
