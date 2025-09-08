@@ -122,6 +122,7 @@ public:
     static BString getAutomationFolder(BoxedContainer* container);
     static BString getRootFolder(BoxedContainer* container);
     static BString getDemoFolder();
+    static BString getArgsPath(); // used by Mac
     static BString getExePath() {return GlobalSettings::exePath;}
     static BString getExeFilePath() { return GlobalSettings::exeFilePath; }
     static std::vector<std::shared_ptr<FileSystemZip>> getWineVersions();

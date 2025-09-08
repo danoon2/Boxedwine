@@ -164,7 +164,8 @@ public:
     static bool isMac();
     static bool isLinux();
 
-    static std::shared_ptr<FsNode> procNode;    
+    static std::shared_ptr<FsNode> procNode;
+    static BString showWindowTimestamp;
 private:
     static void initDisplayModes();
     static void internalEraseProcess(U32 id);

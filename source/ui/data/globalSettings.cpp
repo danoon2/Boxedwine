@@ -362,6 +362,10 @@ BString GlobalSettings::getDemoFolder() {
     return GlobalSettings::dataFolderLocation.stringByApppendingPath("DemoCache");
 }
 
+BString GlobalSettings::getArgsPath() {
+    return GlobalSettings::dataFolderLocation.stringByApppendingPath("args.txt");
+}
+
 BString GlobalSettings::getRootFolder(BoxedContainer* container) {
     return container->dirPath.stringByApppendingPath("root");
 }

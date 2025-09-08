@@ -25,6 +25,7 @@ bool uiContinue();
 bool uiLoop();
 void uiShutdown();
 bool uiIsRunning();
+void uiPumpEvents();
 
 void runOnMainUI(std::function<bool()> f, U64 delayInMillies=0);
 void runAfterFrame(std::function<bool()> f, U64 delayInMillies=0);

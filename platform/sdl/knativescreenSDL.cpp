@@ -149,6 +149,10 @@ void KNativeScreenSDL::showWindow(bool show) {
                 uiShutdown();
             }
 #else
+            if (!KSystem::showWindowTimestamp.isEmpty()) {
+                BWriteFile file(KSystem::showWindowTimestamp);
+                file.write("Showing Window");
+            }
             klog("Showing Window");
 #endif
         }

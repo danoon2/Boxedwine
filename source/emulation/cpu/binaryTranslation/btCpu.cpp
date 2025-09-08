@@ -369,7 +369,13 @@ void unscheduleThread(KThread* thread) {
 
 #if !defined(BOXEDWINE_X64)
 void common_runSingleOp(BtCPU* cpu) {
-    DecodedOp* op = cpu->getNextOp();
+    DecodedOp* op = nullptr;
+    try {
+        op = cpu->getNextOp();
+    } catch (...) {
+        // at this point the previous getNextOp threw an exception and the eip is now pointing to the signal handler
+        op = cpu->getNextOp();
+    }
     bool deallocOp = false;
 
     if (op->flags & OP_FLAG_EMULATED_OP) {

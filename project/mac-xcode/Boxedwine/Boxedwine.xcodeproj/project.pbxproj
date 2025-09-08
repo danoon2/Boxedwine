@@ -324,6 +324,10 @@
 		718F07782D31C23F00D41270 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 718F07772D31C23F00D41270 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		71A24F0E2E6BA582007573AB /* libncurses.6.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0312D715DCA00917EF6 /* libncurses.6.dylib */; };
 		71A24F0F2E6BA582007573AB /* libncurses.6.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 715CD0312D715DCA00917EF6 /* libncurses.6.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		71A2787D2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
+		71A2787E2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
+		71A2787F2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
+		71A278802E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */; };
 		71B4910C2D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E02D4AA1B800A8AB32 /* s_approxRecipSqrt32_1.c */; };
 		71B4910D2D4AA1B800A8AB32 /* s_mul64To128.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490E72D4AA1B800A8AB32 /* s_mul64To128.c */; };
 		71B4910F2D4AA1B800A8AB32 /* f32_to_extF80.c in Sources */ = {isa = PBXBuildFile; fileRef = 71B490D72D4AA1B800A8AB32 /* f32_to_extF80.c */; };
@@ -1042,6 +1046,7 @@
 		718F07732D31C23200D41270 /* libvulkan.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.dylib; sourceTree = "<group>"; };
 		718F07752D31C23800D41270 /* libvulkan.1.3.296.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libvulkan.1.3.296.dylib; path = ../../../lib/mac/vulkan/lib/libvulkan.1.3.296.dylib; sourceTree = "<group>"; };
 		718F07772D31C23F00D41270 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../lib/mac/vulkan/lib/libMoltenVK.dylib; sourceTree = "<group>"; };
+		71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacPlatformSwift.swift; sourceTree = "<group>"; };
 		71B2D2F82668170000010AB6 /* libOSMesa.8.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libOSMesa.8.dylib; path = ../../../lib/mac/precompiledMac/libOSMesa.8.dylib; sourceTree = "<group>"; };
 		71B2D30926681CCA00010AB6 /* libglapi.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libglapi.0.dylib; path = ../../../lib/mac/precompiledMac/libglapi.0.dylib; sourceTree = "<group>"; };
 		71B4905E2D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = extF80M_isSignalingNaN.c; sourceTree = "<group>"; };
@@ -1689,6 +1694,7 @@
 		71FBFCAF2433B815003F17F1 /* Boxedwine */ = {
 			isa = PBXGroup;
 			children = (
+				71A2787C2E6E3A2D007573AB /* MacPlatformSwift.swift */,
 				1AC3F45D2CDF247200EB9C76 /* atomic_ref.gcc.h */,
 				1AC3F45E2CDF247200EB9C76 /* atomic_ref.h */,
 				1A80F2F6276EBFF40032A70A /* BoxedwineX64-Automation.entitlements */,
@@ -1878,6 +1884,12 @@
 				LastUpgradeCheck = 1620;
 				ORGANIZATIONNAME = Boxedwine;
 				TargetAttributes = {
+					1A80EE46276EBCC70032A70A = {
+						LastSwiftMigration = 1640;
+					};
+					1A80F091276EBF170032A70A = {
+						LastSwiftMigration = 1640;
+					};
 					1AEBC3912AABC0A9007ECB08 = {
 						CreatedOnToolsVersion = 14.2;
 						TestTargetID = 7135DC10264EBCD0005D6AA6;
@@ -1889,8 +1901,12 @@
 					71222B182435140100CDBABD = {
 						CreatedOnToolsVersion = 11.3.1;
 					};
+					71222BCB24351CBA00CDBABD = {
+						LastSwiftMigration = 1640;
+					};
 					71FBFCAC2433B815003F17F1 = {
 						CreatedOnToolsVersion = 11.3.1;
+						LastSwiftMigration = 1640;
 					};
 				};
 			};
@@ -2089,6 +2105,7 @@
 				71B492362D4AA1B800A8AB32 /* extF80_to_i64.c in Sources */,
 				71B492372D4AA1B800A8AB32 /* s_normSubnormalExtF80Sig.c in Sources */,
 				71B492382D4AA1B800A8AB32 /* s_approxRecip_1Ks.c in Sources */,
+				71A278802E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */,
 				71B4923B2D4AA1B800A8AB32 /* extF80_div.c in Sources */,
 				71B4923C2D4AA1B800A8AB32 /* extF80M_isSignalingNaN.c in Sources */,
 				71B4923D2D4AA1B800A8AB32 /* s_commonNaNToF64UI.c in Sources */,
@@ -2146,6 +2163,7 @@
 				1A55D63C2A0841E2002B7021 /* inftrees.c in Sources */,
 				1AC5F2FD2772D9D6001D0FCA /* platformThreads-armv8.cpp in Sources */,
 				1A55D6402A0841E2002B7021 /* infback.c in Sources */,
+				71A2787F2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */,
 				1A55D66B2A0842E8002B7021 /* trees.c in Sources */,
 				1A80F1E2276EBF170032A70A /* knativesystem.cpp in Sources */,
 				1A55D6382A0841E2002B7021 /* inffast.c in Sources */,
@@ -2379,6 +2397,7 @@
 				71222BE824351CBA00CDBABD /* imgui_draw.cpp in Sources */,
 				1A55D6502A08428F002B7021 /* crc32.c in Sources */,
 				71222BED24351CBA00CDBABD /* imgui_impl_sdl.cpp in Sources */,
+				71A2787E2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */,
 				710091612644D44E003413C3 /* platformThreads.cpp in Sources */,
 				714097462D4AA53F00D10110 /* pugixml.cpp in Sources */,
 				71222BFF24351CBA00CDBABD /* imgui_widgets.cpp in Sources */,
@@ -2719,6 +2738,7 @@
 				1AFC4798264827A600EE5FCC /* coremidi.cpp in Sources */,
 				1A0F95642C912BD100E5A9BF /* knativeinputSDL.cpp in Sources */,
 				712228F52433EE5400CDBABD /* imguitinyfiledialogs.cpp in Sources */,
+				71A2787D2E6E3A3C007573AB /* MacPlatformSwift.swift in Sources */,
 				7100914E2644D42C003413C3 /* sdlcallback.cpp in Sources */,
 				1AFC480A2663FFC000EE5FCC /* pixelformat.cpp in Sources */,
 				1A0F95582C912BD100E5A9BF /* knativescreenGL.cpp in Sources */,
@@ -2767,6 +2787,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "Boxedwine/Boxedwine-Automation.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
@@ -2784,7 +2805,6 @@
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
@@ -2801,6 +2821,9 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/BoxedwineAutomationSlow-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
@@ -2817,6 +2840,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "Boxedwine/Boxedwine-Automation.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
@@ -2834,7 +2858,6 @@
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
@@ -2851,6 +2874,8 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/BoxedwineAutomationSlow-Bridging-Header.h";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
@@ -2868,6 +2893,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "Boxedwine/BoxedwineX64-Automation.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -2885,7 +2911,6 @@
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
 					BOXEDWINE_POSIX,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
@@ -2903,6 +2928,9 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/BoxedwineAutomation-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
@@ -2919,6 +2947,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "Boxedwine/BoxedwineX64-Automation.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -2936,7 +2965,6 @@
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
 					BOXEDWINE_POSIX,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
@@ -2955,6 +2983,8 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/BoxedwineAutomation-Bridging-Header.h";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
@@ -3123,11 +3153,13 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
-				CODE_SIGN_ENTITLEMENTS = Boxedwine/BoxedwineX64.entitlements;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = NHYAMS3B9Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
@@ -3140,14 +3172,16 @@
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
 					BOXEDWINE_POSIX,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					__MACOSX_CORE__,
 					BOXEDWINE_VULKAN,
 					BOXED_NO_EXCEPTIONS,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
+				GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS = "";
+				"GCC_PREPROCESSOR_DEFINITIONS_NOT_USED_IN_PRECOMPS[arch=*]" = "";
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "BoxedwineX64-Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -3163,6 +3197,9 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/Boxedwine-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
@@ -3179,11 +3216,13 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
-				CODE_SIGN_ENTITLEMENTS = Boxedwine/BoxedwineX64.entitlements;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = NHYAMS3B9Z;
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXCLUDED_ARCHS = "";
 				FRAMEWORK_SEARCH_PATHS = "$(PROJECT_DIR)/../../../lib/mac";
@@ -3196,7 +3235,6 @@
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
 					BOXEDWINE_POSIX,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
@@ -3219,6 +3257,8 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/Boxedwine-Bridging-Header.h";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
 					"$(SRCROOT)/../../../lib/imgui",
@@ -3248,7 +3288,6 @@
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
 					BOXEDWINE_POSIX,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					BOXED_NO_EXCEPTIONS,
@@ -3293,7 +3332,6 @@
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
 					BOXEDWINE_POSIX,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MAC_JIT,
 					BOXED_NO_EXCEPTIONS,
@@ -3436,6 +3474,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
@@ -3453,11 +3492,11 @@
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
 					__MACOSX_CORE__,
+					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 				);
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = Boxedwine/Info.plist;
@@ -3470,6 +3509,9 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/BoxedwineSlow-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",
@@ -3486,6 +3528,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
+				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Boxedwine/Boxedwine.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
@@ -3503,7 +3546,6 @@
 					"GLH=<SDL_opengl.h>",
 					BOXEDWINE_OPENGL_SDL,
 					BOXEDWINE_GLHANDLE_ARB_POINTER,
-					BOXEDWINE_UI_LAUNCH_IN_PROCESS,
 					BOXEDWINE_RECORDER,
 					BOXEDWINE_CORE_AUDIO,
 					BOXEDWINE_MULTI_THREADED,
@@ -3520,6 +3562,8 @@
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.boxedwine;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "Boxedwine/BoxedwineSlow-Bridging-Header.h";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_FRAMEWORK_SEARCH_PATHS = "";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/../../../lib/glew/include",

@@ -41,7 +41,29 @@ void writeSource();
 int boxedmain(int argc, const char **argv) {
     StartUpArgs startupArgs;                  
 
-    klog("Starting ...");    
+    klog("Starting ...");
+#if defined(__MACH__)
+    std::vector<BString> lines;
+    std::vector<const char*> args;
+    BString dataPath = KNativeSystem::getLocalDirectory();
+    BString argsPath = dataPath.stringByApppendingPath("args.txt");
+    readLinesFromFile(argsPath, lines);
+    Fs::deleteNativeFile(argsPath);
+    if (lines.size()) {
+        KSystem::showWindowTimestamp = dataPath.stringByApppendingPath(lines[0]+".txt");
+        U32 createdTime = lines[0].toInt();
+        U32 now = (U32)(KSystem::getSystemTimeAsMicroSeconds() / 100000);
+        if (createdTime + 10 > now) {
+            args.push_back(argv[0]);
+            
+            for (int i=1;i<(int)lines.size();i++) {
+                args.push_back(lines[i].c_str());
+            }
+            argc = (int)args.size();
+            argv = args.data();
+        }
+    }
+#endif
     KSystem::startMicroCounter();
     KSystem::exePath = BString::copy(argv[0]);
     if (KSystem::exePath.contains("\\")) {

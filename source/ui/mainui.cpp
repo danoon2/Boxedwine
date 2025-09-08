@@ -356,6 +356,10 @@ void uiShutdown() {
     window = nullptr;
 }
 
+void uiPumpEvents() {
+    SDL_PumpEvents();
+}
+
 bool uiIsRunning() {
     return window!= nullptr;
 }

@@ -20,6 +20,7 @@
 #include "../boxedwineui.h"
 #include "../../util/threadutils.h"
 #include "knativethread.h"
+#include "knativesystem.h"
 #ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
 #include "../../../lib/tiny-process/process.hpp"
 #endif
@@ -64,12 +65,62 @@ BoxedWinVersion* BoxedwineData::getWinVersionFromName(BString name) {
     return nullptr;
 }
 
+#if defined(__MACH__)
+extern "C" {
+int MacPlatformLaunchAnotherInstance(void);
+int MacPlatformIsTaskRunning(void);
+int MacPlatformIsTaskFinishedLaunching(void);
+}
+#endif
+
 void BoxedwineData::startApp() {
 #ifdef BOXEDWINE_UI_LAUNCH_IN_PROCESS
     GlobalSettings::startUpArgs.apply();
     if (!GlobalSettings::keepUIRunning && uiIsRunning()) {
         uiShutdown();
     }
+#else
+
+#if defined(__MACH__)
+    std::vector<BString> args = GlobalSettings::startUpArgs.buildArgs();
+    BString now;
+    now.append((U32)(KSystem::getSystemTimeAsMicroSeconds() / 100000));
+    args.insert(args.begin(), now);
+    writeLinesToFile(GlobalSettings::getArgsPath(), args);
+    MacPlatformLaunchAnotherInstance();
+    BString filePath = GlobalSettings::getDataFolder().stringByApppendingPath(now+".txt");
+    bool started = false;
+    U32 startTime = KSystem::getMilliesSinceStart();
+    bool windowCreated = false;
+    
+    while (true) {
+        bool running = MacPlatformIsTaskRunning();
+        if (!started) {
+            if (running) {
+                started = true;
+            } else {
+                if (KSystem::getMilliesSinceStart() - startTime > 10000) {
+                    break;
+                }
+            }
+        } else if (!running) {
+            break; // we started but are no longer running
+        }
+        if (windowCreated) {
+            if (uiIsRunning()) {
+                uiShutdown();
+            }
+        } else {
+            if (Fs::doesNativePathExist(filePath)) {
+                windowCreated = true;
+                Fs::deleteNativeFile(filePath);
+            }
+            uiLoop();
+        }
+        uiPumpEvents(); // without this, swift won't get the isTerminated msg
+        KNativeThread::sleep(16);
+    }
+    Fs::deleteNativeFile(filePath);
 #else
     std::vector<BString> a = GlobalSettings::startUpArgs.buildArgs();
     BString log;
@@ -120,6 +171,7 @@ void BoxedwineData::startApp() {
     if (!GlobalSettings::keepUIRunning && uiIsRunning()) {
         uiShutdown();
     }
+#endif
 #endif
 }
 

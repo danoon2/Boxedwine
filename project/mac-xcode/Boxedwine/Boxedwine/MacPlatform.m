@@ -27,6 +27,9 @@
 #import "MacPlatform.h"
 #import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
+#import "Boxedwine-Swift.h"
+
+@class MacPlatformSwift;
 
 void MacPlatormSetThreadPriority(void) {
     [NSThread setThreadPriority:1.0];
@@ -60,4 +63,18 @@ const char* MacPlatformGetResourcePath(const char* pName) {
         return buffer;
     }
     return NULL;
+}
+
+int MacPlatformIsTaskRunning(void) {
+    return [MacPlatformSwift isAppRunning] ? 1 : 0;
+}
+
+int MacPlatformIsTaskFinishedLaunching(void) {
+    return [MacPlatformSwift hasFinishedStartup] ? 1 : 0;
+}
+
+int MacPlatformLaunchAnotherInstance(void)
+{
+    [MacPlatformSwift launchAnotherInstance];
+    return 1;
 }
