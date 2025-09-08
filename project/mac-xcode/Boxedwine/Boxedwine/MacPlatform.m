@@ -27,7 +27,6 @@
 #import "MacPlatform.h"
 #import <Cocoa/Cocoa.h>
 #import <Foundation/Foundation.h>
-#import "Boxedwine-Swift.h"
 
 @class MacPlatformSwift;
 
@@ -64,7 +63,8 @@ const char* MacPlatformGetResourcePath(const char* pName) {
     }
     return NULL;
 }
-
+#ifndef BOXEDWINE_UI_LAUNCH_IN_PROCESS
+#import "Boxedwine-Swift.h"
 int MacPlatformIsTaskRunning(void) {
     return [MacPlatformSwift isAppRunning] ? 1 : 0;
 }
@@ -78,3 +78,4 @@ int MacPlatformLaunchAnotherInstance(void)
     [MacPlatformSwift launchAnotherInstance];
     return 1;
 }
+#endif
