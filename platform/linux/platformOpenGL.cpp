@@ -24,12 +24,13 @@
 //#include "../../source/x11/x11.h"
 #include "../../source/opengl/glcommon.h"
 
-#include <GL/glx.h>
-#include <dlfcn.h>
-
 BHashTable<U32, GLPixelFormatPtr> PlatformOpenGL::formatsById;
 std::vector<GLPixelFormatPtr> PlatformOpenGL::formats;
 bool PlatformOpenGL::hardwareListLoaded;
+
+#if defined(__linux__)
+#include <GL/glx.h>
+#include <dlfcn.h>
 
 typedef Display* (*PFNXOpenDisplay)(_Xconst char*);
 typedef int (*PFNXCloseDisplay)(Display*);
@@ -169,6 +170,27 @@ void PlatformOpenGL::init() {
         dlclose(libgl);
     }    
 }
+#else
+void PlatformOpenGL::init() {
+    formatsById.clear();
+    formats.clear();
+    hardwareListLoaded = false;
+    U32 count = KSystem::getPixelFormatCount();
+    for (U32 i = 1; i < count; i++) {
+        GLPixelFormatPtr format = std::make_shared<GLPixelFormat>();
+        format->id = i;
+        format->pf = *KSystem::getPixelFormat(i);
+        format->nativeId = i;
+        format->depth = format->pf.cColorBits;
+        format->bitsPerPixel = format->pf.cColorBits;
+        formatsById.set(format->id, format);
+        formats.push_back(format);
+    }
+    if (KSystem::videoOption == VIDEO_NORMAL) {
+        //hardwareListLoaded = queryOpenGL(formatsById, formats);
+    }
+}
+#endif
 
 void PlatformOpenGL::iterateFormats(std::function<void(const GLPixelFormatPtr& format)> callback) {
 	for (auto& format : formats) {
