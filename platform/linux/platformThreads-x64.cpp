@@ -247,7 +247,13 @@ void signalHandler() {
         return;
     }
     if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
-        DecodedOp* op = cpu->getNextOp();
+        DecodedOp* op;
+        
+        try {
+            op = cpu->getNextOp();
+        } catch (...) {
+            op = cpu->getNextOp();
+        }
         if (writesFlags[op->inst]) {
             cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
         }

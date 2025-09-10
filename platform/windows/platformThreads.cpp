@@ -194,10 +194,15 @@ LONG WINAPI seh_filter(struct _EXCEPTION_POINTERS* ep) {
         syncToException(ep);
         return EXCEPTION_CONTINUE_EXECUTION;
     } else if (ep->ExceptionRecord->ExceptionCode == EXCEPTION_ACCESS_VIOLATION) {
-        // should only be triggered when a read/write crosses a page boundry or the page has a custom read/write handler        
-        DecodedOp* op = cpu->getNextOp();
-        if (writesFlags[op->inst]) {
-            cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
+        // should only be triggered when a read/write crosses a page boundry, the page has a custom read/write handler or we are jumping to a new eip that hasn't been decoded
+        DecodedOp* op;
+        try {
+            op = cpu->getNextOp(); // can throw an exception if the eip is invalid
+            if (writesFlags[op->inst]) {
+                cpu->flags = ((cpu->instructionStoredFlags >> 8) & 0xFF) | (cpu->flags & DF) | ((cpu->instructionStoredFlags & 0xFF) ? OF : 0);
+            }
+        } catch (...) {
+            op = cpu->getNextOp();
         }
         ep->ContextRecord->Rip = cpu->handleAccessException(op);
         // X64Asm::checkMemory disables the code path for fpu and mmx to throw exceptions

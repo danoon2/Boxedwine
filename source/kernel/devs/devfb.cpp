@@ -313,7 +313,7 @@ void fbSetupScreenForOpenGL(int width, int height, int depth) {
         kpanic_fmt("SDL_CreateWindow failed: %s", SDL_GetError());
     }
     sdlContext = SDL_GL_CreateContext(sdlWindow);
-    if (!sdlWindow) {
+    if (!sdlContext) {
         kpanic_fmt("SDL_GL_CreateContext failed: %s", SDL_GetError());
     }
     bOpenGL = 1;

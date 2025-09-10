@@ -732,7 +732,7 @@ void gl_common_XChooseVisual(CPU* cpu) {
     }    
 
     CLXFBConfigPtr foundCfg = server->getFbConfig(1);
-    S32 foundPoints = 0;
+    S32 foundPoints = -100;
 
     server->iterateFbConfigs([doubleBuffer, colorType, bpp, &foundCfg, &foundPoints](const CLXFBConfigPtr& cfg) {
         S32 points = 0;
@@ -1030,7 +1030,8 @@ void gl_common_XGetFBConfigAttrib(CPU* cpu) {
     KMemory* memory = cpu->memory;
     XServer* server = XServer::getServer();
     U32 attribute = ARG3;
-    CLXFBConfigPtr cfg = server->getFbConfig(ARG2);
+    U32 configId = ARG2;
+    CLXFBConfigPtr cfg = server->getFbConfig(configId);
 
     if (!cfg) {
         EAX = BadValue;

@@ -215,8 +215,12 @@ void signalHandler() {
         return;
     }
     if (cpu->exceptionSigNo == SIGSEGV || cpu->exceptionSigNo == SIGBUS) {
-        DecodedOp* op = cpu->getNextOp();
-
+        DecodedOp* op;
+        try {
+            op = cpu->getNextOp();
+        } catch (...) {
+            op = cpu->getNextOp();
+        }
         cpu->returnHostAddress = cpu->handleAccessException(op);
         cpu->fillFlags();
         return;

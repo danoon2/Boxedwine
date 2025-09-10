@@ -1131,7 +1131,6 @@ void XServer::initVisuals() {
 
 #ifdef BOXEDWINE_OPENGL_SDL
     {
-        PlatformOpenGL::init();
         SDLGL::iterateFormats([this, &vis32, &vis24, &vis16, &vis8](const GLPixelFormatPtr& format) {
             PixelFormat* pf = &format->pf;
             

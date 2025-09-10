@@ -136,6 +136,20 @@ void BoxedwineData::startApp() {
 
     BString out;
     bool windowCreated = false;
+    /*
+    TinyProcessLib::Process::environment_type environment;
+    
+    for (auto env = environ; *env != 0; env++) {
+        std::string line = *env;
+
+        auto equality_sign_pos = line.find('=', 0);
+        auto variable_name = line.substr(0, equality_sign_pos);
+        auto variable_value = line.substr(equality_sign_pos + 1, line.length());
+
+        environment[variable_name] = variable_value;
+    }
+    environment["LIBGL_ALWAYS_SOFTWARE"] = "1";
+    */
     TinyProcessLib::Process process(cmd.c_str(), "", [&out, &windowCreated](const char* bytes, size_t n) {
         for (U32 i=0;i<n;i++) {
             out += bytes[i];
