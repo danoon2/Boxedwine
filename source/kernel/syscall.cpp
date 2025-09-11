@@ -350,7 +350,7 @@ static U32 syscall_getegid(CPU* cpu, U32 eipCount) {
 }
 
 static U32 syscall_ioctl(CPU* cpu, U32 eipCount) {
-    SYS_LOG1(SYSCALL_FILE, cpu, "ioctl: fd=%d request=%d", ARG1, ARG2);
+    SYS_LOG1(SYSCALL_FILE, cpu, "ioctl: fd=%d request=%x", ARG1, ARG2);
     U32 result = cpu->thread->process->ioctl(cpu->thread, ARG1, ARG2);
     SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
     return result;
@@ -423,7 +423,7 @@ static U32 syscall_setrlimit(CPU* cpu, U32 eipCount) {
 static U32 syscall_getrusuage(CPU* cpu, U32 eipCount) {	
     SYS_LOG1(SYSCALL_SYSTEM, cpu, "getrusage: who=%d usuage=%X", ARG1, ARG2);
     U32 result = cpu->thread->process->getrusuage(cpu->thread, ARG1, ARG2);
-    SYS_LOG(SYSCALL_FILE, cpu, " result=%d(0x%X)\n", result, result);
+    SYS_LOG(SYSCALL_SYSTEM, cpu, " result=%d(0x%X)\n", result, result);
     return result;
 }
 

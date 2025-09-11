@@ -241,8 +241,15 @@ void x64CPU::saveToFxState(U32 inst) {
 
 void common_runSingleOp(x64CPU* cpu) {
     cpu->updateFlagsFromX64();
-    DecodedOp* op = cpu->getNextOp();
+    DecodedOp* op = nullptr;
     bool deallocOp = false;
+
+    try {
+        op = cpu->getNextOp();
+    } catch (...) {
+        // at this point the previous getNextOp threw an exception and the eip is now pointing to the signal handler
+        op = cpu->getNextOp();
+    }    
 
     if (op->flags & OP_FLAG_EMULATED_OP) {
         op = cpu->decodeOneOp(cpu->getEipAddress());
