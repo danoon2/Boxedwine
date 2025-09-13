@@ -285,7 +285,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
                 GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
                 GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
-                GlobalSettings::startUpArgs.setOpenGlType(GlobalSettings::getDefaultOpenGL());
+                GlobalSettings::setOpenGlTypeOnStartupArgs(GlobalSettings::getDefaultOpenGL());
                 container->launch();
 
                 if (GlobalSettings::isAutomationEnabled()) {

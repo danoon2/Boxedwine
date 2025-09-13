@@ -227,7 +227,7 @@ void BoxedApp::launch() {
         }
     }
     GlobalSettings::startUpArgs.setWorkingDir(this->path);
-    GlobalSettings::startUpArgs.setOpenGlType(this->openGlType);
+    GlobalSettings::setOpenGlTypeOnStartupArgs(this->openGlType);
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 

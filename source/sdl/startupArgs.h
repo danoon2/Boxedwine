@@ -72,8 +72,7 @@ public:
     void addArgs(const std::vector<BString>& args) {this->args.insert(this->args.end(), args.begin(), args.end());}
     void addZip(BString zip) {this->zips.push_back(zip);}
     void setRoot(BString root) {this->root = root;}
-    void setCpuAffinity(int affinity) {this->cpuAffinity = affinity;}
-    void setOpenGlType(U32 type);
+    void setCpuAffinity(int affinity) {this->cpuAffinity = affinity;}    
     
     std::vector<BString> buildArgs();
 

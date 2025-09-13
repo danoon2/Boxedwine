@@ -311,7 +311,7 @@ void InstallView::onInstall() {
         GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
         GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
         GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
-        GlobalSettings::startUpArgs.setOpenGlType(GlobalSettings::getDefaultOpenGL());
+        GlobalSettings::setOpenGlTypeOnStartupArgs(GlobalSettings::getDefaultOpenGL());
         bool containerCreated = false;
         if (!container) {
             BString containerFilePath = GlobalSettings::createUniqueContainerPath(containerName);

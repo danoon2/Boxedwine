@@ -175,6 +175,7 @@ public:
     static BString alternativeOpenGlUrl();
     static U32 alternativeOpenGlDownloadSizeMB();
     static bool cacheReads() { return GlobalSettings::enabledCachedReadFiles; }
+    static void setOpenGlTypeOnStartupArgs(U32 type);
 
     static StartUpArgs startUpArgs;
 
