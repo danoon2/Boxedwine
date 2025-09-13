@@ -123,7 +123,11 @@ void GlobalSettings::init(int argc, const char **argv) {
     GlobalSettings::lastScreenCy = config.readInt(B("WindowHeight"), 0);
     GlobalSettings::lastScreenX = config.readInt(B("WindowX"), 0);
     GlobalSettings::lastScreenY = config.readInt(B("WindowY"), 0);
+#ifdef __MACH__
+    GlobalSettings::defaultOpenGL = config.readInt(B("OpenGL"), OPENGL_TYPE_LLVM_PIPE);
+#else
     GlobalSettings::defaultOpenGL = config.readInt(B("OpenGL"), OPENGL_TYPE_DEFAULT);
+#endif
     GlobalSettings::enabledAutomation = config.readBool(B("EnableAutomation"), false);
     GlobalSettings::enabledCachedReadFiles = config.readBool(B("EnabledCachedReadFiles"), false);
 

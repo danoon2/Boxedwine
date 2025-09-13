@@ -73,7 +73,8 @@ public:
     void addZip(BString zip) {this->zips.push_back(zip);}
     void setRoot(BString root) {this->root = root;}
     void setCpuAffinity(int affinity) {this->cpuAffinity = affinity;}
-
+    void setOpenGlType(U32 type);
+    
     std::vector<BString> buildArgs();
 
     std::vector<MountInfo> mountInfo;    

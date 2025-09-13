@@ -227,27 +227,7 @@ void BoxedApp::launch() {
         }
     }
     GlobalSettings::startUpArgs.setWorkingDir(this->path);
-    U32 type = this->openGlType;
-    if (type == OPENGL_TYPE_DEFAULT) {
-        type = GlobalSettings::getDefaultOpenGL();
-    }
-#ifdef __MACH__
-    if (type != OPENGL_TYPE_NATIVE) {
-        GlobalSettings::startUpArgs.openGlLib = "osmesa";
-    }
-#endif
-#ifdef BOXEDWINE_MSVC
-    if (type != OPENGL_TYPE_NATIVE) {
-        GlobalSettings::startUpArgs.openGlLib = GlobalSettings::alternativeOpenGlLocation();
-        if (type == OPENGL_TYPE_LLVM_PIPE) {
-            putenv("GALLIUM_DRIVER=llvmpipe");
-        } else if (type == OPENGL_TYPE_ON_D3D12) {
-            putenv("GALLIUM_DRIVER=d3d12");
-        } else if (type == OPENGL_TYPE_ON_VULKAN) {
-            putenv("GALLIUM_DRIVER=zink");
-        }
-    }
-#endif
+    GlobalSettings::startUpArgs.setOpenGlType(this->openGlType);
     GlobalSettings::startUpArgs.readyToLaunch = true;
 }
 

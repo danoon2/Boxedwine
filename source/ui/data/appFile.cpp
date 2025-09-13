@@ -105,6 +105,12 @@ void AppFile::runOptions(BoxedContainer* container, BoxedApp* app, const std::ve
             if (app) {
                 app->resolution = option.substr(11);
             }
+        } else if (option=="macNativeGL") {
+#ifdef __MACH__
+            if (app) {
+                app->openGlType = OPENGL_TYPE_NATIVE;
+            }
+#endif
         } else {
             AppFilePtr component = GlobalSettings::getComponentByOptionName(option);
             if (component) {
@@ -279,6 +285,7 @@ void AppFile::install(bool chooseShortCut, BoxedContainer* container, std::list<
                 GlobalSettings::startUpArgs.setScale(GlobalSettings::getDefaultScale());
                 GlobalSettings::startUpArgs.setVsync(GlobalSettings::getDefaultVsync());
                 GlobalSettings::startUpArgs.setResolution(GlobalSettings::getDefaultResolution());
+                GlobalSettings::startUpArgs.setOpenGlType(GlobalSettings::getDefaultOpenGL());
                 container->launch();
 
                 if (GlobalSettings::isAutomationEnabled()) {
