@@ -20,17 +20,17 @@
 void dynamic_bound16(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     callHostFunction((void*)common_bound16, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_CALL_RESULT, true);
     blockDone(data, true);
-    endIf();
+    EndIf();
     INCREMENT_EIP(data, op);
 }
 void dynamic_bound32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     callHostFunction((void*)common_bound32, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_CALL_RESULT, true);
     blockDone(data, true);
-    endIf();
+    EndIf();
     INCREMENT_EIP(data, op);
 }
 void dynamic_daa(DynamicData* data, DecodedOp* op) {
@@ -55,9 +55,9 @@ void dynamic_aad(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_aam(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)aam, true, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_CALL_RESULT, true);
     blockDone(data, true);
-    endIf();
+    EndIf();
     INCREMENT_EIP(data, op);
 }
 void dynamic_nop(DynamicData* data, DecodedOp* op) {
@@ -184,14 +184,7 @@ void dynamic_ud2(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_int80(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)ksyscall, false, 2, 0, DYN_PARAM_CPU, false, op->len, DYN_PARAM_CONST_32, false);
-    if (!data->isFunction) {
-        blockDone(data, false);
-    } else {
-        movToRegFromCpu(DYN_CALL_RESULT, CPU_OFFSET_OF(eip.u32), DYN_32bit);
-        startIfCmpValue(DYN_CALL_RESULT, data->currentEip + op->len, DYN_EQUALS_ZERO, DYN_32bit, true);
-        blockDone(data, true);
-        endIf();
-    }
+    blockDone(data, false);
 }
 void dynamic_int99(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_int99, false, 1, 0, DYN_PARAM_CPU, false);
@@ -317,7 +310,10 @@ void dynamic_loopnz(DynamicData* data, DecodedOp* op) {
     // apply mask (0xffffffff is nz flag else 0) to CX
     instRegReg('&', DYN_DEST, DYN_SRC, width, true);
 
-    dynamic_jumpIfRegSet(data, op, DYN_DEST, width);
+    if (width == DYN_16bit) {
+        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, width, false);
+    }
+    dynamic_jumpIfRegSet(data, op, DYN_DEST, true);
 }
 void dynamic_loopz(DynamicData* data, DecodedOp* op) {
     // CX--;
@@ -343,7 +339,10 @@ void dynamic_loopz(DynamicData* data, DecodedOp* op) {
     // apply mask (0xffffffff is z flag else 0) to CX
     instRegReg('&', DYN_DEST, DYN_SRC, width, true);    
 
-    dynamic_jumpIfRegSet(data, op, DYN_DEST, width);
+    if (width == DYN_16bit) {
+        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, width, false);
+    }
+    dynamic_jumpIfRegSet(data, op, DYN_DEST, true);
 }
 
 void dynamic_loop(DynamicData* data, DecodedOp* op) {
@@ -359,7 +358,10 @@ void dynamic_loop(DynamicData* data, DecodedOp* op) {
     instRegImm('-', DYN_DEST, width, 1);
     movToCpuFromReg(cpuOffset(1, width), DYN_DEST, width, false);
 
-    dynamic_jumpIfRegSet(data, op, DYN_DEST, width);
+    if (width == DYN_16bit) {
+        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, width, false);
+    }
+    dynamic_jumpIfRegSet(data, op, DYN_DEST, true);
 }
 void dynamic_jcxz(DynamicData* data, DecodedOp* op) {
     // if (ECX == 0) {
@@ -371,7 +373,10 @@ void dynamic_jcxz(DynamicData* data, DecodedOp* op) {
     DynWidth width = op->ea16 ? DYN_16bit : DYN_32bit;
     movToRegFromCpu(DYN_DEST, cpuOffset(1, width), width);
 
-    dynamic_jumpIfRegNotSet(data, op, DYN_DEST, width);
+    if (width == DYN_16bit) {
+        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, width, false);
+    }
+    dynamic_jumpIfRegNotSet(data, op, DYN_DEST, true);
 }
 void dynamic_InAlIb(DynamicData* data, DecodedOp* op) {
     movToCpu(CPU_OFFSET_OF(reg[0].u8), DYN_8bit, 0xFF);
@@ -727,9 +732,9 @@ void dynamic_loadSegment16(DynamicData* data, DecodedOp* op) {
     instRegImm('+', DYN_ADDRESS, DYN_32bit, 2);
     movFromMem(DYN_16bit, DYN_ADDRESS, true);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_CALL_RESULT, true);
     blockDone(data, true);
-    endIf();
+    EndIf();
     movToCpuFromReg(CPU::offsetofReg16(op->reg), DYN_DEST, DYN_16bit, true);
     INCREMENT_EIP(data, op);
 }
@@ -740,9 +745,9 @@ void dynamic_loadSegment32(DynamicData* data, DecodedOp* op) {
     instRegImm('+', DYN_ADDRESS, DYN_32bit, 4);
     movFromMem(DYN_16bit, DYN_ADDRESS, true);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_CALL_RESULT, true);
     blockDone(data, true);
-    endIf();
+    EndIf();
     movToCpuFromReg(CPU::offsetofReg32(op->reg), DYN_DEST, DYN_32bit, true);
     INCREMENT_EIP(data, op);
 }

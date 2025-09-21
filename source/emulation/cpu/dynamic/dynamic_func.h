@@ -17,14 +17,18 @@
  */
 
 void dynamic_jump(DynamicData* data, DecodedOp* op, DynReg reg, U32 inst, U32 len1, U32 len2) {
-    startIf(reg, (inst==JumpZ?DYN_NOT_EQUALS_ZERO:DYN_EQUALS_ZERO), true);
+    if (inst == JumpZ) {
+        If(reg, false);
+    } else {
+        IfNot(reg, false);
+    }
 
     INCREMENT_EIP(data, len2);
     blockNext2(data, op);
-    startElse();
+    StartElse();
     INCREMENT_EIP(data, len1);
     blockNext1(data, op);
-    endIf();
+    EndIf();
     data->done = true;
 }
 
@@ -910,7 +914,7 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
         return;
     }    
     movToRegFromCpuPtr(reg, offsetof(CPU, lazyFlags));
-    startIfCmpPtr(reg, (DYN_PTR_SIZE)data->currentLazyFlags, true, false);
+    IfPtrEqual(reg, (DYN_PTR_SIZE)data->currentLazyFlags, false);
     if (data->currentLazyFlags==FLAGS_NONE) {
         if (!getFlagInReg(data, condition, reg)) {
             getCondition(data, condition, reg);
@@ -992,9 +996,9 @@ void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg) 
     } else {
         kpanic("setConditionInReg unhandled condition");
     }
-    startElse();
+    StartElse();
     getCondition(data, condition, reg);
-    endIf();
+    EndIf();
 }
 
 void dynamic_pushReg32(DynamicData* data, DynReg reg, bool doneWithReg) {    
@@ -1026,11 +1030,11 @@ void dynamic_fillFlags(DynamicData* data) {
 void dynamic_getCF(DynamicData* data) {
     if (data->currentLazyFlags) {
         movToRegFromCpuPtr(DYN_DEST, offsetof(CPU, lazyFlags));
-        startIfCmpPtr(DYN_DEST, (DYN_PTR_SIZE)data->currentLazyFlags, true, true);
+        IfPtrEqual(DYN_DEST, (DYN_PTR_SIZE)data->currentLazyFlags, true);
         genCF(data->currentLazyFlags, DYN_CALL_RESULT);
-        startElse();
+        StartElse();
         callHostFunction((void*)common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
-        endIf();
+        EndIf();
     } else {
         callHostFunction((void*)common_getCF, true, 1, 0, DYN_PARAM_CPU, false);
     }

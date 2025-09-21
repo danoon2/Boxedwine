@@ -171,13 +171,6 @@ void IfPtrEqual(X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg);
 void StartElse();
 void EndIf();
 
-void jumpIf(DynamicData* data, DynReg reg, DynCondition condition, bool doneWithReg, U32 address, DynWidth regWidth = DYN_32bit);
-void startIf(DynReg reg, DynCondition condition, bool doneWithReg, DynWidth regWidth = DYN_32bit);
-void startIfCmpValue(DynReg reg, U32 value, bool isEqual, DynWidth regWidth, bool doneWithReg);
-void startIfCmpPtr(DynReg reg, DYN_PTR_SIZE value, bool isEqual, bool doneWithReg);
-void startIf(DynReg reg, DynReg reg2, bool isEqual, DynWidth regWidth, bool doneWithReg, bool doneWithReg2);
-void startElse();
-void endIf();
 void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
 void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition);
 void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg);
@@ -231,22 +224,6 @@ bool regUsed[4];
 #include "../dynamic/dynamic_lock.h"
 
 static X86Asm x86;
-
-void outb(U8 b) {
-    x86.buffer.push_back(b);
-}
-
-void outw(U16 w) {
-    outb((U8)w);
-    outb((U8)(w>>8));
-}
-
-void outd(U32 d) {
-    outb((U8)d);
-    outb((U8)(d>>8));
-    outb((U8)(d>>16));
-    outb((U8)(d>>24));
-}
 
 void calculateEaa(DecodedOp* op, DynReg reg) {
     regUsed[reg] = true;
@@ -723,7 +700,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     }
     regUsed[tmpReg.reg] = false;
 
-    startElse();
+    StartElse();
 
     bool regDone[4] = { false, false, false, false };
     if (doneWithReg && isParamTypeReg(paramType)) {
@@ -763,7 +740,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     if (regUsed[x86.eax.reg] && !regDone[x86.eax.reg]) {
         x86.pop(x86.eax);
     }
-    endIf();
+    EndIf();
 
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
@@ -1221,151 +1198,6 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth, DynReg tmpReg) {
     movToCpuFromReg(dstOffset, tmpReg, regWidth, true);
 }
 
-void jumpIf(DynamicData* data, DynReg reg, DynCondition condition, bool doneWithReg, U32 address, DynWidth regWidth) {
-    // test reg, reg
-    if (regWidth == DYN_8bit) {
-        outb(0x84);
-        outb(0xc0 | reg | (reg << 3));
-    }
-    else {
-        if (regWidth == DYN_16bit) {
-            outb(0x66);
-        }
-        outb(0x85);
-        outb(0xc0 | reg | (reg << 3));
-    }
-
-    outb(0xf);
-    if (condition == DYN_EQUALS_ZERO) {
-        outb(0x84); // jz, jump over if not true
-    }
-    else if (condition == DYN_NOT_EQUALS_ZERO) {
-        outb(0x85); // jnz, jump over not true
-    }
-    else {
-        kpanic_fmt("x32CPU::startIf unknown condition %d", condition);
-    }
-    data->jumps.push_back(DynamicJump(address, x86.buffer.size()));
-    outd(0); // jump over amount
-    if (doneWithReg)
-        regUsed[reg] = false;
-}
-
-void startIfCmpValue(DynReg reg, U32 value, bool isEqual, DynWidth regWidth, bool doneWithReg) {
-    S32 sValue = (S32)value;
-    bool isOneByte = sValue >= -128 && sValue <= 127;
-
-    // cmp reg, value
-    if (regWidth == DYN_8bit) {
-        outb(0x80);
-        outb(0xf8 | reg | (reg << 3));
-        outb((U8)value);
-    } else {
-        if (regWidth == DYN_16bit) {
-            outb(0x66);
-        }
-        outb(isOneByte ? 0x83 : 0x81);
-        outb(0xf8 | reg);
-        if (isOneByte) {
-            outb((U8)value);
-        } else if (regWidth == DYN_16bit) {
-            outw((U16)value);
-        } else {
-            outd(value);
-        }
-    }    
-
-    if (isEqual) {
-        outb(0x75);
-    } else {
-        outb(0x74);
-    }
-
-    x86.ifJump.push_back(x86.buffer.size());
-    outb(0); // jump over amount
-    if (doneWithReg)
-        regUsed[reg] = false;
-}
-
-void startIfCmpPtr(DynReg reg, DYN_PTR_SIZE value, bool isEqual, bool doneWithReg) {
-    startIfCmpValue(reg, value, isEqual, DYN_32bit, doneWithReg);
-}
-
-void startIf(DynReg reg, DynReg reg2, bool isEqual, DynWidth regWidth, bool doneWithReg, bool doneWithReg2) {
-
-    // cmp reg, reg2
-    if (regWidth == DYN_8bit) {
-        outb(0x39);
-        outb(0xc0 | reg | (reg << 3));
-    } else {
-        if (regWidth == DYN_16bit) {
-            outb(0x66);
-        }
-        outb(0x39);
-        outb(0xc0 | reg | (reg << 3));
-    }
-
-    if (isEqual) {
-        outb(0x74); // jz, jump over if not true
-    } else {
-        outb(0x75); // jnz, jump over not true
-    }
-
-    x86.ifJump.push_back(x86.buffer.size());
-    outb(0); // jump over amount
-    if (doneWithReg)
-        regUsed[reg] = false;
-    if (doneWithReg2)
-        regUsed[reg2] = false;
-}
-
-void startIf(DynReg reg, DynCondition condition, bool doneWithReg, DynWidth regWidth) {
-    // test reg, reg
-    if (regWidth == DYN_8bit) {
-        outb(0x84);
-        outb(0xc0 | reg | (reg << 3));
-    } else {
-        if (regWidth == DYN_16bit) {
-            outb(0x66);
-        }
-        outb(0x85);
-        outb(0xc0 | reg | (reg << 3));
-    }
-    if (condition==DYN_NOT_EQUALS_ZERO) {
-        outb(0x74); // jz, jump over if not true
-    } else if (condition==DYN_EQUALS_ZERO) {
-        outb(0x75); // jnz, jump over not true
-    } else {
-        kpanic_fmt("x32CPU::startIf unknown condition %d", condition);
-    }
-
-    x86.ifJump.push_back(x86.buffer.size());
-    outb(0); // jump over amount
-    if (doneWithReg)
-        regUsed[reg] = false;
-}
-
-void startElse() {    
-    outb(0xeb); // previous block should jump over else statement
-    U32 pos = x86.buffer.size();
-    outb(0); // jump over amount
-
-    // if statement will jump here if it wasn't true
-    endIf();
-
-    x86.ifJump.push_back(pos);
-}
-
-void endIf() {
-    U32 pos = x86.ifJump.back();
-    U32 amount = x86.buffer.size() -pos-1;
-    if (amount>127) {
-        kpanic_fmt("x32CPU::endIf large if/else blocks not supported: %d", amount);
-    }
-    x86.ifJump.pop_back();
-    x86.buffer[pos] = (U8)(amount);
-}
-
 void IfPtrEqual(X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg) {
     IfEqual(reg, value, doneWithReg);
 }
@@ -1628,13 +1460,6 @@ void blockDone(DynamicData* data, bool returnEarly) {
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
 void blockNext1(DynamicData* data, DecodedOp* op) {
-    if (data->isFunction) {
-        // only direct jumps will get here, like jmp8, jz, loopnz
-        outb(0xe9);
-        data->jumps.push_back(DynamicJump(data->currentEip + op->len + op->imm, x86.buffer.size()));
-        outd(0);
-        return;
-    }
     // if (!(*(op->nextJump))) {
     //     *(op->nextJump) = cpu->getNextOp();
     // }
@@ -1649,11 +1474,11 @@ void blockNext1(DynamicData* data, DecodedOp* op) {
     // eax = *(op->nextJump)
     x86.readMem(x86.eax, x86.ebx, 0);
     // if (!(*(op->nextJump))) 
-    startIf(DYN_EAX, DYN_EQUALS_ZERO, false);
+    IfNot(DYN_EAX, false);
     // *(op->nextJump) = cpu->getNextOp();
     callHostFunction(common_getNextOp, true, 1, 0, DYN_PARAM_CPU);
     x86.writeMem(x86.ebx, 0, x86.eax);
-    endIf();
+    EndIf();
 
     // cpu->nextOp = *(op->nextJump);        
     regUsed[DYN_EBX] = false;
@@ -1661,9 +1486,9 @@ void blockNext1(DynamicData* data, DecodedOp* op) {
     
 #ifdef BOXEDWINE_MULTI_THREADED
     x86.readMem(x86.eax, x86.eax, offsetof(DecodedOp, pfnJitCode));
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    If(DYN_CALL_RESULT, true);
     x86.jmp(x86.eax);
-    endIf();
+    EndIf();
 #endif
 }
 
@@ -1677,12 +1502,12 @@ void blockNext2(DynamicData* data, DecodedOp* op) {
     // mov eax, [ebx + offsetof(DecodedOp, next)]
     x86.readMem(x86.eax, x86.ebx, offsetof(DecodedOp, next));
 
-    startIf(DYN_EAX, DYN_EQUALS_ZERO, false);
+    IfNot(DYN_EAX, false);
     // op->next = cpu->getNextOp();
     callHostFunction(common_getNextOp, true, 1, 0, DYN_PARAM_CPU);
     // mov [ebx + offsetof(DecodedOp, next)], eax
     x86.writeMem(x86.ebx, offsetof(DecodedOp, next), x86.eax);
-    endIf();
+    EndIf();
     regUsed[DYN_EBX] = false;
 
     // cpu->nextOp = op->next
@@ -1690,9 +1515,9 @@ void blockNext2(DynamicData* data, DecodedOp* op) {
 
 #ifdef BOXEDWINE_MULTI_THREADED
     x86.readMem(x86.eax, x86.eax, offsetof(DecodedOp, pfnJitCode));
-    startIf(DYN_CALL_RESULT, DYN_NOT_EQUALS_ZERO, true);
+    If(DYN_CALL_RESULT, true);
     x86.jmp(x86.eax);
-    endIf();
+    EndIf();
 #endif 
 }
 
@@ -2069,7 +1894,7 @@ static OpCallback getJitFunctionForCurrentOp(CPU* cpu) {
 void blockDoneJump(DynamicData* data) {
     // :TODO: what about caching result for direct calls or direct jumps?
     callHostFunction(getJitFunctionForCurrentOp, true, 1, 0, DYN_PARAM_CPU, false);
-    startIf(DYN_EAX, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_EAX, true);
     x86.pop(x86.edi);
     x86.pop(x86.ebx);
 
@@ -2079,7 +1904,7 @@ void blockDoneJump(DynamicData* data) {
 #endif
     x86.ret();
 
-    endIf();
+    EndIf();
 
     x86.jmp(x86.eax);
 }

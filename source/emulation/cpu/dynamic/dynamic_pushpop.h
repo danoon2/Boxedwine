@@ -124,9 +124,9 @@ void dynamic_pushSeg16(DynamicData* data, DecodedOp* op) {
 void dynamic_popSeg16(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_peek16, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_CALL_RESULT, true);
     blockDone(data, true);
-    endIf();
+    EndIf();
     movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(stackMask), DYN_32bit);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
     movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
@@ -145,9 +145,9 @@ void dynamic_pushSeg32(DynamicData* data, DecodedOp* op) {
 void dynamic_popSeg32(DynamicData* data, DecodedOp* op) {
     callHostFunction((void*)common_peek32, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
+    IfNot(DYN_CALL_RESULT, true);
     blockDone(data, true);
-    endIf();
+    EndIf();
     movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(stackMask), DYN_32bit);
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
     movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
