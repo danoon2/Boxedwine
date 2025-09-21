@@ -625,6 +625,25 @@ bool isParamTypeReg(DynCallParamType paramType) {
     return paramType==DYN_PARAM_REG_8 || paramType==DYN_PARAM_REG_16 || paramType==DYN_PARAM_REG_32;
 }
 
+X86Asm::Reg32 getTmpReg() {
+    if (!regUsed[x86.ecx.reg]) {
+        regUsed[1] = true;
+        return x86.ecx;
+    } else if (!regUsed[x86.edx.reg]) {
+        regUsed[2] = true;
+        return x86.edx;
+    } else if (!regUsed[x86.ebx.reg]) {
+        regUsed[3] = true;
+        return x86.ebx;
+    } else if (!regUsed[x86.eax.reg]) {
+        regUsed[0] = true;
+        return x86.eax;
+    } else {
+        kpanic("movFromMem ran out of regs");
+        return x86.ecx;
+    }
+}
+
 // will inline the following code snippet (this code is for 32-bit, but it will do a similiar thing for 16-bit and 8-bit)
 //
 // if ((address & 0xFFF) < 0xFFD) {
@@ -636,265 +655,121 @@ bool isParamTypeReg(DynCallParamType paramType) {
 //  } else {
 //      Memory::currentMMU[index]->writed(address, value);		
 //  }
-void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithValueReg) {    
-    U32 firstCheckPos=0;
+void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg) {
+    U32 firstCheckPos = 0;
 
-    U32 reg1;
-    bool pushedReg1 = false;
-    bool isParamReg = isParamTypeReg(paramType);
-    if (!regUsed[DYN_EAX] && !(isParamReg && value == DYN_EAX)) {
-        reg1 = DYN_EAX;
-    } else if (!regUsed[DYN_ECX] && !(isParamReg && value == DYN_ECX)) {
-        reg1 = DYN_ECX;
-    } else if (!regUsed[DYN_EDX] && !(isParamReg && value == DYN_EDX)) {
-        reg1 = DYN_EDX;
-    } else if (!regUsed[DYN_EBX] && !(isParamReg && value == DYN_EBX)) {
-        reg1 = DYN_EBX;
-    } else {
-        if (isParamReg && value == DYN_EAX) {
-            reg1 = DYN_EDX;
-        } else {
-            reg1 = DYN_EAX;
+    X86Asm::Reg32 tmpReg = getTmpReg();
+
+    if (width != DYN_8bit) {
+        // make sure we only use the fast path if the entire read will take place on the same page
+        x86.mov(tmpReg, X86Asm::Reg32(addressReg));
+        x86.and_(tmpReg, K_PAGE_MASK);
+
+        if (width == DYN_16bit) {
+            // if ((address & 0xFFF) < 0xFFF)                    
+            IfLessThan(tmpReg, K_PAGE_MASK, false);
+        } else if (width == DYN_32bit) {
+            // if ((address & 0xFFF) < 0xFFD)
+            IfLessThan(tmpReg, 0xFFD, false);
         }
-        outb(0x50+reg1);
-        pushedReg1 = true;
+    }
+    x86.mov(tmpReg, X86Asm::Reg32(addressReg));
+    x86.shr(tmpReg, K_PAGE_SHIFT);
+    x86.readMem(tmpReg, tmpReg, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+
+    if (width != DYN_8bit) {
+        EndIf();
     }
 
-    // make sure we only use the fast path if the entire read will take place on the same page
-    if (width==DYN_16bit) {
-        // if ((address & 0xFFF) < 0xFFF)
-    
-        // mov eax, addressReg
-        outb(0x89);
-        outb(0xc0 | (addressReg<<3) | reg1);
+    // test eax, 0x80000000 (mmu[index].canWriteRam)
+    IfBitSet(tmpReg, 0x80000000, false);
 
-        // and eax, 0xfff
-        if (reg1==DYN_EAX) {
-            outb(0x25);
-            outd(0xFFF);
-        } else {
-            outb(0x81);
-            outb(0xe0|reg1);
-            outd(0xfff);
-        }
+    // bottom 20 bits of mmu contains ram page index
+    x86.and_(tmpReg, 0xfffff);
+    x86.readMem(tmpReg, tmpReg, 2, (U32)ramPages);
+    X86Asm::Reg32 offsetReg(addressReg);
 
-        // cmp eax, 0xfff
-        if (reg1==DYN_EAX) {
-            outb(0x3D);
-            outd(0xfff);
-        } else {
-            outb(0x81);
-            outb(0xf8|reg1);
-            outd(0xfff);
-        }
-
-        // jnb
-        outb(0x73);
-        firstCheckPos = x86.buffer.size();
-        outb(0);
-
-    } else if (width==DYN_32bit) {
-        // if ((address & 0xFFF) < 0xFFD)
-
-        // mov eax, addressReg
-        outb(0x89);
-        outb(0xc0 | (addressReg<<3) | reg1);
-
-        // and eax, 0xfff
-        if (reg1==DYN_EAX) {
-            outb(0x25);
-            outd(0xFFF);
-        } else {
-            outb(0x81);
-            outb(0xe0|reg1);
-            outd(0xfff);
-        }
-
-        // cmp eax, 0xffd
-        if (reg1==DYN_EAX) {
-            outb(0x3D);
-            outd(0xffd);
-        } else {
-            outb(0x81);
-            outb(0xf8|reg1);
-            outd(0xffd);
-        }
-
-        // jnb
-        outb(0x73);
-        firstCheckPos = x86.buffer.size();
-        outb(0);
+    if (!doneWithAddressReg) {
+        x86.push(x86.esi);
+        offsetReg = x86.esi;
+        x86.mov(offsetReg, X86Asm::Reg32(addressReg));
     }
+    x86.and_(offsetReg, K_PAGE_MASK);
 
-    // int index = address >> 12;
-    // if (Memory::currentMMUWritePtr[index])
-    //     *(U32*)(&Memory::currentMMUWritePtr[index][address & 0xFFF]) = value;
-    // else
-    //     Memory::currentMMU[index]->writed(address, value);	
-
-    // mov reg1, addressReg
-    outb(0x89);
-    outb(0xc0 | (addressReg<<3) | reg1);
-
-    // address >> 12
-    // shr reg1, 10
-    outb(0xc1);
-    outb(0xe8 | reg1);
-    outb(0x0c);
-
-    // mov reg1, [mmu+sizeof(MMU*)*index];
-    outb(0x8b);
-    outb(0x04|(reg1<<3));
-    outb(0x85|(reg1<<3));
-    outd((U32)getMemData(KThread::currentThread()->memory)->mmu);
-
-    // test reg1, 0x80000000
-    outb(0xf7);
-    outb(0xc0 | reg1);
-    outd(0x80000000);
-
-    // jz
-    outb(0x74);
-    U32 jzPos = x86.buffer.size();
-    outb(0); // skip over cached read
-
-    // and reg1, 0xfffff (bottom 20 bits of mmu contains ram page index)
-    outb(0x81);
-    outb(0xe0 | reg1);
-    outd(0xfffff);
-
-    // mov reg1, [reg1*4 + ramPages]
-    outb(0x8b);
-    outb(0x04 | (reg1 << 3));
-    outb(0x85 | (reg1 << 3));
-    outd((U32)ramPages);
-
-    // mov eax, [eax+(address & 0xFFF)]
-    U32 reg2;
-    bool pushedReg2 = false;
-    if (!regUsed[DYN_ECX] && reg1!=DYN_ECX && !(isParamReg && value == DYN_ECX)) {
-        reg2 = DYN_ECX;
-    } else if (!regUsed[DYN_EDX] && reg1!=DYN_EDX && !(isParamReg && value == DYN_EDX)) {
-        reg2 = DYN_EDX;
-    } else if (!regUsed[DYN_EBX] && reg1!=DYN_EBX && !(isParamReg && value == DYN_EBX)) {
-        reg2 = DYN_EBX;
-    } else {
-        if ((isParamReg && value == DYN_ECX) || reg1 == DYN_ECX) {
-            if (reg1==DYN_EAX || (isParamReg && value == DYN_EAX)) {
-                reg2 = DYN_EDX;
-            } else {
-                reg2 = DYN_EAX;
-            }
+    // mov eax, [eax+reg]
+    if (isParamTypeReg(paramType)) {
+        if (width == DYN_8bit) {
+            x86.writeMem(tmpReg, offsetReg, 0, 0, X86Asm::Reg8(value));
+        } else if (width == DYN_16bit) {
+            x86.writeMem(tmpReg, offsetReg, 0, 0, X86Asm::Reg16(value));
+        } else if (width == DYN_32bit) {
+            x86.writeMem(tmpReg, offsetReg, 0, 0, X86Asm::Reg32(value));
         } else {
-            reg2 = DYN_ECX;
-        }
-        pushedReg2 = true;
-        outb(0x50+reg2);
-    }
-
-    // mov reg2, addressReg
-    outb(0x89);
-    outb(0xc0|reg2|(addressReg<<3));
-
-    // and reg, 0xfff
-    outb(0x81);
-    outb(0xe0+reg2);
-    outd(0xfff);
-
-    // mov [eax+reg2], value
-    if (paramType == DYN_PARAM_CONST_8 || paramType == DYN_PARAM_CONST_16 || paramType == DYN_PARAM_CONST_32) {
-        if (width==DYN_8bit) {
-            outb(0xc6);
-            outb(0x04);
-            outb(reg1 | (reg2 << 3));
-            outb((U8)value);
-        } else if (width==DYN_16bit) {
-            outb(0x66);
-            outb(0xc7);
-            outb(0x04);
-            outb(reg1 | (reg2 << 3));
-            outw((U16)value);
-        } else if (width==DYN_32bit) {
-            outb(0xc7);
-            outb(0x04);
-            outb(reg1 | (reg2 << 3));
-            outd((U32)value);
-        }
-    } else if (paramType == DYN_PARAM_REG_8 || paramType == DYN_PARAM_REG_16 || paramType == DYN_PARAM_REG_32) {
-        if (width==DYN_8bit) {
-            outb(0x88);
-            outb(0x04|(value<<3));
-            outb(reg1 | (reg2 << 3));
-        } else if (width==DYN_16bit) {
-            outb(0x66);
-            outb(0x89);
-            outb(0x04|(value<<3));
-            outb(reg1 | (reg2 << 3));
-        } else if (width==DYN_32bit) {
-            outb(0x89);
-            outb(0x04|(value<<3));
-            outb(reg1 | (reg2 << 3));
+            kpanic("movToMem");
         }
     } else {
-        kpanic_fmt("x32CPU::movToMem unknown param type: %d", paramType);
+        if (width == DYN_8bit) {
+            x86.writeMem(tmpReg, offsetReg, 0, 0, (U8)value);
+        } else if (width == DYN_16bit) {
+            x86.writeMem(tmpReg, offsetReg, 0, 0, (U16)value);
+        } else if (width == DYN_32bit) {
+            x86.writeMem(tmpReg, offsetReg, 0, 0, value);
+        } else {
+            kpanic("movToMem");
+        }
     }
-    if (pushedReg2) {
-        outb(0x58+reg2);
+    if (!doneWithAddressReg) {
+        x86.pop(x86.esi);
     }
+    regUsed[tmpReg.reg] = false;
 
-    // jmp over slow path
-    outb(0xeb);
-    U32 slowPos = x86.buffer.size();
-    outb(0);
+    startElse();
 
-    x86.buffer[jzPos] = (U8)(x86.buffer.size() -jzPos-1);
-    if (firstCheckPos)
-        x86.buffer[firstCheckPos] = (U8)(x86.buffer.size() -firstCheckPos-1);
-
-    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EAX))
-        outb(0x50);  
-    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1) && (!doneWithValueReg || value!=DYN_ECX))
-        outb(0x51);
-    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EDX))
-        outb(0x52);
+    bool regDone[4] = { false, false, false, false };
+    if (doneWithReg && isParamTypeReg(paramType)) {
+        regDone[value] = true;
+    }
+    if (regUsed[x86.eax.reg] && !regDone[x86.eax.reg]) {
+        x86.push(x86.eax);
+    }
+    if (regUsed[x86.ecx.reg] && !regDone[x86.ecx.reg]) {
+        x86.push(x86.ecx);
+    }
+    if (regUsed[x86.edx.reg] && !regDone[x86.edx.reg]) {
+        x86.push(x86.edx);
+    }
 
     pushValue(value, paramType);
+    x86.push(X86Asm::Reg32(addressReg));
 
-    // push addressReg
-    outb(0x50+addressReg);
-
-    void* address;
-
-    // call write
     if (width == DYN_32bit) {
-        address = writed;        
+        x86.call(writed);
     } else if (width == DYN_16bit) {
-        address = writew;
+        x86.call(writew);
     } else if (width == DYN_8bit) {
-        address = writeb;
+        x86.call(writeb);
     } else {
         kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
-    }    
+    }
 
-    outb(0xe8);
-    x86.patch.push_back(x86.buffer.size());
-    outd((U32)address);
+    x86.add(x86.esp, 8);
 
-    // add esp, 8
-    outb(0x83);
-    outb(0xc4);
-    outb(0x08);
+    if (regUsed[x86.edx.reg] && !regDone[x86.edx.reg]) {
+        x86.pop(x86.edx);
+    }
+    if (regUsed[x86.ecx.reg] && !regDone[x86.ecx.reg]) {
+        x86.pop(x86.ecx);
+    }
+    if (regUsed[x86.eax.reg] && !regDone[x86.eax.reg]) {
+        x86.pop(x86.eax);
+    }
+    endIf();
 
-    if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EDX))
-        outb(0x5a);
-    if (regUsed[DYN_ECX] && (reg1!=DYN_ECX || !pushedReg1) && (!doneWithValueReg || value!=DYN_ECX))
-        outb(0x59);
-    if (regUsed[DYN_EAX] && (reg1!=DYN_EAX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EAX))
-        outb(0x58);  
-
-    x86.buffer[slowPos] =  (U8)(x86.buffer.size() -slowPos-1);
-    if (pushedReg1) {
-        outb(0x58+reg1);
+    if (doneWithAddressReg) {
+        regUsed[addressReg] = false;
+    }
+    if (doneWithReg && isParamTypeReg(paramType)) {
+        regUsed[value] = false;
     }
 }
 
@@ -911,13 +786,7 @@ void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWit
     else
         kpanic_fmt("unknown width %d in x32CPU::movToMemFromReg", width);
 
-    movToMem(addressReg, width, reg, paramType, doneWithReg);   
-    if (doneWithAddressReg) {
-        regUsed[addressReg] = false;
-    }
-    if (doneWithReg) {
-        regUsed[reg] = false;
-    }
+    movToMem(addressReg, width, reg, paramType, doneWithReg, doneWithAddressReg);
 }
 
 void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg) {    
@@ -932,10 +801,7 @@ void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAd
     else
         kpanic_fmt("unknown width %d in x32CPU::movToMemFromImm", width);
 
-    movToMem(addressReg, width, imm, paramType, false);    
-    if (doneWithAddressReg) {
-        regUsed[addressReg] = false;
-    }
+    movToMem(addressReg, width, imm, paramType, false, doneWithAddressReg);
 }
 
 void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
