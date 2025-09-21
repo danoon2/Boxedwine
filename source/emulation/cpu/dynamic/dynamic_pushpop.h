@@ -86,8 +86,8 @@ void dynamic_pushEd_mem(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {    
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-        movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
-        movFromMem(DYN_32bit, DYN_SRC, true);
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        movFromMem(DYN_32bit, DYN_ADDRESS, true);
         // address calculation happens after ESP is incremented, but we don't want it committed
         // before the write happens in case the write throws an exception, iexplorer.exe will exercise 
         // that esp needs to be increated before calculateEaa

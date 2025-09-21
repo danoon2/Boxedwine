@@ -216,18 +216,18 @@ void dynamic_int3(DynamicData* data, DecodedOp* op) {
 void dynamic_xlat(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(reg[0].u8), DYN_8bit);
     if (op->ea16) {
-        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[3].u16), DYN_16bit);
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[3].u16), DYN_16bit);
         movToRegFromReg(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
-        instRegReg('+', DYN_DEST, DYN_SRC, DYN_16bit, true);
-        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
+        instRegReg('+', DYN_ADDRESS, DYN_SRC, DYN_16bit, true);
+        movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_ADDRESS, DYN_16bit, false);
     } else {
-        movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[3].u32), DYN_32bit);
+        movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[3].u32), DYN_32bit);
         movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
-        instRegReg('+', DYN_DEST, DYN_SRC, DYN_32bit, true);
+        instRegReg('+', DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
     }
     movToRegFromCpu(DYN_SRC, CPU::offsetofSegAddress(op->base), DYN_32bit);
-    instRegReg('+', DYN_DEST, DYN_SRC, DYN_32bit, true);
-    movFromMem(DYN_8bit, DYN_DEST, true);
+    instRegReg('+', DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
+    movFromMem(DYN_8bit, DYN_ADDRESS, true);
     movToCpuFromReg(CPU_OFFSET_OF(reg[0].u8), DYN_CALL_RESULT, DYN_8bit, true);
     INCREMENT_EIP(data, op);
 }

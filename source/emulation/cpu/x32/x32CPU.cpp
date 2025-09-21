@@ -158,7 +158,19 @@ void instReg(char inst, DynReg reg, DynWidth regWidth);
 void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg);
 void instCPU(char inst, U32 dstOffset, DynWidth regWidth, DynReg tmpReg);
 
+#include "x86Asm.h"
+
 // if conditions
+void IfLessThan(X86Asm::Reg32 reg, U32 value, bool doneWithReg);
+void IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg);
+void IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg);
+void IfBitSet(X86Asm::Reg32 reg, U32 value, bool doneWithReg);
+void If(X86Asm::Reg32 reg, bool doneWithReg);
+void IfNot(X86Asm::Reg32 reg, bool doneWithReg);
+void IfPtrEqual(X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg);
+void StartElse();
+void EndIf();
+
 void jumpIf(DynamicData* data, DynReg reg, DynCondition condition, bool doneWithReg, U32 address, DynWidth regWidth = DYN_32bit);
 void startIf(DynReg reg, DynCondition condition, bool doneWithReg, DynWidth regWidth = DYN_32bit);
 void startIfCmpValue(DynReg reg, U32 value, bool isEqual, DynWidth regWidth, bool doneWithReg);
@@ -218,8 +230,6 @@ bool regUsed[4];
 #include "../dynamic/dynamic_fpu.h"
 #include "../dynamic/dynamic_lock.h"
 
-#include "x86Asm.h"
-
 static X86Asm x86;
 
 void outb(U8 b) {
@@ -239,146 +249,85 @@ void outd(U32 d) {
 }
 
 void calculateEaa(DecodedOp* op, DynReg reg) {
-    regUsed[reg]=true;
+    regUsed[reg] = true;
 
     if (op->ea16) {
         // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
+        X86Asm::Reg16 reg16(reg);
 
-        // xor eax
-        outb(0x31);
-        outb(0xc0|reg|(reg<<3));
+        x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
 
-        // add ax, op->disp 
         if (op->data.disp) {
-            outb(0x66);
-            outb(0x81);
-            outb(0xC0+reg);
-            outw(op->data.disp);
+            x86.add(reg16, (U16)op->data.disp);
         }
-        // add ax, [edi+cpu->reg[op->rm].u16]
         if (op->rm != 8) {
-            outb(0x66);
-            outb(0x03);
-            outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg16(op->rm));
+            // intentional 16-bit add
+            x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->rm));
         }
 
-        // add ax, [cpu->reg[op->sibIndex].u16]
         if (op->sibIndex != 8) {
-            outb(0x66);
-            outb(0x03);
-            outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg16(op->sibIndex));
+            // intentional 16-bit add
+            x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->sibIndex));
         }
 
         // seg[6] is always 0
-        if (op->base<6) { 
-            // add eax, [cpu->seg[op->base].address]
-            outb(0x03);
-            outb(0x47 | (reg << 3));
-            outb(CPU::offsetofSegAddress(op->base));
+        if (op->base < 6) {
+            // intentional 32-bit add
+            x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofSegAddress(op->base));
         }
     } else {
-        // cpu->seg[op->base].address + cpu->reg[op->rm].u32 + (cpu->reg[op->sibIndex].u32 << + op->sibScale) + op->disp
-        bool initiallized = false;
-
-        if (op->sibIndex!=8) {
-            initiallized = true;
-            // mov eax, [cpu->reg[op->sibIndex].u32];
-            outb(0x8b);
-            outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg32(op->sibIndex));
-
-            if (op->sibScale) {                
-                // shl eax, op->sibScale
-                if (op->sibScale==1) {
-                    outb(0xd1);
-                    outb(0xe0 | reg);
-                } else {
-                    outb(0xc1);
-                    outb(0xe0 | reg);
-                    outb(op->sibScale);
-                }
+        if (op->sibIndex != 8) {
+            x86.readMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->sibIndex));
+            if (op->sibScale) {
+                x86.shl(X86Asm::Reg32(reg), op->sibScale);
             }
-            // seg[6] is always 0
-            if (op->base<6 && KThread::currentThread()->process->hasSetSeg[op->base]) { 
-                // add eax, [cpu->seg[op->base].address]
-                outb(0x03);
-                outb(0x47 | (reg << 3));
-                outb(CPU::offsetofSegAddress(op->base));
+            if (op->rm != 8) {
+                x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->rm));
             }
+            if (op->data.disp) {
+                x86.add(X86Asm::Reg32(reg), op->data.disp);
+            }
+        } else if (op->rm != 8) {
+            x86.readMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->rm));
+            if (op->data.disp) {
+                x86.add(X86Asm::Reg32(reg), op->data.disp);
+            }
+        } else if (op->data.disp) {
+            x86.mov(X86Asm::Reg32(reg), op->data.disp);
         } else {
-            // seg[6] is always 0
-            if (op->base<6 && KThread::currentThread()->process->hasSetSeg[op->base]) { 
-                initiallized = true;
-                // mov eax, [cpu->seg[op->base].address]
-                outb(0x8b);
-                outb(0x47 | (reg << 3));
-                outb(CPU::offsetofSegAddress(op->base));
-            }
-        }
-        // add eax, [cpu->reg[op->rm].u32]
-        if (op->rm != 8) {
-            if (!initiallized) {
-                initiallized = true;
-                outb(0x8b); // mov
-            } else {
-                outb(0x03); // add
-            }
-            outb(0x47 | (reg << 3));
-            outb(CPU::offsetofReg32(op->rm));
+            x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
         }
 
-        // add eax, op->disp 
-        if (op->data.disp) {
-            if (!initiallized) {
-                initiallized = true;
-                outb(0xb8+reg); // mov
-            } else {
-                outb(0x81); // add
-                outb(0xc0 | reg);
-            }            
-            outd(op->data.disp);
-        }       
-        if (!initiallized) {
-            // xor reg, reg
-            outb(0x31);
-            outb(0xc0|reg|(reg<<3));
+        // seg[6] is always 0
+        if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
+            x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofSegAddress(op->base));
         }
     }
 }
 
 void byteSwapReg32(DynReg reg) {
-    outb(0x0f);
-    outb(0xc8 + reg);
+    x86.bswap(reg);
 }
 
 void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {    
     regUsed[dst] = true;
-    if (dstWidth<=srcWidth) {
+    if (dstWidth <= srcWidth) {
         movToRegFromReg(dst, dstWidth, src, srcWidth, doneWithSrcReg);
     } else {
-        if (dstWidth==DYN_32bit) {
-            if (srcWidth==DYN_16bit) {
-                outb(0x0f);
-                outb(0xbf);
-                outb(0xC0 | (src << 3) | dst);
-            } else if (srcWidth==DYN_8bit) {
-                outb(0x0f);
-                outb(0xbe);
-                outb(0xC0 | (src << 3) | dst);
+        if (dstWidth == DYN_32bit) {
+            if (srcWidth == DYN_16bit) {
+                x86.movsx(X86Asm::Reg32(dst), X86Asm::Reg16(src));
+            } else if (srcWidth == DYN_8bit) {
+                x86.movsx(X86Asm::Reg32(dst), X86Asm::Reg8(src));
             } else {
                 kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
             }
-        } else if (dstWidth==DYN_16bit) {
-            if (srcWidth==DYN_8bit) {
-                outb(0x66);
-                outb(0x0f);
-                outb(0xbe);
-                outb(0xC0 | (src << 3) | dst);
+        } else if (dstWidth == DYN_16bit) {
+            if (srcWidth == DYN_8bit) {
+                x86.movsx(X86Asm::Reg16(dst), X86Asm::Reg8(src));
             } else {
                 kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
-            }           
+            }
         } else {
             kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
         }
@@ -390,47 +339,33 @@ void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWid
 
 void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
     regUsed[dst] = true;
-    if (dstWidth<=srcWidth) {
-        if (dst==src) // downsizing doesn't need anything
+    if (dstWidth <= srcWidth) {
+        if (dst == src) // downsizing doesn't need anything
             return;
-        if (dstWidth==DYN_32bit) {
-            outb(0x89);
-            outb(0xC0 | (src << 3) | dst);
-        } else if (dstWidth==DYN_16bit) {
-            outb(0x66);
-            outb(0x89);
-            outb(0xC0 | (src << 3) | dst);
-        } else if (dstWidth==DYN_8bit) {
-            outb(0x88);
-            if (src>=4 || dst>=4) {
-                kpanic("x32CPU::movToRegFromReg invalid code, only first 4 regs allowed");
-            }
-            outb(0xC0 | (src << 3) | dst);
-        }  else {
+        if (dstWidth == DYN_32bit) {
+            x86.mov(X86Asm::Reg32(dst), X86Asm::Reg32(src));
+        } else if (dstWidth == DYN_16bit) {
+            x86.mov(X86Asm::Reg16(dst), X86Asm::Reg16(src));
+        } else if (dstWidth == DYN_8bit) {
+            x86.mov(X86Asm::Reg8(dst), X86Asm::Reg8(src));
+        } else {
             kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromReg %d", dstWidth);
         }
     } else {
-        if (dstWidth==DYN_32bit) {
-            if (srcWidth==DYN_16bit) {
-                outb(0x0f);
-                outb(0xb7);
-                outb(0xC0 | (dst << 3) | src);
-            } else if (srcWidth==DYN_8bit) {
-                outb(0x0f);
-                outb(0xb6);
-                outb(0xC0 | (dst << 3) | src);
+        if (dstWidth == DYN_32bit) {
+            if (srcWidth == DYN_16bit) {
+                x86.movzx(X86Asm::Reg32(dst), X86Asm::Reg16(src));
+            } else if (srcWidth == DYN_8bit) {
+                x86.movzx(X86Asm::Reg32(dst), X86Asm::Reg8(src));
             } else {
                 kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
             }
-        } else if (dstWidth==DYN_16bit) {
-            if (srcWidth==DYN_8bit) {
-                outb(0x66);
-                outb(0x0f);
-                outb(0xb6);
-                outb(0xC0 | (dst << 3) | src);
+        } else if (dstWidth == DYN_16bit) {
+            if (srcWidth == DYN_8bit) {
+                x86.movzx(X86Asm::Reg16(dst), X86Asm::Reg8(src));
             } else {
                 kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
-            }           
+            }
         } else {
             kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
         }
@@ -444,43 +379,25 @@ void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
     regUsed[reg] = true;
     // mov reg, [edi+srcOffset]    
     if (width == DYN_32bit) {
-        outb(0x8b);
+        x86.readMem(X86Asm::Reg32(reg), x86.edi, srcOffset);
     } else if (width == DYN_16bit) {
-        outb(0x66);
-        outb(0x8b);
+        x86.readMem(X86Asm::Reg16(reg), x86.edi, srcOffset);
     } else if (width == DYN_8bit) {
-        outb(0x8a);
+        x86.readMem(X86Asm::Reg8(reg), x86.edi, srcOffset);
     } else {
         kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromCpu %d", width);
-    }
-
-    if (srcOffset<=127) {
-        outb(0x47|(reg << 3));
-        outb((U8)srcOffset);
-    } else {
-        outb(0x87|(reg << 3));
-        outd(srcOffset);
     }
 }
 
 void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) {
-    // mov [edi+dstOffset], reg
     if (width == DYN_32bit) {
-        outb(0x89);
+        x86.writeMem(x86.edi, dstOffset, X86Asm::Reg32(reg));
     } else if (width == DYN_16bit) {
-        outb(0x66);
-        outb(0x89);
+        x86.writeMem(x86.edi, dstOffset, X86Asm::Reg16(reg));
     } else if (width == DYN_8bit) {
-        outb(0x88);
+        x86.writeMem(x86.edi, dstOffset, X86Asm::Reg8(reg));
     } else {
         kpanic_fmt("unknown dstWidth in x32CPU::movToCpuFromReg %d", width);
-    }
-    if (dstOffset<=127) {
-        outb(0x47|(reg << 3));
-        outb((U8)dstOffset);
-    } else {
-        outb(0x87|(reg << 3));
-        outd(dstOffset);
     }
     if (doneWithReg) {
         regUsed[reg] = false;
@@ -496,51 +413,31 @@ void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg
 }
 
 void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
-    // mov [cpu+dstOffset], imm
     if (dstWidth == DYN_32bit) {
-        outb(0xc7);
+        x86.writeMem(x86.edi, dstOffset, imm);
     } else if (dstWidth == DYN_16bit) {
-        outb(0x66);
-        outb(0xc7);
+        x86.writeMem(x86.edi, dstOffset, (U16)imm);
     } else if (dstWidth == DYN_8bit) {
-        outb(0xc6);
+        x86.writeMem(x86.edi, dstOffset, (U8)imm);
     } else {
         kpanic_fmt("unknown dstWidth in x32CPU::movToCpu %d", dstWidth);
-    }
-
-    if (dstOffset<=127) {
-        outb(0x47);
-        outb((U8)dstOffset);
-    } else {
-        outb(0x87);
-        outd(dstOffset);
-    }
-
-    if (dstWidth==DYN_32bit) {
-        outd(imm);
-    } else if (dstWidth==DYN_16bit) {
-        outw(imm);
-    } else if (dstWidth == DYN_8bit) {
-        outb(imm);
-    } else {
-        kpanic_fmt("unknown width in x32CPU::movToCpu %d", dstWidth);
     }
 }
 
 void zeroExtendReg16To32(DynReg dest, DynReg src) {
-    outb(0x0f);
-    outb(0xb7);
-    outb(0xc0 | src | (dest << 3));
+    x86.movzx(X86Asm::Reg32(dest), X86Asm::Reg16(src));
 }
 
 void movToReg(DynReg reg, DynWidth width, U32 imm) {
     regUsed[reg] = true;
-    if (imm==0) {
-        outb(0x31);
-        outb(0xc0|reg|(reg << 3));
+    if (width == DYN_32bit) {
+        x86.mov(X86Asm::Reg32(reg), imm);
+    } else if (width == DYN_16bit) {
+        x86.mov(X86Asm::Reg16(reg), (U16)imm);
+    } else if (width == DYN_8bit) {
+        x86.mov(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        outb(0xb8+reg);
-        outd(imm);
+        kpanic_fmt("unknown width in x32CPU::movToReg %d", width);
     }
 }
 
@@ -569,158 +466,75 @@ static void writeb(U32 address, U8 value) {
 }
 
 void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
-    regUsed[DYN_EAX] = true;
-    U32 firstCheckPos=0;
+    regUsed[x86.eax.reg] = true;
 
-    // make sure we only use the fast path if the entire read will take place on the same page
-    if (width==DYN_16bit) {
-        // if ((address & 0xFFF) < 0xFFF)
-    
-        // mov eax, addressReg
-        outb(0x89);
-        outb(0xc0 | (addressReg<<3));
-
-        // and eax, 0xfff
-        outb(0x25);
-        outd(0xFFF);
-
-        // cmp eax, 0xfff
-        outb(0x3D);
-        outd(0xfff);
-
-        // jnb
-        outb(0x73);
-        firstCheckPos = x86.buffer.size();
-        outb(0);
-
-    } else if (width==DYN_32bit) {
-        // if ((address & 0xFFF) < 0xFFD)
-
-        // mov eax, addressReg
-        outb(0x89);
-        outb(0xc0 | (addressReg<<3));
-
-        // and eax, 0xfff
-        outb(0x25);
-        outd(0xFFF);
-
-        // cmp eax, 0xffd
-        outb(0x3D);
-        outd(0xffd);
-
-        // jnb
-        outb(0x73);
-        firstCheckPos = x86.buffer.size();
-        outb(0);
+    if (addressReg != DYN_ADDRESS) {
+        kpanic("movFromMem");
     }
+    if (width != DYN_8bit) {
+        // make sure we only use the fast path if the entire read will take place on the same page
+        x86.mov(x86.eax, X86Asm::Reg32(addressReg));
+        x86.and_(x86.eax, K_PAGE_MASK);
 
+        if (width == DYN_16bit) {
+            // if ((address & 0xFFF) < 0xFFF)                    
+            IfLessThan(x86.eax, K_PAGE_MASK, false);
+        } else if (width == DYN_32bit) {
+            // if ((address & 0xFFF) < 0xFFD)
+            IfLessThan(x86.eax, 0xFFD, false);
+        }
+    }
     // int index = address >> 12;
     // if (Memory::currentMMUReadPtr[index])
     //     return *(U32*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
     // else
     //     return readd(address);
 
-    // mov eax, addressReg
-    outb(0x89);
-    outb(0xc0 | (addressReg<<3));
+    x86.mov(x86.eax, X86Asm::Reg32(addressReg));
+    x86.shr(x86.eax, K_PAGE_SHIFT);
+    x86.readMem(x86.eax, x86.eax, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
 
-    // address >> 12
-    // shr eax, 12
-    outb(0xc1);
-    outb(0xe8);
-    outb(0x0c);
-
-    // mov eax, [mmu+sizeof(MMU)*index];
-    outb(0x8b);
-    outb(0x04);
-    outb(0x85);
-    outd((U32)getMemData(KThread::currentThread()->memory)->mmu);
+    if (width != DYN_8bit) {
+        EndIf();
+    }
 
     // test eax, 0x40000000 (mmu[index].canReadRam)
-    outb(0xa9);
-    outd(0x40000000);
+    IfBitSet(x86.eax, 0x40000000, false);
 
-    // jz
-    outb(0x74);
-    U32 jzPos = x86.buffer.size();
-    outb(0); // skip over cached read
+    // bottom 20 bits of mmu contains ram page index
+    x86.and_(x86.eax, 0xfffff);
+    x86.readMem(x86.eax, x86.eax, 2, (U32)ramPages);
+    X86Asm::Reg32 offsetReg(addressReg);
 
-    // and eax, 0xfffff (bottom 20 bits of mmu contains ram page index)
-    outb(0x25);
-    outd(0xfffff);
-
-    // mov eax, [eax*4 + ramPages]
-    outb(0x8b);
-    outb(0x04);
-    outb(0x85);
-    outd((U32)ramPages);
-
-    // mov eax, [eax+(address & 0xFFF)]
-    U32 reg;
-    bool pushedReg = false;
-    if (doneWithAddressReg) {
-        reg = addressReg;
-    } else {
-        if (!regUsed[DYN_ECX]) {
-            reg = DYN_ECX;
-        } else if (!regUsed[DYN_EDX]) {
-            reg = DYN_EDX;
-        } else {
-    #ifdef _DEBUG
-            klog("movFromMem ran out of regs");
-    #endif
-            reg = DYN_ECX;
-            pushedReg = true;
-            outb(0x51);
-        }
-
-        // mov reg, addressReg
-        outb(0x89);
-        outb(0xc0|reg|(addressReg<<3));
+    if (!doneWithAddressReg) {
+        x86.push(X86Asm::Reg32(addressReg));
     }
-    // and reg, 0xfff
-    outb(0x81);
-    outb(0xe0+reg);
-    outd(0xfff);
+    x86.and_(offsetReg, K_PAGE_MASK);
 
     // mov eax, [eax+reg]
-    if (width==DYN_8bit) {
-        outb(0x8a);
-        outb(0x04);
-        outb(reg << 3);
-    } else if (width==DYN_16bit) {
-        outb(0x66);
-        outb(0x8b);
-        outb(0x04);
-        outb(reg << 3);
-    } else if (width==DYN_32bit) {
-        outb(0x8b);
-        outb(0x04);
-        outb(reg << 3);
+    if (width == DYN_8bit) {
+        x86.readMem(X86Asm::Reg8(x86.eax.reg), x86.eax, offsetReg, 0, 0);
+    } else if (width == DYN_16bit) {
+        x86.readMem(X86Asm::Reg16(x86.eax.reg), x86.eax, offsetReg, 0, 0);
+    } else if (width == DYN_32bit) {
+        x86.readMem(x86.eax, x86.eax, offsetReg, 0, 0);
     }
 
-    if (pushedReg) {
-        outb(0x59);
+    if (!doneWithAddressReg) {
+        x86.pop(X86Asm::Reg32(addressReg));
     }
 
-    // jmp over slow read
-    outb(0xeb);
-    U32 slowPos = x86.buffer.size();
-    outb(0);
+    StartElse();
 
-    x86.buffer[jzPos] = (U8)(x86.buffer.size() -jzPos-1);
-    if (firstCheckPos)
-        x86.buffer[firstCheckPos] = (U8)(x86.buffer.size() -firstCheckPos-1);
+    // will set EAX when call returns, so don't push it then clobber the result with a pop
+    if (regUsed[x86.ecx.reg]) {
+        x86.push(x86.ecx);
+    }
+    if (regUsed[x86.edx.reg]) {
+        x86.push(x86.edx);
+    }
 
-    // will set EAX so don't push it then clobber the result with a pop
-
-    if (regUsed[DYN_ECX] && addressReg!=DYN_ECX)
-        outb(0x51);
-    if (regUsed[DYN_EDX] && addressReg!=DYN_EDX)
-        outb(0x52);
-
-    // push addressReg
-    outb(0x50+addressReg);
+    x86.push(X86Asm::Reg32(addressReg));
 
     void* address;
 
@@ -735,24 +549,23 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
         kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
     }
 
-    outb(0xe8);
-    x86.patch.push_back(x86.buffer.size());
-    outd((U32)address);
+    x86.call(address);
 
-    // add esp, 4
-    outb(0x83);
-    outb(0xc4);
-    outb(0x04);
-    
-    if (regUsed[DYN_EDX] && addressReg!=DYN_EDX)
-        outb(0x5a);
-    if (regUsed[DYN_ECX] && addressReg!=DYN_ECX)
-        outb(0x59);
+    x86.add(x86.esp, 4);
 
-    x86.buffer[slowPos] =  (U8)(x86.buffer.size() -slowPos-1);
+    if (regUsed[x86.edx.reg]) {
+        x86.pop(x86.edx);
+    }
+    if (regUsed[x86.ecx.reg]) {
+        x86.pop(x86.ecx);
+    }
+
+    EndIf();
+
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
     }
+    regUsed[x86.eax.reg] = false;
 }
 
 void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
@@ -790,37 +603,18 @@ void pushValue(U32 arg, DynCallParamType argType) {
         x86.push((U32)arg);
         break;
     case DYN_PARAM_CPU_ADDRESS_8:
-        // mov al, [edi+arg] (edi contains cpu)
-        outb(0x8a);
-        outb(0x87);
-        outd(arg);
-        // movzx eax, al
-        outb(0x0f);
-        outb(0xb6);
-        outb(0xc0);
-        // push eax
-        outb(0x50);
+        x86.readMem(X86Asm::Reg8(x86.eax.reg), x86.edi, arg);
+        x86.movzx(x86.eax, X86Asm::Reg8(x86.eax.reg));
+        x86.push(x86.eax);
         break;
     case DYN_PARAM_CPU_ADDRESS_16:
-        // mov ax, [edi+arg] (edi contains cpu)
-        outb(0x66);
-        outb(0x8b);
-        outb(0x87);
-        outd(arg);
-        // movzx eax, ax
-        outb(0x0f);
-        outb(0xb7);
-        outb(0xc0);
-        // push eax
-        outb(0x50);
+        x86.readMem(X86Asm::Reg16(x86.eax.reg), x86.edi, arg);
+        x86.movzx(x86.eax, X86Asm::Reg16(x86.eax.reg));
+        x86.push(x86.eax);
         break;
     case DYN_PARAM_CPU_ADDRESS_32:
-        // mov eax, [edi+arg] (edi contains cpu)
-        outb(0x8b);
-        outb(0x87);
-        outd(arg);
-        // push eax
-        outb(0x50);        
+        x86.readMem(x86.eax, x86.edi, arg);
+        x86.push(x86.eax);
         break;
     default:
         kpanic_fmt("x32CPU: unknown argType: %d", argType);
@@ -1705,6 +1499,62 @@ void endIf() {
     }
     x86.ifJump.pop_back();
     x86.buffer[pos] = (U8)(amount);
+}
+
+void IfPtrEqual(X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg) {
+    IfEqual(reg, value, doneWithReg);
+}
+
+void IfLessThan(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+    x86.IfLessThan(reg, value);
+
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+void IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+    x86.IfEqual(reg, value);
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+void IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+    x86.IfNotEqual(reg, value);
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+
+void IfBitSet(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+    x86.IfBitSet(reg, value);
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+void If(X86Asm::Reg32 reg, bool doneWithReg) {
+    x86.IfNotZero(reg);
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+void IfNot(X86Asm::Reg32 reg, bool doneWithReg) {
+    x86.IfZero(reg);
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+void StartElse() {
+    x86.Else();
+}
+
+void EndIf() {
+    x86.EndIf();
 }
 
 void setCC(X86Asm::Reg32 reg, DynConditionEvaluate condition) {
