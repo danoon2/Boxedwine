@@ -413,7 +413,7 @@ void dynamic_test32_mem(DynamicData* data, DecodedOp* op) {
     dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '&', false, false, FLAGS_TEST32);
 }
 void dynamic_notr8(DynamicData* data, DecodedOp* op) {
-instCPU('~', CPU::offsetofReg8(op->reg), DYN_8bit);
+    instCPU('~', CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_note8(DynamicData* data, DecodedOp* op) {
@@ -422,7 +422,7 @@ void dynamic_note8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_notr16(DynamicData* data, DecodedOp* op) {
-instCPU('~', CPU::offsetofReg16(op->reg), DYN_16bit);
+    instCPU('~', CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_note16(DynamicData* data, DecodedOp* op) {
@@ -431,7 +431,7 @@ void dynamic_note16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_notr32(DynamicData* data, DecodedOp* op) {
-instCPU('~', CPU::offsetofReg32(op->reg), DYN_32bit);
+    instCPU('~', CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_note32(DynamicData* data, DecodedOp* op) {
@@ -441,7 +441,7 @@ void dynamic_note32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_negr8(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        instCPU('-', CPU::offsetofReg8(op->reg), DYN_8bit);
+        instCPU('-', CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST);
     } else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u8), CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST, false);
         instReg('-', DYN_DEST, DYN_8bit);
@@ -468,7 +468,7 @@ void dynamic_nege8(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_negr16(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        instCPU('-', CPU::offsetofReg16(op->reg), DYN_16bit);
+        instCPU('-', CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST);
     } else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST, false);
         instReg('-', DYN_DEST, DYN_16bit);
@@ -495,7 +495,7 @@ void dynamic_nege16(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_negr32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        instCPU('-', CPU::offsetofReg32(op->reg), DYN_32bit);
+        instCPU('-', CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST);
     } else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST, false);
         instReg('-', DYN_DEST, DYN_32bit);
@@ -521,7 +521,8 @@ void dynamic_nege32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_mulR8(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_mul8, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg8(op->reg), DYN_PARAM_CPU_ADDRESS_8, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg8(op->reg), DYN_8bit);
+    callHostFunction((void*)common_mul8, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_8, true);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
@@ -532,7 +533,8 @@ void dynamic_mulE8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_imulR8(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_imul8, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg8(op->reg), DYN_PARAM_CPU_ADDRESS_8, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg8(op->reg), DYN_8bit);
+    callHostFunction((void*)common_imul8, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_8, true);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
@@ -543,7 +545,8 @@ void dynamic_imulE8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_mulR16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_mul16, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
+    callHostFunction((void*)common_mul16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_16, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_mulE16(DynamicData* data, DecodedOp* op) {
@@ -552,7 +555,8 @@ void dynamic_mulE16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_imulR16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_imul16, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
+    callHostFunction((void*)common_imul16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_16, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_imulE16(DynamicData* data, DecodedOp* op) {
@@ -561,7 +565,8 @@ void dynamic_imulE16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_mulR32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_mul32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
+    callHostFunction((void*)common_mul32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_mulE32(DynamicData* data, DecodedOp* op) {
@@ -570,7 +575,8 @@ void dynamic_mulE32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_imulR32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)common_imul32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
+    callHostFunction((void*)common_imul32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_imulE32(DynamicData* data, DecodedOp* op) {
@@ -579,7 +585,8 @@ void dynamic_imulE32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_divR8(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)div8, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg8(op->reg), DYN_PARAM_CPU_ADDRESS_8, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg8(op->reg), DYN_8bit);
+    callHostFunction((void*)div8, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_8, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     blockDone(data, true);
     endIf();
@@ -612,7 +619,8 @@ void dynamic_idivE8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_divR16(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)div16, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
+    callHostFunction((void*)div16, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_16, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     blockDone(data, true);
     endIf();
@@ -645,7 +653,8 @@ void dynamic_idivE16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_divR32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)div32, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
+    callHostFunction((void*)div32, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     blockDone(data, true);
     endIf();
@@ -660,7 +669,8 @@ void dynamic_divE32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_idivR32(DynamicData* data, DecodedOp* op) {
-    callHostFunction((void*)idiv32, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
+    callHostFunction((void*)idiv32, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
     blockDone(data, true);
     endIf();

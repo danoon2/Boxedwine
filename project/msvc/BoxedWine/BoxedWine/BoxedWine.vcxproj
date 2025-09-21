@@ -848,6 +848,7 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_strings_op.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\normal\normal_xchg.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.h" />
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x86Asm.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x64\x64Data.h" />
@@ -2771,6 +2772,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normal_strings.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\srcgen.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x32CPU.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x86Asm.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Asm.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64CPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\x64\x64Data.cpp" />

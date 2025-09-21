@@ -132,7 +132,8 @@ void dynamic_iret32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_sahf(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, CPU_OFFSET_OF(reg[0].h8), DYN_PARAM_CPU_ADDRESS_8, false, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
+    movToRegFromCpu(DYN_SRC, CPU::offsetofReg8(4), DYN_8bit);
+    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_8, true, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
     INCREMENT_EIP(data, op);
 }
 void dynamic_lahf(DynamicData* data, DecodedOp* op) {
@@ -236,33 +237,33 @@ void dynamic_hlt(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmc(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    instCPUImm('^', CPU_OFFSET_OF(flags), DYN_32bit, CF);
+    instCPUImm('^', CPU_OFFSET_OF(flags), DYN_32bit, CF, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_clc(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~CF);
+    instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~CF, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_stc(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, CF);
+    instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, CF, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_cli(DynamicData* data, DecodedOp* op) {
-    instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~IF);
+    instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~IF, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_sti(DynamicData* data, DecodedOp* op) {
-    instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, IF);
+    instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, IF, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_cld(DynamicData* data, DecodedOp* op) {
-    instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~DF);
+    instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~DF, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_std(DynamicData* data, DecodedOp* op) {
-    instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, DF);
+    instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, DF, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_rdtsc(DynamicData* data, DecodedOp* op) {

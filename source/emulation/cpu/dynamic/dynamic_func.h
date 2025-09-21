@@ -109,7 +109,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                     }
                     instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
                 }
-                instCPUReg(inst, cpuOffset(op->reg, width), DYN_SRC, width, true);
+                instCPUReg(inst, cpuOffset(op->reg, width), DYN_SRC, width, true, DYN_DEST);
             } else if (dst == DYN_Mem) {
                 calculateEaa(op, DYN_ADDRESS);
                 movToRegFromCpu(DYN_SRC, cpuOffset(op->reg, width), width);
@@ -131,7 +131,7 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                 } else {
                     movFromMem(width, DYN_ADDRESS, true);
                 }
-                instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true);
+                instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true, DYN_DEST);
             }
         } else if (src == DYN_Const) {
             if (dst == DYN_Reg) {
@@ -140,9 +140,9 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
                         movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
                     }
                     instRegImm('+', DYN_CALL_RESULT, width, op->imm);
-                    instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true);
+                    instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true, DYN_DEST);
                 } else {
-                    instCPUImm(inst, cpuOffset(op->reg, width), width, op->imm);
+                    instCPUImm(inst, cpuOffset(op->reg, width), width, op->imm, DYN_DEST);
                 }
             } else if (dst == DYN_Mem) {
                 calculateEaa(op, DYN_ADDRESS);
@@ -1012,7 +1012,7 @@ void dynamic_pop32(DynamicData* data) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
         movFromMem(DYN_32bit, DYN_ADDRESS, true);
-        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4);
+        instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4, DYN_DEST);
     } else {
         callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
     }    

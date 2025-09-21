@@ -904,6 +904,9 @@
     <ClCompile Include="..\..\..\..\source\util\bnativeheap.cpp">
       <Filter>source\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\x32\x86Asm.cpp">
+      <Filter>source\emulation\cpu\x32</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1784,6 +1787,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\util\bnativeheap.h">
       <Filter>source\util</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x86Asm.h">
+      <Filter>source\emulation\cpu\x32</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
