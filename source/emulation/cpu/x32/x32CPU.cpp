@@ -87,6 +87,9 @@ enum DynCallParamType {
     DYN_PARAM_CONST_16,
     DYN_PARAM_CONST_32,
     DYN_PARAM_CONST_PTR,
+    DYN_PARAM_CPU_ADDRESS_8,
+    DYN_PARAM_CPU_ADDRESS_16,
+    DYN_PARAM_CPU_ADDRESS_32,
     DYN_PARAM_CPU,
 };
 
@@ -758,27 +761,18 @@ void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool d
     movToCpuFromReg(dstOffset, DYN_CALL_RESULT, dstWidth, doneWithCallResult);
 }
 
-void pushValue(U32 arg, DynCallParamType argType, bool doneWithReg) {
+void pushValue(U32 arg, DynCallParamType argType) {
     switch (argType) {
     case DYN_PARAM_REG_8:
         x86.movzx(X86Asm::Reg32(arg), X86Asm::Reg8(arg));
         x86.push(X86Asm::Reg32(arg));
-        if (doneWithReg) {
-            regUsed[arg] = false;
-        }
         break;
     case DYN_PARAM_REG_16:
         x86.movzx(X86Asm::Reg32(arg), X86Asm::Reg16(arg));
         x86.push(X86Asm::Reg32(arg));
-        if (doneWithReg) {
-            regUsed[arg] = false;
-        }
         break;
     case DYN_PARAM_REG_32:
         x86.push(X86Asm::Reg32(arg));
-        if (doneWithReg) {
-            regUsed[arg] = false;
-        }
         break;
     case DYN_PARAM_CPU:
         x86.push(x86.edi);
@@ -794,6 +788,39 @@ void pushValue(U32 arg, DynCallParamType argType, bool doneWithReg) {
         break;
     case DYN_PARAM_CONST_PTR:
         x86.push((U32)arg);
+        break;
+    case DYN_PARAM_CPU_ADDRESS_8:
+        // mov al, [edi+arg] (edi contains cpu)
+        outb(0x8a);
+        outb(0x87);
+        outd(arg);
+        // movzx eax, al
+        outb(0x0f);
+        outb(0xb6);
+        outb(0xc0);
+        // push eax
+        outb(0x50);
+        break;
+    case DYN_PARAM_CPU_ADDRESS_16:
+        // mov ax, [edi+arg] (edi contains cpu)
+        outb(0x66);
+        outb(0x8b);
+        outb(0x87);
+        outd(arg);
+        // movzx eax, ax
+        outb(0x0f);
+        outb(0xb7);
+        outb(0xc0);
+        // push eax
+        outb(0x50);
+        break;
+    case DYN_PARAM_CPU_ADDRESS_32:
+        // mov eax, [edi+arg] (edi contains cpu)
+        outb(0x8b);
+        outb(0x87);
+        outd(arg);
+        // push eax
+        outb(0x50);        
         break;
     default:
         kpanic_fmt("x32CPU: unknown argType: %d", argType);
@@ -1038,7 +1065,7 @@ void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType par
     if (regUsed[DYN_EDX] && (reg1!=DYN_EDX || !pushedReg1) && (!doneWithValueReg || value!=DYN_EDX))
         outb(0x52);
 
-    pushValue(value, paramType, doneWithValueReg);
+    pushValue(value, paramType);
 
     // push addressReg
     outb(0x50+addressReg);
@@ -1174,19 +1201,19 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
         x86.push(x86.edx);
     }
     if (argCount >= 5) {
-        pushValue(arg5, arg5Type, doneWithArg5);
+        pushValue(arg5, arg5Type);
     }
     if (argCount >= 4) {
-        pushValue(arg4, arg4Type, doneWithArg4);
+        pushValue(arg4, arg4Type);
     }
     if (argCount >= 3) {
-        pushValue(arg3, arg3Type, doneWithArg3);
+        pushValue(arg3, arg3Type);
     }
     if (argCount >= 2) {
-        pushValue(arg2, arg2Type, doneWithArg2);
+        pushValue(arg2, arg2Type);
     }
     if (argCount >= 1) {
-        pushValue(arg1, arg1Type, doneWithArg1);
+        pushValue(arg1, arg1Type);
     }
 
     x86.call(address);
@@ -1194,6 +1221,11 @@ void callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, Dyn
     // sub esp, 4*argCount
     if (argCount) {
         x86.add(x86.esp, 4 * argCount);
+    }
+    for (int i = 0; i < 4; i++) {
+        if (regDone[i]) {
+            regUsed[i] = false;
+        }
     }
     if (regUsed[x86.edx.reg] && !regDone[x86.edx.reg]) {
         x86.pop(x86.edx);
