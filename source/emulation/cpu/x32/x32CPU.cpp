@@ -565,7 +565,6 @@ void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
     }
-    regUsed[x86.eax.reg] = false;
 }
 
 void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
