@@ -1,4 +1,7 @@
 #include "boxedwine.h"
+
+#ifdef BOXEDWINE_DYNAMIC32
+
 #include "x86Asm.h"
 
 X86Asm::Reg8 X86Asm::al = 0;
@@ -926,3 +929,5 @@ void X86Asm::setle(Reg8 reg) {
     outb(0x9e);
     outb(0xc0 + reg.reg);
 }
+
+#endif
