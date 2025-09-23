@@ -28,7 +28,7 @@ void dynamic_xchge8r8(DynamicData* data, DecodedOp* op) {
     movFromMem(DYN_8bit, DYN_ADDRESS, false);
     movToRegFromCpu(DYN_DEST, CPU::offsetofReg8(op->reg), DYN_8bit);
     movToCpuFromReg(CPU::offsetofReg8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);
-    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true);    
+    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true, DYN_SRC);    
     INCREMENT_EIP(data, op);
 }
 void dynamic_xchgr16r16(DynamicData* data, DecodedOp* op) {
@@ -42,7 +42,7 @@ void dynamic_xchge16r16(DynamicData* data, DecodedOp* op) {
     movFromMem(DYN_16bit, DYN_ADDRESS, false);
     movToRegFromCpu(DYN_DEST, CPU::offsetofReg16(op->reg), DYN_16bit);
     movToCpuFromReg(CPU::offsetofReg16(op->reg), DYN_CALL_RESULT, DYN_16bit, true);
-    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true);    
+    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true, DYN_SRC);    
     INCREMENT_EIP(data, op);
 }
 void dynamic_xchgr32r32(DynamicData* data, DecodedOp* op) {
@@ -56,7 +56,7 @@ void dynamic_xchge32r32(DynamicData* data, DecodedOp* op) {
     movFromMem(DYN_32bit, DYN_ADDRESS, false);
     movToRegFromCpu(DYN_DEST, CPU::offsetofReg32(op->reg), DYN_32bit);
     movToCpuFromReg(CPU::offsetofReg32(op->reg), DYN_CALL_RESULT, DYN_32bit, true);
-    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true);
+    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true, DYN_SRC);
     INCREMENT_EIP(data, op);
 }
 void dynamic_cmpxchgr8r8(DynamicData* data, DecodedOp* op) {

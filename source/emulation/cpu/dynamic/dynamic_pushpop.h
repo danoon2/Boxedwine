@@ -42,7 +42,7 @@ void dynamic_popEw_mem(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
     movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
     // do write
-    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true);
+    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_SRC);
     // restore to calculated ESP from common_pop16 after write succeeds
     movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_DEST, DYN_32bit, true);
 
@@ -53,7 +53,7 @@ void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
         movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
         instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
         movToRegFromCpu(DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, false, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, false, true, DYN_DEST);
         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
     } else {
         callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
@@ -77,7 +77,7 @@ void dynamic_pushEd_mem(DynamicData* data, DecodedOp* op) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
         instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, false, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, false, true, DYN_DEST);
         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
     } else {
         callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
@@ -98,7 +98,7 @@ void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
         } else {
             calculateEaa(op, DYN_ADDRESS);
         }
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);                
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
         instCPUImm('+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4, DYN_DEST);
     } else {
         // save current esp
@@ -111,7 +111,7 @@ void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
         movToRegFromCpu(DYN_DEST, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
         // do write
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_SRC);
         // restore to calculated ESP from common_pop32 after write succeeds
         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_DEST, DYN_32bit, true);
     }
@@ -183,7 +183,7 @@ void dynamic_push32imm(DynamicData* data, DecodedOp* op) {
      if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
          movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
          instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
-         movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, false);
+         movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, false, DYN_DEST);
          movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
      } else {
          callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);

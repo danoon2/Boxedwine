@@ -463,9 +463,9 @@ void dynamic_callR16(DynamicData* data, DecodedOp* op) {
 void dynamic_callR32(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
-    movToRegFromCpu(DYN_DEST, CPU::offsetofReg32(op->reg), DYN_32bit);
+    movToRegFromCpu(DYN_CALL_RESULT, CPU::offsetofReg32(op->reg), DYN_32bit);
     dynamic_pushReg32(data, DYN_SRC, true);
-    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_DEST, DYN_32bit, true); 
+    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true);
     blockDoneCall(data);
 }
 void dynamic_callE16(DynamicData* data, DecodedOp* op) {
@@ -481,11 +481,10 @@ void dynamic_callE16(DynamicData* data, DecodedOp* op) {
 void dynamic_callE32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_DEST, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, true); // DYN_CALL_RESULT could get clobbered before used
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);
     instRegImm('+', DYN_SRC, DYN_32bit, op->len);
     dynamic_pushReg32(data, DYN_SRC, true);
-    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_DEST, DYN_32bit, true); 
+    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true);
     blockDoneCall(data);
 }
 void dynamic_jmpR16(DynamicData* data, DecodedOp* op) {
@@ -619,7 +618,7 @@ void dynamic_xaddr8e8(DynamicData* data, DecodedOp* op) {
         movFromMem(DYN_8bit, DYN_ADDRESS, false);
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_8bit, false);
         movToCpuFromReg(CPU::offsetofReg8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
     }
     else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u8), CPU::offsetofReg8(op->reg), DYN_8bit, DYN_SRC, false);
@@ -628,7 +627,7 @@ void dynamic_xaddr8e8(DynamicData* data, DecodedOp* op) {
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_8bit, false);
         movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_SRC, DYN_8bit, false);
         movToCpuFromReg(CPU::offsetofReg8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD8);
     }
     INCREMENT_EIP(data, op);
@@ -660,7 +659,7 @@ void dynamic_xaddr16e16(DynamicData* data, DecodedOp* op) {
         movFromMem(DYN_16bit, DYN_ADDRESS, false);
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_16bit, false);
         movToCpuFromReg(CPU::offsetofReg16(op->reg), DYN_CALL_RESULT, DYN_16bit, true);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
     }
     else {
         movToCpuFromCpu(CPU_OFFSET_OF(src.u16), CPU::offsetofReg16(op->reg), DYN_16bit, DYN_SRC, false);
@@ -669,7 +668,7 @@ void dynamic_xaddr16e16(DynamicData* data, DecodedOp* op) {
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_16bit, false);
         movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_SRC, DYN_16bit, false);
         movToCpuFromReg(CPU::offsetofReg16(op->reg), DYN_CALL_RESULT, DYN_16bit, true);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD16);
     }
     INCREMENT_EIP(data, op);
@@ -700,7 +699,7 @@ void dynamic_xaddr32e32(DynamicData* data, DecodedOp* op) {
         movFromMem(DYN_32bit, DYN_ADDRESS, false);
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_32bit, false);
         movToCpuFromReg(CPU::offsetofReg32(op->reg), DYN_CALL_RESULT, DYN_32bit, true);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
     } else {    
         movToCpuFromCpu(CPU_OFFSET_OF(src.u32), CPU::offsetofReg32(op->reg), DYN_32bit, DYN_SRC, false);
         movFromMem(DYN_32bit, DYN_ADDRESS, false);
@@ -708,7 +707,7 @@ void dynamic_xaddr32e32(DynamicData* data, DecodedOp* op) {
         instRegReg('+', DYN_SRC, DYN_CALL_RESULT, DYN_32bit, false);
         movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_SRC, DYN_32bit, false);
         movToCpuFromReg(CPU::offsetofReg32(op->reg), DYN_CALL_RESULT, DYN_32bit, true);
-        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD32);
     }
     INCREMENT_EIP(data, op);

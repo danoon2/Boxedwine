@@ -22,7 +22,7 @@ void dynamic_setO_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setO_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, O, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, O, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNO_reg(DynamicData* data, DecodedOp* op) {
@@ -31,7 +31,7 @@ void dynamic_setNO_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNO_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NO, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NO, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setB_reg(DynamicData* data, DecodedOp* op) {
@@ -40,7 +40,7 @@ void dynamic_setB_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setB_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, B, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, B, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNB_reg(DynamicData* data, DecodedOp* op) {
@@ -49,7 +49,7 @@ void dynamic_setNB_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNB_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NB, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NB, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setZ_reg(DynamicData* data, DecodedOp* op) {
@@ -58,7 +58,7 @@ void dynamic_setZ_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setZ_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, Z, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, Z, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNZ_reg(DynamicData* data, DecodedOp* op) {
@@ -67,7 +67,7 @@ void dynamic_setNZ_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNZ_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NZ, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NZ, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setBE_reg(DynamicData* data, DecodedOp* op) {
@@ -76,7 +76,7 @@ void dynamic_setBE_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setBE_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, BE, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, BE, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNBE_reg(DynamicData* data, DecodedOp* op) {
@@ -85,7 +85,7 @@ void dynamic_setNBE_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNBE_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NBE, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NBE, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setS_reg(DynamicData* data, DecodedOp* op) {
@@ -94,7 +94,7 @@ void dynamic_setS_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setS_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, S, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, S, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNS_reg(DynamicData* data, DecodedOp* op) {
@@ -103,7 +103,7 @@ void dynamic_setNS_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNS_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NS, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NS, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setP_reg(DynamicData* data, DecodedOp* op) {
@@ -112,7 +112,7 @@ void dynamic_setP_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setP_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, P, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, P, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNP_reg(DynamicData* data, DecodedOp* op) {
@@ -121,7 +121,7 @@ void dynamic_setNP_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNP_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NP, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NP, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setL_reg(DynamicData* data, DecodedOp* op) {
@@ -130,7 +130,7 @@ void dynamic_setL_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setL_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, L, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, L, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNL_reg(DynamicData* data, DecodedOp* op) {
@@ -139,7 +139,7 @@ void dynamic_setNL_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNL_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NL, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NL, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setLE_reg(DynamicData* data, DecodedOp* op) {
@@ -148,7 +148,7 @@ void dynamic_setLE_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setLE_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, LE, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, LE, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_setNLE_reg(DynamicData* data, DecodedOp* op) {
@@ -157,6 +157,6 @@ void dynamic_setNLE_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_setNLE_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    setMem(data, DYN_ADDRESS, DYN_8bit, NLE, true);
+    setMem(data, DYN_ADDRESS, DYN_8bit, NLE, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }

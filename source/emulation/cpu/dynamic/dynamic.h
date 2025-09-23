@@ -36,7 +36,6 @@ public:
 
     bool done = false;
     const LazyFlags* currentLazyFlags = nullptr;;
-    bool isFunction = false;
     std::vector<DynamicJump> jumps;
     BHashTable<U32, U32> eipToBufferPos;
     U32 currentEip = 0;

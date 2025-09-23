@@ -32,13 +32,6 @@ void dynamic_jump(DynamicData* data, DecodedOp* op, DynReg reg, U32 inst, U32 le
     data->done = true;
 }
 
-enum DynArg {
-    DYN_Mem=0,
-    DYN_Reg,
-    DYN_Const,
-    DYN_None,
-};
-
 U32 cpuOffset(U32 r, DynWidth width) {
     if (width==DYN_8bit)
         return CPU::offsetofReg8(r);
@@ -92,7 +85,7 @@ U32 cpuOffsetSrc(DynWidth width) {
 }
 void dynamic_getCF(DynamicData* data);
 
-void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
+void dynamic_arithRR(DynamicData* data, DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
     bool needsToSetFlags = op->needsToSetFlags(data->cpu);
 
     if (cf) {
@@ -104,151 +97,214 @@ void dynamic_arith(DynamicData* data, DecodedOp* op, DynArg src, DynArg dst, Dyn
         return;
     }
     if (!needsToSetFlags) {
-        if (src == DYN_Reg) {
-            if (dst == DYN_Reg) {
-                movToRegFromCpu(DYN_SRC, cpuOffset(op->rm, width), width);
-                if (cf) {
-                    if (width != DYN_32bit) {
-                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-                    }
-                    instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-                }
-                instCPUReg(inst, cpuOffset(op->reg, width), DYN_SRC, width, true, DYN_DEST);
-            } else if (dst == DYN_Mem) {
-                calculateEaa(op, DYN_ADDRESS);
-                movToRegFromCpu(DYN_SRC, cpuOffset(op->reg, width), width);
-                if (cf) {
-                    if (width != DYN_32bit) {
-                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-                    }
-                    instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-                }
-                instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true);
+        movToRegFromCpu(DYN_SRC, cpuOffset(op->rm, width), width);
+        if (cf) {
+            if (width != DYN_32bit) {
+                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
             }
-        } else if (src == DYN_Mem) {
-            if (dst == DYN_Reg) {
-                calculateEaa(op, DYN_ADDRESS);
-                if (cf) {
-                    movToRegFromReg(DYN_DEST, width, DYN_CALL_RESULT, DYN_32bit, false);
-                    movFromMem(width, DYN_ADDRESS, true);
-                    instRegReg('+', DYN_CALL_RESULT, DYN_DEST, width, true);
-                } else {
-                    movFromMem(width, DYN_ADDRESS, true);
-                }
-                instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true, DYN_DEST);
+            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
+        }
+        instCPUReg(inst, cpuOffset(op->reg, width), DYN_SRC, width, true, DYN_DEST);
+    } else {
+        if (cf) {
+            movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);
+        }
+        movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(op->rm, width), width, DYN_SRC, false);
+        movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
+
+        if (cf) {
+            if (width != DYN_32bit) {
+                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
             }
-        } else if (src == DYN_Const) {
-            if (dst == DYN_Reg) {
-                if (cf) {
-                    if (width != DYN_32bit) {
-                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-                    }
-                    instRegImm('+', DYN_CALL_RESULT, width, op->imm);
-                    instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true, DYN_DEST);
-                } else {
-                    instCPUImm(inst, cpuOffset(op->reg, width), width, op->imm, DYN_DEST);
-                }
-            } else if (dst == DYN_Mem) {
-                calculateEaa(op, DYN_ADDRESS);
-                if (cf) {
-                    movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-                    instRegImm('+', DYN_SRC, width, op->imm);
-                    instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true);
-                } else {
-                    instMemImm(inst, DYN_ADDRESS, width, op->imm, true);
-                }
+            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
+        }
+        instRegReg(inst, DYN_DEST, DYN_SRC, width, true);
+        movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
+        if (store) {
+            movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
+        }
+        movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
+        data->currentLazyFlags = flags;
+    }
+    INCREMENT_EIP(data, op);
+}
+
+void dynamic_arithRM(DynamicData* data, DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
+    bool needsToSetFlags = op->needsToSetFlags(data->cpu);
+
+    if (cf) {
+        dynamic_getCF(data);
+    }
+    if (!needsToSetFlags && !store) {
+        // I've seen a test followed by a cmp when running Quake 2.  Very weird
+        INCREMENT_EIP(data, op);
+        return;
+    }
+    if (!needsToSetFlags) {
+        calculateEaa(op, DYN_ADDRESS);
+        if (cf) {
+            movToRegFromReg(DYN_DEST, width, DYN_CALL_RESULT, DYN_32bit, false);
+            movFromMem(width, DYN_ADDRESS, true);
+            instRegReg('+', DYN_CALL_RESULT, DYN_DEST, width, true);
+        } else {
+            movFromMem(width, DYN_ADDRESS, true);
+        }
+        instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true, DYN_DEST);
+    } else {
+        if (cf) {
+            movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);
+        }
+        if (cf) {
+            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
+        }
+        calculateEaa(op, DYN_ADDRESS);
+        movToCpuFromMem(cpuOffsetSrc(width), width, DYN_ADDRESS, true, false);
+        movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
+        if (cf) {
+            instRegReg('+', DYN_CALL_RESULT, DYN_SRC, width, true);
+        }
+        instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);
+        movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
+        if (store) {
+            movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
+        }
+        movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
+        data->currentLazyFlags = flags;
+    }
+    INCREMENT_EIP(data, op);
+}
+
+void dynamic_arithRI(DynamicData* data, DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
+    bool needsToSetFlags = op->needsToSetFlags(data->cpu);
+
+    if (cf) {
+        dynamic_getCF(data);
+    }
+    if (!needsToSetFlags && !store) {
+        // I've seen a test followed by a cmp when running Quake 2.  Very weird
+        INCREMENT_EIP(data, op);
+        return;
+    }
+    if (!needsToSetFlags) {
+        if (cf) {
+            if (width != DYN_32bit) {
+                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
             }
+            instRegImm('+', DYN_CALL_RESULT, width, op->imm);
+            instCPUReg(inst, cpuOffset(op->reg, width), DYN_CALL_RESULT, width, true, DYN_DEST);
+        } else {
+            instCPUImm(inst, cpuOffset(op->reg, width), width, op->imm, DYN_DEST);
         }
     } else {
         if (cf) {
             movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);
         }
-        if (src == DYN_Reg) {
-            if (dst == DYN_Reg) {
-                movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(op->rm, width), width, DYN_SRC, false);
-                movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
-
-                if (cf) {
-                    if (width != DYN_32bit) {
-                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-                    }
-                    instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-                }
-                instRegReg(inst, DYN_DEST, DYN_SRC, width, true);
-                movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
-                if (store) {
-                    movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
-                }
-            } else if (dst == DYN_Mem) {
-                movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(op->reg, width), width, DYN_SRC, false);
-                if (cf) {
-                    if (width != DYN_32bit) {
-                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, true);
-                    }
-                    instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-                }
-                calculateEaa(op, DYN_ADDRESS);
-                movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
-                instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
-                movToCpuFromReg(cpuOffsetResult(width), DYN_CALL_RESULT, width, !store);
-                if (store) {
-                    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true);
-                }
+        movToCpu(cpuOffsetSrc(width), width, op->imm);
+        movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
+        instRegImm(inst, DYN_DEST, width, op->imm);
+        if (cf) {
+            if (width != DYN_32bit) {
+                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
             }
-        } else if (src == DYN_Mem) {
-            if (dst == DYN_Reg) {
-                if (cf) {
-                    movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-                }
-                calculateEaa(op, DYN_ADDRESS);
-                movToCpuFromMem(cpuOffsetSrc(width), width, DYN_ADDRESS, true, false);
-                movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
-                if (cf) {
-                    instRegReg('+', DYN_CALL_RESULT, DYN_SRC, width, true);
-                }
-                instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);
-                movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
-                if (store) {
-                    movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
-                }
-            }
-        } else if (src == DYN_Const) {
-            if (dst == DYN_Reg) {
-                movToCpu(cpuOffsetSrc(width), width, op->imm);
-                movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(op->reg, width), width, DYN_DEST, false);
-                instRegImm(inst, DYN_DEST, width, op->imm);
-                if (cf) {
-                    if (width != DYN_32bit) {
-                        movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-                    }
-                    instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);
-                }
-                movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
-                if (store) {
-                    movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
-                }
-            } else if (dst == DYN_Mem) {
-                calculateEaa(op, DYN_ADDRESS);
-                movToCpu(cpuOffsetSrc(width), width, op->imm);
-                if (cf) {
-                    movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-                    movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
-                    instRegImm('+', DYN_SRC, width, op->imm);
-                    instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
-                } else {
-                    movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
-                    instRegImm(inst, DYN_CALL_RESULT, width, op->imm);
-                }
-                movToCpuFromReg(cpuOffsetResult(width), DYN_CALL_RESULT, width, !store);
-                if (store) {
-                    movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true);
-                }
-            }
+            instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);
+        }
+        movToCpuFromReg(cpuOffsetResult(width), DYN_DEST, width, !store);
+        if (store) {
+            movToCpuFromReg(cpuOffset(op->reg, width), DYN_DEST, width, true);
         }
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
         data->currentLazyFlags = flags;
     }
+    INCREMENT_EIP(data, op);
+}
 
+void dynamic_arithMR(DynamicData* data, DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
+    bool needsToSetFlags = op->needsToSetFlags(data->cpu);
+
+    if (cf) {
+        dynamic_getCF(data);
+    }
+    if (!needsToSetFlags && !store) {
+        // I've seen a test followed by a cmp when running Quake 2.  Very weird
+        INCREMENT_EIP(data, op);
+        return;
+    }
+    if (!needsToSetFlags) {
+        calculateEaa(op, DYN_ADDRESS);
+        movToRegFromCpu(DYN_SRC, cpuOffset(op->reg, width), width);
+        if (cf) {
+            if (width != DYN_32bit) {
+                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
+            }
+            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
+        }
+        instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true, DYN_DEST);
+    } else {
+        if (cf) {
+            movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);
+        }
+        movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(op->reg, width), width, DYN_SRC, false);
+        if (cf) {
+            if (width != DYN_32bit) {
+                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, true);
+            }
+            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
+        }
+        calculateEaa(op, DYN_ADDRESS);
+        movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
+        instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
+        movToCpuFromReg(cpuOffsetResult(width), DYN_CALL_RESULT, width, !store);
+        if (store) {
+            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true, DYN_DEST);
+        }
+        movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
+        data->currentLazyFlags = flags;
+    }
+    INCREMENT_EIP(data, op);
+}
+
+void dynamic_arithMI(DynamicData* data, DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
+    bool needsToSetFlags = op->needsToSetFlags(data->cpu);
+
+    if (cf) {
+        dynamic_getCF(data);
+    }
+    if (!needsToSetFlags && !store) {
+        // I've seen a test followed by a cmp when running Quake 2.  Very weird
+        INCREMENT_EIP(data, op);
+        return;
+    }
+    if (!needsToSetFlags) {
+        calculateEaa(op, DYN_ADDRESS);
+        if (cf) {
+            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
+            instRegImm('+', DYN_SRC, width, op->imm);
+            instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true, DYN_DEST);
+        } else {
+            instMemImm(inst, DYN_ADDRESS, width, op->imm, true, DYN_DEST);
+        }
+    } else {
+        if (cf) {
+            movToCpuFromReg(CPU_OFFSET_OF(oldCF), DYN_CALL_RESULT, DYN_32bit, false);
+        }
+        calculateEaa(op, DYN_ADDRESS);
+        movToCpu(cpuOffsetSrc(width), width, op->imm);
+        if (cf) {
+            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
+            movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
+            instRegImm('+', DYN_SRC, width, op->imm);
+            instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
+        } else {
+            movToCpuFromMem(cpuOffsetDst(width), width, DYN_ADDRESS, !store, false);
+            instRegImm(inst, DYN_CALL_RESULT, width, op->imm);
+        }
+        movToCpuFromReg(cpuOffsetResult(width), DYN_CALL_RESULT, width, !store);
+        if (store) {
+            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true, DYN_DEST);
+        }
+        movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
+        data->currentLazyFlags = flags;
+    }
     INCREMENT_EIP(data, op);
 }
 
@@ -1005,7 +1061,7 @@ void dynamic_pushReg32(DynamicData* data, DynReg reg, bool doneWithReg) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         movToRegFromCpu(DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
         instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
-        movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, false, doneWithReg);
+        movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, false, doneWithReg, DYN_DEST);
         movToCpuFromReg(CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
     } else {
         callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);

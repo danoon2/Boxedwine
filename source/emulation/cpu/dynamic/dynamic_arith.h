@@ -17,400 +17,400 @@
  */
 
 void dynamic_addr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '+', false, true, FLAGS_ADD8);
+    dynamic_arithRR(data, op, DYN_8bit, '+', false, true, FLAGS_ADD8);
 }
 void dynamic_adde8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '+', false, true, FLAGS_ADD8);
+    dynamic_arithMR(data, op, DYN_8bit, '+', false, true, FLAGS_ADD8);
 }
 void dynamic_addr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '+', false, true, FLAGS_ADD8);
+    dynamic_arithRM(data, op, DYN_8bit, '+', false, true, FLAGS_ADD8);
 }
 void dynamic_add8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '+', false, true, FLAGS_ADD8);
+    dynamic_arithRI(data, op, DYN_8bit, '+', false, true, FLAGS_ADD8);
 }
 void dynamic_add8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '+', false, true, FLAGS_ADD8);
+    dynamic_arithMI(data, op, DYN_8bit, '+', false, true, FLAGS_ADD8);
 }
 void dynamic_addr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '+', false, true, FLAGS_ADD16);
+    dynamic_arithRR(data, op, DYN_16bit, '+', false, true, FLAGS_ADD16);
 }
 void dynamic_adde16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '+', false, true, FLAGS_ADD16);
+    dynamic_arithMR(data, op, DYN_16bit, '+', false, true, FLAGS_ADD16);
 }
 void dynamic_addr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '+', false, true, FLAGS_ADD16);
+    dynamic_arithRM(data, op, DYN_16bit, '+', false, true, FLAGS_ADD16);
 }
 void dynamic_add16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '+', false, true, FLAGS_ADD16);
+    dynamic_arithRI(data, op, DYN_16bit, '+', false, true, FLAGS_ADD16);
 }
 void dynamic_add16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '+', false, true, FLAGS_ADD16);
+    dynamic_arithMI(data, op, DYN_16bit, '+', false, true, FLAGS_ADD16);
 }
 void dynamic_addr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '+', false, true, FLAGS_ADD32);
+    dynamic_arithRR(data, op, DYN_32bit, '+', false, true, FLAGS_ADD32);
 }
 void dynamic_adde32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '+', false, true, FLAGS_ADD32);
+    dynamic_arithMR(data, op, DYN_32bit, '+', false, true, FLAGS_ADD32);
 }
 void dynamic_addr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '+', false, true, FLAGS_ADD32);
+    dynamic_arithRM(data, op, DYN_32bit, '+', false, true, FLAGS_ADD32);
 }
 void dynamic_add32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '+', false, true, FLAGS_ADD32);
+    dynamic_arithRI(data, op, DYN_32bit, '+', false, true, FLAGS_ADD32);
 }
 void dynamic_add32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '+', false, true, FLAGS_ADD32);
+    dynamic_arithMI(data, op, DYN_32bit, '+', false, true, FLAGS_ADD32);
 }
 void dynamic_orr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '|', false, true, FLAGS_OR8);
+    dynamic_arithRR(data, op, DYN_8bit, '|', false, true, FLAGS_OR8);
 }
 void dynamic_ore8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '|', false, true, FLAGS_OR8);
+    dynamic_arithMR(data, op, DYN_8bit, '|', false, true, FLAGS_OR8);
 }
 void dynamic_orr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '|', false, true, FLAGS_OR8);
+    dynamic_arithRM(data, op, DYN_8bit, '|', false, true, FLAGS_OR8);
 }
 void dynamic_or8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '|', false, true, FLAGS_OR8);
+    dynamic_arithRI(data, op, DYN_8bit, '|', false, true, FLAGS_OR8);
 }
 void dynamic_or8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '|', false, true, FLAGS_OR8);
+    dynamic_arithMI(data, op, DYN_8bit, '|', false, true, FLAGS_OR8);
 }
 void dynamic_orr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '|', false, true, FLAGS_OR16);
+    dynamic_arithRR(data, op, DYN_16bit, '|', false, true, FLAGS_OR16);
 }
 void dynamic_ore16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '|', false, true, FLAGS_OR16);
+    dynamic_arithMR(data, op, DYN_16bit, '|', false, true, FLAGS_OR16);
 }
 void dynamic_orr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '|', false, true, FLAGS_OR16);
+    dynamic_arithRM(data, op, DYN_16bit, '|', false, true, FLAGS_OR16);
 }
 void dynamic_or16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '|', false, true, FLAGS_OR16);
+    dynamic_arithRI(data, op, DYN_16bit, '|', false, true, FLAGS_OR16);
 }
 void dynamic_or16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '|', false, true, FLAGS_OR16);
+    dynamic_arithMI(data, op, DYN_16bit, '|', false, true, FLAGS_OR16);
 }
 void dynamic_orr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '|', false, true, FLAGS_OR32);
+    dynamic_arithRR(data, op, DYN_32bit, '|', false, true, FLAGS_OR32);
 }
 void dynamic_ore32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '|', false, true, FLAGS_OR32);
+    dynamic_arithMR(data, op, DYN_32bit, '|', false, true, FLAGS_OR32);
 }
 void dynamic_orr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '|', false, true, FLAGS_OR32);
+    dynamic_arithRM(data, op, DYN_32bit, '|', false, true, FLAGS_OR32);
 }
 void dynamic_or32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '|', false, true, FLAGS_OR32);
+    dynamic_arithRI(data, op, DYN_32bit, '|', false, true, FLAGS_OR32);
 }
 void dynamic_or32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '|', false, true, FLAGS_OR32);
+    dynamic_arithMI(data, op, DYN_32bit, '|', false, true, FLAGS_OR32);
 }
 void dynamic_adcr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '+', true, true, FLAGS_ADC8);
+    dynamic_arithRR(data, op, DYN_8bit, '+', true, true, FLAGS_ADC8);
 }
 void dynamic_adce8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '+', true, true, FLAGS_ADC8);
+    dynamic_arithMR(data, op, DYN_8bit, '+', true, true, FLAGS_ADC8);
 }
 void dynamic_adcr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '+', true, true, FLAGS_ADC8);
+    dynamic_arithRM(data, op, DYN_8bit, '+', true, true, FLAGS_ADC8);
 }
 void dynamic_adc8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '+', true, true, FLAGS_ADC8);
+    dynamic_arithRI(data, op, DYN_8bit, '+', true, true, FLAGS_ADC8);
 }
 void dynamic_adc8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '+', true, true, FLAGS_ADC8);
+    dynamic_arithMI(data, op, DYN_8bit, '+', true, true, FLAGS_ADC8);
 }
 void dynamic_adcr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '+', true, true, FLAGS_ADC16);
+    dynamic_arithRR(data, op, DYN_16bit, '+', true, true, FLAGS_ADC16);
 }
 void dynamic_adce16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '+', true, true, FLAGS_ADC16);
+    dynamic_arithMR(data, op, DYN_16bit, '+', true, true, FLAGS_ADC16);
 }
 void dynamic_adcr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '+', true, true, FLAGS_ADC16);
+    dynamic_arithRM(data, op, DYN_16bit, '+', true, true, FLAGS_ADC16);
 }
 void dynamic_adc16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '+', true, true, FLAGS_ADC16);
+    dynamic_arithRI(data, op, DYN_16bit, '+', true, true, FLAGS_ADC16);
 }
 void dynamic_adc16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '+', true, true, FLAGS_ADC16);
+    dynamic_arithMI(data, op, DYN_16bit, '+', true, true, FLAGS_ADC16);
 }
 void dynamic_adcr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '+', true, true, FLAGS_ADC32);
+    dynamic_arithRR(data, op, DYN_32bit, '+', true, true, FLAGS_ADC32);
 }
 void dynamic_adce32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '+', true, true, FLAGS_ADC32);
+    dynamic_arithMR(data, op, DYN_32bit, '+', true, true, FLAGS_ADC32);
 }
 void dynamic_adcr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '+', true, true, FLAGS_ADC32);
+    dynamic_arithRM(data, op, DYN_32bit, '+', true, true, FLAGS_ADC32);
 }
 void dynamic_adc32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '+', true, true, FLAGS_ADC32);
+    dynamic_arithRI(data, op, DYN_32bit, '+', true, true, FLAGS_ADC32);
 }
 void dynamic_adc32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '+', true, true, FLAGS_ADC32);
+    dynamic_arithMI(data, op, DYN_32bit, '+', true, true, FLAGS_ADC32);
 }
 void dynamic_sbbr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '-', true, true, FLAGS_SBB8);
+    dynamic_arithRR(data, op, DYN_8bit, '-', true, true, FLAGS_SBB8);
 }
 void dynamic_sbbe8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '-', true, true, FLAGS_SBB8);
+    dynamic_arithMR(data, op, DYN_8bit, '-', true, true, FLAGS_SBB8);
 }
 void dynamic_sbbr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '-', true, true, FLAGS_SBB8);
+    dynamic_arithRM(data, op, DYN_8bit, '-', true, true, FLAGS_SBB8);
 }
 void dynamic_sbb8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '-', true, true, FLAGS_SBB8);
+    dynamic_arithRI(data, op, DYN_8bit, '-', true, true, FLAGS_SBB8);
 }
 void dynamic_sbb8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '-', true, true, FLAGS_SBB8);
+    dynamic_arithMI(data, op, DYN_8bit, '-', true, true, FLAGS_SBB8);
 }
 void dynamic_sbbr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '-', true, true, FLAGS_SBB16);
+    dynamic_arithRR(data, op, DYN_16bit, '-', true, true, FLAGS_SBB16);
 }
 void dynamic_sbbe16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '-', true, true, FLAGS_SBB16);
+    dynamic_arithMR(data, op, DYN_16bit, '-', true, true, FLAGS_SBB16);
 }
 void dynamic_sbbr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '-', true, true, FLAGS_SBB16);
+    dynamic_arithRM(data, op, DYN_16bit, '-', true, true, FLAGS_SBB16);
 }
 void dynamic_sbb16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '-', true, true, FLAGS_SBB16);
+    dynamic_arithRI(data, op, DYN_16bit, '-', true, true, FLAGS_SBB16);
 }
 void dynamic_sbb16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '-', true, true, FLAGS_SBB16);
+    dynamic_arithMI(data, op, DYN_16bit, '-', true, true, FLAGS_SBB16);
 }
 void dynamic_sbbr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '-', true, true, FLAGS_SBB32);
+    dynamic_arithRR(data, op, DYN_32bit, '-', true, true, FLAGS_SBB32);
 }
 void dynamic_sbbe32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '-', true, true, FLAGS_SBB32);
+    dynamic_arithMR(data, op, DYN_32bit, '-', true, true, FLAGS_SBB32);
 }
 void dynamic_sbbr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '-', true, true, FLAGS_SBB32);
+    dynamic_arithRM(data, op, DYN_32bit, '-', true, true, FLAGS_SBB32);
 }
 void dynamic_sbb32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '-', true, true, FLAGS_SBB32);
+    dynamic_arithRI(data, op, DYN_32bit, '-', true, true, FLAGS_SBB32);
 }
 void dynamic_sbb32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '-', true, true, FLAGS_SBB32);
+    dynamic_arithMI(data, op, DYN_32bit, '-', true, true, FLAGS_SBB32);
 }
 void dynamic_andr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '&', false, true, FLAGS_AND8);
+    dynamic_arithRR(data, op, DYN_8bit, '&', false, true, FLAGS_AND8);
 }
 void dynamic_ande8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '&', false, true, FLAGS_AND8);
+    dynamic_arithMR(data, op, DYN_8bit, '&', false, true, FLAGS_AND8);
 }
 void dynamic_andr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '&', false, true, FLAGS_AND8);
+    dynamic_arithRM(data, op, DYN_8bit, '&', false, true, FLAGS_AND8);
 }
 void dynamic_and8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '&', false, true, FLAGS_AND8);
+    dynamic_arithRI(data, op, DYN_8bit, '&', false, true, FLAGS_AND8);
 }
 void dynamic_and8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '&', false, true, FLAGS_AND8);
+    dynamic_arithMI(data, op, DYN_8bit, '&', false, true, FLAGS_AND8);
 }
 void dynamic_andr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '&', false, true, FLAGS_AND16);
+    dynamic_arithRR(data, op, DYN_16bit, '&', false, true, FLAGS_AND16);
 }
 void dynamic_ande16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '&', false, true, FLAGS_AND16);
+    dynamic_arithMR(data, op, DYN_16bit, '&', false, true, FLAGS_AND16);
 }
 void dynamic_andr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '&', false, true, FLAGS_AND16);
+    dynamic_arithRM(data, op, DYN_16bit, '&', false, true, FLAGS_AND16);
 }
 void dynamic_and16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '&', false, true, FLAGS_AND16);
+    dynamic_arithRI(data, op, DYN_16bit, '&', false, true, FLAGS_AND16);
 }
 void dynamic_and16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '&', false, true, FLAGS_AND16);
+    dynamic_arithMI(data, op, DYN_16bit, '&', false, true, FLAGS_AND16);
 }
 void dynamic_andr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '&', false, true, FLAGS_AND32);
+    dynamic_arithRR(data, op, DYN_32bit, '&', false, true, FLAGS_AND32);
 }
 void dynamic_ande32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '&', false, true, FLAGS_AND32);
+    dynamic_arithMR(data, op, DYN_32bit, '&', false, true, FLAGS_AND32);
 }
 void dynamic_andr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '&', false, true, FLAGS_AND32);
+    dynamic_arithRM(data, op, DYN_32bit, '&', false, true, FLAGS_AND32);
 }
 void dynamic_and32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '&', false, true, FLAGS_AND32);
+    dynamic_arithRI(data, op, DYN_32bit, '&', false, true, FLAGS_AND32);
 }
 void dynamic_and32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '&', false, true, FLAGS_AND32);
+    dynamic_arithMI(data, op, DYN_32bit, '&', false, true, FLAGS_AND32);
 }
 void dynamic_subr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '-', false, true, FLAGS_SUB8);
+    dynamic_arithRR(data, op, DYN_8bit, '-', false, true, FLAGS_SUB8);
 }
 void dynamic_sube8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '-', false, true, FLAGS_SUB8);
+    dynamic_arithMR(data, op, DYN_8bit, '-', false, true, FLAGS_SUB8);
 }
 void dynamic_subr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '-', false, true, FLAGS_SUB8);
+    dynamic_arithRM(data, op, DYN_8bit, '-', false, true, FLAGS_SUB8);
 }
 void dynamic_sub8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '-', false, true, FLAGS_SUB8);
+    dynamic_arithRI(data, op, DYN_8bit, '-', false, true, FLAGS_SUB8);
 }
 void dynamic_sub8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '-', false, true, FLAGS_SUB8);
+    dynamic_arithMI(data, op, DYN_8bit, '-', false, true, FLAGS_SUB8);
 }
 void dynamic_subr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '-', false, true, FLAGS_SUB16);
+    dynamic_arithRR(data, op, DYN_16bit, '-', false, true, FLAGS_SUB16);
 }
 void dynamic_sube16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '-', false, true, FLAGS_SUB16);
+    dynamic_arithMR(data, op, DYN_16bit, '-', false, true, FLAGS_SUB16);
 }
 void dynamic_subr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '-', false, true, FLAGS_SUB16);
+    dynamic_arithRM(data, op, DYN_16bit, '-', false, true, FLAGS_SUB16);
 }
 void dynamic_sub16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '-', false, true, FLAGS_SUB16);
+    dynamic_arithRI(data, op, DYN_16bit, '-', false, true, FLAGS_SUB16);
 }
 void dynamic_sub16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '-', false, true, FLAGS_SUB16);
+    dynamic_arithMI(data, op, DYN_16bit, '-', false, true, FLAGS_SUB16);
 }
 void dynamic_subr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '-', false, true, FLAGS_SUB32);
+    dynamic_arithRR(data, op, DYN_32bit, '-', false, true, FLAGS_SUB32);
 }
 void dynamic_sube32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '-', false, true, FLAGS_SUB32);
+    dynamic_arithMR(data, op, DYN_32bit, '-', false, true, FLAGS_SUB32);
 }
 void dynamic_subr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '-', false, true, FLAGS_SUB32);
+    dynamic_arithRM(data, op, DYN_32bit, '-', false, true, FLAGS_SUB32);
 }
 void dynamic_sub32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '-', false, true, FLAGS_SUB32);
+    dynamic_arithRI(data, op, DYN_32bit, '-', false, true, FLAGS_SUB32);
 }
 void dynamic_sub32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '-', false, true, FLAGS_SUB32);
+    dynamic_arithMI(data, op, DYN_32bit, '-', false, true, FLAGS_SUB32);
 }
 void dynamic_xorr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '^', false, true, FLAGS_XOR8);
+    dynamic_arithRR(data, op, DYN_8bit, '^', false, true, FLAGS_XOR8);
 }
 void dynamic_xore8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '^', false, true, FLAGS_XOR8);
+    dynamic_arithMR(data, op, DYN_8bit, '^', false, true, FLAGS_XOR8);
 }
 void dynamic_xorr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '^', false, true, FLAGS_XOR8);
+    dynamic_arithRM(data, op, DYN_8bit, '^', false, true, FLAGS_XOR8);
 }
 void dynamic_xor8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '^', false, true, FLAGS_XOR8);
+    dynamic_arithRI(data, op, DYN_8bit, '^', false, true, FLAGS_XOR8);
 }
 void dynamic_xor8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '^', false, true, FLAGS_XOR8);
+    dynamic_arithMI(data, op, DYN_8bit, '^', false, true, FLAGS_XOR8);
 }
 void dynamic_xorr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '^', false, true, FLAGS_XOR16);
+    dynamic_arithRR(data, op, DYN_16bit, '^', false, true, FLAGS_XOR16);
 }
 void dynamic_xore16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '^', false, true, FLAGS_XOR16);
+    dynamic_arithMR(data, op, DYN_16bit, '^', false, true, FLAGS_XOR16);
 }
 void dynamic_xorr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '^', false, true, FLAGS_XOR16);
+    dynamic_arithRM(data, op, DYN_16bit, '^', false, true, FLAGS_XOR16);
 }
 void dynamic_xor16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '^', false, true, FLAGS_XOR16);
+    dynamic_arithRI(data, op, DYN_16bit, '^', false, true, FLAGS_XOR16);
 }
 void dynamic_xor16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '^', false, true, FLAGS_XOR16);
+    dynamic_arithMI(data, op, DYN_16bit, '^', false, true, FLAGS_XOR16);
 }
 void dynamic_xorr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '^', false, true, FLAGS_XOR32);
+    dynamic_arithRR(data, op, DYN_32bit, '^', false, true, FLAGS_XOR32);
 }
 void dynamic_xore32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '^', false, true, FLAGS_XOR32);
+    dynamic_arithMR(data, op, DYN_32bit, '^', false, true, FLAGS_XOR32);
 }
 void dynamic_xorr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '^', false, true, FLAGS_XOR32);
+    dynamic_arithRM(data, op, DYN_32bit, '^', false, true, FLAGS_XOR32);
 }
 void dynamic_xor32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '^', false, true, FLAGS_XOR32);
+    dynamic_arithRI(data, op, DYN_32bit, '^', false, true, FLAGS_XOR32);
 }
 void dynamic_xor32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '^', false, true, FLAGS_XOR32);
+    dynamic_arithMI(data, op, DYN_32bit, '^', false, true, FLAGS_XOR32);
 }
 void dynamic_cmpr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '-', false, false, FLAGS_CMP8);
+    dynamic_arithRR(data, op, DYN_8bit, '-', false, false, FLAGS_CMP8);
 }
 void dynamic_cmpe8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '-', false, false, FLAGS_CMP8);
+    dynamic_arithMR(data, op, DYN_8bit, '-', false, false, FLAGS_CMP8);
 }
 void dynamic_cmpr8e8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_8bit, '-', false, false, FLAGS_CMP8);
+    dynamic_arithRM(data, op, DYN_8bit, '-', false, false, FLAGS_CMP8);
 }
 void dynamic_cmp8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '-', false, false, FLAGS_CMP8);
+    dynamic_arithRI(data, op, DYN_8bit, '-', false, false, FLAGS_CMP8);
 }
 void dynamic_cmp8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '-', false, false, FLAGS_CMP8);
+    dynamic_arithMI(data, op, DYN_8bit, '-', false, false, FLAGS_CMP8);
 }
 void dynamic_cmpr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '-', false, false, FLAGS_CMP16);
+    dynamic_arithRR(data, op, DYN_16bit, '-', false, false, FLAGS_CMP16);
 }
 void dynamic_cmpe16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '-', false, false, FLAGS_CMP16);
+    dynamic_arithMR(data, op, DYN_16bit, '-', false, false, FLAGS_CMP16);
 }
 void dynamic_cmpr16e16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_16bit, '-', false, false, FLAGS_CMP16);
+    dynamic_arithRM(data, op, DYN_16bit, '-', false, false, FLAGS_CMP16);
 }
 void dynamic_cmp16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '-', false, false, FLAGS_CMP16);
+    dynamic_arithRI(data, op, DYN_16bit, '-', false, false, FLAGS_CMP16);
 }
 void dynamic_cmp16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '-', false, false, FLAGS_CMP16);
+    dynamic_arithMI(data, op, DYN_16bit, '-', false, false, FLAGS_CMP16);
 }
 void dynamic_cmpr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '-', false, false, FLAGS_CMP32);
+    dynamic_arithRR(data, op, DYN_32bit, '-', false, false, FLAGS_CMP32);
 }
 void dynamic_cmpe32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '-', false, false, FLAGS_CMP32);
+    dynamic_arithMR(data, op, DYN_32bit, '-', false, false, FLAGS_CMP32);
 }
 void dynamic_cmpr32e32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Mem, DYN_Reg, DYN_32bit, '-', false, false, FLAGS_CMP32);
+    dynamic_arithRM(data, op, DYN_32bit, '-', false, false, FLAGS_CMP32);
 }
 void dynamic_cmp32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '-', false, false, FLAGS_CMP32);
+    dynamic_arithRI(data, op, DYN_32bit, '-', false, false, FLAGS_CMP32);
 }
 void dynamic_cmp32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '-', false, false, FLAGS_CMP32);
+    dynamic_arithMI(data, op, DYN_32bit, '-', false, false, FLAGS_CMP32);
 }
 void dynamic_testr8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_8bit, '&', false, false, FLAGS_TEST8);
+    dynamic_arithRR(data, op, DYN_8bit, '&', false, false, FLAGS_TEST8);
 }
 void dynamic_teste8r8(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_8bit, '&', false, false, FLAGS_TEST8);
+    dynamic_arithMR(data, op, DYN_8bit, '&', false, false, FLAGS_TEST8);
 }
 void dynamic_test8_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_8bit, '&', false, false, FLAGS_TEST8);
+    dynamic_arithRI(data, op, DYN_8bit, '&', false, false, FLAGS_TEST8);
 }
 void dynamic_test8_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_8bit, '&', false, false, FLAGS_TEST8);
+    dynamic_arithMI(data, op, DYN_8bit, '&', false, false, FLAGS_TEST8);
 }
 void dynamic_testr16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_16bit, '&', false, false, FLAGS_TEST16);
+    dynamic_arithRR(data, op, DYN_16bit, '&', false, false, FLAGS_TEST16);
 }
 void dynamic_teste16r16(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_16bit, '&', false, false, FLAGS_TEST16);
+    dynamic_arithMR(data, op, DYN_16bit, '&', false, false, FLAGS_TEST16);
 }
 void dynamic_test16_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_16bit, '&', false, false, FLAGS_TEST16);
+    dynamic_arithRI(data, op, DYN_16bit, '&', false, false, FLAGS_TEST16);
 }
 void dynamic_test16_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_16bit, '&', false, false, FLAGS_TEST16);
+    dynamic_arithMI(data, op, DYN_16bit, '&', false, false, FLAGS_TEST16);
 }
 void dynamic_testr32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Reg, DYN_32bit, '&', false, false, FLAGS_TEST32);
+    dynamic_arithRR(data, op, DYN_32bit, '&', false, false, FLAGS_TEST32);
 }
 void dynamic_teste32r32(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Reg, DYN_Mem, DYN_32bit, '&', false, false, FLAGS_TEST32);
+    dynamic_arithMR(data, op, DYN_32bit, '&', false, false, FLAGS_TEST32);
 }
 void dynamic_test32_reg(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Reg, DYN_32bit, '&', false, false, FLAGS_TEST32);
+    dynamic_arithRI(data, op, DYN_32bit, '&', false, false, FLAGS_TEST32);
 }
 void dynamic_test32_mem(DynamicData* data, DecodedOp* op) {
-    dynamic_arith(data, op, DYN_Const, DYN_Mem, DYN_32bit, '&', false, false, FLAGS_TEST32);
+    dynamic_arithMI(data, op, DYN_32bit, '&', false, false, FLAGS_TEST32);
 }
 void dynamic_notr8(DynamicData* data, DecodedOp* op) {
     instCPU('~', CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST);
@@ -418,7 +418,7 @@ void dynamic_notr8(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_note8(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    instMem('~', DYN_ADDRESS, DYN_8bit, true);
+    instMem('~', DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_notr16(DynamicData* data, DecodedOp* op) {
@@ -427,7 +427,7 @@ void dynamic_notr16(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_note16(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    instMem('~', DYN_ADDRESS, DYN_16bit, true);
+    instMem('~', DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_notr32(DynamicData* data, DecodedOp* op) {
@@ -436,7 +436,7 @@ void dynamic_notr32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_note32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    instMem('~', DYN_ADDRESS, DYN_32bit, true);
+    instMem('~', DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
     INCREMENT_EIP(data, op);
 }
 void dynamic_negr8(DynamicData* data, DecodedOp* op) {
@@ -455,12 +455,12 @@ void dynamic_negr8(DynamicData* data, DecodedOp* op) {
 void dynamic_nege8(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     if (!op->needsToSetFlags(data->cpu)) {
-        instMem('-', DYN_ADDRESS, DYN_8bit, true);
+        instMem('-', DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
     } else {
         movToCpuFromMem(CPU_OFFSET_OF(src.u8), DYN_8bit, DYN_ADDRESS, false, false);
         instReg('-', DYN_CALL_RESULT, DYN_8bit);
         movToCpuFromReg(CPU_OFFSET_OF(result.u8), DYN_CALL_RESULT, DYN_8bit, false);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG8);
         data->currentLazyFlags=FLAGS_NEG8;
     }
@@ -482,12 +482,12 @@ void dynamic_negr16(DynamicData* data, DecodedOp* op) {
 void dynamic_nege16(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     if (!op->needsToSetFlags(data->cpu)) {
-        instMem('-', DYN_ADDRESS, DYN_16bit, true);
+        instMem('-', DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
     } else {
         movToCpuFromMem(CPU_OFFSET_OF(src.u16), DYN_16bit, DYN_ADDRESS, false, false);
         instReg('-', DYN_CALL_RESULT, DYN_16bit);
         movToCpuFromReg(CPU_OFFSET_OF(result.u16), DYN_CALL_RESULT, DYN_16bit, false);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG16);
         data->currentLazyFlags=FLAGS_NEG16;
     }
@@ -509,12 +509,12 @@ void dynamic_negr32(DynamicData* data, DecodedOp* op) {
 void dynamic_nege32(DynamicData* data, DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     if (!op->needsToSetFlags(data->cpu)) {
-        instMem('-', DYN_ADDRESS, DYN_32bit, true);
+        instMem('-', DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
     } else {
         movToCpuFromMem(CPU_OFFSET_OF(src.u32), DYN_32bit, DYN_ADDRESS, false, false);
         instReg('-', DYN_CALL_RESULT, DYN_32bit);
         movToCpuFromReg(CPU_OFFSET_OF(result.u32), DYN_CALL_RESULT, DYN_32bit, false);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true);
+        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
         movToCpuPtr(CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG32);
         data->currentLazyFlags=FLAGS_NEG32;
     }
