@@ -16,22 +16,6 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void dynamic_jump(DynamicData* data, DecodedOp* op, DynReg reg, U32 inst, U32 len1, U32 len2) {
-    if (inst == JumpZ) {
-        If(reg, false);
-    } else {
-        IfNot(reg, false);
-    }
-
-    INCREMENT_EIP(data, len2);
-    blockNext2(data, op);
-    StartElse();
-    INCREMENT_EIP(data, len1);
-    blockNext1(data, op);
-    EndIf();
-    data->done = true;
-}
-
 U32 cpuOffset(U32 r, DynWidth width) {
     if (width==DYN_8bit)
         return CPU::offsetofReg8(r);

@@ -170,6 +170,9 @@ void IfNot(X86Asm::Reg32 reg, bool doneWithReg);
 void IfPtrEqual(X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg);
 void StartElse();
 void EndIf();
+void JumpIf(DynamicData* data, DynReg reg, bool doneWithReg, U32 address);
+void JumpIfNot(DynamicData* data, DynReg reg, bool doneWithReg, U32 address);
+void JumpInBlock(DynamicData* data, U32 address);
 
 void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
 void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition);
@@ -1129,6 +1132,26 @@ void instCPU(char inst, U32 dstOffset, DynWidth regWidth, DynReg tmpReg) {
     movToCpuFromReg(dstOffset, tmpReg, regWidth, true);
 }
 
+void JumpIf(DynamicData* data, DynReg reg, bool doneWithReg, U32 address) {
+    x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
+    x86.jnz(address);
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
+
+void JumpIfNot(DynamicData* data, DynReg reg, bool doneWithReg, U32 address) {
+    x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
+    x86.jz(address);
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
+
+void JumpInBlock(DynamicData* data, U32 address) {
+    x86.jmp(address);
+}
+
 void IfPtrEqual(X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg) {
     IfEqual(reg, value, doneWithReg);
 }
@@ -1597,28 +1620,97 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
         DynamicData data;
         data.cpu = cpu;
         data.currentEip = cpu->getEipAddress();
-
+        data.startingEip = cpu->getEipAddress();
+       
         initX32Ops();
         DecodedOp* nextOp = op;
         x86.reset();
         count++;
-        ops.clear();
+
+        U32 firstPassFarthestEip = cpu->getEipAddress();
+
+        // find the longest block we can compile
+        // branches that jump out of the block will be the end of the block
+
+        // 1st pass, find longest block including all direct jumps (conditional jumps, direct jumps, loop, etc)
+        
+        // jumpTo will keep track of valid jump targets.  We need this if we are going to decode more instructions (cpu->getOp)
+        // Without this the next byte of instruction may actually be invalid, I have seen skipped bytes in the instructions,
+        // I assume its for alignment/performance reasons.  Firefight installer will trigger this
+        BHashTable<U32, DecodedOp*> jumpTo;
+        while (nextOp) {
+            if (nextOp->isBranch() && (nextOp->isCall() || !nextOp->isDirectBranch())) {
+                break;
+            }
+            if (nextOp->isDirectBranch() && (firstPassFarthestEip + nextOp->len + nextOp->imm) < data.startingEip) {
+                break;
+            }
+            if (nextOp->isDirectBranch()) {
+                jumpTo.set(firstPassFarthestEip + nextOp->len + nextOp->imm, nextOp);
+            }
+            //
+            // how to handle a call deep down in an if statement 
+            //
+            // allow call if there are valid jumps that go over it, the call should do an early block return in this case
+            if (nextOp->isDirectBranch() && !nextOp->next && jumpTo.contains(firstPassFarthestEip + nextOp->len)) {                
+                // this doesn't lock cpu->memory->mutext
+                nextOp->next = cpu->memory->getDecodedOp(firstPassFarthestEip + nextOp->len);
+                if (!nextOp->next) {
+                    // don't hold lock since getOp will lock memory->mutex, this creates an issue with CodePage which will lock memory->mutex then DecodedOpCache::lock
+                    BOXEDWINE_MUTEX_UNLOCK(DecodedOpCache::lock);
+                    nextOp->next = cpu->getOp(firstPassFarthestEip + nextOp->len, 0);
+                    BOXEDWINE_MUTEX_LOCK(DecodedOpCache::lock);
+                    x86.reset(); // this is global and could have been used when we were unlocked
+                    if (op->flags & OP_FLAG_JIT) {
+                        // In the small time we allowed other threads access to the JIT, someone else beat us to the op we were about to JIT
+                        return;
+                    }
+                }
+            }
+            firstPassFarthestEip += nextOp->len;
+            if (nextOp->next) {
+                if (nextOp->next->flags & OP_FLAG_NO_JIT) {
+                    break;
+                }
+            }            
+            nextOp = nextOp->next;
+        }        
+        // find longest block where all direction jumps don't go past the block
+        U32 lastFurthestEip = firstPassFarthestEip;
+        while (true) {
+            nextOp = op;
+            data.lastOpEip = cpu->getEipAddress();
+            while (nextOp && data.lastOpEip < lastFurthestEip) {
+                if (nextOp->isDirectBranch()) {
+                    U32 target = data.lastOpEip + nextOp->len + nextOp->imm;
+                    if (target >= lastFurthestEip || target < data.startingEip) {
+                        break;
+                    }
+                }
+                if (nextOp->next) {                    
+                    data.lastOpEip += nextOp->len;
+                }
+                nextOp = nextOp->next;
+            }
+            if (!nextOp || !nextOp->next) {
+                break;
+            }
+            U32 lastEip = data.lastOpEip;
+            if (lastFurthestEip == lastEip) {
+                break;
+            }
+            // since we didn't make it to the end of the ops, try again
+            // an op we just looked at might be going to a place between lastFurthestEip and data.lastOpEip which is not valid since it is now passed the end of the block
+            lastFurthestEip = lastEip;
+        }
+        nextOp = op;
+
         while (nextOp) {
             if (nextOp->flags & OP_FLAG_NO_JIT) {
                 count--;
                 return;
             }
-#ifdef __TEST
-            if (nextOp->pfnJitCode && nextOp->inst != TestEnd) {
-#else
-            if (nextOp->pfnJitCode) {
-#endif
-                // :TODO: maybe relocate code so that we don't need a jump
 
-                x86.mov(x86.eax, (U32)nextOp->pfnJitCode);
-                x86.jmp(x86.eax);
-                break;
-            }
             memset(regUsed, 0, sizeof(regUsed));
 #ifndef __TEST
 #ifdef _DEBUG
@@ -1628,30 +1720,23 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
             emulatedLen += nextOp->len;
             opCount++;
             data.eipToBufferPos.set(data.currentEip, x86.buffer.size());
+            if (nextOp->lock) {
+                // so that intra block jumps that try to skip a lock will find the lock version of the op anyway
+                data.eipToBufferPos.set(data.currentEip+1, x86.buffer.size());
+            }
             ops.push_back(DecodedFunctionOp(data.currentEip, nextOp));
             x32Ops[nextOp->inst](&data, nextOp);
             data.currentEip += nextOp->len;
             if (x86.ifJump.size()) {
                 kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
             }
-            if (nextOp->isBranch()) {
+            if (data.currentEip > data.lastOpEip) {
+                if (!nextOp->isBranch()) {
+                    int ii = 0;
+                }
                 break;
-            } else if (data.done) {
-#ifndef __TEST
-#ifdef _DEBUG
-                //if (nextOp->next)
-                //    callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)nextOp->next, DYN_PARAM_CONST_PTR, false);
-#endif
-#endif
-                for (DynamicJump& jmp : data.jumps) {
-                    if (jmp.eip >= data.currentEip) {
-                        data.done = false;
-                        break;
-                    }
-                }
-                if (data.done) {
-                    break;
-                }
+            } else if (nextOp->isBranch()) {
+                nextOp = nextOp->next;
             } else {
                 nextOp = nextOp->next;
             }
@@ -1665,7 +1750,7 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
 #endif
         x86.ret();
 
-        for (DynamicJump& jmp : data.jumps) {
+        for (DynamicJump& jmp : x86.jumps) {
             U32 bufferIndex = 0;
 
             if (!data.eipToBufferPos.get(jmp.eip, bufferIndex)) {
@@ -1691,6 +1776,7 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
 
         for (DecodedFunctionOp& fop : ops) {
             if (chunkOp != fop.op && (chunkAddress + chunkLen != fop.address)) {
+                getMemData(cpu->memory)->opCache.removeJITCode(chunkAddress, chunkLen);
                 getMemData(cpu->memory)->opCache.addJITCode_nolock(chunkOp, chunkAddress, chunkLen);
                 chunkOp = fop.op;
                 chunkLen = 0;
@@ -1699,15 +1785,19 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
             chunkLen += fop.op->len;
         }
         if (chunkLen) {
+            getMemData(cpu->memory)->opCache.removeJITCode(chunkAddress, chunkLen);
             getMemData(cpu->memory)->opCache.addJITCode_nolock(chunkOp, chunkAddress, chunkLen);
         }
 #if !defined(BOXEDWINE_MULTI_THREADED)
         op->blockOpCount = opCount;
 #endif        
-        //if ((count % 1000) == 0) {
-        //    klog_fmt("%d %d", count, functionCount);
-        //}
-
+        /*
+        static int totalOps;
+        totalOps += ops.size();
+        if ((count % 1000) == 0) {
+            klog_fmt("%d (ave %d)", count, ((totalOps + count/2)/count));
+        }
+        */
         
         for (DecodedFunctionOp& fop : ops) {
             U32 bufferIndex = 0;

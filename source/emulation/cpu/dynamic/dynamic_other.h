@@ -442,15 +442,27 @@ void dynamic_callJd(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_jmp8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op->len+(S32)((S8)op->imm));
-    blockNext1(data, op);
+    if (data->canJumpInBlock(op)) {
+        JumpInBlock(data, data->currentEip + op->len + (S32)((S8)op->imm));
+    } else {
+        blockNext1(data, op);
+    }
 }
 void dynamic_jmp16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op->len+(S32)((S16)op->imm));
-    blockNext1(data, op);
+    if (data->canJumpInBlock(op)) {
+        JumpInBlock(data, data->currentEip + op->len + (S32)((S16)op->imm));
+    } else {
+        blockNext1(data, op);
+    }
 }
 void dynamic_jmp32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op->len+(S32)op->imm);
-    blockNext1(data, op);
+    if (data->canJumpInBlock(op)) {
+        JumpInBlock(data, data->currentEip + op->len + (S32)op->imm);
+    } else {
+        blockNext1(data, op);
+    }
 }
 void dynamic_callR16(DynamicData* data, DecodedOp* op) {
     movToRegFromCpu(DYN_SRC, CPU_OFFSET_OF(eip.u32), DYN_32bit);

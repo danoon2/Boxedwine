@@ -17,23 +17,36 @@
  */
 
 void dynamic_jumpIfRegSet(DynamicData* data, DecodedOp* op, DynReg reg, bool doneWithReg) {
-    If(reg, doneWithReg);
-    INCREMENT_EIP(data, op->imm + op->len);
-    blockNext1(data, op);    
-    StartElse();    
-    INCREMENT_EIP(data, op->len);
-    blockNext2(data, op);
-    EndIf();
+    // data->currentEip > data->lastOpEip this will just if we don't jump there is a next instruction
+    if (data->canJumpInBlock(op)) {
+        INCREMENT_EIP(data, op->len + op->imm);
+        JumpIf(data, reg, true, data->currentEip + op->len + op->imm);
+        INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
+    } else {
+        If(reg, doneWithReg);
+        INCREMENT_EIP(data, op->imm + op->len);
+        blockNext1(data, op);
+        StartElse();
+        INCREMENT_EIP(data, op->len);
+        blockNext2(data, op);
+        EndIf();
+    }
 }
 
 void dynamic_jumpIfRegNotSet(DynamicData* data, DecodedOp* op, DynReg reg, bool doneWithReg) {
-    IfNot(reg, doneWithReg);
-    INCREMENT_EIP(data, op->imm + op->len);
-    blockNext1(data, op);
-    StartElse();
-    INCREMENT_EIP(data, op->len);
-    blockNext2(data, op);
-    EndIf();
+    if (data->canJumpInBlock(op)) {
+        INCREMENT_EIP(data, op->len + op->imm);
+        JumpIfNot(data, reg, true, data->currentEip + op->len + op->imm);
+        INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
+    } else {
+        IfNot(reg, doneWithReg);
+        INCREMENT_EIP(data, op->imm + op->len);
+        blockNext1(data, op);
+        StartElse();
+        INCREMENT_EIP(data, op->len);
+        blockNext2(data, op);
+        EndIf();
+    }
 }
 
 void dynamic_jumpO(DynamicData* data, DecodedOp* op) {

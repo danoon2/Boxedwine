@@ -39,6 +39,7 @@ void X86Asm::reset() {
     buffer.clear();
     patch.clear();
     ifJump.clear();
+    jumps.clear();
 }
 
 void X86Asm::outb(U8 b) {
@@ -819,6 +820,26 @@ void X86Asm::call(void* address) {
 void X86Asm::jmp(Reg32 reg) {
     outb(0xff);
     outb(0xe0 | reg.reg);
+}
+
+void X86Asm::jz(U32 address) {
+    outb(0xf);
+    outb(0x84);
+    jumps.push_back(DynamicJump(address, buffer.size()));
+    outd(0); // jump over amount
+}
+
+void X86Asm::jmp(U32 address) {
+    outb(0xe9);
+    jumps.push_back(DynamicJump(address, buffer.size()));
+    outd(0);
+}
+
+void X86Asm::jnz(U32 address) {
+    outb(0xf);
+    outb(0x85);
+    jumps.push_back(DynamicJump(address, buffer.size()));
+    outd(0); // jump over amount
 }
 
 void X86Asm::ret() {

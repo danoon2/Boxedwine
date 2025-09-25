@@ -1,6 +1,14 @@
 #ifndef __X86_ASM_H__
 #define __X86_ASM_H__
 
+class DynamicJump {
+public:
+	DynamicJump() = default;
+	DynamicJump(U32 eip, U32 bufferPos) : eip(eip), bufferPos(bufferPos) {}
+	U32 eip = 0;
+	U32 bufferPos = 0;
+};
+
 class X86Asm {
 public:
 	class Reg8Name {
@@ -171,6 +179,9 @@ public:
 	void call(void* address);
 	void ret();
 	void jmp(Reg32 reg);
+	void jz(U32 address);
+	void jnz(U32 address);
+	void jmp(U32 address);
 
 	void setz(Reg8 reg);
 	void setnz(Reg8 reg);
@@ -194,6 +205,7 @@ public:
 	std::vector<U8> buffer;
 	std::vector<U32> ifJump;
 	std::vector<U32> patch;
+	std::vector<DynamicJump> jumps;
 private:
 	void outd(U32 d);
 	void outw(U16 w);

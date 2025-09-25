@@ -69,7 +69,7 @@ private:
 };
 
 #define BOXEDWINE_CRITICAL_SECTION static std::recursive_mutex csMutex; const std::lock_guard<std::recursive_mutex> lock(csMutex);
-#define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex) const std::lock_guard<std::recursive_mutex> lock(csMutex);
+#define BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(csMutex) const std::unique_lock<std::recursive_mutex> lock(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION_MUTEX(csMutex) std::unique_lock<std::mutex> boxedWineCriticalSection(csMutex);
 #define BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(csCond) std::unique_lock<std::mutex> boxedWineCriticalSection((csCond)->m);
 
