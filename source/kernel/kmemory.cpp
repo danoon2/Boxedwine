@@ -565,9 +565,12 @@ bool KMemory::removeCode(U32 address, U32 len, bool becauseOfWrite) {
     callbackData.memory = this;
     callbackData.becauseOfWrite = becauseOfWrite;
     data->opCache.iterateOps(address, len, opCallback, &callbackData);
-#endif
     data->opCache.remove(address, len, becauseOfWrite);
     return callbackData.result;
+#else
+    data->opCache.remove(address, len, becauseOfWrite);
+    return false;
+#endif
 }
 
 void KMemory::clearPageWriteCounts(U32 pageIndex) {
