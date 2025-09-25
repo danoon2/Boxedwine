@@ -148,9 +148,9 @@ public:
     DecodedOp** getDecodedOpLocation(U32 address);
 
     void addCode_nolock(U32 address, U32 len, DecodedOp* op, U32 opCount);
-    bool removeCode(U32 address, U32 len, bool becauseOfWrite); // returns true if currently executing block is removed
+    void removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWrite);
 #if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
-    bool removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite); // returns true if currently executing block is removed
+    bool removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps); // returns true if currently executing block is removed
 #endif
     bool isAddressDynamic(U32 address, U32 len);
     void threadCleanup(U32 threadId);

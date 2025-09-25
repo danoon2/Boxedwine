@@ -30,7 +30,7 @@ void MMU::setPageType(KMemory* memory, U32 page, PageType type) {
 
 void MMU::setPage(KMemory* memory, U32 page, PageType type, RamPage ram) {
     if (getPageType() == PageType::Code && type != PageType::Code) {
-        memory->removeCode(page << K_PAGE_SHIFT, K_PAGE_SIZE, false);
+        memory->removeCode(nullptr, page << K_PAGE_SHIFT, K_PAGE_SIZE, false);
         memory->clearPageWriteCounts(page);
     }
     if (type == PageType::None) {

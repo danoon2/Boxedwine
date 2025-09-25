@@ -479,7 +479,7 @@ bool KMemory::isCode(void* p) {
 }
 
 #if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
-bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite) {
+bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, bool clearOps) {
     DecodedOp* blockOp = op->blockStart;
     U32 blockLen = blockOp->blockLen;
     U32 blockOpCount = blockOp->blockOpCount;
@@ -518,6 +518,9 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite) {
         nextOp->pfnJitCode = nullptr;
         nextOp = nextOp->next;
     }
+    if (clearOps) {
+        data->opCache.remove(address, blockLen, false);
+    }
     void* pMem = blockOp->pfnJitCode;
     blockOp->pfnJitCode = nullptr;
     data->codeMemory.free(pMem);
@@ -536,7 +539,7 @@ public:
 static void opCallback(U32 address, DecodedOp* op, void* p) {
     OpCallbackData* callbackData = (OpCallbackData*)p;
     if (op->blockStart) {
-        if (callbackData->memory->removeCodeBlock(address, op, callbackData->becauseOfWrite)) {
+        if (callbackData->memory->removeCodeBlock(address, op, callbackData->becauseOfWrite, true)) {
             callbackData->result = true;
         }
     }
@@ -549,14 +552,14 @@ static void opCallbackCheck(U32 address, DecodedOp* op, void* p) {
     }
 }
 #endif
-bool KMemory::removeCode(U32 address, U32 len, bool becauseOfWrite) {
+void KMemory::removeCode(KThread* thread, U32 address, U32 len, bool becauseOfWrite) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
         if (becauseOfWrite) {
             bool foundOp = false;
             data->opCache.iterateOps(address, len, opCallbackCheck, &foundOp);
             if (!foundOp) {
-                return false;
+                return;
             }
         }
 #endif
@@ -566,11 +569,13 @@ bool KMemory::removeCode(U32 address, U32 len, bool becauseOfWrite) {
     callbackData.becauseOfWrite = becauseOfWrite;
     data->opCache.iterateOps(address, len, opCallback, &callbackData);
     data->opCache.remove(address, len, becauseOfWrite);
-    return callbackData.result;
-#else
-    data->opCache.remove(address, len, becauseOfWrite);
-    return false;
+#ifdef BOXEDWINE_DYNAMIC
+    if (thread && callbackData.result) {
+        thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+    }
 #endif
+#endif
+    data->opCache.remove(address, len, becauseOfWrite);
 }
 
 void KMemory::clearPageWriteCounts(U32 pageIndex) {

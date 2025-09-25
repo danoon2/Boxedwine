@@ -255,7 +255,7 @@ U64 BtCPU::handleAccessException(DecodedOp* op) {
     } else if (op->blockStart) {        
         U32 eip = op->blockStart->eip;
         BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(memory->mutex);
-        memory->removeCodeBlock(eip, op->blockStart, false);
+        memory->removeCodeBlock(eip, op->blockStart, false, false);
     }
     // 0x21c900 good
     // 0x21C800 bad
