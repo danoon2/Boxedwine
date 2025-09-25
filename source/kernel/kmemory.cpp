@@ -18,11 +18,11 @@
 
 #include "boxedwine.h"
 #include "../emulation/softmmu/kmemory_soft.h"
-#include "../emulation/cpu/dynamic/dynamic_memory.h"
 #include "../emulation/softmmu/soft_ram.h"
 #include "../emulation/softmmu/soft_page.h"
 #include "../emulation/softmmu/soft_rw_page.h"
 #include "../emulation/softmmu/soft_copy_on_write_page.h"
+#include "../emulation/cpu/normal/normalCPU.h"
 
 MappedFileCache::~MappedFileCache() {
     for (RamPage& page : data) {
@@ -478,13 +478,16 @@ bool KMemory::isCode(void* p) {
     return data->codeMemory.containsAddress(p);
 }
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-void KMemory::removeCodeBlock(DecodedOp* op, bool clearOps) {
-    DecodedOp* blockOp = op->blockStart;    
+#if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
+bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite) {
+    DecodedOp* blockOp = op->blockStart;
     U32 blockLen = blockOp->blockLen;
     U32 blockOpCount = blockOp->blockOpCount;
     DecodedOp* nextOp = blockOp;
-        
+    KThread* thread = KThread::currentThread();
+    DecodedOp* currentOp = thread->memory->getDecodedOp(thread->cpu->getEipAddress());
+    bool result = false;
+
     for (U32 i = 0; i < blockOpCount; i++) {
         if (nextOp->blockStart != blockOp && nextOp->inst != Done) {
             kpanic("KMemory::removeCodeBlock nextOp->blockStart");
@@ -492,24 +495,55 @@ void KMemory::removeCodeBlock(DecodedOp* op, bool clearOps) {
         nextOp->blockStart = nullptr;
         nextOp->blockOpCount = 0;
         nextOp->blockLen = 0;
+        // dynamic will clear this in DecodedOpCache::removeJITCode, but it needs it to be set until then
+#ifdef BOXEDWINE_DYNAMIC
+        nextOp->pfn = NormalCPU::getFunctionForOp(nextOp);
+        nextOp->flags &= ~OP_FLAG_JIT;
+        if (currentOp && nextOp == currentOp->next && nextOp->pfnJitCode) {
+            // this is important if the current jit block modifies itself
+            U8* p = (U8*)nextOp->pfnJitCode;
+            p[0] = 0x5f;
+            p[1] = 0x5b;
+#ifdef _DEBUG
+            p[2] = 0x89; // mov esp, ebp
+            p[3] = 0xec;
+            p[4] = 0x5d; // pop ebp
+            p[5] = 0xc3;
+#else
+            p[2] = 0xc3; // ret
+#endif
+            result = true;
+        }
+#endif
         nextOp->pfnJitCode = nullptr;
         nextOp = nextOp->next;
     }
-    if (clearOps) {
-        data->opCache.remove(blockOp->eip, blockLen, false);
-    }
-    data->codeMemory.free(blockOp->pfnJitCode);
+    void* pMem = blockOp->pfnJitCode;
+    blockOp->pfnJitCode = nullptr;
+    data->codeMemory.free(pMem);
+    return true;
 }
 #endif
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
-static void opCallback(DecodedOp* op, void* p) {
+class OpCallbackData {
+public:
+    KMemory* memory = nullptr;
+    bool becauseOfWrite = false;
+    bool result = false;
+};
+
+#if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
+static void opCallback(U32 address, DecodedOp* op, void* p) {
+    OpCallbackData* callbackData = (OpCallbackData*)p;
     if (op->blockStart) {
-        ((KMemory*)p)->removeCodeBlock(op);
+        if (callbackData->memory->removeCodeBlock(address, op, callbackData->becauseOfWrite)) {
+            callbackData->result = true;
+        }
     }
 }
-
-static void opCallbackCheck(DecodedOp* op, void* p) {
+#endif
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
+static void opCallbackCheck(U32 address, DecodedOp* op, void* p) {
     if (!(op->flags & OP_FLAG_EMULATED_OP)) {
         *((bool*)p) = true;
     }
@@ -518,16 +552,22 @@ static void opCallbackCheck(DecodedOp* op, void* p) {
 bool KMemory::removeCode(U32 address, U32 len, bool becauseOfWrite) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(mutex)
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
-    if (becauseOfWrite) {
-        bool foundOp = false;
-        data->opCache.iterateOps(address, len, opCallbackCheck, &foundOp);
-        if (!foundOp) {
-            return false;
+        if (becauseOfWrite) {
+            bool foundOp = false;
+            data->opCache.iterateOps(address, len, opCallbackCheck, &foundOp);
+            if (!foundOp) {
+                return false;
+            }
         }
-    }
-    data->opCache.iterateOps(address, len, opCallback, this);  
 #endif
-    return data->opCache.remove(address, len, becauseOfWrite);
+#if defined(BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
+    OpCallbackData callbackData;
+    callbackData.memory = this;
+    callbackData.becauseOfWrite = becauseOfWrite;
+    data->opCache.iterateOps(address, len, opCallback, &callbackData);
+#endif
+    data->opCache.remove(address, len, becauseOfWrite);
+    return callbackData.result;
 }
 
 void KMemory::clearPageWriteCounts(U32 pageIndex) {

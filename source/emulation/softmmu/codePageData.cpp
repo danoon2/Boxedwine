@@ -43,10 +43,6 @@ DecodedOpPageCache::~DecodedOpPageCache() {
 	}
 }
 
-#ifdef BOXEDWINE_DYNAMIC
-BOXEDWINE_MUTEX DecodedOpCache::lock;
-#endif
-
 DecodedOpCache::DecodedOpCache() {
 	memset(pageData, 0, sizeof(pageData));
 	memset(writeCounts, 0, sizeof(writeCounts));
@@ -81,32 +77,27 @@ DecodedOp* DecodedOpCache::get(U32 address) {
 	return nullptr;
 }
 
-bool DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
+void DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 	U32 pageIndex = address >> K_PAGE_SHIFT;		
 	U32 offset = address & K_PAGE_MASK;
 	U32 end = offset + len;
-	bool result = false;
 
 	if (end > K_PAGE_SIZE) {
 		U32 todo = K_PAGE_SIZE - offset;
-		result = removeStartAt((pageIndex + 1) << K_PAGE_SHIFT, len - todo, becauseOfWrite);
+		removeStartAt((pageIndex + 1) << K_PAGE_SHIFT, len - todo, becauseOfWrite);
 		len = todo;
 		end = K_PAGE_SIZE;
 	}
 
 	DecodedOpPageCache* page = getPageCache(pageIndex, false);
 	if (!page) {
-		return false;
+		return;
 	}
 	U8* pageWriteCounts = nullptr;
 	if (becauseOfWrite) {
 		pageWriteCounts = getWriteCounts(pageIndex, true);
 	}
-#ifdef BOXEDWINE_DYNAMIC	
-	if (removeJITCode(address, len)) { // remove JIT before op
-		result = true;
-	}
-#endif
+
 	KThread* thread = KThread::currentThread();
 	for (U32 i = offset; i < end; i++) {
 		if (page->ops[i]) {
@@ -120,7 +111,6 @@ bool DecodedOpCache::removeStartAt(U32 address, U32 len, bool becauseOfWrite) {
 			}
 		}
 	}
-	return result;
 }
 
 DecodedOp* DecodedOpCache::getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage) {
@@ -151,7 +141,7 @@ DecodedOp* DecodedOpCache::getPreviousOp(U32 address, U32* foundAddress, Decoded
 	return nullptr;
 }
 
-DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address, bool* removedCurrentJitBlock) {
+DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address) {
 	U32 previousOpAddress = 0;
 	DecodedOpPageCache* previousPageCache = nullptr;
 	DecodedOp* previousOp = getPreviousOp(address, &previousOpAddress, &previousPageCache);
@@ -161,11 +151,6 @@ DecodedOp* DecodedOpCache::getPreviousOpAndRemoveIfOverlapping(U32 address, bool
 		if (previousOpAddress + previousOp->len > address) {
 			DecodedOp* op = previousPageCache->ops[previousOpAddress & K_PAGE_MASK];
 			previousPageCache->ops[previousOpAddress & K_PAGE_MASK] = nullptr;			
-#ifdef BOXEDWINE_DYNAMIC
-			if (removeJITCode(previousOpAddress, previousOp->len) && removedCurrentJitBlock) {
-				*removedCurrentJitBlock = true;
-			}
-#endif
 			pendingDeallocs[KThread::currentThread()->id].push_back(previousOp);
 			activeOps--;
 			previousOp = getPreviousOp(previousOpAddress, &previousOpAddress, &previousPageCache);
@@ -205,7 +190,7 @@ void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, 
 	if (previousOp) {
 		// does previousOp span into address
 		if (previousOpAddress + previousOp->len > address) {
-			callback(previousOp, pData);
+			callback(previousOpAddress, previousOp, pData);
 		}
 	}
 
@@ -220,7 +205,7 @@ void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, 
 		if (page) {			
 			for (U32 i = offset; i < offset + todo; i++) {
 				if (page->ops[i]) {
-					callback(page->ops[i], pData);
+					callback((pageIndex << K_PAGE_SHIFT) + i, page->ops[i], pData);
 				}
 			}
 		}
@@ -229,16 +214,12 @@ void DecodedOpCache::iterateOps(U32 address, U32 len, OpCacheCallback callback, 
 	}
 }
 
-bool DecodedOpCache::remove(U32 address, U32 len, bool becauseOfWrite) {
-	bool result = false;
-	DecodedOp* prev = getPreviousOpAndRemoveIfOverlapping(address, &result);
+void DecodedOpCache::remove(U32 address, U32 len, bool becauseOfWrite) {
+	DecodedOp* prev = getPreviousOpAndRemoveIfOverlapping(address);
 	if (prev) {
 		prev->next = DecodedOp::allocDone();
 	}
-	if (removeStartAt(address, len, becauseOfWrite)) {
-		result = true;
-	}
-	return result;
+	removeStartAt(address, len, becauseOfWrite);
 }
 
 void DecodedOpCache::removeAll() {
@@ -397,96 +378,3 @@ U8* DecodedOpCache::getWriteCounts(U32 pageIndex, bool create) {
 	}
 	return result;
 }
-
-#ifdef BOXEDWINE_DYNAMIC
-
-void DecodedOpCache::addJITCode_nolock(DecodedOp* op, U32 eip, U32 len) {
-	jitCode[eip] = DecodedOpJIT(op, eip, len);
-}
-
-bool DecodedOpCache::removeJITCode(U32 eip, U32 len) {
-	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(DecodedOpCache::lock);
-
-	auto it = jitCode.upper_bound(eip + len - 1);
-	if (it == jitCode.begin()) {
-		return false;
-	}
-	it--;
-	bool result = false;
-	KThread* thread = KThread::currentThread();
-	while (true) {
-		DecodedOpJIT& data = it->second;
-		U32 x1 = data.eip;
-		U32 x2 = x1 + data.eipLen - 1;
-		U32 y1 = eip;
-		U32 y2 = y1 + len - 1;
-
-		// !(x2 < y1 || x1 > y2) // easier to think of when they are not overlapped
-		if (x2 >= y1 && x1 <= y2) {
-			// :TODO: dynamic memory leaks
-			U32 address = data.eip;
-			DecodedOp* op = data.op;	
-			// this can happen during an execv, so cpu->eip does not need to be valid, to don't call cpu->getOp since that will decode the op if its not in the cache
-			U32 eip = thread->cpu->getEipAddress(); // current instruction
-			DecodedOp* currentOp = thread->memory->getDecodedOp(eip);
-			DecodedOp* nextOp = nullptr;
-
-			if (currentOp) {
-				nextOp = currentOp->next;
-			}
-
-			while (op && address < data.eip + data.eipLen) {
-				op->pfn = NormalCPU::getFunctionForOp(op);
-				if (nextOp == op) {
-					result = true;
-				}
-				if (nextOp == op && op->pfnJitCode) {
-					// this is important if the current jit block modifies itself
-					U8* p = (U8*)op->pfnJitCode;
-					p[0] = 0x5f;
-					p[1] = 0x5b;					
-#ifdef _DEBUG
-					p[2] = 0x89; // mov esp, ebp
-					p[3] = 0xec;
-					p[4] = 0x5d; // pop ebp
-					p[5] = 0xc3;
-#else
-					p[2] = 0xc3; // ret
-#endif
-				}
-				op->pfnJitCode = nullptr;
-				op->flags &= ~OP_FLAG_JIT;
-				address += op->len;
-				if (!op->next && address < data.eip + data.eipLen) {
-					op = get(address);
-					continue;
-				}
-				op = op->next;
-			}
-			if (it == jitCode.begin()) {
-				jitCode.erase(it);
-				return result;
-			}
-			jitCode.erase(it--);
-		}
-		else {
-			return result;
-		}
-	}
-}
-
-bool DecodedOpCache::hasJITCode(U32 eip, U32 len) {
-	auto it = jitCode.upper_bound(eip + len - 1);
-	if (it != jitCode.begin()) {
-		it--;
-		DecodedOpJIT& data = it->second;
-		U32 x1 = data.eip;
-		U32 x2 = x1 + data.eipLen - 1;
-		U32 y1 = eip;
-		U32 y2 = y1 + len - 1;
-
-		return x2 >= y1 && x1 <= y2;
-	}
-	return false;
-}
-#endif

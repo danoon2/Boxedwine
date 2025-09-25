@@ -6233,10 +6233,11 @@ void DecodedOp::reset() {
 #endif
 #if defined(BOXEDWINE_DYNAMIC) || defined(BOXEDWINE_BINARY_TRANSLATOR)
     this->pfnJitCode = nullptr;
-#endif
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
     blockStart = nullptr;
     blockOpCount = 0;
+    blockLen = 0;
+#endif
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     exceptionCount = 0;
 #endif
 }

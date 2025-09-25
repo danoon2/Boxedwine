@@ -61,10 +61,6 @@ public:
 #endif
 #endif  
 
-#ifdef BOXEDWINE_DYNAMIC
-    DynamicMemory* dynamicMemory;
-#endif
-
     DecodedOpCache opCache;
     BNativeHeap codeMemory;
 };

@@ -50,7 +50,8 @@ void CodePage::writeb(MMU* mmu, U32 address, U8 value) {
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         Page::getRWPage()->writeb(mmu, address, value);
         if (currentJitRemoved) {
-            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+            DecodedOp* currentOp = thread->cpu->getNextOp();
+            thread->cpu->nextOp = thread->cpu->getOp(thread->cpu->getEipAddress() + currentOp->len, 0);
         }
     }
 }
@@ -84,7 +85,8 @@ void CodePage::writew(MMU* mmu, U32 address, U16 value) {
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writew(mmu, address, value);
         if (currentJitRemoved) {
-            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+            DecodedOp* currentOp = thread->cpu->getNextOp();
+            thread->cpu->nextOp = thread->cpu->getOp(thread->cpu->getEipAddress() + currentOp->len, 0);
         }
     }
 }
@@ -130,7 +132,8 @@ void CodePage::writed(MMU* mmu, U32 address, U32 value) {
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writed(mmu, address, value);
         if (currentJitRemoved) {
-            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+            DecodedOp* currentOp = thread->cpu->getNextOp();
+            thread->cpu->nextOp = thread->cpu->getOp(thread->cpu->getEipAddress() + currentOp->len, 0);
         }
     }
 }
@@ -153,7 +156,8 @@ U8* CodePage::getRamPtr(MMU* mmu, U32 page, bool write, bool force, U32 offset, 
         bool currentJitRemoved = memory->removeCode((page << K_PAGE_SHIFT) + offset, len, true);
         onDemmand(mmu, page);
         if (currentJitRemoved) {
-            thread->cpu->nextOp = thread->cpu->getNextOp()->next;
+            DecodedOp* currentOp = thread->cpu->getNextOp();
+            thread->cpu->nextOp = thread->cpu->getOp(thread->cpu->getEipAddress() + currentOp->len, 0);
         }
         return Page::getRWPage()->getRamPtr(mmu, page, write, force, offset, len);
     }

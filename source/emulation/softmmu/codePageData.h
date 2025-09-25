@@ -26,16 +26,6 @@
 
 class KMemory;
 
-class DecodedOpJIT {
-public:
-	DecodedOpJIT() : op(nullptr), eip(0), eipLen(0) {}
-	DecodedOpJIT(DecodedOp* op, U32 eip, U32 eipLen) : op(op), eip(eip), eipLen(eipLen) {}
-
-	DecodedOp* op;
-	U32 eip;
-	U32 eipLen;
-};
-
 class DecodedOpPageCache {
 public:
 	DecodedOpPageCache();
@@ -44,7 +34,7 @@ public:
 	DecodedOp* ops[K_PAGE_SIZE];
 };
 
-typedef void (*OpCacheCallback)(DecodedOp* op, void* pData);
+typedef void (*OpCacheCallback)(U32 address, DecodedOp* op, void* pData);
 
 class DecodedOpCache {
 public:
@@ -53,35 +43,25 @@ public:
 
 	DecodedOp* get(U32 address);
 	DecodedOp** getLocation(U32 address);
-	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address, bool* removedCurrentJitBlock = nullptr);
-	bool remove(U32 address, U32 len, bool becauseOfWrite);	
+	DecodedOp* getPreviousOpAndRemoveIfOverlapping(U32 address);
+	void remove(U32 address, U32 len, bool becauseOfWrite);
 	void iterateOps(U32 address, U32 len, OpCacheCallback callback, void* pData);
 	void add(DecodedOp* op, U32 address, U32 opCount);
 	bool isAddressDynamic(U32 address, U32 len);
 	void clearPageWriteCounts(U32 pageIndex);
-#ifdef BOXEDWINE_DYNAMIC
-	static BOXEDWINE_MUTEX lock;
-
-	void addJITCode_nolock(DecodedOp* op, U32 eip, U32 len);
-	bool hasJITCode(U32 eip, U32 len);
-	bool removeJITCode(U32 eip, U32 len);
-	void markOpNoJit(U32 address);
-#endif
 	void threadCleanup(U32 threadId);
 	void clear();
 
 private:
 	friend class BtCPU;
 	void removeAll();
-	bool removeStartAt(U32 address, U32 len, bool becauseOfWrite);
+	void removeStartAt(U32 address, U32 len, bool becauseOfWrite);
 	DecodedOp* getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage);
 	DecodedOpPageCache* getPageCache(U32 pageIndex, bool create);
 	DecodedOpPageCache** pageData[0x400];
 	U8* getWriteCounts(U32 pageIndex, bool create);
 	U8** writeCounts[0x400];
 	void clearPendingDeallocs(U32 threadId);
-
-	std::map<U32, DecodedOpJIT> jitCode;
 
 	// this will hold DecodedOp's that are ready for dealloc, but are delayed in case the current thread is referencing them while removing them
 	// Without this, there will be timing issues that only occasionally show up in debug mode, but become more obvious when running games multiple

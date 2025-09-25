@@ -22,7 +22,6 @@
 #include "x32CPU.h"
 #include "../common/lazyFlags.h"
 #include "../dynamic/dynamic.h"
-#include "../dynamic/dynamic_memory.h"
 #include "../../softmmu/kmemory_soft.h"
 #include "../normal/normalCPU.h"
 
@@ -1546,33 +1545,11 @@ static void initX32Ops() {
 }
 
 static U8* createDynamicExecutableMemory(KMemory* processMemory) {
-    DynamicMemory* memory = getMemData(processMemory)->dynamicMemory;
-    if (!memory) {
-        memory = new DynamicMemory();
-        getMemData(processMemory)->dynamicMemory = memory;
-    }
+    U8* begin = (U8*)processMemory->allocCodeMemory(x86.buffer.size());
 
-    void* mem = NULL;
-
-    if (memory->dynamicExecutableMemory.size() == 0) {
-        int blocks = (x86.buffer.size() + 0xffff) / 0x10000;
-        memory->dynamicExecutableMemoryLen = blocks * 0x10000;
-        mem = Platform::alloc64kBlock(blocks, true);
-        memory->dynamicExecutableMemoryPos = 0;
-        memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
-    } else {
-        mem = memory->dynamicExecutableMemory[memory->dynamicExecutableMemory.size() - 1].p;
-        if (memory->dynamicExecutableMemoryPos + x86.buffer.size() >= memory->dynamicExecutableMemoryLen) {
-            int blocks = (x86.buffer.size() + 0xffff) / 0x10000;
-            memory->dynamicExecutableMemoryLen = blocks * 0x10000;
-            mem = Platform::alloc64kBlock(blocks, true);
-            memory->dynamicExecutableMemoryPos = 0;
-            memory->dynamicExecutableMemory.push_back(DynamicMemoryData(mem, blocks * 0x10000));
-        }
-    }
-    U8* begin = (U8*)mem + memory->dynamicExecutableMemoryPos;
-    memcpy(begin, x86.buffer.data(), x86.buffer.size());
-    memory->dynamicExecutableMemoryPos += x86.buffer.size();
+    Platform::writeCodeToMemory(begin, x86.buffer.size(), [begin]() {
+        memcpy(begin, x86.buffer.data(), x86.buffer.size());
+        });
     return begin;
 }
 
@@ -1602,7 +1579,7 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
     static int count;
     static int functionCount;
     {
-        BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(DecodedOpCache::lock);
+        BOXEDWINE_CRITICAL_SECTION;
 
         if (!cpu->thread->process->startJITOp) {
             cpu->thread->process->startJITOp = (OpCallback)createStartJITCode(cpu->memory);
@@ -1655,17 +1632,17 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
             if (nextOp->isDirectBranch() && !nextOp->next && jumpTo.contains(firstPassFarthestEip + nextOp->len)) {                
                 // this doesn't lock cpu->memory->mutext
                 nextOp->next = cpu->memory->getDecodedOp(firstPassFarthestEip + nextOp->len);
+                /*
                 if (!nextOp->next) {
                     // don't hold lock since getOp will lock memory->mutex, this creates an issue with CodePage which will lock memory->mutex then DecodedOpCache::lock
-                    BOXEDWINE_MUTEX_UNLOCK(DecodedOpCache::lock);
                     nextOp->next = cpu->getOp(firstPassFarthestEip + nextOp->len, 0);
-                    BOXEDWINE_MUTEX_LOCK(DecodedOpCache::lock);
                     x86.reset(); // this is global and could have been used when we were unlocked
                     if (op->flags & OP_FLAG_JIT) {
                         // In the small time we allowed other threads access to the JIT, someone else beat us to the op we were about to JIT
                         return;
                     }
                 }
+                */
             }
             firstPassFarthestEip += nextOp->len;
             if (nextOp->next) {
@@ -1770,24 +1747,8 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
         if (!ops.size()) {
             return;
         }
-        DecodedOp* chunkOp = ops.front().op;
-        U32 chunkAddress = ops.front().address;
-        U32 chunkLen = 0;
-
-        for (DecodedFunctionOp& fop : ops) {
-            if (chunkOp != fop.op && (chunkAddress + chunkLen != fop.address)) {
-                getMemData(cpu->memory)->opCache.removeJITCode(chunkAddress, chunkLen);
-                getMemData(cpu->memory)->opCache.addJITCode_nolock(chunkOp, chunkAddress, chunkLen);
-                chunkOp = fop.op;
-                chunkLen = 0;
-                chunkAddress = fop.address;
-            }
-            chunkLen += fop.op->len;
-        }
-        if (chunkLen) {
-            getMemData(cpu->memory)->opCache.removeJITCode(chunkAddress, chunkLen);
-            getMemData(cpu->memory)->opCache.addJITCode_nolock(chunkOp, chunkAddress, chunkLen);
-        }
+        op->blockLen = emulatedLen;
+        op->blockOpCount = opCount;
 #if !defined(BOXEDWINE_MULTI_THREADED)
         op->blockOpCount = opCount;
 #endif        
@@ -1808,6 +1769,7 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
             fop.op->pfnJitCode = (OpCallback)(begin + bufferIndex);
             fop.op->pfn = cpu->thread->process->startJITOp;            
             fop.op->flags |= OP_FLAG_JIT;
+            fop.op->blockStart = op;
         }
     }
 }

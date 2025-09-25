@@ -25,9 +25,6 @@
 #include "soft_file_map.h"
 #include "soft_code_page.h"
 #include "devfb.h"
-#ifdef BOXEDWINE_DYNAMIC
-#include "../cpu/dynamic/dynamic_memory.h"
-#endif
 #include "soft_ram.h"
 
 static InvalidPage _invalidPage;
@@ -60,20 +57,12 @@ KMemoryData::KMemoryData(KMemory* memory) : memory(memory)
         addCallback(onExitSignal);
     }
     this->allocPages(nullptr, CALL_BACK_ADDRESS >> K_PAGE_SHIFT, 1, K_PROT_READ | K_PROT_EXEC, -1, 0, nullptr, &callbackRam);
-#ifdef BOXEDWINE_DYNAMIC
-    dynamicMemory = nullptr;
-#endif
 }
 
 KMemoryData::~KMemoryData() {
     codeMemory.freeAll();
     opCache.clear();
     setPagesInvalid(0, K_NUMBER_OF_PAGES);
-#ifdef BOXEDWINE_DYNAMIC
-    if (dynamicMemory) {
-        delete dynamicMemory;
-    }
-#endif
 }
 
 bool KMemoryData::isPageValid(U32 page) {

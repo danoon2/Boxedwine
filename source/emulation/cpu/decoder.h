@@ -1619,10 +1619,12 @@ public:
     U8 blockOpCount;
 #endif
 
-#ifdef BOXEDWINE_BINARY_TRANSLATOR
+#if defined (BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)
     DecodedOp* blockStart;
     U16 blockOpCount;
     U16 blockLen; // emulated code length of the block
+#endif
+#ifdef BOXEDWINE_BINARY_TRANSLATOR
     U8 exceptionCount; // if this instruction writes to a code page a lot which causes an exception, we can track it and use a slightly slower path without throwing an exception
     U8 pad;
 #endif
