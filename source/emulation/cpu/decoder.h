@@ -1615,10 +1615,8 @@ public:
     U8 ea16: 1;
     U8 flags : 4;
 
-#if defined(BOXEDWINE_MULTI_THREADED) || !defined(BOXEDWINE_DYNAMIC)
+#ifdef BOXEDWINE_DYNAMIC
     U8 runCount;
-#else
-    U8 blockOpCount;
 #endif
 
 #if defined (BOXEDWINE_BINARY_TRANSLATOR) || defined(BOXEDWINE_DYNAMIC)

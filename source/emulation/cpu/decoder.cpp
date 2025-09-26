@@ -6226,9 +6226,7 @@ void DecodedOp::reset() {
 #ifdef _DEBUG
     this->eip = 0;
 #endif
-#if !defined(BOXEDWINE_MULTI_THREADED) && defined(BOXEDWINE_DYNAMIC)
-    this->blockOpCount = 0;
-#else
+#ifdef BOXEDWINE_DYNAMIC
     this->runCount = 0;
 #endif
 #if defined(BOXEDWINE_DYNAMIC) || defined(BOXEDWINE_BINARY_TRANSLATOR)

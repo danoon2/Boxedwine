@@ -204,7 +204,9 @@ DecodedOp* NormalCPU::getOp(U32 startIp, U32 flags) {
                 }
                 if (memory->isAddressDynamic(address, nextOp->len)) {
                     nextOp->flags |= OP_FLAG_NO_JIT;
+#ifdef BOXEDWINE_DYNAMIC
                     nextOp->runCount = JIT_RUN_COUNT + 1;
+#endif
                 }
                 address += nextOp->len;
                 nextOp = nextOp->next;

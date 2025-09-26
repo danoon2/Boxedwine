@@ -1681,16 +1681,6 @@ static void commitJIT(DynamicData& data, DecodedOp* op) {
     removeJIT(data.cpu, op, data.blockOpCount);
     op->blockLen = data.emulatedLen;
     op->blockOpCount = data.blockOpCount;
-#if !defined(BOXEDWINE_MULTI_THREADED)
-    op->blockOpCount = opCount;
-#endif        
-    /*
-    static int totalOps;
-    totalOps += ops.size();
-    if ((count % 1000) == 0) {
-        klog_fmt("%d (ave %d)", count, ((totalOps + count/2)/count));
-    }
-    */
 
     U32 address = data.startingEip;
     DecodedOp* nextOp = op;
