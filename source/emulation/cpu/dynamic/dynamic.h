@@ -20,6 +20,7 @@
 #define __DYNAMIC_H__
 
 #include "../common/cpu.h"
+#include "../x32/x86Asm.h"
 
 class DynamicData {
 public:
@@ -33,7 +34,9 @@ public:
     U32 lastOpEip = 0;
     U32 emulatedLen = 0;
     U32 blockOpCount = 0;
-
+    X86Asm x86;
+    // per instruction, not per block.  
+    bool regUsed[4];
     bool canJumpInBlock(DecodedOp* op) {
         return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
     }

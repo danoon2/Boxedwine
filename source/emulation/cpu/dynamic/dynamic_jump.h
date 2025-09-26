@@ -23,13 +23,13 @@ void dynamic_jumpIfRegSet(DynamicData* data, DecodedOp* op, DynReg reg, bool don
         JumpIf(data, reg, true, data->currentEip + op->len + op->imm);
         INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
     } else {
-        If(reg, doneWithReg);
+        If(data, reg, doneWithReg);
         INCREMENT_EIP(data, op->imm + op->len);
         blockNext1(data, op);
-        StartElse();
+        StartElse(data);
         INCREMENT_EIP(data, op->len);
         blockNext2(data, op);
-        EndIf();
+        EndIf(data);
     }
 }
 
@@ -39,13 +39,13 @@ void dynamic_jumpIfRegNotSet(DynamicData* data, DecodedOp* op, DynReg reg, bool 
         JumpIfNot(data, reg, true, data->currentEip + op->len + op->imm);
         INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
     } else {
-        IfNot(reg, doneWithReg);
+        IfNot(data, reg, doneWithReg);
         INCREMENT_EIP(data, op->imm + op->len);
         blockNext1(data, op);
-        StartElse();
+        StartElse(data);
         INCREMENT_EIP(data, op->len);
         blockNext2(data, op);
-        EndIf();
+        EndIf(data);
     }
 }
 

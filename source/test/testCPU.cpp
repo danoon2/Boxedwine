@@ -10205,10 +10205,6 @@ void setupForThread() {
     pushCode8(0x97); // will cause TEST specific return code to be inserted
     ((BtCPU*)cpu)->translateEip(cpu->eip.u32);
 #else
-    pushCode8(0x70); // jump causes the decoder to stop building the block
-    pushCode8(0);
-    pushCode8(0x70); // jump will fetch the next block as well
-    pushCode8(0);
     pushCode8(0xcd); // for multi-thread test
     pushCode8(0x97);
 #endif
