@@ -1569,6 +1569,8 @@ public:
     bool isStringOp();
     bool isBranch();
     bool isDirectBranch();
+    bool isDirectBranchWithNext();
+    bool isDirectJumpBranch();
     bool isDirectJump();
     bool isIndirectJump();
     bool isCall();
@@ -1644,15 +1646,5 @@ public:
 };
 
 DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen, U32 maxOpCount = 0xFFFFFFFF);
-
-struct DecodedFunctionOp {
-    DecodedFunctionOp() {}
-    DecodedFunctionOp(U32 address, DecodedOp* op) : address(address), op(op) {}
-
-    U32 address = 0;
-    DecodedOp* op = nullptr;
-};
-
-bool decodeFunction(DecodeBlockCallback* callback, U32 eip, std::vector<DecodedFunctionOp>& ops);
 
 #endif

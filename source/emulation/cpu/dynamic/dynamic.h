@@ -26,11 +26,13 @@ public:
     CPU* cpu = nullptr;
     DecodedOp* firstOp = nullptr;
 
-    const LazyFlags* currentLazyFlags = nullptr;;    
+    const LazyFlags* currentLazyFlags = nullptr;;
     BHashTable<U32, U32> eipToBufferPos;
     U32 currentEip = 0;
     U32 startingEip = 0;
     U32 lastOpEip = 0;
+    U32 emulatedLen = 0;
+    U32 blockOpCount = 0;
 
     bool canJumpInBlock(DecodedOp* op) {
         return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;

@@ -6277,6 +6277,14 @@ bool DecodedOp::isDirectBranch() {
     return (instructionInfo[inst].branch & DECODE_BRANCH_1) != 0;
 }
 
+bool DecodedOp::isDirectJumpBranch() {
+    return isDirectBranch() && !isCall();
+}
+
+bool DecodedOp::isDirectBranchWithNext() {
+    return isDirectBranch() && (instructionInfo[inst].branch & DECODE_BRANCH_2) != 0;
+}
+
 bool DecodedOp::isIndirectJump() {
     return this->inst == JmpE16 || this->inst == JmpE32 || this->inst == JmpR16 || this->inst == JmpR32;
 }
@@ -6393,98 +6401,6 @@ static void translateToLockInstruction(DecodedOp* op) {
     }
 }
 #endif
-
-// currently decoding switch statements won't work, op->inst == JmpE16 || op->inst == JmpE32 || op->inst == JmpR16 || op->inst == JmpR32
-bool decodeFunction(DecodeBlockCallback* callback, U32 eip, std::vector<DecodedFunctionOp>& ops) {
-    BHashTable<U32, DecodedOp*> completedEipToOp;
-    DecodedOp* result = callback->getOp(eip, 0);
-    BHashTable<U32, DecodedOp*> todoJumps;
-
-    U32 address = eip;
-    DecodedOp* op = result;
-    bool containsAtLeastOnReturn = false;
-
-    while (op) {
-        bool branch1 = (instructionInfo[op->inst].branch & DECODE_BRANCH_1);
-        bool hasNext = true;
-
-#ifdef _DEBUG
-        if (op->eip != address) {
-            kpanic("");
-        }
-#endif
-        completedEipToOp.set(address, op);
-
-        if (op->isRet()) {
-            containsAtLeastOnReturn = true;
-        }
-        address += op->len;
-        if (branch1 && op->inst != CallJw && op->inst != CallJd) {
-            DecodedOp* destOp = nullptr;
-            U32 destAddress = address + op->imm;
-
-            // aoe installer triggers isValidReadAddress == false
-            if (!completedEipToOp.get(destAddress, destOp) && callback->isValidReadAddress(destAddress)) {
-                destOp = callback->getOp(destAddress, 0);
-            }
-            if (!destOp) {
-                return false;
-            }
-            op->data.nextJump = callback->getOpLocation(destAddress);
-
-            if (!completedEipToOp.contains(destAddress)) {                
-                if (op->isDirectJump()) {
-                    op = destOp;
-                    address = destAddress;
-                    continue;
-                } else {
-                    todoJumps.set(destAddress, destOp);
-                }
-            }
-            if (op->isDirectJump()) {
-                hasNext = false;
-            }
-        }
-        // :TODO: about 75% of the functions that are requested for JIT have calls
-        if (op->isCall() && (!op->next || op->next->inst == Done)) {
-            hasNext = false;
-        }
-        if (op->flags & OP_FLAG_NO_JIT) {
-            return false;
-        }
-        if (hasNext && !op->isRet()) {
-            if (!op->next) {
-                op->next = callback->getOp(address, 0);
-            }
-            if (op == op->next) {
-                return false; // I have seen this with invalid instructions
-            }
-            op = op->next;
-            continue;
-        }
-        op = nullptr;
-        for (auto& it : todoJumps) {
-            if (completedEipToOp.contains(it.key)) {
-                todoJumps.remove(it.key);
-                continue;
-            }
-            op = it.value;
-            address = it.key;
-            todoJumps.remove(it.key);
-            break;
-        }
-    }
-    if (!containsAtLeastOnReturn) {
-        return false;
-    }
-    for (auto& it : completedEipToOp) {
-        ops.push_back(DecodedFunctionOp(it.key, it.value));
-    }
-    std::sort(ops.begin(), ops.end(), [](const DecodedFunctionOp& a, const DecodedFunctionOp& b) {
-        return a.address < b.address;
-    });
-    return true;
-}
 
 DecodedOp* decodeBlock(DecodeBlockCallback* callback, U32 eip, bool isBig, U32& opCount, U32& decodedLen, U32 maxOpCount) {
     DecodeData d;

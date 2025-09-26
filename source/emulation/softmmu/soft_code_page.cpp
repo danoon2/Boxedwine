@@ -45,10 +45,10 @@ void CodePage::writeb(MMU* mmu, U32 address, U8 value) {
         U8 currentValue = this->readb(mmu, address);
         if (currentValue == value) {
             return;
-        }
-        memory->removeCode(thread, address, 1, true);
+        }        
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         Page::getRWPage()->writeb(mmu, address, value);
+        memory->removeCode(thread, address, 1, true);
     }
 }
 
@@ -76,10 +76,10 @@ void CodePage::writew(MMU* mmu, U32 address, U16 value) {
                 startAddress = address + 1;
             }
             len++;
-        }
-        memory->removeCode(thread, startAddress, len, true);
+        }        
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writew(mmu, address, value);
+        memory->removeCode(thread, startAddress, len, true);
     }
 }
 
@@ -119,10 +119,10 @@ void CodePage::writed(MMU* mmu, U32 address, U32 value) {
                 startAddress = address + 3;
             }
             endAddress = address + 3;
-        }
-        memory->removeCode(thread, startAddress, endAddress - startAddress + 1, true);
+        }        
         onDemmand(mmu, address >> K_PAGE_SHIFT);
         RWPage::writed(mmu, address, value);
+        memory->removeCode(thread, startAddress, endAddress - startAddress + 1, true);
     }
 }
 

@@ -519,7 +519,7 @@ bool KMemory::removeCodeBlock(U32 address, DecodedOp* op, bool becauseOfWrite, b
         nextOp = nextOp->next;
     }
     if (clearOps) {
-        data->opCache.remove(address, blockLen, false);
+        data->opCache.remove(address, blockLen, becauseOfWrite);
     }
     void* pMem = blockOp->pfnJitCode;
     blockOp->pfnJitCode = nullptr;
@@ -539,7 +539,20 @@ public:
 static void opCallback(U32 address, DecodedOp* op, void* p) {
     OpCallbackData* callbackData = (OpCallbackData*)p;
     if (op->blockStart) {
-        if (callbackData->memory->removeCodeBlock(address, op, callbackData->becauseOfWrite, true)) {
+#ifdef BOXEDWINE_BINARY_TRANSLATOR     
+        U32 blockAddress = op->blockStart->eip;
+#else
+        // Normal and JIT cpu's don't need to track eip on an op except for this case, but I don't think it's really worth increasing
+        // the size of DecodedOp just for this
+        DecodedOp* nextOp = op->blockStart;
+        U32 len = 0;
+        while (nextOp != op) {
+            len += nextOp->len;
+            nextOp = nextOp->next;
+        }
+        U32 blockAddress = address - len;
+#endif
+        if (callbackData->memory->removeCodeBlock(blockAddress, op->blockStart, callbackData->becauseOfWrite, true)) {
             callbackData->result = true;
         }
     }
