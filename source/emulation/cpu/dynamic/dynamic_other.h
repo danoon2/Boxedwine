@@ -176,7 +176,8 @@ void dynamic_retn32(DynamicData* data, DecodedOp* op) {
     blockDone(data, false);
 }
 void dynamic_invalid(DynamicData* data, DecodedOp* op) {
-    kpanic_fmt("Dyn:Invalid instruction %x\n", op->inst);
+    callHostFunction(data, (void*)common_ud2, false, 1, 0, DYN_PARAM_CPU, false);
+    blockDone(data, true);
 }
 void dynamic_ud2(DynamicData* data, DecodedOp* op) {
     callHostFunction(data, (void*)common_ud2, false, 1, 0, DYN_PARAM_CPU, false);
@@ -225,7 +226,8 @@ void dynamic_xlat(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_hlt(DynamicData* data, DecodedOp* op) {
-    kpanic("Dyn:Hlt");
+    callHostFunction(data, (void*)common_hlt, false, 1, 0, DYN_PARAM_CPU, false);
+    blockDone(data, true);
 }
 void dynamic_cmc(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);

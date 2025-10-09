@@ -1477,7 +1477,9 @@ void x32_callback(DynamicData* data, DecodedOp* op) {
 }
 
 void x32_invalid_op(DynamicData* data, DecodedOp* op) {
-    kpanic_fmt("Invalid instruction %x\n", op->inst);
+    //kpanic_fmt("Invalid instruction %x\n", op->inst);
+    callHostFunction(data, (void*)common_ud2, false, 1, 0, DYN_PARAM_CPU, false);
+    blockDone(data, true);
 }
 
 void x32_onTestEnd(DynamicData* data, DecodedOp* op) {
@@ -1580,8 +1582,8 @@ static void logBlock(CPU* cpu, U32 address, DecodedOp* op, U32 len) {
         file.createNew("jit.txt");
     }
     BString name = cpu->thread->process->getModuleName(address);
-    BString offset = cpu->thread->process->getModuleEip(address);
-    file.writeFormat("Block %d in %s(%d)\n", count, name.c_str(), offset);
+    U32 offset = cpu->thread->process->getModuleEip(address);
+    file.writeFormat("Block %d in %s(%x)\n", count, name.c_str(), offset);
     while (op && len) {
         if (op->isDirectBranch()) {
             file.writeFormat("%x %x %s %x\n", cpu->thread->process->id, address, op->name(), (address + op->len + op->imm));
@@ -1625,6 +1627,12 @@ static bool calculateLongestBlock(DynamicData& data, DecodedOp* op) {
                 // don't call cpu->getOp since that will decode and we are not sure the next byte is a valid instruction.
                 // we can call memory->getDecodedOp to see if this instruction has already been decoded, in that case we know its valid.
                 nextOp->next = data.cpu->memory->getDecodedOp(eip + nextOp->len);
+            }
+            if (!nextOp->next && (jumpTo.contains(eip + nextOp->len) || nextOp->isDirectBranchWithNext())) {
+                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
+            }
+            if (!nextOp->next && nextOp->isCall() && furthestJump > eip) {
+                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);                
             }
             if (!nextOp->next) {
                 // since we couldn't figure out if the next byte is part of a valid instruction, we are done looking
@@ -1739,8 +1747,8 @@ static void commitJIT(DynamicData& data, DecodedOp* op) {
     for (DynamicJump& jmp : data.x86.jumps) {
         U32 bufferIndex = 0;
 
-        if (!data.eipToBufferPos.get(jmp.eip, bufferIndex)) {
-            kpanic("x32CPU firstDynamicOp");
+        if (!data.eipToBufferPos.get(jmp.eip, bufferIndex)) {            
+            return;
         }
         *(U32*)&data.x86.buffer.data()[jmp.bufferPos] = bufferIndex - jmp.bufferPos - 4;
     }
@@ -1761,7 +1769,7 @@ static void commitJIT(DynamicData& data, DecodedOp* op) {
     op->blockLen = data.emulatedLen;
     op->blockOpCount = data.blockOpCount;
 #ifdef _DEBUG
-    logBlock(data.cpu, data.startingEip, op, op->blockLen);
+    //logBlock(data.cpu, data.startingEip, op, op->blockLen);
 #endif 
     U32 address = data.startingEip;
     DecodedOp* nextOp = op;
@@ -1780,7 +1788,7 @@ static void commitJIT(DynamicData& data, DecodedOp* op) {
         U32 bufferIndex = 0;
 
         if (!data.eipToBufferPos.get(address, bufferIndex)) {
-            kpanic("x32CPU firstDynamicOp");
+            kpanic("x32CPU commitJIT 2");
         }
         nextOp->pfnJitCode = (OpCallback)(begin + bufferIndex);
         nextOp->pfn = data.cpu->thread->process->startJITOp;

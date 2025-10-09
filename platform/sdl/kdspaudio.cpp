@@ -119,17 +119,19 @@ public:
 	bool open = false;
 	std::deque<U8> audioBuffer;
 	bool closeWhenDone = false;
+	BOXEDWINE_MUTEX mutex;
 };
 
 // not really a voice, currently they are not mixed
 std::list<std::shared_ptr<KDspAudioSdl>> voices;
 
-void audioCallback(void* userdata, U8* stream, S32 len) {
+void audioCallback(void* userdata, U8* stream, S32 len) {	
 	if (!voices.size()) {
 		memset(stream, sdlSilence, len);
 		return;
 	}
 	std::shared_ptr<KDspAudioSdl> data = voices.front();
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(data->mutex);
 	if (data->closeWhenDone && data->audioBuffer.size()==0 && (data->cvtBufPos == 0 || data->cvtBufPos >= data->cvt.len_cvt)) {
 		data->closeAudioFromAudioThread();
 		memset(stream, sdlSilence, len);
@@ -251,12 +253,13 @@ void KDspAudioSdl::closeAudio() {
 	}
 	if (this->open) {
 		bool needClose = true;
-		SDL_LockAudio();
-		if (audioBuffer.size() || (this->cvtBufPos != 0 && this->cvtBufPos < this->cvt.len_cvt)) {
-			closeWhenDone = true;
-			needClose = false;
+		{
+			BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->mutex);
+			if (audioBuffer.size() || (this->cvtBufPos != 0 && this->cvtBufPos < this->cvt.len_cvt)) {
+				closeWhenDone = true;
+				needClose = false;
+			}
 		}
-		SDL_UnlockAudio();
 		if (needClose) {
 			closeSdlAudio();
 			this->onClose();
@@ -304,17 +307,14 @@ U32 KDspAudioSdl::writeAudio(U8* data, U32 len) {
 		timeSinceLastWrite = KSystem::getMilliesSinceStart();
 		return len;
 	}
-	SDL_LockAudio();
-	{
-		if (this->audioBuffer.size() > delay) {
-			return -K_EWOULDBLOCK;
-		}
-		U32 blockSize = bytesPerSampleWant() * want.channels;
-		len = std::min(len, ((delay - (U32)this->audioBuffer.size()) & ~(blockSize - 1)));
-		audioBuffer.insert(this->audioBuffer.end(), data, data + len);
+	BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(this->mutex);
+	if (this->audioBuffer.size() > delay) {
+		SDL_UnlockAudio();
+		return -K_EWOULDBLOCK;
 	}
-	SDL_UnlockAudio();
-
+	U32 blockSize = bytesPerSampleWant() * want.channels;
+	len = std::min(len, ((delay - (U32)this->audioBuffer.size()) & ~(blockSize - 1)));
+	audioBuffer.insert(this->audioBuffer.end(), data, data + len);
 	return len;	
 }
 

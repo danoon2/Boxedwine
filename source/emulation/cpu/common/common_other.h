@@ -24,6 +24,7 @@ void common_int9B(CPU* cpu);
 void common_int3(CPU* cpu);
 void common_intIb(CPU* cpu);
 void common_ud2(CPU* cpu);
+void common_hlt(CPU* cpu);
 void common_cpuid(CPU* cpu);
 void common_larr16r16(CPU* cpu, U32 dstReg, U32 srcReg);
 void common_larr16e16(CPU* cpu, U32 reg, U32 address);

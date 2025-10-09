@@ -825,12 +825,18 @@ void X86Asm::jmp(Reg32 reg) {
 void X86Asm::jz(U32 address) {
     outb(0xf);
     outb(0x84);
+    if (address == 0x0045a821) {
+        int ii = 0;
+    }
     jumps.push_back(DynamicJump(address, buffer.size()));
     outd(0); // jump over amount
 }
 
 void X86Asm::jmp(U32 address) {
     outb(0xe9);
+    if (address == 0x0045a821) {
+        int ii = 0;
+    }
     jumps.push_back(DynamicJump(address, buffer.size()));
     outd(0);
 }
@@ -838,6 +844,9 @@ void X86Asm::jmp(U32 address) {
 void X86Asm::jnz(U32 address) {
     outb(0xf);
     outb(0x85);
+    if (address == 0x0045a821) {
+        int ii = 0;
+    }
     jumps.push_back(DynamicJump(address, buffer.size()));
     outd(0); // jump over amount
 }
