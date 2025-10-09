@@ -6303,6 +6303,10 @@ bool DecodedOp::isRet() {
     return inst == Retn32 || inst == Retn16 || inst == Retn32Iw || inst == Retn16Iw;
 }
 
+bool DecodedOp::isValid() {
+    return inst != Invalid;
+}
+
 bool DecodedOp::isCall() {
     return inst == CallE16 || inst == CallE32 || inst == CallJd || inst == CallJw || inst == CallR16 || inst == CallR32;
 }

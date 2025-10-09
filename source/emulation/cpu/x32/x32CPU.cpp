@@ -1380,6 +1380,9 @@ void blockExit(DynamicData* data) {
 
 void blockCall(DynamicData* data, DecodedOp* op) {
     blockNext1(data, op);
+    if (data->lastOpEip > data->currentEip) {
+        blockExit(data);
+    }
 }
 
 void blockDoneCall(DynamicData* data) {
@@ -1390,7 +1393,7 @@ void blockDone(DynamicData* data, bool returnEarly) {
     // cpu->nextOp = cpu->nextOp();
     callHostFunction(data, common_getNextOp, true, 1, 0, DYN_PARAM_CPU, false);
     movToCpuFromReg(data, offsetof(CPU, nextOp), DYN_CALL_RESULT, DYN_32bit, true);
-    if (returnEarly) {
+    if (returnEarly || data->lastOpEip > data->currentEip) {
         blockExit(data);
     }
 }
@@ -1567,9 +1570,38 @@ static U8* createStartJITCode(KMemory* memory) {
     return result;
 }
 
+#ifdef _DEBUG
+static void logBlock(CPU* cpu, U32 address, DecodedOp* op, U32 len) {
+    static BWriteFile file;
+    static int count;
+
+    count++;
+    if (!file.isOpen()) {
+        file.createNew("jit.txt");
+    }
+    BString name = cpu->thread->process->getModuleName(address);
+    BString offset = cpu->thread->process->getModuleEip(address);
+    file.writeFormat("Block %d in %s(%d)\n", count, name.c_str(), offset);
+    while (op && len) {
+        if (op->isDirectBranch()) {
+            file.writeFormat("%x %x %s %x\n", cpu->thread->process->id, address, op->name(), (address + op->len + op->imm));
+        } else {
+            file.writeFormat("%x %x %s\n", cpu->thread->process->id, address, op->name());
+        }
+        address += op->len;
+        len -= op->len;
+        op = op->next;
+    }
+    file.write("\n");
+    file.flush();
+}
+#endif
+
+static void doJIT(CPU* cpu, U32 address, DecodedOp* op);
 static bool calculateLongestBlock(DynamicData& data, DecodedOp* op) {
-    U32 firstPassFarthestEip = data.cpu->getEipAddress();
+    U32 eip = data.startingEip;
     DecodedOp* nextOp = op;
+    U32 furthestJump = 0;
 
     // find the longest block we can compile
     // branches that jump out of the block will be the end of the block
@@ -1580,38 +1612,85 @@ static bool calculateLongestBlock(DynamicData& data, DecodedOp* op) {
     // Without this the next byte of instruction may actually be invalid, I have seen skipped bytes in the instructions,
     // I assume its for alignment/performance reasons.  Firefight installer will trigger this
     BHashTable<U32, DecodedOp*> jumpTo;
-    while (nextOp) {
-        if (nextOp->isBranch() && (nextOp->isCall() || !nextOp->isDirectBranch())) {
-            break;
+
+    // opentdd will trigger this isValid check
+    while (nextOp && nextOp->isValid()) {
+        // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
+        if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
+            // is this the last return, if so, then don't decode more
+            if (nextOp->isRet() && furthestJump < eip) {
+                break;
+            }
+            if (!nextOp->next) {
+                // don't call cpu->getOp since that will decode and we are not sure the next byte is a valid instruction.
+                // we can call memory->getDecodedOp to see if this instruction has already been decoded, in that case we know its valid.
+                nextOp->next = data.cpu->memory->getDecodedOp(eip + nextOp->len);
+            }
+            if (!nextOp->next) {
+                // since we couldn't figure out if the next byte is part of a valid instruction, we are done looking
+                break;
+            }
         }
-        if (nextOp->isDirectBranch() && (firstPassFarthestEip + nextOp->len + nextOp->imm) < data.startingEip) {
-            break;
+        if (nextOp->isDirectJumpBranch() && (eip + nextOp->len + nextOp->imm) < data.startingEip) {
+            // if we have somewhere to go after this, then continue
+
+            // see if we can restart this JIT with the target of this jump to before the incoming op argument to create a bigger JIT block
+            DecodedOp* targetOp = data.cpu->memory->getDecodedOp(eip + nextOp->len + nextOp->imm);
+            if (!targetOp) {
+                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
+            }
+            if (targetOp && !(op->flags & OP_FLAG_JIT)) {
+                if (!targetOp->pfnJitCode) {
+                    doJIT(data.cpu, eip + nextOp->len + nextOp->imm, targetOp);
+                    if (op->flags & OP_FLAG_JIT) {
+                        // doJIT successfully compiled the previous code and it picked up our current block
+                        return false;
+                    }
+                }
+            }
+            if (!nextOp->isDirectBranchWithNext() && !jumpTo.contains(eip + nextOp->len)) {
+                // if we have no valid location after this what can we do?
+                break;
+            }
         }
         if (nextOp->isDirectBranch()) {
-            jumpTo.set(firstPassFarthestEip + nextOp->len + nextOp->imm, nextOp);
+            U32 address = eip + nextOp->len + nextOp->imm;
+            jumpTo.set(address, nextOp);
+            furthestJump = std::max(address, furthestJump);
         }
         //
         // how to handle a call deep down in an if statement 
         //
         // allow call if there are valid jumps that go over it, the call should do an early block return in this case
-        if (nextOp->isDirectBranch() && !nextOp->next && jumpTo.contains(firstPassFarthestEip + nextOp->len)) {
-            nextOp->next = data.cpu->getOp(firstPassFarthestEip + nextOp->len, 0);
+        if (!nextOp->next) {
+            if (nextOp->isDirectBranchWithNext() || jumpTo.contains(eip + nextOp->len)) {
+                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
+            } else {
+                nextOp->next = data.cpu->memory->getDecodedOp(eip + nextOp->len);
+                if (!nextOp->next && nextOp->isCall() && furthestJump > eip) {
+                    nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
+                }
+            }
         }
-        firstPassFarthestEip += nextOp->len;
+        eip += nextOp->len;
         if (nextOp->next) {
             if (nextOp->next->flags & OP_FLAG_NO_JIT) {
                 break;
             }
-        }
+            if (nextOp->next->inst == Done) {
+                // F-16 needs this
+                break;
+            }
+        }        
         nextOp = nextOp->next;
     }
     // find longest block where all direction jumps don't go past the block
-    U32 lastFurthestEip = firstPassFarthestEip;
+    U32 lastFurthestEip = eip;
     while (true) {
         nextOp = op;
-        data.lastOpEip = data.cpu->getEipAddress();
+        data.lastOpEip = data.startingEip;
         while (nextOp && data.lastOpEip < lastFurthestEip) {
-            if (nextOp->isDirectBranch()) {
+            if (nextOp->isDirectJumpBranch()) {
                 U32 target = data.lastOpEip + nextOp->len + nextOp->imm;
                 if (target >= lastFurthestEip || target < data.startingEip) {
                     break;
@@ -1681,10 +1760,22 @@ static void commitJIT(DynamicData& data, DecodedOp* op) {
     removeJIT(data.cpu, op, data.blockOpCount);
     op->blockLen = data.emulatedLen;
     op->blockOpCount = data.blockOpCount;
-
+#ifdef _DEBUG
+    logBlock(data.cpu, data.startingEip, op, op->blockLen);
+#endif 
     U32 address = data.startingEip;
     DecodedOp* nextOp = op;
     DecodedOp* last = op;
+#ifdef _DEBUG
+    BOXEDWINE_CRITICAL_SECTION;
+    static int totalBlocks;
+    totalBlocks++;
+    static int totalOps;
+    totalOps += data.blockOpCount;
+    if ((totalBlocks % 1000) == 0) {
+        klog_fmt("Compiled Blocks: %d, ave block size: %d ops", totalBlocks, totalOps / totalBlocks);
+    }
+#endif
     for (U32 i = 0; i < data.blockOpCount; i++) {
         U32 bufferIndex = 0;
 
@@ -1743,7 +1834,7 @@ static bool compileOps(DynamicData& data, DecodedOp* op) {
     return true;
 }
 
-static void doJIT(CPU* cpu, DecodedOp* op) {
+static void doJIT(CPU* cpu, U32 address, DecodedOp* op) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
     if (!cpu->thread->process->startJITOp) {
         cpu->thread->process->startJITOp = (OpCallback)createStartJITCode(cpu->memory);
@@ -1757,8 +1848,8 @@ static void doJIT(CPU* cpu, DecodedOp* op) {
     }
     DynamicData data;
     data.cpu = cpu;
-    data.currentEip = cpu->getEipAddress();
-    data.startingEip = cpu->getEipAddress();
+    data.currentEip = address;
+    data.startingEip = address;
        
     initX32Ops();
     DecodedOp* nextOp = op;
@@ -1777,9 +1868,10 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 #ifdef __TEST
     if (op->runCount == 0) {
 #else
-    if (op->runCount == JIT_RUN_COUNT) {
+    // done check for long blocks that get broken up, affects f-22/f-16
+    if (op->runCount == JIT_RUN_COUNT && op->inst != Done) {
 #endif        
-        doJIT(cpu, op);
+        doJIT(cpu, cpu->getEipAddress(), op);
     }
     op->runCount++;
     op->pfn(cpu, op);
@@ -1793,7 +1885,7 @@ static OpCallback getJitFunctionForCurrentOp(CPU* cpu) {
     cpu->nextOp = op;
     // runCount could be > JIT_RUN_COUNT with no jit code if it contains an instruction we don't support
     if (!op->pfnJitCode && op->runCount <= JIT_RUN_COUNT) {
-        doJIT(cpu, op);
+        doJIT(cpu, cpu->getEipAddress(), op);
         op->runCount = JIT_RUN_COUNT + 1;
     }
     return op->pfnJitCode;

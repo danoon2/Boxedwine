@@ -1575,6 +1575,7 @@ public:
     bool isIndirectJump();
     bool isCall();
     bool isRet();
+    bool isValid();
     const char* name();
 
     U32 getNeededFlags(U32 flags, U32 depth = 4);
