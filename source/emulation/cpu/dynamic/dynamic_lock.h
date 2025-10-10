@@ -413,7 +413,7 @@ void dynamic_btse16_lock(DynamicData* data, DecodedOp* op) {
 
 void calculateEffectiveEaa32(DynamicData* data, DecodedOp* op) {
     calculateEaa(data, op, DYN_ADDRESS);
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
+    loadReg(data, op->reg, DYN_SRC, DYN_32bit, true);
     instRegImm(data, ')', DYN_SRC, DYN_32bit, 5);
     instRegImm(data, '<', DYN_SRC, DYN_32bit, 2);
     instRegReg(data, '+', DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
@@ -421,7 +421,7 @@ void calculateEffectiveEaa32(DynamicData* data, DecodedOp* op) {
 
 void calculateEffectiveEaa16(DynamicData* data, DecodedOp* op) {
     calculateEaa(data, op, DYN_ADDRESS);
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
+    loadReg(data, op->reg, DYN_SRC, DYN_16bit, true);
     instRegImm(data, ')', DYN_SRC, DYN_16bit, 4);
     instRegImm(data, '<', DYN_SRC, DYN_16bit, 1);
     zeroExtendReg16To32(data, DYN_SRC, DYN_SRC);
@@ -429,14 +429,14 @@ void calculateEffectiveEaa16(DynamicData* data, DecodedOp* op) {
 }
 
 void calculateMask32InDest(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
+    loadReg(data, op->reg, DYN_SRC, DYN_32bit, true);
     instRegImm(data, '&', DYN_SRC, DYN_32bit, 31);
     movToReg(data, DYN_DEST, DYN_32bit, 1);
     instRegReg(data, '<', DYN_DEST, DYN_SRC, DYN_32bit, true);
 }
 
 void calculateMask16InDest(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
+    loadReg(data, op->reg, DYN_SRC, DYN_16bit);
     instRegImm(data, '&', DYN_SRC, DYN_16bit, 15);
     movToReg(data, DYN_DEST, DYN_16bit, 1);
     instRegReg(data, '<', DYN_DEST, DYN_SRC, DYN_16bit, true);

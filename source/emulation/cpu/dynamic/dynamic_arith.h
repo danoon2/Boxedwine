@@ -594,8 +594,8 @@ void dynamic_divE8(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_idivR8(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg8(op->reg), DYN_8bit);
-    movToRegFromRegSignExtend(data, DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false); // ARM with -O2 needs this
+    DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_8bit);
+    movToRegFromRegSignExtend(data, DYN_SRC, DYN_32bit, reg, DYN_8bit, false); // ARM with -O2 needs this
     callHostFunction(data, (void*)idiv8, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     IfNot(data, DYN_CALL_RESULT, true);
     blockDone(data, true);
@@ -627,8 +627,8 @@ void dynamic_divE16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_idivR16(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
-    movToRegFromRegSignExtend(data, DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false); // ARM64 with -O2 needs this
+    DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_16bit);
+    movToRegFromRegSignExtend(data, DYN_SRC, DYN_32bit, reg, DYN_16bit, false); // ARM64 with -O2 needs this
     callHostFunction(data, (void*)idiv16, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     IfNot(data, DYN_CALL_RESULT, true);
     blockDone(data, true);
@@ -675,8 +675,8 @@ void dynamic_idivE32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dimulcr16r16(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_DEST, CPU::offsetofReg16(op->rm), DYN_16bit);
-    callHostFunction(data, (void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_16, true, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
+    DynReg reg = loadReg(data, op->rm, DYN_DEST, DYN_16bit);
+    callHostFunction(data, (void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, reg, DYN_PARAM_REG_16, true, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
@@ -687,8 +687,8 @@ void dynamic_dimulcr16e16(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dimulcr32r32(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_DEST, CPU::offsetofReg32(op->rm), DYN_32bit);
-    callHostFunction(data, (void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_32, true, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
+    DynReg reg = loadReg(data, op->rm, DYN_DEST, DYN_32bit);
+    callHostFunction(data, (void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, reg, DYN_PARAM_REG_32, true, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
@@ -699,30 +699,30 @@ void dynamic_dimulcr32e32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_dimulr16r16(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_DEST, CPU::offsetofReg16(op->rm), DYN_16bit);
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
-    callHostFunction(data, (void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_16, true, DYN_SRC, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
+    DynReg regRM = loadReg(data, op->rm, DYN_DEST, DYN_16bit);
+    DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_16bit);
+    callHostFunction(data, (void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, regRM, DYN_PARAM_REG_16, true, reg, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
 void dynamic_dimulr16e16(DynamicData* data, DecodedOp* op) {
     calculateEaa(data, op, DYN_ADDRESS); movFromMem(data, DYN_16bit, DYN_ADDRESS, true);
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg16(op->reg), DYN_16bit);
-    callHostFunction(data, (void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, DYN_SRC, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
+    DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_16bit);
+    callHostFunction(data, (void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, reg, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
 void dynamic_dimulr32r32(DynamicData* data, DecodedOp* op) {
-    movToRegFromCpu(data, DYN_DEST, CPU::offsetofReg32(op->rm), DYN_32bit);
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
-    callHostFunction(data, (void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_32, true, DYN_SRC, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    DynReg regRM = loadReg(data, op->rm, DYN_DEST, DYN_32bit);
+    DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_32bit);
+    callHostFunction(data, (void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, regRM, DYN_PARAM_REG_32, true, reg, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }
 void dynamic_dimulr32e32(DynamicData* data, DecodedOp* op) {
     calculateEaa(data, op, DYN_ADDRESS); movFromMem(data, DYN_32bit, DYN_ADDRESS, true);
-    movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
-    callHostFunction(data, (void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, DYN_SRC, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_32bit);
+    callHostFunction(data, (void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, reg, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_NONE;
     INCREMENT_EIP(data, op);
 }

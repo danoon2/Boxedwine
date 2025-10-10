@@ -33,13 +33,13 @@ void dynamic_pushEw_mem(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_popEw_mem(DynamicData* data, DecodedOp* op) {    
     // save current ESP
-    movToRegFromCpu(data, DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+    loadReg(data, 4, DYN_SRC, DYN_32bit, true);
     // pop stack
     callHostFunction(data, (void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
     // calculate write address
     calculateEaa(data, op, DYN_ADDRESS);
     // set ESP back to original ESP before it was incremented in case the write throws an exception
-    movToRegFromCpu(data, DYN_DEST, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+    loadReg(data, 4, DYN_DEST, DYN_32bit, true);
     movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
     // do write
     movToMemFromReg(data, DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_SRC);
@@ -50,10 +50,10 @@ void dynamic_popEw_mem(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-        movToRegFromCpu(data, DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        loadReg(data, 4, DYN_ADDRESS, DYN_32bit, true);
         instRegImm(data, '-', DYN_ADDRESS, DYN_32bit, 4);
-        movToRegFromCpu(data, DYN_SRC, CPU::offsetofReg32(op->reg), DYN_32bit);
-        movToMemFromReg(data, DYN_ADDRESS, DYN_SRC, DYN_32bit, false, true, DYN_DEST);
+        DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_32bit);
+        movToMemFromReg(data, DYN_ADDRESS, reg, DYN_32bit, false, true, DYN_DEST);
         movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
     } else {
         callHostFunction(data, (void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
@@ -62,7 +62,7 @@ void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_popEd_reg(DynamicData* data, DecodedOp* op) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-        movToRegFromCpu(data, DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        loadReg(data, 4, DYN_ADDRESS, DYN_32bit, true);
         instCPUImm(data, '+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4, DYN_DEST); // increment before assign, in case esp=pop32()
         movToCpuFromMem(data, CPU::offsetofReg32(op->reg), DYN_32bit, DYN_ADDRESS, true, true);        
     } else {
@@ -75,7 +75,7 @@ void dynamic_pushEd_mem(DynamicData* data, DecodedOp* op) {
     calculateEaa(data, op, DYN_ADDRESS);
     movFromMem(data, DYN_32bit, DYN_ADDRESS, true);
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-        movToRegFromCpu(data, DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        loadReg(data, 4, DYN_ADDRESS, DYN_32bit, true);
         instRegImm(data, '-', DYN_ADDRESS, DYN_32bit, 4);
         movToMemFromReg(data, DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, false, true, DYN_DEST);
         movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
@@ -86,7 +86,7 @@ void dynamic_pushEd_mem(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {    
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-        movToRegFromCpu(data, DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        loadReg(data, 4, DYN_ADDRESS, DYN_32bit, true);
         movFromMem(data, DYN_32bit, DYN_ADDRESS, true);
         // address calculation happens after ESP is incremented, but we don't want it committed
         // before the write happens in case the write throws an exception, iexplorer.exe will exercise 
@@ -102,18 +102,18 @@ void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
         instCPUImm(data, '+', CPU_OFFSET_OF(reg[4].u32), DYN_32bit, 4, DYN_DEST);
     } else {
         // save current esp
-        movToRegFromCpu(data, DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        loadReg(data, 4, DYN_SRC, DYN_32bit, true);
         // pop stack
         callHostFunction(data, (void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);        
         // calculate write address
         calculateEaa(data, op, DYN_ADDRESS);
         // set ESP back to original ESP before it was incremented in case the write throws an exception
-        movToRegFromCpu(data, DYN_DEST, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+        DynReg reg = loadReg(data, 4, DYN_DEST, DYN_32bit);
         movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
         // do write
         movToMemFromReg(data, DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_SRC);
         // restore to calculated ESP from common_pop32 after write succeeds
-        movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_DEST, DYN_32bit, true);
+        movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), reg, DYN_32bit, true);
     }
     INCREMENT_EIP(data, op);
 }
@@ -127,12 +127,12 @@ void dynamic_popSeg16(DynamicData* data, DecodedOp* op) {
     IfNot(data, DYN_CALL_RESULT, true);
     blockDone(data, true);
     EndIf(data);
-    movToRegFromCpu(data, DYN_DEST, CPU_OFFSET_OF(stackMask), DYN_32bit);
-    movToRegFromCpu(data, DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+    loadStackMask(data, DYN_DEST);
+    loadReg(data, 4, DYN_SRC, DYN_32bit, true);
     movToRegFromReg(data, DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
     instRegImm(data, '+', DYN_SRC, DYN_32bit, 2);
     instRegReg(data, '&', DYN_SRC, DYN_DEST, DYN_32bit, true);
-    movToRegFromCpu(data, DYN_DEST, CPU_OFFSET_OF(stackNotMask), DYN_32bit);
+    loadStackNotMask(data, DYN_DEST);
     instRegReg(data, '&', DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
     instRegReg(data, '|', DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
     movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
@@ -148,12 +148,12 @@ void dynamic_popSeg32(DynamicData* data, DecodedOp* op) {
     IfNot(data, DYN_CALL_RESULT, true);
     blockDone(data, true);
     EndIf(data);
-    movToRegFromCpu(data, DYN_DEST, CPU_OFFSET_OF(stackMask), DYN_32bit);
-    movToRegFromCpu(data, DYN_SRC, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+    loadStackMask(data, DYN_DEST);
+    loadReg(data, 4, DYN_SRC, DYN_32bit, true);
     movToRegFromReg(data, DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
     instRegImm(data, '+', DYN_SRC, DYN_32bit, 4);
     instRegReg(data, '&', DYN_SRC, DYN_DEST, DYN_32bit, true);
-    movToRegFromCpu(data, DYN_DEST, CPU_OFFSET_OF(stackNotMask), DYN_32bit);
+    loadStackNotMask(data, DYN_DEST);
     instRegReg(data, '&', DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
     instRegReg(data, '|', DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
     movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_SRC, DYN_32bit, true);
@@ -181,7 +181,7 @@ void dynamic_push16imm(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_push32imm(DynamicData* data, DecodedOp* op) {
      if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
-         movToRegFromCpu(data, DYN_ADDRESS, CPU_OFFSET_OF(reg[4].u32), DYN_32bit);
+         loadReg(data, 4, DYN_ADDRESS, DYN_32bit, true);
          instRegImm(data, '-', DYN_ADDRESS, DYN_32bit, 4);
          movToMemFromImm(data, DYN_ADDRESS, DYN_32bit, op->imm, false, DYN_DEST);
          movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), DYN_ADDRESS, DYN_32bit, true);
@@ -206,14 +206,14 @@ void dynamic_popf32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_pushf16(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    movToRegFromCpu(data, DYN_SRC, CPU_OFFSET_OF(flags), DYN_32bit);
+    loadCPUFlags(data, DYN_SRC);
     instRegImm(data, '|', DYN_SRC, DYN_32bit, 2);
     callHostFunction(data, (void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_pushf32(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    movToRegFromCpu(data, DYN_SRC, CPU_OFFSET_OF(flags), DYN_32bit);
+    loadCPUFlags(data, DYN_SRC);
     instRegImm(data, '|', DYN_SRC, DYN_32bit, 2);
     instRegImm(data, '&', DYN_SRC, DYN_32bit, 0xFCFFFF);
     dynamic_pushReg32(data, DYN_SRC, true);

@@ -134,8 +134,18 @@ void movToCpu(DynamicData* data, U32 dstOffset, DynWidth dstWidth, U32 imm);
 void movToCpuPtr(DynamicData* data, U32 dstOffset, DYN_PTR_SIZE imm) {movToCpu(data, dstOffset, DYN_32bit, imm);}
 
 // from CPU
-void movToRegFromCpu(DynamicData* data, DynReg reg, U32 srcOffset, DynWidth width);
-void movToRegFromCpuPtr(DynamicData* data, DynReg reg, U32 srcOffset) { movToRegFromCpu(data, reg, srcOffset, DYN_32bit); }
+DynReg loadReg(DynamicData* data, U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp = false);
+void loadSegAddress(DynamicData* data, U8 seg, DynReg tmpReg);
+void loadSegValue(DynamicData* data, U8 seg, DynReg tmpReg);
+void loadCPUFlags(DynamicData* data, DynReg tmpReg);
+void loadLazyFlagsResult(DynamicData* data, DynReg reg, DynWidth width);
+void loadLazyFlagsSrc(DynamicData* data, DynReg reg, DynWidth width);
+void loadLazyFlagsDst(DynamicData* data, DynReg reg, DynWidth width);
+void loadLazyFlagsOldCF(DynamicData* data, DynReg reg);
+void loadEip(DynamicData* data, DynReg reg);
+void loadStackMask(DynamicData* data, DynReg reg);
+void loadStackNotMask(DynamicData* data, DynReg reg);
+void loadLazyFlags(DynamicData* data, DynReg reg);
 
 // from Mem to DYN_READ_RESULT
 void movFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg);
@@ -147,7 +157,7 @@ void movToMemFromImm(DynamicData* data, DynReg addressReg, DynWidth width, U32 i
 // arith
 void instRegReg(DynamicData* data, char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
 void instMemReg(DynamicData* data, char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
-void instCPUReg(DynamicData* data, char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
+void instCPUReg(DynamicData* data, char inst, U8 reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
 
 void instRegImm(DynamicData* data, U32 inst, DynReg reg, DynWidth regWidth, U32 imm);
 void instMemImm(DynamicData* data, char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
@@ -357,6 +367,74 @@ void movToRegFromCpu(DynamicData* data, DynReg reg, U32 srcOffset, DynWidth widt
         data->x86.readMem(X86Asm::Reg8(reg), data->x86.edi, srcOffset);
     } else {
         kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromCpu %d", width);
+    }
+}
+
+DynReg loadReg(DynamicData* data, U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp) {
+    // handle AH, etc
+    movToRegFromCpu(data, tmpReg, cpuOffset(reg, width), width);
+    return tmpReg;
+}
+
+void loadSegAddress(DynamicData* data, U8 seg, DynReg reg) {
+    movToRegFromCpu(data, reg, CPU::offsetofSegAddress(seg), DYN_32bit);
+}
+
+void loadSegValue(DynamicData* data, U8 seg, DynReg reg) {
+    movToRegFromCpu(data, reg, CPU::offsetofSegValue(seg), DYN_32bit);
+}
+
+void loadCPUFlags(DynamicData* data, DynReg reg) {
+    movToRegFromCpu(data, reg, CPU_OFFSET_OF(flags), DYN_32bit);
+}
+
+void loadLazyFlagsResult(DynamicData* data, DynReg reg, DynWidth width) {
+    if (width == DYN_8bit) {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
+    } else if (width == DYN_16bit) {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
+    } else {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
+    }
+}
+
+void loadLazyFlagsSrc(DynamicData* data, DynReg reg, DynWidth width) {
+    if (width == DYN_8bit) {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(src.u8), DYN_8bit);
+    } else if (width == DYN_16bit) {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(src.u16), DYN_16bit);
+    } else {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(src.u32), DYN_32bit);
+    }
+}
+
+void loadLazyFlagsOldCF(DynamicData* data, DynReg reg) {
+    movToRegFromCpu(data, reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
+}
+
+void loadEip(DynamicData* data, DynReg reg) {
+    movToRegFromCpu(data, reg, CPU_OFFSET_OF(eip.u32), DYN_32bit);
+}
+
+void loadStackMask(DynamicData* data, DynReg reg) {
+    movToRegFromCpu(data, reg, CPU_OFFSET_OF(stackMask), DYN_32bit);
+}
+
+void loadStackNotMask(DynamicData* data, DynReg reg) {
+    movToRegFromCpu(data, reg, CPU_OFFSET_OF(stackNotMask), DYN_32bit);
+}
+
+void loadLazyFlags(DynamicData* data, DynReg reg) {
+    movToRegFromCpu(data, reg, offsetof(CPU, lazyFlags), DYN_32bit);
+}
+
+void loadLazyFlagsDst(DynamicData* data, DynReg reg, DynWidth width) {
+    if (width == DYN_8bit) {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(dst.u8), DYN_8bit);
+    } else if (width == DYN_16bit) {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
+    } else {
+        movToRegFromCpu(data, reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
     }
 }
 
@@ -945,13 +1023,13 @@ void instRegImm(DynamicData* data, U32 inst, DynReg reg, DynWidth regWidth, U32 
         kpanic("instRegImm");
     }
 }
-void instCPUReg(DynamicData* data, char inst, U32 dstOffset, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
+void instCPUReg(DynamicData* data, char inst, U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
     if (data->regUsed[tmpReg]) {
         kpanic("instCPUReg");
     }
-    movToRegFromCpu(data, tmpReg, dstOffset, regWidth);
-    instRegReg(data, inst, tmpReg, rm, regWidth, doneWithRmReg);
-    movToCpuFromReg(data, dstOffset, tmpReg, regWidth, true);
+    DynReg reg = loadReg(data, regIndex, tmpReg, regWidth);
+    instRegReg(data, inst, reg, rm, regWidth, doneWithRmReg);
+    movToCpuFromReg(data, cpuOffset(regIndex, regWidth), reg, regWidth, true);
 }
 void instCPUImm(DynamicData* data, char inst, U32 dstOffset, DynWidth regWidth, U32 imm, DynReg tmpReg) {
     if (data->regUsed[tmpReg]) {
@@ -1621,6 +1699,10 @@ static bool calculateLongestBlock(DynamicData& data, DecodedOp* op) {
         if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
             // is this the last return, if so, then don't decode more
             if (nextOp->isRet() && furthestJump < eip) {
+                break;
+            }
+            if (nextOp->isIndirectJump()) {
+                // opentdd needs this when creating a new game, I'm not sure why data.cpu->memory->getDecodedOp(eip + nextOp->len) will find an op but its not correct, might be another bug 
                 break;
             }
             if (!nextOp->next) {
