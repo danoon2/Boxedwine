@@ -443,11 +443,11 @@ void dynamic_negr8(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
         instCPU(data, '-', CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST);
     } else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u8), CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST, false);
+        loadRegStoreSrc(data, op->reg, DYN_8bit, DYN_DEST, false);
         instReg(data, '-', DYN_DEST, DYN_8bit);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u8), DYN_DEST, DYN_8bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg8(op->reg), DYN_DEST, DYN_8bit, true);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG8);
+        storeLazyFlagsResult(data, DYN_DEST, DYN_8bit, false);
+        storeReg(data, op->reg, DYN_DEST, DYN_8bit, true);
+        storeLazyFlags(data, FLAGS_NEG8);
         data->currentLazyFlags=FLAGS_NEG8;
     }
     INCREMENT_EIP(data, op);
@@ -457,11 +457,11 @@ void dynamic_nege8(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
         instMem(data, '-', DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
     } else {
-        movToCpuFromMem(data, CPU_OFFSET_OF(src.u8), DYN_8bit, DYN_ADDRESS, false, false);
+        storeLazyFlagsSrcFromMem(data, DYN_8bit, DYN_ADDRESS, false, false);
         instReg(data, '-', DYN_CALL_RESULT, DYN_8bit);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u8), DYN_CALL_RESULT, DYN_8bit, false);
+        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_8bit, false);
         movToMemFromReg(data, DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG8);
+        storeLazyFlags(data, FLAGS_NEG8);
         data->currentLazyFlags=FLAGS_NEG8;
     }
     INCREMENT_EIP(data, op);
@@ -470,11 +470,11 @@ void dynamic_negr16(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
         instCPU(data, '-', CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST);
     } else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u16), CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST, false);
+        loadRegStoreSrc(data, op->reg, DYN_16bit, DYN_DEST, false);
         instReg(data, '-', DYN_DEST, DYN_16bit);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u16), DYN_DEST, DYN_16bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg16(op->reg), DYN_DEST, DYN_16bit, true);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG16);
+        storeLazyFlagsResult(data, DYN_DEST, DYN_16bit, false);
+        storeReg(data, op->reg, DYN_DEST, DYN_16bit, true);
+        storeLazyFlags(data, FLAGS_NEG16);
         data->currentLazyFlags=FLAGS_NEG16;
     }
     INCREMENT_EIP(data, op);
@@ -484,11 +484,11 @@ void dynamic_nege16(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
         instMem(data, '-', DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
     } else {
-        movToCpuFromMem(data, CPU_OFFSET_OF(src.u16), DYN_16bit, DYN_ADDRESS, false, false);
+        storeLazyFlagsSrcFromMem(data, DYN_16bit, DYN_ADDRESS, false, false);
         instReg(data, '-', DYN_CALL_RESULT, DYN_16bit);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u16), DYN_CALL_RESULT, DYN_16bit, false);
+        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_16bit, false);
         movToMemFromReg(data, DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG16);
+        storeLazyFlags(data, FLAGS_NEG16);
         data->currentLazyFlags=FLAGS_NEG16;
     }
     INCREMENT_EIP(data, op);
@@ -497,11 +497,11 @@ void dynamic_negr32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
         instCPU(data, '-', CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST);
     } else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u32), CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST, false);
+        loadRegStoreSrc(data, op->reg, DYN_32bit, DYN_DEST, false);
         instReg(data, '-', DYN_DEST, DYN_32bit);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u32), DYN_DEST, DYN_32bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg32(op->reg), DYN_DEST, DYN_32bit, true);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG32);
+        storeLazyFlagsResult(data, DYN_DEST, DYN_32bit, false);
+        storeReg(data, op->reg, DYN_DEST, DYN_32bit, true);
+        storeLazyFlags(data, FLAGS_NEG32);
         data->currentLazyFlags=FLAGS_NEG32;
     }
     INCREMENT_EIP(data, op);
@@ -511,11 +511,11 @@ void dynamic_nege32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
         instMem(data, '-', DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
     } else {
-        movToCpuFromMem(data, CPU_OFFSET_OF(src.u32), DYN_32bit, DYN_ADDRESS, false, false);
+        storeLazyFlagsSrcFromMem(data, DYN_32bit, DYN_ADDRESS, false, false);
         instReg(data, '-', DYN_CALL_RESULT, DYN_32bit);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u32), DYN_CALL_RESULT, DYN_32bit, false);
+        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_32bit, false);
         movToMemFromReg(data, DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_NEG32);
+        storeLazyFlags(data, FLAGS_NEG32);
         data->currentLazyFlags=FLAGS_NEG32;
     }
     INCREMENT_EIP(data, op);

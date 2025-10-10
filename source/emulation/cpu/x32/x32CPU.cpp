@@ -113,9 +113,6 @@ enum DynConditional {
 
 #define Dyn_PtrSize DYN_32bit
 
-// helper, can be done with multiple other calls
-void movToCpuFromMem(DynamicData* data, U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
-void movToCpuFromCpu(DynamicData* data, U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
 void calculateEaa(DynamicData* data, DecodedOp* op, DynReg reg);
 
 void byteSwapReg32(DynamicData* data, DynReg reg);
@@ -129,9 +126,26 @@ void movToReg(DynamicData* data, DynReg reg, DynWidth width, U32 imm);
 void zeroExtendReg16To32(DynamicData* data, DynReg dest, DynReg src);
 
 // to CPU
-void movToCpuFromReg(DynamicData* data, U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg);
-void movToCpu(DynamicData* data, U32 dstOffset, DynWidth dstWidth, U32 imm);
-void movToCpuPtr(DynamicData* data, U32 dstOffset, DYN_PTR_SIZE imm) {movToCpu(data, dstOffset, DYN_32bit, imm);}
+void storeReg(DynamicData* data, U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg);
+void storeLazyFlagsResult(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg);
+//void storeLazyFlagsSrc(DynamicData* data, DynReg reg, DynWidth width, bool doneWithSrcReg);
+void storeLazyFlagsDst(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg);
+void storeLazyFlagsOldCF(DynamicData* data, DynReg srcReg, bool doneWithSrcReg);
+void storeEip(DynamicData* data, DynReg srcReg, bool doneWithSrcReg);
+
+void storeReg(DynamicData* data, U8 reg, DynWidth dstWidth, U32 imm);
+void storeLazyFlagsSrc(DynamicData* data, DynWidth width, U32 imm);
+void storeLazyFlags(DynamicData* data, const LazyFlags* lazyFlags);
+
+void storeRegFromMem(DynamicData* data, U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
+void storeLazyFlagsDstFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
+void storeLazyFlagsSrcFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
+
+void loadRegStoreReg(DynamicData* data, U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
+void loadRegStoreSrc(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
+void loadRegStoreDst(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
+void loadRegStoreEip(DynamicData* data, U8 reg, DynReg tmpReg, bool doneWithTmpReg);
+void loadSegValueStoreReg(DynamicData* data, U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg);
 
 // from CPU
 DynReg loadReg(DynamicData* data, U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp = false);
@@ -453,12 +467,56 @@ void movToCpuFromReg(DynamicData* data, U32 dstOffset, DynReg reg, DynWidth widt
     }
 }
 
+void storeReg(DynamicData* data, U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
+    movToCpuFromReg(data, cpuOffset(reg, width), srcReg, width, doneWithSrcReg);
+}
+
+void storeLazyFlagsResult(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
+    movToCpuFromReg(data, cpuOffsetResult(width), srcReg, width, doneWithSrcReg);
+}
+
+//void storeLazyFlagsSrc(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
+//    movToCpuFromReg(data, cpuOffsetSrc(width), srcReg, width, doneWithSrcReg);
+//}
+
+void storeLazyFlagsDst(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
+    movToCpuFromReg(data, cpuOffsetDst(width), srcReg, width, doneWithSrcReg);
+}
+
+void storeLazyFlagsOldCF(DynamicData* data, DynReg srcReg, bool doneWithSrcReg) {
+    movToCpuFromReg(data, CPU_OFFSET_OF(oldCF), srcReg, DYN_32bit, doneWithSrcReg);
+}
+
+void storeEip(DynamicData* data, DynReg srcReg, bool doneWithSrcReg) {
+    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), srcReg, DYN_32bit, doneWithSrcReg);
+}
+
 void movToCpuFromCpu(DynamicData* data, U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
     // mov tmpReg, [cpu+srcOffset]
     movToRegFromCpu(data, tmpReg, srcOffset, width);
 
     // mov [cpu+dstOffset], tmpReg
     movToCpuFromReg(data, dstOffset, tmpReg, width, doneWithTmpReg);    
+}
+
+void loadRegStoreReg(DynamicData* data, U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
+    movToCpuFromCpu(data, cpuOffset(dst, width), cpuOffset(src, width), width, tmpReg, doneWithTmpReg);
+}
+
+void loadRegStoreSrc(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
+    movToCpuFromCpu(data, cpuOffsetSrc(width), cpuOffset(reg, width), width, tmpReg, doneWithTmpReg);
+}
+
+void loadRegStoreDst(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
+    movToCpuFromCpu(data, cpuOffsetDst(width), cpuOffset(reg, width), width, tmpReg, doneWithTmpReg);
+}
+
+void loadRegStoreEip(DynamicData* data, U8 reg, DynReg tmpReg, bool doneWithTmpReg) {
+    movToCpuFromCpu(data, CPU_OFFSET_OF(eip.u32), cpuOffset(reg, DYN_32bit), DYN_32bit, tmpReg, doneWithTmpReg);
+}
+
+void loadSegValueStoreReg(DynamicData* data, U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg) {
+    movToCpuFromCpu(data, cpuOffset(reg, DYN_32bit), CPU::offsetofSegValue(seg), DYN_32bit, tmpReg, doneWithTmpReg);
 }
 
 void movToCpu(DynamicData* data, U32 dstOffset, DynWidth dstWidth, U32 imm) {
@@ -471,6 +529,18 @@ void movToCpu(DynamicData* data, U32 dstOffset, DynWidth dstWidth, U32 imm) {
     } else {
         kpanic_fmt("unknown dstWidth in x32CPU::movToCpu %d", dstWidth);
     }
+}
+
+void storeReg(DynamicData* data, U8 reg, DynWidth dstWidth, U32 imm) {
+    movToCpu(data, cpuOffset(reg, dstWidth), dstWidth, imm);
+}
+
+void storeLazyFlagsSrc(DynamicData* data, DynWidth width, U32 imm) {
+    movToCpu(data, cpuOffsetSrc(width), width, imm);
+}
+
+void storeLazyFlags(DynamicData* data, const LazyFlags* lazyFlags) {
+    movToCpu(data, CPU_OFFSET_OF(lazyFlags), DYN_32bit, (U32)lazyFlags);
 }
 
 void zeroExtendReg16To32(DynamicData* data, DynReg dest, DynReg src) {
@@ -621,6 +691,18 @@ void movToCpuFromMem(DynamicData* data, U32 dstOffset, DynWidth dstWidth, DynReg
     movFromMem(data, dstWidth, addressReg, doneWithAddressReg);
     // mov [cpu+dstOffset], eax
     movToCpuFromReg(data, dstOffset, DYN_CALL_RESULT, dstWidth, doneWithCallResult);
+}
+
+void storeRegFromMem(DynamicData* data, U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
+    movToCpuFromMem(data, cpuOffset(reg, dstWidth), dstWidth, addressReg, doneWithAddressReg, doneWithCallResult);
+}
+
+void storeLazyFlagsDstFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
+    movToCpuFromMem(data, cpuOffsetDst(width), width, addressReg, doneWithAddressReg, doneWithCallResult);
+}
+
+void storeLazyFlagsSrcFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
+    movToCpuFromMem(data, cpuOffsetSrc(width), width, addressReg, doneWithAddressReg, doneWithCallResult);
 }
 
 void pushValue(DynamicData* data, U32 arg, DynCallParamType argType) {

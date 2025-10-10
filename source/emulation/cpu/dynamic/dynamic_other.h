@@ -76,14 +76,14 @@ void dynamic_cwd(DynamicData* data, DecodedOp* op) {
     loadReg(data, 0, DYN_SRC, DYN_16bit, true);
     instRegImm(data, '&', DYN_SRC, DYN_16bit, 0x8000);
     instRegImm(data, ')', DYN_SRC, DYN_16bit, 15);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[2].u16), DYN_SRC, DYN_16bit, true);
+    storeReg(data, 2, DYN_SRC, DYN_16bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_cwq(DynamicData* data, DecodedOp* op) {
     loadReg(data, 0, DYN_SRC, DYN_32bit, true);
     instRegImm(data, '&', DYN_SRC, DYN_32bit, 0x80000000);
     instRegImm(data, ')', DYN_SRC, DYN_32bit, 31);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[2].u32), DYN_SRC, DYN_32bit, true);
+    storeReg(data, 2, DYN_SRC, DYN_32bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_callAp(DynamicData* data, DecodedOp* op) {
@@ -140,39 +140,39 @@ void dynamic_lahf(DynamicData* data, DecodedOp* op) {
     loadCPUFlags(data, DYN_SRC);
     instRegImm(data, '&', DYN_SRC, DYN_32bit, SF|ZF|AF|PF|CF);
     instRegImm(data, '|', DYN_SRC, DYN_32bit, 2);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[0].h8), DYN_SRC, DYN_8bit, true);
+    storeReg(data, 4, DYN_SRC, DYN_8bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_salc(DynamicData* data, DecodedOp* op) {
     dynamic_getCF(data);    
     instReg(data, '-', DYN_CALL_RESULT, DYN_32bit);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[0].u8), DYN_CALL_RESULT, DYN_8bit, true);
+    storeReg(data, 0, DYN_CALL_RESULT, DYN_8bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_retn16Iw(DynamicData* data, DecodedOp* op) {
     callHostFunction(data, (void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
     DynReg reg = loadReg(data, 4, DYN_SRC, DYN_16bit);
     instRegImm(data, '+', reg, DYN_16bit, op->imm);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u16), reg, DYN_16bit, true);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); 
+    storeReg(data, 4, reg, DYN_16bit, true);
+    storeEip(data, DYN_CALL_RESULT, true);
     blockDone(data, false);
 }
 void dynamic_retn32Iw(DynamicData* data, DecodedOp* op) {
     dynamic_pop32(data);
     DynReg reg = loadReg(data, 4, DYN_SRC, DYN_32bit);
     instRegImm(data, '+', reg, DYN_32bit, op->imm);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[4].u32), reg, DYN_32bit, true);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); 
+    storeReg(data, 4, reg, DYN_32bit, true);
+    storeEip(data, DYN_CALL_RESULT, true);
     blockDone(data, false);
 }
 void dynamic_retn16(DynamicData* data, DecodedOp* op) {
     callHostFunction(data, (void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); 
+    storeEip(data, DYN_CALL_RESULT, true);
     blockDone(data, false);
 }
 void dynamic_retn32(DynamicData* data, DecodedOp* op) {
     dynamic_pop32(data);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); 
+    storeEip(data, DYN_CALL_RESULT, true);
     blockDone(data, false);
 }
 void dynamic_invalid(DynamicData* data, DecodedOp* op) {
@@ -222,7 +222,7 @@ void dynamic_xlat(DynamicData* data, DecodedOp* op) {
     loadSegAddress(data, op->base, DYN_SRC);
     instRegReg(data, '+', DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
     movFromMem(data, DYN_8bit, DYN_ADDRESS, true);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[0].u8), DYN_CALL_RESULT, DYN_8bit, true);
+    storeReg(data, 0, DYN_CALL_RESULT, DYN_8bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_hlt(DynamicData* data, DecodedOp* op) {
@@ -277,15 +277,15 @@ void dynamic_enter32(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_leave16(DynamicData* data, DecodedOp* op) {
-    movToCpuFromCpu(data, CPU_OFFSET_OF(reg[4].u16), CPU_OFFSET_OF(reg[5].u16), DYN_16bit, DYN_SRC, true);
+    loadRegStoreReg(data, 4, 5, DYN_16bit, DYN_SRC, true);
     callHostFunction(data, (void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[5].u16), DYN_CALL_RESULT, DYN_16bit, true);
+    storeReg(data, 5, DYN_CALL_RESULT, DYN_16bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_leave32(DynamicData* data, DecodedOp* op) {
-    movToCpuFromCpu(data, CPU_OFFSET_OF(reg[4].u32), CPU_OFFSET_OF(reg[5].u32), DYN_32bit, DYN_SRC, true);
+    loadRegStoreReg(data, 4, 5, DYN_32bit, DYN_SRC, true);
     dynamic_pop32(data);
-    movToCpuFromReg(data, CPU_OFFSET_OF(reg[5].u32), DYN_CALL_RESULT, DYN_32bit, true);
+    storeReg(data, 5, DYN_CALL_RESULT, DYN_32bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_loopnz(DynamicData* data, DecodedOp* op) {
@@ -302,7 +302,7 @@ void dynamic_loopnz(DynamicData* data, DecodedOp* op) {
 
     loadReg(data, 1, DYN_DEST, width, true);
     instRegImm(data, '-', DYN_DEST, width, 1);
-    movToCpuFromReg(data, cpuOffset(1, width), DYN_DEST, width, false);    
+    storeReg(data, 1, DYN_DEST, width, false);
 
     // if nz flag, then set 1 in DYN_SRC
     evaluateToReg(data, DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_NOT_EQUALS, false, false);
@@ -331,7 +331,7 @@ void dynamic_loopz(DynamicData* data, DecodedOp* op) {
 
     loadReg(data, 1, DYN_DEST, width, true);
     instRegImm(data, '-', DYN_DEST, width, 1);
-    movToCpuFromReg(data, cpuOffset(1, width), DYN_DEST, width, false);
+    storeReg(data, 1, DYN_DEST, width, false);
 
     // if z flag, then set 1 in DYN_SRC
     evaluateToReg(data, DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_NOT_EQUALS, false, false);
@@ -358,7 +358,7 @@ void dynamic_loop(DynamicData* data, DecodedOp* op) {
     DynWidth width = op->ea16 ? DYN_16bit : DYN_32bit;
     loadReg(data, 1, DYN_DEST, width, true);
     instRegImm(data, '-', DYN_DEST, width, 1);
-    movToCpuFromReg(data, cpuOffset(1, width), DYN_DEST, width, false);
+    storeReg(data, 1, DYN_DEST, width, false);
 
     if (width == DYN_16bit) {
         movToRegFromReg(data, DYN_DEST, DYN_32bit, DYN_DEST, width, false);
@@ -381,15 +381,15 @@ void dynamic_jcxz(DynamicData* data, DecodedOp* op) {
     dynamic_jumpIfRegNotSet(data, op, DYN_DEST, true);
 }
 void dynamic_InAlIb(DynamicData* data, DecodedOp* op) {
-    movToCpu(data, CPU_OFFSET_OF(reg[0].u8), DYN_8bit, 0xFF);
+    storeReg(data, 0, DYN_8bit, 0xFF);
     INCREMENT_EIP(data, op);
 }
 void dynamic_InAxIb(DynamicData* data, DecodedOp* op) {
-    movToCpu(data, CPU_OFFSET_OF(reg[0].u16), DYN_16bit, 0xFFFF);
+    storeReg(data, 0, DYN_16bit, 0xFFFF);
     INCREMENT_EIP(data, op);
 }
 void dynamic_InEaxIb(DynamicData* data, DecodedOp* op) {
-    movToCpu(data, CPU_OFFSET_OF(reg[0].u32), DYN_32bit, 0xFFFFFFFF);
+    storeReg(data, 0, DYN_32bit, 0xFFFFFFFF);
     INCREMENT_EIP(data, op);
 }
 void dynamic_OutIbAl(DynamicData* data, DecodedOp* op) {
@@ -405,15 +405,15 @@ void dynamic_OutIbEax(DynamicData* data, DecodedOp* op) {
     INCREMENT_EIP(data, op);
 }
 void dynamic_InAlDx(DynamicData* data, DecodedOp* op) {
-    movToCpu(data, CPU_OFFSET_OF(reg[0].u8), DYN_8bit, 0xFF);
+    storeReg(data, 0, DYN_8bit, 0xFF);
     INCREMENT_EIP(data, op);
 }
 void dynamic_InAxDx(DynamicData* data, DecodedOp* op) {
-    movToCpu(data, CPU_OFFSET_OF(reg[0].u16), DYN_16bit, 0xFFFF);
+    storeReg(data, 0, DYN_16bit, 0xFFFF);
     INCREMENT_EIP(data, op);
 }
 void dynamic_InEaxDx(DynamicData* data, DecodedOp* op) {
-    movToCpu(data, CPU_OFFSET_OF(reg[0].u32), DYN_32bit, 0xFFFFFFFF);
+    storeReg(data, 0, DYN_32bit, 0xFFFFFFFF);
     INCREMENT_EIP(data, op);
 }
 void dynamic_OutDxAl(DynamicData* data, DecodedOp* op) {
@@ -472,7 +472,7 @@ void dynamic_callR16(DynamicData* data, DecodedOp* op) {
     loadReg(data, op->reg, DYN_DEST, DYN_16bit, true);
     callHostFunction(data, (void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);    
     movToRegFromReg(data, DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false); 
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_DEST, DYN_32bit, true); 
+    storeEip(data, DYN_DEST, true);
     blockDoneCall(data);
 }
 void dynamic_callR32(DynamicData* data, DecodedOp* op) {
@@ -480,7 +480,7 @@ void dynamic_callR32(DynamicData* data, DecodedOp* op) {
     instRegImm(data, '+', DYN_SRC, DYN_32bit, op->len);
     DynReg reg = loadReg(data, op->reg, DYN_CALL_RESULT, DYN_32bit);
     dynamic_pushReg32(data, DYN_SRC, true);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), reg, DYN_32bit, true);
+    storeEip(data, reg, true);
     blockDoneCall(data);
 }
 void dynamic_callE16(DynamicData* data, DecodedOp* op) {
@@ -490,7 +490,7 @@ void dynamic_callE16(DynamicData* data, DecodedOp* op) {
     loadEip(data, DYN_SRC);
     instRegImm(data, '+', DYN_SRC, DYN_32bit, op->len);
     callHostFunction(data, (void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_16, true);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_DEST, DYN_32bit, true); 
+    storeEip(data, DYN_DEST, true);
     blockDoneCall(data);
 }
 void dynamic_callE32(DynamicData* data, DecodedOp* op) {
@@ -499,30 +499,30 @@ void dynamic_callE32(DynamicData* data, DecodedOp* op) {
     loadEip(data, DYN_SRC);
     instRegImm(data, '+', DYN_SRC, DYN_32bit, op->len);
     dynamic_pushReg32(data, DYN_SRC, true);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true);
+    storeEip(data, DYN_CALL_RESULT, true);
     blockDoneCall(data);
 }
 void dynamic_jmpR16(DynamicData* data, DecodedOp* op) {
     loadReg(data, op->reg, DYN_SRC, DYN_16bit, true);
     movToRegFromReg(data, DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_SRC, DYN_32bit, true); 
+    storeEip(data, DYN_SRC, true);
     blockDoneJump(data);
 }
 void dynamic_jmpR32(DynamicData* data, DecodedOp* op) {
-    movToCpuFromCpu(data, CPU_OFFSET_OF(eip.u32), CPU::offsetofReg32(op->reg), DYN_32bit, DYN_SRC, true); 
+    loadRegStoreEip(data, op->reg, DYN_SRC, true);
     blockDoneJump(data);
 }
 void dynamic_jmpE16(DynamicData* data, DecodedOp* op) {
     calculateEaa(data, op, DYN_ADDRESS);
     movFromMem(data, DYN_16bit, DYN_ADDRESS, true);
     movToRegFromReg(data, DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, false);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); 
+    storeEip(data, DYN_CALL_RESULT, true);
     blockDoneJump(data);
 }
 void dynamic_jmpE32(DynamicData* data, DecodedOp* op) {
     calculateEaa(data, op, DYN_ADDRESS);
     movFromMem(data, DYN_32bit, DYN_ADDRESS, true);
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), DYN_CALL_RESULT, DYN_32bit, true); 
+    storeEip(data, DYN_CALL_RESULT, true);
     blockDoneJump(data);
 }
 void dynamic_callFarE16(DynamicData* data, DecodedOp* op) {
@@ -611,17 +611,17 @@ void dynamic_xaddr8r8(DynamicData* data, DecodedOp* op) {
         loadReg(data, op->reg, DYN_SRC, DYN_8bit, true);
         DynReg dst = loadReg(data, op->rm, DYN_DEST, DYN_8bit);
         instRegReg(data, '+', DYN_SRC, dst, DYN_8bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg8(op->reg), dst, DYN_8bit, true);
-        movToCpuFromReg(data, CPU::offsetofReg8(op->rm), DYN_SRC, DYN_8bit, true);
+        storeReg(data, op->reg, dst, DYN_8bit, true);
+        storeReg(data, op->rm, DYN_SRC, DYN_8bit, true);
     }
     else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u8), CPU::offsetofReg8(op->reg), DYN_8bit, DYN_SRC, false);
-        movToCpuFromCpu(data, CPU_OFFSET_OF(dst.u8), CPU::offsetofReg8(op->rm), DYN_8bit, DYN_DEST, false);
+        loadRegStoreSrc(data, op->reg, DYN_8bit, DYN_SRC, false);
+        loadRegStoreDst(data, op->rm, DYN_8bit, DYN_DEST, false);
         instRegReg(data, '+', DYN_SRC, DYN_DEST, DYN_8bit, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u8), DYN_SRC, DYN_8bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg8(op->reg), DYN_DEST, DYN_8bit, true);
-        movToCpuFromReg(data, CPU::offsetofReg8(op->rm), DYN_SRC, DYN_8bit, true);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD8);
+        storeLazyFlagsResult(data, DYN_SRC, DYN_8bit, false);
+        storeReg(data, op->reg, DYN_DEST, DYN_8bit, true);
+        storeReg(data, op->rm, DYN_SRC, DYN_8bit, true);
+        storeLazyFlags(data, FLAGS_ADD8);
     }
     INCREMENT_EIP(data, op);
 }
@@ -632,18 +632,18 @@ void dynamic_xaddr8e8(DynamicData* data, DecodedOp* op) {
         loadReg(data, op->reg, DYN_SRC, DYN_8bit, true);
         movFromMem(data, DYN_8bit, DYN_ADDRESS, false);
         instRegReg(data, '+', DYN_SRC, DYN_CALL_RESULT, DYN_8bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);
+        storeReg(data, op->reg, DYN_CALL_RESULT, DYN_8bit, true);
         movToMemFromReg(data, DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
     }
     else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u8), CPU::offsetofReg8(op->reg), DYN_8bit, DYN_SRC, false);
+        loadRegStoreSrc(data, op->reg, DYN_8bit, DYN_SRC, false);
         movFromMem(data, DYN_8bit, DYN_ADDRESS, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(dst.u8), DYN_CALL_RESULT, DYN_8bit, false);
+        storeLazyFlagsDst(data, DYN_CALL_RESULT, DYN_8bit, false);
         instRegReg(data, '+', DYN_SRC, DYN_CALL_RESULT, DYN_8bit, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u8), DYN_SRC, DYN_8bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg8(op->reg), DYN_CALL_RESULT, DYN_8bit, true);
+        storeLazyFlagsResult(data, DYN_SRC, DYN_8bit, false);
+        storeReg(data, op->reg, DYN_CALL_RESULT, DYN_8bit, true);
         movToMemFromReg(data, DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD8);
+        storeLazyFlags(data, FLAGS_ADD8);
     }
     INCREMENT_EIP(data, op);
 }
@@ -652,17 +652,17 @@ void dynamic_xaddr16r16(DynamicData* data, DecodedOp* op) {
         loadReg(data, op->reg, DYN_SRC, DYN_16bit, true);
         DynReg reg = loadReg(data, op->rm, DYN_DEST, DYN_16bit);
         instRegReg(data, '+', DYN_SRC, reg, DYN_16bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg16(op->reg), reg, DYN_16bit, true);
-        movToCpuFromReg(data, CPU::offsetofReg16(op->rm), DYN_SRC, DYN_16bit, true);
+        storeReg(data, op->reg, reg, DYN_16bit, true);
+        storeReg(data, op->rm, DYN_SRC, DYN_16bit, true);
     }
     else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u16), CPU::offsetofReg16(op->reg), DYN_16bit, DYN_SRC, false);
-        movToCpuFromCpu(data, CPU_OFFSET_OF(dst.u16), CPU::offsetofReg16(op->rm), DYN_16bit, DYN_DEST, false);
+        loadRegStoreSrc(data, op->reg, DYN_16bit, DYN_SRC, false);
+        loadRegStoreDst(data, op->rm, DYN_16bit, DYN_DEST, false);
         instRegReg(data, '+', DYN_SRC, DYN_DEST, DYN_16bit, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u16), DYN_SRC, DYN_16bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg16(op->reg), DYN_DEST, DYN_16bit, true);
-        movToCpuFromReg(data, CPU::offsetofReg16(op->rm), DYN_SRC, DYN_16bit, true);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD16);
+        storeLazyFlagsResult(data, DYN_SRC, DYN_16bit, false);
+        storeReg(data, op->reg, DYN_DEST, DYN_16bit, true);
+        storeReg(data, op->rm, DYN_SRC, DYN_16bit, true);
+        storeLazyFlags(data, FLAGS_ADD16);
     }
     INCREMENT_EIP(data, op);
 }
@@ -673,18 +673,18 @@ void dynamic_xaddr16e16(DynamicData* data, DecodedOp* op) {
         loadReg(data, op->reg, DYN_SRC, DYN_16bit, true);
         movFromMem(data, DYN_16bit, DYN_ADDRESS, false);
         instRegReg(data, '+', DYN_SRC, DYN_CALL_RESULT, DYN_16bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg16(op->reg), DYN_CALL_RESULT, DYN_16bit, true);
+        storeReg(data, op->reg, DYN_CALL_RESULT, DYN_16bit, true);
         movToMemFromReg(data, DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
     }
     else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u16), CPU::offsetofReg16(op->reg), DYN_16bit, DYN_SRC, false);
+        loadRegStoreSrc(data, op->reg, DYN_16bit, DYN_SRC, false);
         movFromMem(data, DYN_16bit, DYN_ADDRESS, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(dst.u16), DYN_CALL_RESULT, DYN_16bit, false);
+        storeLazyFlagsDst(data, DYN_CALL_RESULT, DYN_16bit, false);
         instRegReg(data, '+', DYN_SRC, DYN_CALL_RESULT, DYN_16bit, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u16), DYN_SRC, DYN_16bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg16(op->reg), DYN_CALL_RESULT, DYN_16bit, true);
+        storeLazyFlagsResult(data, DYN_SRC, DYN_16bit, false);
+        storeReg(data, op->reg, DYN_CALL_RESULT, DYN_16bit, true);
         movToMemFromReg(data, DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD16);
+        storeLazyFlags(data, FLAGS_ADD16);
     }
     INCREMENT_EIP(data, op);
 }
@@ -693,16 +693,16 @@ void dynamic_xaddr32r32(DynamicData* data, DecodedOp* op) {
         loadReg(data, op->reg, DYN_SRC, DYN_32bit, true);
         DynReg reg = loadReg(data, op->rm, DYN_DEST, DYN_32bit);
         instRegReg(data, '+', DYN_SRC, reg, DYN_32bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg32(op->reg), reg, DYN_32bit, true);
-        movToCpuFromReg(data, CPU::offsetofReg32(op->rm), DYN_SRC, DYN_32bit, true);
+        storeReg(data, op->reg, reg, DYN_32bit, true);
+        storeReg(data, op->rm, DYN_SRC, DYN_32bit, true);
     } else {
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u32), CPU::offsetofReg32(op->reg), DYN_32bit, DYN_SRC, false);
-        movToCpuFromCpu(data, CPU_OFFSET_OF(dst.u32), CPU::offsetofReg32(op->rm), DYN_32bit, DYN_DEST, false);
+        loadRegStoreSrc(data, op->reg, DYN_32bit, DYN_SRC, false);
+        loadRegStoreDst(data, op->rm, DYN_32bit, DYN_DEST, false);
         instRegReg(data, '+', DYN_SRC, DYN_DEST, DYN_32bit, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u32), DYN_SRC, DYN_32bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg32(op->reg), DYN_DEST, DYN_32bit, true);
-        movToCpuFromReg(data, CPU::offsetofReg32(op->rm), DYN_SRC, DYN_32bit, true);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD32);
+        storeLazyFlagsResult(data, DYN_SRC, DYN_32bit, false);
+        storeReg(data, op->reg, DYN_DEST, DYN_32bit, true);
+        storeReg(data, op->rm, DYN_SRC, DYN_32bit, true);
+        storeLazyFlags(data, FLAGS_ADD32);
     }
     INCREMENT_EIP(data, op);
 }
@@ -713,24 +713,24 @@ void dynamic_xaddr32e32(DynamicData* data, DecodedOp* op) {
         loadReg(data, op->reg, DYN_SRC, DYN_32bit, true);
         movFromMem(data, DYN_32bit, DYN_ADDRESS, false);
         instRegReg(data, '+', DYN_SRC, DYN_CALL_RESULT, DYN_32bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg32(op->reg), DYN_CALL_RESULT, DYN_32bit, true);
+        storeReg(data, op->reg, DYN_CALL_RESULT, DYN_32bit, true);
         movToMemFromReg(data, DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
     } else {    
-        movToCpuFromCpu(data, CPU_OFFSET_OF(src.u32), CPU::offsetofReg32(op->reg), DYN_32bit, DYN_SRC, false);
+        loadRegStoreSrc(data, op->reg, DYN_32bit, DYN_SRC, false);
         movFromMem(data, DYN_32bit, DYN_ADDRESS, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(dst.u32), DYN_CALL_RESULT, DYN_32bit, false);
+        storeLazyFlagsDst(data, DYN_CALL_RESULT, DYN_32bit, false);
         instRegReg(data, '+', DYN_SRC, DYN_CALL_RESULT, DYN_32bit, false);
-        movToCpuFromReg(data, CPU_OFFSET_OF(result.u32), DYN_SRC, DYN_32bit, false);
-        movToCpuFromReg(data, CPU::offsetofReg32(op->reg), DYN_CALL_RESULT, DYN_32bit, true);
+        storeLazyFlagsResult(data, DYN_SRC, DYN_32bit, false);
+        storeReg(data, op->reg, DYN_CALL_RESULT, DYN_32bit, true);
         movToMemFromReg(data, DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
-        movToCpuPtr(data, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)FLAGS_ADD32);
+        storeLazyFlags(data, FLAGS_ADD32);
     }
     INCREMENT_EIP(data, op);
 }
 void dynamic_bswap32(DynamicData* data, DecodedOp* op) {
     DynReg reg = loadReg(data, op->reg, DYN_SRC, DYN_32bit);
     byteSwapReg32(data, reg);
-    movToCpuFromReg(data, CPU::offsetofReg32(op->reg), reg, DYN_32bit, true);
+    storeReg(data, op->reg, reg, DYN_32bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_cmpxchgg8b(DynamicData* data, DecodedOp* op) {
@@ -749,7 +749,7 @@ void dynamic_loadSegment16(DynamicData* data, DecodedOp* op) {
     IfNot(data, DYN_CALL_RESULT, true);
     blockDone(data, true);
     EndIf(data);
-    movToCpuFromReg(data, CPU::offsetofReg16(op->reg), DYN_DEST, DYN_16bit, true);
+    storeReg(data, op->reg, DYN_DEST, DYN_16bit, true);
     INCREMENT_EIP(data, op);
 }
 void dynamic_loadSegment32(DynamicData* data, DecodedOp* op) {
@@ -762,7 +762,7 @@ void dynamic_loadSegment32(DynamicData* data, DecodedOp* op) {
     IfNot(data, DYN_CALL_RESULT, true);
     blockDone(data, true);
     EndIf(data);
-    movToCpuFromReg(data, CPU::offsetofReg32(op->reg), DYN_DEST, DYN_32bit, true);
+    storeReg(data, op->reg, DYN_DEST, DYN_32bit, true);
     INCREMENT_EIP(data, op);
 }
 
