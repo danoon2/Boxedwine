@@ -855,8 +855,9 @@ bool DynamicData::getFlagInReg(DynConditional condition, DynReg reg) {
     }
 
     loadCPUFlags(reg);
-    if (notFlag)
-        instReg('~', reg, DYN_32bit);
+    if (notFlag) {
+        notReg(reg, DYN_32bit);
+    }
     instRegImm('&', reg, DYN_32bit, flag);
     return true;
 }

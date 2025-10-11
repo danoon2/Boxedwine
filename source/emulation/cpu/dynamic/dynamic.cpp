@@ -70,7 +70,7 @@ void DynamicData::dynamic_invalid_op(DecodedOp* op) {
 }
 
 void DynamicData::dynamic_onTestEnd(DecodedOp* op) {
-    cpu->nextOp = op;
+    movToCpu(offsetof(CPU, nextOp), DYN_32bit, (DYN_PTR_SIZE)op);
 }
 
 static void initDynamicOps() {
@@ -639,21 +639,39 @@ void DynamicData::instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth r
     movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true, tmpReg);
 }
 
-void DynamicData::instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) {
+void DynamicData::negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) {
     if (regUsed[0]) {
         kpanic("x32CPU::instMem");
     }
     movFromMem(regWidth, addressReg, false);
-    instReg(inst, DYN_CALL_RESULT, regWidth);
+    negReg(DYN_CALL_RESULT, regWidth);
     movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true, tmpReg);
 }
 
-void DynamicData::instCPU(char inst, U8 regIndex, DynWidth regWidth, DynReg tmpReg) {
+void DynamicData::notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) {
+    if (regUsed[0]) {
+        kpanic("x32CPU::instMem");
+    }
+    movFromMem(regWidth, addressReg, false);
+    notReg(DYN_CALL_RESULT, regWidth);
+    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true, tmpReg);
+}
+
+void DynamicData::negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) {
     if (regUsed[tmpReg]) {
         kpanic("instCPU");
     }
     movToRegFromCpu(tmpReg, cpuOffset(regIndex, regWidth), regWidth);
-    instReg(inst, tmpReg, regWidth);
+    negReg(tmpReg, regWidth);
+    movToCpuFromReg(cpuOffset(regIndex, regWidth), tmpReg, regWidth, true);
+}
+
+void DynamicData::notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) {
+    if (regUsed[tmpReg]) {
+        kpanic("instCPU");
+    }
+    movToRegFromCpu(tmpReg, cpuOffset(regIndex, regWidth), regWidth);
+    notReg(tmpReg, regWidth);
     movToCpuFromReg(cpuOffset(regIndex, regWidth), tmpReg, regWidth, true);
 }
 
@@ -1036,7 +1054,7 @@ void DynamicData::commitJIT(DecodedOp* op) {
     U32 address = startingEip;
     DecodedOp* nextOp = op;
     DecodedOp* last = op;
-#ifdef _DEBUG
+#if defined (_DEBUG) && !defined (__TEST)
     BOXEDWINE_CRITICAL_SECTION;
     static int totalBlocks;
     totalBlocks++;

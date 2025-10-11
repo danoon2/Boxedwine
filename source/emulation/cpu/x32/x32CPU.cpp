@@ -33,7 +33,8 @@ public:
     void setConditional(DynConditional condition) override;
     void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) override;
     void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
-    void instReg(char inst, DynReg reg, DynWidth regWidth) override;
+    void negReg(DynReg reg, DynWidth regWidth) override;
+    void notReg(DynReg reg, DynWidth regWidth) override;
     void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) override;
     void callHostFunction(void* address, bool hasReturn = false, U32 argCount = 0, U32 arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, U32 arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, U32 arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, U32 arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, U32 arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true) override;
     void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) override;
@@ -500,30 +501,27 @@ void X86DynamicData::instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWi
     }
 }
 
-// inst can be: ~ or -
-void X86DynamicData::instReg(char inst, DynReg reg, DynWidth regWidth) {
-    if (inst == '-') {
-        if (regWidth == DYN_32bit) {
-            x86.neg(X86Asm::Reg32(reg));
-        } else if (regWidth == DYN_16bit) {
-            x86.neg(X86Asm::Reg16(reg));
-        } else if (regWidth == DYN_8bit) {
-            x86.neg(X86Asm::Reg8(reg));
-        } else {
-            kpanic("instReg NEG");
-        }
-    } else if (inst == '~') {
-        if (regWidth == DYN_32bit) {
-            x86.not_(X86Asm::Reg32(reg));
-        } else if (regWidth == DYN_16bit) {
-            x86.not_(X86Asm::Reg16(reg));
-        } else if (regWidth == DYN_8bit) {
-            x86.not_(X86Asm::Reg8(reg));
-        } else {
-            kpanic("instReg NOT");
-        }
+void X86DynamicData::negReg(DynReg reg, DynWidth regWidth) {
+    if (regWidth == DYN_32bit) {
+        x86.neg(X86Asm::Reg32(reg));
+    } else if (regWidth == DYN_16bit) {
+        x86.neg(X86Asm::Reg16(reg));
+    } else if (regWidth == DYN_8bit) {
+        x86.neg(X86Asm::Reg8(reg));
     } else {
-        kpanic("instReg");
+        kpanic("X86DynamicData::negReg");
+    }
+}
+
+void X86DynamicData::notReg(DynReg reg, DynWidth regWidth) {
+    if (regWidth == DYN_32bit) {
+        x86.not_(X86Asm::Reg32(reg));
+    } else if (regWidth == DYN_16bit) {
+        x86.not_(X86Asm::Reg16(reg));
+    } else if (regWidth == DYN_8bit) {
+        x86.not_(X86Asm::Reg8(reg));
+    } else {
+        kpanic("X86DynamicData::notReg");
     }
 }
 

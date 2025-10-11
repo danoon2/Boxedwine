@@ -413,38 +413,38 @@ void DynamicData::dynamic_test32_mem(DecodedOp* op) {
     dynamic_arithMI(op, DYN_32bit, '&', false, false, FLAGS_TEST32);
 }
 void DynamicData::dynamic_notr8(DecodedOp* op) {
-    instCPU('~', op->reg, DYN_8bit, DYN_DEST);
+    notCPU(op->reg, DYN_8bit, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_note8(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    instMem('~', DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
+    notMem(DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_notr16(DecodedOp* op) {
-    instCPU('~', op->reg, DYN_16bit, DYN_DEST);
+    notCPU(op->reg, DYN_16bit, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_note16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    instMem('~', DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
+    notMem(DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_notr32(DecodedOp* op) {
-    instCPU('~', op->reg, DYN_32bit, DYN_DEST);
+    notCPU(op->reg, DYN_32bit, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_note32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    instMem('~', DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
+    notMem(DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_negr8(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
-        instCPU('-', op->reg, DYN_8bit, DYN_DEST);
+        negCPU(op->reg, DYN_8bit, DYN_DEST);
     } else {
         loadRegStoreSrc(op->reg, DYN_8bit, DYN_DEST, false);
-        instReg('-', DYN_DEST, DYN_8bit);
+        negReg(DYN_DEST, DYN_8bit);
         storeLazyFlagsResult(DYN_DEST, DYN_8bit, false);
         storeReg(op->reg, DYN_DEST, DYN_8bit, true);
         storeLazyFlags(FLAGS_NEG8);
@@ -455,10 +455,10 @@ void DynamicData::dynamic_negr8(DecodedOp* op) {
 void DynamicData::dynamic_nege8(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     if (!op->needsToSetFlags(cpu)) {
-        instMem('-', DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
+        negMem(DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
     } else {
         storeLazyFlagsSrcFromMem(DYN_8bit, DYN_ADDRESS, false, false);
-        instReg('-', DYN_CALL_RESULT, DYN_8bit);
+        negReg(DYN_CALL_RESULT, DYN_8bit);
         storeLazyFlagsResult(DYN_CALL_RESULT, DYN_8bit, false);
         movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
         storeLazyFlags(FLAGS_NEG8);
@@ -468,10 +468,10 @@ void DynamicData::dynamic_nege8(DecodedOp* op) {
 }
 void DynamicData::dynamic_negr16(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
-        instCPU('-', op->reg, DYN_16bit, DYN_DEST);
+        negCPU(op->reg, DYN_16bit, DYN_DEST);
     } else {
         loadRegStoreSrc(op->reg, DYN_16bit, DYN_DEST, false);
-        instReg('-', DYN_DEST, DYN_16bit);
+        negReg(DYN_DEST, DYN_16bit);
         storeLazyFlagsResult(DYN_DEST, DYN_16bit, false);
         storeReg(op->reg, DYN_DEST, DYN_16bit, true);
         storeLazyFlags(FLAGS_NEG16);
@@ -482,10 +482,10 @@ void DynamicData::dynamic_negr16(DecodedOp* op) {
 void DynamicData::dynamic_nege16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     if (!op->needsToSetFlags(cpu)) {
-        instMem('-', DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
+        negMem(DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
     } else {
         storeLazyFlagsSrcFromMem(DYN_16bit, DYN_ADDRESS, false, false);
-        instReg('-', DYN_CALL_RESULT, DYN_16bit);
+        negReg(DYN_CALL_RESULT, DYN_16bit);
         storeLazyFlagsResult(DYN_CALL_RESULT, DYN_16bit, false);
         movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
         storeLazyFlags(FLAGS_NEG16);
@@ -495,10 +495,10 @@ void DynamicData::dynamic_nege16(DecodedOp* op) {
 }
 void DynamicData::dynamic_negr32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
-        instCPU('-', op->reg, DYN_32bit, DYN_DEST);
+        negCPU(op->reg, DYN_32bit, DYN_DEST);
     } else {
         loadRegStoreSrc(op->reg, DYN_32bit, DYN_DEST, false);
-        instReg('-', DYN_DEST, DYN_32bit);
+        negReg(DYN_DEST, DYN_32bit);
         storeLazyFlagsResult(DYN_DEST, DYN_32bit, false);
         storeReg(op->reg, DYN_DEST, DYN_32bit, true);
         storeLazyFlags(FLAGS_NEG32);
@@ -509,10 +509,10 @@ void DynamicData::dynamic_negr32(DecodedOp* op) {
 void DynamicData::dynamic_nege32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     if (!op->needsToSetFlags(cpu)) {
-        instMem('-', DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
+        negMem(DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
     } else {
         storeLazyFlagsSrcFromMem(DYN_32bit, DYN_ADDRESS, false, false);
-        instReg('-', DYN_CALL_RESULT, DYN_32bit);
+        negReg(DYN_CALL_RESULT, DYN_32bit);
         storeLazyFlagsResult(DYN_CALL_RESULT, DYN_32bit, false);
         movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
         storeLazyFlags(FLAGS_NEG32);
