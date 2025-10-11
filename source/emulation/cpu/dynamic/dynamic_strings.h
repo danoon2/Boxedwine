@@ -17,267 +17,267 @@
  */
 
 #include "../normal/normal_strings.h"
-void dynamic_movsb_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_movsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)movsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)movsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)movsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)movsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_movsw_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_movsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)movsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)movsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)movsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)movsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_movsd_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_movsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)movsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)movsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)movsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)movsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)movsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_cmpsb_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_cmpsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)cmpsb16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            callHostFunction((void*)cmpsb16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)cmpsb16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
+            callHostFunction((void*)cmpsb16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB8;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)cmpsb32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            callHostFunction((void*)cmpsb32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)cmpsb32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
+            callHostFunction((void*)cmpsb32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB8;
         }
     }    
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_cmpsw_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_cmpsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)cmpsw16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            callHostFunction((void*)cmpsw16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)cmpsw16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
+            callHostFunction((void*)cmpsw16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB16;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)cmpsw32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            callHostFunction((void*)cmpsw32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)cmpsw32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
+            callHostFunction((void*)cmpsw32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB16;
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_cmpsd_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_cmpsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)cmpsd16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            callHostFunction((void*)cmpsd16r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)cmpsd16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
+            callHostFunction((void*)cmpsd16, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB32;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)cmpsd32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            callHostFunction((void*)cmpsd32r, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)cmpsd32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
+            callHostFunction((void*)cmpsd32, false, 3, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false, op->base, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB32;
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_stosb_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_stosb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)stosb16r, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosb16r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            data->callHostFunction((void*)stosb16, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosb16, false, 1, 0, DYN_PARAM_CPU, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)stosb32r, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosb32r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            data->callHostFunction((void*)stosb32, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosb32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_stosw_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_stosw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)stosw16r, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosw16r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            data->callHostFunction((void*)stosw16, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosw16, false, 1, 0, DYN_PARAM_CPU, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)stosw32r, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosw32r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            data->callHostFunction((void*)stosw32, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosw32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_stosd_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_stosd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)stosd16r, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosd16r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            data->callHostFunction((void*)stosd16, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosd16, false, 1, 0, DYN_PARAM_CPU, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)stosd32r, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosd32r, false, 1, 0, DYN_PARAM_CPU, false);
         } else { 
-            data->callHostFunction((void*)stosd32, false, 1, 0, DYN_PARAM_CPU, false);
+            callHostFunction((void*)stosd32, false, 1, 0, DYN_PARAM_CPU, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_lodsb_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_lodsb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)lodsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsb16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)lodsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsb16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)lodsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsb32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)lodsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsb32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_lodsw_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_lodsw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)lodsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsw16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)lodsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsw16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)lodsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsw32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)lodsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsw32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_lodsd_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_lodsd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)lodsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsd16r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)lodsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsd16, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)lodsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsd32r, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         } else { 
-            data->callHostFunction((void*)lodsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
+            callHostFunction((void*)lodsd32, false, 2, 0, DYN_PARAM_CPU, false, op->base, DYN_PARAM_CONST_32, false);
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_scasb_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_scasb_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)scasb16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            callHostFunction((void*)scasb16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)scasb16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
+            callHostFunction((void*)scasb16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB8;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)scasb32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
+            callHostFunction((void*)scasb32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB8 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)scasb32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB8;
+            callHostFunction((void*)scasb32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB8;
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_scasw_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_scasw_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)scasw16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            callHostFunction((void*)scasw16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)scasw16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
+            callHostFunction((void*)scasw16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB16;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)scasw32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
+            callHostFunction((void*)scasw32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB16 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)scasw32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB16;
+            callHostFunction((void*)scasw32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB16;
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }
-void dynamic_scasd_op(DynamicData* data, DecodedOp* op) {
+void DynamicData::dynamic_scasd_op(DecodedOp* op) {
     if (op->ea16) {
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)scasd16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            callHostFunction((void*)scasd16r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)scasd16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
+            callHostFunction((void*)scasd16, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB32;
         }
     } else { 
         if (op->repZero || op->repNotZero) {
-            data->callHostFunction((void*)scasd32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
+            callHostFunction((void*)scasd32r, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags = nullptr; // not set to FLAGS_SUB32 if (e)cx is 0
         } else { 
-            data->callHostFunction((void*)scasd32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
-            data->currentLazyFlags=FLAGS_SUB32;
+            callHostFunction((void*)scasd32, false, 2, 0, DYN_PARAM_CPU, false, op->repZero, DYN_PARAM_CONST_32, false);
+            currentLazyFlags=FLAGS_SUB32;
         }
     }
-    data->incrementEip(op->len);
+    incrementEip(op->len);
 }

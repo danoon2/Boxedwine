@@ -87,6 +87,9 @@ enum DynConditional {
 
 class DynamicData {
 public:
+    using OpFunction = void(DynamicData::*)(DecodedOp* op);
+    //typedef void (DynamicData::* OpFunction)(DecodedOp* op);
+
     DynamicData(CPU* cpu) : cpu(cpu) {}
     CPU* cpu = nullptr;
     DecodedOp* firstOp = nullptr;
@@ -220,6 +223,49 @@ protected:
     virtual void preCommitJIT() {}
     virtual U8* createDynamicExecutableMemory();
     virtual void patch(U8* begin) {}
+
+public:
+    void dynamic_arithRR(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
+    void dynamic_arithRM(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
+    void dynamic_arithRI(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
+    void dynamic_arithMR(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
+    void dynamic_arithMI(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
+    void genCF(const LazyFlags* flags, DynReg reg);
+    void genOF(const LazyFlags* flags, DynReg reg);
+    void genNZ(const LazyFlags* flags, DynReg reg);
+    void genZ(const LazyFlags* flags, DynReg reg);
+    void genS(const LazyFlags* flags, DynReg reg);
+    bool getFlagInReg(DynConditional condition, DynReg reg);
+    void getCondition(DynConditional condition, DynReg reg);
+    void setConditionInReg(DynConditional condition, DynReg reg);
+    void dynamic_pushReg32(DynReg reg, bool doneWithReg);
+    void dynamic_pop32();
+    void dynamic_fillFlags();
+    void dynamic_getCF();
+    void dynamic_jumpIfRegSet(DecodedOp* op, DynReg reg, bool doneWithReg);
+    void dynamic_jumpIfRegNotSet(DecodedOp* op, DynReg reg, bool doneWithReg);
+    void calculateMask16InDest(DecodedOp* op);
+    void calculateMask32InDest(DecodedOp* op);
+    void calculateEffectiveEaa16(DecodedOp* op);
+    void calculateEffectiveEaa32(DecodedOp* op);
+
+    void dynamic_sidt(DecodedOp* op);
+    void dynamic_callback(DecodedOp* op);
+    void dynamic_invalid_op(DecodedOp* op);
+    void dynamic_onTestEnd(DecodedOp* op);
+
+#define INIT_CPU(e, f) void dynamic_##f(DecodedOp* op);
+#include "../common/cpu_init.h"
+#include "../common/cpu_init_mmx.h"
+#include "../common/cpu_init_sse.h"
+#include "../common/cpu_init_sse2.h"
+#include "../common/cpu_init_fpu.h"
+#ifdef BOXEDWINE_MULTI_THREADED
+#define INIT_CPU_LOCK(e, f) void dynamic_##f##_lock(DecodedOp* op);
+#include "../common/cpu_init_lock.h"
+#undef INIT_CPU_LOCK
+#endif
+#undef INIT_CPU
 };
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);

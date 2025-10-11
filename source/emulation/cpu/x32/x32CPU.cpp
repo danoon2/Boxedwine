@@ -217,7 +217,7 @@ void X86DynamicData::setConditional(DynConditional condition) {
         condition = L;
         setnz = false;
     }
-    setConditionInReg(this, condition, DYN_CALL_RESULT);
+    setConditionInReg(condition, DYN_CALL_RESULT);
     x86.test(x86.eax, x86.eax);
     if (setnz) {
         x86.setnz(X86Asm::Reg8(x86.eax.reg));

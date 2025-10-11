@@ -16,100 +16,100 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void dynamic_jumpIfRegSet(DynamicData* data, DecodedOp* op, DynReg reg, bool doneWithReg) {
-    // data->currentEip > data->lastOpEip this will just if we don't jump there is a next instruction
-    if (data->canJumpInBlock(op)) {
-        data->incrementEip(op->len + op->imm);
-        data->JumpIf(reg, true, data->currentEip + op->len + op->imm);
-        data->incrementEip((U32)(-(S32)(op->imm)));
+void DynamicData::dynamic_jumpIfRegSet(DecodedOp* op, DynReg reg, bool doneWithReg) {
+    // currentEip > lastOpEip this will just if we don't jump there is a next instruction
+    if (canJumpInBlock(op)) {
+        incrementEip(op->len + op->imm);
+        JumpIf(reg, true, currentEip + op->len + op->imm);
+        incrementEip((U32)(-(S32)(op->imm)));
     } else {
-        data->If(reg, doneWithReg);
-        data->incrementEip(op->imm + op->len);
-        data->blockNext1(op);
-        data->StartElse();
-        data->incrementEip(op->len);
-        data->blockNext2(op);
-        data->EndIf();
+        If(reg, doneWithReg);
+        incrementEip(op->imm + op->len);
+        blockNext1(op);
+        StartElse();
+        incrementEip(op->len);
+        blockNext2(op);
+        EndIf();
     }
 }
 
-void dynamic_jumpIfRegNotSet(DynamicData* data, DecodedOp* op, DynReg reg, bool doneWithReg) {
-    if (data->canJumpInBlock(op)) {
-        data->incrementEip(op->len + op->imm);
-        data->JumpIfNot(reg, true, data->currentEip + op->len + op->imm);
-        data->incrementEip((U32)(-(S32)(op->imm)));
+void DynamicData::dynamic_jumpIfRegNotSet(DecodedOp* op, DynReg reg, bool doneWithReg) {
+    if (canJumpInBlock(op)) {
+        incrementEip(op->len + op->imm);
+        JumpIfNot(reg, true, currentEip + op->len + op->imm);
+        incrementEip((U32)(-(S32)(op->imm)));
     } else {
-        data->IfNot(reg, doneWithReg);
-        data->incrementEip(op->imm + op->len);
-        data->blockNext1(op);
-        data->StartElse();
-        data->incrementEip(op->len);
-        data->blockNext2(op);
-        data->EndIf();
+        IfNot(reg, doneWithReg);
+        incrementEip(op->imm + op->len);
+        blockNext1(op);
+        StartElse();
+        incrementEip(op->len);
+        blockNext2(op);
+        EndIf();
     }
 }
 
-void dynamic_jumpO(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpO(DecodedOp* op) {
+    setConditionInReg(O, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNO(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    dynamic_jumpIfRegNotSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNO(DecodedOp* op) {
+    setConditionInReg(O, DYN_CALL_RESULT);
+    dynamic_jumpIfRegNotSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpB(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpB(DecodedOp* op) {
+    setConditionInReg(B, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNB(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    dynamic_jumpIfRegNotSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNB(DecodedOp* op) {
+    setConditionInReg(B, DYN_CALL_RESULT);
+    dynamic_jumpIfRegNotSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpZ(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    dynamic_jumpIfRegNotSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpZ(DecodedOp* op) {
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    dynamic_jumpIfRegNotSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNZ(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNZ(DecodedOp* op) {
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpBE(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpBE(DecodedOp* op) {
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNBE(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    dynamic_jumpIfRegNotSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNBE(DecodedOp* op) {
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    dynamic_jumpIfRegNotSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpS(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpS(DecodedOp* op) {
+    setConditionInReg(S, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNS(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    dynamic_jumpIfRegNotSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNS(DecodedOp* op) {
+    setConditionInReg(S, DYN_CALL_RESULT);
+    dynamic_jumpIfRegNotSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpP(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, P, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpP(DecodedOp* op) {
+    setConditionInReg(P, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNP(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NP, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNP(DecodedOp* op) {
+    setConditionInReg(NP, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpL(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpL(DecodedOp* op) {
+    setConditionInReg(L, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNL(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    dynamic_jumpIfRegNotSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNL(DecodedOp* op) {
+    setConditionInReg(L, DYN_CALL_RESULT);
+    dynamic_jumpIfRegNotSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpLE(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    dynamic_jumpIfRegSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpLE(DecodedOp* op) {
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    dynamic_jumpIfRegSet(op, DYN_CALL_RESULT, true);
 }
-void dynamic_jumpNLE(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    dynamic_jumpIfRegNotSet(data, op, DYN_CALL_RESULT, true);
+void DynamicData::dynamic_jumpNLE(DecodedOp* op) {
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    dynamic_jumpIfRegNotSet(op, DYN_CALL_RESULT, true);
 }

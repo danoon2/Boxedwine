@@ -16,483 +16,483 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void dynamic_cmovO_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovO_16_reg(DecodedOp* op) {
+    setConditionInReg(O, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovO_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovO_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(O, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovO_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovO_32_reg(DecodedOp* op) {
+    setConditionInReg(O, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovO_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovO_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(O, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNO_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNO_16_reg(DecodedOp* op) {
+    setConditionInReg(O, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNO_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNO_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(O, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNO_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNO_32_reg(DecodedOp* op) {
+    setConditionInReg(O, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNO_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, O, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNO_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(O, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovB_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovB_16_reg(DecodedOp* op) {
+    setConditionInReg(B, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovB_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovB_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(B, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovB_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovB_32_reg(DecodedOp* op) {
+    setConditionInReg(B, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovB_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovB_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(B, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNB_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNB_16_reg(DecodedOp* op) {
+    setConditionInReg(B, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNB_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNB_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(B, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNB_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNB_32_reg(DecodedOp* op) {
+    setConditionInReg(B, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNB_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, B, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNB_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(B, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovZ_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovZ_16_reg(DecodedOp* op) {
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovZ_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovZ_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovZ_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovZ_32_reg(DecodedOp* op) {
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovZ_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovZ_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNZ_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNZ_16_reg(DecodedOp* op) {
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNZ_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNZ_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNZ_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNZ_32_reg(DecodedOp* op) {
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNZ_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, NZ, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNZ_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(NZ, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovBE_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovBE_16_reg(DecodedOp* op) {
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovBE_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovBE_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovBE_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovBE_32_reg(DecodedOp* op) {
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovBE_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovBE_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNBE_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNBE_16_reg(DecodedOp* op) {
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNBE_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNBE_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNBE_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNBE_32_reg(DecodedOp* op) {
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNBE_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, BE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNBE_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(BE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovS_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovS_16_reg(DecodedOp* op) {
+    setConditionInReg(S, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovS_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovS_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(S, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovS_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovS_32_reg(DecodedOp* op) {
+    setConditionInReg(S, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovS_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovS_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(S, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNS_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNS_16_reg(DecodedOp* op) {
+    setConditionInReg(S, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNS_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNS_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(S, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNS_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNS_32_reg(DecodedOp* op) {
+    setConditionInReg(S, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNS_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, S, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNS_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(S, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovP_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, P, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovP_16_reg(DecodedOp* op) {
+    setConditionInReg(P, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovP_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, P, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovP_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(P, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovP_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, P, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovP_32_reg(DecodedOp* op) {
+    setConditionInReg(P, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovP_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, P, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovP_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(P, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNP_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NP, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNP_16_reg(DecodedOp* op) {
+    setConditionInReg(NP, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNP_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, NP, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNP_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(NP, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNP_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, NP, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNP_32_reg(DecodedOp* op) {
+    setConditionInReg(NP, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNP_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, NP, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNP_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(NP, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovL_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovL_16_reg(DecodedOp* op) {
+    setConditionInReg(L, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovL_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovL_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(L, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovL_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovL_32_reg(DecodedOp* op) {
+    setConditionInReg(L, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovL_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovL_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(L, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNL_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNL_16_reg(DecodedOp* op) {
+    setConditionInReg(L, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNL_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNL_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(L, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNL_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNL_32_reg(DecodedOp* op) {
+    setConditionInReg(L, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNL_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, L, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNL_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(L, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovLE_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovLE_16_reg(DecodedOp* op) {
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovLE_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovLE_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovLE_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovLE_32_reg(DecodedOp* op) {
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovLE_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->If(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovLE_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    If(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNLE_16_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNLE_16_reg(DecodedOp* op) {
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNLE_16_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNLE_16_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_16bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNLE_32_reg(DynamicData* data, DecodedOp* op) {
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNLE_32_reg(DecodedOp* op) {
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    EndIf();
+    incrementEip(op->len);
 }
-void dynamic_cmovNLE_32_mem(DynamicData* data, DecodedOp* op) {
-    data->calculateEaa(op, DYN_ADDRESS);
-    setConditionInReg(data, LE, DYN_CALL_RESULT);
-    data->IfNot(DYN_CALL_RESULT, true);
-    data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
-    data->EndIf();
-    data->incrementEip(op->len);
+void DynamicData::dynamic_cmovNLE_32_mem(DecodedOp* op) {
+    calculateEaa(op, DYN_ADDRESS);
+    setConditionInReg(LE, DYN_CALL_RESULT);
+    IfNot(DYN_CALL_RESULT, true);
+    storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
+    EndIf();
+    incrementEip(op->len);
 }
