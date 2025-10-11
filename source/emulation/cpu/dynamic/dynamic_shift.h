@@ -513,7 +513,7 @@ void dynamic_rcr32cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_shl8_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm('<', CPU::offsetofReg8(op->reg), DYN_8bit, op->imm, DYN_DEST);
+        data->instCPUImm('<', op->reg, DYN_8bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -565,7 +565,7 @@ void dynamic_shl8cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_shl16_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm('<', CPU::offsetofReg16(op->reg), DYN_16bit, op->imm, DYN_DEST);
+        data->instCPUImm('<', op->reg, DYN_16bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -617,7 +617,7 @@ void dynamic_shl16cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_shl32_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm('<', CPU::offsetofReg32(op->reg), DYN_32bit, op->imm, DYN_DEST);
+        data->instCPUImm('<', op->reg, DYN_32bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -669,7 +669,7 @@ void dynamic_shl32cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_shr8_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm('>', CPU::offsetofReg8(op->reg), DYN_8bit, op->imm, DYN_DEST);
+        data->instCPUImm('>', op->reg, DYN_8bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -721,7 +721,7 @@ void dynamic_shr8cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_shr16_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm('>', CPU::offsetofReg16(op->reg), DYN_16bit, op->imm, DYN_DEST);
+        data->instCPUImm('>', op->reg, DYN_16bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -773,7 +773,7 @@ void dynamic_shr16cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_shr32_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm('>', CPU::offsetofReg32(op->reg), DYN_32bit, op->imm, DYN_DEST);
+        data->instCPUImm('>', op->reg, DYN_32bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -825,7 +825,7 @@ void dynamic_shr32cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_sar8_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm(')', CPU::offsetofReg8(op->reg), DYN_8bit, op->imm, DYN_DEST);
+        data->instCPUImm(')', op->reg, DYN_8bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -877,7 +877,7 @@ void dynamic_sar8cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_sar16_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm(')', CPU::offsetofReg16(op->reg), DYN_16bit, op->imm, DYN_DEST);
+        data->instCPUImm(')', op->reg, DYN_16bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }
@@ -929,7 +929,7 @@ void dynamic_sar16cl_mem_op(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_sar32_reg_op(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPUImm(')', CPU::offsetofReg32(op->reg), DYN_32bit, op->imm, DYN_DEST);
+        data->instCPUImm(')', op->reg, DYN_32bit, op->imm, DYN_DEST);
         data->incrementEip(op->len);
         return;
     }

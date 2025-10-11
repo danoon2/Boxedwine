@@ -126,7 +126,7 @@ void dynamic_arithRI(DynamicData* data, DecodedOp* op, DynWidth width, char inst
             data->instRegImm('+', DYN_CALL_RESULT, width, op->imm);
             data->instCPUReg(inst, op->reg, DYN_CALL_RESULT, width, true, DYN_DEST);
         } else {
-            data->instCPUImm(inst, data->cpuOffset(op->reg, width), width, op->imm, DYN_DEST);
+            data->instCPUImm(inst, op->reg, width, op->imm, DYN_DEST);
         }
     } else {
         if (cf) {
@@ -995,7 +995,7 @@ void dynamic_pushReg32(DynamicData* data, DynReg reg, bool doneWithReg) {
         data->loadReg(4, DYN_ADDRESS, DYN_32bit, true); // need ESP in tmp reg so that we don't commit it until after write
         data->instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
         data->movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, true, doneWithReg, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        data->instCPUImm('-', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_ADDRESS);
+        data->instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
     } else {
         data->callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);
     }
@@ -1005,7 +1005,7 @@ void dynamic_pop32(DynamicData* data) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         DynReg reg = data->loadReg(4, DYN_ADDRESS, DYN_32bit);
         data->movFromMem(DYN_32bit, reg, true);
-        data->instCPUImm('+', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_DEST);
+        data->instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST);
     } else {
         data->callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
     }    

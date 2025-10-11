@@ -19,7 +19,7 @@
 void dynamic_inc8_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        data->instCPUImm('+', CPU::offsetofReg8(op->reg), DYN_8bit, 1, DYN_DEST);
+        data->instCPUImm('+', op->reg, DYN_8bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
@@ -57,7 +57,7 @@ void dynamic_inc8_mem8(DynamicData* data, DecodedOp* op) {
 void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        data->instCPUImm('+', CPU::offsetofReg16(op->reg), DYN_16bit, 1, DYN_DEST);
+        data->instCPUImm('+', op->reg, DYN_16bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
@@ -95,7 +95,7 @@ void dynamic_inc16_mem16(DynamicData* data, DecodedOp* op) {
 void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        data->instCPUImm('+', CPU::offsetofReg32(op->reg), DYN_32bit, 1, DYN_DEST);
+        data->instCPUImm('+', op->reg, DYN_32bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
@@ -133,7 +133,7 @@ void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {
 void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        data->instCPUImm('-', CPU::offsetofReg8(op->reg), DYN_8bit, 1, DYN_DEST);
+        data->instCPUImm('-', op->reg, DYN_8bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
@@ -171,7 +171,7 @@ void dynamic_dec8_mem8(DynamicData* data, DecodedOp* op) {
 void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        data->instCPUImm('-', CPU::offsetofReg16(op->reg), DYN_16bit, 1, DYN_DEST);
+        data->instCPUImm('-', op->reg, DYN_16bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
@@ -209,7 +209,7 @@ void dynamic_dec16_mem16(DynamicData* data, DecodedOp* op) {
 void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        data->instCPUImm('-', CPU::offsetofReg32(op->reg), DYN_32bit, 1, DYN_DEST);
+        data->instCPUImm('-', op->reg, DYN_32bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);

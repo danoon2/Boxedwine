@@ -413,7 +413,7 @@ void dynamic_test32_mem(DynamicData* data, DecodedOp* op) {
     dynamic_arithMI(data, op, DYN_32bit, '&', false, false, FLAGS_TEST32);
 }
 void dynamic_notr8(DynamicData* data, DecodedOp* op) {
-    data->instCPU('~', CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST);
+    data->instCPU('~', op->reg, DYN_8bit, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_note8(DynamicData* data, DecodedOp* op) {
@@ -422,7 +422,7 @@ void dynamic_note8(DynamicData* data, DecodedOp* op) {
     data->incrementEip(op->len);
 }
 void dynamic_notr16(DynamicData* data, DecodedOp* op) {
-    data->instCPU('~', CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST);
+    data->instCPU('~', op->reg, DYN_16bit, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_note16(DynamicData* data, DecodedOp* op) {
@@ -431,7 +431,7 @@ void dynamic_note16(DynamicData* data, DecodedOp* op) {
     data->incrementEip(op->len);
 }
 void dynamic_notr32(DynamicData* data, DecodedOp* op) {
-    data->instCPU('~', CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST);
+    data->instCPU('~', op->reg, DYN_32bit, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_note32(DynamicData* data, DecodedOp* op) {
@@ -441,7 +441,7 @@ void dynamic_note32(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_negr8(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPU('-', CPU::offsetofReg8(op->reg), DYN_8bit, DYN_DEST);
+        data->instCPU('-', op->reg, DYN_8bit, DYN_DEST);
     } else {
         data->loadRegStoreSrc(op->reg, DYN_8bit, DYN_DEST, false);
         data->instReg('-', DYN_DEST, DYN_8bit);
@@ -468,7 +468,7 @@ void dynamic_nege8(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_negr16(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPU('-', CPU::offsetofReg16(op->reg), DYN_16bit, DYN_DEST);
+        data->instCPU('-', op->reg, DYN_16bit, DYN_DEST);
     } else {
         data->loadRegStoreSrc(op->reg, DYN_16bit, DYN_DEST, false);
         data->instReg('-', DYN_DEST, DYN_16bit);
@@ -495,7 +495,7 @@ void dynamic_nege16(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_negr32(DynamicData* data, DecodedOp* op) {
     if (!op->needsToSetFlags(data->cpu)) {
-        data->instCPU('-', CPU::offsetofReg32(op->reg), DYN_32bit, DYN_DEST);
+        data->instCPU('-', op->reg, DYN_32bit, DYN_DEST);
     } else {
         data->loadRegStoreSrc(op->reg, DYN_32bit, DYN_DEST, false);
         data->instReg('-', DYN_DEST, DYN_32bit);

@@ -54,7 +54,7 @@ void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
         data->instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
         DynReg reg = data->loadReg(op->reg, DYN_SRC, DYN_32bit);
         data->movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, true, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        data->instCPUImm('-', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_ADDRESS);
+        data->instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
     } else {
         data->callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
     }
@@ -63,7 +63,7 @@ void dynamic_pushEd_reg(DynamicData* data, DecodedOp* op) {
 void dynamic_popEd_reg(DynamicData* data, DecodedOp* op) {
     if (!data->cpu->thread->process->hasSetStackMask && !data->cpu->thread->process->hasSetSeg[SS]) {
         data->loadReg(4, DYN_ADDRESS, DYN_32bit, true);
-        data->instCPUImm('+', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_DEST); // increment before assign, in case esp=pop32()
+        data->instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST); // increment before assign, in case esp=pop32()
         data->storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
     } else {
         data->callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
@@ -78,7 +78,7 @@ void dynamic_pushEd_mem(DynamicData* data, DecodedOp* op) {
         data->loadReg(4, DYN_ADDRESS, DYN_32bit, true);
         data->instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
         data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        data->instCPUImm('-', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_ADDRESS);
+        data->instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
     } else {
         data->callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
     }
@@ -92,14 +92,14 @@ void dynamic_popEd_mem(DynamicData* data, DecodedOp* op) {
         // before the write happens in case the write throws an exception, iexplorer.exe will exercise 
         // that esp needs to be increated before calculateEaa
         if (op->rm == 4 || op->sibIndex == 4) {
-            data->instCPUImm('+', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_DEST);
+            data->instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST);
             data->calculateEaa(op, DYN_ADDRESS);
-            data->instCPUImm('-', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_DEST);
+            data->instCPUImm('-', 4, DYN_32bit, 4, DYN_DEST);
         } else {
             data->calculateEaa(op, DYN_ADDRESS);
         }
         data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
-        data->instCPUImm('+', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_DEST);
+        data->instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST);
     } else {
         // save current esp
         data->loadReg(4, DYN_SRC, DYN_32bit, true);
@@ -184,7 +184,7 @@ void dynamic_push32imm(DynamicData* data, DecodedOp* op) {
          data->loadReg(4, DYN_ADDRESS, DYN_32bit, true);
          data->instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
          data->movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-         data->instCPUImm('-', CPU::offsetofReg32(4), DYN_32bit, 4, DYN_ADDRESS);
+         data->instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
      } else {
          data->callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);
      }

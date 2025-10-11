@@ -136,11 +136,12 @@ public:
     virtual void storeLazyFlagsSrcFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
     
     virtual void instCPUReg(char inst, U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
-    virtual void instCPUImm(char inst, U32 dstOffset, DynWidth regWidth, U32 imm, DynReg tmpReg);
+    virtual void instCPUImm(char inst, U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg);
+    virtual void instCPUFlagsImm(char inst, U32 imm, DynReg tmpReg);
     virtual void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
     virtual void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
     virtual void instMem(char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg);
-    virtual void instCPU(char inst, U32 dstOffset, DynWidth regWidth, DynReg tmpReg);
+    virtual void instCPU(char inst, U8 regIndex, DynWidth regWidth, DynReg tmpReg);
 
     virtual void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg, DynReg tmpReg);
     virtual void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg, DynReg tmpReg);

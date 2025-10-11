@@ -231,33 +231,33 @@ void dynamic_hlt(DynamicData* data, DecodedOp* op) {
 }
 void dynamic_cmc(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    data->instCPUImm('^', CPU_OFFSET_OF(flags), DYN_32bit, CF, DYN_DEST);
+    data->instCPUFlagsImm('^', CF, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_clc(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    data->instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~CF, DYN_DEST);
+    data->instCPUFlagsImm('&', ~CF, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_stc(DynamicData* data, DecodedOp* op) {
     dynamic_fillFlags(data);
-    data->instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, CF, DYN_DEST);
+    data->instCPUFlagsImm('|', CF, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_cli(DynamicData* data, DecodedOp* op) {
-    data->instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~IF, DYN_DEST);
+    data->instCPUFlagsImm('&', ~IF, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_sti(DynamicData* data, DecodedOp* op) {
-    data->instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, IF, DYN_DEST);
+    data->instCPUFlagsImm('|', IF, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_cld(DynamicData* data, DecodedOp* op) {
-    data->instCPUImm('&', CPU_OFFSET_OF(flags), DYN_32bit, ~DF, DYN_DEST);
+    data->instCPUFlagsImm('&', ~DF, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_std(DynamicData* data, DecodedOp* op) {
-    data->instCPUImm('|', CPU_OFFSET_OF(flags), DYN_32bit, DF, DYN_DEST);
+    data->instCPUFlagsImm('|', DF, DYN_DEST);
     data->incrementEip(op->len);
 }
 void dynamic_rdtsc(DynamicData* data, DecodedOp* op) {
