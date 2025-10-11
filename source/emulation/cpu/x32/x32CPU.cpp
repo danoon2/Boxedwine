@@ -20,905 +20,296 @@
 #ifdef BOXEDWINE_DYNAMIC32
 
 #include "x32CPU.h"
-#include "../common/lazyFlags.h"
 #include "../dynamic/dynamic.h"
-#include "../../softmmu/kmemory_soft.h"
-#include "../normal/normalCPU.h"
-
-#include <unordered_set>
-
-extern U8* ramPages[K_NUMBER_OF_PAGES];
+#include "x86Asm.h"
 
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
 
-/********************************************************/
-/* Following is required to be defined for dynamic code */
-/********************************************************/
+class X86DynamicData : DynamicData {
+public:
+    X86DynamicData(CPU* cpu) : DynamicData(cpu) {}
 
-#define INCREMENT_EIP(x, y) incrementEip(x, y)
+    void incrementEip(U32 inc) override;
+    void setConditional(DynConditional condition) override;
+    void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) override;
+    void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void instReg(char inst, DynReg reg, DynWidth regWidth) override;
+    void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) override;
+    void callHostFunction(void* address, bool hasReturn = false, U32 argCount = 0, U32 arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, U32 arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, U32 arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, U32 arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, U32 arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true) override;
+    void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) override;
+    void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) override;
+    void movToReg(DynReg reg, DynWidth width, U32 imm) override;
+    void calculateEaa(DecodedOp* op, DynReg reg) override;
+    void pushValue(U32 arg, DynCallParamType argType) override;
+    void byteSwapReg32(DynReg reg) override;
+    void zeroExtendReg16To32(DynReg dest, DynReg src) override;
+    void JumpIf(DynReg reg, bool doneWithReg, U32 address) override;
+    void JumpIfNot(DynReg reg, bool doneWithReg, U32 address) override;
+    void JumpInBlock(U32 address) override;
+    void IfNot(DynReg reg, bool doneWithReg) override;
+    void If(DynReg reg, bool doneWithReg) override;
+    void IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) override;
+    void StartElse() override;
+    void EndIf() override;
+    void blockExit() override;
 
-#define CPU_OFFSET_OF(x) offsetof(CPU, x)
+protected:
+    friend void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 
-// DynReg is a required type, but the values inside are local to this file
-// Used only these 4 because it is possible to use 8-bit calls with them, like add al, cl
-enum DynReg {
-    DYN_EAX=0,
-    DYN_ECX=1,
-    DYN_EDX=2,
-    DYN_EBX=3,  
-    DYN_NOT_SET=0xff
+    void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) override;
+    void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) override;
+    void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) override;    
+    void IfLessThan(DynReg reg, U32 value, bool doneWithReg) override;
+    void IfBitSet(DynReg reg, U32 value, bool doneWithReg) override;
+
+    U32 getBufferSize() override;
+    U32 getIfJumpSize() override;    
+    U8* getBuffer() override;
+
+    void IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg);
+    void IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg);    
+    void setCC(X86Asm::Reg32 reg, DynConditionEvaluate condition);
+    void evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm::Reg32 right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
+    void evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg);    
+
+    void jmp(DynReg reg) override;
+    void readMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) override;    
+    void readMem(DynReg reg, DynWidth width, DynReg address, U8 lsl, U32 disp) override;
+    void writeMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) override;
+    void writeMem(DynReg reg, DynWidth width, DynReg address, U32 disp) override;
+    void writeMem(U32 value, DynWidth width, DynReg address, U32 disp) override;
+    void writeMem(U32 value, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) override;
+    void and32(DynReg dst, U32 imm) override;
+    void shr32(DynReg reg, U32 imm) override;
+
+    void preCommitJIT() override;
+    void patch(U8* begin) override;
+    U8* createStartJITCode() override;
+
+    X86Asm x86;
 };
 
-enum DynCondition {
-    DYN_EQUALS_ZERO,
-    DYN_NOT_EQUALS_ZERO
-};
-
-enum DynConditionEvaluate {
-    DYN_EQUALS,
-    DYN_NOT_EQUALS,
-    DYN_LESS_THAN_UNSIGNED,
-    DYN_LESS_THAN_EQUAL_UNSIGNED,
-    DYN_GREATER_THAN_EQUAL_UNSIGNED,
-    DYN_LESS_THAN_SIGNED,
-    DYN_LESS_THAN_EQUAL_SIGNED,
-};
-
-#define DYN_CALL_RESULT DYN_EAX
-#define DYN_SRC DYN_ECX
-#define DYN_DEST DYN_EDX
-#define DYN_ADDRESS DYN_EBX
-#define DYN_ANY DYN_DEST
-
-#define DYN_PTR_SIZE U32
-
-enum DynWidth {
-    DYN_8bit=0,
-    DYN_16bit,
-    DYN_32bit,
-};
-
-enum DynCallParamType {
-    DYN_PARAM_REG_8,    
-    DYN_PARAM_REG_16,
-    DYN_PARAM_REG_32,
-    DYN_PARAM_CONST_8,
-    DYN_PARAM_CONST_16,
-    DYN_PARAM_CONST_32,
-    DYN_PARAM_CONST_PTR,
-    DYN_PARAM_CPU_ADDRESS_8,
-    DYN_PARAM_CPU_ADDRESS_16,
-    DYN_PARAM_CPU_ADDRESS_32,
-    DYN_PARAM_CPU,
-};
-
-enum DynConditional {
-    O,
-    NO,
-    B,
-    NB,
-    Z,
-    NZ,
-    BE,
-    NBE,
-    S,
-    NS,
-    P,
-    NP,
-    L,
-    NL,
-    LE,
-    NLE
-};
-
-#define Dyn_PtrSize DYN_32bit
-
-void calculateEaa(DynamicData* data, DecodedOp* op, DynReg reg);
-
-void byteSwapReg32(DynamicData* data, DynReg reg);
-
-// REG to REG
-void movToRegFromRegSignExtend(DynamicData* data, DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
-void movToRegFromReg(DynamicData* data, DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg);
-
-// to Reg
-void movToReg(DynamicData* data, DynReg reg, DynWidth width, U32 imm);
-void zeroExtendReg16To32(DynamicData* data, DynReg dest, DynReg src);
-
-// to CPU
-void storeReg(DynamicData* data, U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg);
-void storeLazyFlagsResult(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg);
-//void storeLazyFlagsSrc(DynamicData* data, DynReg reg, DynWidth width, bool doneWithSrcReg);
-void storeLazyFlagsDst(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg);
-void storeLazyFlagsOldCF(DynamicData* data, DynReg srcReg, bool doneWithSrcReg);
-void storeEip(DynamicData* data, DynReg srcReg, bool doneWithSrcReg);
-
-void storeReg(DynamicData* data, U8 reg, DynWidth dstWidth, U32 imm);
-void storeLazyFlagsSrc(DynamicData* data, DynWidth width, U32 imm);
-void storeLazyFlags(DynamicData* data, const LazyFlags* lazyFlags);
-
-void storeRegFromMem(DynamicData* data, U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
-void storeLazyFlagsDstFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
-void storeLazyFlagsSrcFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
-
-void loadRegStoreReg(DynamicData* data, U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
-void loadRegStoreSrc(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
-void loadRegStoreDst(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
-void loadRegStoreEip(DynamicData* data, U8 reg, DynReg tmpReg, bool doneWithTmpReg);
-void loadSegValueStoreReg(DynamicData* data, U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg);
-
-// from CPU
-DynReg loadReg(DynamicData* data, U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp = false);
-void loadSegAddress(DynamicData* data, U8 seg, DynReg tmpReg);
-void loadSegValue(DynamicData* data, U8 seg, DynReg tmpReg);
-void loadCPUFlags(DynamicData* data, DynReg tmpReg);
-void loadLazyFlagsResult(DynamicData* data, DynReg reg, DynWidth width);
-void loadLazyFlagsSrc(DynamicData* data, DynReg reg, DynWidth width);
-void loadLazyFlagsDst(DynamicData* data, DynReg reg, DynWidth width);
-void loadLazyFlagsOldCF(DynamicData* data, DynReg reg);
-void loadEip(DynamicData* data, DynReg reg);
-void loadStackMask(DynamicData* data, DynReg reg);
-void loadStackNotMask(DynamicData* data, DynReg reg);
-void loadLazyFlags(DynamicData* data, DynReg reg);
-
-// from Mem to DYN_READ_RESULT
-void movFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg);
-
-// to Mem
-void movToMemFromReg(DynamicData* data, DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg, DynReg tmpReg);
-void movToMemFromImm(DynamicData* data, DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
-
-// arith
-void instRegReg(DynamicData* data, char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
-void instMemReg(DynamicData* data, char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
-void instCPUReg(DynamicData* data, char inst, U8 reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
-
-void instRegImm(DynamicData* data, U32 inst, DynReg reg, DynWidth regWidth, U32 imm);
-void instMemImm(DynamicData* data, char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
-void instCPUImm(DynamicData* data, char inst, U32 dstOffset, DynWidth regWidth, U32 imm, DynReg tmpReg);
-
-void instReg(DynamicData* data, char inst, DynReg reg, DynWidth regWidth);
-void instMem(DynamicData* data, char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg);
-void instCPU(DynamicData* data, char inst, U32 dstOffset, DynWidth regWidth, DynReg tmpReg);
-
-// if conditions
-void IfLessThan(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg);
-void IfEqual(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg);
-void IfNotEqual(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg);
-void IfBitSet(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg);
-void If(DynamicData* data, X86Asm::Reg32 reg, bool doneWithReg);
-void IfNot(DynamicData* data, X86Asm::Reg32 reg, bool doneWithReg);
-void IfPtrEqual(DynamicData* data, X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg);
-void StartElse(DynamicData* data);
-void EndIf(DynamicData* data);
-void JumpIf(DynamicData* data, DynReg reg, bool doneWithReg, U32 address);
-void JumpIfNot(DynamicData* data, DynReg reg, bool doneWithReg, U32 address);
-void JumpInBlock(DynamicData* data, U32 address);
-
-void evaluateToReg(DynamicData* data, DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg);
-void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition);
-void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg, DynReg tmpReg);
-
-// call into emulator, like setFlags, getCF, etc
-void callHostFunction(DynamicData* data, void* address, bool hasReturn=false, U32 argCount=0, U32 arg1=0, DynCallParamType arg1Type=DYN_PARAM_CONST_32, bool doneWithArg1=true, U32 arg2=0, DynCallParamType arg2Type=DYN_PARAM_CONST_32, bool doneWithArg2=true, U32 arg3=0, DynCallParamType arg3Type=DYN_PARAM_CONST_32, bool doneWithArg3=true, U32 arg4=0, DynCallParamType arg4Type=DYN_PARAM_CONST_32, bool doneWithArg4=true, U32 arg5=0, DynCallParamType arg5Type=DYN_PARAM_CONST_32, bool doneWithArg5=true);
-
-// set up the cpu to the correct next block
-
-// this is called for cases where we don't know ahead of time where the next block will be, so we need to look it up
-void blockDone(DynamicData* data, bool returnEarly);
-// next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void blockNext1(DynamicData* data, DecodedOp* op);
-void blockNext2(DynamicData* data, DecodedOp* op);
-void blockCall(DynamicData* data, DecodedOp* op);
-void blockDoneCall(DynamicData* data);
-void blockDoneJump(DynamicData* data);
-
-/********************************************************/
-/* End required for dynamic code                        */
-/********************************************************/
-
-// referenced in macro above
-void incrementEip(DynamicData* data, DecodedOp* op);
-void incrementEip(DynamicData* data, U32 len);
-
-#include "../normal/instructions.h"
-#include "../common/common_arith.h"
-#include "../common/common_pushpop.h"
-#include "../dynamic/dynamic_func.h"
-#include "../dynamic/dynamic_arith.h"
-#include "../dynamic/dynamic_mov.h"
-#include "../dynamic/dynamic_incdec.h"
-#include "../dynamic/dynamic_jump.h"
-#include "../dynamic/dynamic_pushpop.h"
-#include "../dynamic/dynamic_strings.h"
-#include "../dynamic/dynamic_shift.h"
-#include "../dynamic/dynamic_conditions.h"
-#include "../dynamic/dynamic_setcc.h"
-#include "../dynamic/dynamic_xchg.h"
-#include "../dynamic/dynamic_bit.h"
-#include "../dynamic/dynamic_other.h"
-#include "../dynamic/dynamic_mmx.h"
-#include "../dynamic/dynamic_sse.h"
-#include "../dynamic/dynamic_sse2.h"
-#include "../dynamic/dynamic_fpu.h"
-#include "../dynamic/dynamic_lock.h"
-
-void calculateEaa(DynamicData* data, DecodedOp* op, DynReg reg) {
-    data->regUsed[reg] = true;
-
-    if (op->ea16) {
-        // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
-        X86Asm::Reg16 reg16(reg);
-
-        data->x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
-
-        if (op->data.disp) {
-            data->x86.add(reg16, (U16)op->data.disp);
-        }
-        if (op->rm != 8) {
-            // intentional 16-bit add
-            data->x86.addMem(reg16, data->x86.edi, CPU::offsetofReg16(op->rm));
-        }
-
-        if (op->sibIndex != 8) {
-            // intentional 16-bit add
-            data->x86.addMem(reg16, data->x86.edi, CPU::offsetofReg16(op->sibIndex));
-        }
-
-        // seg[6] is always 0
-        if (op->base < 6) {
-            // intentional 32-bit add
-            data->x86.addMem(X86Asm::Reg32(reg), data->x86.edi, CPU::offsetofSegAddress(op->base));
-        }
-    } else {
-        if (op->sibIndex != 8) {
-            data->x86.readMem(X86Asm::Reg32(reg), data->x86.edi, CPU::offsetofReg32(op->sibIndex));
-            if (op->sibScale) {
-                data->x86.shl(X86Asm::Reg32(reg), op->sibScale);
-            }
-            if (op->rm != 8) {
-                data->x86.addMem(X86Asm::Reg32(reg), data->x86.edi, CPU::offsetofReg32(op->rm));
-            }
-            if (op->data.disp) {
-                data->x86.add(X86Asm::Reg32(reg), op->data.disp);
-            }
-        } else if (op->rm != 8) {
-            data->x86.readMem(X86Asm::Reg32(reg), data->x86.edi, CPU::offsetofReg32(op->rm));
-            if (op->data.disp) {
-                data->x86.add(X86Asm::Reg32(reg), op->data.disp);
-            }
-        } else if (op->data.disp) {
-            data->x86.mov(X86Asm::Reg32(reg), op->data.disp);
-        } else {
-            data->x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
-        }
-
-        // seg[6] is always 0
-        if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
-            data->x86.addMem(X86Asm::Reg32(reg), data->x86.edi, CPU::offsetofSegAddress(op->base));
-        }
-    }
+void X86DynamicData::jmp(DynReg reg) {
+    x86.jmp(X86Asm::Reg32(reg));
 }
 
-void byteSwapReg32(DynamicData* data, DynReg reg) {
-    data->x86.bswap(reg);
-}
-
-void movToRegFromRegSignExtend(DynamicData* data, DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
-    data->regUsed[dst] = true;
-    if (dstWidth <= srcWidth) {
-        movToRegFromReg(data, dst, dstWidth, src, srcWidth, doneWithSrcReg);
-    } else {
-        if (dstWidth == DYN_32bit) {
-            if (srcWidth == DYN_16bit) {
-                data->x86.movsx(X86Asm::Reg32(dst), X86Asm::Reg16(src));
-            } else if (srcWidth == DYN_8bit) {
-                data->x86.movsx(X86Asm::Reg32(dst), X86Asm::Reg8(src));
-            } else {
-                kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
-            }
-        } else if (dstWidth == DYN_16bit) {
-            if (srcWidth == DYN_8bit) {
-                data->x86.movsx(X86Asm::Reg16(dst), X86Asm::Reg8(src));
-            } else {
-                kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
-            }
-        } else {
-            kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
-        }
-        if (doneWithSrcReg) {
-            data->regUsed[src] = false;
-        }
-    }
-}
-
-void movToRegFromReg(DynamicData* data, DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
-    data->regUsed[dst] = true;
-    if (dstWidth <= srcWidth) {
-        if (dst == src) // downsizing doesn't need anything
-            return;
-        if (dstWidth == DYN_32bit) {
-            data->x86.mov(X86Asm::Reg32(dst), X86Asm::Reg32(src));
-        } else if (dstWidth == DYN_16bit) {
-            data->x86.mov(X86Asm::Reg16(dst), X86Asm::Reg16(src));
-        } else if (dstWidth == DYN_8bit) {
-            data->x86.mov(X86Asm::Reg8(dst), X86Asm::Reg8(src));
-        } else {
-            kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromReg %d", dstWidth);
-        }
-    } else {
-        if (dstWidth == DYN_32bit) {
-            if (srcWidth == DYN_16bit) {
-                data->x86.movzx(X86Asm::Reg32(dst), X86Asm::Reg16(src));
-            } else if (srcWidth == DYN_8bit) {
-                data->x86.movzx(X86Asm::Reg32(dst), X86Asm::Reg8(src));
-            } else {
-                kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
-            }
-        } else if (dstWidth == DYN_16bit) {
-            if (srcWidth == DYN_8bit) {
-                data->x86.movzx(X86Asm::Reg16(dst), X86Asm::Reg8(src));
-            } else {
-                kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
-            }
-        } else {
-            kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
-        }
-    }
-    if (doneWithSrcReg) {
-        data->regUsed[src] = false;
-    }
-}
-
-void movToRegFromCpu(DynamicData* data, DynReg reg, U32 srcOffset, DynWidth width) {
-    data->regUsed[reg] = true;
-    // mov reg, [edi+srcOffset]    
+void X86DynamicData::readMem(DynReg reg, DynWidth width, DynReg address, U8 lsl, U32 disp) {
     if (width == DYN_32bit) {
-        data->x86.readMem(X86Asm::Reg32(reg), data->x86.edi, srcOffset);
+        x86.readMem(X86Asm::Reg32(reg), X86Asm::Reg32(address), lsl, disp);
     } else if (width == DYN_16bit) {
-        data->x86.readMem(X86Asm::Reg16(reg), data->x86.edi, srcOffset);
-    } else if (width == DYN_8bit) {
-        data->x86.readMem(X86Asm::Reg8(reg), data->x86.edi, srcOffset);
+        x86.readMem(X86Asm::Reg16(reg), X86Asm::Reg32(address), lsl, disp);
     } else {
-        kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromCpu %d", width);
+        x86.readMem(X86Asm::Reg8(reg), X86Asm::Reg32(address), lsl, disp);
     }
 }
 
-DynReg loadReg(DynamicData* data, U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp) {
-    // handle AH, etc
-    movToRegFromCpu(data, tmpReg, cpuOffset(reg, width), width);
-    return tmpReg;
-}
-
-void loadSegAddress(DynamicData* data, U8 seg, DynReg reg) {
-    movToRegFromCpu(data, reg, CPU::offsetofSegAddress(seg), DYN_32bit);
-}
-
-void loadSegValue(DynamicData* data, U8 seg, DynReg reg) {
-    movToRegFromCpu(data, reg, CPU::offsetofSegValue(seg), DYN_32bit);
-}
-
-void loadCPUFlags(DynamicData* data, DynReg reg) {
-    movToRegFromCpu(data, reg, CPU_OFFSET_OF(flags), DYN_32bit);
-}
-
-void loadLazyFlagsResult(DynamicData* data, DynReg reg, DynWidth width) {
-    if (width == DYN_8bit) {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(result.u8), DYN_8bit);
-    } else if (width == DYN_16bit) {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(result.u16), DYN_16bit);
-    } else {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(result.u32), DYN_32bit);
-    }
-}
-
-void loadLazyFlagsSrc(DynamicData* data, DynReg reg, DynWidth width) {
-    if (width == DYN_8bit) {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(src.u8), DYN_8bit);
-    } else if (width == DYN_16bit) {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(src.u16), DYN_16bit);
-    } else {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(src.u32), DYN_32bit);
-    }
-}
-
-void loadLazyFlagsOldCF(DynamicData* data, DynReg reg) {
-    movToRegFromCpu(data, reg, CPU_OFFSET_OF(oldCF), DYN_32bit);
-}
-
-void loadEip(DynamicData* data, DynReg reg) {
-    movToRegFromCpu(data, reg, CPU_OFFSET_OF(eip.u32), DYN_32bit);
-}
-
-void loadStackMask(DynamicData* data, DynReg reg) {
-    movToRegFromCpu(data, reg, CPU_OFFSET_OF(stackMask), DYN_32bit);
-}
-
-void loadStackNotMask(DynamicData* data, DynReg reg) {
-    movToRegFromCpu(data, reg, CPU_OFFSET_OF(stackNotMask), DYN_32bit);
-}
-
-void loadLazyFlags(DynamicData* data, DynReg reg) {
-    movToRegFromCpu(data, reg, offsetof(CPU, lazyFlags), DYN_32bit);
-}
-
-void loadLazyFlagsDst(DynamicData* data, DynReg reg, DynWidth width) {
-    if (width == DYN_8bit) {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(dst.u8), DYN_8bit);
-    } else if (width == DYN_16bit) {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(dst.u16), DYN_16bit);
-    } else {
-        movToRegFromCpu(data, reg, CPU_OFFSET_OF(dst.u32), DYN_32bit);
-    }
-}
-
-void movToCpuFromReg(DynamicData* data, U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) {
+void X86DynamicData::readMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
     if (width == DYN_32bit) {
-        data->x86.writeMem(data->x86.edi, dstOffset, X86Asm::Reg32(reg));
+        x86.readMem(X86Asm::Reg32(reg), X86Asm::Reg32(address), offset, lsl, disp);
     } else if (width == DYN_16bit) {
-        data->x86.writeMem(data->x86.edi, dstOffset, X86Asm::Reg16(reg));
-    } else if (width == DYN_8bit) {
-        data->x86.writeMem(data->x86.edi, dstOffset, X86Asm::Reg8(reg));
+        x86.readMem(X86Asm::Reg16(reg), X86Asm::Reg32(address), offset, lsl, disp);
     } else {
-        kpanic_fmt("unknown dstWidth in x32CPU::movToCpuFromReg %d", width);
-    }
-    if (doneWithReg) {
-        data->regUsed[reg] = false;
+        x86.readMem(X86Asm::Reg8(reg), X86Asm::Reg32(address), offset, lsl, disp);
     }
 }
 
-void storeReg(DynamicData* data, U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
-    movToCpuFromReg(data, cpuOffset(reg, width), srcReg, width, doneWithSrcReg);
-}
-
-void storeLazyFlagsResult(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
-    movToCpuFromReg(data, cpuOffsetResult(width), srcReg, width, doneWithSrcReg);
-}
-
-//void storeLazyFlagsSrc(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
-//    movToCpuFromReg(data, cpuOffsetSrc(width), srcReg, width, doneWithSrcReg);
-//}
-
-void storeLazyFlagsDst(DynamicData* data, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
-    movToCpuFromReg(data, cpuOffsetDst(width), srcReg, width, doneWithSrcReg);
-}
-
-void storeLazyFlagsOldCF(DynamicData* data, DynReg srcReg, bool doneWithSrcReg) {
-    movToCpuFromReg(data, CPU_OFFSET_OF(oldCF), srcReg, DYN_32bit, doneWithSrcReg);
-}
-
-void storeEip(DynamicData* data, DynReg srcReg, bool doneWithSrcReg) {
-    movToCpuFromReg(data, CPU_OFFSET_OF(eip.u32), srcReg, DYN_32bit, doneWithSrcReg);
-}
-
-void movToCpuFromCpu(DynamicData* data, U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    // mov tmpReg, [cpu+srcOffset]
-    movToRegFromCpu(data, tmpReg, srcOffset, width);
-
-    // mov [cpu+dstOffset], tmpReg
-    movToCpuFromReg(data, dstOffset, tmpReg, width, doneWithTmpReg);    
-}
-
-void loadRegStoreReg(DynamicData* data, U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(data, cpuOffset(dst, width), cpuOffset(src, width), width, tmpReg, doneWithTmpReg);
-}
-
-void loadRegStoreSrc(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(data, cpuOffsetSrc(width), cpuOffset(reg, width), width, tmpReg, doneWithTmpReg);
-}
-
-void loadRegStoreDst(DynamicData* data, U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(data, cpuOffsetDst(width), cpuOffset(reg, width), width, tmpReg, doneWithTmpReg);
-}
-
-void loadRegStoreEip(DynamicData* data, U8 reg, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(data, CPU_OFFSET_OF(eip.u32), cpuOffset(reg, DYN_32bit), DYN_32bit, tmpReg, doneWithTmpReg);
-}
-
-void loadSegValueStoreReg(DynamicData* data, U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(data, cpuOffset(reg, DYN_32bit), CPU::offsetofSegValue(seg), DYN_32bit, tmpReg, doneWithTmpReg);
-}
-
-void movToCpu(DynamicData* data, U32 dstOffset, DynWidth dstWidth, U32 imm) {
-    if (dstWidth == DYN_32bit) {
-        data->x86.writeMem(data->x86.edi, dstOffset, imm);
-    } else if (dstWidth == DYN_16bit) {
-        data->x86.writeMem(data->x86.edi, dstOffset, (U16)imm);
-    } else if (dstWidth == DYN_8bit) {
-        data->x86.writeMem(data->x86.edi, dstOffset, (U8)imm);
-    } else {
-        kpanic_fmt("unknown dstWidth in x32CPU::movToCpu %d", dstWidth);
-    }
-}
-
-void storeReg(DynamicData* data, U8 reg, DynWidth dstWidth, U32 imm) {
-    movToCpu(data, cpuOffset(reg, dstWidth), dstWidth, imm);
-}
-
-void storeLazyFlagsSrc(DynamicData* data, DynWidth width, U32 imm) {
-    movToCpu(data, cpuOffsetSrc(width), width, imm);
-}
-
-void storeLazyFlags(DynamicData* data, const LazyFlags* lazyFlags) {
-    movToCpu(data, CPU_OFFSET_OF(lazyFlags), DYN_32bit, (U32)lazyFlags);
-}
-
-void zeroExtendReg16To32(DynamicData* data, DynReg dest, DynReg src) {
-    data->x86.movzx(X86Asm::Reg32(dest), X86Asm::Reg16(src));
-    data->regUsed[dest] = true;
-}
-
-void movToReg(DynamicData* data, DynReg reg, DynWidth width, U32 imm) {
-    data->regUsed[reg] = true;
+void X86DynamicData::writeMem(DynReg reg, DynWidth width, DynReg address, U32 disp) {
     if (width == DYN_32bit) {
-        data->x86.mov(X86Asm::Reg32(reg), imm);
+        x86.writeMem(X86Asm::Reg32(address), disp, X86Asm::Reg32(reg));
     } else if (width == DYN_16bit) {
-        data->x86.mov(X86Asm::Reg16(reg), (U16)imm);
-    } else if (width == DYN_8bit) {
-        data->x86.mov(X86Asm::Reg8(reg), (U8)imm);
+        x86.writeMem(X86Asm::Reg32(address), disp, X86Asm::Reg16(reg));
     } else {
-        kpanic_fmt("unknown width in x32CPU::movToReg %d", width);
+        x86.writeMem(X86Asm::Reg32(address), disp, X86Asm::Reg8(reg));
     }
 }
 
-static U32 readd(U32 address) {
-    return KThread::currentThread()->memory->readd(address);
-}
-
-static U32 readw(U32 address) {
-    return KThread::currentThread()->memory->readw(address);
-}
-
-static U32 readb(U32 address) {
-    return KThread::currentThread()->memory->readb(address);
-}
-
-static void writed(U32 address, U32 value) {
-    KThread::currentThread()->memory->writed(address, value);
-}
-
-static void writew(U32 address, U16 value) {
-    KThread::currentThread()->memory->writew(address, value);
-}
-
-static void writeb(U32 address, U8 value) {
-    KThread::currentThread()->memory->writeb(address, value);
-}
-
-void movFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
-    data->regUsed[data->x86.eax.reg] = true;
-
-    if (addressReg != DYN_ADDRESS) {
-        kpanic("movFromMem");
-    }
-    if (width != DYN_8bit) {
-        // make sure we only use the fast path if the entire read will take place on the same page
-        data->x86.mov(data->x86.eax, X86Asm::Reg32(addressReg));
-        data->x86.and_(data->x86.eax, K_PAGE_MASK);
-
-        if (width == DYN_16bit) {
-            // if ((address & 0xFFF) < 0xFFF)                    
-            IfLessThan(data, data->x86.eax, K_PAGE_MASK, false);
-        } else if (width == DYN_32bit) {
-            // if ((address & 0xFFF) < 0xFFD)
-            IfLessThan(data, data->x86.eax, 0xFFD, false);
-        }
-    }
-    // int index = address >> 12;
-    // if (Memory::currentMMUReadPtr[index])
-    //     return *(U32*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
-    // else
-    //     return readd(address);
-
-    data->x86.mov(data->x86.eax, X86Asm::Reg32(addressReg));
-    data->x86.shr(data->x86.eax, K_PAGE_SHIFT);
-    data->x86.readMem(data->x86.eax, data->x86.eax, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
-
-    if (width != DYN_8bit) {
-        EndIf(data);
-    }
-
-    // test eax, 0x40000000 (mmu[index].canReadRam)
-    IfBitSet(data, data->x86.eax, 0x40000000, false);
-
-    // bottom 20 bits of mmu contains ram page index
-    data->x86.and_(data->x86.eax, 0xfffff);
-    data->x86.readMem(data->x86.eax, data->x86.eax, 2, (U32)ramPages);
-    X86Asm::Reg32 offsetReg(addressReg);
-
-    if (!doneWithAddressReg) {
-        data->x86.push(X86Asm::Reg32(addressReg));
-    }
-    data->x86.and_(offsetReg, K_PAGE_MASK);
-
-    // mov eax, [eax+reg]
-    if (width == DYN_8bit) {
-        data->x86.readMem(X86Asm::Reg8(data->x86.eax.reg), data->x86.eax, offsetReg, 0, 0);
-    } else if (width == DYN_16bit) {
-        data->x86.readMem(X86Asm::Reg16(data->x86.eax.reg), data->x86.eax, offsetReg, 0, 0);
-    } else if (width == DYN_32bit) {
-        data->x86.readMem(data->x86.eax, data->x86.eax, offsetReg, 0, 0);
-    }
-
-    if (!doneWithAddressReg) {
-        data->x86.pop(X86Asm::Reg32(addressReg));
-    }
-
-    StartElse(data);
-
-    // will set EAX when call returns, so don't push it then clobber the result with a pop
-    if (data->regUsed[data->x86.ecx.reg]) {
-        data->x86.push(data->x86.ecx);
-    }
-    if (data->regUsed[data->x86.edx.reg]) {
-        data->x86.push(data->x86.edx);
-    }
-
-    data->x86.push(X86Asm::Reg32(addressReg));
-
-    void* address;
-
-    // call read
+void X86DynamicData::writeMem(U32 value, DynWidth width, DynReg address, U32 disp) {
     if (width == DYN_32bit) {
-        address = readd;
+        x86.writeMem(X86Asm::Reg32(address), disp, value);
     } else if (width == DYN_16bit) {
-        address = readw;
-    } else if (width == DYN_8bit) {
-        address = readb;
+        x86.writeMem(X86Asm::Reg32(address), disp, (U16)value);
     } else {
-        kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
-    }
-
-    data->x86.call(address);
-
-    data->x86.add(data->x86.esp, 4);
-
-    if (data->regUsed[data->x86.edx.reg]) {
-        data->x86.pop(data->x86.edx);
-    }
-    if (data->regUsed[data->x86.ecx.reg]) {
-        data->x86.pop(data->x86.ecx);
-    }
-
-    EndIf(data);
-
-    if (doneWithAddressReg) {
-        data->regUsed[addressReg] = false;
+        x86.writeMem(X86Asm::Reg32(address), disp, (U8)value);
     }
 }
 
-void movToCpuFromMem(DynamicData* data, U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
-    movFromMem(data, dstWidth, addressReg, doneWithAddressReg);
-    // mov [cpu+dstOffset], eax
-    movToCpuFromReg(data, dstOffset, DYN_CALL_RESULT, dstWidth, doneWithCallResult);
+void X86DynamicData::writeMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
+    if (width == DYN_32bit) {
+        x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, X86Asm::Reg32(reg));
+    } else if (width == DYN_16bit) {
+        x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, X86Asm::Reg16(reg));
+    } else {
+        x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, X86Asm::Reg8(reg));
+    }
 }
 
-void storeRegFromMem(DynamicData* data, U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
-    movToCpuFromMem(data, cpuOffset(reg, dstWidth), dstWidth, addressReg, doneWithAddressReg, doneWithCallResult);
+void X86DynamicData::writeMem(U32 value, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
+    if (width == DYN_32bit) {
+        x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, value);
+    } else if (width == DYN_16bit) {
+        x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, (U16)value);
+    } else {
+        x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, (U8)value);
+    }
 }
 
-void storeLazyFlagsDstFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
-    movToCpuFromMem(data, cpuOffsetDst(width), width, addressReg, doneWithAddressReg, doneWithCallResult);
+void X86DynamicData::and32(DynReg dst, U32 imm) {
+    x86.and_(X86Asm::Reg32(dst), imm);
 }
 
-void storeLazyFlagsSrcFromMem(DynamicData* data, DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
-    movToCpuFromMem(data, cpuOffsetSrc(width), width, addressReg, doneWithAddressReg, doneWithCallResult);
+void X86DynamicData::shr32(DynReg dst, U32 imm) {
+    x86.shr(X86Asm::Reg32(dst), imm);
 }
 
-void pushValue(DynamicData* data, U32 arg, DynCallParamType argType) {
-    switch (argType) {
-    case DYN_PARAM_REG_8:
-        data->x86.movzx(X86Asm::Reg32(arg), X86Asm::Reg8(arg));
-        data->x86.push(X86Asm::Reg32(arg));
+U32 X86DynamicData::getBufferSize() {
+    return (U32)x86.buffer.size();
+}
+
+U8* X86DynamicData::getBuffer() {
+    return x86.buffer.data();
+}
+
+
+U32 X86DynamicData::getIfJumpSize() {
+    return (U32)x86.ifJump.size();
+}
+
+void X86DynamicData::blockExit() {
+    x86.pop(x86.edi);
+    x86.pop(x86.ebx);
+
+#ifdef _DEBUG
+    x86.mov(x86.esp, x86.ebp);
+    x86.pop(x86.ebp);
+#endif
+
+    x86.ret();
+}
+
+void X86DynamicData::incrementEip(U32 inc) {
+    x86.addMem(x86.edi, offsetof(CPU, eip.u32), inc);
+}
+
+void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg);
+
+void X86DynamicData::setConditional(DynConditional condition) {
+    bool setnz = true;
+    // changing conditions to ones that are optimized
+    if (condition == Z) {
+        condition = NZ;
+        setnz = false;
+    } else if (condition == NS) {
+        condition = S;
+        setnz = false;
+    } else if (condition == NB) {
+        condition = B;
+        setnz = false;
+    } else if (condition == NO) {
+        condition = O;
+        setnz = false;
+    } else if (condition == NBE) {
+        condition = BE;
+        setnz = false;
+    } else if (condition == NLE) {
+        condition = LE;
+        setnz = false;
+    } else if (condition == NL) {
+        condition = L;
+        setnz = false;
+    }
+    setConditionInReg(this, condition, DYN_CALL_RESULT);
+    x86.test(x86.eax, x86.eax);
+    if (setnz) {
+        x86.setnz(X86Asm::Reg8(x86.eax.reg));
+    } else {
+        x86.setz(X86Asm::Reg8(x86.eax.reg));
+    }
+}
+
+void X86DynamicData::setCC(X86Asm::Reg32 reg, DynConditionEvaluate condition) {
+
+    switch (condition) {
+    case DYN_EQUALS:
+        x86.setz(X86Asm::Reg8(reg.reg));
         break;
-    case DYN_PARAM_REG_16:
-        data->x86.movzx(X86Asm::Reg32(arg), X86Asm::Reg16(arg));
-        data->x86.push(X86Asm::Reg32(arg));
+    case DYN_NOT_EQUALS:
+        x86.setnz(X86Asm::Reg8(reg.reg));
         break;
-    case DYN_PARAM_REG_32:
-        data->x86.push(X86Asm::Reg32(arg));
+    case DYN_LESS_THAN_UNSIGNED:
+        x86.setb(X86Asm::Reg8(reg.reg));
         break;
-    case DYN_PARAM_CPU:
-        data->x86.push(data->x86.edi);
+    case DYN_LESS_THAN_EQUAL_UNSIGNED:
+        x86.setbe(X86Asm::Reg8(reg.reg));
         break;
-    case DYN_PARAM_CONST_8:
-        data->x86.push((U32)(arg & 0xFF));
+    case DYN_GREATER_THAN_EQUAL_UNSIGNED:
+        x86.setnb(X86Asm::Reg8(reg.reg));
         break;
-    case DYN_PARAM_CONST_16:
-        data->x86.push((U32)(arg & 0xFFFF));
+    case DYN_LESS_THAN_SIGNED:
+        x86.setl(X86Asm::Reg8(reg.reg));
         break;
-    case DYN_PARAM_CONST_32:
-        data->x86.push(arg);
-        break;
-    case DYN_PARAM_CONST_PTR:
-        data->x86.push((U32)arg);
-        break;
-    case DYN_PARAM_CPU_ADDRESS_8:
-        data->x86.readMem(X86Asm::Reg8(data->x86.eax.reg), data->x86.edi, arg);
-        data->x86.movzx(data->x86.eax, X86Asm::Reg8(data->x86.eax.reg));
-        data->x86.push(data->x86.eax);
-        break;
-    case DYN_PARAM_CPU_ADDRESS_16:
-        data->x86.readMem(X86Asm::Reg16(data->x86.eax.reg), data->x86.edi, arg);
-        data->x86.movzx(data->x86.eax, X86Asm::Reg16(data->x86.eax.reg));
-        data->x86.push(data->x86.eax);
-        break;
-    case DYN_PARAM_CPU_ADDRESS_32:
-        data->x86.readMem(data->x86.eax, data->x86.edi, arg);
-        data->x86.push(data->x86.eax);
+    case DYN_LESS_THAN_EQUAL_SIGNED:
+        x86.setle(X86Asm::Reg8(reg.reg));
         break;
     default:
-        kpanic_fmt("x32CPU: unknown argType: %d", argType);
-        break;
+        kpanic_fmt("x32CPU::evaluateToRegFromRegs unknown condition %d", condition);
     }
 }
 
-bool isParamTypeReg(DynCallParamType paramType) {
-    return paramType==DYN_PARAM_REG_8 || paramType==DYN_PARAM_REG_16 || paramType==DYN_PARAM_REG_32;
-}
-
-// will inline the following code snippet (this code is for 32-bit, but it will do a similiar thing for 16-bit and 8-bit)
-//
-// if ((address & 0xFFF) < 0xFFD) {
-//      int index = address >> 12;
-//      if (Memory::currentMMUWritePtr[index])
-//          *(U32*)(&Memory::currentMMUWritePtr[index][address & 0xFFF]) = value;
-//      else
-//          Memory::currentMMU[index]->writed(address, value);		
-//  } else {
-//      Memory::currentMMU[index]->writed(address, value);		
-//  }
-void movToMem(DynamicData* data, DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg, DynReg tmp) {
-    U32 firstCheckPos = 0;
-
-    if (data->regUsed[tmp]) {
-        kpanic("movToMem");
-    }
-    X86Asm::Reg32 tmpReg(tmp);
-
-    if (width != DYN_8bit) {
-        // make sure we only use the fast path if the entire read will take place on the same page
-        data->x86.mov(tmpReg, X86Asm::Reg32(addressReg));
-        data->x86.and_(tmpReg, K_PAGE_MASK);
-
-        if (width == DYN_16bit) {
-            // if ((address & 0xFFF) < 0xFFF)                    
-            IfLessThan(data, tmpReg, K_PAGE_MASK, false);
-        } else if (width == DYN_32bit) {
-            // if ((address & 0xFFF) < 0xFFD)
-            IfLessThan(data, tmpReg, 0xFFD, false);
-        }
-    }
-    data->x86.mov(tmpReg, X86Asm::Reg32(addressReg));
-    data->x86.shr(tmpReg, K_PAGE_SHIFT);
-    data->x86.readMem(tmpReg, tmpReg, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
-
-    if (width != DYN_8bit) {
-        EndIf(data);
-    }
-
-    // test reg, 0x80000000 (mmu[index].canWriteRam)
-    IfBitSet(data, tmpReg, 0x80000000, false);
-
-    // bottom 20 bits of mmu contains ram page index
-    data->x86.and_(tmpReg, 0xfffff);
-    data->x86.readMem(tmpReg, tmpReg, 2, (U32)ramPages);
-    X86Asm::Reg32 offsetReg(addressReg);
-
-    if (!doneWithAddressReg) {
-        data->x86.push(data->x86.esi);
-        offsetReg = data->x86.esi;
-        data->x86.mov(offsetReg, X86Asm::Reg32(addressReg));
-    }
-    data->x86.and_(offsetReg, K_PAGE_MASK);
-
-    if (isParamTypeReg(paramType)) {
-        if (width == DYN_8bit) {
-            data->x86.writeMem(tmpReg, offsetReg, 0, 0, X86Asm::Reg8(value));
-        } else if (width == DYN_16bit) {
-            data->x86.writeMem(tmpReg, offsetReg, 0, 0, X86Asm::Reg16(value));
-        } else if (width == DYN_32bit) {
-            data->x86.writeMem(tmpReg, offsetReg, 0, 0, X86Asm::Reg32(value));
-        } else {
-            kpanic("movToMem");
-        }
+void X86DynamicData::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm::Reg32 right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
+    if (regWidth == DYN_32bit) {
+        x86.cmp(left, right);
+    } else if (regWidth == DYN_16bit) {
+        x86.cmp(X86Asm::Reg16(left.reg), X86Asm::Reg16(right.reg));
+    } else if (regWidth == DYN_8bit) {
+        x86.cmp(X86Asm::Reg8(left.reg), X86Asm::Reg8(right.reg));
     } else {
-        if (width == DYN_8bit) {
-            data->x86.writeMem(tmpReg, offsetReg, 0, 0, (U8)value);
-        } else if (width == DYN_16bit) {
-            data->x86.writeMem(tmpReg, offsetReg, 0, 0, (U16)value);
-        } else if (width == DYN_32bit) {
-            data->x86.writeMem(tmpReg, offsetReg, 0, 0, value);
-        } else {
-            kpanic("movToMem");
-        }
-    }
-    if (!doneWithAddressReg) {
-        data->x86.pop(data->x86.esi);
-    }
-    data->regUsed[tmpReg.reg] = false;
-
-    StartElse(data);
-
-    bool regDone[4] = { false, false, false, false };
-    if (doneWithReg && isParamTypeReg(paramType)) {
-        regDone[value] = true;
-    }
-    if (data->regUsed[data->x86.eax.reg] && !regDone[data->x86.eax.reg]) {
-        data->x86.push(data->x86.eax);
-    }
-    if (data->regUsed[data->x86.ecx.reg] && !regDone[data->x86.ecx.reg]) {
-        data->x86.push(data->x86.ecx);
-    }
-    if (data->regUsed[data->x86.edx.reg] && !regDone[data->x86.edx.reg]) {
-        data->x86.push(data->x86.edx);
+        kpanic_fmt("x32CPU::evaluateToReg reg width %d", regWidth);
     }
 
-    pushValue(data, value, paramType);
-    data->x86.push(X86Asm::Reg32(addressReg));
+    regUsed[reg.reg] = true;
+    setCC(reg, condition);
+    x86.movzx(reg, X86Asm::Reg8(reg.reg));
 
-    if (width == DYN_32bit) {
-        data->x86.call(writed);
-    } else if (width == DYN_16bit) {
-        data->x86.call(writew);
-    } else if (width == DYN_8bit) {
-        data->x86.call(writeb);
+    if (doneWithLeftReg) {
+        regUsed[left.reg] = false;
+    }
+    if (doneWithRightReg) {
+        regUsed[right.reg] = false;
+    }
+}
+
+void X86DynamicData::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg) {
+    if (regWidth == DYN_32bit) {
+        x86.cmp(left, rightConst);
+    } else if (regWidth == DYN_16bit) {
+        x86.cmp(X86Asm::Reg16(left.reg), (U16)rightConst);
+    } else if (regWidth == DYN_8bit) {
+        x86.cmp(X86Asm::Reg8(left.reg), (U8)rightConst);
     } else {
-        kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
+        kpanic_fmt("x32CPU::evaluateToReg reg width %d", regWidth);
     }
 
-    data->x86.add(data->x86.esp, 8);
+    regUsed[reg.reg] = true;
+    setCC(reg, condition);
+    x86.movzx(reg, X86Asm::Reg8(reg.reg));
 
-    if (data->regUsed[data->x86.edx.reg] && !regDone[data->x86.edx.reg]) {
-        data->x86.pop(data->x86.edx);
-    }
-    if (data->regUsed[data->x86.ecx.reg] && !regDone[data->x86.ecx.reg]) {
-        data->x86.pop(data->x86.ecx);
-    }
-    if (data->regUsed[data->x86.eax.reg] && !regDone[data->x86.eax.reg]) {
-        data->x86.pop(data->x86.eax);
-    }
-    EndIf(data);
-
-    if (doneWithAddressReg) {
-        data->regUsed[addressReg] = false;
-    }
-    if (doneWithReg && isParamTypeReg(paramType)) {
-        data->regUsed[value] = false;
+    if (doneWithLeftReg) {
+        regUsed[left.reg] = false;
     }
 }
 
-void movToMemFromReg(DynamicData* data, DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg, DynReg tmpReg) {
-    DynCallParamType paramType;
-
-    if (width==DYN_8bit)
-        paramType = DYN_PARAM_REG_8;
-    else if (width==DYN_16bit)
-        paramType = DYN_PARAM_REG_16;
-    else if (width==DYN_32bit)
-        paramType = DYN_PARAM_REG_32;
-    else
-        kpanic_fmt("unknown width %d in x32CPU::movToMemFromReg", width);
-
-    movToMem(data, addressReg, width, reg, paramType, doneWithReg, doneWithAddressReg, tmpReg);
+void X86DynamicData::evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
+    if (reg >= 4) {
+        kpanic_fmt("x32CPU::evaluateToRegFromRegs doesn't support reg %d", reg);
+    }
+    if (isRightConst) {
+        evaluateToReg(X86Asm::Reg32(reg), X86Asm::Reg32(left), rightConst, regWidth, condition, doneWithLeftReg);
+    } else {
+        evaluateToReg(X86Asm::Reg32(reg), X86Asm::Reg32(left), X86Asm::Reg32(right), regWidth, condition, doneWithLeftReg, doneWithRightReg);
+    }
 }
 
-void movToMemFromImm(DynamicData* data, DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    DynCallParamType paramType;
-
-    if (width==DYN_8bit)
-        paramType = DYN_PARAM_CONST_8;
-    else if (width==DYN_16bit)
-        paramType = DYN_PARAM_CONST_16;
-    else if (width==DYN_32bit)
-        paramType = DYN_PARAM_CONST_32;
-    else
-        kpanic_fmt("unknown width %d in x32CPU::movToMemFromImm", width);
-
-    movToMem(data, addressReg, width, imm, paramType, false, doneWithAddressReg, tmpReg);
-}
-
-void callHostFunction(DynamicData* data, void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
+void X86DynamicData::callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
     bool regDone[4] = { false, false, false, false };
 
     if (argCount >= 5) {
@@ -963,269 +354,140 @@ void callHostFunction(DynamicData* data, void* address, bool hasReturn, U32 argC
     }
 
     if (hasReturn) {
-        data->regUsed[data->x86.eax.reg] = true;
-    } else if (data->regUsed[data->x86.eax.reg] && !hasReturn && !regDone[data->x86.eax.reg]) {
-        data->x86.push(data->x86.eax);
+        regUsed[x86.eax.reg] = true;
+    } else if (regUsed[x86.eax.reg] && !hasReturn && !regDone[x86.eax.reg]) {
+        x86.push(x86.eax);
     }
-    if (data->regUsed[data->x86.ecx.reg] && !regDone[data->x86.ecx.reg]) {
-        data->x86.push(data->x86.ecx);
+    if (regUsed[x86.ecx.reg] && !regDone[x86.ecx.reg]) {
+        x86.push(x86.ecx);
     }
-    if (data->regUsed[data->x86.edx.reg] && !regDone[data->x86.edx.reg]) {
-        data->x86.push(data->x86.edx);
+    if (regUsed[x86.edx.reg] && !regDone[x86.edx.reg]) {
+        x86.push(x86.edx);
     }
     if (argCount >= 5) {
-        pushValue(data, arg5, arg5Type);
+        pushValue(arg5, arg5Type);
     }
     if (argCount >= 4) {
-        pushValue(data, arg4, arg4Type);
+        pushValue(arg4, arg4Type);
     }
     if (argCount >= 3) {
-        pushValue(data, arg3, arg3Type);
+        pushValue(arg3, arg3Type);
     }
     if (argCount >= 2) {
-        pushValue(data, arg2, arg2Type);
+        pushValue(arg2, arg2Type);
     }
     if (argCount >= 1) {
-        pushValue(data, arg1, arg1Type);
+        pushValue(arg1, arg1Type);
     }
 
-    data->x86.call(address);
+    x86.call(address);
 
     if (argCount) {
-        data->x86.add(data->x86.esp, 4 * argCount);
-    }    
-    if (data->regUsed[data->x86.edx.reg] && !regDone[data->x86.edx.reg]) {
-        data->x86.pop(data->x86.edx);
+        x86.add(x86.esp, 4 * argCount);
     }
-    if (data->regUsed[data->x86.ecx.reg] && !regDone[data->x86.ecx.reg]) {
-        data->x86.pop(data->x86.ecx);
+    if (regUsed[x86.edx.reg] && !regDone[x86.edx.reg]) {
+        x86.pop(x86.edx);
     }
-    if (!hasReturn && data->regUsed[data->x86.eax.reg] && !regDone[data->x86.eax.reg]) {
-        data->x86.pop(data->x86.eax);
+    if (regUsed[x86.ecx.reg] && !regDone[x86.ecx.reg]) {
+        x86.pop(x86.ecx);
+    }
+    if (!hasReturn && regUsed[x86.eax.reg] && !regDone[x86.eax.reg]) {
+        x86.pop(x86.eax);
     }
     for (int i = 0; i < 4; i++) {
         if (regDone[i]) {
-            data->regUsed[i] = false;
+            regUsed[i] = false;
         }
     }
-}
-
-// inst can be +, |, - , &, ^, <, >, ) right parens is for signed right shift
-void instRegImm(DynamicData* data, U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
-    switch (inst) {
-    case '+':
-        if (regWidth == DYN_32bit) {
-            data->x86.add(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.add(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.add(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm ADD");
-        }
-        break;
-    case '-':
-        if (regWidth == DYN_32bit) {
-            data->x86.sub(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.sub(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.sub(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SUB");
-        }
-        break;
-    case '&':
-        if (regWidth == DYN_32bit) {
-            data->x86.and_(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.and_(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.and_(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm AND");
-        }
-        break;
-    case '|':
-        if (regWidth == DYN_32bit) {
-            data->x86.or_(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.or_(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.or_(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm OR");
-        }
-        break;
-    case '^':
-        if (regWidth == DYN_32bit) {
-            data->x86.xor_(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.xor_(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.xor_(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm XOR");
-        }
-        break;
-    case '<':
-        if (regWidth == DYN_32bit) {
-            data->x86.shl(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.shl(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.shl(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SHL");
-        }
-        break;
-    case '>':
-        if (regWidth == DYN_32bit) {
-            data->x86.shr(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.shr(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.shr(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SHR");
-        }
-        break;
-    case ')':
-        if (regWidth == DYN_32bit) {
-            data->x86.sar(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            data->x86.sar(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            data->x86.sar(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SAR");
-        }
-        break;
-    default:
-        kpanic("instRegImm");
-    }
-}
-void instCPUReg(DynamicData* data, char inst, U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    if (data->regUsed[tmpReg]) {
-        kpanic("instCPUReg");
-    }
-    DynReg reg = loadReg(data, regIndex, tmpReg, regWidth);
-    instRegReg(data, inst, reg, rm, regWidth, doneWithRmReg);
-    movToCpuFromReg(data, cpuOffset(regIndex, regWidth), reg, regWidth, true);
-}
-void instCPUImm(DynamicData* data, char inst, U32 dstOffset, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    if (data->regUsed[tmpReg]) {
-        kpanic("instCPUImm");
-    }
-    movToRegFromCpu(data, tmpReg, dstOffset, regWidth);
-    instRegImm(data, inst, tmpReg, regWidth, imm);
-    movToCpuFromReg(data, dstOffset, tmpReg, regWidth, true);
-}
-
-void instMemImm(DynamicData* data, char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    if (data->regUsed[0]) {
-        kpanic("x32CPU::instMemImm");
-    }
-    movFromMem(data, regWidth, addressReg, false);
-    instRegImm(data, inst, DYN_EAX, regWidth, imm);
-    movToMemFromReg(data, addressReg, DYN_EAX, regWidth, true, true, tmpReg);
-}
-void instMemReg(DynamicData* data, char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    if (data->regUsed[0]) {
-        kpanic("x32CPU::instMemReg");
-    }    
-    movFromMem(data, regWidth, addressReg, false);
-    instRegReg(data, inst, DYN_EAX, rm, regWidth, doneWithRmReg);
-    movToMemFromReg(data, addressReg, DYN_EAX, regWidth, true, true, tmpReg);
 }
 
 // inst can be +, |, -, &, ^, <, >, ) right parens is for signed right shift
-void instRegReg(DynamicData* data, char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+void X86DynamicData::instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
     switch (inst) {
     case '+':
         if (regWidth == DYN_32bit) {
-            data->x86.add(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.add(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.add(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.add(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.add(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.add(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg ADD");
         }
         break;
     case '-':
         if (regWidth == DYN_32bit) {
-            data->x86.sub(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.sub(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.sub(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.sub(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.sub(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.sub(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg SUB");
         }
         break;
     case '&':
         if (regWidth == DYN_32bit) {
-            data->x86.and_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.and_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.and_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.and_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.and_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.and_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg AND");
         }
         break;
     case '|':
         if (regWidth == DYN_32bit) {
-            data->x86.or_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.or_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.or_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.or_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.or_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.or_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg OR");
         }
         break;
     case '^':
         if (regWidth == DYN_32bit) {
-            data->x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.xor_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.xor_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.xor_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.xor_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg XOR");
         }
         break;
     case '<':
         if (regWidth == DYN_32bit) {
-            data->x86.shl(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.shl(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.shl(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.shl(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.shl(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.shl(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg SHL");
         }
         break;
     case '>':
         if (regWidth == DYN_32bit) {
-            data->x86.shr(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.shr(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.shr(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.shr(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.shr(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.shr(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg SHR");
         }
         break;
     case ')':
         if (regWidth == DYN_32bit) {
-            data->x86.sar(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+            x86.sar(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
         } else if (regWidth == DYN_16bit) {
-            data->x86.sar(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+            x86.sar(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
         } else if (regWidth == DYN_8bit) {
-            data->x86.sar(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+            x86.sar(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
         } else {
             kpanic("instRegReg SAR");
         }
@@ -1234,29 +496,29 @@ void instRegReg(DynamicData* data, char inst, DynReg reg, DynReg rm, DynWidth re
         kpanic("instRegReg");
     }
     if (doneWithRmReg) {
-        data->regUsed[rm] = false;
+        regUsed[rm] = false;
     }
 }
 
 // inst can be: ~ or -
-void instReg(DynamicData* data, char inst, DynReg reg, DynWidth regWidth) {
+void X86DynamicData::instReg(char inst, DynReg reg, DynWidth regWidth) {
     if (inst == '-') {
         if (regWidth == DYN_32bit) {
-            data->x86.neg(X86Asm::Reg32(reg));
+            x86.neg(X86Asm::Reg32(reg));
         } else if (regWidth == DYN_16bit) {
-            data->x86.neg(X86Asm::Reg16(reg));
+            x86.neg(X86Asm::Reg16(reg));
         } else if (regWidth == DYN_8bit) {
-            data->x86.neg(X86Asm::Reg8(reg));
+            x86.neg(X86Asm::Reg8(reg));
         } else {
             kpanic("instReg NEG");
         }
     } else if (inst == '~') {
         if (regWidth == DYN_32bit) {
-            data->x86.not_(X86Asm::Reg32(reg));
+            x86.not_(X86Asm::Reg32(reg));
         } else if (regWidth == DYN_16bit) {
-            data->x86.not_(X86Asm::Reg16(reg));
+            x86.not_(X86Asm::Reg16(reg));
         } else if (regWidth == DYN_8bit) {
-            data->x86.not_(X86Asm::Reg8(reg));
+            x86.not_(X86Asm::Reg8(reg));
         } else {
             kpanic("instReg NOT");
         }
@@ -1265,812 +527,454 @@ void instReg(DynamicData* data, char inst, DynReg reg, DynWidth regWidth) {
     }
 }
 
-void instMem(DynamicData* data, char inst, DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) {
-    if (data->regUsed[0]) {
-        kpanic("x32CPU::instMem");
-    }  
-    movFromMem(data, regWidth, addressReg, false);
-    instReg(data, inst, DYN_EAX, regWidth);
-    movToMemFromReg(data, addressReg, DYN_EAX, regWidth, true, true, tmpReg);   
-}
-
-void instCPU(DynamicData* data, char inst, U32 dstOffset, DynWidth regWidth, DynReg tmpReg) {
-    if (data->regUsed[tmpReg]) {
-        kpanic("instCPU");
-    }
-    movToRegFromCpu(data, tmpReg, dstOffset, regWidth);
-    instReg(data, inst, tmpReg, regWidth);
-    movToCpuFromReg(data, dstOffset, tmpReg, regWidth, true);
-}
-
-void JumpIf(DynamicData* data, DynReg reg, bool doneWithReg, U32 address) {
-    data->x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
-    data->x86.jnz(address);
-    if (doneWithReg) {
-        data->regUsed[reg] = false;
-    }
-}
-
-void JumpIfNot(DynamicData* data, DynReg reg, bool doneWithReg, U32 address) {
-    data->x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
-    data->x86.jz(address);
-    if (doneWithReg) {
-        data->regUsed[reg] = false;
-    }
-}
-
-void JumpInBlock(DynamicData* data, U32 address) {
-    data->x86.jmp(address);
-}
-
-void IfPtrEqual(DynamicData* data, X86Asm::Reg32 reg, DYN_PTR_SIZE value, bool doneWithReg) {
-    IfEqual(data, reg, value, doneWithReg);
-}
-
-void IfLessThan(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
-    data->x86.IfLessThan(reg, value);
-
-    if (doneWithReg) {
-        data->regUsed[reg.reg] = false;
-    }
-}
-
-void IfEqual(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
-    data->x86.IfEqual(reg, value);
-    if (doneWithReg) {
-        data->regUsed[reg.reg] = false;
-    }
-}
-
-void IfNotEqual(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
-    data->x86.IfNotEqual(reg, value);
-    if (doneWithReg) {
-        data->regUsed[reg.reg] = false;
-    }
-}
-
-
-void IfBitSet(DynamicData* data, X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
-    data->x86.IfBitSet(reg, value);
-    if (doneWithReg) {
-        data->regUsed[reg.reg] = false;
-    }
-}
-
-void If(DynamicData* data, X86Asm::Reg32 reg, bool doneWithReg) {
-    data->x86.IfNotZero(reg);
-    if (doneWithReg) {
-        data->regUsed[reg.reg] = false;
-    }
-}
-
-void IfNot(DynamicData* data, X86Asm::Reg32 reg, bool doneWithReg) {
-    data->x86.IfZero(reg);
-    if (doneWithReg) {
-        data->regUsed[reg.reg] = false;
-    }
-}
-
-void StartElse(DynamicData* data) {
-    data->x86.Else();
-}
-
-void EndIf(DynamicData* data) {
-    data->x86.EndIf();
-}
-
-void setCC(DynamicData* data, X86Asm::Reg32 reg, DynConditionEvaluate condition) {
-
-    switch (condition) {
-    case DYN_EQUALS:
-        data->x86.setz(X86Asm::Reg8(reg.reg));
+// inst can be +, |, - , &, ^, <, >, ) right parens is for signed right shift
+void X86DynamicData::instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
+    switch (inst) {
+    case '+':
+        if (regWidth == DYN_32bit) {
+            x86.add(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.add(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.add(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm ADD");
+        }
         break;
-    case DYN_NOT_EQUALS:
-        data->x86.setnz(X86Asm::Reg8(reg.reg));
+    case '-':
+        if (regWidth == DYN_32bit) {
+            x86.sub(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.sub(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.sub(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm SUB");
+        }
         break;
-    case DYN_LESS_THAN_UNSIGNED:
-        data->x86.setb(X86Asm::Reg8(reg.reg));
+    case '&':
+        if (regWidth == DYN_32bit) {
+            x86.and_(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.and_(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.and_(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm AND");
+        }
         break;
-    case DYN_LESS_THAN_EQUAL_UNSIGNED:
-        data->x86.setbe(X86Asm::Reg8(reg.reg));
+    case '|':
+        if (regWidth == DYN_32bit) {
+            x86.or_(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.or_(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.or_(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm OR");
+        }
         break;
-    case DYN_GREATER_THAN_EQUAL_UNSIGNED:
-        data->x86.setnb(X86Asm::Reg8(reg.reg));
+    case '^':
+        if (regWidth == DYN_32bit) {
+            x86.xor_(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.xor_(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.xor_(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm XOR");
+        }
         break;
-    case DYN_LESS_THAN_SIGNED:
-        data->x86.setl(X86Asm::Reg8(reg.reg));
+    case '<':
+        if (regWidth == DYN_32bit) {
+            x86.shl(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.shl(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.shl(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm SHL");
+        }
         break;
-    case DYN_LESS_THAN_EQUAL_SIGNED:
-        data->x86.setle(X86Asm::Reg8(reg.reg));
+    case '>':
+        if (regWidth == DYN_32bit) {
+            x86.shr(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.shr(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.shr(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm SHR");
+        }
+        break;
+    case ')':
+        if (regWidth == DYN_32bit) {
+            x86.sar(X86Asm::Reg32(reg), imm);
+        } else if (regWidth == DYN_16bit) {
+            x86.sar(X86Asm::Reg16(reg), (U16)imm);
+        } else if (regWidth == DYN_8bit) {
+            x86.sar(X86Asm::Reg8(reg), (U8)imm);
+        } else {
+            kpanic("instRegImm SAR");
+        }
         break;
     default:
-        kpanic_fmt("x32CPU::evaluateToRegFromRegs unknown condition %d", condition);
+        kpanic("instRegImm");
     }
 }
 
-void evaluateToReg(DynamicData* data, X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm::Reg32 right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
-    if (regWidth == DYN_32bit) {
-        data->x86.cmp(left, right);
-    } else if (regWidth == DYN_16bit) {
-        data->x86.cmp(X86Asm::Reg16(left.reg), X86Asm::Reg16(right.reg));
-    } else if (regWidth == DYN_8bit) {
-        data->x86.cmp(X86Asm::Reg8(left.reg), X86Asm::Reg8(right.reg));
+// :TODO: move to base
+void X86DynamicData::calculateEaa(DecodedOp* op, DynReg reg) {
+    regUsed[reg] = true;
+
+    if (op->ea16) {
+        // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
+        X86Asm::Reg16 reg16(reg);
+
+        x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
+
+        if (op->data.disp) {
+            x86.add(reg16, (U16)op->data.disp);
+        }
+        if (op->rm != 8) {
+            // intentional 16-bit add
+            x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->rm));
+        }
+
+        if (op->sibIndex != 8) {
+            // intentional 16-bit add
+            x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->sibIndex));
+        }
+
+        // seg[6] is always 0
+        if (op->base < 6) {
+            // intentional 32-bit add
+            x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofSegAddress(op->base));
+        }
     } else {
-        kpanic_fmt("x32CPU::evaluateToReg reg width %d", regWidth);
-    }
+        if (op->sibIndex != 8) {
+            x86.readMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->sibIndex));
+            if (op->sibScale) {
+                x86.shl(X86Asm::Reg32(reg), op->sibScale);
+            }
+            if (op->rm != 8) {
+                x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->rm));
+            }
+            if (op->data.disp) {
+                x86.add(X86Asm::Reg32(reg), op->data.disp);
+            }
+        } else if (op->rm != 8) {
+            x86.readMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->rm));
+            if (op->data.disp) {
+                x86.add(X86Asm::Reg32(reg), op->data.disp);
+            }
+        } else if (op->data.disp) {
+            x86.mov(X86Asm::Reg32(reg), op->data.disp);
+        } else {
+            x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
+        }
 
-    data->regUsed[reg.reg] = true;
-    setCC(data, reg, condition);
-    data->x86.movzx(reg, X86Asm::Reg8(reg.reg));
-
-    if (doneWithLeftReg) {
-        data->regUsed[left.reg] = false;
-    }
-    if (doneWithRightReg) {
-        data->regUsed[right.reg] = false;
+        // seg[6] is always 0
+        if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
+            x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofSegAddress(op->base));
+        }
     }
 }
 
-void evaluateToReg(DynamicData* data, X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg) {
-    if (regWidth == DYN_32bit) {
-        data->x86.cmp(left, rightConst);
-    } else if (regWidth == DYN_16bit) {
-        data->x86.cmp(X86Asm::Reg16(left.reg), (U16)rightConst);
-    } else if (regWidth == DYN_8bit) {
-        data->x86.cmp(X86Asm::Reg8(left.reg), (U8)rightConst);
+void X86DynamicData::byteSwapReg32(DynReg reg) {
+    x86.bswap(reg);
+}
+
+void X86DynamicData::movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+    regUsed[dst] = true;
+    if (dstWidth <= srcWidth) {
+        movToRegFromReg(dst, dstWidth, src, srcWidth, doneWithSrcReg);
     } else {
-        kpanic_fmt("x32CPU::evaluateToReg reg width %d", regWidth);
-    }
-
-    data->regUsed[reg.reg] = true;
-    setCC(data, reg, condition);
-    data->x86.movzx(reg, X86Asm::Reg8(reg.reg));
-
-    if (doneWithLeftReg) {
-        data->regUsed[left.reg] = false;
+        if (dstWidth == DYN_32bit) {
+            if (srcWidth == DYN_16bit) {
+                x86.movsx(X86Asm::Reg32(dst), X86Asm::Reg16(src));
+            } else if (srcWidth == DYN_8bit) {
+                x86.movsx(X86Asm::Reg32(dst), X86Asm::Reg8(src));
+            } else {
+                kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
+            }
+        } else if (dstWidth == DYN_16bit) {
+            if (srcWidth == DYN_8bit) {
+                x86.movsx(X86Asm::Reg16(dst), X86Asm::Reg8(src));
+            } else {
+                kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
+            }
+        } else {
+            kpanic_fmt("unknown width in x32CPU::movToRegFromRegSignExtend %d <= %d", dstWidth, srcWidth);
+        }
+        if (doneWithSrcReg) {
+            regUsed[src] = false;
+        }
     }
 }
 
-void evaluateToReg(DynamicData* data, DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
-    if (reg>=4) {
-        kpanic_fmt("x32CPU::evaluateToRegFromRegs doesn't support reg %d", reg);
-    }
-    if (isRightConst) {
-        evaluateToReg(data, X86Asm::Reg32(reg), X86Asm::Reg32(left), rightConst, regWidth, condition, doneWithLeftReg);
+void X86DynamicData::movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+    regUsed[dst] = true;
+    if (dstWidth <= srcWidth) {
+        if (dst == src) // downsizing doesn't need anything
+            return;
+        if (dstWidth == DYN_32bit) {
+            x86.mov(X86Asm::Reg32(dst), X86Asm::Reg32(src));
+        } else if (dstWidth == DYN_16bit) {
+            x86.mov(X86Asm::Reg16(dst), X86Asm::Reg16(src));
+        } else if (dstWidth == DYN_8bit) {
+            x86.mov(X86Asm::Reg8(dst), X86Asm::Reg8(src));
+        } else {
+            kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromReg %d", dstWidth);
+        }
     } else {
-        evaluateToReg(data, X86Asm::Reg32(reg), X86Asm::Reg32(left), X86Asm::Reg32(right), regWidth, condition, doneWithLeftReg, doneWithRightReg);
+        if (dstWidth == DYN_32bit) {
+            if (srcWidth == DYN_16bit) {
+                x86.movzx(X86Asm::Reg32(dst), X86Asm::Reg16(src));
+            } else if (srcWidth == DYN_8bit) {
+                x86.movzx(X86Asm::Reg32(dst), X86Asm::Reg8(src));
+            } else {
+                kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
+            }
+        } else if (dstWidth == DYN_16bit) {
+            if (srcWidth == DYN_8bit) {
+                x86.movzx(X86Asm::Reg16(dst), X86Asm::Reg8(src));
+            } else {
+                kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
+            }
+        } else {
+            kpanic_fmt("unknown width in x32CPU::movToRegFromReg %d <= %d", dstWidth, srcWidth);
+        }
+    }
+    if (doneWithSrcReg) {
+        regUsed[src] = false;
     }
 }
 
-// this is good generic code to copy for other implementations that don't have something like setcc
-/*
-void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition) {
-    setConditionInReg(data, condition, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    movToCpu(offset, regWidth, 0);
-    startElse();
-    movToCpu(offset, regWidth, 1);
-    endIf();
-}
-*/
-
-void setConditional(DynamicData* data, DynConditional condition) {
-    bool setnz = true;
-    // changing conditions to ones that are optimized
-    if (condition == Z) {
-        condition = NZ;
-        setnz = false;
-    } else if (condition == NS) {
-        condition = S;
-        setnz = false;
-    } else if (condition == NB) {
-        condition = B;
-        setnz = false;
-    } else if (condition == NO) {
-        condition = O;
-        setnz = false;
-    } else if (condition == NBE) {
-        condition = BE;
-        setnz = false;
-    } else if (condition == NLE) {
-        condition = LE;
-        setnz = false;
-    } else if (condition == NL) {
-        condition = L;
-        setnz = false;
-    }
-    setConditionInReg(data, condition, DYN_CALL_RESULT);
-    data->x86.test(data->x86.eax, data->x86.eax);
-    if (setnz) {
-        data->x86.setnz(X86Asm::Reg8(data->x86.eax.reg));
+void X86DynamicData::movToReg(DynReg reg, DynWidth width, U32 imm) {
+    regUsed[reg] = true;
+    if (width == DYN_32bit) {
+        x86.mov(X86Asm::Reg32(reg), imm);
+    } else if (width == DYN_16bit) {
+        x86.mov(X86Asm::Reg16(reg), (U16)imm);
+    } else if (width == DYN_8bit) {
+        x86.mov(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        data->x86.setz(X86Asm::Reg8(data->x86.eax.reg));
+        kpanic_fmt("unknown width in x32CPU::movToReg %d", width);
     }
 }
 
-void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition) {
-    setConditional(data, condition);
-
-    if (regWidth != DYN_8bit) {
-        movToRegFromReg(data, DYN_CALL_RESULT, regWidth, DYN_CALL_RESULT, DYN_8bit, false);
+void X86DynamicData::pushValue(U32 arg, DynCallParamType argType) {
+    switch (argType) {
+    case DYN_PARAM_REG_8:
+        x86.movzx(X86Asm::Reg32(arg), X86Asm::Reg8(arg));
+        x86.push(X86Asm::Reg32(arg));
+        break;
+    case DYN_PARAM_REG_16:
+        x86.movzx(X86Asm::Reg32(arg), X86Asm::Reg16(arg));
+        x86.push(X86Asm::Reg32(arg));
+        break;
+    case DYN_PARAM_REG_32:
+        x86.push(X86Asm::Reg32(arg));
+        break;
+    case DYN_PARAM_CPU:
+        x86.push(x86.edi);
+        break;
+    case DYN_PARAM_CONST_8:
+        x86.push((U32)(arg & 0xFF));
+        break;
+    case DYN_PARAM_CONST_16:
+        x86.push((U32)(arg & 0xFFFF));
+        break;
+    case DYN_PARAM_CONST_32:
+        x86.push(arg);
+        break;
+    case DYN_PARAM_CONST_PTR:
+        x86.push((U32)arg);
+        break;
+    case DYN_PARAM_CPU_ADDRESS_8:
+        x86.readMem(X86Asm::Reg8(x86.eax.reg), x86.edi, arg);
+        x86.movzx(x86.eax, X86Asm::Reg8(x86.eax.reg));
+        x86.push(x86.eax);
+        break;
+    case DYN_PARAM_CPU_ADDRESS_16:
+        x86.readMem(X86Asm::Reg16(x86.eax.reg), x86.edi, arg);
+        x86.movzx(x86.eax, X86Asm::Reg16(x86.eax.reg));
+        x86.push(x86.eax);
+        break;
+    case DYN_PARAM_CPU_ADDRESS_32:
+        x86.readMem(x86.eax, x86.edi, arg);
+        x86.push(x86.eax);
+        break;
+    default:
+        kpanic_fmt("x32CPU: unknown argType: %d", argType);
+        break;
     }
-    movToCpuFromReg(data, offset, DYN_CALL_RESULT, regWidth, true);
 }
 
-/*
-void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg) {
-    setConditionInReg(data, condition, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    movToReg(DYN_SRC, regWidth, 0);
-    startElse();
-    movToReg(DYN_SRC, regWidth, 1);
-    endIf();
-    // don't put this movToMem in the if statement because it is big and will be inlines once in each block of the if statement
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, regWidth, doneWithAddressReg, true);
+void X86DynamicData::zeroExtendReg16To32(DynReg dest, DynReg src) {
+    x86.movzx(X86Asm::Reg32(dest), X86Asm::Reg16(src));
+    regUsed[dest] = true;
 }
-*/
-void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg, DynReg tmpReg) {
-    setConditional(data, condition);
 
-    if (regWidth != DYN_8bit) {
-        movToRegFromReg(data, DYN_CALL_RESULT, regWidth, DYN_CALL_RESULT, DYN_8bit, false);
+void X86DynamicData::movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
+    this->regUsed[reg] = true;
+    // mov reg, [edi+srcOffset]    
+    if (width == DYN_32bit) {
+        x86.readMem(X86Asm::Reg32(reg), x86.edi, srcOffset);
+    } else if (width == DYN_16bit) {
+        x86.readMem(X86Asm::Reg16(reg), x86.edi, srcOffset);
+    } else if (width == DYN_8bit) {
+        x86.readMem(X86Asm::Reg8(reg), x86.edi, srcOffset);
+    } else {
+        kpanic_fmt("unknown dstWidth in x32CPU::movToRegFromCpu %d", width);
     }
-    movToMemFromReg(data, addressReg, DYN_CALL_RESULT, regWidth, doneWithAddressReg, true, tmpReg);
 }
 
-void incrementEip(DynamicData* data, U32 inc) {
-    data->x86.addMem(data->x86.edi, offsetof(CPU, eip.u32), inc);
+void X86DynamicData::movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) {
+    if (width == DYN_32bit) {
+        x86.writeMem(x86.edi, dstOffset, X86Asm::Reg32(reg));
+    } else if (width == DYN_16bit) {
+        x86.writeMem(x86.edi, dstOffset, X86Asm::Reg16(reg));
+    } else if (width == DYN_8bit) {
+        x86.writeMem(x86.edi, dstOffset, X86Asm::Reg8(reg));
+    } else {
+        kpanic_fmt("unknown dstWidth in x32CPU::movToCpuFromReg %d", width);
+    }
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
 }
 
-void incrementEip(DynamicData* data, DecodedOp* op) {
-    incrementEip(data, op->len);
+void X86DynamicData::movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
+    if (dstWidth == DYN_32bit) {
+        x86.writeMem(x86.edi, dstOffset, imm);
+    } else if (dstWidth == DYN_16bit) {
+        x86.writeMem(x86.edi, dstOffset, (U16)imm);
+    } else if (dstWidth == DYN_8bit) {
+        x86.writeMem(x86.edi, dstOffset, (U8)imm);
+    } else {
+        kpanic_fmt("unknown dstWidth in DynamicData::movToCpu %d", dstWidth);
+    }
 }
 
-void blockExit(DynamicData* data) {
-    data->x86.pop(data->x86.edi);
-    data->x86.pop(data->x86.ebx);
+void X86DynamicData::JumpIf(DynReg reg, bool doneWithReg, U32 address) {
+    x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
+    x86.jnz(address);
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
 
+void X86DynamicData::JumpIfNot(DynReg reg, bool doneWithReg, U32 address) {
+    x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
+    x86.jz(address);
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
+
+void X86DynamicData::JumpInBlock(U32 address) {
+    x86.jmp(address);
+}
+
+void X86DynamicData::IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) {
+    IfEqual(X86Asm::Reg32(reg), value, doneWithReg);
+}
+
+void X86DynamicData::IfLessThan(DynReg reg, U32 value, bool doneWithReg) {
+    x86.IfLessThan(X86Asm::Reg32(reg), value);
+
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
+
+void X86DynamicData::IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+    x86.IfEqual(reg, value);
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+void X86DynamicData::IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+    x86.IfNotEqual(reg, value);
+    if (doneWithReg) {
+        regUsed[reg.reg] = false;
+    }
+}
+
+
+void X86DynamicData::IfBitSet(DynReg reg, U32 value, bool doneWithReg) {
+    x86.IfBitSet(X86Asm::Reg32(reg), value);
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
+
+void X86DynamicData::If(DynReg reg, bool doneWithReg) {
+    x86.IfNotZero(X86Asm::Reg32(reg));
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
+
+void X86DynamicData::IfNot(DynReg reg, bool doneWithReg) {
+    x86.IfZero(X86Asm::Reg32(reg));
+    if (doneWithReg) {
+        regUsed[reg] = false;
+    }
+}
+
+void X86DynamicData::StartElse() {
+    x86.Else();
+}
+
+void X86DynamicData::EndIf() {
+    x86.EndIf();
+}
+
+U8* X86DynamicData::createStartJITCode() {
 #ifdef _DEBUG
-    data->x86.mov(data->x86.esp, data->x86.ebp);
-    data->x86.pop(data->x86.ebp);
+    x86.push(x86.ebp);
+    x86.mov(x86.ebp, x86.esp);
 #endif
 
-    data->x86.ret();
-}
-
-void blockCall(DynamicData* data, DecodedOp* op) {
-    blockNext1(data, op);
-    if (data->lastOpEip > data->currentEip) {
-        blockExit(data);
-    }
-}
-
-void blockDoneCall(DynamicData* data) {
-    blockDone(data, false);
-}
-
-void blockDone(DynamicData* data, bool returnEarly) {
-    // cpu->nextOp = cpu->nextOp();
-    callHostFunction(data, common_getNextOp, true, 1, 0, DYN_PARAM_CPU, false);
-    movToCpuFromReg(data, offsetof(CPU, nextOp), DYN_CALL_RESULT, DYN_32bit, true);
-    if (returnEarly || data->lastOpEip > data->currentEip) {
-        blockExit(data);
-    }
-}
-
-// next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void blockNext1(DynamicData* data, DecodedOp* op) {
-    // if (!(*(op->nextJump))) {
-    //     *(op->nextJump) = cpu->getNextOp();
-    // }
-    // cpu->nextOp = *(op->nextJump);
-    movToReg(data, DYN_EDX, DYN_32bit, (U32)op);
-    // ebx = op->nextJump
-    // mov ebx, [edx + offsetof(DecodedOp, nextJump)]
-    data->regUsed[DYN_EBX] = true;
-    data->x86.readMem(data->x86.ebx, data->x86.edx, offsetof(DecodedOp, data.nextJump));
-    data->regUsed[DYN_EDX] = false;
-
-    // eax = *(op->nextJump)
-    data->x86.readMem(data->x86.eax, data->x86.ebx, 0);
-    // if (!(*(op->nextJump))) 
-    IfNot(data, DYN_EAX, false);
-    // *(op->nextJump) = cpu->getNextOp();
-    callHostFunction(data, common_getNextOp, true, 1, 0, DYN_PARAM_CPU);
-    data->x86.writeMem(data->x86.ebx, 0, data->x86.eax);
-    EndIf(data);
-
-    // cpu->nextOp = *(op->nextJump);        
-    data->regUsed[DYN_EBX] = false;
-    movToCpuFromReg(data, offsetof(CPU, nextOp), DYN_EAX, DYN_32bit, false);
-    
-#ifdef BOXEDWINE_MULTI_THREADED
-    data->x86.readMem(data->x86.eax, data->x86.eax, offsetof(DecodedOp, pfnJitCode));
-    If(data, DYN_CALL_RESULT, true);
-    data->x86.jmp(data->x86.eax);
-    EndIf(data);
-#endif
-}
-
-void blockNext2(DynamicData* data, DecodedOp* op) {
-    // if (!op->next) { 
-    //     op->next = cpu->getNextOp(); 
-    // }
-    // cpu->nextOp = op->next;    
-    movToReg(data, DYN_EBX, DYN_32bit, (U32)op);
-
-    // mov eax, [ebx + offsetof(DecodedOp, next)]
-    data->x86.readMem(data->x86.eax, data->x86.ebx, offsetof(DecodedOp, next));
-
-    IfNot(data, DYN_EAX, false);
-    // op->next = cpu->getNextOp();
-    callHostFunction(data, common_getNextOp, true, 1, 0, DYN_PARAM_CPU);
-    // mov [ebx + offsetof(DecodedOp, next)], eax
-    data->x86.writeMem(data->x86.ebx, offsetof(DecodedOp, next), data->x86.eax);
-    EndIf(data);
-    data->regUsed[DYN_EBX] = false;
-
-    // cpu->nextOp = op->next
-    movToCpuFromReg(data, offsetof(CPU, nextOp), DYN_CALL_RESULT, DYN_32bit, false);
-
-#ifdef BOXEDWINE_MULTI_THREADED
-    data->x86.readMem(data->x86.eax, data->x86.eax, offsetof(DecodedOp, pfnJitCode));
-    If(data, DYN_CALL_RESULT, true);
-    data->x86.jmp(data->x86.eax);
-    EndIf(data);
-#endif 
-}
-
-void x32_sidt(DynamicData* data, DecodedOp* op) {
-}
-
-void x32_onExitSignal(CPU* cpu) {
-    onExitSignal(cpu, NULL);
-}
-
-void x32_callback(DynamicData* data, DecodedOp* op) {
-    if (op->pfn == onExitSignal) {
-        callHostFunction(data, x32_onExitSignal, false, 1, 0, DYN_PARAM_CPU);
-    } else {
-        kpanic("x32CPU::x32_callback unhandled callback");
-    }
-}
-
-void x32_invalid_op(DynamicData* data, DecodedOp* op) {
-    //kpanic_fmt("Invalid instruction %x\n", op->inst);
-    callHostFunction(data, (void*)common_ud2, false, 1, 0, DYN_PARAM_CPU, false);
-    blockDone(data, true);
-}
-
-void x32_onTestEnd(DynamicData* data, DecodedOp* op) {
-    data->cpu->nextOp = op;
-}
-
-static pfnDynamicOp x32Ops[NUMBER_OF_OPS];
-static U32 x32OpsInitialized;
-
-static void initX32Ops() {
-    if (x32OpsInitialized)
-        return;
-    if (offsetof(CPU, eip.u32)>127)
-        kpanic("x32CPU::initX32Ops wasn't expecting eip offset to be greater than 127");
-
-    if (offsetof(CPU, reg[8].u32)>127)
-        kpanic("x32CPU::initX32Ops wasn't expecting reg[8] offset to be greater than 127");
-
-    if (offsetof(CPU, seg[6].address)>127)
-        kpanic("x32CPU::initX32Ops wasn't expecting reg[8] offset to be greater than 127");
-
-    x32OpsInitialized = 1;   
-    for (int i=0;i<InstructionCount;i++) {
-        x32Ops[i] = x32_invalid_op;
-    }
-#define INIT_CPU(e, f) x32Ops[e] = dynamic_##f;
-#include "../common/cpu_init.h"
-#include "../common/cpu_init_mmx.h"
-#include "../common/cpu_init_sse.h"
-#include "../common/cpu_init_sse2.h"
-#include "../common/cpu_init_fpu.h"
-#ifdef BOXEDWINE_MULTI_THREADED
-#define INIT_CPU_LOCK(e, f) x32Ops[e##_Lock] = dynamic_##f##_lock;
-#include "../common/cpu_init_lock.h"
-#endif
-
-#undef INIT_CPU    
-    
-    x32Ops[SLDTReg] = 0; 
-    x32Ops[SLDTE16] = 0;
-    x32Ops[STRReg] = 0; 
-    x32Ops[STRE16] = 0;
-    x32Ops[LLDTR16] = 0; 
-    x32Ops[LLDTE16] = 0;
-    x32Ops[LTRR16] = 0; 
-    x32Ops[LTRE16] = 0;
-    x32Ops[VERRR16] = 0; 
-    x32Ops[VERWR16] = 0; 
-    x32Ops[SGDT] = 0;
-    x32Ops[SIDT] = x32_sidt;
-    x32Ops[LGDT] = 0;
-    x32Ops[LIDT] = 0;
-    x32Ops[SMSWRreg] = 0; 
-    x32Ops[SMSW] = 0;
-    x32Ops[LMSWRreg] = 0; 
-    x32Ops[LMSW] = 0;
-    x32Ops[INVLPG] = 0;
-    x32Ops[Callback] = x32_callback;
-    x32Ops[TestEnd] = x32_onTestEnd;
-}
-
-static U8* createDynamicExecutableMemory(DynamicData& data, KMemory* processMemory) {
-    U8* begin = (U8*)processMemory->allocCodeMemory(data.x86.buffer.size());
-
-    Platform::writeCodeToMemory(begin, data.x86.buffer.size(), [begin,&data]() {
-        memcpy(begin, data.x86.buffer.data(), data.x86.buffer.size());
-        });
-    return begin;
-}
-
-static U8* createStartJITCode(KMemory* memory) {
-    DynamicData data;
-
-#ifdef _DEBUG
-    data.x86.push(data.x86.ebp);
-    data.x86.mov(data.x86.ebp, data.x86.esp);
-#endif
-
-    data.x86.push(data.x86.ebx);
-    data.x86.push(data.x86.edi);
+    x86.push(x86.ebx);
+    x86.push(x86.edi);
     // on win32 ecx contains cpu
-    data.x86.mov(data.x86.edi, data.x86.ecx);
+    x86.mov(x86.edi, x86.ecx);
 
     // :TODO: what about other x86 platforms that use a different calling convention
     // 
     // jmp ((DecodedOp*)edx)->pfn
-    data.x86.readMem(data.x86.eax, data.x86.edx, offsetof(DecodedOp, pfnJitCode));
-    data.x86.jmp(data.x86.eax);
-    U8* result = createDynamicExecutableMemory(data, memory);
-    return result;
+    x86.readMem(x86.eax, x86.edx, offsetof(DecodedOp, pfnJitCode));
+    x86.jmp(x86.eax);
+    return createDynamicExecutableMemory();
 }
 
-#ifdef _DEBUG
-static void logBlock(CPU* cpu, U32 address, DecodedOp* op, U32 len) {
-    static BWriteFile file;
-    static int count;
-
-    count++;
-    if (!file.isOpen()) {
-        file.createNew("jit.txt");
-    }
-    BString name = cpu->thread->process->getModuleName(address);
-    U32 offset = cpu->thread->process->getModuleEip(address);
-    file.writeFormat("Block %d in %s(%x)\n", count, name.c_str(), offset);
-    while (op && len) {
-        if (op->isDirectBranch()) {
-            file.writeFormat("%x %x %s %x\n", cpu->thread->process->id, address, op->name(), (address + op->len + op->imm));
-        } else {
-            file.writeFormat("%x %x %s\n", cpu->thread->process->id, address, op->name());
-        }
-        address += op->len;
-        len -= op->len;
-        op = op->next;
-    }
-    file.write("\n");
-    file.flush();
-}
-#endif
-
-static void doJIT(CPU* cpu, U32 address, DecodedOp* op);
-static bool calculateLongestBlock(DynamicData& data, DecodedOp* op) {
-    U32 eip = data.startingEip;
-    DecodedOp* nextOp = op;
-    U32 furthestJump = 0;
-
-    // find the longest block we can compile
-    // branches that jump out of the block will be the end of the block
-
-    // 1st pass, find longest block including all direct jumps (conditional jumps, direct jumps, loop, etc)
-
-    // jumpTo will keep track of valid jump targets.  We need this if we are going to decode more instructions (cpu->getOp)
-    // Without this the next byte of instruction may actually be invalid, I have seen skipped bytes in the instructions,
-    // I assume its for alignment/performance reasons.  Firefight installer will trigger this
-    BHashTable<U32, DecodedOp*> jumpTo;
-
-    // opentdd will trigger this isValid check
-    while (nextOp && nextOp->isValid()) {
-        // could be ret, call, int.  Basically this is an instruction where we are not guaranteed to see a next instruction
-        if (nextOp->isBranch() && !nextOp->isDirectJumpBranch()) {
-            // is this the last return, if so, then don't decode more
-            if (nextOp->isRet() && furthestJump < eip) {
-                break;
-            }
-            if (nextOp->isIndirectJump()) {
-                // opentdd needs this when creating a new game, I'm not sure why data.cpu->memory->getDecodedOp(eip + nextOp->len) will find an op but its not correct, might be another bug 
-                break;
-            }
-            if (!nextOp->next) {
-                // don't call cpu->getOp since that will decode and we are not sure the next byte is a valid instruction.
-                // we can call memory->getDecodedOp to see if this instruction has already been decoded, in that case we know its valid.
-                nextOp->next = data.cpu->memory->getDecodedOp(eip + nextOp->len);
-            }
-            if (!nextOp->next && (jumpTo.contains(eip + nextOp->len) || nextOp->isDirectBranchWithNext())) {
-                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
-            }
-            if (!nextOp->next && nextOp->isCall() && furthestJump > eip) {
-                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);                
-            }
-            if (!nextOp->next) {
-                // since we couldn't figure out if the next byte is part of a valid instruction, we are done looking
-                break;
-            }
-        }
-        if (nextOp->isDirectJumpBranch() && (eip + nextOp->len + nextOp->imm) < data.startingEip) {
-            // if we have somewhere to go after this, then continue
-
-            // see if we can restart this JIT with the target of this jump to before the incoming op argument to create a bigger JIT block
-            DecodedOp* targetOp = data.cpu->memory->getDecodedOp(eip + nextOp->len + nextOp->imm);
-            if (!targetOp) {
-                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
-            }
-            if (targetOp && !(op->flags & OP_FLAG_JIT)) {
-                if (!targetOp->pfnJitCode) {
-                    doJIT(data.cpu, eip + nextOp->len + nextOp->imm, targetOp);
-                    if (op->flags & OP_FLAG_JIT) {
-                        // doJIT successfully compiled the previous code and it picked up our current block
-                        return false;
-                    }
-                }
-            }
-            if (!nextOp->isDirectBranchWithNext() && !jumpTo.contains(eip + nextOp->len)) {
-                // if we have no valid location after this what can we do?
-                break;
-            }
-        }
-        if (nextOp->isDirectBranch()) {
-            U32 address = eip + nextOp->len + nextOp->imm;
-            jumpTo.set(address, nextOp);
-            furthestJump = std::max(address, furthestJump);
-        }
-        //
-        // how to handle a call deep down in an if statement 
-        //
-        // allow call if there are valid jumps that go over it, the call should do an early block return in this case
-        if (!nextOp->next) {
-            if (nextOp->isDirectBranchWithNext() || jumpTo.contains(eip + nextOp->len)) {
-                nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
-            } else {
-                nextOp->next = data.cpu->memory->getDecodedOp(eip + nextOp->len);
-                if (!nextOp->next && nextOp->isCall() && furthestJump > eip) {
-                    nextOp->next = data.cpu->getOp(eip + nextOp->len, 0);
-                }
-            }
-        }
-        eip += nextOp->len;
-        if (nextOp->next) {
-            if (nextOp->next->flags & OP_FLAG_NO_JIT) {
-                break;
-            }
-            if (nextOp->next->inst == Done) {
-                // F-16 needs this
-                break;
-            }
-        }        
-        nextOp = nextOp->next;
-    }
-    // find longest block where all direction jumps don't go past the block
-    U32 lastFurthestEip = eip;
-    while (true) {
-        nextOp = op;
-        data.lastOpEip = data.startingEip;
-        while (nextOp && data.lastOpEip < lastFurthestEip) {
-            if (nextOp->isDirectJumpBranch()) {
-                U32 target = data.lastOpEip + nextOp->len + nextOp->imm;
-                if (target >= lastFurthestEip || target < data.startingEip) {
-                    break;
-                }
-            }
-            if (nextOp->next) {
-                data.lastOpEip += nextOp->len;
-            }
-            nextOp = nextOp->next;
-        }
-        if (!nextOp || !nextOp->next) {
-            break;
-        }
-        U32 lastEip = data.lastOpEip;
-        if (lastFurthestEip == lastEip) {
-            break;
-        }
-        // since we didn't make it to the end of the ops, try again
-        // an op we just looked at might be going to a place between lastFurthestEip and data.lastOpEip which is not valid since it is now passed the end of the block
-        lastFurthestEip = lastEip;
-    }
-    return true;
-}
-
-static DecodedOp* removeJITBlock(DecodedOp* op) {
-    for (int i = 0; i < op->blockOpCount; i++) {
-        op->pfnJitCode = nullptr;
-        op->pfn = NormalCPU::getFunctionForOp(op);
-        op->blockStart = nullptr;
-        op->blockLen = 0;
-        op->blockOpCount = 0;
-        op = op->next;
-    }
-    return op;
-}
-
-static void removeJIT(CPU* cpu, DecodedOp* op, U32 count) {
-    for (U32 i = 0; i < count; i++) {
-        if (op->blockStart) {
-            removeJITBlock(op->blockStart);
-        }
-    }
-}
-
-static void commitJIT(DynamicData& data, DecodedOp* op) {
-    for (DynamicJump& jmp : data.x86.jumps) {
+void X86DynamicData::preCommitJIT() {
+    for (DynamicJump& jmp : x86.jumps) {
         U32 bufferIndex = 0;
 
-        if (!data.eipToBufferPos.get(jmp.eip, bufferIndex)) {            
+        if (!eipToBufferPos.get(jmp.eip, bufferIndex)) {
             return;
         }
-        *(U32*)&data.x86.buffer.data()[jmp.bufferPos] = bufferIndex - jmp.bufferPos - 4;
+        *(U32*)&x86.buffer.data()[jmp.bufferPos] = bufferIndex - jmp.bufferPos - 4;
     }
+}
 
-    if (!data.blockOpCount) {
-        return;
-    }
-
-    U8* begin = createDynamicExecutableMemory(data, data.cpu->memory);
-
-    for (U32 i = 0; i < data.x86.patch.size(); i++) {
-        U32 pos = data.x86.patch[i];
+void X86DynamicData::patch(U8* begin) {
+    for (U32 i = 0; i < x86.patch.size(); i++) {
+        U32 pos = x86.patch[i];
         U32* value = (U32*)(&begin[pos]);
         *value = *value - (U32)(begin + pos + 4);
     }
-    
-    removeJIT(data.cpu, op, data.blockOpCount);
-    op->blockLen = data.emulatedLen;
-    op->blockOpCount = data.blockOpCount;
-#ifdef _DEBUG
-    //logBlock(data.cpu, data.startingEip, op, op->blockLen);
-#endif 
-    U32 address = data.startingEip;
-    DecodedOp* nextOp = op;
-    DecodedOp* last = op;
-#ifdef _DEBUG
-    BOXEDWINE_CRITICAL_SECTION;
-    static int totalBlocks;
-    totalBlocks++;
-    static int totalOps;
-    totalOps += data.blockOpCount;
-    if ((totalBlocks % 1000) == 0) {
-        klog_fmt("Compiled Blocks: %d, ave block size: %d ops", totalBlocks, totalOps / totalBlocks);
-    }
-#endif
-    for (U32 i = 0; i < data.blockOpCount; i++) {
-        U32 bufferIndex = 0;
-
-        if (!data.eipToBufferPos.get(address, bufferIndex)) {
-            kpanic("x32CPU commitJIT 2");
-        }
-        nextOp->pfnJitCode = (OpCallback)(begin + bufferIndex);
-        nextOp->pfn = data.cpu->thread->process->startJITOp;
-        nextOp->flags |= OP_FLAG_JIT;
-        nextOp->blockStart = op;
-        address += nextOp->len;
-        last = nextOp;
-        nextOp = nextOp->next;
-    }
 }
 
-static bool compileOps(DynamicData& data, DecodedOp* op) {
-    DecodedOp* nextOp = op;
-    data.emulatedLen = 0;
-    data.blockOpCount = 0;
-
-    while (nextOp) {
-        if (nextOp->flags & OP_FLAG_NO_JIT) {
-            return false;
-        }
-
-        memset(data.regUsed, 0, sizeof(data.regUsed));
-#ifndef __TEST
-#ifdef _DEBUG
-        //callHostFunction(common_log, false, 2, 0, DYN_PARAM_CPU, false, (DYN_PTR_SIZE)nextOp, DYN_PARAM_CONST_PTR, false);
-#endif
-#endif
-        data.emulatedLen += nextOp->len;
-        data.blockOpCount++;
-        data.eipToBufferPos.set(data.currentEip, data.x86.buffer.size());
-        if (nextOp->lock) {
-            // so that intra block jumps that try to skip a lock will find the lock version of the op anyway
-            data.eipToBufferPos.set(data.currentEip + 1, data.x86.buffer.size());
-        }
-        x32Ops[nextOp->inst](&data, nextOp);
-        data.currentEip += nextOp->len;
-        if (data.x86.ifJump.size()) {
-            kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
-        }
-        if (data.currentEip > data.lastOpEip) {
-            if (!nextOp->isBranch()) {
-                int ii = 0;
-            }
-            break;
-        } else if (nextOp->isBranch()) {
-            nextOp = nextOp->next;
-        } else {
-            nextOp = nextOp->next;
-        }
-    }
-    return true;
-}
-
-static void doJIT(CPU* cpu, U32 address, DecodedOp* op) {
-    BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
-    if (!cpu->thread->process->startJITOp) {
-        cpu->thread->process->startJITOp = (OpCallback)createStartJITCode(cpu->memory);
-    }
-
-    // did another thread beat us to JITing this block?
-    if (op->flags & OP_FLAG_JIT) {
-        // this will get triggered a few times, especially during shutdown
-        // I have see this in firefight installer at the end and opentdd start up
-        return;
-    }
-    DynamicData data;
-    data.cpu = cpu;
-    data.currentEip = address;
-    data.startingEip = address;
-       
-    initX32Ops();
-    DecodedOp* nextOp = op;
-
-    if (!calculateLongestBlock(data, op)) {
-        return;
-    }
-    if (!compileOps(data, op)) {
-        return;
-    }
-    blockExit(&data);
-    commitJIT(data, op);
-}
-
-void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {    
-#ifdef __TEST
-    if (op->runCount == 0) {
-#else
-    // done check for long blocks that get broken up, affects f-22/f-16
-    if (op->runCount == JIT_RUN_COUNT && op->inst != Done) {
-#endif        
-        doJIT(cpu, cpu->getEipAddress(), op);
-    }
-    op->runCount++;
-    op->pfn(cpu, op);
-}
-
-static OpCallback getJitFunctionForCurrentOp(CPU* cpu) {
-    DecodedOp* op = cpu->memory->getDecodedOp(cpu->getEipAddress());
-    if (!op) {
-        op = cpu->getNextOp();        
-    }
-    cpu->nextOp = op;
-    // runCount could be > JIT_RUN_COUNT with no jit code if it contains an instruction we don't support
-    if (!op->pfnJitCode && op->runCount <= JIT_RUN_COUNT) {
-        doJIT(cpu, cpu->getEipAddress(), op);
-        op->runCount = JIT_RUN_COUNT + 1;
-    }
-    return op->pfnJitCode;
-}
-
-void blockDoneJump(DynamicData* data) {
-    // :TODO: what about caching result for direct calls or direct jumps?
-    callHostFunction(data, getJitFunctionForCurrentOp, true, 1, 0, DYN_PARAM_CPU, false);
-    IfNot(data, DYN_EAX, true);
-    blockExit(data);
-    EndIf(data);
-
-    data->x86.jmp(data->x86.eax);
+void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
+    X86DynamicData data(cpu);
+    data.doJIT(address, op);
 }
 
 #endif

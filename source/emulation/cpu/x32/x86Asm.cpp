@@ -171,6 +171,10 @@ void X86Asm::mem8(U8 inst, Reg8 dst, Reg32 rm, U32 disp) {
     mem32(inst, Reg32(dst.reg), rm, disp);
 }
 
+void X86Asm::mem8(U8 inst, Reg8 dst, Reg32 rm, U8 shift, U32 disp) {
+    mem32(inst, Reg32(dst.reg), rm, shift, disp);
+}
+
 void X86Asm::mem8(U8 inst, Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
     mem32(inst, Reg32(dst.reg), rm, sib, shift, disp);
 }
@@ -258,6 +262,10 @@ void X86Asm::readMem(Reg16 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {
 
 void X86Asm::readMem(Reg8 dst, Reg32 rm, U32 disp) {
     mem8(0x8a, dst, rm, disp);
+}
+
+void X86Asm::readMem(Reg8 dst, Reg32 sib, U8 shift, U32 disp) {
+    mem8(0x8a, dst, sib, shift, disp);
 }
 
 void X86Asm::readMem(Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp) {

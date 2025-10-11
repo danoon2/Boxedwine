@@ -147,6 +147,7 @@ public:
 	void readMem(Reg16 dst, Reg32 sib, U8 shift, U32 disp);
 	void readMem(Reg16 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
 	void readMem(Reg8 dst, Reg32 rm, U32 disp);
+	void readMem(Reg8 dst, Reg32 sib, U8 shift, U32 disp);
 	void readMem(Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
 	void writeMem(Reg32 rm, U32 disp, Reg32 src);
 	void writeMem(Reg32 rm, U32 disp, Reg16 src);
@@ -218,6 +219,7 @@ private:
 	void mem16(U8 inst, Reg16 dst, Reg32 sib, U8 shift, U32 disp);
 	void mem16(U8 inst, Reg16 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
 	void mem8(U8 inst, Reg8 dst, Reg32 rm, U32 disp);
+	void mem8(U8 inst, Reg8 dst, Reg32 sib, U8 shift, U32 disp);
 	void mem8(U8 inst, Reg8 dst, Reg32 rm, Reg32 sib, U8 shift, U32 disp);
 
 	void group1(U8 e, U8 math, Reg32 dst, U32 imm);

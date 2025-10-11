@@ -19,228 +19,228 @@
 void dynamic_inc8_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        instCPUImm(data,'+', CPU::offsetofReg8(op->reg), DYN_8bit, 1, DYN_DEST);
+        data->instCPUImm('+', CPU::offsetofReg8(op->reg), DYN_8bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        loadRegStoreDst(data, op->reg, DYN_8bit, DYN_DEST, false);
-        instRegImm(data,'+', DYN_DEST, DYN_8bit, 1);
-        storeLazyFlagsResult(data, DYN_DEST, DYN_8bit, false);
-        storeReg(data, op->reg, DYN_DEST, DYN_8bit, true);
-        storeLazyFlags(data, FLAGS_INC8);
+        data->loadRegStoreDst(op->reg, DYN_8bit, DYN_DEST, false);
+        data->instRegImm('+', DYN_DEST, DYN_8bit, 1);
+        data->storeLazyFlagsResult(DYN_DEST, DYN_8bit, false);
+        data->storeReg(op->reg, DYN_DEST, DYN_8bit, true);
+        data->storeLazyFlags(FLAGS_INC8);
         data->currentLazyFlags=FLAGS_INC8;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_inc8_mem8(DynamicData* data, DecodedOp* op) {    
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        calculateEaa(data,op, DYN_ADDRESS);
-        instMemImm(data,'+', DYN_ADDRESS, DYN_8bit, 1, true, DYN_DEST);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->instMemImm('+', DYN_ADDRESS, DYN_8bit, 1, true, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        calculateEaa(data,op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(data, DYN_8bit, DYN_ADDRESS, false, false);
-        instRegImm(data,'+', DYN_CALL_RESULT, DYN_8bit, 1);
-        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_8bit, false);
-        movToMemFromReg(data,DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
-        storeLazyFlags(data, FLAGS_INC8);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->storeLazyFlagsDstFromMem(DYN_8bit, DYN_ADDRESS, false, false);
+        data->instRegImm('+', DYN_CALL_RESULT, DYN_8bit, 1);
+        data->storeLazyFlagsResult(DYN_CALL_RESULT, DYN_8bit, false);
+        data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
+        data->storeLazyFlags(FLAGS_INC8);
         data->currentLazyFlags=FLAGS_INC8;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_inc16_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        instCPUImm(data,'+', CPU::offsetofReg16(op->reg), DYN_16bit, 1, DYN_DEST);
+        data->instCPUImm('+', CPU::offsetofReg16(op->reg), DYN_16bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        loadRegStoreDst(data, op->reg, DYN_16bit, DYN_DEST, false);
-        instRegImm(data,'+', DYN_DEST, DYN_16bit, 1);
-        storeLazyFlagsResult(data, DYN_DEST, DYN_16bit, false);
-        storeReg(data, op->reg, DYN_DEST, DYN_16bit, true);
-        storeLazyFlags(data, FLAGS_INC16);
+        data->loadRegStoreDst(op->reg, DYN_16bit, DYN_DEST, false);
+        data->instRegImm('+', DYN_DEST, DYN_16bit, 1);
+        data->storeLazyFlagsResult(DYN_DEST, DYN_16bit, false);
+        data->storeReg(op->reg, DYN_DEST, DYN_16bit, true);
+        data->storeLazyFlags(FLAGS_INC16);
         data->currentLazyFlags=FLAGS_INC16;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_inc16_mem16(DynamicData* data, DecodedOp* op) {    
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        calculateEaa(data,op, DYN_ADDRESS);
-        instMemImm(data,'+', DYN_ADDRESS, DYN_16bit, 1, true, DYN_DEST);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->instMemImm('+', DYN_ADDRESS, DYN_16bit, 1, true, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        calculateEaa(data,op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(data, DYN_16bit, DYN_ADDRESS, false, false);
-        instRegImm(data,'+', DYN_CALL_RESULT, DYN_16bit, 1);
-        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_16bit, false);
-        movToMemFromReg(data,DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
-        storeLazyFlags(data, FLAGS_INC16);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->storeLazyFlagsDstFromMem(DYN_16bit, DYN_ADDRESS, false, false);
+        data->instRegImm('+', DYN_CALL_RESULT, DYN_16bit, 1);
+        data->storeLazyFlagsResult(DYN_CALL_RESULT, DYN_16bit, false);
+        data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
+        data->storeLazyFlags(FLAGS_INC16);
         data->currentLazyFlags=FLAGS_INC16;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_inc32_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        instCPUImm(data,'+', CPU::offsetofReg32(op->reg), DYN_32bit, 1, DYN_DEST);
+        data->instCPUImm('+', CPU::offsetofReg32(op->reg), DYN_32bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        loadRegStoreDst(data, op->reg, DYN_32bit, DYN_DEST, false);
-        instRegImm(data,'+', DYN_DEST, DYN_32bit, 1);
-        storeLazyFlagsResult(data, DYN_DEST, DYN_32bit, false);
-        storeReg(data, op->reg, DYN_DEST, DYN_32bit, true);
-        storeLazyFlags(data, FLAGS_INC32);
+        data->loadRegStoreDst(op->reg, DYN_32bit, DYN_DEST, false);
+        data->instRegImm('+', DYN_DEST, DYN_32bit, 1);
+        data->storeLazyFlagsResult(DYN_DEST, DYN_32bit, false);
+        data->storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+        data->storeLazyFlags(FLAGS_INC32);
         data->currentLazyFlags=FLAGS_INC32;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_inc32_mem32(DynamicData* data, DecodedOp* op) {    
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        calculateEaa(data,op, DYN_ADDRESS);
-        instMemImm(data,'+', DYN_ADDRESS, DYN_32bit, 1, true, DYN_DEST);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->instMemImm('+', DYN_ADDRESS, DYN_32bit, 1, true, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        calculateEaa(data,op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(data, DYN_32bit, DYN_ADDRESS, false, false);
-        instRegImm(data,'+', DYN_CALL_RESULT, DYN_32bit, 1);
-        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_32bit, false);
-        movToMemFromReg(data,DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
-        storeLazyFlags(data, FLAGS_INC32);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->storeLazyFlagsDstFromMem(DYN_32bit, DYN_ADDRESS, false, false);
+        data->instRegImm('+', DYN_CALL_RESULT, DYN_32bit, 1);
+        data->storeLazyFlagsResult(DYN_CALL_RESULT, DYN_32bit, false);
+        data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
+        data->storeLazyFlags(FLAGS_INC32);
         data->currentLazyFlags=FLAGS_INC32;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_dec8_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        instCPUImm(data,'-', CPU::offsetofReg8(op->reg), DYN_8bit, 1, DYN_DEST);
+        data->instCPUImm('-', CPU::offsetofReg8(op->reg), DYN_8bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        loadRegStoreDst(data, op->reg, DYN_8bit, DYN_DEST, false);
-        instRegImm(data,'-', DYN_DEST, DYN_8bit, 1);
-        storeLazyFlagsResult(data, DYN_DEST, DYN_8bit, false);
-        storeReg(data, op->reg, DYN_DEST, DYN_8bit, true);
-        storeLazyFlags(data, FLAGS_DEC8);
+        data->loadRegStoreDst(op->reg, DYN_8bit, DYN_DEST, false);
+        data->instRegImm('-', DYN_DEST, DYN_8bit, 1);
+        data->storeLazyFlagsResult(DYN_DEST, DYN_8bit, false);
+        data->storeReg(op->reg, DYN_DEST, DYN_8bit, true);
+        data->storeLazyFlags(FLAGS_DEC8);
         data->currentLazyFlags=FLAGS_DEC8;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_dec8_mem8(DynamicData* data, DecodedOp* op) {    
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        calculateEaa(data,op, DYN_ADDRESS);
-        instMemImm(data,'-', DYN_ADDRESS, DYN_8bit, 1, true, DYN_DEST);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->instMemImm('-', DYN_ADDRESS, DYN_8bit, 1, true, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        calculateEaa(data,op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(data, DYN_8bit, DYN_ADDRESS, false, false);
-        instRegImm(data,'-', DYN_CALL_RESULT, DYN_8bit, 1);
-        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_8bit, false);
-        movToMemFromReg(data,DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
-        storeLazyFlags(data, FLAGS_DEC8);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->storeLazyFlagsDstFromMem(DYN_8bit, DYN_ADDRESS, false, false);
+        data->instRegImm('-', DYN_CALL_RESULT, DYN_8bit, 1);
+        data->storeLazyFlagsResult(DYN_CALL_RESULT, DYN_8bit, false);
+        data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
+        data->storeLazyFlags(FLAGS_DEC8);
         data->currentLazyFlags=FLAGS_DEC8;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_dec16_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        instCPUImm(data,'-', CPU::offsetofReg16(op->reg), DYN_16bit, 1, DYN_DEST);
+        data->instCPUImm('-', CPU::offsetofReg16(op->reg), DYN_16bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        loadRegStoreDst(data, op->reg, DYN_16bit, DYN_DEST, false);
-        instRegImm(data,'-', DYN_DEST, DYN_16bit, 1);
-        storeLazyFlagsResult(data, DYN_DEST, DYN_16bit, false);
-        storeReg(data, op->reg, DYN_DEST, DYN_16bit, true);
-        storeLazyFlags(data, FLAGS_DEC16);
+        data->loadRegStoreDst(op->reg, DYN_16bit, DYN_DEST, false);
+        data->instRegImm('-', DYN_DEST, DYN_16bit, 1);
+        data->storeLazyFlagsResult(DYN_DEST, DYN_16bit, false);
+        data->storeReg(op->reg, DYN_DEST, DYN_16bit, true);
+        data->storeLazyFlags(FLAGS_DEC16);
         data->currentLazyFlags=FLAGS_DEC16;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_dec16_mem16(DynamicData* data, DecodedOp* op) {    
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        calculateEaa(data,op, DYN_ADDRESS);
-        instMemImm(data,'-', DYN_ADDRESS, DYN_16bit, 1, true, DYN_DEST);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->instMemImm('-', DYN_ADDRESS, DYN_16bit, 1, true, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        calculateEaa(data,op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(data, DYN_16bit, DYN_ADDRESS, false, false);
-        instRegImm(data,'-', DYN_CALL_RESULT, DYN_16bit, 1);
-        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_16bit, false);
-        movToMemFromReg(data,DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
-        storeLazyFlags(data, FLAGS_DEC16);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->storeLazyFlagsDstFromMem(DYN_16bit, DYN_ADDRESS, false, false);
+        data->instRegImm('-', DYN_CALL_RESULT, DYN_16bit, 1);
+        data->storeLazyFlagsResult(DYN_CALL_RESULT, DYN_16bit, false);
+        data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
+        data->storeLazyFlags(FLAGS_DEC16);
         data->currentLazyFlags=FLAGS_DEC16;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_dec32_reg(DynamicData* data, DecodedOp* op) {
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        instCPUImm(data,'-', CPU::offsetofReg32(op->reg), DYN_32bit, 1, DYN_DEST);
+        data->instCPUImm('-', CPU::offsetofReg32(op->reg), DYN_32bit, 1, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        loadRegStoreDst(data, op->reg, DYN_32bit, DYN_DEST, false);
-        instRegImm(data,'-', DYN_DEST, DYN_32bit, 1);
-        storeLazyFlagsResult(data, DYN_DEST, DYN_32bit, false);
-        storeReg(data, op->reg, DYN_DEST, DYN_32bit, true);
-        storeLazyFlags(data, FLAGS_DEC32);
+        data->loadRegStoreDst(op->reg, DYN_32bit, DYN_DEST, false);
+        data->instRegImm('-', DYN_DEST, DYN_32bit, 1);
+        data->storeLazyFlagsResult(DYN_DEST, DYN_32bit, false);
+        data->storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+        data->storeLazyFlags(FLAGS_DEC32);
         data->currentLazyFlags=FLAGS_DEC32;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_dec32_mem32(DynamicData* data, DecodedOp* op) {    
     U32 neededFlags = op->next->getNeededFlags(ARITH_FLAGS);
     if (!neededFlags) {
-        calculateEaa(data,op, DYN_ADDRESS);
-        instMemImm(data,'-', DYN_ADDRESS, DYN_32bit, 1, true, DYN_DEST);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->instMemImm('-', DYN_ADDRESS, DYN_32bit, 1, true, DYN_DEST);
     } else {
         if (neededFlags & CF) {
             dynamic_getCF(data);
-            storeLazyFlagsOldCF(data, DYN_CALL_RESULT, true);
+            data->storeLazyFlagsOldCF(DYN_CALL_RESULT, true);
         }
-        calculateEaa(data,op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(data, DYN_32bit, DYN_ADDRESS, false, false);
-        instRegImm(data,'-', DYN_CALL_RESULT, DYN_32bit, 1);
-        storeLazyFlagsResult(data, DYN_CALL_RESULT, DYN_32bit, false);
-        movToMemFromReg(data,DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
-        storeLazyFlags(data, FLAGS_DEC32);
+        data->calculateEaa(op, DYN_ADDRESS);
+        data->storeLazyFlagsDstFromMem(DYN_32bit, DYN_ADDRESS, false, false);
+        data->instRegImm('-', DYN_CALL_RESULT, DYN_32bit, 1);
+        data->storeLazyFlagsResult(DYN_CALL_RESULT, DYN_32bit, false);
+        data->movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
+        data->storeLazyFlags(FLAGS_DEC32);
         data->currentLazyFlags=FLAGS_DEC32;
     }
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }

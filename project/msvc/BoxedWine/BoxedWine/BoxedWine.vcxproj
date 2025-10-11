@@ -815,7 +815,6 @@
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_incdec.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_jump.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_lock.h" />
-    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_memory.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_mmx.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_mov.h" />
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic_other.h" />
@@ -2765,6 +2764,7 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\fpu.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\common\lazyFlags.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\decoder.cpp" />
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\instructions.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalCPU.cpp" />
     <ClCompile Include="..\..\..\..\source\emulation\cpu\normal\normalPlatformMultiThreaded.cpp" />

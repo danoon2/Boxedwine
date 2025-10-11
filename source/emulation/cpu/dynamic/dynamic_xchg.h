@@ -18,77 +18,77 @@
 
 #include "../common/common_xchg.h"
 void dynamic_xchgr8r8(DynamicData* data, DecodedOp* op) {
-    loadReg(data, op->rm, DYN_DEST, DYN_8bit, true);
-    loadRegStoreReg(data, op->rm, op->reg, DYN_8bit, DYN_SRC, true);
-    storeReg(data, op->reg, DYN_DEST, DYN_8bit, true);
-    INCREMENT_EIP(data, op);
+    data->loadReg(op->rm, DYN_DEST, DYN_8bit, true);
+    data->loadRegStoreReg(op->rm, op->reg, DYN_8bit, DYN_SRC, true);
+    data->storeReg(op->reg, DYN_DEST, DYN_8bit, true);
+    data->incrementEip(op->len);
 }
 void dynamic_xchge8r8(DynamicData* data, DecodedOp* op) {
-    calculateEaa(data, op, DYN_ADDRESS);
-    movFromMem(data, DYN_8bit, DYN_ADDRESS, false);
-    loadReg(data, op->reg, DYN_DEST, DYN_8bit, true);
-    storeReg(data, op->reg, DYN_CALL_RESULT, DYN_8bit, true);
-    movToMemFromReg(data, DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true, DYN_SRC);    
-    INCREMENT_EIP(data, op);
+    data->calculateEaa(op, DYN_ADDRESS);
+    data->movFromMem(DYN_8bit, DYN_ADDRESS, false);
+    data->loadReg(op->reg, DYN_DEST, DYN_8bit, true);
+    data->storeReg(op->reg, DYN_CALL_RESULT, DYN_8bit, true);
+    data->movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true, DYN_SRC);    
+    data->incrementEip(op->len);
 }
 void dynamic_xchgr16r16(DynamicData* data, DecodedOp* op) {
-    loadReg(data, op->rm, DYN_DEST, DYN_16bit, true);
-    loadRegStoreReg(data, op->rm, op->reg, DYN_16bit, DYN_SRC, true);
-    storeReg(data, op->reg, DYN_DEST, DYN_16bit, true);
-    INCREMENT_EIP(data, op);
+    data->loadReg(op->rm, DYN_DEST, DYN_16bit, true);
+    data->loadRegStoreReg(op->rm, op->reg, DYN_16bit, DYN_SRC, true);
+    data->storeReg(op->reg, DYN_DEST, DYN_16bit, true);
+    data->incrementEip(op->len);
 }
 void dynamic_xchge16r16(DynamicData* data, DecodedOp* op) {
-    calculateEaa(data, op, DYN_ADDRESS);
-    movFromMem(data, DYN_16bit, DYN_ADDRESS, false);
-    loadReg(data, op->reg, DYN_DEST, DYN_16bit, true);
-    storeReg(data, op->reg, DYN_CALL_RESULT, DYN_16bit, true);
-    movToMemFromReg(data, DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true, DYN_SRC);    
-    INCREMENT_EIP(data, op);
+    data->calculateEaa(op, DYN_ADDRESS);
+    data->movFromMem(DYN_16bit, DYN_ADDRESS, false);
+    data->loadReg(op->reg, DYN_DEST, DYN_16bit, true);
+    data->storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
+    data->movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true, DYN_SRC);    
+    data->incrementEip(op->len);
 }
 void dynamic_xchgr32r32(DynamicData* data, DecodedOp* op) {
-    loadReg(data, op->rm, DYN_DEST, DYN_32bit, true);
-    loadRegStoreReg(data, op->rm, op->reg, DYN_32bit, DYN_SRC, true);
-    storeReg(data, op->reg, DYN_DEST, DYN_32bit, true);
-    INCREMENT_EIP(data, op);
+    data->loadReg(op->rm, DYN_DEST, DYN_32bit, true);
+    data->loadRegStoreReg(op->rm, op->reg, DYN_32bit, DYN_SRC, true);
+    data->storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+    data->incrementEip(op->len);
 }
 void dynamic_xchge32r32(DynamicData* data, DecodedOp* op) {
-    calculateEaa(data, op, DYN_ADDRESS);
-    movFromMem(data, DYN_32bit, DYN_ADDRESS, false);
-    loadReg(data, op->reg, DYN_DEST, DYN_32bit, true);
-    storeReg(data, op->reg, DYN_CALL_RESULT, DYN_32bit, true);
-    movToMemFromReg(data, DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true, DYN_SRC);
-    INCREMENT_EIP(data, op);
+    data->calculateEaa(op, DYN_ADDRESS);
+    data->movFromMem(DYN_32bit, DYN_ADDRESS, false);
+    data->loadReg(op->reg, DYN_DEST, DYN_32bit, true);
+    data->storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
+    data->movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true, DYN_SRC);
+    data->incrementEip(op->len);
 }
 void dynamic_cmpxchgr8r8(DynamicData* data, DecodedOp* op) {
-    callHostFunction(data, (void*)common_cmpxchgr8r8, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
+    data->callHostFunction((void*)common_cmpxchgr8r8, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP8;
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_cmpxchge8r8(DynamicData* data, DecodedOp* op) {
-    calculateEaa(data, op, DYN_ADDRESS);
-    callHostFunction(data, (void*)common_cmpxchge8r8, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    data->calculateEaa(op, DYN_ADDRESS);
+    data->callHostFunction((void*)common_cmpxchge8r8, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP8;
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_cmpxchgr16r16(DynamicData* data, DecodedOp* op) {
-    callHostFunction(data, (void*)common_cmpxchgr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
+    data->callHostFunction((void*)common_cmpxchgr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP16;
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_cmpxchge16r16(DynamicData* data, DecodedOp* op) {
-    calculateEaa(data, op, DYN_ADDRESS);
-    callHostFunction(data, (void*)common_cmpxchge16r16, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    data->calculateEaa(op, DYN_ADDRESS);
+    data->callHostFunction((void*)common_cmpxchge16r16, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP16;
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_cmpxchgr32r32(DynamicData* data, DecodedOp* op) {
-    callHostFunction(data, (void*)common_cmpxchgr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
+    data->callHostFunction((void*)common_cmpxchgr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP32;
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }
 void dynamic_cmpxchge32r32(DynamicData* data, DecodedOp* op) {
-    calculateEaa(data, op, DYN_ADDRESS);
-    callHostFunction(data, (void*)common_cmpxchge32r32, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    data->calculateEaa(op, DYN_ADDRESS);
+    data->callHostFunction((void*)common_cmpxchge32r32, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     data->currentLazyFlags=FLAGS_CMP32;
-    INCREMENT_EIP(data, op);
+    data->incrementEip(op->len);
 }

@@ -19,33 +19,33 @@
 void dynamic_jumpIfRegSet(DynamicData* data, DecodedOp* op, DynReg reg, bool doneWithReg) {
     // data->currentEip > data->lastOpEip this will just if we don't jump there is a next instruction
     if (data->canJumpInBlock(op)) {
-        INCREMENT_EIP(data, op->len + op->imm);
-        JumpIf(data, reg, true, data->currentEip + op->len + op->imm);
-        INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
+        data->incrementEip(op->len + op->imm);
+        data->JumpIf(reg, true, data->currentEip + op->len + op->imm);
+        data->incrementEip((U32)(-(S32)(op->imm)));
     } else {
-        If(data, reg, doneWithReg);
-        INCREMENT_EIP(data, op->imm + op->len);
-        blockNext1(data, op);
-        StartElse(data);
-        INCREMENT_EIP(data, op->len);
-        blockNext2(data, op);
-        EndIf(data);
+        data->If(reg, doneWithReg);
+        data->incrementEip(op->imm + op->len);
+        data->blockNext1(op);
+        data->StartElse();
+        data->incrementEip(op->len);
+        data->blockNext2(op);
+        data->EndIf();
     }
 }
 
 void dynamic_jumpIfRegNotSet(DynamicData* data, DecodedOp* op, DynReg reg, bool doneWithReg) {
     if (data->canJumpInBlock(op)) {
-        INCREMENT_EIP(data, op->len + op->imm);
-        JumpIfNot(data, reg, true, data->currentEip + op->len + op->imm);
-        INCREMENT_EIP(data, (U32)(-(S32)(op->imm)));
+        data->incrementEip(op->len + op->imm);
+        data->JumpIfNot(reg, true, data->currentEip + op->len + op->imm);
+        data->incrementEip((U32)(-(S32)(op->imm)));
     } else {
-        IfNot(data, reg, doneWithReg);
-        INCREMENT_EIP(data, op->imm + op->len);
-        blockNext1(data, op);
-        StartElse(data);
-        INCREMENT_EIP(data, op->len);
-        blockNext2(data, op);
-        EndIf(data);
+        data->IfNot(reg, doneWithReg);
+        data->incrementEip(op->imm + op->len);
+        data->blockNext1(op);
+        data->StartElse();
+        data->incrementEip(op->len);
+        data->blockNext2(op);
+        data->EndIf();
     }
 }
 
