@@ -19,183 +19,143 @@
 #ifndef __DYNAMIC_H__
 #define __DYNAMIC_H__
 
-#include "../common/cpu.h"
+#include "dynamicData.h"
 
-enum DynReg {
-    DYN_CALL_RESULT = 0,
-    DYN_SRC = 1,
-    DYN_DEST = 2,
-    DYN_ADDRESS = 3,
-    DYN_NOT_SET = 0xff
-};
-
-enum DynWidth {
-    DYN_8bit = 0,
-    DYN_16bit,
-    DYN_32bit,
-};
-
-enum DynCondition {
-    DYN_EQUALS_ZERO,
-    DYN_NOT_EQUALS_ZERO
-};
-
-enum DynConditionEvaluate {
-    DYN_EQUALS,
-    DYN_NOT_EQUALS,
-    DYN_LESS_THAN_UNSIGNED,
-    DYN_LESS_THAN_EQUAL_UNSIGNED,
-    DYN_GREATER_THAN_EQUAL_UNSIGNED,
-    DYN_LESS_THAN_SIGNED,
-    DYN_LESS_THAN_EQUAL_SIGNED,
-};
-
-enum DynCallParamType {
-    DYN_PARAM_REG_8,
-    DYN_PARAM_REG_16,
-    DYN_PARAM_REG_32,
-    DYN_PARAM_CONST_8,
-    DYN_PARAM_CONST_16,
-    DYN_PARAM_CONST_32,
-    DYN_PARAM_CONST_PTR,
-    DYN_PARAM_CPU_ADDRESS_8,
-    DYN_PARAM_CPU_ADDRESS_16,
-    DYN_PARAM_CPU_ADDRESS_32,
-    DYN_PARAM_CPU,
-};
-
-enum DynConditional {
-    O,
-    NO,
-    B,
-    NB,
-    Z,
-    NZ,
-    BE,
-    NBE,
-    S,
-    NS,
-    P,
-    NP,
-    L,
-    NL,
-    LE,
-    NLE
-};
-
-#define DYN_PTR_SIZE U32
-
-class DynamicData {
+// Implementation of JIT that is host instruction independent
+class DynamicCodeGen : public DynamicData {
 public:
     using OpFunction = void(DynamicData::*)(DecodedOp* op);
-    //typedef void (DynamicData::* OpFunction)(DecodedOp* op);
+    using InstRegReg = void(DynamicData::*)(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
+    using InstMemReg = void(DynamicData::*)(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
+    using InstCPUReg = void(DynamicData::*)(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
+    using InstCPUImm = void(DynamicData::*)(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg);
+    using InstRegImm = void(DynamicData::*)(DynReg reg, DynWidth regWidth, U32 imm);
+    using InstMemImm = void(DynamicData::*)(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
 
-    DynamicData(CPU* cpu) : cpu(cpu) {}
-    CPU* cpu = nullptr;
+    DynamicCodeGen(CPU* cpu) : DynamicData(cpu) {}
     DecodedOp* firstOp = nullptr;
 
-    const LazyFlags* currentLazyFlags = nullptr;;
-    BHashTable<U32, U32> eipToBufferPos;
-    U32 currentEip = 0;
+    BHashTable<U32, U32> eipToBufferPos;    
     U32 startingEip = 0;
     U32 lastOpEip = 0;
     U32 emulatedLen = 0;
     U32 blockOpCount = 0;
     
     // per instruction, not per block.  
-    bool regUsed[4];
-    bool canJumpInBlock(DecodedOp* op) {
+    bool canJumpInBlock(DecodedOp* op) override {
         return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
     }
 
-    virtual void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
-    virtual void loadRegStoreSrc(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
-    virtual void loadRegStoreDst(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
-    virtual void loadRegStoreEip(U8 reg, DynReg tmpReg, bool doneWithTmpReg);
-    virtual void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg);
-    virtual DynReg loadReg(U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp = false);
-    virtual void loadSegAddress(U8 seg, DynReg reg);
-    virtual void loadSegValue(U8 seg, DynReg reg);
-    virtual void loadCPUFlags(DynReg reg);
-    virtual void loadLazyFlagsResult(DynReg reg, DynWidth width);
-    virtual void loadLazyFlagsSrc(DynReg reg, DynWidth width);
-    virtual void loadLazyFlagsOldCF(DynReg reg);
-    virtual void loadEip(DynReg reg);
-    virtual void loadStackMask(DynReg reg);
-    virtual void loadStackNotMask(DynReg reg);
-    virtual void loadLazyFlags(DynReg reg);
-    virtual void loadLazyFlagsDst(DynReg reg, DynWidth width);
-    virtual void storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg);
-    virtual void storeLazyFlagsResult(DynReg srcReg, DynWidth width, bool doneWithSrcReg);
-    virtual void storeLazyFlagsDst(DynReg srcReg, DynWidth width, bool doneWithSrcReg);
-    virtual void storeLazyFlagsOldCF(DynReg srcReg, bool doneWithSrcReg);
-    virtual void storeEip(DynReg srcReg, bool doneWithSrcReg);    
-    virtual void storeReg(U8 reg, DynWidth dstWidth, U32 imm);
-    virtual void storeLazyFlagsSrc(DynWidth width, U32 imm);
-    virtual void storeLazyFlags(const LazyFlags* lazyFlags);    
+    void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) override;
+    void loadRegStoreSrc(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) override;
+    void loadRegStoreDst(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) override;
+    void loadRegStoreEip(U8 reg, DynReg tmpReg, bool doneWithTmpReg) override;
+    void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg) override;
+    DynReg loadReg(U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp = false) override;
+    void loadSegAddress(U8 seg, DynReg reg)  override;
+    void loadSegValue(U8 seg, DynReg reg)  override;
+    void loadCPUFlags(DynReg reg)  override;
+    void loadLazyFlagsResult(DynReg reg, DynWidth width)  override;
+    void loadLazyFlagsSrc(DynReg reg, DynWidth width)  override;
+    void loadLazyFlagsOldCF(DynReg reg)  override;
+    void loadEip(DynReg reg)  override;
+    void loadStackMask(DynReg reg)  override;
+    void loadStackNotMask(DynReg reg)  override;
+    void loadLazyFlags(DynReg reg)  override;
+    void loadLazyFlagsDst(DynReg reg, DynWidth width)  override;
+    void storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg)  override;
+    void storeLazyFlagsResult(DynReg srcReg, DynWidth width, bool doneWithSrcReg)  override;
+    void storeLazyFlagsDst(DynReg srcReg, DynWidth width, bool doneWithSrcReg)  override;
+    void storeLazyFlagsOldCF(DynReg srcReg, bool doneWithSrcReg)  override;
+    void storeEip(DynReg srcReg, bool doneWithSrcReg)  override;    
+    void storeReg(U8 reg, DynWidth dstWidth, U32 imm)  override;
+    void storeLazyFlagsSrc(DynWidth width, U32 imm)  override;
+    void storeLazyFlags(const LazyFlags* lazyFlags)  override;    
 
-    virtual void storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
-    virtual void storeLazyFlagsDstFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
-    virtual void storeLazyFlagsSrcFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
+    void storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult)  override;
+    void storeLazyFlagsDstFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult)  override;
+    void storeLazyFlagsSrcFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult)  override;
+        
+    void xorCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
+    void andCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
+    void orCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
     
-    virtual void instCPUReg(char inst, U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
-    virtual void instCPUImm(char inst, U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg);
-    virtual void instCPUFlagsImm(char inst, U32 imm, DynReg tmpReg);
-    virtual void instMemImm(char inst, DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
-    virtual void instMemReg(char inst, DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
+    void negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg)  override;
+    void notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg)  override;
+    void negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg)  override;
+    void notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg)  override;        
+
+    void addMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
+    void orMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
+    void subMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
+    void andMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;  
+    void xorMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
+    void shrMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
+    void sarMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
+    void shlMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
+  
+    void addCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+    void orCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+    void subCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+    void andCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+    void xorCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+    void shrCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+    void sarCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+    void shlCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) override;
+  
+    void addCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+    void orCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+    void subCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+    void andCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+    void xorCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+    void shrCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+    void sarCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+    void shlCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) override;
+  
+    void addMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void orMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void subMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void andMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void xorMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void shrMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void sarMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void shlMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+
+    void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg, DynReg tmpReg) override;
+    void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg, DynReg tmpReg) override;
+    void setCPUReg(U8 regIndex, DynWidth regWidth, DynConditional condition) override;
+    void setMem(DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg, DynReg tmpReg) override;
+    void blockCall(DecodedOp* op) override;
+    void blockDone(bool returnEarly) override;
+    void blockDoneCall() override;
+    void incrementEip(U32 inc) override;
+
+    void blockNext1(DecodedOp* op) override;
+    void blockNext2(DecodedOp* op) override;
+    void blockDoneJump() override;
+    void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) override;
     
-    virtual void negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg);
-    virtual void notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg);
-    virtual void negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg);
-    virtual void notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg);
-    virtual void negReg(DynReg reg, DynWidth regWidth) = 0;
-    virtual void notReg(DynReg reg, DynWidth regWidth) = 0;
-
-    virtual void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg, DynReg tmpReg);
-    virtual void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
-    virtual void setCPU(U32 offset, DynWidth regWidth, DynConditional condition);
-    virtual void setMem(DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg, DynReg tmpReg);
-    virtual void blockCall(DecodedOp* op);
-    virtual void blockDone(bool returnEarly);
-    virtual void blockDoneCall();
-    virtual void incrementEip(U32 inc);
-
-    virtual void blockNext1(DecodedOp* op);
-    virtual void blockNext2(DecodedOp* op);
-    virtual void blockDoneJump();
-    virtual void blockExit() = 0;
-    virtual void setConditional(DynConditional condition) = 0;
-    virtual void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) = 0;
-    virtual void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;    
-    virtual void callHostFunction(void* address, bool hasReturn = false, U32 argCount = 0, U32 arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, U32 arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, U32 arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, U32 arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, U32 arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true) = 0;
-    virtual void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) = 0;
-    virtual void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) = 0;
-    virtual void movToReg(DynReg reg, DynWidth width, U32 imm) = 0;
-    virtual void calculateEaa(DecodedOp* op, DynReg reg) = 0;
-    virtual void pushValue(U32 arg, DynCallParamType argType) = 0;
-    virtual void byteSwapReg32(DynReg reg) = 0;
-    virtual void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg);
-    virtual void zeroExtendReg16To32(DynReg dest, DynReg src) = 0;    
-    virtual void JumpIf(DynReg reg, bool doneWithReg, U32 address) = 0;
-    virtual void JumpIfNot(DynReg reg, bool doneWithReg, U32 address) = 0;
-    virtual void JumpInBlock(U32 address) = 0;
-    virtual void IfNot(DynReg reg, bool doneWithReg) = 0;
-    virtual void If(DynReg reg, bool doneWithReg) = 0;
-    virtual void IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) = 0;
-    virtual void StartElse() = 0;
-    virtual void EndIf() = 0;
-    
-    virtual void doJIT(U32 address, DecodedOp* op);
-
-    // :TODO: make protected
-    U32 cpuOffset(U32 r, DynWidth width);
+    void doJIT(U32 address, DecodedOp* op);
+    void onTestEnd(DecodedOp* op) override;
 protected:
+
+    virtual void instMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg, InstRegReg pfnInstRegReg);
+    virtual void instCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg, InstRegReg pfnInstRegReg);
+    virtual void instCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg, InstRegImm pfnInstRegImm);
+    virtual void instMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg, InstRegImm pfnInstRegImm);
+
+    // don't use private methods in the dynamic op code, maybe in the future I can enforce this with an interface
     virtual void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
     virtual void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) = 0;
     virtual void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) = 0;
     virtual void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) = 0;
-    virtual void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);    
+    virtual void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
+    void arithMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstMemReg pfnInstMemReg);
+    void arithRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstCPUReg pfnInstCpuReg);
+    void arithRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstCPUReg pfnInstCpuReg);
+    void arithRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstRegImm pfnInstRegImm, InstCPUReg pfnInstCpuReg, InstCPUImm pfnInstCpuImm);
+    void arithMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstRegImm pfnInstRegImm, InstMemReg pfnInstMemReg, InstMemImm pfnInstMemImm);
+
     virtual void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg, DynReg tmp);
     virtual U32 getBufferSize() = 0;
     virtual U8* getBuffer() = 0;
@@ -206,6 +166,7 @@ protected:
     U32 cpuOffsetResult(DynWidth width);
     U32 cpuOffsetDst(DynWidth width);
     U32 cpuOffsetSrc(DynWidth width);
+    U32 cpuOffset(U32 r, DynWidth width);
 
     bool isParamTypeReg(DynCallParamType paramType);
     bool calculateLongestBlock(DecodedOp* op);
@@ -227,53 +188,87 @@ protected:
     virtual void preCommitJIT() {}
     virtual U8* createDynamicExecutableMemory();
     virtual void patch(U8* begin) {}
+    
+    void dynamic_andMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMR(op, width, cf, store, flags, &DynamicData::andRegReg, &DynamicData::andMemReg);
+    }
+    void dynamic_subMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMR(op, width, cf, store, flags, &DynamicData::subRegReg, &DynamicData::subMemReg);
+    }
+    void dynamic_addMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMR(op, width, cf, store, flags, &DynamicData::addRegReg, &DynamicData::addMemReg);
+    }
+    void dynamic_orMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMR(op, width, cf, store, flags, &DynamicData::orRegReg, &DynamicData::orMemReg);
+    }
+    void dynamic_xorMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMR(op, width, cf, store, flags, &DynamicData::xorRegReg, &DynamicData::xorMemReg);
+    }    
+    void dynamic_andRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRR(op, width, cf, store, flags, &DynamicData::andRegReg, &DynamicData::andCPUReg);
+    }
+    void dynamic_subRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRR(op, width, cf, store, flags, &DynamicData::subRegReg, &DynamicData::subCPUReg);
+    }
+    void dynamic_addRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRR(op, width, cf, store, flags, &DynamicData::addRegReg, &DynamicData::addCPUReg);
+    }
+    void dynamic_orRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRR(op, width, cf, store, flags, &DynamicData::orRegReg, &DynamicData::orCPUReg);
+    }
+    void dynamic_xorRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRR(op, width, cf, store, flags, &DynamicData::xorRegReg, &DynamicData::xorCPUReg);
+    }    
+    void dynamic_andRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRM(op, width, cf, store, flags, &DynamicData::andRegReg, &DynamicData::andCPUReg);
+    }
+    void dynamic_subRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRM(op, width, cf, store, flags, &DynamicData::subRegReg, &DynamicData::subCPUReg);
+    }
+    void dynamic_addRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRM(op, width, cf, store, flags, &DynamicData::addRegReg, &DynamicData::addCPUReg);
+    }
+    void dynamic_orRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRM(op, width, cf, store, flags, &DynamicData::orRegReg, &DynamicData::orCPUReg);
+    }
+    void dynamic_xorRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRM(op, width, cf, store, flags, &DynamicData::xorRegReg, &DynamicData::xorCPUReg);
+    }    
+    void dynamic_andRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRI(op, width, cf, store, flags, &DynamicData::andRegReg, &DynamicData::andRegImm, &DynamicData::andCPUReg, &DynamicData::andCPUImm);
+    }
+    void dynamic_subRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRI(op, width, cf, store, flags, &DynamicData::subRegReg, &DynamicData::subRegImm, &DynamicData::subCPUReg, &DynamicData::subCPUImm);
+    }
+    void dynamic_addRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRI(op, width, cf, store, flags, &DynamicData::addRegReg, &DynamicData::addRegImm, &DynamicData::addCPUReg, &DynamicData::addCPUImm);
+    }
+    void dynamic_orRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRI(op, width, cf, store, flags, &DynamicData::orRegReg, &DynamicData::orRegImm, &DynamicData::orCPUReg, &DynamicData::orCPUImm);
+    }
+    void dynamic_xorRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithRI(op, width, cf, store, flags, &DynamicData::xorRegReg, &DynamicData::xorRegImm, &DynamicData::xorCPUReg, &DynamicData::xorCPUImm);
+    }    
+    void dynamic_andMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMI(op, width, cf, store, flags, &DynamicData::andRegReg, &DynamicData::andRegImm, &DynamicData::andMemReg, &DynamicData::andMemImm);
+    }
+    void dynamic_subMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMI(op, width, cf, store, flags, &DynamicData::subRegReg, &DynamicData::subRegImm, &DynamicData::subMemReg, &DynamicData::subMemImm);
+    }
+    void dynamic_addMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMI(op, width, cf, store, flags, &DynamicData::addRegReg, &DynamicData::addRegImm, &DynamicData::addMemReg, &DynamicData::addMemImm);
+    }
+    void dynamic_orMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMI(op, width, cf, store, flags, &DynamicData::orRegReg, &DynamicData::orRegImm, &DynamicData::orMemReg, &DynamicData::orMemImm);
+    }
+    void dynamic_xorMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
+        arithMI(op, width, cf, store, flags, &DynamicData::xorRegReg, &DynamicData::xorRegImm, &DynamicData::xorMemReg, &DynamicData::xorMemImm);
+    }    
 
 public:
-    void dynamic_arithRR(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
-    void dynamic_arithRM(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
-    void dynamic_arithRI(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
-    void dynamic_arithMR(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
-    void dynamic_arithMI(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags);
-    void genCF(const LazyFlags* flags, DynReg reg);
-    void genOF(const LazyFlags* flags, DynReg reg);
-    void genNZ(const LazyFlags* flags, DynReg reg);
-    void genZ(const LazyFlags* flags, DynReg reg);
-    void genS(const LazyFlags* flags, DynReg reg);
-    bool getFlagInReg(DynConditional condition, DynReg reg);
-    void getCondition(DynConditional condition, DynReg reg);
-    void setConditionInReg(DynConditional condition, DynReg reg);
-    void dynamic_pushReg32(DynReg reg, bool doneWithReg);
-    void dynamic_pop32();
-    void dynamic_fillFlags();
-    void dynamic_getCF();
-    void dynamic_jumpIfRegSet(DecodedOp* op, DynReg reg, bool doneWithReg);
-    void dynamic_jumpIfRegNotSet(DecodedOp* op, DynReg reg, bool doneWithReg);
-    void calculateMask16InDest(DecodedOp* op);
-    void calculateMask32InDest(DecodedOp* op);
-    void calculateEffectiveEaa16(DecodedOp* op);
-    void calculateEffectiveEaa32(DecodedOp* op);
-
-    void dynamic_sidt(DecodedOp* op);
-    void dynamic_callback(DecodedOp* op);
-    void dynamic_invalid_op(DecodedOp* op);
-    void dynamic_onTestEnd(DecodedOp* op);
-
-#define INIT_CPU(e, f) void dynamic_##f(DecodedOp* op);
-#include "../common/cpu_init.h"
-#include "../common/cpu_init_mmx.h"
-#include "../common/cpu_init_sse.h"
-#include "../common/cpu_init_sse2.h"
-#include "../common/cpu_init_fpu.h"
-#ifdef BOXEDWINE_MULTI_THREADED
-#define INIT_CPU_LOCK(e, f) void dynamic_##f##_lock(DecodedOp* op);
-#include "../common/cpu_init_lock.h"
-#undef INIT_CPU_LOCK
-#endif
-#undef INIT_CPU
+    
 };
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
-
-typedef void (*pfnDynamicOp)(DynamicData* data, DecodedOp* op);
 
 #endif

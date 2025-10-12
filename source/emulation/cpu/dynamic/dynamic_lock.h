@@ -414,32 +414,32 @@ void DynamicData::dynamic_btse16_lock(DecodedOp* op) {
 void DynamicData::calculateEffectiveEaa32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     loadReg(op->reg, DYN_SRC, DYN_32bit, true);
-    instRegImm(')', DYN_SRC, DYN_32bit, 5);
-    instRegImm('<', DYN_SRC, DYN_32bit, 2);
-    instRegReg('+', DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
+    sarRegImm(DYN_SRC, DYN_32bit, 5);
+    shlRegImm(DYN_SRC, DYN_32bit, 2);
+    addRegReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
 }
 
 void DynamicData::calculateEffectiveEaa16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     loadReg(op->reg, DYN_SRC, DYN_16bit, true);
-    instRegImm(')', DYN_SRC, DYN_16bit, 4);
-    instRegImm('<', DYN_SRC, DYN_16bit, 1);
+    sarRegImm(DYN_SRC, DYN_16bit, 4);
+    shlRegImm(DYN_SRC, DYN_16bit, 1);
     zeroExtendReg16To32(DYN_SRC, DYN_SRC);
-    instRegReg('+', DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
+    addRegReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
 }
 
 void DynamicData::calculateMask32InDest(DecodedOp* op) {
     loadReg(op->reg, DYN_SRC, DYN_32bit, true);
-    instRegImm('&', DYN_SRC, DYN_32bit, 31);
+    andRegImm(DYN_SRC, DYN_32bit, 31);
     movToReg(DYN_DEST, DYN_32bit, 1);
-    instRegReg('<', DYN_DEST, DYN_SRC, DYN_32bit, true);
+    shlRegReg(DYN_DEST, DYN_SRC, DYN_32bit, true);
 }
 
 void DynamicData::calculateMask16InDest(DecodedOp* op) {
     loadReg(op->reg, DYN_SRC, DYN_16bit);
-    instRegImm('&', DYN_SRC, DYN_16bit, 15);
+    andRegImm(DYN_SRC, DYN_16bit, 15);
     movToReg(DYN_DEST, DYN_16bit, 1);
-    instRegReg('<', DYN_DEST, DYN_SRC, DYN_16bit, true);
+    shlRegReg(DYN_DEST, DYN_SRC, DYN_16bit, true);
 }
 
 void DynamicData::dynamic_btse32r32_lock(DecodedOp* op) {

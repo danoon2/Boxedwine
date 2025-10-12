@@ -120,42 +120,42 @@ void DynamicData::dynamic_movs16r16(DecodedOp* op) {
 }
 void DynamicData::dynamic_movAlOb(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
-    instRegImm('+', DYN_ADDRESS, DYN_32bit, op->data.disp);
+    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
     movFromMem(DYN_8bit, DYN_ADDRESS, true);
     storeReg(0, DYN_CALL_RESULT, DYN_8bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movAxOw(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
-    instRegImm('+', DYN_ADDRESS, DYN_32bit, op->data.disp);
+    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
     movFromMem(DYN_16bit, DYN_ADDRESS, true);
     storeReg(0, DYN_CALL_RESULT, DYN_16bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movEaxOd(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
-    instRegImm('+', DYN_ADDRESS, DYN_32bit, op->data.disp);
+    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
     movFromMem(DYN_32bit, DYN_ADDRESS, true);
     storeReg(0, DYN_CALL_RESULT, DYN_32bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movObAl(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
-    instRegImm('+', DYN_ADDRESS, DYN_32bit, op->data.disp);
+    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
     DynReg reg = loadReg(0, DYN_SRC, DYN_8bit);
     movToMemFromReg(DYN_ADDRESS, reg, DYN_8bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movOwAx(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
-    instRegImm('+', DYN_ADDRESS, DYN_32bit, op->data.disp);
+    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
     DynReg reg = loadReg(0, DYN_SRC, DYN_16bit);
     movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movOdEax(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
-    instRegImm('+', DYN_ADDRESS, DYN_32bit, op->data.disp);
+    addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
     DynReg reg = loadReg(0, DYN_SRC, DYN_32bit);
     movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
     incrementEip(op->len);

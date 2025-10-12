@@ -17,7 +17,7 @@
  */
 
 void DynamicData::dynamic_setO_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, O);
+    setCPUReg(op->reg, DYN_8bit, O);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setO_mem(DecodedOp* op) {
@@ -26,7 +26,7 @@ void DynamicData::dynamic_setO_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNO_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NO);
+    setCPUReg(op->reg, DYN_8bit, NO);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNO_mem(DecodedOp* op) {
@@ -35,7 +35,7 @@ void DynamicData::dynamic_setNO_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setB_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, B);
+    setCPUReg(op->reg, DYN_8bit, B);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setB_mem(DecodedOp* op) {
@@ -44,7 +44,7 @@ void DynamicData::dynamic_setB_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNB_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NB);
+    setCPUReg(op->reg, DYN_8bit, NB);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNB_mem(DecodedOp* op) {
@@ -53,7 +53,7 @@ void DynamicData::dynamic_setNB_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setZ_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, Z);
+    setCPUReg(op->reg, DYN_8bit, Z);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setZ_mem(DecodedOp* op) {
@@ -62,7 +62,7 @@ void DynamicData::dynamic_setZ_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNZ_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NZ);
+    setCPUReg(op->reg, DYN_8bit, NZ);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNZ_mem(DecodedOp* op) {
@@ -71,7 +71,7 @@ void DynamicData::dynamic_setNZ_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setBE_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, BE);
+    setCPUReg(op->reg, DYN_8bit, BE);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setBE_mem(DecodedOp* op) {
@@ -80,7 +80,7 @@ void DynamicData::dynamic_setBE_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNBE_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NBE);
+    setCPUReg(op->reg, DYN_8bit, NBE);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNBE_mem(DecodedOp* op) {
@@ -89,7 +89,7 @@ void DynamicData::dynamic_setNBE_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setS_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, S);
+    setCPUReg(op->reg, DYN_8bit, S);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setS_mem(DecodedOp* op) {
@@ -98,7 +98,7 @@ void DynamicData::dynamic_setS_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNS_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NS);
+    setCPUReg(op->reg, DYN_8bit, NS);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNS_mem(DecodedOp* op) {
@@ -107,7 +107,7 @@ void DynamicData::dynamic_setNS_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setP_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, P);
+    setCPUReg(op->reg, DYN_8bit, P);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setP_mem(DecodedOp* op) {
@@ -116,7 +116,7 @@ void DynamicData::dynamic_setP_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNP_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NP);
+    setCPUReg(op->reg, DYN_8bit, NP);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNP_mem(DecodedOp* op) {
@@ -125,7 +125,7 @@ void DynamicData::dynamic_setNP_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setL_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, L);
+    setCPUReg(op->reg, DYN_8bit, L);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setL_mem(DecodedOp* op) {
@@ -134,7 +134,7 @@ void DynamicData::dynamic_setL_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNL_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NL);
+    setCPUReg(op->reg, DYN_8bit, NL);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNL_mem(DecodedOp* op) {
@@ -143,7 +143,7 @@ void DynamicData::dynamic_setNL_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setLE_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, LE);
+    setCPUReg(op->reg, DYN_8bit, LE);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setLE_mem(DecodedOp* op) {
@@ -152,7 +152,7 @@ void DynamicData::dynamic_setLE_mem(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNLE_reg(DecodedOp* op) {
-    setCPU(CPU::offsetofReg8(op->reg), DYN_8bit, NLE);
+    setCPUReg(op->reg, DYN_8bit, NLE);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_setNLE_mem(DecodedOp* op) {

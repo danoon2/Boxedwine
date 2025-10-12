@@ -51,10 +51,10 @@ void DynamicData::dynamic_popEw_mem(DecodedOp* op) {
 void DynamicData::dynamic_pushEd_reg(DecodedOp* op) {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
         loadReg(4, DYN_ADDRESS, DYN_32bit, true);
-        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+        subRegImm(DYN_ADDRESS, DYN_32bit, 4);
         DynReg reg = loadReg(op->reg, DYN_SRC, DYN_32bit);
         movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, true, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
+        subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
     } else {
         callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
     }
@@ -63,7 +63,7 @@ void DynamicData::dynamic_pushEd_reg(DecodedOp* op) {
 void DynamicData::dynamic_popEd_reg(DecodedOp* op) {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
         loadReg(4, DYN_ADDRESS, DYN_32bit, true);
-        instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST); // increment before assign, in case esp=pop32()
+        addCPUImm(4, DYN_32bit, 4, DYN_DEST); // increment before assign, in case esp=pop32()
         storeRegFromMem(op->reg, DYN_32bit, DYN_ADDRESS, true, true);
     } else {
         callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
@@ -76,9 +76,9 @@ void DynamicData::dynamic_pushEd_mem(DecodedOp* op) {
     movFromMem(DYN_32bit, DYN_ADDRESS, true);
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
         loadReg(4, DYN_ADDRESS, DYN_32bit, true);
-        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+        subRegImm(DYN_ADDRESS, DYN_32bit, 4);
         movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
+        subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
     } else {
         callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
     }
@@ -92,14 +92,14 @@ void DynamicData::dynamic_popEd_mem(DecodedOp* op) {
         // before the write happens in case the write throws an exception, iexplorer.exe will exercise 
         // that esp needs to be increated before calculateEaa
         if (op->rm == 4 || op->sibIndex == 4) {
-            instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST);
+            addCPUImm(4, DYN_32bit, 4, DYN_DEST);
             calculateEaa(op, DYN_ADDRESS);
-            instCPUImm('-', 4, DYN_32bit, 4, DYN_DEST);
+            subCPUImm(4, DYN_32bit, 4, DYN_DEST);
         } else {
             calculateEaa(op, DYN_ADDRESS);
         }
         movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
-        instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST);
+        addCPUImm(4, DYN_32bit, 4, DYN_DEST);
     } else {
         // save current esp
         loadReg(4, DYN_SRC, DYN_32bit, true);
@@ -130,11 +130,11 @@ void DynamicData::dynamic_popSeg16(DecodedOp* op) {
     loadStackMask(DYN_DEST);
     loadReg(4, DYN_SRC, DYN_32bit, true);
     movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
-    instRegImm('+', DYN_SRC, DYN_32bit, 2);
-    instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+    addRegImm(DYN_SRC, DYN_32bit, 2);
+    andRegReg(DYN_SRC, DYN_DEST, DYN_32bit, true);
     loadStackNotMask(DYN_DEST);
-    instRegReg('&', DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
-    instRegReg('|', DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
+    andRegReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
+    orRegReg(DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
     storeReg(4, DYN_SRC, DYN_32bit, true);
     incrementEip(op->len);
 }
@@ -151,11 +151,11 @@ void DynamicData::dynamic_popSeg32(DecodedOp* op) {
     loadStackMask(DYN_DEST);
     loadReg(4, DYN_SRC, DYN_32bit, true);
     movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_SRC, DYN_32bit, false);
-    instRegImm('+', DYN_SRC, DYN_32bit, 4);
-    instRegReg('&', DYN_SRC, DYN_DEST, DYN_32bit, true);
+    addRegImm(DYN_SRC, DYN_32bit, 4);
+    andRegReg(DYN_SRC, DYN_DEST, DYN_32bit, true);
     loadStackNotMask(DYN_DEST);
-    instRegReg('&', DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
-    instRegReg('|', DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
+    andRegReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true);
+    orRegReg(DYN_SRC, DYN_ADDRESS, DYN_32bit, true);
     storeReg(4, DYN_SRC, DYN_32bit, true);
     incrementEip(op->len);
 }
@@ -182,9 +182,9 @@ void DynamicData::dynamic_push16imm(DecodedOp* op) {
 void DynamicData::dynamic_push32imm(DecodedOp* op) {
      if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
          loadReg(4, DYN_ADDRESS, DYN_32bit, true);
-         instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+         subRegImm(DYN_ADDRESS, DYN_32bit, 4);
          movToMemFromImm(DYN_ADDRESS, DYN_32bit, op->imm, true, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-         instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
+         subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
      } else {
          callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, op->imm, DYN_PARAM_CONST_32, false);
      }
@@ -207,15 +207,15 @@ void DynamicData::dynamic_popf32(DecodedOp* op) {
 void DynamicData::dynamic_pushf16(DecodedOp* op) {
     dynamic_fillFlags();
     loadCPUFlags(DYN_SRC);
-    instRegImm('|', DYN_SRC, DYN_32bit, 2);
+    orRegImm(DYN_SRC, DYN_32bit, 2);
     callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushf32(DecodedOp* op) {
     dynamic_fillFlags();
     loadCPUFlags(DYN_SRC);
-    instRegImm('|', DYN_SRC, DYN_32bit, 2);
-    instRegImm('&', DYN_SRC, DYN_32bit, 0xFCFFFF);
+    orRegImm(DYN_SRC, DYN_32bit, 2);
+    andRegImm(DYN_SRC, DYN_32bit, 0xFCFFFF);
     dynamic_pushReg32(DYN_SRC, true);
     incrementEip(op->len);
 }

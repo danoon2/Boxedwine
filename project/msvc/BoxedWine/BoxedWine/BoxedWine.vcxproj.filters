@@ -910,6 +910,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\dynamic\dynamic.cpp">
       <Filter>source\emulation\cpu\dynamic</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\dynamic\dynamicData.cpp">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1790,6 +1793,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\x32\x86Asm.h">
       <Filter>source\emulation\cpu\x32</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamicData.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

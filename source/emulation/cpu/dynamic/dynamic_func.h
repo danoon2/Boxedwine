@@ -16,231 +16,6 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void dynamic_getCF(DynamicData* data);
-
-void DynamicData::dynamic_arithRR(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
-    bool needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        loadReg(op->rm, DYN_SRC, width, true);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        instCPUReg(inst, op->reg, DYN_SRC, width, true, DYN_DEST);
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        loadRegStoreSrc(op->rm, width, DYN_SRC, false);
-        loadRegStoreDst(op->reg, width, DYN_DEST, false);
-
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        instRegReg(inst, DYN_DEST, DYN_SRC, width, true);
-        storeLazyFlagsResult(DYN_DEST, width, !store);
-        if (store) {
-            storeReg(op->reg, DYN_DEST, width, true);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicData::dynamic_arithRM(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
-    bool needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        calculateEaa(op, DYN_ADDRESS);
-        if (cf) {
-            movToRegFromReg(DYN_DEST, width, DYN_CALL_RESULT, DYN_32bit, false);
-            movFromMem(width, DYN_ADDRESS, true);
-            instRegReg('+', DYN_CALL_RESULT, DYN_DEST, width, true);
-        } else {
-            movFromMem(width, DYN_ADDRESS, true);
-        }
-        instCPUReg(inst, op->reg, DYN_CALL_RESULT, width, true, DYN_DEST);
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        if (cf) {
-            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-        }
-        calculateEaa(op, DYN_ADDRESS);
-        storeLazyFlagsSrcFromMem(width, DYN_ADDRESS, true, false);
-        loadRegStoreDst(op->reg, width, DYN_DEST, false);
-        if (cf) {
-            instRegReg('+', DYN_CALL_RESULT, DYN_SRC, width, true);
-        }
-        instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);
-        storeLazyFlagsResult(DYN_DEST, width, !store);
-        if (store) {
-            storeReg(op->reg, DYN_DEST, width, true);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicData::dynamic_arithRI(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
-    bool needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            instRegImm('+', DYN_CALL_RESULT, width, op->imm);
-            instCPUReg(inst, op->reg, DYN_CALL_RESULT, width, true, DYN_DEST);
-        } else {
-            instCPUImm(inst, op->reg, width, op->imm, DYN_DEST);
-        }
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        storeLazyFlagsSrc(width, op->imm);
-        loadRegStoreDst(op->reg, width, DYN_DEST, false);
-        instRegImm(inst, DYN_DEST, width, op->imm);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            instRegReg(inst, DYN_DEST, DYN_CALL_RESULT, width, true);
-        }
-        storeLazyFlagsResult(DYN_DEST, width, !store);
-        if (store) {
-            storeReg(op->reg, DYN_DEST, width, true);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicData::dynamic_arithMR(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
-    bool needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        calculateEaa(op, DYN_ADDRESS);
-        loadReg(op->reg, DYN_SRC, width, true);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true, DYN_DEST);
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        loadRegStoreSrc(op->reg, width, DYN_SRC, false);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, true);
-            }
-            instRegReg('+', DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        calculateEaa(op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(width, DYN_ADDRESS, !store, false);
-        instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
-        storeLazyFlagsResult(DYN_CALL_RESULT, width, !store);
-        if (store) {
-            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true, DYN_DEST);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicData::dynamic_arithMI(DecodedOp* op, DynWidth width, char inst, bool cf, bool store, const LazyFlags* flags) {
-    bool needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        calculateEaa(op, DYN_ADDRESS);
-        if (cf) {
-            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-            instRegImm('+', DYN_SRC, width, op->imm);
-            instMemReg(inst, DYN_ADDRESS, DYN_SRC, width, true, true, DYN_DEST);
-        } else {
-            instMemImm(inst, DYN_ADDRESS, width, op->imm, true, DYN_DEST);
-        }
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        calculateEaa(op, DYN_ADDRESS);
-        storeLazyFlagsSrc(width, op->imm);
-        if (cf) {
-            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-            storeLazyFlagsDstFromMem(width, DYN_ADDRESS, !store, false);
-            instRegImm('+', DYN_SRC, width, op->imm);
-            instRegReg(inst, DYN_CALL_RESULT, DYN_SRC, width, true);
-        } else {
-            storeLazyFlagsDstFromMem(width, DYN_ADDRESS, !store, false);
-            instRegImm(inst, DYN_CALL_RESULT, width, op->imm);
-        }
-        storeLazyFlagsResult(DYN_CALL_RESULT, width, !store);
-        if (store) {
-            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true, DYN_DEST);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
 void DynamicData::genCF(const LazyFlags* flags, DynReg reg) {
     if (reg==DYN_SRC || reg == DYN_DEST) {
         kpanic("genCF expects reg not to be DYN_SRC or DYN_DEST");
@@ -250,7 +25,7 @@ void DynamicData::genCF(const LazyFlags* flags, DynReg reg) {
     }
     if (flags == FLAGS_NONE) {
         loadCPUFlags(reg);
-        instRegImm('&', reg, DYN_32bit, CF);
+        andRegImm(reg, DYN_32bit, CF);
     } else if (flags == FLAGS_ADD8) {
         // cpu->result.u8<cpu->dst.u8;
         loadLazyFlagsResult(DYN_SRC, DYN_8bit);
@@ -283,8 +58,8 @@ void DynamicData::genCF(const LazyFlags* flags, DynReg reg) {
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, false, false);
         loadLazyFlagsOldCF(DYN_DEST);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
-        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        andRegReg(reg, DYN_DEST, DYN_32bit, true);
+        orRegReg(reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_ADC16) {
         // (cpu->result.u16 < cpu->dst.u16) || (cpu->oldCF && (cpu->result.u16 == cpu->dst.u16));
         loadLazyFlagsResult(DYN_SRC, DYN_16bit);
@@ -293,8 +68,8 @@ void DynamicData::genCF(const LazyFlags* flags, DynReg reg) {
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, false, false);
         loadLazyFlagsOldCF(DYN_DEST);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
-        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        andRegReg(reg, DYN_DEST, DYN_32bit, true);
+        orRegReg(reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_ADC32) {
         // (cpu->result.u32 < cpu->dst.u32) || (cpu->oldCF && (cpu->result.u32 == cpu->dst.u32));
         loadLazyFlagsResult(DYN_SRC, DYN_32bit);
@@ -303,47 +78,47 @@ void DynamicData::genCF(const LazyFlags* flags, DynReg reg) {
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, false, DYN_DEST, 0, DYN_32bit, DYN_LESS_THAN_UNSIGNED, false, false);
         loadLazyFlagsOldCF(DYN_DEST);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
-        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        andRegReg(reg, DYN_DEST, DYN_32bit, true);
+        orRegReg(reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_SBB8) {
         // (cpu->dst.u8 < cpu->result.u8) || (cpu->oldCF && (cpu->src.u8==0xff));
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
         evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0xff, DYN_8bit, DYN_EQUALS, true, false);
         loadLazyFlagsOldCF(DYN_SRC);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
+        andRegReg(reg, DYN_SRC, DYN_32bit, true);
 
         loadLazyFlagsResult(DYN_SRC, DYN_8bit);
         loadLazyFlagsDst(DYN_DEST, DYN_8bit);
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_8bit, DYN_LESS_THAN_UNSIGNED, true, false);
 
-        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        orRegReg(reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_SBB16) {
         // (cpu->dst.u16 < cpu->result.u16) || (cpu->oldCF && (cpu->src.u16==0xffff));
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0xffff, DYN_16bit, DYN_EQUALS, true, false);
         loadLazyFlagsOldCF(DYN_SRC);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
+        andRegReg(reg, DYN_SRC, DYN_32bit, true);
 
         loadLazyFlagsResult(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(DYN_DEST, DYN_16bit);
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_16bit, DYN_LESS_THAN_UNSIGNED, true, false);
 
-        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        orRegReg(reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_SBB32) {
         // (cpu->dst.u32 < cpu->result.u32) || (cpu->oldCF && (cpu->src.u32==0xffffffff));
         loadLazyFlagsSrc(DYN_SRC, DYN_32bit);
         evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0xffffffff, DYN_32bit, DYN_EQUALS, true, false);
         loadLazyFlagsOldCF(DYN_SRC);
         // shortcut, we know oldCF will be 0 or 1, we also know that evaluateToReg will be 0 or 1
-        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
+        andRegReg(reg, DYN_SRC, DYN_32bit, true);
 
         loadLazyFlagsResult(DYN_SRC, DYN_32bit);
         loadLazyFlagsDst(DYN_DEST, DYN_32bit);
         evaluateToReg(DYN_SRC, DYN_32bit, DYN_DEST, false, DYN_SRC, 0, DYN_32bit, DYN_LESS_THAN_UNSIGNED, true, false);
 
-        instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+        orRegReg(reg, DYN_SRC, DYN_32bit, true);
     } else if (flags == FLAGS_AND8) {
         // 0
         movToReg(reg, DYN_32bit, 0);
@@ -399,88 +174,88 @@ void DynamicData::genCF(const LazyFlags* flags, DynReg reg) {
         // ((cpu->dst.u8 << (cpu->src.u8-1)) & 0x80) >> 7
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
         loadLazyFlagsDst(reg, DYN_8bit);
-        instRegImm('-', DYN_SRC, DYN_8bit, 1);
-        instRegReg('<', reg, DYN_SRC, DYN_8bit, true);
-        instRegImm('&', reg, DYN_8bit, 0x80);
-        instRegImm('>', reg, DYN_8bit, 7);
+        subRegImm(DYN_SRC, DYN_8bit, 1);
+        shlRegReg(reg, DYN_SRC, DYN_8bit, true);
+        andRegImm(reg, DYN_8bit, 0x80);
+        shrRegImm(reg, DYN_8bit, 7);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_SHL16) {
         // ((cpu->dst.u16 << (cpu->src.u8-1)) & 0x8000)>>15
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(reg, DYN_16bit);
-        instRegImm('-', DYN_SRC, DYN_16bit, 1);
-        instRegReg('<', reg, DYN_SRC, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 0x8000);
-        instRegImm('>', reg, DYN_16bit, 15);
+        subRegImm(DYN_SRC, DYN_16bit, 1);
+        shlRegReg(reg, DYN_SRC, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 0x8000);
+        shrRegImm(reg, DYN_16bit, 15);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_SHL32) {
         // (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;
         loadLazyFlagsSrc(DYN_DEST, DYN_32bit); // ok to use src.u32 instead of src.u8
         loadLazyFlagsDst(reg, DYN_32bit);
         movToReg(DYN_SRC, DYN_32bit, 32);
-        instRegReg('-', DYN_SRC, DYN_DEST, DYN_32bit, true);
-        instRegReg('>', reg, DYN_SRC, DYN_32bit, true); // on x86, shift by reg, reg must be cl
-        instRegImm('&', reg, DYN_32bit, 1);
+        subRegReg(DYN_SRC, DYN_DEST, DYN_32bit, true);
+        shrRegReg(reg, DYN_SRC, DYN_32bit, true); // on x86, shift by reg, reg must be cl
+        andRegImm(reg, DYN_32bit, 1);
     } else if (flags == FLAGS_SHR8 || flags == FLAGS_SHR8_N1) {
         // (cpu->dst.u8 >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
         loadLazyFlagsDst(reg, DYN_8bit);
-        instRegImm('-', DYN_SRC, DYN_8bit, 1);
-        instRegReg('>', reg, DYN_SRC, DYN_8bit, true);
-        instRegImm('&', reg, DYN_8bit, 0x1);
+        subRegImm(DYN_SRC, DYN_8bit, 1);
+        shrRegReg(reg, DYN_SRC, DYN_8bit, true);
+        andRegImm(reg, DYN_8bit, 0x1);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_SHR16 || flags == FLAGS_SHR16_N1) {
         // (cpu->dst.u16 >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(reg, DYN_16bit);
-        instRegImm('-', DYN_SRC, DYN_16bit, 1);
-        instRegReg('>', reg, DYN_SRC, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 1);
+        subRegImm(DYN_SRC, DYN_16bit, 1);
+        shrRegReg(reg, DYN_SRC, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 1);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_SHR32 || flags == FLAGS_SHR32_N1) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_32bit); // ok to use src.u32 instead of src.u8
         loadLazyFlagsDst(reg, DYN_32bit);
-        instRegImm('-', DYN_SRC, DYN_32bit, 1);
-        instRegReg('>', reg, DYN_SRC, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 1);
+        subRegImm(DYN_SRC, DYN_32bit, 1);
+        shrRegReg(reg, DYN_SRC, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 1);
     } else if (flags == FLAGS_SHR8_1) {
         // cpu->dst.u8 & 1;
         loadLazyFlagsDst(reg, DYN_8bit);
-        instRegImm('&', reg, DYN_8bit, 0x1);
+        andRegImm(reg, DYN_8bit, 0x1);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_SHR16_1) {
         // cpu->dst.u16 & 1;
         loadLazyFlagsDst(reg, DYN_16bit);
-        instRegImm('&', reg, DYN_16bit, 1);
+        andRegImm(reg, DYN_16bit, 1);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_SHR32_1) {
         // cpu->dst.u32  & 1;
         loadLazyFlagsDst(reg, DYN_32bit);
-        instRegImm('&', reg, DYN_32bit, 1);
+        andRegImm(reg, DYN_32bit, 1);
     } else if (flags == FLAGS_SAR8) {
         // (((S8) cpu->dst.u8) >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
         loadLazyFlagsDst(reg, DYN_8bit);
-        instRegImm('-', DYN_SRC, DYN_8bit, 1);
-        instRegReg(')', reg, DYN_SRC, DYN_8bit, true);
-        instRegImm('&', reg, DYN_8bit, 0x1);
+        subRegImm(DYN_SRC, DYN_8bit, 1);
+        sarRegReg(reg, DYN_SRC, DYN_8bit, true);
+        andRegImm(reg, DYN_8bit, 0x1);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_SAR16) {
         // (((S16) cpu->dst.u16) >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(reg, DYN_16bit);
-        instRegImm('-', DYN_SRC, DYN_16bit, 1);
-        instRegReg(')', reg, DYN_SRC, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 1);
+        subRegImm(DYN_SRC, DYN_16bit, 1);
+        sarRegReg(reg, DYN_SRC, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 1);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_SAR32) {
         // (((S32) cpu->dst.u32) >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_32bit); // ok to use src.u32 instead of src.u8
         loadLazyFlagsDst(reg, DYN_32bit);
-        instRegImm('-', DYN_SRC, DYN_32bit, 1);
-        instRegReg(')', reg, DYN_SRC, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 1);
+        subRegImm(DYN_SRC, DYN_32bit, 1);
+        sarRegReg(reg, DYN_SRC, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 1);
     } else if (flags == FLAGS_TEST8) {
         // 0
         movToReg(reg, DYN_32bit, 0);
@@ -494,34 +269,34 @@ void DynamicData::genCF(const LazyFlags* flags, DynReg reg) {
         // ((cpu->dst.u16 << (cpu->src.u8-1)) & 0x8000)>>15;
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(reg, DYN_16bit);
-        instRegImm('-', DYN_SRC, DYN_16bit, 1);
-        instRegReg('<', reg, DYN_SRC, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 0x8000);
-        instRegImm('>', reg, DYN_16bit, 15);
+        subRegImm(DYN_SRC, DYN_16bit, 1);
+        shlRegReg(reg, DYN_SRC, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 0x8000);
+        shrRegImm(reg, DYN_16bit, 15);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_DSHL32) {
         // (cpu->dst.u32 >> (32 - cpu->src.u8)) & 1;
         loadLazyFlagsSrc(DYN_DEST, DYN_32bit); // ok to use src.u32 instead of src.u8
         loadLazyFlagsDst(reg, DYN_32bit);
         movToReg(DYN_SRC, DYN_32bit, 32);
-        instRegReg('-', DYN_SRC, DYN_DEST, DYN_32bit, true); // on x86, shift by reg, reg must be cl
-        instRegReg('>', reg, DYN_SRC, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 1);
+        subRegReg(DYN_SRC, DYN_DEST, DYN_32bit, true); // on x86, shift by reg, reg must be cl
+        shrRegReg(reg, DYN_SRC, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 1);
     } else if (flags == FLAGS_DSHR16) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(reg, DYN_16bit);
-        instRegImm('-', DYN_SRC, DYN_16bit, 1);
-        instRegReg('>', reg, DYN_SRC, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 1);
+        subRegImm(DYN_SRC, DYN_16bit, 1);
+        shrRegReg(reg, DYN_SRC, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 1);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_DSHR32) {
         // (cpu->dst.u32 >> (cpu->src.u8 - 1)) & 1;
         loadLazyFlagsSrc(DYN_SRC, DYN_32bit); // ok to use src.u32 instead of src.u8
         loadLazyFlagsDst(reg, DYN_32bit);
-        instRegImm('-', DYN_SRC, DYN_32bit, 1);
-        instRegReg('>', reg, DYN_SRC, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 1);
+        subRegImm(DYN_SRC, DYN_32bit, 1);
+        shrRegReg(reg, DYN_SRC, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 1);
     } else if (flags == FLAGS_NEG8) {
         // cpu->src.u8!=0;
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
@@ -548,39 +323,39 @@ void DynamicData::genOF(const LazyFlags* flags, DynReg reg) {
     }
     if (flags == FLAGS_NONE) {
         loadCPUFlags(reg);
-        instRegImm('&', reg, DYN_32bit, OF);
+        andRegImm(reg, DYN_32bit, OF);
     } else if (flags == FLAGS_ADD8 || flags == FLAGS_ADC8) {
         // ((cpu->dst.u8 ^ cpu->src.u8 ^ 0x80) & (cpu->result.u8 ^ cpu->src.u8)) & 0x80;        
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
         loadLazyFlagsDst(DYN_DEST, DYN_8bit);
         loadLazyFlagsResult(reg, DYN_8bit);
-        instRegReg('^', DYN_DEST, DYN_SRC, DYN_8bit, false);
-        instRegImm('^', DYN_DEST, DYN_8bit, 0x80);
-        instRegReg('^', reg, DYN_SRC, DYN_8bit, true);
-        instRegReg('&', reg, DYN_DEST, DYN_8bit, true);
-        instRegImm('&', reg, DYN_8bit, 0x80);
+        xorRegReg(DYN_DEST, DYN_SRC, DYN_8bit, false);
+        xorRegImm(DYN_DEST, DYN_8bit, 0x80);
+        xorRegReg(reg, DYN_SRC, DYN_8bit, true);
+        andRegReg(reg, DYN_DEST, DYN_8bit, true);
+        andRegImm(reg, DYN_8bit, 0x80);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_ADD16 || flags == FLAGS_ADC16) {
         // ((cpu->dst.u16 ^ cpu->src.u16 ^ 0x8000) & (cpu->result.u16 ^ cpu->src.u16)) & 0x8000;
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(DYN_DEST, DYN_16bit);
         loadLazyFlagsResult(reg, DYN_16bit);
-        instRegReg('^', DYN_DEST, DYN_SRC, DYN_16bit, false);
-        instRegImm('^', DYN_DEST, DYN_16bit, 0x8000);
-        instRegReg('^', reg, DYN_SRC, DYN_16bit, true);
-        instRegReg('&', reg, DYN_DEST, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 0x8000);
+        xorRegReg(DYN_DEST, DYN_SRC, DYN_16bit, false);
+        xorRegImm(DYN_DEST, DYN_16bit, 0x8000);
+        xorRegReg(reg, DYN_SRC, DYN_16bit, true);
+        andRegReg(reg, DYN_DEST, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 0x8000);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_ADD32 || flags == FLAGS_ADC32) {
         // ((cpu->dst.u32 ^ cpu->src.u32 ^ 0x80000000) & (cpu->result.u32 ^ cpu->src.u32)) & 0x80000000;
         loadLazyFlagsSrc(DYN_SRC, DYN_32bit);
         loadLazyFlagsDst(DYN_DEST, DYN_32bit);
         loadLazyFlagsResult(reg, DYN_32bit);
-        instRegReg('^', DYN_DEST, DYN_SRC, DYN_32bit, false);
-        instRegImm('^', DYN_DEST, DYN_32bit, 0x80000000);
-        instRegReg('^', reg, DYN_SRC, DYN_32bit, true);
-        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 0x80000000);
+        xorRegReg(DYN_DEST, DYN_SRC, DYN_32bit, false);
+        xorRegImm(DYN_DEST, DYN_32bit, 0x80000000);
+        xorRegReg(reg, DYN_SRC, DYN_32bit, true);
+        andRegReg(reg, DYN_DEST, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 0x80000000);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_32bit, false);
     } else if (flags == FLAGS_OR8) {
         // 0
@@ -605,30 +380,30 @@ void DynamicData::genOF(const LazyFlags* flags, DynReg reg) {
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
         loadLazyFlagsDst(DYN_DEST, DYN_8bit);
         loadLazyFlagsResult(reg, DYN_8bit);
-        instRegReg('^', DYN_SRC, DYN_DEST, DYN_8bit, false);
-        instRegReg('^', reg, DYN_DEST, DYN_8bit, true);
-        instRegReg('&', reg, DYN_SRC, DYN_8bit, true);
-        instRegImm('&', reg, DYN_8bit, 0x80);
+        xorRegReg(DYN_SRC, DYN_DEST, DYN_8bit, false);
+        xorRegReg(reg, DYN_DEST, DYN_8bit, true);
+        andRegReg(reg, DYN_SRC, DYN_8bit, true);
+        andRegImm(reg, DYN_8bit, 0x80);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_SUB16 || flags == FLAGS_SBB16 || flags == FLAGS_CMP16) {
         // ((cpu->dst.u16 ^ cpu->src.u16) & (cpu->dst.u16 ^ cpu->result.u16)) & 0x8000;
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(DYN_DEST, DYN_16bit);
         loadLazyFlagsResult(reg, DYN_16bit);
-        instRegReg('^', DYN_SRC, DYN_DEST, DYN_16bit, false);
-        instRegReg('^', reg, DYN_DEST, DYN_16bit, true);
-        instRegReg('&', reg, DYN_SRC, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 0x8000);
+        xorRegReg(DYN_SRC, DYN_DEST, DYN_16bit, false);
+        xorRegReg(reg, DYN_DEST, DYN_16bit, true);
+        andRegReg(reg, DYN_SRC, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 0x8000);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_SUB32 || flags == FLAGS_SBB32 || flags == FLAGS_CMP32) {
         // ((cpu->dst.u32 ^ cpu->src.u32) & (cpu->dst.u32 ^ cpu->result.u32)) & 0x80000000;
         loadLazyFlagsSrc(DYN_SRC, DYN_32bit);
         loadLazyFlagsDst(DYN_DEST, DYN_32bit);
         loadLazyFlagsResult(reg, DYN_32bit);
-        instRegReg('^', DYN_SRC, DYN_DEST, DYN_32bit, false);
-        instRegReg('^', reg, DYN_DEST, DYN_32bit, true);
-        instRegReg('&', reg, DYN_SRC, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 0x80000000);
+        xorRegReg(DYN_SRC, DYN_DEST, DYN_32bit, false);
+        xorRegReg(reg, DYN_DEST, DYN_32bit, true);
+        andRegReg(reg, DYN_SRC, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 0x80000000);
     } else if (flags == FLAGS_XOR8) {
         // 0
         movToReg(reg, DYN_32bit, 0);
@@ -666,48 +441,48 @@ void DynamicData::genOF(const LazyFlags* flags, DynReg reg) {
         // (cpu->result.u8 ^ cpu->dst.u8) & 0x80;
         loadLazyFlagsDst(DYN_DEST, DYN_8bit);
         loadLazyFlagsResult(reg, DYN_8bit);
-        instRegReg('^', reg, DYN_DEST, DYN_8bit, true);
-        instRegImm('&', reg, DYN_8bit, 0x80);
+        xorRegReg(reg, DYN_DEST, DYN_8bit, true);
+        andRegImm(reg, DYN_8bit, 0x80);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_SHL16) {
         // (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;
         loadLazyFlagsDst(DYN_DEST, DYN_16bit);
         loadLazyFlagsResult(reg, DYN_16bit);
-        instRegReg('^', reg, DYN_DEST, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 0x8000);
+        xorRegReg(reg, DYN_DEST, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 0x8000);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_SHL32) {
         // (cpu->result.u32 ^ cpu->dst.u32) & 0x80000000;
         loadLazyFlagsDst(DYN_DEST, DYN_32bit);
         loadLazyFlagsResult(reg, DYN_32bit);
-        instRegReg('^', reg, DYN_DEST, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 0x80000000);
+        xorRegReg(reg, DYN_DEST, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 0x80000000);
     } else if (flags == FLAGS_SHR8) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u8 >= 0x80); else return 0;
         loadLazyFlagsSrc(DYN_SRC, DYN_8bit);
         loadLazyFlagsDst(DYN_DEST, DYN_8bit);
-        instRegImm('&', DYN_SRC, DYN_8bit, 0x1f);
+        andRegImm(DYN_SRC, DYN_8bit, 0x1f);
         evaluateToReg(reg, DYN_8bit, DYN_SRC, true, DYN_NOT_SET, 1, DYN_8bit, DYN_EQUALS, true, false);
-        instRegImm('>', DYN_DEST, DYN_8bit, 7); // mov top bit to bottom
-        instRegReg('&', reg, DYN_DEST, DYN_8bit, true);
+        shrRegImm(DYN_DEST, DYN_8bit, 7); // mov top bit to bottom
+        andRegReg(reg, DYN_DEST, DYN_8bit, true);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);
     } else if (flags == FLAGS_SHR16) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u16 >= 0x8000); else return 0;
         loadLazyFlagsSrc(DYN_SRC, DYN_16bit);
         loadLazyFlagsDst(DYN_DEST, DYN_16bit);
-        instRegImm('&', DYN_SRC, DYN_16bit, 0x1f);
+        andRegImm(DYN_SRC, DYN_16bit, 0x1f);
         evaluateToReg(reg, DYN_16bit, DYN_SRC, true, DYN_NOT_SET, 1, DYN_16bit, DYN_EQUALS, true, false);
-        instRegImm('>', DYN_DEST, DYN_16bit, 15); // mov top bit to bottom
-        instRegReg('&', reg, DYN_DEST, DYN_16bit, true);
+        shrRegImm(DYN_DEST, DYN_16bit, 15); // mov top bit to bottom
+        andRegReg(reg, DYN_DEST, DYN_16bit, true);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_SHR32) {
         // if ((cpu->src.u8&0x1f)==1) return (cpu->dst.u32 >= 0x80000000); else return 0;
         loadLazyFlagsSrc(DYN_SRC, DYN_32bit);
         loadLazyFlagsDst(DYN_DEST, DYN_32bit);
-        instRegImm('&', DYN_SRC, DYN_32bit, 0x1f);
+        andRegImm(DYN_SRC, DYN_32bit, 0x1f);
         evaluateToReg(reg, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 1, DYN_32bit, DYN_EQUALS, true, false);
-        instRegImm('>', DYN_DEST, DYN_32bit, 31); // mov top bit to bottom
-        instRegReg('&', reg, DYN_DEST, DYN_32bit, true);
+        shrRegImm(DYN_DEST, DYN_32bit, 31); // mov top bit to bottom
+        andRegReg(reg, DYN_DEST, DYN_32bit, true);
     } else if (flags == FLAGS_SHR8_1) {
         // (cpu->dst.u8 >= 0x80);
         loadLazyFlagsDst(reg, DYN_8bit);
@@ -751,15 +526,15 @@ void DynamicData::genOF(const LazyFlags* flags, DynReg reg) {
         // (cpu->result.u16 ^ cpu->dst.u16) & 0x8000;
         loadLazyFlagsResult(reg, DYN_16bit);
         loadLazyFlagsDst(DYN_DEST, DYN_16bit);
-        instRegReg('^', reg, DYN_DEST, DYN_16bit, true);
-        instRegImm('&', reg, DYN_16bit, 0x8000);
+        xorRegReg(reg, DYN_DEST, DYN_16bit, true);
+        andRegImm(reg, DYN_16bit, 0x8000);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);
     } else if (flags == FLAGS_DSHL32 || flags == FLAGS_DSHR32) {
         // (cpu->result.u32 ^ cpu->dst.u32) & 0x80000000;
         loadLazyFlagsResult(reg, DYN_32bit);
         loadLazyFlagsDst(DYN_DEST, DYN_32bit);
-        instRegReg('^', reg, DYN_DEST, DYN_32bit, true);
-        instRegImm('&', reg, DYN_32bit, 0x80000000);
+        xorRegReg(reg, DYN_DEST, DYN_32bit, true);
+        andRegImm(reg, DYN_32bit, 0x80000000);
     } else if (flags == FLAGS_NEG8) {
         // cpu->src.u8 == 0x80;
         loadLazyFlagsSrc(reg, DYN_8bit);
@@ -821,14 +596,14 @@ void DynamicData::genS(const LazyFlags* flags, DynReg reg) {
     DynWidth width = getWidthOfCondition(flags);
     if (width==DYN_32bit) {
         loadLazyFlagsResult(reg, DYN_32bit);
-        instRegImm('&', reg, DYN_32bit, 0x80000000);
+        andRegImm(reg, DYN_32bit, 0x80000000);
     } else if (width==DYN_16bit) {
         loadLazyFlagsResult(reg, DYN_16bit);
-        instRegImm('&', reg, DYN_16bit, 0x8000);
+        andRegImm(reg, DYN_16bit, 0x8000);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_16bit, false);            
     } else if (width==DYN_8bit) {
         loadLazyFlagsResult(reg, DYN_8bit);
-        instRegImm('&', reg, DYN_8bit, 0x80);
+        andRegImm(reg, DYN_8bit, 0x80);
         movToRegFromReg(reg, DYN_32bit, reg, DYN_8bit, false);            
     } else {
         kpanic_fmt("setConditionInReg: unknown condition width: %d", width);
@@ -858,7 +633,7 @@ bool DynamicData::getFlagInReg(DynConditional condition, DynReg reg) {
     if (notFlag) {
         notReg(reg, DYN_32bit);
     }
-    instRegImm('&', reg, DYN_32bit, flag);
+    andRegImm(reg, DYN_32bit, flag);
     return true;
 }
 
@@ -937,7 +712,7 @@ void DynamicData::setConditionInReg(DynConditional condition, DynReg reg) {
             genCF(currentLazyFlags, reg);
             // must come after genCF, since genCF can clobber DYN_SRC
             genZ(currentLazyFlags, DYN_SRC);
-            instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+            orRegReg(reg, DYN_SRC, DYN_32bit, true);
         }
     } else if (condition==L) {
         if (currentLazyFlags==FLAGS_SUB8) {
@@ -981,7 +756,7 @@ void DynamicData::setConditionInReg(DynConditional condition, DynReg reg) {
             evaluateToReg(DYN_SRC, DYN_32bit, DYN_SRC, true, DYN_NOT_SET, 0, DYN_32bit, DYN_EQUALS, false, false);
             evaluateToReg(reg, DYN_32bit, reg, false, DYN_SRC, 0, DYN_32bit, DYN_NOT_EQUALS, false, true);
             genZ(currentLazyFlags, DYN_SRC);
-            instRegReg('|', reg, DYN_SRC, DYN_32bit, true);
+            orRegReg(reg, DYN_SRC, DYN_32bit, true);
         }
     } else {
         kpanic("setConditionInReg unhandled condition");
@@ -994,9 +769,9 @@ void DynamicData::setConditionInReg(DynConditional condition, DynReg reg) {
 void DynamicData::dynamic_pushReg32(DynReg reg, bool doneWithReg) {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
         loadReg(4, DYN_ADDRESS, DYN_32bit, true); // need ESP in tmp reg so that we don't commit it until after write
-        instRegImm('-', DYN_ADDRESS, DYN_32bit, 4);
+        subRegImm(DYN_ADDRESS, DYN_32bit, 4);
         movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, true, doneWithReg, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
-        instCPUImm('-', 4, DYN_32bit, 4, DYN_ADDRESS);
+        subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
     } else {
         callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, doneWithReg);
     }
@@ -1006,7 +781,7 @@ void DynamicData::dynamic_pop32() {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
         DynReg reg = loadReg(4, DYN_ADDRESS, DYN_32bit);
         movFromMem(DYN_32bit, reg, true);
-        instCPUImm('+', 4, DYN_32bit, 4, DYN_DEST);
+        addCPUImm(4, DYN_32bit, 4, DYN_DEST);
     } else {
         callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
     }    

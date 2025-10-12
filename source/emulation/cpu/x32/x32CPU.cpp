@@ -25,17 +25,32 @@
 
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
 
-class X86DynamicData : DynamicData {
+class X86DynamicCodeGen : DynamicCodeGen {
 public:
-    X86DynamicData(CPU* cpu) : DynamicData(cpu) {}
+    X86DynamicCodeGen(CPU* cpu) : DynamicCodeGen(cpu) {}
 
     void incrementEip(U32 inc) override;
     void setConditional(DynConditional condition) override;
     void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) override;
-    void instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void addRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void orRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void subRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void andRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void xorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void shrRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void sarRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void shlRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void addRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void orRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void subRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void andRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void xorRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void shrRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void sarRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void shlRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+
     void negReg(DynReg reg, DynWidth regWidth) override;
     void notReg(DynReg reg, DynWidth regWidth) override;
-    void instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) override;
     void callHostFunction(void* address, bool hasReturn = false, U32 argCount = 0, U32 arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, U32 arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, U32 arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, U32 arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, U32 arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true) override;
     void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) override;
     void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) override;
@@ -59,7 +74,7 @@ protected:
 
     void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) override;
     void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) override;
-    void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) override;    
+    void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) override;
     void IfLessThan(DynReg reg, U32 value, bool doneWithReg) override;
     void IfBitSet(DynReg reg, U32 value, bool doneWithReg) override;
 
@@ -90,11 +105,11 @@ protected:
     X86Asm x86;
 };
 
-void X86DynamicData::jmp(DynReg reg) {
+void X86DynamicCodeGen::jmp(DynReg reg) {
     x86.jmp(X86Asm::Reg32(reg));
 }
 
-void X86DynamicData::readMem(DynReg reg, DynWidth width, DynReg address, U8 lsl, U32 disp) {
+void X86DynamicCodeGen::readMem(DynReg reg, DynWidth width, DynReg address, U8 lsl, U32 disp) {
     if (width == DYN_32bit) {
         x86.readMem(X86Asm::Reg32(reg), X86Asm::Reg32(address), lsl, disp);
     } else if (width == DYN_16bit) {
@@ -104,7 +119,7 @@ void X86DynamicData::readMem(DynReg reg, DynWidth width, DynReg address, U8 lsl,
     }
 }
 
-void X86DynamicData::readMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
+void X86DynamicCodeGen::readMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
     if (width == DYN_32bit) {
         x86.readMem(X86Asm::Reg32(reg), X86Asm::Reg32(address), offset, lsl, disp);
     } else if (width == DYN_16bit) {
@@ -114,7 +129,7 @@ void X86DynamicData::readMem(DynReg reg, DynWidth width, DynReg address, DynReg 
     }
 }
 
-void X86DynamicData::writeMem(DynReg reg, DynWidth width, DynReg address, U32 disp) {
+void X86DynamicCodeGen::writeMem(DynReg reg, DynWidth width, DynReg address, U32 disp) {
     if (width == DYN_32bit) {
         x86.writeMem(X86Asm::Reg32(address), disp, X86Asm::Reg32(reg));
     } else if (width == DYN_16bit) {
@@ -124,7 +139,7 @@ void X86DynamicData::writeMem(DynReg reg, DynWidth width, DynReg address, U32 di
     }
 }
 
-void X86DynamicData::writeMem(U32 value, DynWidth width, DynReg address, U32 disp) {
+void X86DynamicCodeGen::writeMem(U32 value, DynWidth width, DynReg address, U32 disp) {
     if (width == DYN_32bit) {
         x86.writeMem(X86Asm::Reg32(address), disp, value);
     } else if (width == DYN_16bit) {
@@ -134,7 +149,7 @@ void X86DynamicData::writeMem(U32 value, DynWidth width, DynReg address, U32 dis
     }
 }
 
-void X86DynamicData::writeMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
+void X86DynamicCodeGen::writeMem(DynReg reg, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
     if (width == DYN_32bit) {
         x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, X86Asm::Reg32(reg));
     } else if (width == DYN_16bit) {
@@ -144,7 +159,7 @@ void X86DynamicData::writeMem(DynReg reg, DynWidth width, DynReg address, DynReg
     }
 }
 
-void X86DynamicData::writeMem(U32 value, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
+void X86DynamicCodeGen::writeMem(U32 value, DynWidth width, DynReg address, DynReg offset, U8 lsl, U32 disp) {
     if (width == DYN_32bit) {
         x86.writeMem(X86Asm::Reg32(address), offset, lsl, disp, value);
     } else if (width == DYN_16bit) {
@@ -154,28 +169,28 @@ void X86DynamicData::writeMem(U32 value, DynWidth width, DynReg address, DynReg 
     }
 }
 
-void X86DynamicData::and32(DynReg dst, U32 imm) {
+void X86DynamicCodeGen::and32(DynReg dst, U32 imm) {
     x86.and_(X86Asm::Reg32(dst), imm);
 }
 
-void X86DynamicData::shr32(DynReg dst, U32 imm) {
+void X86DynamicCodeGen::shr32(DynReg dst, U32 imm) {
     x86.shr(X86Asm::Reg32(dst), imm);
 }
 
-U32 X86DynamicData::getBufferSize() {
+U32 X86DynamicCodeGen::getBufferSize() {
     return (U32)x86.buffer.size();
 }
 
-U8* X86DynamicData::getBuffer() {
+U8* X86DynamicCodeGen::getBuffer() {
     return x86.buffer.data();
 }
 
 
-U32 X86DynamicData::getIfJumpSize() {
+U32 X86DynamicCodeGen::getIfJumpSize() {
     return (U32)x86.ifJump.size();
 }
 
-void X86DynamicData::blockExit() {
+void X86DynamicCodeGen::blockExit() {
     x86.pop(x86.edi);
     x86.pop(x86.ebx);
 
@@ -187,13 +202,13 @@ void X86DynamicData::blockExit() {
     x86.ret();
 }
 
-void X86DynamicData::incrementEip(U32 inc) {
+void X86DynamicCodeGen::incrementEip(U32 inc) {
     x86.addMem(x86.edi, offsetof(CPU, eip.u32), inc);
 }
 
 void setConditionInReg(DynamicData* data, DynConditional condition, DynReg reg);
 
-void X86DynamicData::setConditional(DynConditional condition) {
+void X86DynamicCodeGen::setConditional(DynConditional condition) {
     bool setnz = true;
     // changing conditions to ones that are optimized
     if (condition == Z) {
@@ -227,7 +242,7 @@ void X86DynamicData::setConditional(DynConditional condition) {
     }
 }
 
-void X86DynamicData::setCC(X86Asm::Reg32 reg, DynConditionEvaluate condition) {
+void X86DynamicCodeGen::setCC(X86Asm::Reg32 reg, DynConditionEvaluate condition) {
 
     switch (condition) {
     case DYN_EQUALS:
@@ -256,7 +271,7 @@ void X86DynamicData::setCC(X86Asm::Reg32 reg, DynConditionEvaluate condition) {
     }
 }
 
-void X86DynamicData::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm::Reg32 right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
+void X86DynamicCodeGen::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm::Reg32 right, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
     if (regWidth == DYN_32bit) {
         x86.cmp(left, right);
     } else if (regWidth == DYN_16bit) {
@@ -279,7 +294,7 @@ void X86DynamicData::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, X86Asm
     }
 }
 
-void X86DynamicData::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg) {
+void X86DynamicCodeGen::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg) {
     if (regWidth == DYN_32bit) {
         x86.cmp(left, rightConst);
     } else if (regWidth == DYN_16bit) {
@@ -299,7 +314,7 @@ void X86DynamicData::evaluateToReg(X86Asm::Reg32 reg, X86Asm::Reg32 left, U32 ri
     }
 }
 
-void X86DynamicData::evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
+void X86DynamicCodeGen::evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) {
     if (reg >= 4) {
         kpanic_fmt("x32CPU::evaluateToRegFromRegs doesn't support reg %d", reg);
     }
@@ -310,7 +325,7 @@ void X86DynamicData::evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, b
     }
 }
 
-void X86DynamicData::callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
+void X86DynamicCodeGen::callHostFunction(void* address, bool hasReturn, U32 argCount, U32 arg1, DynCallParamType arg1Type, bool doneWithArg1, U32 arg2, DynCallParamType arg2Type, bool doneWithArg2, U32 arg3, DynCallParamType arg3Type, bool doneWithArg3, U32 arg4, DynCallParamType arg4Type, bool doneWithArg4, U32 arg5, DynCallParamType arg5Type, bool doneWithArg5) {
     bool regDone[4] = { false, false, false, false };
 
     if (argCount >= 5) {
@@ -402,106 +417,127 @@ void X86DynamicData::callHostFunction(void* address, bool hasReturn, U32 argCoun
     }
 }
 
-// inst can be +, |, -, &, ^, <, >, ) right parens is for signed right shift
-void X86DynamicData::instRegReg(char inst, DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
-    switch (inst) {
-    case '+':
-        if (regWidth == DYN_32bit) {
-            x86.add(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.add(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.add(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg ADD");
-        }
-        break;
-    case '-':
-        if (regWidth == DYN_32bit) {
-            x86.sub(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.sub(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.sub(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg SUB");
-        }
-        break;
-    case '&':
-        if (regWidth == DYN_32bit) {
-            x86.and_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.and_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.and_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg AND");
-        }
-        break;
-    case '|':
-        if (regWidth == DYN_32bit) {
-            x86.or_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.or_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.or_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg OR");
-        }
-        break;
-    case '^':
-        if (regWidth == DYN_32bit) {
-            x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.xor_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.xor_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg XOR");
-        }
-        break;
-    case '<':
-        if (regWidth == DYN_32bit) {
-            x86.shl(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.shl(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.shl(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg SHL");
-        }
-        break;
-    case '>':
-        if (regWidth == DYN_32bit) {
-            x86.shr(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.shr(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.shr(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg SHR");
-        }
-        break;
-    case ')':
-        if (regWidth == DYN_32bit) {
-            x86.sar(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
-        } else if (regWidth == DYN_16bit) {
-            x86.sar(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
-        } else if (regWidth == DYN_8bit) {
-            x86.sar(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
-        } else {
-            kpanic("instRegReg SAR");
-        }
-        break;
-    default:
-        kpanic("instRegReg");
+void X86DynamicCodeGen::addRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.add(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.add(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.add(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg ADD");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
     }
 }
 
-void X86DynamicData::negReg(DynReg reg, DynWidth regWidth) {
+void X86DynamicCodeGen::orRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.or_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.or_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.or_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg OR");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::subRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.sub(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.sub(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.sub(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg SUB");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::andRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.and_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.and_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.and_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg AND");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::xorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.xor_(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.xor_(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.xor_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg XOR");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::shrRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.shr(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.shr(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.shr(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg SHR");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::sarRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.sar(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.sar(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.sar(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg SAR");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::shlRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.shl(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.shl(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.shl(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("instRegReg SHL");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::negReg(DynReg reg, DynWidth regWidth) {
     if (regWidth == DYN_32bit) {
         x86.neg(X86Asm::Reg32(reg));
     } else if (regWidth == DYN_16bit) {
@@ -509,11 +545,11 @@ void X86DynamicData::negReg(DynReg reg, DynWidth regWidth) {
     } else if (regWidth == DYN_8bit) {
         x86.neg(X86Asm::Reg8(reg));
     } else {
-        kpanic("X86DynamicData::negReg");
+        kpanic("X86DynamicCodeGen::negReg");
     }
 }
 
-void X86DynamicData::notReg(DynReg reg, DynWidth regWidth) {
+void X86DynamicCodeGen::notReg(DynReg reg, DynWidth regWidth) {
     if (regWidth == DYN_32bit) {
         x86.not_(X86Asm::Reg32(reg));
     } else if (regWidth == DYN_16bit) {
@@ -521,108 +557,108 @@ void X86DynamicData::notReg(DynReg reg, DynWidth regWidth) {
     } else if (regWidth == DYN_8bit) {
         x86.not_(X86Asm::Reg8(reg));
     } else {
-        kpanic("X86DynamicData::notReg");
+        kpanic("X86DynamicCodeGen::notReg");
     }
 }
 
-// inst can be +, |, - , &, ^, <, >, ) right parens is for signed right shift
-void X86DynamicData::instRegImm(U32 inst, DynReg reg, DynWidth regWidth, U32 imm) {
-    switch (inst) {
-    case '+':
-        if (regWidth == DYN_32bit) {
-            x86.add(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.add(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.add(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm ADD");
-        }
-        break;
-    case '-':
-        if (regWidth == DYN_32bit) {
-            x86.sub(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.sub(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.sub(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SUB");
-        }
-        break;
-    case '&':
-        if (regWidth == DYN_32bit) {
-            x86.and_(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.and_(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.and_(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm AND");
-        }
-        break;
-    case '|':
-        if (regWidth == DYN_32bit) {
-            x86.or_(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.or_(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.or_(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm OR");
-        }
-        break;
-    case '^':
-        if (regWidth == DYN_32bit) {
-            x86.xor_(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.xor_(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.xor_(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm XOR");
-        }
-        break;
-    case '<':
-        if (regWidth == DYN_32bit) {
-            x86.shl(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.shl(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.shl(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SHL");
-        }
-        break;
-    case '>':
-        if (regWidth == DYN_32bit) {
-            x86.shr(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.shr(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.shr(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SHR");
-        }
-        break;
-    case ')':
-        if (regWidth == DYN_32bit) {
-            x86.sar(X86Asm::Reg32(reg), imm);
-        } else if (regWidth == DYN_16bit) {
-            x86.sar(X86Asm::Reg16(reg), (U16)imm);
-        } else if (regWidth == DYN_8bit) {
-            x86.sar(X86Asm::Reg8(reg), (U8)imm);
-        } else {
-            kpanic("instRegImm SAR");
-        }
-        break;
-    default:
-        kpanic("instRegImm");
+void X86DynamicCodeGen::addRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.add(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.add(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.add(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm ADD");
+    }
+}
+
+void X86DynamicCodeGen::orRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.or_(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.or_(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.or_(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm OR");
+    }
+}
+
+void X86DynamicCodeGen::subRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.sub(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.sub(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.sub(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm SUB");
+    }
+}
+
+void X86DynamicCodeGen::andRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.and_(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.and_(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.and_(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm AND");
+    }
+}
+
+void X86DynamicCodeGen::xorRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.xor_(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.xor_(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.xor_(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm XOR");
+    }
+}
+
+void X86DynamicCodeGen::shrRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.shr(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.shr(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.shr(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm SHR");
+    }
+}
+
+void X86DynamicCodeGen::sarRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.sar(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.sar(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.sar(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm SAR");
+    }
+}
+
+void X86DynamicCodeGen::shlRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.shl(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.shl(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.shl(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("instRegImm SHL");
     }
 }
 
 // :TODO: move to base
-void X86DynamicData::calculateEaa(DecodedOp* op, DynReg reg) {
+void X86DynamicCodeGen::calculateEaa(DecodedOp* op, DynReg reg) {
     regUsed[reg] = true;
 
     if (op->ea16) {
@@ -679,11 +715,11 @@ void X86DynamicData::calculateEaa(DecodedOp* op, DynReg reg) {
     }
 }
 
-void X86DynamicData::byteSwapReg32(DynReg reg) {
+void X86DynamicCodeGen::byteSwapReg32(DynReg reg) {
     x86.bswap(reg);
 }
 
-void X86DynamicData::movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+void X86DynamicCodeGen::movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
     regUsed[dst] = true;
     if (dstWidth <= srcWidth) {
         movToRegFromReg(dst, dstWidth, src, srcWidth, doneWithSrcReg);
@@ -711,7 +747,7 @@ void X86DynamicData::movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, Dy
     }
 }
 
-void X86DynamicData::movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
+void X86DynamicCodeGen::movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {
     regUsed[dst] = true;
     if (dstWidth <= srcWidth) {
         if (dst == src) // downsizing doesn't need anything
@@ -749,7 +785,7 @@ void X86DynamicData::movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, 
     }
 }
 
-void X86DynamicData::movToReg(DynReg reg, DynWidth width, U32 imm) {
+void X86DynamicCodeGen::movToReg(DynReg reg, DynWidth width, U32 imm) {
     regUsed[reg] = true;
     if (width == DYN_32bit) {
         x86.mov(X86Asm::Reg32(reg), imm);
@@ -762,7 +798,7 @@ void X86DynamicData::movToReg(DynReg reg, DynWidth width, U32 imm) {
     }
 }
 
-void X86DynamicData::pushValue(U32 arg, DynCallParamType argType) {
+void X86DynamicCodeGen::pushValue(U32 arg, DynCallParamType argType) {
     switch (argType) {
     case DYN_PARAM_REG_8:
         x86.movzx(X86Asm::Reg32(arg), X86Asm::Reg8(arg));
@@ -810,12 +846,12 @@ void X86DynamicData::pushValue(U32 arg, DynCallParamType argType) {
     }
 }
 
-void X86DynamicData::zeroExtendReg16To32(DynReg dest, DynReg src) {
+void X86DynamicCodeGen::zeroExtendReg16To32(DynReg dest, DynReg src) {
     x86.movzx(X86Asm::Reg32(dest), X86Asm::Reg16(src));
     regUsed[dest] = true;
 }
 
-void X86DynamicData::movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
+void X86DynamicCodeGen::movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) {
     this->regUsed[reg] = true;
     // mov reg, [edi+srcOffset]    
     if (width == DYN_32bit) {
@@ -829,7 +865,7 @@ void X86DynamicData::movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) 
     }
 }
 
-void X86DynamicData::movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) {
+void X86DynamicCodeGen::movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) {
     if (width == DYN_32bit) {
         x86.writeMem(x86.edi, dstOffset, X86Asm::Reg32(reg));
     } else if (width == DYN_16bit) {
@@ -844,7 +880,7 @@ void X86DynamicData::movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, 
     }
 }
 
-void X86DynamicData::movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
+void X86DynamicCodeGen::movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     if (dstWidth == DYN_32bit) {
         x86.writeMem(x86.edi, dstOffset, imm);
     } else if (dstWidth == DYN_16bit) {
@@ -856,7 +892,7 @@ void X86DynamicData::movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) {
     }
 }
 
-void X86DynamicData::JumpIf(DynReg reg, bool doneWithReg, U32 address) {
+void X86DynamicCodeGen::JumpIf(DynReg reg, bool doneWithReg, U32 address) {
     x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
     x86.jnz(address);
     if (doneWithReg) {
@@ -864,7 +900,7 @@ void X86DynamicData::JumpIf(DynReg reg, bool doneWithReg, U32 address) {
     }
 }
 
-void X86DynamicData::JumpIfNot(DynReg reg, bool doneWithReg, U32 address) {
+void X86DynamicCodeGen::JumpIfNot(DynReg reg, bool doneWithReg, U32 address) {
     x86.test(X86Asm::Reg32(reg), X86Asm::Reg32(reg));
     x86.jz(address);
     if (doneWithReg) {
@@ -872,15 +908,15 @@ void X86DynamicData::JumpIfNot(DynReg reg, bool doneWithReg, U32 address) {
     }
 }
 
-void X86DynamicData::JumpInBlock(U32 address) {
+void X86DynamicCodeGen::JumpInBlock(U32 address) {
     x86.jmp(address);
 }
 
-void X86DynamicData::IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) {
+void X86DynamicCodeGen::IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) {
     IfEqual(X86Asm::Reg32(reg), value, doneWithReg);
 }
 
-void X86DynamicData::IfLessThan(DynReg reg, U32 value, bool doneWithReg) {
+void X86DynamicCodeGen::IfLessThan(DynReg reg, U32 value, bool doneWithReg) {
     x86.IfLessThan(X86Asm::Reg32(reg), value);
 
     if (doneWithReg) {
@@ -888,14 +924,14 @@ void X86DynamicData::IfLessThan(DynReg reg, U32 value, bool doneWithReg) {
     }
 }
 
-void X86DynamicData::IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+void X86DynamicCodeGen::IfEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
     x86.IfEqual(reg, value);
     if (doneWithReg) {
         regUsed[reg.reg] = false;
     }
 }
 
-void X86DynamicData::IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
+void X86DynamicCodeGen::IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) {
     x86.IfNotEqual(reg, value);
     if (doneWithReg) {
         regUsed[reg.reg] = false;
@@ -903,36 +939,36 @@ void X86DynamicData::IfNotEqual(X86Asm::Reg32 reg, U32 value, bool doneWithReg) 
 }
 
 
-void X86DynamicData::IfBitSet(DynReg reg, U32 value, bool doneWithReg) {
+void X86DynamicCodeGen::IfBitSet(DynReg reg, U32 value, bool doneWithReg) {
     x86.IfBitSet(X86Asm::Reg32(reg), value);
     if (doneWithReg) {
         regUsed[reg] = false;
     }
 }
 
-void X86DynamicData::If(DynReg reg, bool doneWithReg) {
+void X86DynamicCodeGen::If(DynReg reg, bool doneWithReg) {
     x86.IfNotZero(X86Asm::Reg32(reg));
     if (doneWithReg) {
         regUsed[reg] = false;
     }
 }
 
-void X86DynamicData::IfNot(DynReg reg, bool doneWithReg) {
+void X86DynamicCodeGen::IfNot(DynReg reg, bool doneWithReg) {
     x86.IfZero(X86Asm::Reg32(reg));
     if (doneWithReg) {
         regUsed[reg] = false;
     }
 }
 
-void X86DynamicData::StartElse() {
+void X86DynamicCodeGen::StartElse() {
     x86.Else();
 }
 
-void X86DynamicData::EndIf() {
+void X86DynamicCodeGen::EndIf() {
     x86.EndIf();
 }
 
-U8* X86DynamicData::createStartJITCode() {
+U8* X86DynamicCodeGen::createStartJITCode() {
 #ifdef _DEBUG
     x86.push(x86.ebp);
     x86.mov(x86.ebp, x86.esp);
@@ -951,7 +987,7 @@ U8* X86DynamicData::createStartJITCode() {
     return createDynamicExecutableMemory();
 }
 
-void X86DynamicData::preCommitJIT() {
+void X86DynamicCodeGen::preCommitJIT() {
     for (DynamicJump& jmp : x86.jumps) {
         U32 bufferIndex = 0;
 
@@ -962,7 +998,7 @@ void X86DynamicData::preCommitJIT() {
     }
 }
 
-void X86DynamicData::patch(U8* begin) {
+void X86DynamicCodeGen::patch(U8* begin) {
     for (U32 i = 0; i < x86.patch.size(); i++) {
         U32 pos = x86.patch[i];
         U32* value = (U32*)(&begin[pos]);
@@ -971,7 +1007,7 @@ void X86DynamicData::patch(U8* begin) {
 }
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {
-    X86DynamicData data(cpu);
+    X86DynamicCodeGen data(cpu);
     data.doJIT(address, op);
 }
 
