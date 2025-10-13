@@ -18,43 +18,43 @@
 
 #include "../common/common_xchg.h"
 void DynamicData::dynamic_xchgr8r8(DecodedOp* op) {
-    loadReg(op->rm, DYN_DEST, DYN_8bit, true);
-    loadRegStoreReg(op->rm, op->reg, DYN_8bit, DYN_SRC, true);
+    loadReg(op->rm, DYN_DEST, DYN_8bit);
+    loadRegStoreReg(op->rm, op->reg, DYN_8bit, DYN_SRC);
     storeReg(op->reg, DYN_DEST, DYN_8bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge8r8(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_8bit, DYN_ADDRESS, false);
-    loadReg(op->reg, DYN_DEST, DYN_8bit, true);
+    loadReg(op->reg, DYN_DEST, DYN_8bit);
     storeReg(op->reg, DYN_CALL_RESULT, DYN_8bit, true);
     movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true, DYN_SRC);    
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchgr16r16(DecodedOp* op) {
-    loadReg(op->rm, DYN_DEST, DYN_16bit, true);
-    loadRegStoreReg(op->rm, op->reg, DYN_16bit, DYN_SRC, true);
+    loadReg(op->rm, DYN_DEST, DYN_16bit);
+    loadRegStoreReg(op->rm, op->reg, DYN_16bit, DYN_SRC);
     storeReg(op->reg, DYN_DEST, DYN_16bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge16r16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_16bit, DYN_ADDRESS, false);
-    loadReg(op->reg, DYN_DEST, DYN_16bit, true);
+    loadReg(op->reg, DYN_DEST, DYN_16bit);
     storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
     movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true, DYN_SRC);    
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchgr32r32(DecodedOp* op) {
-    loadReg(op->rm, DYN_DEST, DYN_32bit, true);
-    loadRegStoreReg(op->rm, op->reg, DYN_32bit, DYN_SRC, true);
+    loadReg(op->rm, DYN_DEST, DYN_32bit);
+    loadRegStoreReg(op->rm, op->reg, DYN_32bit, DYN_SRC);
     storeReg(op->reg, DYN_DEST, DYN_32bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge32r32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
     movFromMem(DYN_32bit, DYN_ADDRESS, false);
-    loadReg(op->reg, DYN_DEST, DYN_32bit, true);
+    loadReg(op->reg, DYN_DEST, DYN_32bit);
     storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
     movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true, DYN_SRC);
     incrementEip(op->len);

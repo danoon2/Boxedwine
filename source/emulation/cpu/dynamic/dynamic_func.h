@@ -768,7 +768,7 @@ void DynamicData::setConditionInReg(DynConditional condition, DynReg reg) {
 
 void DynamicData::dynamic_pushReg32(DynReg reg, bool doneWithReg) {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-        loadReg(4, DYN_ADDRESS, DYN_32bit, true); // need ESP in tmp reg so that we don't commit it until after write
+        loadReg(4, DYN_ADDRESS, DYN_32bit);
         subRegImm(DYN_ADDRESS, DYN_32bit, 4);
         movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, true, doneWithReg, DYN_DEST); // need to discard DYN_ADDRESS, otherwise will be out of regs
         subCPUImm(4, DYN_32bit, 4, DYN_ADDRESS);
@@ -779,8 +779,8 @@ void DynamicData::dynamic_pushReg32(DynReg reg, bool doneWithReg) {
 
 void DynamicData::dynamic_pop32() {
     if (!cpu->thread->process->hasSetStackMask && !cpu->thread->process->hasSetSeg[SS]) {
-        DynReg reg = loadReg(4, DYN_ADDRESS, DYN_32bit);
-        movFromMem(DYN_32bit, reg, true);
+        loadReg(4, DYN_ADDRESS, DYN_32bit);
+        movFromMem(DYN_32bit, DYN_ADDRESS, true);
         addCPUImm(4, DYN_32bit, 4, DYN_DEST);
     } else {
         callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);

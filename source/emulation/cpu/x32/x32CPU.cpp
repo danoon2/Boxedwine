@@ -25,6 +25,22 @@
 
 // cdecl calling convention states EAX, ECX, and EDX are caller saved
 
+// -: 31.1, 31.0, 31.2 (esi saved)
+// -: 31.1, 31.2, 31.2 (esi not saved)
+// with the 2 scores above, it looks like pushing/popping esi everytime going in and out of the JIT code does not have much overhead
+// 
+// Quake scores with different regs cached, seems like cachiing eax has the most impact
+// 0: 32.4, 32.4, 32.6
+// 1: 31.2, 31.1, 31.3
+// 2: 31.5, 31.4, 31.4
+// 3: 31.2, 31.0, 31.1
+// 4: 31.4, 31.2, 31.3
+// 5: 31.2, 31.4, 31.2
+// 6: 31.5, 31.6, 31.6
+// 7: 30.9, 31.0, 31.1
+// 0+6: 32.2, 32.3, 32.1
+static U8 regCache[] = { 5, 0, 0, 0, 0, 0, 6, 0 };
+
 class X86DynamicCodeGen : DynamicCodeGen {
 public:
     X86DynamicCodeGen(CPU* cpu) : DynamicCodeGen(cpu) {}
@@ -69,6 +85,9 @@ public:
     void EndIf() override;
     void blockExit() override;
 
+    void loadReg(U8 reg, DynReg tmpReg, DynWidth width) override;
+    void storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) override;
+    void storeReg(U8 reg, DynWidth dstWidth, U32 imm) override;
 protected:
     friend void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 
@@ -101,6 +120,9 @@ protected:
     void preCommitJIT() override;
     void patch(U8* begin) override;
     U8* createStartJITCode() override;
+
+    void loadCache();
+    void writeCache();
 
     X86Asm x86;
 };
@@ -190,7 +212,36 @@ U32 X86DynamicCodeGen::getIfJumpSize() {
     return (U32)x86.ifJump.size();
 }
 
+void writeBlockExitForJIT(U8* buffer) {
+    X86Asm x86;
+
+    // writeCache
+    for (int i = 0; i < 8; i++) {
+        if (regCache[i]) {
+            x86.writeMem(x86.edi, CPU::offsetofReg32(i), X86Asm::Reg32(regCache[i]));
+        }
+    }
+
+    x86.pop(x86.ebp);
+    x86.pop(x86.esi);
+    x86.pop(x86.edi);
+    x86.pop(x86.ebx);
+
+#ifdef _DEBUG
+    x86.mov(x86.esp, x86.ebp);
+    x86.pop(x86.ebp);
+#endif
+
+    x86.ret();
+    memcpy(buffer, x86.buffer.data(), x86.buffer.size());
+}
+
 void X86DynamicCodeGen::blockExit() {
+
+    writeCache();
+
+    x86.pop(x86.ebp);
+    x86.pop(x86.esi);
     x86.pop(x86.edi);
     x86.pop(x86.ebx);
 
@@ -330,44 +381,41 @@ void X86DynamicCodeGen::callHostFunction(void* address, bool hasReturn, U32 argC
 
     if (argCount >= 5) {
         if (isParamTypeReg(arg5Type) && doneWithArg5) {
-            if (arg5 >= 4) {
-                kpanic_fmt("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg5, arg5Type);
+            if (arg5 < 4) {
+                regDone[arg5] = true;
             }
-            regDone[arg5] = true;
         }
     }
     if (argCount >= 4) {
         if (isParamTypeReg(arg4Type) && doneWithArg4) {
-            if (arg4 >= 4) {
-                kpanic_fmt("x32CPU::callHostFunction bad param 4: arg=%d argType=%d", arg4, arg4Type);
+            if (arg4 < 4) {
+                regDone[arg4] = true;
             }
-            regDone[arg4] = true;
         }
     }
     if (argCount >= 3) {
         if (isParamTypeReg(arg3Type) && doneWithArg3) {
-            if (arg3 >= 4) {
-                kpanic_fmt("x32CPU::callHostFunction bad param 3: arg=%d argType=%d", arg3, arg3Type);
+            if (arg3 < 4) {
+                regDone[arg3] = true;
             }
-            regDone[arg3] = true;
         }
     }
     if (argCount >= 2) {
         if (isParamTypeReg(arg2Type) && doneWithArg2) {
-            if (arg2 >= 4) {
-                kpanic_fmt("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg2, arg2Type);
+            if (arg2 < 4) {
+                regDone[arg2] = true;
             }
-            regDone[arg2] = true;
         }
     }
     if (argCount >= 1) {
         if (isParamTypeReg(arg1Type) && doneWithArg1) {
-            if (arg1 >= 4) {
-                kpanic_fmt("x32CPU::callHostFunction bad param 5: arg=%d argType=%d", arg1, arg1Type);
+            if (arg1 < 4) {
+                regDone[arg1] = true;
             }
-            regDone[arg1] = true;
         }
     }
+
+    writeCache();
 
     if (hasReturn) {
         regUsed[x86.eax.reg] = true;
@@ -410,6 +458,7 @@ void X86DynamicCodeGen::callHostFunction(void* address, bool hasReturn, U32 argC
     if (!hasReturn && regUsed[x86.eax.reg] && !regDone[x86.eax.reg]) {
         x86.pop(x86.eax);
     }
+    loadCache();
     for (int i = 0; i < 4; i++) {
         if (regDone[i]) {
             regUsed[i] = false;
@@ -672,12 +721,20 @@ void X86DynamicCodeGen::calculateEaa(DecodedOp* op, DynReg reg) {
         }
         if (op->rm != 8) {
             // intentional 16-bit add
-            x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->rm));
+            if (regCache[op->rm]) {
+                x86.add(reg16, X86Asm::Reg16(regCache[op->rm]));
+            } else {
+                x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->rm));
+            }
         }
 
         if (op->sibIndex != 8) {
             // intentional 16-bit add
-            x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->sibIndex));
+            if (regCache[op->sibIndex]) {
+                x86.add(reg16, X86Asm::Reg16(regCache[op->sibIndex]));
+            } else {
+                x86.addMem(reg16, x86.edi, CPU::offsetofReg16(op->sibIndex));
+            }
         }
 
         // seg[6] is always 0
@@ -687,18 +744,22 @@ void X86DynamicCodeGen::calculateEaa(DecodedOp* op, DynReg reg) {
         }
     } else {
         if (op->sibIndex != 8) {
-            x86.readMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->sibIndex));
+            loadReg(op->sibIndex, reg, DYN_32bit);
             if (op->sibScale) {
                 x86.shl(X86Asm::Reg32(reg), op->sibScale);
             }
             if (op->rm != 8) {
-                x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->rm));
+                if (regCache[op->rm]) {
+                    x86.add(X86Asm::Reg32(reg), X86Asm::Reg32(regCache[op->rm]));
+                } else {
+                    x86.addMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->rm));
+                }
             }
             if (op->data.disp) {
                 x86.add(X86Asm::Reg32(reg), op->data.disp);
             }
         } else if (op->rm != 8) {
-            x86.readMem(X86Asm::Reg32(reg), x86.edi, CPU::offsetofReg32(op->rm));
+            loadReg(op->rm, reg, DYN_32bit);
             if (op->data.disp) {
                 x86.add(X86Asm::Reg32(reg), op->data.disp);
             }
@@ -826,20 +887,29 @@ void X86DynamicCodeGen::pushValue(U32 arg, DynCallParamType argType) {
     case DYN_PARAM_CONST_PTR:
         x86.push((U32)arg);
         break;
-    case DYN_PARAM_CPU_ADDRESS_8:
-        x86.readMem(X86Asm::Reg8(x86.eax.reg), x86.edi, arg);
-        x86.movzx(x86.eax, X86Asm::Reg8(x86.eax.reg));
+    case DYN_PARAM_CPU_REG_8:
+    {
+        loadReg(arg, DYN_CALL_RESULT, DYN_8bit);
+        x86.movzx(x86.eax, X86Asm::Reg8(DYN_CALL_RESULT));
         x86.push(x86.eax);
+        regUsed[DYN_CALL_RESULT] = false;
         break;
-    case DYN_PARAM_CPU_ADDRESS_16:
-        x86.readMem(X86Asm::Reg16(x86.eax.reg), x86.edi, arg);
-        x86.movzx(x86.eax, X86Asm::Reg16(x86.eax.reg));
+    }
+    case DYN_PARAM_CPU_REG_16:
+    {
+        loadReg(arg, DYN_CALL_RESULT, DYN_16bit);
+        x86.movzx(x86.eax, X86Asm::Reg16(DYN_CALL_RESULT));
         x86.push(x86.eax);
+        regUsed[DYN_CALL_RESULT] = false;
         break;
-    case DYN_PARAM_CPU_ADDRESS_32:
-        x86.readMem(x86.eax, x86.edi, arg);
+    }
+    case DYN_PARAM_CPU_REG_32:
+    {
+        loadReg(arg, DYN_CALL_RESULT, DYN_32bit);
         x86.push(x86.eax);
+        regUsed[DYN_CALL_RESULT] = false;
         break;
+    }
     default:
         kpanic_fmt("x32CPU: unknown argType: %d", argType);
         break;
@@ -976,8 +1046,12 @@ U8* X86DynamicCodeGen::createStartJITCode() {
 
     x86.push(x86.ebx);
     x86.push(x86.edi);
+    x86.push(x86.esi);
+    x86.push(x86.ebp);
     // on win32 ecx contains cpu
     x86.mov(x86.edi, x86.ecx);
+
+    loadCache();
 
     // :TODO: what about other x86 platforms that use a different calling convention
     // 
@@ -1004,6 +1078,127 @@ void X86DynamicCodeGen::patch(U8* begin) {
         U32* value = (U32*)(&begin[pos]);
         *value = *value - (U32)(begin + pos + 4);
     }
+}
+
+// :TODO: it would be nice to return the mapped register rather than always copying to tmpReg, but currently the dynamic code assumes in many places that it can clobber the register, like in callHostFunction when it zero extends it
+void X86DynamicCodeGen::loadReg(U8 reg, DynReg tmpReg, DynWidth width) {
+    bool isHigh8bit = (width == DYN_8bit) && (reg >= 4);
+
+    if (!isHigh8bit && regCache[reg]) {
+        // tmpReg can only be 0-3 (see enum DynReg), on x86 those reg can do 8-bit math, the other can't, so for 8-bit, we need to move it into the tmpReg
+        if (width == DYN_8bit) {
+            x86.mov(X86Asm::Reg32(tmpReg), X86Asm::Reg32(regCache[reg]));
+            regUsed[tmpReg] = true;
+        } else {
+            movToRegFromReg(tmpReg, width, (DynReg)regCache[reg], width, false);
+            regUsed[tmpReg] = true;
+        }
+    } else if (isHigh8bit && regCache[reg - 4]) {
+        x86.mov(X86Asm::Reg32(tmpReg), X86Asm::Reg32(regCache[reg - 4]));
+        x86.mov(X86Asm::Reg8(tmpReg), X86Asm::Reg8(tmpReg + 4)); // copy AH to AL since this is where the caller expects it
+        regUsed[tmpReg] = true;
+    } else {
+        DynamicCodeGen::loadReg(reg, tmpReg, width);
+    }
+}
+
+void X86DynamicCodeGen::storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
+    if (doneWithSrcReg) {
+        regUsed[srcReg] = false;
+    }
+    bool isHigh8bit = (width == DYN_8bit) && (reg >= 4);
+
+    if (!isHigh8bit && regCache[reg]) {
+        if (width == DYN_8bit) {
+            X86Asm::Reg32 tmpReg(0);
+
+            if (srcReg == 0) {
+                tmpReg = X86Asm::Reg32(1);
+            }
+            if (regUsed[tmpReg.reg]) {
+                x86.push(tmpReg);
+            }
+            x86.mov(tmpReg, X86Asm::Reg32(regCache[reg]));
+            x86.mov(X86Asm::Reg8(tmpReg.reg), X86Asm::Reg8(srcReg));
+            x86.mov(X86Asm::Reg32(regCache[reg]), tmpReg);
+            if (regUsed[tmpReg.reg]) {
+                x86.pop(tmpReg);
+            }
+        } else if (width == DYN_16bit) {
+            x86.mov(X86Asm::Reg16(regCache[reg]), X86Asm::Reg16(srcReg));
+        } else {
+            x86.mov(X86Asm::Reg32(regCache[reg]), X86Asm::Reg32(srcReg));
+        }
+    } else if (isHigh8bit && regCache[reg - 4]) {
+        X86Asm::Reg32 tmpReg(0);
+
+        if (srcReg == 0) {
+            tmpReg = X86Asm::Reg32(1);
+        }
+        if (regUsed[tmpReg.reg]) {
+            x86.push(tmpReg);
+        }
+        x86.mov(tmpReg, X86Asm::Reg32(regCache[reg - 4]));
+        x86.mov(X86Asm::Reg8(tmpReg.reg + 4), X86Asm::Reg8(srcReg)); // +4 for high byte (like AH)
+        x86.mov(X86Asm::Reg32(regCache[reg - 4]), tmpReg);
+        if (regUsed[tmpReg.reg]) {
+            x86.pop(tmpReg);
+        }
+    } 
+    else {
+        DynamicCodeGen::storeReg(reg, srcReg, width, doneWithSrcReg);
+    }
+}
+
+void X86DynamicCodeGen::storeReg(U8 reg, DynWidth dstWidth, U32 imm) {
+    bool isHigh8bit = (dstWidth == DYN_8bit) && (reg >= 4);
+
+    if (!isHigh8bit && regCache[reg]) {
+        if (dstWidth == DYN_8bit) {
+            if (regUsed[0]) {
+                x86.push(x86.eax);
+            }
+            x86.mov(x86.eax, X86Asm::Reg32(regCache[reg]));
+            x86.mov(x86.al, (U8)imm);
+            x86.mov(X86Asm::Reg32(regCache[reg]), x86.eax);
+            if (regUsed[0]) {
+                x86.pop(x86.eax);
+            }
+        } else if (dstWidth == DYN_16bit) {
+            x86.mov(X86Asm::Reg16(regCache[reg]), (U16)imm);
+        } else {
+            x86.mov(X86Asm::Reg32(regCache[reg]), imm);
+        }
+    } else if (isHigh8bit && regCache[reg - 4]) {
+        if (regUsed[0]) {
+            x86.push(x86.eax);
+        }
+        x86.mov(x86.eax, X86Asm::Reg32(regCache[reg - 4]));
+        x86.mov(x86.ah, (U8)imm);
+        x86.mov(X86Asm::Reg32(regCache[reg - 4]), x86.eax);
+        if (regUsed[0]) {
+            x86.pop(x86.eax);
+        }
+    } 
+    else {
+        DynamicCodeGen::storeReg(reg, dstWidth, imm);
+    }
+}
+
+void X86DynamicCodeGen::loadCache() {
+    for (int i = 0; i < 8; i++) {
+        if (regCache[i]) {
+            DynamicCodeGen::loadReg(i, (DynReg)regCache[i], DYN_32bit);
+        }
+    }
+}
+
+void X86DynamicCodeGen::writeCache() {
+    for (int i = 0; i < 8; i++) {
+        if (regCache[i]) {
+            DynamicCodeGen::storeReg(i, (DynReg)regCache[i], DYN_32bit, false);
+        }
+    }    
 }
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {

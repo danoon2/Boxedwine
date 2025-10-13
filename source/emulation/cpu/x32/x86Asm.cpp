@@ -230,7 +230,7 @@ void X86Asm::mov(Reg16 dst, U16 imm) {
 
 void X86Asm::mov(Reg8 dst, U8 imm) {
     outb(0xb0 + dst.reg);
-    outd(imm);
+    outb(imm);
 }
 
 void X86Asm::readMem(Reg32 dst, Reg32 rm, U32 disp) {

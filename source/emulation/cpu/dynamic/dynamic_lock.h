@@ -413,7 +413,7 @@ void DynamicData::dynamic_btse16_lock(DecodedOp* op) {
 
 void DynamicData::calculateEffectiveEaa32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    loadReg(op->reg, DYN_SRC, DYN_32bit, true);
+    loadReg(op->reg, DYN_SRC, DYN_32bit);
     sarRegImm(DYN_SRC, DYN_32bit, 5);
     shlRegImm(DYN_SRC, DYN_32bit, 2);
     addRegReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
@@ -421,7 +421,7 @@ void DynamicData::calculateEffectiveEaa32(DecodedOp* op) {
 
 void DynamicData::calculateEffectiveEaa16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
-    loadReg(op->reg, DYN_SRC, DYN_16bit, true);
+    loadReg(op->reg, DYN_SRC, DYN_16bit);
     sarRegImm(DYN_SRC, DYN_16bit, 4);
     shlRegImm(DYN_SRC, DYN_16bit, 1);
     zeroExtendReg16To32(DYN_SRC, DYN_SRC);
@@ -429,7 +429,7 @@ void DynamicData::calculateEffectiveEaa16(DecodedOp* op) {
 }
 
 void DynamicData::calculateMask32InDest(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_32bit, true);
+    loadReg(op->reg, DYN_SRC, DYN_32bit);
     andRegImm(DYN_SRC, DYN_32bit, 31);
     movToReg(DYN_DEST, DYN_32bit, 1);
     shlRegReg(DYN_DEST, DYN_SRC, DYN_32bit, true);

@@ -26,6 +26,11 @@ enum DynReg {
     DYN_SRC = 1,
     DYN_DEST = 2,
     DYN_ADDRESS = 3,
+
+    DYN_REG4 = 4,
+    DYN_REG5 = 5,
+    DYN_REG6 = 6,
+    DYN_REG7 = 7,
     DYN_NOT_SET = 0xff
 };
 
@@ -58,9 +63,9 @@ enum DynCallParamType {
     DYN_PARAM_CONST_16,
     DYN_PARAM_CONST_32,
     DYN_PARAM_CONST_PTR,
-    DYN_PARAM_CPU_ADDRESS_8,
-    DYN_PARAM_CPU_ADDRESS_16,
-    DYN_PARAM_CPU_ADDRESS_32,
+    DYN_PARAM_CPU_REG_8,
+    DYN_PARAM_CPU_REG_16,
+    DYN_PARAM_CPU_REG_32,
     DYN_PARAM_CPU,
 };
 
@@ -94,15 +99,15 @@ public:
     U32 currentEip = 0;
 
     // per instruction, not per block.  
-    bool regUsed[4];
+    bool regUsed[32]; // host regs might index into this, only the first 4 are important
     virtual bool canJumpInBlock(DecodedOp* op) = 0;
 
-    virtual void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) = 0;
+    virtual void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg) = 0;
     virtual void loadRegStoreSrc(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) = 0;
     virtual void loadRegStoreDst(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) = 0;
-    virtual void loadRegStoreEip(U8 reg, DynReg tmpReg, bool doneWithTmpReg) = 0;
-    virtual void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg) = 0;
-    virtual DynReg loadReg(U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp = false) = 0;
+    virtual void loadRegStoreEip(U8 reg, DynReg tmpReg) = 0;
+    virtual void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg) = 0;
+    virtual void loadReg(U8 reg, DynReg tmpReg, DynWidth width) = 0;
     virtual void loadSegAddress(U8 seg, DynReg reg) = 0;
     virtual void loadSegValue(U8 seg, DynReg reg) = 0;
     virtual void loadCPUFlags(DynReg reg) = 0;

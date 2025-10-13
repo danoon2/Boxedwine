@@ -338,19 +338,6 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
-U32 DynamicCodeGen::cpuOffset(U32 r, DynWidth width) {
-    if (width == DYN_8bit)
-        return CPU::offsetofReg8(r);
-    else if (width == DYN_16bit)
-        return CPU::offsetofReg16(r);
-    else if (width == DYN_32bit)
-        return CPU::offsetofReg16(r);
-    else {
-        kpanic_fmt("dynamic cpuOffset unexpected width: %d", width);
-        return 0;
-    }
-}
-
 U32 DynamicCodeGen::cpuOffsetResult(DynWidth width) {
     if (width == DYN_8bit)
         return CPU_OFFSET_OF(result.u8);
@@ -390,37 +377,61 @@ U32 DynamicCodeGen::cpuOffsetSrc(DynWidth width) {
     }
 }
 
-void DynamicCodeGen::movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
+void DynamicCodeGen::loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg) {
+    loadReg(src, tmpReg, width);
+    storeReg(dst, tmpReg, width, true);
+}
+
+void DynamicCodeGen::loadRegStoreSrc(U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
+    loadReg(src, tmpReg, width);
+    movToCpuFromReg(cpuOffsetSrc(width), tmpReg, width, doneWithTmpReg);
+}
+
+void DynamicCodeGen::loadRegStoreDst(U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
+    loadReg(src, tmpReg, width);
+    movToCpuFromReg(cpuOffsetDst(width), tmpReg, width, doneWithTmpReg);
+}
+
+void DynamicCodeGen::loadRegStoreEip(U8 src, DynReg tmpReg) {
+    loadReg(src, tmpReg, DYN_32bit);
+    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), tmpReg, DYN_32bit, true);
+}
+
+void DynamicCodeGen::loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg) {
     // mov tmpReg, [cpu+srcOffset]
-    movToRegFromCpu(tmpReg, srcOffset, width);
-
-    // mov [cpu+dstOffset], tmpReg
-    movToCpuFromReg(dstOffset, tmpReg, width, doneWithTmpReg);
+    movToRegFromCpu(tmpReg, CPU::offsetofSegValue(seg), DYN_32bit);
+    storeReg(reg, tmpReg, DYN_32bit, true);
 }
 
-void DynamicCodeGen::loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(cpuOffset(dst, width), cpuOffset(src, width), width, tmpReg, doneWithTmpReg);
+// all reg read/write access should go through loadReg/storeReg, no one else should index a reg in the CPU
+U32 dontUseCpuOffset(U32 r, DynWidth width) {
+    if (width == DYN_8bit)
+        return CPU::offsetofReg8(r);
+    else if (width == DYN_16bit)
+        return CPU::offsetofReg16(r);
+    else if (width == DYN_32bit)
+        return CPU::offsetofReg16(r);
+    else {
+        kpanic_fmt("dynamic cpuOffset unexpected width: %d", width);
+        return 0;
+    }
 }
 
-void DynamicCodeGen::loadRegStoreSrc(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(cpuOffsetSrc(width), cpuOffset(reg, width), width, tmpReg, doneWithTmpReg);
+void DynamicCodeGen::loadReg(U8 reg, DynReg tmpReg, DynWidth width) {
+    movToRegFromCpu(tmpReg, dontUseCpuOffset(reg, width), width);
 }
 
-void DynamicCodeGen::loadRegStoreDst(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(cpuOffsetDst(width), cpuOffset(reg, width), width, tmpReg, doneWithTmpReg);
+void DynamicCodeGen::storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
+    movToCpuFromReg(dontUseCpuOffset(reg, width), srcReg, width, doneWithSrcReg);
 }
 
-void DynamicCodeGen::loadRegStoreEip(U8 reg, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(CPU_OFFSET_OF(eip.u32), cpuOffset(reg, DYN_32bit), DYN_32bit, tmpReg, doneWithTmpReg);
+void DynamicCodeGen::storeReg(U8 reg, DynWidth dstWidth, U32 imm) {
+    movToCpu(dontUseCpuOffset(reg, dstWidth), dstWidth, imm);
 }
 
-void DynamicCodeGen::loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg) {
-    movToCpuFromCpu(cpuOffset(reg, DYN_32bit), CPU::offsetofSegValue(seg), DYN_32bit, tmpReg, doneWithTmpReg);
-}
-
-DynReg DynamicCodeGen::loadReg(U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp) {
-    movToRegFromCpu(tmpReg, cpuOffset(reg, width), width);
-    return tmpReg;
+void DynamicCodeGen::storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
+    movFromMem(dstWidth, addressReg, doneWithAddressReg);
+    storeReg(reg, DYN_CALL_RESULT, dstWidth, doneWithCallResult);
 }
 
 void DynamicCodeGen::loadSegAddress(U8 seg, DynReg reg) {
@@ -467,10 +478,6 @@ void DynamicCodeGen::loadLazyFlagsDst(DynReg reg, DynWidth width) {
     movToRegFromCpu(reg, cpuOffsetDst(width), width);
 }
 
-void DynamicCodeGen::storeReg( U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
-    movToCpuFromReg(cpuOffset(reg, width), srcReg, width, doneWithSrcReg);
-}
-
 void DynamicCodeGen::storeLazyFlagsResult(DynReg srcReg, DynWidth width, bool doneWithSrcReg) {
     movToCpuFromReg(cpuOffsetResult(width), srcReg, width, doneWithSrcReg);
 }
@@ -487,10 +494,6 @@ void DynamicCodeGen::storeEip(DynReg srcReg, bool doneWithSrcReg) {
     movToCpuFromReg(CPU_OFFSET_OF(eip.u32), srcReg, DYN_32bit, doneWithSrcReg);
 }
 
-void DynamicCodeGen::storeReg(U8 reg, DynWidth dstWidth, U32 imm) {
-    movToCpu(cpuOffset(reg, dstWidth), dstWidth, imm);
-}
-
 void DynamicCodeGen::storeLazyFlagsSrc(DynWidth width, U32 imm) {
     movToCpu(cpuOffsetSrc(width), width, imm);
 }
@@ -503,10 +506,6 @@ void DynamicCodeGen::movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg ad
     movFromMem(dstWidth, addressReg, doneWithAddressReg);
     // mov [cpu+dstOffset], eax
     movToCpuFromReg(dstOffset, DYN_CALL_RESULT, dstWidth, doneWithCallResult);
-}
-
-void DynamicCodeGen::storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
-    movToCpuFromMem(cpuOffset(reg, dstWidth), dstWidth, addressReg, doneWithAddressReg, doneWithCallResult);
 }
 
 void DynamicCodeGen::storeLazyFlagsDstFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) {
@@ -555,9 +554,9 @@ void DynamicCodeGen::instCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool 
     if (regUsed[tmpReg]) {
         kpanic("instCPUReg");
     }
-    DynReg reg = loadReg(regIndex, tmpReg, regWidth);
-    (this->*pfnInstRegReg)(reg, rm, regWidth, doneWithRmReg);
-    movToCpuFromReg(cpuOffset(regIndex, regWidth), reg, regWidth, true);
+    loadReg(regIndex, tmpReg, regWidth);
+    (this->*pfnInstRegReg)(tmpReg, rm, regWidth, doneWithRmReg);
+    storeReg(regIndex, tmpReg, regWidth, true);
 }
 
 void DynamicCodeGen::addCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
@@ -596,9 +595,9 @@ void DynamicCodeGen::instCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg 
     if (regUsed[tmpReg]) {
         kpanic("instCPUImm");
     }
-    movToRegFromCpu(tmpReg, cpuOffset(regIndex, regWidth), regWidth);
+    loadReg(regIndex, tmpReg, regWidth);
     (this->*pfnInstRegImm)(tmpReg, regWidth, imm);
-    movToCpuFromReg(cpuOffset(regIndex, regWidth), tmpReg, regWidth, true);
+    storeReg(regIndex, tmpReg, regWidth, true);
 }
 
 void DynamicCodeGen::addCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
@@ -764,18 +763,18 @@ void DynamicCodeGen::negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) {
     if (regUsed[tmpReg]) {
         kpanic("instCPU");
     }
-    movToRegFromCpu(tmpReg, cpuOffset(regIndex, regWidth), regWidth);
+    loadReg(regIndex, tmpReg, regWidth);
     negReg(tmpReg, regWidth);
-    movToCpuFromReg(cpuOffset(regIndex, regWidth), tmpReg, regWidth, true);
+    storeReg(regIndex, tmpReg, regWidth, true);
 }
 
 void DynamicCodeGen::notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) {
     if (regUsed[tmpReg]) {
         kpanic("instCPU");
     }
-    movToRegFromCpu(tmpReg, cpuOffset(regIndex, regWidth), regWidth);
+    loadReg(regIndex, tmpReg, regWidth);
     notReg(tmpReg, regWidth);
-    movToCpuFromReg(cpuOffset(regIndex, regWidth), tmpReg, regWidth, true);
+    storeReg(regIndex, tmpReg, regWidth, true);
 }
 
 // this is good generic code to copy for other implementations that don't have something like setcc
@@ -796,7 +795,7 @@ void DynamicCodeGen::setCPUReg(U8 regIndex, DynWidth regWidth, DynConditional co
     if (regWidth != DYN_8bit) {
         movToRegFromReg(DYN_CALL_RESULT, regWidth, DYN_CALL_RESULT, DYN_8bit, false);
     }
-    movToCpuFromReg(cpuOffset(regIndex, regWidth), DYN_CALL_RESULT, regWidth, true);
+    storeReg(regIndex, DYN_CALL_RESULT, regWidth, true);
 }
 
 /*
@@ -1152,7 +1151,7 @@ void DynamicCodeGen::commitJIT(DecodedOp* op) {
     op->blockLen = emulatedLen;
     op->blockOpCount = blockOpCount;
 #ifdef _DEBUG
-    //logBlock(data.cpu, data.startingEip, op, op->blockLen);
+    //logBlock(cpu, startingEip, op, op->blockLen);
 #endif 
     U32 address = startingEip;
     DecodedOp* nextOp = op;
@@ -1195,7 +1194,7 @@ void DynamicCodeGen::arithRR(DecodedOp* op, DynWidth width, bool cf, bool store,
         return;
     }
     if (!needsToSetFlags) {
-        loadReg(op->rm, DYN_SRC, width, true);
+        loadReg(op->rm, DYN_SRC, width);
         if (cf) {
             if (width != DYN_32bit) {
                 movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
@@ -1329,7 +1328,7 @@ void DynamicCodeGen::arithMR(DecodedOp* op, DynWidth width, bool cf, bool store,
     }
     if (!needsToSetFlags) {
         calculateEaa(op, DYN_ADDRESS);
-        loadReg(op->reg, DYN_SRC, width, true);
+        loadReg(op->reg, DYN_SRC, width);
         if (cf) {
             if (width != DYN_32bit) {
                 movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);

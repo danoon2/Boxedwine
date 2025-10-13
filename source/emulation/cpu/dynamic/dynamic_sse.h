@@ -34,6 +34,6 @@
 #define SSE_RE_I8(name) void DynamicData::dynamic_##name(DecodedOp* op) {calculateEaa(op, DYN_ADDRESS);callHostFunction((void*)common_##name, false, 4, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, (U8)op->imm, DYN_PARAM_CONST_32, false);incrementEip(op->len);}
 
 #undef SSE_RR_EDI
-#define SSE_RR_EDI(name) void DynamicData::dynamic_##name(DecodedOp* op) {DynReg reg = loadReg(7, DYN_SRC, DYN_32bit); loadSegAddress(op->base, DYN_ADDRESS); addRegReg(DYN_ADDRESS, reg, DYN_32bit, true); callHostFunction((void*)common_##name, false, 4, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);incrementEip(op->len);}
+#define SSE_RR_EDI(name) void DynamicData::dynamic_##name(DecodedOp* op) {loadReg(7, DYN_SRC, DYN_32bit); loadSegAddress(op->base, DYN_ADDRESS); addRegReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true); callHostFunction((void*)common_##name, false, 4, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false, DYN_ADDRESS, DYN_PARAM_REG_32, true);incrementEip(op->len);}
 
 #include "../common/common_sse_def.h"

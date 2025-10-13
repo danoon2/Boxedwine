@@ -46,12 +46,12 @@ public:
         return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
     }
 
-    void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) override;
+    void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg) override;
     void loadRegStoreSrc(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) override;
     void loadRegStoreDst(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) override;
-    void loadRegStoreEip(U8 reg, DynReg tmpReg, bool doneWithTmpReg) override;
-    void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg, bool doneWithTmpReg) override;
-    DynReg loadReg(U8 reg, DynReg tmpReg, DynWidth width, bool copyIntoTmp = false) override;
+    void loadRegStoreEip(U8 reg, DynReg tmpReg) override;
+    void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg) override;
+    void loadReg(U8 reg, DynReg tmpReg, DynWidth width) override;
     void loadSegAddress(U8 seg, DynReg reg)  override;
     void loadSegValue(U8 seg, DynReg reg)  override;
     void loadCPUFlags(DynReg reg)  override;
@@ -144,8 +144,6 @@ protected:
     virtual void instCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg, InstRegImm pfnInstRegImm);
     virtual void instMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg, InstRegImm pfnInstRegImm);
 
-    // don't use private methods in the dynamic op code, maybe in the future I can enforce this with an interface
-    virtual void movToCpuFromCpu(U32 dstOffset, U32 srcOffset, DynWidth width, DynReg tmpReg, bool doneWithTmpReg);
     virtual void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) = 0;
     virtual void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) = 0;
     virtual void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) = 0;
@@ -166,7 +164,7 @@ protected:
     U32 cpuOffsetResult(DynWidth width);
     U32 cpuOffsetDst(DynWidth width);
     U32 cpuOffsetSrc(DynWidth width);
-    U32 cpuOffset(U32 r, DynWidth width);
+   
 
     bool isParamTypeReg(DynCallParamType paramType);
     bool calculateLongestBlock(DecodedOp* op);
@@ -270,5 +268,6 @@ public:
 };
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
+void writeBlockExitForJIT(U8* buffer);
 
 #endif

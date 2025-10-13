@@ -521,7 +521,7 @@ void DynamicData::dynamic_nege32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_mulR8(DecodedOp* op) {
-    callHostFunction((void*)common_mul8, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg8(op->reg), DYN_PARAM_CPU_ADDRESS_8, false);
+    callHostFunction((void*)common_mul8, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_8, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }
@@ -532,7 +532,7 @@ void DynamicData::dynamic_mulE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_imulR8(DecodedOp* op) {
-    callHostFunction((void*)common_imul8, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg8(op->reg), DYN_PARAM_CPU_ADDRESS_8, false);
+    callHostFunction((void*)common_imul8, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_8, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }
@@ -543,7 +543,7 @@ void DynamicData::dynamic_imulE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_mulR16(DecodedOp* op) {
-    callHostFunction((void*)common_mul16, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction((void*)common_mul16, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_16, false);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_mulE16(DecodedOp* op) {
@@ -552,7 +552,7 @@ void DynamicData::dynamic_mulE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_imulR16(DecodedOp* op) {
-    callHostFunction((void*)common_imul16, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction((void*)common_imul16, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_16, false);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_imulE16(DecodedOp* op) {
@@ -561,7 +561,7 @@ void DynamicData::dynamic_imulE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_mulR32(DecodedOp* op) {
-    callHostFunction((void*)common_mul32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    callHostFunction((void*)common_mul32, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_mulE32(DecodedOp* op) {
@@ -570,7 +570,7 @@ void DynamicData::dynamic_mulE32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_imulR32(DecodedOp* op) {
-    callHostFunction((void*)common_imul32, false, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    callHostFunction((void*)common_imul32, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_imulE32(DecodedOp* op) {
@@ -579,7 +579,7 @@ void DynamicData::dynamic_imulE32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_divR8(DecodedOp* op) {
-    callHostFunction((void*)div8, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg8(op->reg), DYN_PARAM_CPU_ADDRESS_8, false);
+    callHostFunction((void*)div8, true, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_8, false);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
     EndIf();
@@ -594,8 +594,8 @@ void DynamicData::dynamic_divE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_idivR8(DecodedOp* op) {
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_8bit);
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, reg, DYN_8bit, false); // ARM with -O2 needs this
+    loadReg(op->reg, DYN_SRC, DYN_8bit);
+    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false); // ARM with -O2 needs this
     callHostFunction((void*)idiv8, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
@@ -612,7 +612,7 @@ void DynamicData::dynamic_idivE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_divR16(DecodedOp* op) {
-    callHostFunction((void*)div16, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction((void*)div16, true, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_16, false);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
     EndIf();
@@ -627,8 +627,8 @@ void DynamicData::dynamic_divE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_idivR16(DecodedOp* op) {
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_16bit);
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, reg, DYN_16bit, false); // ARM64 with -O2 needs this
+    loadReg(op->reg, DYN_SRC, DYN_16bit);
+    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false); // ARM64 with -O2 needs this
     callHostFunction((void*)idiv16, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
@@ -645,7 +645,7 @@ void DynamicData::dynamic_idivE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_divR32(DecodedOp* op) {
-    callHostFunction((void*)div32, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    callHostFunction((void*)div32, true, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
     EndIf();
@@ -660,7 +660,7 @@ void DynamicData::dynamic_divE32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_idivR32(DecodedOp* op) {
-    callHostFunction((void*)idiv32, true, 2, 0, DYN_PARAM_CPU, false, CPU::offsetofReg32(op->reg), DYN_PARAM_CPU_ADDRESS_32, false);
+    callHostFunction((void*)idiv32, true, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
     EndIf();
@@ -675,8 +675,8 @@ void DynamicData::dynamic_idivE32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulcr16r16(DecodedOp* op) {
-    DynReg reg = loadReg(op->rm, DYN_DEST, DYN_16bit);
-    callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, reg, DYN_PARAM_REG_16, true, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
+    loadReg(op->rm, DYN_DEST, DYN_16bit);
+    callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_16, true, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }
@@ -687,8 +687,8 @@ void DynamicData::dynamic_dimulcr16e16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulcr32r32(DecodedOp* op) {
-    DynReg reg = loadReg(op->rm, DYN_DEST, DYN_32bit);
-    callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, reg, DYN_PARAM_REG_32, true, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
+    loadReg(op->rm, DYN_DEST, DYN_32bit);
+    callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_32, true, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }
@@ -699,30 +699,30 @@ void DynamicData::dynamic_dimulcr32e32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr16r16(DecodedOp* op) {
-    DynReg regRM = loadReg(op->rm, DYN_DEST, DYN_16bit);
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_16bit);
-    callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, regRM, DYN_PARAM_REG_16, true, reg, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
+    loadReg(op->rm, DYN_DEST, DYN_16bit);
+    loadReg(op->reg, DYN_SRC, DYN_16bit);
+    callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_16, true, DYN_SRC, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr16e16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS); movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_16bit);
-    callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, reg, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
+    loadReg(op->reg, DYN_SRC, DYN_16bit);
+    callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, DYN_SRC, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr32r32(DecodedOp* op) {
-    DynReg regRM = loadReg(op->rm, DYN_DEST, DYN_32bit);
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_32bit);
-    callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, regRM, DYN_PARAM_REG_32, true, reg, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    loadReg(op->rm, DYN_DEST, DYN_32bit);
+    loadReg(op->reg, DYN_SRC, DYN_32bit);
+    callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_32, true, DYN_SRC, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr32e32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS); movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_32bit);
-    callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, reg, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
+    loadReg(op->reg, DYN_SRC, DYN_32bit);
+    callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, DYN_SRC, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
     currentLazyFlags=FLAGS_NONE;
     incrementEip(op->len);
 }

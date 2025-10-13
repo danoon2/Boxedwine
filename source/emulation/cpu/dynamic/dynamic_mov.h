@@ -17,13 +17,13 @@
  */
 
 void DynamicData::dynamic_movr8r8(DecodedOp* op) {
-    loadRegStoreReg(op->reg, op->rm, DYN_8bit, DYN_SRC, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_8bit, DYN_SRC);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move8r8(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS); 
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_8bit); 
-    movToMemFromReg(DYN_ADDRESS, reg, DYN_8bit, true, true, DYN_DEST);
+    loadReg(op->reg, DYN_SRC, DYN_8bit); 
+    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr8e8(DecodedOp* op) {
@@ -40,13 +40,13 @@ void DynamicData::dynamic_move8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr16r16(DecodedOp* op) {
-    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_16bit, DYN_SRC);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move16r16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS); 
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_16bit);
-    movToMemFromReg(DYN_ADDRESS, reg, DYN_16bit, true, true, DYN_DEST);
+    loadReg(op->reg, DYN_SRC, DYN_16bit);
+    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr16e16(DecodedOp* op) {
@@ -63,13 +63,13 @@ void DynamicData::dynamic_move16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32r32(DecodedOp* op) {
-    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC, true);
+    loadRegStoreReg(op->reg, op->rm, DYN_32bit, DYN_SRC);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move32r32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS); 
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_32bit);
-    movToMemFromReg(DYN_ADDRESS, reg, DYN_32bit, true, true, DYN_DEST);
+    loadReg(op->reg, DYN_SRC, DYN_32bit);
+    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32e32(DecodedOp* op) {
@@ -92,7 +92,7 @@ void DynamicData::dynamic_movr16s16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32s16(DecodedOp* op) {
-    loadSegValueStoreReg(op->reg, op->rm, DYN_SRC, true);
+    loadSegValueStoreReg(op->reg, op->rm, DYN_SRC);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move16s16(DecodedOp* op) {
@@ -112,7 +112,7 @@ void DynamicData::dynamic_movs16e16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movs16r16(DecodedOp* op) {
-    callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, CPU::offsetofReg16(op->reg), DYN_PARAM_CPU_ADDRESS_16, false);
+    callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CPU_REG_16, false);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
     EndIf();
@@ -142,27 +142,27 @@ void DynamicData::dynamic_movEaxOd(DecodedOp* op) {
 void DynamicData::dynamic_movObAl(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
     addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    DynReg reg = loadReg(0, DYN_SRC, DYN_8bit);
-    movToMemFromReg(DYN_ADDRESS, reg, DYN_8bit, true, true, DYN_DEST);
+    loadReg(0, DYN_SRC, DYN_8bit);
+    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_8bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movOwAx(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
     addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    DynReg reg = loadReg(0, DYN_SRC, DYN_16bit);
+    loadReg(0, DYN_SRC, DYN_16bit);
     movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movOdEax(DecodedOp* op) {
     loadSegAddress(op->base, DYN_ADDRESS);
     addRegImm(DYN_ADDRESS, DYN_32bit, op->data.disp);
-    DynReg reg = loadReg(0, DYN_SRC, DYN_32bit);
+    loadReg(0, DYN_SRC, DYN_32bit);
     movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true, true, DYN_DEST);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGwXzR8(DecodedOp* op) {
-    DynReg src = loadReg(op->rm, DYN_SRC, DYN_8bit);
-    movToRegFromReg(DYN_SRC, DYN_16bit, src, DYN_8bit, false); 
+    loadReg(op->rm, DYN_SRC, DYN_8bit);
+    movToRegFromReg(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
     storeReg(op->reg, DYN_SRC, DYN_16bit, true);
     incrementEip(op->len);
 }
@@ -174,8 +174,8 @@ void DynamicData::dynamic_movGwXzE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGwSxR8(DecodedOp* op) {
-    DynReg src = loadReg(op->rm, DYN_SRC, DYN_8bit); 
-    movToRegFromRegSignExtend(DYN_SRC, DYN_16bit, src, DYN_8bit, false); 
+    loadReg(op->rm, DYN_SRC, DYN_8bit); 
+    movToRegFromRegSignExtend(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
     storeReg(op->reg, DYN_SRC, DYN_16bit, true);
     incrementEip(op->len);
 }
@@ -187,8 +187,8 @@ void DynamicData::dynamic_movGwSxE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdXzR8(DecodedOp* op) {
-    DynReg src = loadReg(op->rm, DYN_SRC, DYN_8bit); 
-    movToRegFromReg(DYN_SRC, DYN_32bit, src, DYN_8bit, false); 
+    loadReg(op->rm, DYN_SRC, DYN_8bit); 
+    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
     storeReg(op->reg, DYN_SRC, DYN_32bit, true);
     incrementEip(op->len);
 }
@@ -200,8 +200,8 @@ void DynamicData::dynamic_movGdXzE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdSxR8(DecodedOp* op) {
-    DynReg src = loadReg(op->rm, DYN_SRC, DYN_8bit); 
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, src, DYN_8bit, false); 
+    loadReg(op->rm, DYN_SRC, DYN_8bit); 
+    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
     storeReg(op->reg, DYN_SRC, DYN_32bit, true);
     incrementEip(op->len);
 }
@@ -213,8 +213,8 @@ void DynamicData::dynamic_movGdSxE8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdXzR16(DecodedOp* op) {
-    DynReg src = loadReg(op->rm, DYN_SRC, DYN_16bit); 
-    movToRegFromReg(DYN_SRC, DYN_32bit, src, DYN_16bit, false); 
+    loadReg(op->rm, DYN_SRC, DYN_16bit); 
+    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
     storeReg(op->reg, DYN_SRC, DYN_32bit, true);
     incrementEip(op->len);
 }
@@ -226,8 +226,8 @@ void DynamicData::dynamic_movGdXzE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movGdSxR16(DecodedOp* op) {
-    DynReg src = loadReg(op->rm, DYN_SRC, DYN_16bit); 
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, src, DYN_16bit, false); 
+    loadReg(op->rm, DYN_SRC, DYN_16bit); 
+    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
     storeReg(op->reg, DYN_SRC, DYN_32bit, true);
     incrementEip(op->len);
 }
@@ -246,8 +246,8 @@ void DynamicData::dynamic_movRdCRx(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movCRxRd(DecodedOp* op) {
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_32bit);
-    callHostFunction((void*)common_writeCrx, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, reg, DYN_PARAM_REG_32, true);
+    loadReg(op->reg, DYN_SRC, DYN_32bit);
+    callHostFunction((void*)common_writeCrx, true, 3, 0, DYN_PARAM_CPU, false, op->rm, DYN_PARAM_CONST_32, false, DYN_SRC, DYN_PARAM_REG_32, true);
     IfNot(DYN_CALL_RESULT, true);
     blockDone(true);
     EndIf();

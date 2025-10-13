@@ -73,14 +73,14 @@ void DynamicData::dynamic_wait(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cwd(DecodedOp* op) {
-    loadReg(0, DYN_SRC, DYN_16bit, true);
+    loadReg(0, DYN_SRC, DYN_16bit);
     andRegImm(DYN_SRC, DYN_16bit, 0x8000);
     sarRegImm(DYN_SRC, DYN_16bit, 15);
     storeReg(2, DYN_SRC, DYN_16bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cwq(DecodedOp* op) {
-    loadReg(0, DYN_SRC, DYN_32bit, true);
+    loadReg(0, DYN_SRC, DYN_32bit);
     andRegImm(DYN_SRC, DYN_32bit, 0x80000000);
     sarRegImm(DYN_SRC, DYN_32bit, 31);
     storeReg(2, DYN_SRC, DYN_32bit, true);
@@ -132,7 +132,7 @@ void DynamicData::dynamic_iret32(DecodedOp* op) {
 }
 void DynamicData::dynamic_sahf(DecodedOp* op) {
     dynamic_fillFlags();
-    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, CPU::offsetofReg8(4), DYN_PARAM_CPU_ADDRESS_8, false, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
+    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, 4, DYN_PARAM_CPU_REG_8, false, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_lahf(DecodedOp* op) {
@@ -151,17 +151,17 @@ void DynamicData::dynamic_salc(DecodedOp* op) {
 }
 void DynamicData::dynamic_retn16Iw(DecodedOp* op) {
     callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
-    DynReg reg = loadReg(4, DYN_SRC, DYN_16bit);
-    addRegImm(reg, DYN_16bit, op->imm);
-    storeReg(4, reg, DYN_16bit, true);
+    loadReg(4, DYN_SRC, DYN_16bit);
+    addRegImm(DYN_SRC, DYN_16bit, op->imm);
+    storeReg(4, DYN_SRC, DYN_16bit, true);
     storeEip(DYN_CALL_RESULT, true);
     blockDone(false);
 }
 void DynamicData::dynamic_retn32Iw(DecodedOp* op) {
     dynamic_pop32();
-    DynReg reg = loadReg(4, DYN_SRC, DYN_32bit);
-    addRegImm(reg, DYN_32bit, op->imm);
-    storeReg(4, reg, DYN_32bit, true);
+    loadReg(4, DYN_SRC, DYN_32bit);
+    addRegImm(DYN_SRC, DYN_32bit, op->imm);
+    storeReg(4, DYN_SRC, DYN_32bit, true);
     storeEip(DYN_CALL_RESULT, true);
     blockDone(false);
 }
@@ -208,14 +208,14 @@ void DynamicData::dynamic_int3(DecodedOp* op) {
     blockDone(false);
 }
 void DynamicData::dynamic_xlat(DecodedOp* op) {
-    loadReg(0, DYN_SRC, DYN_8bit, true);
+    loadReg(0, DYN_SRC, DYN_8bit);
     if (op->ea16) {
-        loadReg(3, DYN_ADDRESS, DYN_16bit, true);
+        loadReg(3, DYN_ADDRESS, DYN_16bit);
         movToRegFromReg(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
         addRegReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true);
         movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_ADDRESS, DYN_16bit, false);
     } else {
-        loadReg(3, DYN_ADDRESS, DYN_32bit, true);
+        loadReg(3, DYN_ADDRESS, DYN_32bit);
         movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
         addRegReg(DYN_ADDRESS, DYN_SRC, DYN_32bit, true);
     }
@@ -277,13 +277,13 @@ void DynamicData::dynamic_enter32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_leave16(DecodedOp* op) {
-    loadRegStoreReg(4, 5, DYN_16bit, DYN_SRC, true);
+    loadRegStoreReg(4, 5, DYN_16bit, DYN_SRC);
     callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
     storeReg(5, DYN_CALL_RESULT, DYN_16bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_leave32(DecodedOp* op) {
-    loadRegStoreReg(4, 5, DYN_32bit, DYN_SRC, true);
+    loadRegStoreReg(4, 5, DYN_32bit, DYN_SRC);
     dynamic_pop32();
     storeReg(5, DYN_CALL_RESULT, DYN_32bit, true);
     incrementEip(op->len);
@@ -300,7 +300,7 @@ void DynamicData::dynamic_loopnz(DecodedOp* op) {
 
     setConditionInReg(NZ, DYN_SRC); // setConditionInReg uses DYN_DEST as tmp, so this call must be first
 
-    loadReg(1, DYN_DEST, width, true);
+    loadReg(1, DYN_DEST, width);
     subRegImm(DYN_DEST, width, 1);
     storeReg(1, DYN_DEST, width, false);
 
@@ -329,7 +329,7 @@ void DynamicData::dynamic_loopz(DecodedOp* op) {
 
     setConditionInReg(Z, DYN_SRC); // setConditionInReg uses DYN_DEST as tmp, so this call must be first
 
-    loadReg(1, DYN_DEST, width, true);
+    loadReg(1, DYN_DEST, width);
     subRegImm(DYN_DEST, width, 1);
     storeReg(1, DYN_DEST, width, false);
 
@@ -356,7 +356,7 @@ void DynamicData::dynamic_loop(DecodedOp* op) {
     //    NEXT_BRANCH2();
     //}
     DynWidth width = op->ea16 ? DYN_16bit : DYN_32bit;
-    loadReg(1, DYN_DEST, width, true);
+    loadReg(1, DYN_DEST, width);
     subRegImm(DYN_DEST, width, 1);
     storeReg(1, DYN_DEST, width, false);
 
@@ -373,7 +373,7 @@ void DynamicData::dynamic_jcxz(DecodedOp* op) {
     //    NEXT_BRANCH2();
     //}
     DynWidth width = op->ea16 ? DYN_16bit : DYN_32bit;
-    loadReg(1, DYN_DEST, width, true);
+    loadReg(1, DYN_DEST, width);
 
     if (width == DYN_16bit) {
         movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, width, false);
@@ -469,7 +469,7 @@ void DynamicData::dynamic_jmp32(DecodedOp* op) {
 void DynamicData::dynamic_callR16(DecodedOp* op) {
     loadEip(DYN_SRC);
     addRegImm(DYN_SRC, DYN_32bit, op->len);
-    loadReg(op->reg, DYN_DEST, DYN_16bit, true);
+    loadReg(op->reg, DYN_DEST, DYN_16bit);
     callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);    
     movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false); 
     storeEip(DYN_DEST, true);
@@ -478,9 +478,9 @@ void DynamicData::dynamic_callR16(DecodedOp* op) {
 void DynamicData::dynamic_callR32(DecodedOp* op) {
     loadEip(DYN_SRC);
     addRegImm(DYN_SRC, DYN_32bit, op->len);
-    DynReg reg = loadReg(op->reg, DYN_CALL_RESULT, DYN_32bit);
+    loadReg(op->reg, DYN_CALL_RESULT, DYN_32bit);
     dynamic_pushReg32(DYN_SRC, true);
-    storeEip(reg, true);
+    storeEip(DYN_CALL_RESULT, true);
     blockDoneCall();
 }
 void DynamicData::dynamic_callE16(DecodedOp* op) {
@@ -503,13 +503,13 @@ void DynamicData::dynamic_callE32(DecodedOp* op) {
     blockDoneCall();
 }
 void DynamicData::dynamic_jmpR16(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_16bit, true);
+    loadReg(op->reg, DYN_SRC, DYN_16bit);
     movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
     storeEip(DYN_SRC, true);
     blockDoneJump();
 }
 void DynamicData::dynamic_jmpR32(DecodedOp* op) {
-    loadRegStoreEip(op->reg, DYN_SRC, true);
+    loadRegStoreEip(op->reg, DYN_SRC);
     blockDoneJump();
 }
 void DynamicData::dynamic_jmpE16(DecodedOp* op) {
@@ -608,10 +608,10 @@ void DynamicData::dynamic_verwe16(DecodedOp* op) {
 }
 void DynamicData::dynamic_xaddr8r8(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
-        loadReg(op->reg, DYN_SRC, DYN_8bit, true);
-        DynReg dst = loadReg(op->rm, DYN_DEST, DYN_8bit);
-        addRegReg(DYN_SRC, dst, DYN_8bit, false);
-        storeReg(op->reg, dst, DYN_8bit, true);
+        loadReg(op->reg, DYN_SRC, DYN_8bit);
+        loadReg(op->rm, DYN_DEST, DYN_8bit);
+        addRegReg(DYN_SRC, DYN_DEST, DYN_8bit, false);
+        storeReg(op->reg, DYN_DEST, DYN_8bit, true);
         storeReg(op->rm, DYN_SRC, DYN_8bit, true);
     }
     else {
@@ -629,7 +629,7 @@ void DynamicData::dynamic_xaddr8e8(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
 
     if (!op->needsToSetFlags(cpu)) {
-        loadReg(op->reg, DYN_SRC, DYN_8bit, true);
+        loadReg(op->reg, DYN_SRC, DYN_8bit);
         movFromMem(DYN_8bit, DYN_ADDRESS, false);
         addRegReg(DYN_SRC, DYN_CALL_RESULT, DYN_8bit, false);
         storeReg(op->reg, DYN_CALL_RESULT, DYN_8bit, true);
@@ -649,10 +649,10 @@ void DynamicData::dynamic_xaddr8e8(DecodedOp* op) {
 }
 void DynamicData::dynamic_xaddr16r16(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
-        loadReg(op->reg, DYN_SRC, DYN_16bit, true);
-        DynReg reg = loadReg(op->rm, DYN_DEST, DYN_16bit);
-        addRegReg(DYN_SRC, reg, DYN_16bit, false);
-        storeReg(op->reg, reg, DYN_16bit, true);
+        loadReg(op->reg, DYN_SRC, DYN_16bit);
+        loadReg(op->rm, DYN_DEST, DYN_16bit);
+        addRegReg(DYN_SRC, DYN_DEST, DYN_16bit, false);
+        storeReg(op->reg, DYN_DEST, DYN_16bit, true);
         storeReg(op->rm, DYN_SRC, DYN_16bit, true);
     }
     else {
@@ -670,7 +670,7 @@ void DynamicData::dynamic_xaddr16e16(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
 
     if (!op->needsToSetFlags(cpu)) {
-        loadReg(op->reg, DYN_SRC, DYN_16bit, true);
+        loadReg(op->reg, DYN_SRC, DYN_16bit);
         movFromMem(DYN_16bit, DYN_ADDRESS, false);
         addRegReg(DYN_SRC, DYN_CALL_RESULT, DYN_16bit, false);
         storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
@@ -690,10 +690,10 @@ void DynamicData::dynamic_xaddr16e16(DecodedOp* op) {
 }
 void DynamicData::dynamic_xaddr32r32(DecodedOp* op) {
     if (!op->needsToSetFlags(cpu)) {
-        loadReg(op->reg, DYN_SRC, DYN_32bit, true);
-        DynReg reg = loadReg(op->rm, DYN_DEST, DYN_32bit);
-        addRegReg(DYN_SRC, reg, DYN_32bit, false);
-        storeReg(op->reg, reg, DYN_32bit, true);
+        loadReg(op->reg, DYN_SRC, DYN_32bit);
+        loadReg(op->rm, DYN_DEST, DYN_32bit);
+        addRegReg(DYN_SRC, DYN_DEST, DYN_32bit, false);
+        storeReg(op->reg, DYN_DEST, DYN_32bit, true);
         storeReg(op->rm, DYN_SRC, DYN_32bit, true);
     } else {
         loadRegStoreSrc(op->reg, DYN_32bit, DYN_SRC, false);
@@ -710,7 +710,7 @@ void DynamicData::dynamic_xaddr32e32(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
 
     if (!op->needsToSetFlags(cpu)) {
-        loadReg(op->reg, DYN_SRC, DYN_32bit, true);
+        loadReg(op->reg, DYN_SRC, DYN_32bit);
         movFromMem(DYN_32bit, DYN_ADDRESS, false);
         addRegReg(DYN_SRC, DYN_CALL_RESULT, DYN_32bit, false);
         storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
@@ -728,9 +728,9 @@ void DynamicData::dynamic_xaddr32e32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_bswap32(DecodedOp* op) {
-    DynReg reg = loadReg(op->reg, DYN_SRC, DYN_32bit);
-    byteSwapReg32(reg);
-    storeReg(op->reg, reg, DYN_32bit, true);
+    loadReg(op->reg, DYN_SRC, DYN_32bit);
+    byteSwapReg32(DYN_SRC);
+    storeReg(op->reg, DYN_SRC, DYN_32bit, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchgg8b(DecodedOp* op) {
