@@ -51,7 +51,7 @@ public:
     void loadRegStoreDst(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) override;
     void loadRegStoreEip(U8 reg, DynReg tmpReg) override;
     void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg) override;
-    void loadReg(U8 reg, DynReg tmpReg, DynWidth width) override;
+    void loadReg(U8 reg, DynReg dstReg, DynWidth width) override;
     void loadSegAddress(U8 seg, DynReg reg)  override;
     void loadSegValue(U8 seg, DynReg reg)  override;
     void loadCPUFlags(DynReg reg)  override;

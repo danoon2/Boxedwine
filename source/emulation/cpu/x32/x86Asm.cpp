@@ -1342,158 +1342,170 @@ void X86Asm::setle(Reg8 reg) {
     outb(0xc0 + reg.reg);
 }
 
-void X86Asm::movss(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 srcXMM) {
+void X86Asm::movlhps(RegXMM hiDstXMM, RegXMM loSrcXMM) {
+    outb(0x0f);
+    outb(0x16);
+    outb(0xC0 | (hiDstXMM.reg << 3) | loSrcXMM.reg);
+}
+
+void X86Asm::movhlps(RegXMM hiDstXMM, RegXMM loSrcXMM) {
+    outb(0x0f);
+    outb(0x12);
+    outb(0xC0 | (hiDstXMM.reg << 3) | loSrcXMM.reg);
+}
+
+void X86Asm::movss(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM srcXMM) {
     outb(0xf3);
     outb(0x0f);
-    mem32(0x11, Reg32(srcXMM), rm, sib, lsl, disp);
+    mem32(0x11, Reg32(srcXMM.reg), rm, sib, lsl, disp);
 }
 
-void X86Asm::movss(U8 dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::movss(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
     outb(0xf3);
     outb(0x0f);
-    mem32(0x10, Reg32(dstXMM), rm, sib, lsl, disp);
+    mem32(0x10, Reg32(dstXMM.reg), rm, sib, lsl, disp);
 }
 
-void X86Asm::movsd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 srcXMM) {
+void X86Asm::movsd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
-    mem32(0x11, Reg32(srcXMM), rm, sib, lsl, disp);
+    mem32(0x11, Reg32(srcXMM.reg), rm, sib, lsl, disp);
 }
 
-void X86Asm::movsd(U8 dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::movsd(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
     outb(0xf2);
     outb(0x0f);
-    mem32(0x10, Reg32(dstXMM), rm, sib, lsl, disp);
+    mem32(0x10, Reg32(dstXMM.reg), rm, sib, lsl, disp);
 }
 
-void X86Asm::movsd(U8 dstXMM, Reg32 rm, U32 disp) {
+void X86Asm::movsd(RegXMM dstXMM, Reg32 rm, U32 disp) {
     outb(0xf2);
     outb(0x0f);
-    mem32(0x10, Reg32(dstXMM), rm, disp);
+    mem32(0x10, Reg32(dstXMM.reg), rm, disp);
 }
 
-void X86Asm::movlpd(U8 dstXMM, Reg32 rm, U32 disp) {
+void X86Asm::movlpd(RegXMM dstXMM, Reg32 rm, U32 disp) {
     outb(0x66);
     outb(0x0f);
-    mem32(0x12, Reg32(dstXMM), rm, disp);
+    mem32(0x12, Reg32(dstXMM.reg), rm, disp);
 }
 
-void X86Asm::cvtss2sd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::cvtss2sd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf3);
     outb(0x0f);
     outb(0x5a);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::cvtsd2ss(U8 dstXMM, U8 srcXMM) {
+void X86Asm::cvtsd2ss(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x5a);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::xorpd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::xorpd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0x66);
     outb(0x0f);
     outb(0x57);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::andpd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::andpd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0x66);
     outb(0x0f);
     outb(0x54);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::cvtsi2sd(U8 dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+void X86Asm::cvtsi2sd(RegXMM dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
     outb(0xf2);
     outb(0x0f);
-    mem32(0x2a, Reg32(dstXMM), rm, sib, lsl, disp);
+    mem32(0x2a, Reg32(dstXMM.reg), rm, sib, lsl, disp);
 }
 
-void X86Asm::cvttsd2si(Reg32 dst, U8 srcXMM) {
+void X86Asm::cvttsd2si(Reg32 dst, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x2c);
-    outb(0xC0 | (dst.reg << 3) | srcXMM);
+    outb(0xC0 | (dst.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::cvtsd2si(Reg32 dst, U8 srcXMM) {
+void X86Asm::cvtsd2si(Reg32 dst, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x2d);
-    outb(0xC0 | (dst.reg << 3) | srcXMM);
+    outb(0xC0 | (dst.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::cvtsi2sd(U8 dstXMM, Reg32 reg) {
+void X86Asm::cvtsi2sd(RegXMM dstXMM, Reg32 reg) {
     outb(0xf2);
     outb(0x0f);
     outb(0x2a);
-    outb(0xC0 | (dstXMM << 3) | reg.reg);
+    outb(0xC0 | (dstXMM.reg << 3) | reg.reg);
 }
 
-void X86Asm::cvtdq2pd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::cvtdq2pd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf3);
     outb(0x0f);
     outb(0xe6);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::cvtpd2dq(U8 dstXMM, U8 srcXMM) {
+void X86Asm::cvtpd2dq(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0xe6);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::cvttpd2dq(U8 dstXMM, U8 srcXMM) {
+void X86Asm::cvttpd2dq(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0x66);
     outb(0x0f);
     outb(0xe6);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::addsd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::addsd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x58);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::mulsd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::mulsd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x59);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::subsd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::subsd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x5c);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::divsd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::divsd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x5e);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::sqrtsd(U8 dstXMM, U8 srcXMM) {
+void X86Asm::sqrtsd(RegXMM dstXMM, RegXMM srcXMM) {
     outb(0xf2);
     outb(0x0f);
     outb(0x51);
-    outb(0xC0 | (dstXMM << 3) | srcXMM);
+    outb(0xC0 | (dstXMM.reg << 3) | srcXMM.reg);
 }
 
-void X86Asm::ucomisd(U8 xmm1, U8 xmm2) {
+void X86Asm::ucomisd(RegXMM xmm1, RegXMM xmm2) {
     outb(0x66);
     outb(0x0f);
     outb(0x2e);
-    outb(0xc0 | xmm1 | (xmm2 << 3));
+    outb(0xc0 | xmm1.reg | (xmm2.reg << 3));
 }
 
 void X86Asm::stmxcsr(Reg32 rm, U32 disp) {
@@ -1529,4 +1541,427 @@ void X86Asm::ldmxcsr(Reg32 rm, U32 disp) {
         }
     }
 }
+
+void X86Asm::movd(RegXMM dst, Reg32 src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x6e);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::movd(Reg32 dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x7e);
+    outb(0xC0 | (src.reg << 3) | dst.reg); // wonder why this is reversed where most instruction put dst at the top and src at the bottom
+}
+
+void X86Asm::movd(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0x6e, Reg32(reg.reg), rm, sib, lsl, disp);
+}
+
+void X86Asm::movq(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    outb(0xf3);
+    outb(0x0f);
+    mem32(0x7e, Reg32(reg.reg), rm, sib, lsl, disp);
+}
+
+void X86Asm::movq(RegXMM reg, Reg32 rm, U32 disp) {
+    outb(0xf3);
+    outb(0x0f);
+    mem32(0x7e, Reg32(reg.reg), rm, disp);
+}
+
+void X86Asm::movq(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xd6, Reg32(src.reg), rm, sib, lsl, disp);
+}
+
+void X86Asm::movq(Reg32 rm, U32 disp, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xd6, Reg32(src.reg), rm, disp);
+}
+
+void X86Asm::movd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0x7e, Reg32(src.reg), rm, sib, lsl, disp);
+}
+
+void X86Asm::pxor(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xef);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::por(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xeb);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pand(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xdb);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pandn(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xdf);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psllw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xf1);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psllw(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x71);
+    outb(0xf0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::psrlw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xd1);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psrlw(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x71);
+    outb(0xd0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::psraw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xe1);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psraw(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x71);
+    outb(0xe0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::pslld(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xf2);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pslld(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x72);
+    outb(0xf0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::psrld(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xd2);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psrld(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x72);
+    outb(0xd0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::psrad(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xe2);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psrad(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x72);
+    outb(0xe0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::psllq(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xf3);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psllq(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x73);
+    outb(0xf0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::psrlq(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xd3);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psrlq(RegXMM dst, U32 imm) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x73);
+    outb(0xd0 | dst.reg);
+    outb(imm);
+}
+
+void X86Asm::paddb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xfc);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::paddw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xfd);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::paddd(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xfe);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::paddsb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xec);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::paddsw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xed);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::paddusb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xdc);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::paddusw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xdd);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psubb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xf8);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psubw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xf9);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psubd(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xfa);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psubsb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xe8);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psubsw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xe9);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psubusb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xd8);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::psubusw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xd9);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pmulhw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xe5);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pmullw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xd5);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pmaddwd(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xf5);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pcmpeqb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x74);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pcmpeqw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x75);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pcmpeqd(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x76);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pcmpgtb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x64);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pcmpgtw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x65);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::pcmpgtd(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x66);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::packsswb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x63);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::packssdw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x6b);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::packuswb(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x67);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::punpckhbw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x68);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::punpckhwd(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x69);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::punpckhdq(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x6a);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::punpcklbw(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x60);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::punpcklwd(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x61);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::punpckldq(RegXMM dst, RegXMM src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0x62);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
+}
+
 #endif

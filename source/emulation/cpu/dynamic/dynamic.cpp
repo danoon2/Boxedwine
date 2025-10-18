@@ -140,13 +140,25 @@ bool DynamicCodeGen::calculateLongestBlock(DecodedOp* op) {
                 // don't call cpu->getOp since that will decode and we are not sure the next byte is a valid instruction.
                 // we can call memory->getDecodedOp to see if this instruction has already been decoded, in that case we know its valid.
                 nextOp->next = this->cpu->memory->getDecodedOp(eip + nextOp->len);
-            }
-            if (!nextOp->next && (jumpTo.contains(eip + nextOp->len) || nextOp->isDirectBranchWithNext())) {
+            }            
+            if (!nextOp->next && nextOp->isDirectBranchWithNext()) {
                 nextOp->next = this->cpu->getOp(eip + nextOp->len, 0);
             }
             if (!nextOp->next && nextOp->isCall() && furthestJump > eip) {
                 nextOp->next = this->cpu->getOp(eip + nextOp->len, 0);
             }
+            /*
+            * With this code enabled, need for speed 2 demo will fail to load, right as it should start the EA logo
+            * I'm not sure why, this seems like it would be safe, since there is a jump that lands here, it should
+            * be valid
+            * 
+            * With this code disabled, I didn't notice a performance hit to Quake 2, but the average number of ops fell
+            * from 33 to 22 when launching an app.  Maybe those extra ops were never use anyway?
+            * */
+            if (!nextOp->next && jumpTo.contains(eip + nextOp->len)) {
+                nextOp->next = this->cpu->getOp(eip + nextOp->len, 0);
+            }
+            
             if (!nextOp->next) {
                 // since we couldn't figure out if the next byte is part of a valid instruction, we are done looking
                 break;
@@ -417,8 +429,8 @@ U32 dontUseCpuOffset(U32 r, DynWidth width) {
     }
 }
 
-void DynamicCodeGen::loadReg(U8 reg, DynReg tmpReg, DynWidth width) {
-    movToRegFromCpu(tmpReg, dontUseCpuOffset(reg, width), width);
+void DynamicCodeGen::loadReg(U8 reg, DynReg dstReg, DynWidth width) {
+    movToRegFromCpu(dstReg, dontUseCpuOffset(reg, width), width);
 }
 
 void DynamicCodeGen::storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) {

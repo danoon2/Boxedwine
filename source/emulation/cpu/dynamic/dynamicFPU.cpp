@@ -29,12 +29,12 @@ void DynamicCodeGenFPU::calculateIndexReg(DynReg result, DynReg topReg, U32 inde
 }
 
 void DynamicCodeGenFPU::readFPUTag(DynReg indexReg, DynReg result) {
-    movToRegFromCpu(result, indexReg, 2, offsetof(CPU, fpu.tags[0]), DYN_32bit);
+    movToRegFromCpu(result, indexReg, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit);
     regUsed[result] = true;
 }
 
 void DynamicCodeGenFPU::writeFPUTag(DynReg indexReg, DynReg valueReg) {
-    movToCpuFromReg(indexReg, 2, offsetof(CPU, fpu.tags[0]), valueReg, DYN_32bit, false);
+    movToCpuFromReg(indexReg, 0, offsetof(CPU, fpu.tags[0]), valueReg, DYN_8bit, false);
 }
 
 void DynamicCodeGenFPU::dynamic_FPU_PREP_PUSH(DynReg topReg, bool writeTag) {
@@ -43,7 +43,7 @@ void DynamicCodeGenFPU::dynamic_FPU_PREP_PUSH(DynReg topReg, bool writeTag) {
     movToCpuFromReg(offsetof(CPU, fpu.top), topReg, DYN_32bit, false);
 
     if (writeTag) {
-        movToCpu(topReg, 2, offsetof(CPU, fpu.tags[0]), DYN_32bit, (U32)TAG_Valid);
+        movToCpu(topReg, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit, (U32)TAG_Valid);
     }
 }
 
@@ -189,7 +189,7 @@ void DynamicCodeGenFPU::dynamic_FCOMPP(DecodedOp* op) {
     readFPUTag(INDEX_REG, INDEX_TAG);
     readFPUTag(TOP_REG, TOP_TAG);
 
-    orRegReg(TOP_TAG, INDEX_TAG, DYN_32bit, true);
+    orRegReg(TOP_TAG, INDEX_TAG, DYN_8bit, true);
     doFCOM(reg1.reg, reg2.reg, TOP_TAG, INDEX_TAG);
     dynamic_FPU_POP(TOP_REG, 2);
     incrementEip(op->len);
@@ -230,7 +230,7 @@ void DynamicCodeGenFPU::doFCOM_STi(DecodedOp* op, bool pop) {
     readFPUTag(INDEX_REG, INDEX_TAG);
     readFPUTag(TOP_REG, TOP_TAG);
 
-    orRegReg(TOP_TAG, INDEX_TAG, DYN_32bit, true);
+    orRegReg(TOP_TAG, INDEX_TAG, DYN_8bit, true);
     doFCOM(dst.reg, src.reg, TOP_TAG, INDEX_TAG);
     if (pop) {
         dynamic_FPU_POP(TOP_REG);
@@ -257,7 +257,7 @@ void DynamicCodeGenFPU::dynamic_FUCOM_STi_Pop(DecodedOp* op) {
 void DynamicCodeGenFPU::dynamic_FPU_POP(DynReg topReg, U8 amount) {
     // this->tags[this->top] = TAG_Empty;
     // this->top = ((this->top + 1) & 7);
-    movToCpu(topReg, 2, offsetof(CPU, fpu.tags[0]), DYN_32bit, (U32)TAG_Empty);
+    movToCpu(topReg, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit, (U32)TAG_Empty);
     addRegImm(topReg, DYN_32bit, amount);
     andRegImm(topReg, DYN_32bit, 7);
     movToCpuFromReg(offsetof(CPU, fpu.top), topReg, DYN_32bit, false);
@@ -1059,9 +1059,8 @@ void DynamicCodeGenFPU::dynamic_FNINIT(DecodedOp* op) {
     movToCpu(offsetof(CPU, fpu.isRegCached), DYN_32bit, 0);
     movToCpu(offsetof(CPU, fpu.isRegCached)+4, DYN_32bit, 0);
 
-    for (int i = 0; i < 8; i++) {
-        movToCpu(offsetof(CPU, fpu.tags[0]) + i * sizeof(U32), DYN_32bit, TAG_Empty);
-    }
+    movToCpu(offsetof(CPU, fpu.tags[0]), DYN_32bit, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
+    movToCpu(offsetof(CPU, fpu.tags[0])+4, DYN_32bit, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
 }
 
 void DynamicCodeGenFPU::doFCOMI_ST0_STj(DecodedOp* op, bool pop) {
@@ -1180,7 +1179,7 @@ void DynamicCodeGenFPU::doFFREE_STi(DecodedOp* op, bool pop) {
     const DynReg INDEX_REG = DYN_DEST;
     getTopReg(TOP_REG);
     calculateIndexReg(INDEX_REG, TOP_REG, op->reg);
-    movToCpu(INDEX_REG, 2, offsetof(CPU, fpu.tags[0]), DYN_32bit, TAG_Empty);
+    movToCpu(INDEX_REG, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit, TAG_Empty);
     if (pop) {
         dynamic_FPU_POP(TOP_REG);
     }

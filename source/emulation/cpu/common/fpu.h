@@ -120,7 +120,6 @@ public:
 
     extFloat80_t& getReg(U32 reg);
     double& getF64(U32 reg);
-    float& getF32(U32 reg);
     double FROUND(double in);       
 
     void reset();
@@ -232,7 +231,9 @@ public:
     void LOG_STACK();    
     U32 sizeofRegInRegsArray();
 
-    U32 tags[9];
+    U8 tags[9];
+    U8 pad;
+    U16 pad2;
     U32 cw;
     U32 sw;
     U32 top;

@@ -695,11 +695,11 @@ static void writeDouble(X64Asm* data, U8 rm, U8 xmm) {
 }
 
 static void hostReadTag(X64Asm* data, U8 indexReg, U8 resultReg) {
-	data->writeToRegFromMem(resultReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+	data->writeToRegFromMem(resultReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 }
 
 static void hostWriteTag(X64Asm* data, U8 indexReg, U8 valueReg) {
-	data->writeToMemFromReg(valueReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+	data->writeToMemFromReg(valueReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 }
 
 class FPUReg {
@@ -716,14 +716,14 @@ static void PREP_PUSH(X64Asm* data, U8 topReg, bool writeTag) {
 	data->andReg(topReg, true, 7);
 	data->writeToMemFromReg(topReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_TOP, 4, false);
 	if (writeTag) {
-		data->writeToMemFromValue(TAG_Valid, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+		data->writeToMemFromValue(TAG_Valid, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 	}
 }
 
 static void FPU_POP(X64Asm* data, U8 topReg, U8 amount = 1) {
 	// this->tags[this->top] = TAG_Empty;
 	// this->top = ((this->top + 1) & 7);
-	data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+	data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 	data->addWithLea(topReg, true, topReg, true, -1, false, 0, amount, 4);
 	data->andReg(topReg, true, 7);
 	data->writeToMemFromReg(topReg, true, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_TOP, 4, false);
@@ -734,17 +734,17 @@ static void fcompare(X64Asm* data, U8 topReg, U8 v1, S32 tagIndex1, U8 v2, S32 t
 	U8 tagReg2 = data->getTmpReg();
 
 	if (tagIndex1 == 0) {
-		data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+		data->writeToRegFromMem(tagReg, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 	} else {
 		U8 indexReg = calculateIndexReg(data, topReg, tagIndex1);
-		data->writeToRegFromMem(tagReg, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+		data->writeToRegFromMem(tagReg, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 		data->releaseTmpReg(indexReg);
 	}
 	if (tagIndex2 == 0) {
-		data->writeToRegFromMem(tagReg2, true, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+		data->writeToRegFromMem(tagReg2, true, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 	} else if (tagIndex2 != -1) {
 		U8 indexReg = calculateIndexReg(data, topReg, tagIndex2);
-		data->writeToRegFromMem(tagReg2, true, HOST_CPU, true, indexReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+		data->writeToRegFromMem(tagReg2, true, HOST_CPU, true, indexReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 		data->releaseTmpReg(indexReg);
 	}
 
@@ -1562,7 +1562,7 @@ void opFNINIT(X64Asm* data) {
 	data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, (U32)(offsetof(CPU, fpu.sw)), 4, false);
 	data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, (U32)(offsetof(CPU, fpu.top)), 4, false);
 	for (int i = 0; i < 8; i++) {
-		data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_TAG + i*sizeof(U32), 4, false);
+		data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_TAG + i, 1, false);
 	}
 	data->writeToMemFromValue(0, HOST_CPU, true, -1, false, 0, CPU_OFFSET_FPU_IS_MMX, 1, false);
 }
@@ -1779,7 +1779,7 @@ void opFFREE_STi(X64Asm* data, U8 reg) {
 	PushPopFlags flags(data);
 	U8 topReg = getTopReg(data);
 	U8 indexReg = calculateIndexReg(data, topReg, reg);
-	data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+	data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 	data->releaseTmpReg(topReg);
 	data->releaseTmpReg(indexReg);
 }
@@ -2045,7 +2045,7 @@ void opFFREEP_STi(X64Asm* data, U8 reg) {
 	PushPopFlags flags(data);
 	U8 topReg = getTopReg(data);
 	U8 indexReg = calculateIndexReg(data, topReg, reg);
-	data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, topReg, true, 2, CPU_OFFSET_FPU_TAG, 4, false);
+	data->writeToMemFromValue(TAG_Empty, HOST_CPU, true, topReg, true, 0, CPU_OFFSET_FPU_TAG, 1, false);
 	FPU_POP(data, topReg);
 	data->releaseTmpReg(topReg);
 	data->releaseTmpReg(indexReg);
