@@ -165,7 +165,6 @@ void FPU::SetSW(U16 word) {
 
 void FPU::SetCW(U16 word) {
     this->cw = word;
-    this->cw_mask_all = word | 0x3f;
     this->round = ((word >> 10) & 3);
 
 #ifdef LOG_FPU
@@ -335,7 +334,7 @@ void FPU::FLD_I32(S32 value, int store_to) {
 
 void FPU::FLD_I64(S64 value, int store_to) {
     // ignore useF64 since we don't want to loose precision until we do a calculation
-    // some apps seems to do a memcpy like thing with data pushed in and out and we
+    // some apps seem to do a memcpy like thing with data pushed in and out and we
     // don't want this value to change if its writen directly back out
     regs[store_to] = i64_to_extF80(value);
     isRegCached[store_to] = false;

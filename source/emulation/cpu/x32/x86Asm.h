@@ -58,6 +58,7 @@ public:
 	static Reg32 edi;
 
 	void lea(Reg32 dst, Reg32 rm, Reg32 sib, U32 shift, U32 disp);
+	void lea(Reg32 dst, Reg32 rm, U32 disp);
 	
 	void add(Reg32 dst, U32 imm);
 	void add(Reg16 dst, U16 imm);
@@ -130,9 +131,24 @@ public:
 	void cmp(Reg16 dst, Reg16 src);
 	void cmp(Reg8 dst, Reg8 src);
 
-	void addMem(Reg16 dst, Reg32 rm, U32 disp);
-	void addMem(Reg32 dst, Reg32 rm, U32 disp);
-	void addMem(Reg32 rm, U32 disp, U32 value);
+	void addMemReg(Reg16 reg, Reg32 rm, U32 disp);
+	void addMemReg(Reg32 reg, Reg32 rm, U32 disp);
+	void addMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void addMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void addMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void subMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void subMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void subMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+
+	void addMem32(Reg32 rm, U32 disp, U32 value);
+	void addMem16(Reg32 rm, U32 disp, U16 value);
+	void addMem8(Reg32 rm, U32 disp, U8 value);
+	void addMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
+	void addMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
+	void addMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void subMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
+	void subMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
+	void subMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
 
 	void bswap(Reg32 reg);
 
@@ -176,13 +192,15 @@ public:
 
 	void push(Reg32 reg);
 	void push(U32 imm);
-	void pop(Reg32 reg);
+	void pushFlags();
+	void pop(Reg32 reg);	
 	void call(void* address);
 	void ret();
 	void jmp(Reg32 reg);
 	void jz(U32 address);
 	void jnz(U32 address);
 	void jmp(U32 address);
+	void movsb_repeat();
 
 	void setz(Reg8 reg);
 	void setnz(Reg8 reg);
@@ -192,16 +210,60 @@ public:
 	void setl(Reg8 reg);
 	void setle(Reg8 reg);
 
+	void lock();
+	void cmpxchg8b(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void cmpxchg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void cmpxchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void cmpxchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xchg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xadd(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xadd(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xadd(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+
 	void IfLessThan(Reg32 reg, U32 value);
 	void IfEqual(Reg32 reg, U32 value);
 	void IfNotEqual(Reg32 reg, U32 value);
 	void IfZero(Reg32 reg);
 	void IfNotZero(Reg32 reg);
-	void IfBitSet(Reg32 reg, U32 mask);
-	void Else();
-	void EndIf();
+	void IfBitSet(Reg32 reg, U32 mask, bool bigJump = false);
+	void Else(bool bigJump = false);
+	void EndIf(bool bigJump = false);
+	void IfPF();
+	void IfCF();
+	void IfZF();
 
 	void reset();
+
+	void stmxcsr(Reg32 rm, U32 disp);
+	void ldmxcsr(Reg32 rm, U32 disp);
+
+	void movsd(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 srcXMM);
+	void movsd(U8 dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void movsd(U8 dstXMM, Reg32 rm, U32 disp);
+	void movss(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 srcXMM);
+	void movss(U8 dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void movlpd(U8 dstXMM, Reg32 rm, U32 disp);
+
+	void cvtss2sd(U8 dstXMM, U8 srcXMM);
+	void cvtsd2ss(U8 dstXMM, U8 srcXMM);
+	void cvtsi2sd(U8 dstXMM, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void cvtsi2sd(U8 dstXMM, Reg32 reg);
+	void cvttsd2si(Reg32 dst, U8 srcXMM);
+	void cvtsd2si(Reg32 dst, U8 srcXMM);
+	void cvtpd2dq(U8 dstXMM, U8 srcXMM);
+	void cvttpd2dq(U8 dstXMM, U8 srcXMM);
+	void cvtdq2pd(U8 dstXMM, U8 srcXMM);
+	void xorpd(U8 dstXMM, U8 srcXMM);
+	void andpd(U8 dstXMM, U8 srcXMM);
+
+	void addsd(U8 dstXMM, U8 srcXMM);
+	void mulsd(U8 dstXMM, U8 srcXMM);
+	void subsd(U8 dstXMM, U8 srcXMM);
+	void divsd(U8 dstXMM, U8 srcXMM);
+	void sqrtsd(U8 dstXMM, U8 srcXMM);
+	void ucomisd(U8 xmm1, U8 xmm2);
 
 	std::vector<U8> buffer;
 	std::vector<U32> ifJump;

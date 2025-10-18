@@ -38,6 +38,7 @@ enum DynWidth {
     DYN_8bit = 0,
     DYN_16bit,
     DYN_32bit,
+    DYN_64bit,
 };
 
 enum DynCondition {
@@ -219,7 +220,7 @@ public:
     virtual void calculateEaa(DecodedOp* op, DynReg reg) = 0;
     virtual void pushValue(U32 arg, DynCallParamType argType) = 0;
     virtual void byteSwapReg32(DynReg reg) = 0;
-    virtual void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) = 0;
+    virtual void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, std::function<void(DynReg address, DynReg offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool bigJump = false) = 0;
     virtual void zeroExtendReg16To32(DynReg dest, DynReg src) = 0;
     virtual void JumpIf(DynReg reg, bool doneWithReg, U32 address) = 0;
     virtual void JumpIfNot(DynReg reg, bool doneWithReg, U32 address) = 0;
@@ -227,8 +228,8 @@ public:
     virtual void IfNot(DynReg reg, bool doneWithReg) = 0;
     virtual void If(DynReg reg, bool doneWithReg) = 0;
     virtual void IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) = 0;
-    virtual void StartElse() = 0;
-    virtual void EndIf() = 0;
+    virtual void StartElse(bool bigJump = false) = 0;
+    virtual void EndIf(bool bigJump = false) = 0;
 
     void genCF(const LazyFlags* flags, DynReg reg);
     void genOF(const LazyFlags* flags, DynReg reg);
@@ -281,14 +282,14 @@ public:
     void dynamic_onTestEnd(DecodedOp* op);
     virtual void onTestEnd(DecodedOp* op) = 0;
 
-#define INIT_CPU(e, f) void dynamic_##f(DecodedOp* op);
+#define INIT_CPU(e, f) virtual void dynamic_##f(DecodedOp* op);
 #include "../common/cpu_init.h"
 #include "../common/cpu_init_mmx.h"
 #include "../common/cpu_init_sse.h"
 #include "../common/cpu_init_sse2.h"
 #include "../common/cpu_init_fpu.h"
 #ifdef BOXEDWINE_MULTI_THREADED
-#define INIT_CPU_LOCK(e, f) void dynamic_##f##_lock(DecodedOp* op);
+#define INIT_CPU_LOCK(e, f) virtual void dynamic_##f##_lock(DecodedOp* op);
 #include "../common/cpu_init_lock.h"
 #undef INIT_CPU_LOCK
 #endif

@@ -219,6 +219,34 @@ void fldf32(float f, int index) {
     writeF(f, index);
 }
 
+static void setRounding(U8 mode, int tmpIndex) {
+    // FNSTCW
+    pushCode8(0xd9);
+    pushCode8(0x3d);
+    pushCode32(4 * tmpIndex);
+
+    // and word ptr[4 * tmpIndex], 3
+    pushCode8(0x66);
+    pushCode8(0x81);
+    pushCode8(0x25);
+    pushCode32(4 * tmpIndex);
+    pushCode16(~(3 << 10));
+
+    // or tmpReg, mode
+    pushCode8(0x66);
+    pushCode8(0x81);
+    pushCode8(0x0d);
+    pushCode32(4 * tmpIndex);
+    pushCode16(mode << 10);
+
+    // mov word ptr[4 * tmpIndex], ax
+    // 
+    // fldcw
+    pushCode8(0xd9);
+    pushCode8(0x2d);
+    pushCode32(4 * tmpIndex);
+}
+
 void fld64(double d, int index) {
     int rm = 0;
     if (cpu->big)
@@ -247,6 +275,21 @@ void fild64(U64 value, int index) {
     else
         pushCode16(4 * index);
     memory->writeq(HEAP_ADDRESS + 4 * index, value);
+}
+
+void fild16(S16 value, int index) {
+    int rm = 0;
+    if (cpu->big)
+        rm += 5;
+    else
+        rm += 6;
+    pushCode8(0xdf);
+    pushCode8(rm);
+    if (cpu->big)
+        pushCode32(4 * index);
+    else
+        pushCode16(4 * index);
+    memory->writew(HEAP_ADDRESS + 4 * index, (U16)value);
 }
 
 void fpu_init() {
@@ -1599,6 +1642,45 @@ void doFSCALE_inst(FPU_Float* st0, FPU_Float* st1, FPU_Float* st0Result) {
     }
 }
 
+#define ROUND_Nearest 0
+#define ROUND_Down 1
+#define ROUND_Up 2
+#define ROUND_Chop 3
+
+void doFRNDINT(U32 mode, float value, float result) {
+    newInstruction(0);
+    fpu_init();
+    setRounding(mode, 0);
+    fldf32(value, 1);
+    pushCode8(0xd9);
+    pushCode8(rm(false, 7, 4));
+    writeTopFloat(2);
+    runTestCPU();
+    struct FPU_Float i2f;
+    i2f.i = memory->readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(i2f.f == result);
+}
+
+void testFRNDINT() {
+    if (!cpu->big) {
+        return;
+    }
+    doFRNDINT(ROUND_Chop, 1.1f, 1.0);
+    doFRNDINT(ROUND_Chop, -1.1f, -1.0);
+    doFRNDINT(ROUND_Nearest, 1.4f, 1.0);
+    doFRNDINT(ROUND_Nearest, 1.6f, 2.0);
+    doFRNDINT(ROUND_Nearest, -1.4f, -1.0);
+    doFRNDINT(ROUND_Nearest, -1.6f, -2.0);
+    doFRNDINT(ROUND_Down, 1.4f, 1.0);
+    doFRNDINT(ROUND_Down, 1.6f, 1.0);
+    doFRNDINT(ROUND_Down, -1.4f, -2.0);
+    doFRNDINT(ROUND_Down, -1.6f, -2.0);
+    doFRNDINT(ROUND_Up, 1.4f, 2.0);
+    doFRNDINT(ROUND_Up, 1.6f, 2.0);
+    doFRNDINT(ROUND_Up, -1.4f, -1.0);
+    doFRNDINT(ROUND_Up, -1.6f, -1.0);
+}
+
 // ST(0) 		ST(1)
 //        -inf -F   -0   +0   +F   +inf  NaN
 // -inf   NaN  -inf -inf -inf -inf -inf  NaN
@@ -1868,6 +1950,7 @@ void testFPUD9() {
 
     // 7
     testFSQRT();
+    testFRNDINT();
     testFSCALE();
 
     // ea
@@ -2310,8 +2393,126 @@ void testFILD() {
     assertTrue(cpu->fpu.SW() == 0x3800);
 }
 
+void testFILD_I16() {
+    S16 data = -10235;
+
+#if defined (BOXEDWINE_MSVC) && !defined (BOXEDWINE_64)
+    {
+        struct FSaveState state;
+        double result = 0;
+        __asm {
+            finit;
+            fild data;
+            fst[result];
+            fsave[state];
+        }
+        assertTrue(state.fsw == 0x3800);
+        assertTrue(result == (double)data);
+    }
+#endif
+    memory->writew(HEAP_ADDRESS + 4 * 0, (U16)data);
+    newInstruction(0);
+    fpu_init();
+    fild16(data, 0);
+    writeTopFloat(2);
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 7);    
+    struct FPU_Float result;
+    result.i = memory->readd(HEAP_ADDRESS + 4 * 2);
+    assertTrue(result.f == (float)data);
+}
+
+void doFISTTP16(float data, U16 result) {
+    newInstruction(0);
+    fpu_init();
+    fldf32(data, 0);
+    pushCode8(0xdf);
+    pushCode8(rm(true, 1, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 0);
+    assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
+    assertTrue(memory->readw(HEAP_ADDRESS + 8) == result);
+}
+
+void testFISTTP16() {
+    doFISTTP16(0.0f, 0);
+    doFISTTP16(-0.0f, 0);
+    doFISTTP16(1.2f, 1);
+    doFISTTP16(1.90f, 1);
+    doFISTTP16(-1024.4f, -1024);
+    doFISTTP16(-1024.9f, -1024);
+}
+
+void doFIST_WORD_INTEGER(float data, U16 result) {
+    newInstruction(0);
+    fpu_init();
+    fldf32(data, 0);
+    pushCode8(0xdf);
+    pushCode8(rm(true, 2, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 7);
+    assertTrue(memory->readw(HEAP_ADDRESS + 8) == result);
+}
+
+void testFIST_WORD_INTEGER() {
+    doFIST_WORD_INTEGER(0.0f, 0);
+    doFIST_WORD_INTEGER(-0.0f, 0);
+    doFIST_WORD_INTEGER(1.2f, 1);
+    doFIST_WORD_INTEGER(1.9f, 2);
+    doFIST_WORD_INTEGER(-1024.4f, -1024);
+    doFIST_WORD_INTEGER(-1024.9f, -1025);
+}
+
+void doFIST_WORD_INTEGER_Pop(float data, U16 result) {
+    newInstruction(0);
+    fpu_init();
+    fldf32(data, 0);
+    pushCode8(0xdf);
+    pushCode8(rm(true, 3, cpu->big ? 5 : 6));
+    if (cpu->big) {
+        pushCode32(4 * 2);
+    } else {
+        pushCode16(4 * 2);
+    }
+    runTestCPU();
+    assertTrue(cpu->fpu.GetTop() == 0);
+    assertTrue(cpu->fpu.GetTag(cpu, 7) == TAG_Empty);
+    assertTrue(memory->readw(HEAP_ADDRESS + 8) == result);
+}
+
+void testFIST_WORD_INTEGER_Pop() {
+    doFIST_WORD_INTEGER_Pop(0.0f, 0);
+    doFIST_WORD_INTEGER_Pop(-0.0f, 0);
+    doFIST_WORD_INTEGER_Pop(1.2f, 1);
+    doFIST_WORD_INTEGER_Pop(1.9f, 2);
+    doFIST_WORD_INTEGER_Pop(-1024.4f, -1024);
+    doFIST_WORD_INTEGER_Pop(-1024.9f, -1025);
+}
+
 void testFPUDF() {
     // MEMORY
+
+    // 0 
+    testFILD_I16();    
+
+    // 1 FISTTP16
+    testFISTTP16();
+
+    // 2 FIST_WORD_INTEGER
+    testFIST_WORD_INTEGER();
+
+    // 3 FIST_WORD_INTEGER_Pop
+    testFIST_WORD_INTEGER_Pop();
 
     // 5 FILD
     testFILD();

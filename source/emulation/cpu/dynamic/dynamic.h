@@ -79,6 +79,7 @@ public:
     void xorCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
     void andCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
     void orCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
+    void orCPUFlagsReg(DynReg reg, DynReg tmpReg, bool doneWithReg);
     
     void negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg)  override;
     void notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg)  override;
@@ -133,7 +134,7 @@ public:
     void blockNext1(DecodedOp* op) override;
     void blockNext2(DecodedOp* op) override;
     void blockDoneJump() override;
-    void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) override;
+    void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, std::function<void(DynReg address, DynReg offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool bigJump = false) override;
     
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;
@@ -144,9 +145,12 @@ protected:
     virtual void instCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg, InstRegImm pfnInstRegImm);
     virtual void instMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg, InstRegImm pfnInstRegImm);
 
+    virtual void movToRegFromCpu(DynReg reg, DynReg sib, U8 lsl, U32 srcOffset, DynWidth width) = 0;
     virtual void movToRegFromCpu(DynReg reg, U32 srcOffset, DynWidth width) = 0;
-    virtual void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) = 0;
+    virtual void movToCpuFromReg(U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) = 0;    
+    virtual void movToCpuFromReg(DynReg sib, U8 lsl, U32 dstOffset, DynReg reg, DynWidth width, bool doneWithReg) = 0;
     virtual void movToCpu(U32 dstOffset, DynWidth dstWidth, U32 imm) = 0;
+    virtual void movToCpu(DynReg sib, U8 lsl, U32 dstOffset, DynWidth dstWidth, U32 imm) = 0;
     virtual void movToCpuFromMem(U32 dstOffset, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult);
     void arithMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstMemReg pfnInstMemReg);
     void arithRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstCPUReg pfnInstCpuReg);
@@ -154,12 +158,13 @@ protected:
     void arithRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstRegImm pfnInstRegImm, InstCPUReg pfnInstCpuReg, InstCPUImm pfnInstCpuImm);
     void arithMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstRegImm pfnInstRegImm, InstMemReg pfnInstMemReg, InstMemImm pfnInstMemImm);
 
-    virtual void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg, DynReg tmp);
+    virtual void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg, DynReg tmp, std::function<void(DynReg address, DynReg offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool bigJump = false);
+
     virtual U32 getBufferSize() = 0;
     virtual U8* getBuffer() = 0;
     virtual U32 getIfJumpSize() = 0;                  
     virtual void IfLessThan(DynReg reg, U32 value, bool doneWithReg) = 0;
-    virtual void IfBitSet(DynReg reg, U32 value, bool doneWithReg) = 0;
+    virtual void IfBitSet(DynReg reg, U32 value, bool doneWithReg, bool bigJump = false) = 0;
 
     U32 cpuOffsetResult(DynWidth width);
     U32 cpuOffsetDst(DynWidth width);

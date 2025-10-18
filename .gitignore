@@ -1,11 +1,14 @@
 project/msvc/BoxedWine/.vs/
 project/msvc/BoxedWine/BoxedWine/BoxedWine.vcxproj.user
+project/msvc/BoxedWine/ARM64/
 project/msvc/BoxedWine/x64/
 project/msvc/BoxedWine/Debug/
 project/msvc/BoxedWine/Release/
 project/msvc/BoxedWine/BoxedWine/x64/
+project/msvc/BoxedWine/BoxedWine/ARM64/
 project/msvc/BoxedWine/BoxedWine/Debug/
 project/msvc/BoxedWine/BoxedWine/Release/
+project/msvc/BoxedWine/zlib/ARM64/
 project/msvc/BoxedWine/zlib/x64/
 project/msvc/BoxedWine/zlib/Debug/
 project/msvc/BoxedWine/zlib/Release/
@@ -13,8 +16,12 @@ project/msvc/BoxedWine/BoxedWine/Test/
 project/msvc/BoxedWine/zlib/Test/
 project/msvc/BoxedWine/Test/
 lib/sdl2/VisualC/SDL/Win32/
+lib/sdl2/VisualC/SDL/Debug/
+lib/sdl2/VisualC/SDL/ARM64/
 lib/sdl2/VisualC/SDL/x64/
 lib/sdl2/VisualC/SDLmain/Win32/
+lib/sdl2/VisualC/SDLmain/Debug/
+lib/sdl2/VisualC/SDLmain/ARM64/
 lib/sdl2/VisualC/SDLmain/x64/
 project/msvc/BoxedWine/BoxedWine/imgui.ini
 project/linux/bin/
@@ -26,4 +33,8 @@ project/linux/msvc-remote/Boxedwine/.vs/
 project/linux/msvc-remote/Boxedwine/Boxedwine/bin/
 project/linux/msvc-remote/Boxedwine/Boxedwine/obj/
 **/xcuserdata/*
+tools/vulkan/gen/
+tools/BoxedwineRunner/out/
 lib/mac
+.vs/
+.github/

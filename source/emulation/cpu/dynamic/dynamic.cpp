@@ -160,7 +160,7 @@ bool DynamicCodeGen::calculateLongestBlock(DecodedOp* op) {
             if (!targetOp) {
                 nextOp->next = this->cpu->getOp(eip + nextOp->len, 0);
             }
-            if (targetOp && !(op->flags & OP_FLAG_JIT)) {
+            if (targetOp) {
                 if (!targetOp->pfnJitCode) {
                     startNewJIT(cpu, eip + nextOp->len + nextOp->imm, targetOp);
                     if (op->flags & OP_FLAG_JIT) {
@@ -634,7 +634,7 @@ void DynamicCodeGen::shlCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg t
 
 void DynamicCodeGen::xorCPUFlagsImm(U32 imm, DynReg tmpReg) {
     if (regUsed[tmpReg]) {
-        kpanic("instCPUImm");
+        kpanic("DynamicCodeGen::xorCPUFlagsImm");
     }
     movToRegFromCpu(tmpReg, CPU_OFFSET_OF(flags), DYN_32bit);
     xorRegImm(tmpReg, DYN_32bit, imm);
@@ -643,7 +643,7 @@ void DynamicCodeGen::xorCPUFlagsImm(U32 imm, DynReg tmpReg) {
 
 void DynamicCodeGen::andCPUFlagsImm(U32 imm, DynReg tmpReg) {
     if (regUsed[tmpReg]) {
-        kpanic("instCPUImm");
+        kpanic("DynamicCodeGen::andCPUFlagsImm");
     }
     movToRegFromCpu(tmpReg, CPU_OFFSET_OF(flags), DYN_32bit);
     andRegImm(tmpReg, DYN_32bit, imm);
@@ -652,16 +652,25 @@ void DynamicCodeGen::andCPUFlagsImm(U32 imm, DynReg tmpReg) {
 
 void DynamicCodeGen::orCPUFlagsImm(U32 imm, DynReg tmpReg) {
     if (regUsed[tmpReg]) {
-        kpanic("instCPUImm");
+        kpanic("DynamicCodeGen::orCPUFlagsImm");
     }
     movToRegFromCpu(tmpReg, CPU_OFFSET_OF(flags), DYN_32bit);
     orRegImm(tmpReg, DYN_32bit, imm);
     movToCpuFromReg(CPU_OFFSET_OF(flags), tmpReg, DYN_32bit, true);
 }
 
+void DynamicCodeGen::orCPUFlagsReg(DynReg reg, DynReg tmpReg, bool doneWithReg) {
+    if (regUsed[tmpReg]) {
+        kpanic("DynamicCodeGen::orCPUFlagsReg");
+    }
+    movToRegFromCpu(tmpReg, CPU_OFFSET_OF(flags), DYN_32bit);
+    orRegReg(tmpReg, reg, DYN_32bit, doneWithReg);
+    movToCpuFromReg(CPU_OFFSET_OF(flags), tmpReg, DYN_32bit, true);
+}
+
 void DynamicCodeGen::instMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg, InstRegImm pfnInstRegImm) {
     if (regUsed[0]) {
-        kpanic("x32CPU::instMemImm");
+        kpanic("DynamicCodeGen::instMemImm");
     }
     movFromMem(regWidth, addressReg, false);
     (this->*pfnInstRegImm)(DYN_CALL_RESULT, regWidth, imm);
@@ -958,7 +967,7 @@ static void writeb(U32 address, U8 value) {
 //  } else {
 //      Memory::currentMMU[index]->writed(address, value);		
 //  }
-void DynamicCodeGen::movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg, DynReg tmp) {
+void DynamicCodeGen::movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg, DynReg tmp, std::function<void(DynReg address, DynReg offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool bigJump) {
     U32 firstCheckPos = 0;
 
     if (regUsed[tmp]) {
@@ -976,6 +985,11 @@ void DynamicCodeGen::movToMem(DynReg addressReg, DynWidth width, U32 value, DynC
         } else if (width == DYN_32bit) {
             // if ((address & 0xFFF) < 0xFFD)
             IfLessThan(tmp, 0xFFD, false);
+        } else if (width == DYN_64bit) {
+            // if ((address & 0xFFF) < 0xFF9)
+            IfLessThan(tmp, 0xFF9, false);
+        } else {
+            kpanic_fmt("DynamicCodeGen::movToMem unknown width %d", (U32)width);
         }
     }
     movToRegFromReg(tmp, DYN_32bit, addressReg, DYN_32bit, false);
@@ -987,7 +1001,7 @@ void DynamicCodeGen::movToMem(DynReg addressReg, DynWidth width, U32 value, DynC
     }
 
     // test reg, 0x80000000 (mmu[index].canWriteRam)
-    IfBitSet(tmp, 0x80000000, false);
+    IfBitSet(tmp, 0x80000000, false, bigJump);
 
     // bottom 20 bits of mmu contains ram page index
     and32(tmp, 0xfffff);
@@ -998,7 +1012,9 @@ void DynamicCodeGen::movToMem(DynReg addressReg, DynWidth width, U32 value, DynC
     }
     and32(addressReg, K_PAGE_MASK);
 
-    if (isParamTypeReg(paramType)) {
+    if (customMemoryOp) {
+        customMemoryOp(tmp, addressReg);
+    } else if (isParamTypeReg(paramType)) {
         writeMem((DynReg)value, width, tmp, addressReg, 0, 0);
     } else {
         writeMem(value, width, tmp, addressReg, 0, 0);
@@ -1006,22 +1022,25 @@ void DynamicCodeGen::movToMem(DynReg addressReg, DynWidth width, U32 value, DynC
 
     regUsed[tmp] = false;
 
-    StartElse();
+    StartElse(bigJump);
 
-    void* address;
-
-    if (width == DYN_32bit) {
-        address = writed;
-    } else if (width == DYN_16bit) {
-        address = writew;
-    } else if (width == DYN_8bit) {
-        address = writeb;
+    if (failedMemoryOp) {
+        failedMemoryOp();
     } else {
-        kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
-    }
-    callHostFunction(address, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, false);
+        void* address;
 
-    EndIf();
+        if (width == DYN_32bit) {
+            address = writed;
+        } else if (width == DYN_16bit) {
+            address = writew;
+        } else if (width == DYN_8bit) {
+            address = writeb;
+        } else {
+            kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
+        }
+        callHostFunction(address, false, 2, addressReg, DYN_PARAM_REG_32, false, value, paramType, false);
+    }
+    EndIf(bigJump);
 
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
@@ -1043,7 +1062,7 @@ static U32 readb(U32 address) {
     return KThread::currentThread()->memory->readb(address);
 }
 
-void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg) {
+void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, std::function<void(DynReg address, DynReg offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump) {
     regUsed[DYN_CALL_RESULT] = true;
 
     if (addressReg != DYN_ADDRESS) {
@@ -1060,6 +1079,11 @@ void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWith
         } else if (width == DYN_32bit) {
             // if ((address & 0xFFF) < 0xFFD)
             IfLessThan(DYN_CALL_RESULT, 0xFFD, false);
+        } else if (width == DYN_64bit) {
+            // if ((address & 0xFFF) < 0xFF9)
+            IfLessThan(DYN_CALL_RESULT, 0xFF9, false);
+        } else {
+            kpanic_fmt("DynamicCodeGen::movFromMem unknown width %d", (U32)width);
         }
     }
     // int index = address >> 12;
@@ -1077,7 +1101,7 @@ void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWith
     }
 
     // test eax, 0x40000000 (mmu[index].canReadRam)
-    IfBitSet(DYN_CALL_RESULT, 0x40000000, false);
+    IfBitSet(DYN_CALL_RESULT, 0x40000000, false, isBigJump);
 
     // bottom 20 bits of mmu contains ram page index
     and32(DYN_CALL_RESULT, 0xfffff);
@@ -1097,30 +1121,36 @@ void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWith
     }
     and32(offsetReg, K_PAGE_MASK);
 
-    // mov eax, [eax+reg]
-    readMem(DYN_CALL_RESULT, width, DYN_CALL_RESULT, offsetReg, 0, 0);
-
+    if (customMemoryOp) {
+        customMemoryOp(DYN_CALL_RESULT, offsetReg);
+    } else {
+        // mov eax, [eax+reg]
+        readMem(DYN_CALL_RESULT, width, DYN_CALL_RESULT, offsetReg, 0, 0);
+    }
     if (!doneWithAddressReg) {
         regUsed[offsetReg] = false;
     }
-    StartElse();
+    StartElse(isBigJump);
 
-    void* address;
-
-    // call read
-    if (width == DYN_32bit) {
-        address = readd;
-    } else if (width == DYN_16bit) {
-        address = readw;
-    } else if (width == DYN_8bit) {
-        address = readb;
+    if (failedMemoryOp) {
+        failedMemoryOp();
     } else {
-        kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
+        void* address;
+
+        // call read
+        if (width == DYN_32bit) {
+            address = readd;
+        } else if (width == DYN_16bit) {
+            address = readw;
+        } else if (width == DYN_8bit) {
+            address = readb;
+        } else {
+            kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
+        }
+
+        callHostFunction(address, true, 1, addressReg, DYN_PARAM_REG_32, false);
     }
-
-    callHostFunction(address, true, 1, addressReg, DYN_PARAM_REG_32, false);
-
-    EndIf();
+    EndIf(isBigJump);
 
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
