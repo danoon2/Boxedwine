@@ -91,10 +91,10 @@ static void hostWriteTag(Armv8btAsm* data, U8 valueReg, bool releaseValueReg, U3
 	U8 offsetReg = data->getFpuTagOffset();
 
 	if (index == 0) {
-		data->writeMem32RegOffset(valueReg, offsetReg, data->getFpuTopReg(), 2);
+		data->writeMem8RegOffset(valueReg, offsetReg, data->getFpuTopReg());
 	} else {
 		U8 topReg = calculateIndexReg(data, index);
-		data->writeMem32RegOffset(valueReg, offsetReg, topReg, 2);
+		data->writeMem8RegOffset(valueReg, offsetReg, topReg);
 		data->releaseTmpReg(topReg);
 	}
 	if (releaseValueReg) {
@@ -208,7 +208,7 @@ public:
 		if (this->topReg > 32) {
 			kpanic("FPUReg: don't release top reg since it was needed");
 		}
-		data->readMem32RegOffset(resultReg, offsetReg, this->topReg, 2);
+		data->readMem8RegOffset(resultReg, offsetReg, this->topReg);
 		data->releaseFpuTagOffset(offsetReg);
 	}
 	void hostWriteTag(U8 valueReg) {
@@ -216,7 +216,7 @@ public:
 		if (this->topReg > 32) {
 			kpanic("FPUReg: don't release top reg since it was needed");
 		}
-		data->writeMem32RegOffset(valueReg, offsetReg, this->topReg, 2);
+		data->writeMem8RegOffset(valueReg, offsetReg, this->topReg);
 		data->releaseFpuTagOffset(offsetReg);
 	}
 	Armv8btAsm* data;
@@ -256,17 +256,17 @@ static void fcompare(Armv8btAsm* data, U8 v1, S32 tagIndex1, U8 v2, S32 tagIndex
 	U8 offsetReg = data->getFpuTagOffset();
 
 	if (tagIndex1 == 0) {
-		data->readMem32RegOffset(tmpReg, offsetReg, data->getFpuTopReg(), 2);
+		data->readMem8RegOffset(tmpReg, offsetReg, data->getFpuTopReg());
 	} else {
 		U8 topReg = calculateIndexReg(data, tagIndex1);
-		data->readMem32RegOffset(tmpReg, offsetReg, topReg, 2);
+		data->readMem8RegOffset(tmpReg, offsetReg, topReg);
 		data->releaseTmpReg(topReg);
 	}
 	if (tagIndex2 == 0) {
-		data->readMem32RegOffset(tmpReg2, offsetReg, data->getFpuTopReg(), 2);
+		data->readMem8RegOffset(tmpReg2, offsetReg, data->getFpuTopReg());
 	} else if (tagIndex2 != -1) {
 		U8 topReg = calculateIndexReg(data, tagIndex2);
-		data->readMem32RegOffset(tmpReg2, offsetReg, topReg, 2);
+		data->readMem8RegOffset(tmpReg2, offsetReg, topReg);
 		data->releaseTmpReg(topReg);
 	}
 	data->releaseFpuTagOffset(offsetReg);
@@ -727,7 +727,7 @@ void opFXAM(Armv8btAsm* data) {
 		}, nullptr, nullptr, false, false);
 
 	U8 tagReg = data->getTmpReg();
-	data->readMem32RegOffset(tagReg, offsetReg, data->getFpuTopReg(), 2);
+	data->readMem8RegOffset(tagReg, offsetReg, data->getFpuTopReg());
 	data->releaseFpuTagOffset(offsetReg);
 
 	data->doIf(tagReg, 0, DO_IF_EQUAL, [data, swReg, bitsReg] {
@@ -1175,7 +1175,7 @@ void opFNINIT(Armv8btAsm* data) {
 
 	data->loadConst(xFpuTop, TAG_Empty);
 	for (int i = 0; i < 8; i++) {
-		data->writeMem32ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, tags[0])) + i * sizeof(U32));
+		data->writeMem8ValueOffset(xFpuTop, data->getFpuOffset(), (U32)(offsetof(FPU, tags[0])) + i);
 	}
 
 	data->zeroReg(xFpuTop);
