@@ -266,9 +266,7 @@ protected:
     }
     void dynamic_xorMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) override {
         arithMI(op, width, cf, store, flags, &DynamicData::xorRegReg, &DynamicData::xorRegImm, &DynamicData::xorMemReg, &DynamicData::xorMemImm);
-    }    
-
-public:
+    }
     
 };
 

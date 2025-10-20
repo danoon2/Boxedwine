@@ -919,6 +919,9 @@
     <ClCompile Include="..\..\..\..\source\emulation\cpu\dynamic\dynamicMMX.cpp">
       <Filter>source\emulation\cpu\dynamic</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\..\source\emulation\cpu\dynamic\dynamicSSE.cpp">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\..\include\bufferaccess.h">
@@ -1807,6 +1810,9 @@
       <Filter>source\emulation\cpu\dynamic</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamicMMX.h">
+      <Filter>source\emulation\cpu\dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\source\emulation\cpu\dynamic\dynamicSSE.h">
       <Filter>source\emulation\cpu\dynamic</Filter>
     </ClInclude>
   </ItemGroup>

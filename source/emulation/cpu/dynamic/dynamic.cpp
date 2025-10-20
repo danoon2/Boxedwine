@@ -96,9 +96,9 @@ static void logBlock(CPU* cpu, U32 address, DecodedOp* op, U32 len) {
     file.writeFormat("Block %d in %s(%x)\n", count, name.c_str(), offset);
     while (op && len) {
         if (op->isDirectBranch()) {
-            file.writeFormat("%x %x %s %x\n", cpu->thread->process->id, address, op->name(), (address + op->len + op->imm));
+            file.writeFormat("%x %x %s -> %x\n", cpu->thread->process->id, address, op->toString().c_str(), (address + op->len + op->imm));
         } else {
-            file.writeFormat("%x %x %s\n", cpu->thread->process->id, address, op->name());
+            file.writeFormat("%x %x %s\n", cpu->thread->process->id, address, op->toString().c_str());
         }
         address += op->len;
         len -= op->len;
@@ -422,7 +422,7 @@ U32 dontUseCpuOffset(U32 r, DynWidth width) {
     else if (width == DYN_16bit)
         return CPU::offsetofReg16(r);
     else if (width == DYN_32bit)
-        return CPU::offsetofReg16(r);
+        return CPU::offsetofReg32(r);
     else {
         kpanic_fmt("dynamic cpuOffset unexpected width: %d", width);
         return 0;
@@ -1000,6 +1000,9 @@ void DynamicCodeGen::movToMem(DynReg addressReg, DynWidth width, U32 value, DynC
         } else if (width == DYN_64bit) {
             // if ((address & 0xFFF) < 0xFF9)
             IfLessThan(tmp, 0xFF9, false);
+        } else if (width == DYN_128bit) {
+            // if ((address & 0xFFF) < 0xFF1)
+            IfLessThan(tmp, 0xFF1, false);
         } else {
             kpanic_fmt("DynamicCodeGen::movToMem unknown width %d", (U32)width);
         }
@@ -1094,6 +1097,9 @@ void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWith
         } else if (width == DYN_64bit) {
             // if ((address & 0xFFF) < 0xFF9)
             IfLessThan(DYN_CALL_RESULT, 0xFF9, false);
+        } else if (width == DYN_128bit) {
+            // if ((address & 0xFFF) < 0xFF1)
+            IfLessThan(DYN_CALL_RESULT, 0xFF1, false);
         } else {
             kpanic_fmt("DynamicCodeGen::movFromMem unknown width %d", (U32)width);
         }

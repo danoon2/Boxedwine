@@ -1562,6 +1562,7 @@ public:
 
     void dealloc();
     void log(CPU* cpu);
+    BString toString();
     bool needsToSetFlags(CPU* cpu);
     bool isFpuOp();
     bool isMmxOp();

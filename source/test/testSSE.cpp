@@ -1481,7 +1481,7 @@ void testSseRsqrtps352() {
     }
 #endif
     // :TODO: not exact match
-#ifdef BOXEDWINE_X64
+#if defined(BOXEDWINE_X64) || defined(BOXEDWINE_DYNAMIC32)
     testSse128(0, 0, 0x52, 0x4080000000000000, 0x4000000043800000, 0x4080000000000000l, 0x4000000043800000, 0x3efff0007f800000l, 0x3f34f8003d7ff000);
 #else
     // :TODO: for some reason this doesn't work on Linux
@@ -1506,7 +1506,7 @@ void testSseRsqrtss352() {
     }
 #endif
     // :TODO: not exact match
-#ifdef BOXEDWINE_X64 
+#if defined(BOXEDWINE_X64) || defined(BOXEDWINE_DYNAMIC32) 
     testSse128(0, 0xf3, 0x52, 0x4110000040800000, 0x4000000043800000, 0x4110000040800000, 0x4000000043800000, 0x411000003efff000, 0x4000000043800000);
 #elif defined(BOXEDWINE_BINARY_TRANSLATOR)
     testSse128(0, 0xf3, 0x52, 0x4110000040800000, 0x4000000043800000, 0x4110000040800000, 0x4000000043800000, 0x411000003eff8000, 0x4000000043800000);
@@ -1532,7 +1532,7 @@ void testSseRcpps353() {
     }
 #endif
     // :TODO: not exact match
-#ifdef BOXEDWINE_X64
+#if defined(BOXEDWINE_X64) || defined(BOXEDWINE_DYNAMIC32)
     testSse128(0, 0, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x3de380003e7ff000, 0x412000003b7ff000);
 #elif defined(BOXEDWINE_BINARY_TRANSLATOR)
     testSse128(0, 0, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x3de300003e7f8000, 0x412000003b7f8000);
@@ -1558,7 +1558,7 @@ void testSseRcpss353() {
     }
 #endif
     // :TODO: not exact match
-#ifdef BOXEDWINE_X64
+#if defined(BOXEDWINE_X64) || defined(BOXEDWINE_DYNAMIC32)
     testSse128(0, 0xf3, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x411000003e7ff000, 0x3dcccccd43800000);
 #elif defined(BOXEDWINE_BINARY_TRANSLATOR)
     testSse128(0, 0xf3, 0x53, 0x4110000040800000, 0x3dcccccd43800000, 0x4110000040800000, 0x3dcccccd43800000, 0x411000003e7f8000, 0x3dcccccd43800000);
@@ -2575,13 +2575,19 @@ void testMaskmovq3f7() {
             loadMMX(m, 0, d1);
             loadMMX(from, 1, d2);
             EDI = MMX_MEM_VALUE_TMP_OFFSET+64;
-            memory->writeq(cpu->seg[DS].address+EDI, 0x9999999999999999);
+            memory->writeq(cpu->seg[DS].address + EDI, 0x9999999999999999);
+            memory->writeq(cpu->seg[DS].address + EDI + 8, 0x9999999999999999);
             pushCode8(0x0f);
             pushCode8(0xf7);
             pushCode8(0xC0 | (m << 3) | from);            
             runTestCPU();
             result = memory->readq(cpu->seg[DS].address+EDI);
             if (result!=expected) {
+                failed("maskmovq failed");
+            }
+            // make sure we didn't write past the 8 bytes, x86 JIT implements this with SSE instead of MMX, and maskmovdqu can write 16 bytes.
+            result = memory->readq(cpu->seg[DS].address + EDI + 8);
+            if (result != 0x9999999999999999) {
                 failed("maskmovq failed");
             }
         }

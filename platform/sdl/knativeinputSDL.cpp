@@ -274,7 +274,9 @@ bool KNativeInputSDL::waitForEvent(U32 ms) {
 #ifdef BOXEDWINE_MULTI_THREADED
         if (e.type == sdlCustomEvent) {
             SdlCallback* callback = (SdlCallback*)e.user.data1;
-            callback->result = (U32)callback->pfn();
+            if (callback->pfn) {
+                callback->result = (U32)callback->pfn();
+            }
             BOXEDWINE_CRITICAL_SECTION_WITH_CONDITION(callback->cond);
             BOXEDWINE_CONDITION_SIGNAL(callback->cond);
             return true;

@@ -760,7 +760,7 @@ U32 KMemory::ensureContinuousNative_unsafe(U32 page, U32 pageCount) {
 
     // :TODO: what if ram == null
 
-    for (int i = 1; i < chunks * 8; i++) {
+    for (U32 i = 1; i < chunks * 8; i++) {
         U8* pageRam = getRamPtr((page + i) << K_PAGE_SHIFT, K_PAGE_SIZE, false);
         if (ram != pageRam - K_PAGE_SIZE * i) {
             isContinuous = false;
@@ -774,7 +774,7 @@ U32 KMemory::ensureContinuousNative_unsafe(U32 page, U32 pageCount) {
     U8* nativeMemory = Platform::alloc64kBlock(chunks);
     U32 allocatedPages = chunks * 8;
     U32 validPages = 0;
-    for (int i = 0; i < allocatedPages; i++) {
+    for (U32 i = 0; i < allocatedPages; i++) {
         if (canRead(i + page)) {
             validPages++;
         } else {

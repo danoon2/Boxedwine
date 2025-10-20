@@ -39,6 +39,7 @@ enum DynWidth {
     DYN_16bit,
     DYN_32bit,
     DYN_64bit,
+    DYN_128bit,
 };
 
 enum DynCondition {
