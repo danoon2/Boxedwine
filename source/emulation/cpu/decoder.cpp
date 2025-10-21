@@ -6517,6 +6517,9 @@ const char* DecodedOp::name() {
 }
 
 BString DecodedOp::toString() {
+#ifdef __EMSCRIPTEN__
+    return BString::empty;
+#else
     BString out;
     instructionLog[this->inst].pfnFormat(&instructionLog[this->inst], this, out);
     if (instructionLog[this->inst].imm) {
@@ -6538,6 +6541,7 @@ BString DecodedOp::toString() {
         }
     }
     return out;
+#endif
 }
 
 void DecodedOp::log(CPU* cpu) {

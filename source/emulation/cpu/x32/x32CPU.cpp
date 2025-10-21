@@ -177,7 +177,6 @@ public:
     void punpcklwdMmxMmx(DynMMXReg dst, DynMMXReg src) override;
     void punpckldqMmxMmx(DynMMXReg dst, DynMMXReg src) override;
 
-
     void pavgbMmxMmx(DynMMXReg dst, DynMMXReg src) override;
     void pavgwMmxMmx(DynMMXReg dst, DynMMXReg src) override;
     void psadbwMmxMmx(DynMMXReg dst, DynMMXReg src) override;
@@ -192,10 +191,15 @@ public:
     void pshufwMmxMmx(DynMMXReg dst, DynMMXReg src, U8 mask) override;
     void maskmovq(DynMMXReg src, DynMMXReg mask, DynReg destAddress) override;
 
+    void paddqMmxMmx(DynMMXReg dst, DynMMXReg src) override;
+    void psubqMmxMmx(DynMMXReg dst, DynMMXReg src) override;
+    void pmuludqMmxMmx(DynMMXReg dst, DynMMXReg src) override;
+
     // SSE
     DynXMMReg getTmpXMM(U8 inUse) override { return inUse == 0 ? (DynXMMReg)1 : (DynXMMReg)0; }
     void storeCpuXMMReg(DynXMMReg reg, U32 index) override;
     void loadCpuXMMReg(DynXMMReg reg, U32 index) override;
+    void loadCpuXMMReg64ZeroExtend(DynXMMReg reg, U32 index) override;
     void loadXMMFromMem128(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) override;
     void loadXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) override;
     void loadLowXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) override;
@@ -248,6 +252,135 @@ public:
     void sfence() override;
     void stmxcsr(DynReg address) override;
     void ldmxcsr(DynReg address) override;
+
+    // SSE2
+    void addpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void addsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void subpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void subsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void mulpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void mulsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void divpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void divsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void maxpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void maxsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void minpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void minsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void paddbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void paddwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void padddXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void paddqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void paddsbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void paddswXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void paddusbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void padduswXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubsbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubswXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubusbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psubuswXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pmaddwdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pmulhwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pmullwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pmuludqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void sqrtpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void sqrtsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void andnpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void andpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pandXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pandnXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void porXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pslldqXmm(DynXMMReg dst, U32 imm) override;
+    void psllqXmm(DynXMMReg dst, U32 imm) override;
+    void pslldXmm(DynXMMReg dst, U32 imm) override;
+    void psllwXmm(DynXMMReg dst, U32 imm) override;
+    void psradXmm(DynXMMReg dst, U32 imm) override;
+    void psrawXmm(DynXMMReg dst, U32 imm) override;
+    void psrldqXmm(DynXMMReg dst, U32 imm) override;
+    void psrlqXmm(DynXMMReg dst, U32 imm) override;
+    void psrldXmm(DynXMMReg dst, U32 imm) override;
+    void psrlwXmm(DynXMMReg dst, U32 imm) override;
+    void psllqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pslldXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psllwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psradXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psrawXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psrlqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psrldXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psrlwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pxorXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void orpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void xorpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cmppdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) override;
+    void cmpsdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) override;
+    void comisdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void ucomisdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pcmpgtbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pcmpgtwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pcmpgtdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pcmpeqbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pcmpeqwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pcmpeqdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvtdq2pdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvtdq2psXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvtpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) override;
+    void cvtpi2pdXmmMmx(DynXMMReg dst, DynMMXReg src) override;
+    void cvtpd2dqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvtpd2psXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvttpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) override;
+    void cvtps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvtps2pdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvtsd2siR32Xmm(DynReg dst, DynXMMReg src) override;
+    void cvtsd2ssXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvtsi2sdXmmR32(DynXMMReg dst, DynReg src) override;
+    void cvtss2sdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvttpd2dqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvttps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void cvttsd2siR32Xmm(DynReg dst, DynXMMReg src) override;
+    void movsdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void movupdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void movmskpd(DynReg dst, DynXMMReg src) override;
+    void movd(DynReg dst, DynXMMReg src) override;
+    void movd(DynXMMReg dst, DynReg src) override;
+    void movdq2q(DynMMXReg dst, DynXMMReg src) override;
+    void movq2dq(DynXMMReg dst, DynMMXReg src) override;
+
+    void maskmovdqu(DynXMMReg dst, DynXMMReg src, DynReg address) override;
+    void pshufdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) override;
+    void pshufhwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) override;
+    void pshuflwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) override;
+    void shufpdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) override;
+    void unpckhpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void unpcklpdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpckhbwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpckhwdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpckhdqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpckhqdqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpcklbwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpcklwdXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpckldqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void punpcklqdqXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void packssdwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void packsswbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void packuswbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pavgbXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pavgwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void psadbwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pmaxswXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pmaxubXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pminswXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pminubXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void pmulhuwXmmXmm(DynXMMReg dst, DynXMMReg src) override;
+    void lfence() override;
+    void mfence() override;
+    void clflush(DynReg rm, DynReg sib, U8 lsl, U32 disp) override;
+    void pause() override;
+    void pextrwR32Xmm(DynReg dst, DynXMMReg src, U32 imm) override;
+    void pinsrwXmmR32(DynXMMReg dst, DynReg src, U32 imm) override;
+    void pmovmskbR32Xmm(DynReg dst, DynXMMReg src) override;
 
     // optional override, hopefully faster than the common_ methods
     void dynamic_checkFlags(DecodedOp* op, DynReg tmpReg, DynReg tmpReg2);
@@ -326,6 +459,7 @@ protected:
 
     void loadCache();
     void writeCache();
+    void loadHardwareFlags();
 
     X86Asm x86;
 };
@@ -352,6 +486,10 @@ void X86DynamicCodeGen::storeHighXMMToMem64(DynXMMReg reg, DynReg rm, DynReg sib
 
 void X86DynamicCodeGen::loadCpuXMMReg(DynXMMReg reg, U32 index) {
     x86.movaps(X86Asm::XMM(reg), x86.edi, index * 16 + offsetof(CPU, xmm));
+}
+
+void X86DynamicCodeGen::loadCpuXMMReg64ZeroExtend(DynXMMReg reg, U32 index) {
+    x86.movq(X86Asm::XMM(reg), x86.edi, index * 16 + offsetof(CPU, xmm));
 }
 
 void X86DynamicCodeGen::loadXMMFromMem128(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) {
@@ -502,6 +640,18 @@ void X86DynamicCodeGen::maskmovq(DynMMXReg src, DynMMXReg mask, DynReg destAddre
     x86.pop(x86.edi);
 }
 
+void X86DynamicCodeGen::paddqMmxMmx(DynMMXReg dst, DynMMXReg src) {
+    x86.paddq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubqMmxMmx(DynMMXReg dst, DynMMXReg src) {
+    x86.psubq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmuludqMmxMmx(DynMMXReg dst, DynMMXReg src) {
+    x86.pmuludq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
 void X86DynamicCodeGen::andnpsXmmXmm(DynXMMReg dst, DynXMMReg src) {
     x86.andnps(X86Asm::XMM(dst), X86Asm::XMM(src));
 }
@@ -569,8 +719,7 @@ void X86DynamicCodeGen::cmpssXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) {
     x86.cmpss(X86Asm::XMM(dst), X86Asm::XMM(src), (U8)imm);
 }
 
-void X86DynamicCodeGen::comissXmmXmm(DynXMMReg dst, DynXMMReg src) {
-    x86.comiss(X86Asm::XMM(dst), X86Asm::XMM(src));
+void X86DynamicCodeGen::loadHardwareFlags() {
     x86.pushFlags();
     x86.pop(DYN_SRC);
     x86.and_(X86Asm::Reg32(DYN_SRC), FMASK_TEST);
@@ -584,19 +733,14 @@ void X86DynamicCodeGen::comissXmmXmm(DynXMMReg dst, DynXMMReg src) {
     movToCpuFromReg(offsetof(CPU, flags), DYN_SRC, DYN_32bit, true);
 }
 
+void X86DynamicCodeGen::comissXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.comiss(X86Asm::XMM(dst), X86Asm::XMM(src));
+    loadHardwareFlags();
+}
+
 void X86DynamicCodeGen::ucomissXmmXmm(DynXMMReg dst, DynXMMReg src) {
     x86.ucomiss(X86Asm::XMM(dst), X86Asm::XMM(src));
-    x86.pushFlags();
-    x86.pop(DYN_SRC);
-    x86.and_(X86Asm::Reg32(DYN_SRC), FMASK_TEST);
-
-    //this->andCPUFlagsImm(~FMASK_TEST, tmpReg2);
-    movToRegFromCpu(DYN_DEST, offsetof(CPU, flags), DYN_32bit);
-    andRegImm(DYN_DEST, DYN_32bit, ~FMASK_TEST);
-
-    //this->orCPUFlagsReg(tmpReg, tmpReg2, true);
-    orRegReg(DYN_SRC, DYN_DEST, DYN_32bit, true);
-    movToCpuFromReg(offsetof(CPU, flags), DYN_SRC, DYN_32bit, true);
+    loadHardwareFlags();
 }
 
 void X86DynamicCodeGen::stmxcsr(DynReg address) {
@@ -880,6 +1024,516 @@ void X86DynamicCodeGen::punpckldqMmxMmx(DynMMXReg dst, DynMMXReg src) {
     x86.punpckldq(X86Asm::XMM(dst), X86Asm::XMM(src));
 }
 
+void X86DynamicCodeGen::addpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.addpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::addsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.addsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::subpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.subpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::subsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.subsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::mulpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.mulpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::mulsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.mulsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::divpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.divpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::divsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.divsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::maxpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.maxpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::maxsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.maxsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::minpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.minpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::minsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.minsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::paddbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::paddwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::padddXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::paddqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::paddsbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddsb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::paddswXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::paddusbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddusb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::padduswXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.paddusw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubsbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubsb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubswXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubusbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubusb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psubuswXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psubusw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmaddwdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pmaddwd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmulhwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pmulhw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmullwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pmullw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmuludqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pmuludq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::sqrtpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.sqrtpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::sqrtsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.sqrtsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::andnpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.andnpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::andpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.andpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pandXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pand(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pandnXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pandn(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::porXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.por(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pslldqXmm(DynXMMReg dst, U32 imm) {
+    x86.pslldq(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psllqXmm(DynXMMReg dst, U32 imm) {
+    x86.psllq(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::pslldXmm(DynXMMReg dst, U32 imm) {
+    x86.pslld(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psllwXmm(DynXMMReg dst, U32 imm) {
+    x86.psllw(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psradXmm(DynXMMReg dst, U32 imm) {
+    x86.psrad(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psrawXmm(DynXMMReg dst, U32 imm) {
+    x86.psraw(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psrldqXmm(DynXMMReg dst, U32 imm) {
+    x86.psrldq(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psrlqXmm(DynXMMReg dst, U32 imm) {
+    x86.psrlq(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psrldXmm(DynXMMReg dst, U32 imm) {
+    x86.psrld(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psrlwXmm(DynXMMReg dst, U32 imm) {
+    x86.psrlw(X86Asm::XMM(dst), imm);
+}
+
+void X86DynamicCodeGen::psllqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psllq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pslldXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pslld(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psllwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psllw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psradXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psrad(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psrawXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psraw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psrlqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psrlq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psrldXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psrld(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psrlwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psrlw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pxorXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pxor(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::orpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.orpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::xorpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.xorpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cmppdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) {
+    x86.cmppd(X86Asm::XMM(dst), X86Asm::XMM(src), (U8)imm);
+}
+
+void X86DynamicCodeGen::cmpsdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) {
+    x86.cmpsd(X86Asm::XMM(dst), X86Asm::XMM(src), (U8)imm);
+}
+
+void X86DynamicCodeGen::comisdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.comisd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    loadHardwareFlags();
+}
+
+void X86DynamicCodeGen::ucomisdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.ucomisd(X86Asm::XMM(dst), X86Asm::XMM(src));
+    loadHardwareFlags();
+}
+
+void X86DynamicCodeGen::pcmpgtbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pcmpgtb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pcmpgtwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pcmpgtw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pcmpgtdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pcmpgtd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pcmpeqbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pcmpeqb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pcmpeqwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pcmpeqw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pcmpeqdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pcmpeqd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtdq2pdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtdq2pd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtdq2psXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtdq2ps(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) {
+    x86.cvtpd2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtpi2pdXmmMmx(DynXMMReg dst, DynMMXReg src) {
+    x86.cvtdq2pd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtpd2dqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtpd2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtpd2psXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtpd2ps(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvttpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) {
+    x86.cvttpd2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtps2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtps2pdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtps2pd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtsd2siR32Xmm(DynReg dst, DynXMMReg src) {
+    x86.cvtsd2si(X86Asm::Reg32(dst), X86Asm::XMM(src));
+    regUsed[dst] = true;
+}
+
+void X86DynamicCodeGen::cvtsd2ssXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtsd2ss(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvtsi2sdXmmR32(DynXMMReg dst, DynReg src) {
+    x86.cvtsi2sd(X86Asm::XMM(dst), X86Asm::Reg32(src));
+}
+
+void X86DynamicCodeGen::cvtss2sdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvtss2sd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvttpd2dqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvttpd2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvttps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.cvttps2dq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::cvttsd2siR32Xmm(DynReg dst, DynXMMReg src) {
+    x86.cvttsd2si(X86Asm::Reg32(dst), X86Asm::XMM(src));
+    regUsed[dst] = true;
+}
+
+void X86DynamicCodeGen::movsdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.movsd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::movupdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.movdqu(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::movmskpd(DynReg dst, DynXMMReg src) {
+    x86.movmskpd(X86Asm::Reg32(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::movd(DynReg dst, DynXMMReg src) {
+    x86.movd(X86Asm::Reg32(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::movd(DynXMMReg dst, DynReg src) {
+    x86.movd(X86Asm::XMM(dst), X86Asm::Reg32(src));
+}
+
+void X86DynamicCodeGen::movdq2q(DynMMXReg dst, DynXMMReg src) {
+    x86.movq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::movq2dq(DynXMMReg dst, DynMMXReg src) {
+    x86.movq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::maskmovdqu(DynXMMReg src, DynXMMReg mask, DynReg address) {
+    x86.push(x86.edi);
+    x86.mov(x86.edi, X86Asm::Reg32(address));
+    x86.maskmovdqu(X86Asm::XMM(src), X86Asm::XMM(mask));
+    x86.pop(x86.edi);
+}
+
+void X86DynamicCodeGen::pshufdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) {
+    x86.pshufd(X86Asm::XMM(dst), X86Asm::XMM(src), imm);
+}
+
+void X86DynamicCodeGen::pshufhwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) {
+    x86.pshufhw(X86Asm::XMM(dst), X86Asm::XMM(src), imm);
+}
+
+void X86DynamicCodeGen::pshuflwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) {
+    x86.pshuflw(X86Asm::XMM(dst), X86Asm::XMM(src), imm);
+}
+
+void X86DynamicCodeGen::shufpdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) {
+    x86.shufpd(X86Asm::XMM(dst), X86Asm::XMM(src), imm);
+}
+
+void X86DynamicCodeGen::unpckhpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.unpckhpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::unpcklpdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.unpcklpd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpckhbwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpckhbw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpckhwdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpckhwd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpckhdqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpckhdq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpckhqdqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpckhqdq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpcklbwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpcklbw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpcklwdXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpcklwd(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpckldqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpckldq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::punpcklqdqXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.punpcklqdq(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::packssdwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.packssdw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::packsswbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.packsswb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::packuswbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.packuswb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pavgbXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pavgb(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pavgwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pavgw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::psadbwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.psadbw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmaxswXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pmaxsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmaxubXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pmaxub(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pminswXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pminsw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pminubXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pminub(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::pmulhuwXmmXmm(DynXMMReg dst, DynXMMReg src) {
+    x86.pmulhuw(X86Asm::XMM(dst), X86Asm::XMM(src));
+}
+
+void X86DynamicCodeGen::lfence() {
+    x86.lfence();
+}
+
+void X86DynamicCodeGen::mfence() {
+    x86.mfence();
+}
+
+void X86DynamicCodeGen::clflush(DynReg rm, DynReg sib, U8 lsl, U32 disp) {
+    x86.clflush(X86Asm::Reg32(rm), X86Asm::Reg32(sib), lsl, disp);
+}
+
+void X86DynamicCodeGen::pause() {
+    x86.pause();
+}
+
+void X86DynamicCodeGen::pextrwR32Xmm(DynReg dst, DynXMMReg src, U32 imm) {
+    x86.pextrw(X86Asm::Reg32(dst), X86Asm::XMM(src), (U8)imm);
+}
+
+void X86DynamicCodeGen::pinsrwXmmR32(DynXMMReg dst, DynReg src, U32 imm) {
+    x86.pinsrw(X86Asm::XMM(dst), X86Asm::Reg32(src), (U8)imm);
+}
+
+void X86DynamicCodeGen::pmovmskbR32Xmm(DynReg dst, DynXMMReg src) {
+    x86.pmovmskb(X86Asm::Reg32(dst), X86Asm::XMM(src));
+}
 
 void X86DynamicCodeGen::updateFPURounding(DynReg tmp1, DynReg tmp2) {
     x86.stmxcsr(x86.edi, offsetof(CPU, sseControlStateTmp));
@@ -1001,7 +1655,7 @@ void X86DynamicCodeGen::fcompare(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg or
     IfNot(ordTags, true);
         pfnInvalid();
     StartElse();
-        x86.ucomisd(X86Asm::XMM(fpuReg1), X86Asm::XMM(fpuReg2));
+        x86.ucomisd(X86Asm::XMM(fpuReg2), X86Asm::XMM(fpuReg1));
         x86.IfPF();
             pfnInvalid();
         StartElse();

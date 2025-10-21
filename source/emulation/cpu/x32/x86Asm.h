@@ -294,16 +294,18 @@ public:
 	void cvtsd2si(Reg32 dst, RegXMM srcXMM);
 	void cvtpd2dq(RegXMM dstXMM, RegXMM srcXMM);
 	void cvttpd2dq(RegXMM dstXMM, RegXMM srcXMM);
+	void cvtpd2ps(RegXMM dstXMM, RegXMM srcXMM);
 	void cvtdq2pd(RegXMM dstXMM, RegXMM srcXMM);
 	void xorpd(RegXMM dstXMM, RegXMM srcXMM);
 	void andpd(RegXMM dstXMM, RegXMM srcXMM);
-
+	void addpd(RegXMM dstXMM, RegXMM srcXMM);
 	void addsd(RegXMM dstXMM, RegXMM srcXMM);
+	void mulpd(RegXMM dstXMM, RegXMM srcXMM);
 	void mulsd(RegXMM dstXMM, RegXMM srcXMM);
+	void subpd(RegXMM dstXMM, RegXMM srcXMM);
 	void subsd(RegXMM dstXMM, RegXMM srcXMM);
-	void divsd(RegXMM dstXMM, RegXMM srcXMM);
-	void sqrtsd(RegXMM dstXMM, RegXMM srcXMM);
-	void ucomisd(RegXMM xmm1, RegXMM xmm2);
+	void sqrtpd(RegXMM dstXMM, RegXMM srcXMM);
+	void sqrtsd(RegXMM dstXMM, RegXMM srcXMM);	
 
 	void movd(RegMMX dst, Reg32 src);
 	void movd(Reg32 dst, RegMMX src);
@@ -332,6 +334,8 @@ public:
 	void movq(Reg32 rm, U32 disp, RegXMM reg);
 	void movq(RegXMM reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void movq(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, RegXMM reg);
+	void movq(RegXMM dst, RegXMM src);
+	void movdqu(RegXMM dst, RegXMM src);
 	void pxor(RegXMM dst, RegXMM src);
 	void por(RegXMM dst, RegXMM src);
 	void pand(RegXMM dst, RegXMM src);
@@ -350,12 +354,15 @@ public:
 	void psrad(RegXMM dst, U32 src);
 	void psllq(RegXMM dst, RegXMM src);
 	void psllq(RegXMM dst, U32 imm);
+	void pslldq(RegXMM dst, U32 imm);
 	void psrlq(RegXMM dst, RegXMM src);
 	void psrlq(RegXMM dst, U32 imm);
+	void psrldq(RegXMM dst, U32 imm);
 
 	void paddb(RegXMM dst, RegXMM src);
 	void paddw(RegXMM dst, RegXMM src);
 	void paddd(RegXMM dst, RegXMM src);
+	void paddq(RegXMM dst, RegXMM src);
 	void paddsb(RegXMM dst, RegXMM src);
 	void paddsw(RegXMM dst, RegXMM src);
 	void paddusb(RegXMM dst, RegXMM src);
@@ -364,6 +371,7 @@ public:
 	void psubb(RegXMM dst, RegXMM src);
 	void psubw(RegXMM dst, RegXMM src);
 	void psubd(RegXMM dst, RegXMM src);
+	void psubq(RegXMM dst, RegXMM src);
 	void psubsb(RegXMM dst, RegXMM src);
 	void psubsw(RegXMM dst, RegXMM src);
 	void psubusb(RegXMM dst, RegXMM src);
@@ -372,6 +380,7 @@ public:
 	void pmulhw(RegXMM dst, RegXMM src);
 	void pmullw(RegXMM dst, RegXMM src);
 	void pmaddwd(RegXMM dst, RegXMM src);
+	void pmuludq(RegXMM dst, RegXMM src);
 	
 	void pcmpeqb(RegXMM dst, RegXMM src);
 	void pcmpeqw(RegXMM dst, RegXMM src);
@@ -389,6 +398,10 @@ public:
 	void punpcklbw(RegXMM dst, RegXMM src);
 	void punpcklwd(RegXMM dst, RegXMM src);
 	void punpckldq(RegXMM dst, RegXMM src);
+	void unpcklpd(RegXMM dst, RegXMM src);
+	void unpckhpd(RegXMM dst, RegXMM src);
+	void punpckhqdq(RegXMM dst, RegXMM src);
+	void punpcklqdq(RegXMM dst, RegXMM src);
 
 	void addps(RegXMM dst, RegXMM src);
 	void addss(RegXMM dst, RegXMM src);
@@ -397,7 +410,9 @@ public:
 	void mulps(RegXMM dst, RegXMM src);
 	void mulss(RegXMM dst, RegXMM src);
 	void divps(RegXMM dst, RegXMM src);
+	void divpd(RegXMM dst, RegXMM src);
 	void divss(RegXMM dst, RegXMM src);
+	void divsd(RegXMM dst, RegXMM src);
 	void rcpps(RegXMM dst, RegXMM src);
 	void rcpss(RegXMM dst, RegXMM src);
 	void sqrtps(RegXMM dst, RegXMM src);
@@ -405,9 +420,13 @@ public:
 	void rsqrtps(RegXMM dst, RegXMM src);
 	void rsqrtss(RegXMM dst, RegXMM src);
 	void maxps(RegXMM dst, RegXMM src);
+	void maxpd(RegXMM dst, RegXMM src);
 	void maxss(RegXMM dst, RegXMM src);
+	void maxsd(RegXMM dst, RegXMM src);
 	void minps(RegXMM dst, RegXMM src);
+	void minpd(RegXMM dst, RegXMM src);
 	void minss(RegXMM dst, RegXMM src);
+	void minsd(RegXMM dst, RegXMM src);
 	void pavgb(RegXMM dst, RegXMM src);
 	void pavgw(RegXMM dst, RegXMM src);
 	void psadbw(RegXMM dst, RegXMM src);
@@ -420,12 +439,18 @@ public:
 	void pmovmskb(Reg32 dst, RegXMM src);
 	void pmulhuw(RegXMM dst, RegXMM src);
 	void pshuflw(RegXMM dst, RegXMM src, U8 order);
+	void pshufhw(RegXMM dst, RegXMM src, U8 order);
+	void pshufd(RegXMM dst, RegXMM src, U8 order);
+	void shufpd(RegXMM dst, RegXMM src, U8 order);
+	void andnpd(RegXMM dst, RegXMM src);
 	void andnps(RegXMM dst, RegXMM src);
 	void andps(RegXMM dst, RegXMM src);
+	void orpd(RegXMM dst, RegXMM src);
 	void orps(RegXMM dst, RegXMM src);
 	void xorps(RegXMM dst, RegXMM src);
 	void cvtdq2ps(RegXMM dst, RegXMM src);
 	void cvtps2dq(RegXMM dst, RegXMM src);
+	void cvtps2pd(RegXMM dst, RegXMM src);
 	void cvttps2dq(RegXMM dst, RegXMM src);
 	void cvtsi2ss(RegXMM dst, Reg32 src);
 	void cvtss2si(Reg32 dst, RegXMM src);
@@ -433,13 +458,22 @@ public:
 	void movmskps(Reg32 dst, RegXMM src);
 	void maskmovdqu(RegXMM src, RegXMM mask);
 	void shufps(RegXMM src, RegXMM mask, U8 imm);
+	void cmppd(RegXMM src, RegXMM mask, U8 imm);
 	void cmpps(RegXMM src, RegXMM mask, U8 imm);
+	void cmpsd(RegXMM src, RegXMM mask, U8 imm);
 	void cmpss(RegXMM src, RegXMM mask, U8 imm);
 	void unpckhps(RegXMM dst, RegXMM src);
 	void unpcklps(RegXMM dst, RegXMM src);
+	void comisd(RegXMM dst, RegXMM src);
 	void comiss(RegXMM dst, RegXMM src);
+	void ucomisd(RegXMM xmm1, RegXMM xmm2);
 	void ucomiss(RegXMM dst, RegXMM src);
 	void sfence();
+	void lfence();
+	void pause();
+	void mfence();
+	void clflush(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void movmskpd(Reg32 dst, RegXMM src);
 
 	std::vector<U8> buffer;
 	std::vector<U32> ifJump;

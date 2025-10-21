@@ -122,6 +122,9 @@ public:
     virtual void pmulhuwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void pshufwMmxMmx(DynMMXReg dst, DynMMXReg src, U8 mask) = 0;
     virtual void maskmovq(DynMMXReg src, DynMMXReg mask, DynReg destAddress) = 0;
+    virtual void paddqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void psubqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
+    virtual void pmuludqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
 
     void opMmxMmx(DecodedOp* op, MmxMmxCallback callback);
     void opMmxE64(DecodedOp* op, MmxMmxCallback callback, std::function<void()> fallback);
@@ -271,6 +274,14 @@ public:
     void dynamic_pshufwMmxE64(DecodedOp* op) override;    
     void dynamic_maskmovqEDIMmxMmx(DecodedOp* op) override;
     void dynamic_movntqE64Mmx(DecodedOp* op) override { dynamic_movE64Pq(op); }
+
+    // SSE2 add ons
+    void dynamic_paddqMmxMmx(DecodedOp* op) override { opMmxMmx(op, &DynamicCodeGenMMX::paddqMmxMmx); }
+    void dynamic_paddqMmxE64(DecodedOp* op) override { opMmxE64(op, &DynamicCodeGenMMX::paddqMmxMmx, [op, this]() {DynamicCodeGen::dynamic_paddqMmxE64(op); }); }
+    void dynamic_psubqMmxMmx(DecodedOp* op) override { opMmxMmx(op, &DynamicCodeGenMMX::psubqMmxMmx); }
+    void dynamic_psubqMmxE64(DecodedOp* op) override { opMmxE64(op, &DynamicCodeGenMMX::psubqMmxMmx, [op, this]() {DynamicCodeGen::dynamic_psubqMmxE64(op); }); }
+    void dynamic_pmuludqMmxMmx(DecodedOp* op) override { opMmxMmx(op, &DynamicCodeGenMMX::pmuludqMmxMmx); }
+    void dynamic_pmuludqMmxE64(DecodedOp* op) override { opMmxE64(op, &DynamicCodeGenMMX::pmuludqMmxMmx, [op, this]() {DynamicCodeGen::dynamic_pmuludqMmxE64(op); }); }
 };
 
 #endif
