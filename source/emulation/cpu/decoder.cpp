@@ -6316,9 +6316,9 @@ bool DecodedOp::isDirectJump() {
     return inst == JmpJb || inst == JmpJw || inst == JmpJd;
 }
 
-bool DecodedOp::needsToSetFlags(CPU* cpu) {
+U32 DecodedOp::needsToSetFlags(CPU* cpu) {
     U32 needsToSet = instructionInfo[this->inst].flagsSets & ~MAYBE;
-    return next->getNeededFlags(needsToSet) != 0;
+    return next->getNeededFlags(needsToSet);
 }
 
 U32 DecodedOp::getNeededFlagsAfter(U32 flags, U32 depth) {

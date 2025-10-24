@@ -92,13 +92,20 @@ public:
 
 	void lea(Reg32 dst, Reg32 rm, Reg32 sib, U32 shift, U32 disp);
 	void lea(Reg32 dst, Reg32 rm, U32 disp);
-	
+	void lahf();
+
 	void add(Reg32 dst, U32 imm);
 	void add(Reg16 dst, U16 imm);
 	void add(Reg8 dst, U8 imm);
+	void adc(Reg32 dst, U32 imm);
+	void adc(Reg16 dst, U16 imm);
+	void adc(Reg8 dst, U8 imm);
 	void sub(Reg32 dst, U32 imm);
 	void sub(Reg16 dst, U16 imm);
 	void sub(Reg8 dst, U8 imm);
+	void sbb(Reg32 dst, U32 imm);
+	void sbb(Reg16 dst, U16 imm);
+	void sbb(Reg8 dst, U8 imm);
 	void and_(Reg32 dst, U32 imm);
 	void and_(Reg16 dst, U16 imm);
 	void and_(Reg8 dst, U8 imm);
@@ -117,13 +124,25 @@ public:
 	void sar(Reg32 dst, U32 imm);
 	void sar(Reg16 dst, U16 imm);
 	void sar(Reg8 dst, U8 imm);
+	void rol(Reg32 dst, U32 imm);
+	void rol(Reg16 dst, U16 imm);
+	void rol(Reg8 dst, U8 imm);
+	void ror(Reg32 dst, U32 imm);
+	void ror(Reg16 dst, U16 imm);
+	void ror(Reg8 dst, U8 imm);
 
 	void add(Reg32 dst, Reg32 src);
 	void add(Reg16 dst, Reg16 src);
 	void add(Reg8 dst, Reg8 src);
+	void adc(Reg32 dst, Reg32 src);
+	void adc(Reg16 dst, Reg16 src);
+	void adc(Reg8 dst, Reg8 src);
 	void sub(Reg32 dst, Reg32 src);
 	void sub(Reg16 dst, Reg16 src);
 	void sub(Reg8 dst, Reg8 src);
+	void sbb(Reg32 dst, Reg32 src);
+	void sbb(Reg16 dst, Reg16 src);
+	void sbb(Reg8 dst, Reg8 src);
 	void and_(Reg32 dst, Reg32 src);
 	void and_(Reg16 dst, Reg16 src);
 	void and_(Reg8 dst, Reg8 src);
@@ -142,6 +161,26 @@ public:
 	void sar(Reg32 dst, Reg32 src);
 	void sar(Reg16 dst, Reg16 src);
 	void sar(Reg8 dst, Reg8 src);
+	void rol(Reg32 dst, Reg32 src);
+	void rol(Reg16 dst, Reg16 src);
+	void rol(Reg8 dst, Reg8 src);
+	void ror(Reg32 dst, Reg32 src);
+	void ror(Reg16 dst, Reg16 src);
+	void ror(Reg8 dst, Reg8 src);
+
+	void mulEax(Reg32 src);
+	void mulAx(Reg16 src);
+	void mulAl(Reg8 src);
+	void imul(Reg32 dst, Reg32 src);
+	void imul(Reg16 dst, Reg16 src);
+	void imul(Reg32 dst, U32 imm);
+	void imul(Reg16 dst, U16 imm);
+	void imul(Reg32 src);
+	void mul(Reg32 src);
+	void div(Reg32 src);
+	void div(Reg16 src);	
+	void idiv(Reg32 src);
+	void idiv(Reg16 src);
 
 	void neg(Reg32 dst);
 	void neg(Reg16 dst);
@@ -172,7 +211,7 @@ public:
 	void subMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void subMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void subMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-
+	void orMemReg(Reg32 reg, Reg32 rm, U32 disp);
 	void subMemReg(Reg32 reg, Reg32 rm, U32 disp);
 	void addMem32(Reg32 rm, U32 disp, U32 value);
 	void addMem16(Reg32 rm, U32 disp, U16 value);
@@ -183,6 +222,25 @@ public:
 	void subMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
 	void subMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
 	void subMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void andMem32(Reg32 rm, U32 disp, U32 value);
+	void notMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void notMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void notMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void negMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void negMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void negMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
+	void btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
+	void btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
+	void btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
+	void btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
+	void btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
 
 	void bswap(Reg32 reg);
 
@@ -260,7 +318,7 @@ public:
 	void IfEqual(Reg32 reg, U32 value);
 	void IfNotEqual(Reg32 reg, U32 value);
 	void IfZero(Reg32 reg);
-	void IfNotZero(Reg32 reg);
+	void IfNotZero(Reg32 reg, bool bigJump = false);
 	void IfBitSet(Reg32 reg, U32 mask, bool bigJump = false);
 	void IfNotBitSet(Reg32 reg, U32 mask, bool bigJump = false);
 	void Else(bool bigJump = false);
@@ -273,6 +331,7 @@ public:
 
 	void stmxcsr(Reg32 rm, U32 disp);
 	void ldmxcsr(Reg32 rm, U32 disp);
+	void rdtsc();
 
 	void movlhps(RegXMM hiDstXMM, RegXMM loSrcXMM);
 	void movhlps(RegXMM hiDstXMM, RegXMM loSrcXMM);

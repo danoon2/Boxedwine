@@ -91,10 +91,18 @@ enum DynConditional {
 };
 
 #define DYN_PTR_SIZE U32
-
+#define DYN_PTR DYN_32bit
 // API available to dynamic ops
 class DynamicData {
 public:
+    using OpFunction = void(DynamicData::*)(DecodedOp* op);
+    using InstRegReg = void(DynamicData::*)(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
+    using InstMemReg = void(DynamicData::*)(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
+    using InstCPUReg = void(DynamicData::*)(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
+    using InstCPUImm = void(DynamicData::*)(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg);
+    using InstRegImm = void(DynamicData::*)(DynReg reg, DynWidth regWidth, U32 imm);
+    using InstMemImm = void(DynamicData::*)(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
+
     DynamicData(CPU* cpu) : cpu(cpu) {}
     CPU* cpu = nullptr;
     const LazyFlags* currentLazyFlags = nullptr;;
@@ -124,6 +132,7 @@ public:
     virtual void storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
     virtual void storeLazyFlagsResult(DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
     virtual void storeLazyFlagsDst(DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
+    virtual void storeLazyFlagsSrc(DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
     virtual void storeLazyFlagsOldCF(DynReg srcReg, bool doneWithSrcReg) = 0;
     virtual void storeEip(DynReg srcReg, bool doneWithSrcReg) = 0;
     virtual void storeReg(U8 reg, DynWidth dstWidth, U32 imm) = 0;
@@ -137,6 +146,7 @@ public:
     virtual void xorCPUFlagsImm(U32 imm, DynReg tmpReg) = 0;
     virtual void andCPUFlagsImm(U32 imm, DynReg tmpReg) = 0;
     virtual void orCPUFlagsImm(U32 imm, DynReg tmpReg) = 0;
+    virtual void setCPUFlags(DynReg reg, U32 mask, DynReg tmpReg, bool doneWithReg) = 0;
 
     virtual void negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) = 0;
     virtual void notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) = 0;
@@ -153,6 +163,13 @@ public:
     virtual void shrRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
     virtual void sarRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
     virtual void shlRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
+    virtual void rolRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
+    virtual void rorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
+    virtual void imulRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
+    virtual void imulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) = 0;
+    virtual void mulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) = 0;
+    virtual void divRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) = 0; // src should be checked for 0 before calling
+    virtual void idivRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) = 0; // src should be checked for 0 before calling
 
     virtual void addRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
     virtual void orRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
@@ -162,6 +179,9 @@ public:
     virtual void shrRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
     virtual void sarRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
     virtual void shlRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
+    virtual void rolRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
+    virtual void rorRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
+    virtual void imulRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
 
     virtual void addMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
     virtual void orMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
@@ -222,12 +242,14 @@ public:
     virtual void pushValue(U32 arg, DynCallParamType argType) = 0;
     virtual void byteSwapReg32(DynReg reg) = 0;
     virtual void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, std::function<void(DynReg address, DynReg offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool bigJump = false) = 0;
+    virtual void readWriteMem(DynWidth width, DynReg addressReg, DynReg tmpReg, bool doneWithAddressReg, std::function<void()> prepareWrite) = 0;
+
     virtual void zeroExtendReg16To32(DynReg dest, DynReg src) = 0;
     virtual void JumpIf(DynReg reg, bool doneWithReg, U32 address) = 0;
     virtual void JumpIfNot(DynReg reg, bool doneWithReg, U32 address) = 0;
     virtual void JumpInBlock(U32 address) = 0;
     virtual void IfNot(DynReg reg, bool doneWithReg) = 0;
-    virtual void If(DynReg reg, bool doneWithReg) = 0;
+    virtual void If(DynReg reg, bool doneWithReg, bool bigJump = false) = 0;
     virtual void IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) = 0;
     virtual void StartElse(bool bigJump = false) = 0;
     virtual void EndIf(bool bigJump = false) = 0;
@@ -295,6 +317,17 @@ public:
 #undef INIT_CPU_LOCK
 #endif
 #undef INIT_CPU
+
+protected:
+    void shift_reg_op(DecodedOp* op, DynWidth width, InstCPUImm instCPUImm, InstRegImm instRegImm, const LazyFlags* lazyFlags);
+    void shift_mem_op(DecodedOp* op, DynWidth width, InstMemImm instMemImm, InstRegImm instRegImm, const LazyFlags* lazyFlags);
+    void shift_cl_reg_op(DecodedOp* op, DynWidth width, InstCPUReg instCPUReg, InstRegReg instRegReg, const LazyFlags* lazyFlags);
+    void shift_cl_mem_op(DecodedOp* op, DynWidth width, InstMemReg instMemReg, InstRegReg instRegReg, const LazyFlags* lazyFlags);
+
+    using InstDiv = void(DynamicData::*)(DynReg dest, DynReg src, DynReg remainder, DynWidth width);
+    void div8(DecodedOp* op, DynReg src, bool isSigned, InstDiv callback);
+    void div16(DecodedOp* op, DynReg src, bool isSigned, InstDiv callback);
+    void div32(DecodedOp* op, DynReg src, InstDiv callback, std::function<void()> fallback);
 };
 
 #endif

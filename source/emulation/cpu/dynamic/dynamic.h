@@ -23,15 +23,7 @@
 
 // Implementation of JIT that is host instruction independent
 class DynamicCodeGen : public DynamicData {
-public:
-    using OpFunction = void(DynamicData::*)(DecodedOp* op);
-    using InstRegReg = void(DynamicData::*)(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
-    using InstMemReg = void(DynamicData::*)(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
-    using InstCPUReg = void(DynamicData::*)(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
-    using InstCPUImm = void(DynamicData::*)(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg);
-    using InstRegImm = void(DynamicData::*)(DynReg reg, DynWidth regWidth, U32 imm);
-    using InstMemImm = void(DynamicData::*)(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
-
+public:    
     DynamicCodeGen(CPU* cpu) : DynamicData(cpu) {}
     DecodedOp* firstOp = nullptr;
 
@@ -52,39 +44,41 @@ public:
     void loadRegStoreEip(U8 reg, DynReg tmpReg) override;
     void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg) override;
     void loadReg(U8 reg, DynReg dstReg, DynWidth width) override;
-    void loadSegAddress(U8 seg, DynReg reg)  override;
-    void loadSegValue(U8 seg, DynReg reg)  override;
-    void loadCPUFlags(DynReg reg)  override;
-    void loadLazyFlagsResult(DynReg reg, DynWidth width)  override;
-    void loadLazyFlagsSrc(DynReg reg, DynWidth width)  override;
-    void loadLazyFlagsOldCF(DynReg reg)  override;
-    void loadEip(DynReg reg)  override;
-    void loadStackMask(DynReg reg)  override;
-    void loadStackNotMask(DynReg reg)  override;
-    void loadLazyFlags(DynReg reg)  override;
-    void loadLazyFlagsDst(DynReg reg, DynWidth width)  override;
-    void storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg)  override;
-    void storeLazyFlagsResult(DynReg srcReg, DynWidth width, bool doneWithSrcReg)  override;
-    void storeLazyFlagsDst(DynReg srcReg, DynWidth width, bool doneWithSrcReg)  override;
-    void storeLazyFlagsOldCF(DynReg srcReg, bool doneWithSrcReg)  override;
-    void storeEip(DynReg srcReg, bool doneWithSrcReg)  override;    
-    void storeReg(U8 reg, DynWidth dstWidth, U32 imm)  override;
-    void storeLazyFlagsSrc(DynWidth width, U32 imm)  override;
-    void storeLazyFlags(const LazyFlags* lazyFlags)  override;    
+    void loadSegAddress(U8 seg, DynReg reg) override;
+    void loadSegValue(U8 seg, DynReg reg) override;
+    void loadCPUFlags(DynReg reg) override;
+    void loadLazyFlagsResult(DynReg reg, DynWidth width) override;
+    void loadLazyFlagsSrc(DynReg reg, DynWidth width) override;
+    void loadLazyFlagsOldCF(DynReg reg) override;
+    void loadEip(DynReg reg) override;
+    void loadStackMask(DynReg reg) override;
+    void loadStackNotMask(DynReg reg) override;
+    void loadLazyFlags(DynReg reg) override;
+    void loadLazyFlagsDst(DynReg reg, DynWidth width) override;
+    void storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) override;
+    void storeLazyFlagsResult(DynReg srcReg, DynWidth width, bool doneWithSrcReg) override;
+    void storeLazyFlagsDst(DynReg srcReg, DynWidth width, bool doneWithSrcReg) override;
+    void storeLazyFlagsSrc(DynReg srcReg, DynWidth width, bool doneWithSrcReg) override;
+    void storeLazyFlagsOldCF(DynReg srcReg, bool doneWithSrcReg) override;
+    void storeEip(DynReg srcReg, bool doneWithSrcReg) override;
+    void storeReg(U8 reg, DynWidth dstWidth, U32 imm) override;
+    void storeLazyFlagsSrc(DynWidth width, U32 imm) override;
+    void storeLazyFlags(const LazyFlags* lazyFlags) override;
 
-    void storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult)  override;
-    void storeLazyFlagsDstFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult)  override;
-    void storeLazyFlagsSrcFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult)  override;
-        
-    void xorCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
-    void andCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
-    void orCPUFlagsImm(U32 imm, DynReg tmpReg)  override;
+    void storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) override;
+    void storeLazyFlagsDstFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) override;
+    void storeLazyFlagsSrcFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) override;
+
+    void xorCPUFlagsImm(U32 imm, DynReg tmpReg) override;
+    void andCPUFlagsImm(U32 imm, DynReg tmpReg) override;
+    void orCPUFlagsImm(U32 imm, DynReg tmpReg) override;
     void orCPUFlagsReg(DynReg reg, DynReg tmpReg, bool doneWithReg);
-    
-    void negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg)  override;
-    void notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg)  override;
-    void negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg)  override;
-    void notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg)  override;        
+    void setCPUFlags(DynReg reg, U32 mask, DynReg tmpReg, bool doneWithReg) override;
+
+    void negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) override;
+    void notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) override;
+    void negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) override;
+    void notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) override;
 
     void addMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
     void orMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) override;
@@ -159,6 +153,7 @@ protected:
     void arithMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstRegImm pfnInstRegImm, InstMemReg pfnInstMemReg, InstMemImm pfnInstMemImm);
 
     virtual void movToMem(DynReg addressReg, DynWidth width, U32 value, DynCallParamType paramType, bool doneWithReg, bool doneWithAddressReg, DynReg tmp, std::function<void(DynReg address, DynReg offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool bigJump = false);
+    void readWriteMem(DynWidth width, DynReg addressReg, DynReg tmpReg, bool doneWithAddressReg, std::function<void()> prepareWrite) override;
 
     virtual U32 getBufferSize() = 0;
     virtual U8* getBuffer() = 0;

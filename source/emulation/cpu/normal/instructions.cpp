@@ -138,8 +138,7 @@ U32 idiv32(CPU* cpu, S32 src) {
 void dshlr16r16(CPU* cpu, U32 reg, U32 rm, U32 imm) {
     cpu->src.u32 = imm;
     cpu->dst.u32 = cpu->reg[reg].u16;
-    cpu->dst2.u32 = cpu->reg[rm].u16;
-    U32 tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
+    U32 tmp = (cpu->dst.u32<<16) | cpu->reg[rm].u16;
     U32 result=tmp << cpu->src.u8;
     if (imm>16) {
         //klog("dshlr16r16: imm=%x",imm);
@@ -153,8 +152,7 @@ void dshlr16r16(CPU* cpu, U32 reg, U32 rm, U32 imm) {
 void dshle16r16(CPU* cpu, U32 reg, U32 address, U32 imm) {
     cpu->src.u32 = imm;
     cpu->dst.u32 = cpu->memory->readw(address);
-    cpu->dst2.u32 = cpu->reg[reg].u16;
-    U32 tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
+    U32 tmp = (cpu->dst.u32<<16) | cpu->reg[reg].u16;
     U32 result=tmp << cpu->src.u8;
     if (imm>16) {
         //klog("dshle16r16: imm=%x",imm);
@@ -185,8 +183,7 @@ void dshlclr16r16(CPU* cpu, U32 reg, U32 rm) {
     if (CL & 0x1f) {
         cpu->src.u32 = CL & 0x1f;
         cpu->dst.u32 = cpu->reg[reg].u16;
-        cpu->dst2.u32 = cpu->reg[rm].u16;
-        U32 tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
+        U32 tmp = (cpu->dst.u32<<16) | cpu->reg[rm].u16;
         U32 result=tmp << cpu->src.u8;
         if (cpu->src.u32>16) {
             //klog("error: dshlclr16r16 cl=%x",CL);
@@ -202,8 +199,7 @@ void dshlcle16r16(CPU* cpu, U32 reg, U32 address) {
     if (CL & 0x1f) {
         cpu->src.u32 = CL & 0x1f;
         cpu->dst.u32 = cpu->memory->readw(address);
-        cpu->dst2.u32 = cpu->reg[reg].u16;
-        U32 tmp = (cpu->dst.u32<<16)|cpu->dst2.u32;
+        U32 tmp = (cpu->dst.u32<<16) | cpu->reg[reg].u16;
         U32 result=tmp << cpu->src.u8;
         if (cpu->src.u32>16) {
             //klog("error: dshlcle16r16 cl=%x",CL);

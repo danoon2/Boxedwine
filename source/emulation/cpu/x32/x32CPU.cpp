@@ -56,6 +56,14 @@ public:
     void shrRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
     void sarRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
     void shlRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void rolRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void rorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void imulRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) override;
+    void imulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) override;
+    void mulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) override;
+    void divRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) override;
+    void idivRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) override;
+
     void addRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
     void orRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
     void subRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
@@ -64,6 +72,9 @@ public:
     void shrRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
     void sarRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
     void shlRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void rolRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void rorRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
+    void imulRegImm(DynReg reg, DynWidth regWidth, U32 imm) override;
 
     void negReg(DynReg reg, DynWidth regWidth) override;
     void notReg(DynReg reg, DynWidth regWidth) override;
@@ -79,7 +90,7 @@ public:
     void JumpIfNot(DynReg reg, bool doneWithReg, U32 address) override;
     void JumpInBlock(U32 address) override;
     void IfNot(DynReg reg, bool doneWithReg) override;
-    void If(DynReg reg, bool doneWithReg) override;
+    void If(DynReg reg, bool doneWithReg, bool bigJump = false) override;
     void IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) override;
     void StartElse(bool bigJump = false) override;
     void EndIf(bool bigJump = false) override;
@@ -383,6 +394,7 @@ public:
     void pmovmskbR32Xmm(DynReg dst, DynXMMReg src) override;
 
     // optional override, hopefully faster than the common_ methods
+    void dynamic_rdtsc(DecodedOp* op) override;
     void dynamic_checkFlags(DecodedOp* op, DynReg tmpReg, DynReg tmpReg2);
     void dynamic_arithE32R32_lock(DecodedOp* op, std::function<void(DynReg dest, DynReg address, DynReg offset)> callback, std::function<void()> fallback, bool writeReg = false);
     void dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(DynReg dest, DynReg address, DynReg offset)> callback, std::function<void()> fallback, bool writeReg = false);
@@ -419,7 +431,25 @@ public:
     void dynamic_dec32_mem32_lock(DecodedOp* op) override;
     void dynamic_dec16_mem16_lock(DecodedOp* op) override;
     void dynamic_dec8_mem8_lock(DecodedOp* op) override;
-    
+    void dynamic_note32_lock(DecodedOp* op) override;
+    void dynamic_note16_lock(DecodedOp* op) override;
+    void dynamic_note8_lock(DecodedOp* op) override;
+    void dynamic_nege32_lock(DecodedOp* op) override;
+    void dynamic_nege16_lock(DecodedOp* op) override;
+    void dynamic_nege8_lock(DecodedOp* op) override;
+    void dynamic_btse32_lock(DecodedOp* op) override;
+    void dynamic_btse16_lock(DecodedOp* op) override;
+    void dynamic_btse32r32_lock(DecodedOp* op) override;
+    void dynamic_btse16r16_lock(DecodedOp* op) override;
+    void dynamic_btre32_lock(DecodedOp* op) override;
+    void dynamic_btre16_lock(DecodedOp* op) override;
+    void dynamic_btre32r32_lock(DecodedOp* op) override;
+    void dynamic_btre16r16_lock(DecodedOp* op) override;
+    void dynamic_btce32_lock(DecodedOp* op) override;
+    void dynamic_btce16_lock(DecodedOp* op) override;
+    void dynamic_btce32r32_lock(DecodedOp* op) override;
+    void dynamic_btce16r16_lock(DecodedOp* op) override;    
+
 protected:
     friend void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
 
@@ -460,6 +490,8 @@ protected:
     void loadCache();
     void writeCache();
     void loadHardwareFlags();
+    void calculateEffectiveEaa32(DecodedOp* op, DynReg reg, DynReg tmpReg);
+    void calculateEffectiveEaa16(DecodedOp* op, DynReg reg, DynReg tmpReg);
 
     X86Asm x86;
 };
@@ -2021,7 +2053,7 @@ void X86DynamicCodeGen::addRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool
     } else if (regWidth == DYN_8bit) {
         x86.add(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg ADD");
+        kpanic("X86DynamicCodeGen::addRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
@@ -2036,7 +2068,7 @@ void X86DynamicCodeGen::orRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool 
     } else if (regWidth == DYN_8bit) {
         x86.or_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg OR");
+        kpanic("X86DynamicCodeGen::orRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
@@ -2051,7 +2083,7 @@ void X86DynamicCodeGen::subRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool
     } else if (regWidth == DYN_8bit) {
         x86.sub(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg SUB");
+        kpanic("X86DynamicCodeGen::subRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
@@ -2066,7 +2098,7 @@ void X86DynamicCodeGen::andRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool
     } else if (regWidth == DYN_8bit) {
         x86.and_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg AND");
+        kpanic("X86DynamicCodeGen::andRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
@@ -2081,7 +2113,7 @@ void X86DynamicCodeGen::xorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool
     } else if (regWidth == DYN_8bit) {
         x86.xor_(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg XOR");
+        kpanic("X86DynamicCodeGen::xorRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
@@ -2096,7 +2128,7 @@ void X86DynamicCodeGen::shrRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool
     } else if (regWidth == DYN_8bit) {
         x86.shr(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg SHR");
+        kpanic("X86DynamicCodeGen::shrRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
@@ -2111,7 +2143,7 @@ void X86DynamicCodeGen::sarRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool
     } else if (regWidth == DYN_8bit) {
         x86.sar(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg SAR");
+        kpanic("X86DynamicCodeGen::sarRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
@@ -2126,10 +2158,119 @@ void X86DynamicCodeGen::shlRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool
     } else if (regWidth == DYN_8bit) {
         x86.shl(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
     } else {
-        kpanic("instRegReg SHL");
+        kpanic("X86DynamicCodeGen::shlRegReg");
     }
     if (doneWithRmReg) {
         regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::rolRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.rol(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.rol(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.rol(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("X86DynamicCodeGen::rolRegReg");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::rorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.ror(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.ror(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else if (regWidth == DYN_8bit) {
+        x86.ror(X86Asm::Reg8(reg), X86Asm::Reg8(rm));
+    } else {
+        kpanic("X86DynamicCodeGen::rorRegReg");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::imulRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) {
+    if (regWidth == DYN_32bit) {
+        x86.imul(X86Asm::Reg32(reg), X86Asm::Reg32(rm));
+    } else if (regWidth == DYN_16bit) {
+        x86.imul(X86Asm::Reg16(reg), X86Asm::Reg16(rm));
+    } else {
+        kpanic("X86DynamicCodeGen::imulRegReg");
+    }
+    if (doneWithRmReg) {
+        regUsed[rm] = false;
+    }
+}
+
+void X86DynamicCodeGen::imulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) {
+    if (high64 != 2) {
+        kpanic("X86DynamicCodeGen::imulRegReg64 expects high64 to be EDX");
+    }
+    if (dst != 0) {
+        kpanic("X86DynamicCodeGen::imulRegReg64 expects dst to be EAX");
+    }
+    x86.imul(X86Asm::Reg32(src));
+    if (doneWithSrcReg) {
+        regUsed[src] = false;
+    }
+}
+
+void X86DynamicCodeGen::mulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) {
+    if (high64 != 2) {
+        kpanic("X86DynamicCodeGen::imulRegReg64 expects high64 to be EDX");
+    }
+    if (dst != 0) {
+        kpanic("X86DynamicCodeGen::imulRegReg64 expects dst to be EAX");
+    }
+    x86.mul(X86Asm::Reg32(src));
+    if (doneWithSrcReg) {
+        regUsed[src] = false;
+    }
+}
+
+void X86DynamicCodeGen::divRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) {
+    if (dest != 0) {
+        kpanic("X86DynamicCodeGen::divRegRegWithRemainder dest to be EAX");
+    }
+    if (remainder != 2) {
+        kpanic("X86DynamicCodeGen::divRegRegWithRemainder remainder to be EDX");
+    }
+    if (width == DYN_16bit) {
+        x86.xor_(x86.dx, x86.dx); // 16-bit div on x86 makes a 32-bit word from DX and AX, then divides that by the source
+        x86.div(X86Asm::Reg16(src));
+    } else if (width == DYN_32bit) {
+        x86.xor_(x86.edx, x86.edx); // 32-bit div on x86 makes a 64-bit word from EDX and EAX, then divides that by the source
+        x86.div(X86Asm::Reg32(src));
+    } else {
+        kpanic("X86DynamicCodeGen::divRegRegWithRemainder");
+    }
+}
+
+void X86DynamicCodeGen::idivRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) {
+    if (dest != 0) {
+        kpanic("X86DynamicCodeGen::idivRegRegWithRemainder dest to be EAX");
+    }
+    if (remainder != 2) {
+        kpanic("X86DynamicCodeGen::idivRegRegWithRemainder remainder to be EDX");
+    }
+    if (width == DYN_16bit) {
+        // sign extend ax into dx, sinc idiv uses dx:ax
+        x86.mov(x86.dx, x86.ax);
+        x86.sar(x86.dx, 15);
+        x86.idiv(X86Asm::Reg16(src));
+    } else if (width == DYN_32bit) {
+        // sign extend eax into edx, sinc idiv uses edx:eax
+        x86.mov(x86.edx, x86.eax);
+        x86.sar(x86.edx, 31);
+        x86.idiv(X86Asm::Reg32(src));
+    } else {
+        kpanic("X86DynamicCodeGen::idivRegRegWithRemainder");
     }
 }
 
@@ -2165,7 +2306,7 @@ void X86DynamicCodeGen::addRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.add(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm ADD");
+        kpanic("X86DynamicCodeGen::addRegImm");
     }
 }
 
@@ -2177,7 +2318,7 @@ void X86DynamicCodeGen::orRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.or_(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm OR");
+        kpanic("X86DynamicCodeGen::orRegImm");
     }
 }
 
@@ -2189,7 +2330,7 @@ void X86DynamicCodeGen::subRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.sub(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm SUB");
+        kpanic("X86DynamicCodeGen::subRegImm");
     }
 }
 
@@ -2201,7 +2342,7 @@ void X86DynamicCodeGen::andRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.and_(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm AND");
+        kpanic("X86DynamicCodeGen::andRegImm");
     }
 }
 
@@ -2213,7 +2354,7 @@ void X86DynamicCodeGen::xorRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.xor_(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm XOR");
+        kpanic("X86DynamicCodeGen::xorRegImm");
     }
 }
 
@@ -2225,7 +2366,7 @@ void X86DynamicCodeGen::shrRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.shr(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm SHR");
+        kpanic("X86DynamicCodeGen::shrRegImm");
     }
 }
 
@@ -2237,7 +2378,7 @@ void X86DynamicCodeGen::sarRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.sar(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm SAR");
+        kpanic("X86DynamicCodeGen::sarRegImm");
     }
 }
 
@@ -2249,7 +2390,41 @@ void X86DynamicCodeGen::shlRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
     } else if (regWidth == DYN_8bit) {
         x86.shl(X86Asm::Reg8(reg), (U8)imm);
     } else {
-        kpanic("instRegImm SHL");
+        kpanic("X86DynamicCodeGen::shlRegImm");
+    }
+}
+
+void X86DynamicCodeGen::rolRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.rol(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.rol(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.rol(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("X86DynamicCodeGen::rolRegImm");
+    }
+}
+
+void X86DynamicCodeGen::rorRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.ror(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.ror(X86Asm::Reg16(reg), (U16)imm);
+    } else if (regWidth == DYN_8bit) {
+        x86.ror(X86Asm::Reg8(reg), (U8)imm);
+    } else {
+        kpanic("X86DynamicCodeGen::rorRegImm");
+    }
+}
+
+void X86DynamicCodeGen::imulRegImm(DynReg reg, DynWidth regWidth, U32 imm) {
+    if (regWidth == DYN_32bit) {
+        x86.imul(X86Asm::Reg32(reg), imm);
+    } else if (regWidth == DYN_16bit) {
+        x86.imul(X86Asm::Reg16(reg), (U16)imm);
+    } else {
+        kpanic("X86DynamicCodeGen::imulRegImm");
     }
 }
 
@@ -2611,8 +2786,8 @@ void X86DynamicCodeGen::IfNotBitSet(DynReg reg, U32 value, bool doneWithReg, boo
     }
 
 }
-void X86DynamicCodeGen::If(DynReg reg, bool doneWithReg) {
-    x86.IfNotZero(X86Asm::Reg32(reg));
+void X86DynamicCodeGen::If(DynReg reg, bool doneWithReg, bool bigJump) {
+    x86.IfNotZero(X86Asm::Reg32(reg), bigJump);
     if (doneWithReg) {
         regUsed[reg] = false;
     }
@@ -2633,6 +2808,13 @@ void X86DynamicCodeGen::EndIf(bool bigJump) {
     x86.EndIf(bigJump);
 }
 
+void X86DynamicCodeGen::dynamic_rdtsc(DecodedOp* op) {
+    x86.rdtsc();
+    storeReg(0, DynReg(0), DYN_32bit, false);
+    storeReg(2, DynReg(2), DYN_32bit, false);
+    incrementEip(op->len);
+}
+
 void X86DynamicCodeGen::dynamic_checkFlags(DecodedOp* op, DynReg tmpReg, DynReg tmpReg2) {
     if (op->needsToSetFlags(cpu)) {
         this->x86.pushFlags();
@@ -2649,6 +2831,7 @@ void X86DynamicCodeGen::dynamic_checkFlags(DecodedOp* op, DynReg tmpReg, DynReg 
         movToCpuFromReg(offsetof(CPU, flags), tmpReg, DYN_32bit, true);
 
         this->storeLazyFlags(FLAGS_NONE);
+        this->currentLazyFlags = FLAGS_NONE;
     }
 }
 
@@ -2695,8 +2878,6 @@ void X86DynamicCodeGen::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
     }, [op, this]() {
         DynamicCodeGen::dynamic_cmpxchge32r32_lock(op);
     });
-
-    currentLazyFlags = nullptr;
 }
 void X86DynamicCodeGen::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
@@ -2712,8 +2893,6 @@ void X86DynamicCodeGen::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
     }, [op, this]() {
         DynamicCodeGen::dynamic_cmpxchge32r32_lock(op);
     });
-
-    currentLazyFlags = nullptr;
 }
 void X86DynamicCodeGen::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
     calculateEaa(op, DYN_ADDRESS);
@@ -2729,8 +2908,6 @@ void X86DynamicCodeGen::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
     }, [op, this]() {
         DynamicCodeGen::dynamic_cmpxchge32r32_lock(op);
     });
-
-    currentLazyFlags = nullptr;
 }
 
 void X86DynamicCodeGen::dynamic_xchge32r32_lock(DecodedOp* op) {
@@ -2784,8 +2961,6 @@ void X86DynamicCodeGen::dynamic_arithE32R32_lock(DecodedOp* op, std::function<vo
     }, [op, fallback, this]() {
         fallback();
     });
-
-    currentLazyFlags = nullptr;
 }
 
 void X86DynamicCodeGen::dynamic_arithE16R16_lock(DecodedOp* op, std::function<void(DynReg dest, DynReg address, DynReg offset)> callback, std::function<void()> fallback, bool writeReg) {
@@ -2803,8 +2978,6 @@ void X86DynamicCodeGen::dynamic_arithE16R16_lock(DecodedOp* op, std::function<vo
     }, [op, fallback, this]() {
         fallback();
     });
-
-    currentLazyFlags = nullptr;
 }
 void X86DynamicCodeGen::dynamic_arithE8R8_lock(DecodedOp* op, std::function<void(DynReg dest, DynReg address, DynReg offset)> callback, std::function<void()> fallback, bool writeReg) {
     calculateEaa(op, DYN_ADDRESS);
@@ -2821,8 +2994,6 @@ void X86DynamicCodeGen::dynamic_arithE8R8_lock(DecodedOp* op, std::function<void
     }, [op, fallback, this]() {
         fallback();
     });
-
-    currentLazyFlags = nullptr;
 }
 
 void X86DynamicCodeGen::dynamic_arithE32_lock(DecodedOp* op, std::function<void(DynReg address, DynReg offset)> callback, std::function<void()> fallback) {
@@ -2836,8 +3007,6 @@ void X86DynamicCodeGen::dynamic_arithE32_lock(DecodedOp* op, std::function<void(
     }, [op, fallback, this]() {
         fallback();
     });
-
-    currentLazyFlags = nullptr;
 }
 
 void X86DynamicCodeGen::dynamic_arithE16_lock(DecodedOp* op, std::function<void(DynReg address, DynReg offset)> callback, std::function<void()> fallback) {
@@ -2851,8 +3020,6 @@ void X86DynamicCodeGen::dynamic_arithE16_lock(DecodedOp* op, std::function<void(
     }, [op, fallback, this]() {
         fallback();
     });
-
-    currentLazyFlags = nullptr;
 }
 void X86DynamicCodeGen::dynamic_arithE8_lock(DecodedOp* op, std::function<void(DynReg address, DynReg offset)> callback, std::function<void()> fallback) {
     calculateEaa(op, DYN_ADDRESS);
@@ -2865,8 +3032,6 @@ void X86DynamicCodeGen::dynamic_arithE8_lock(DecodedOp* op, std::function<void(D
     }, [op, fallback, this]() {
         fallback();
     });
-
-    currentLazyFlags = nullptr;
 }
 
 void X86DynamicCodeGen::dynamic_xaddr32e32_lock(DecodedOp* op) {
@@ -3088,6 +3253,322 @@ void X86DynamicCodeGen::dynamic_dec8_mem8_lock(DecodedOp* op) {
         });
         currentLazyFlags = nullptr;
     }
+}
+
+void X86DynamicCodeGen::dynamic_note32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu)) {
+        DynamicCodeGen::dynamic_note32_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.notMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_note32_lock(op);
+        });
+        currentLazyFlags = nullptr;
+    }
+}
+
+void X86DynamicCodeGen::dynamic_note16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu)) {
+        DynamicCodeGen::dynamic_note16_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.notMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_note16_lock(op);
+        });
+        currentLazyFlags = nullptr;
+    }
+}
+
+void X86DynamicCodeGen::dynamic_note8_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu)) {
+        DynamicCodeGen::dynamic_note8_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_8bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.notMem8(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_note8_lock(op);
+        });
+        currentLazyFlags = nullptr;
+    }
+}
+
+void X86DynamicCodeGen::dynamic_nege32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu)) {
+        DynamicCodeGen::dynamic_nege32_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.negMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_nege32_lock(op);
+        });
+        currentLazyFlags = nullptr;
+    }
+}
+
+void X86DynamicCodeGen::dynamic_nege16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu)) {
+        DynamicCodeGen::dynamic_nege16_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.negMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_nege16_lock(op);
+        });
+        currentLazyFlags = nullptr;
+    }
+}
+
+void X86DynamicCodeGen::dynamic_nege8_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu)) {
+        DynamicCodeGen::dynamic_nege8_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_8bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.negMem8(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_nege8_lock(op);
+        });
+        currentLazyFlags = nullptr;
+    }
+}
+
+void X86DynamicCodeGen::dynamic_btse32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btse32_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            // imm is the mask, not the bitshift
+            U8 imm = std::countr_zero(op->imm);
+            this->x86.btsMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, (U8)imm);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btse32_lock(op);
+        });
+    }
+}
+
+void X86DynamicCodeGen::dynamic_btse16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btse16_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            // imm is the mask, not the bitshift
+            U8 imm = std::countr_zero(op->imm);
+            this->x86.btsMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, (U8)imm);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btse16_lock(op);
+        });
+    }
+}
+
+void X86DynamicCodeGen::calculateEffectiveEaa32(DecodedOp* op, DynReg reg, DynReg tmpReg) {
+    calculateEaa(op, DYN_ADDRESS);
+    movToRegFromReg(tmpReg, DYN_32bit, reg, DYN_32bit, false);
+    sarRegImm(tmpReg, DYN_32bit, 5);
+    shlRegImm(tmpReg, DYN_32bit, 2);
+    addRegReg(DYN_ADDRESS, tmpReg, DYN_32bit, true);
+}
+void X86DynamicCodeGen::calculateEffectiveEaa16(DecodedOp* op, DynReg reg, DynReg tmpReg) {
+    calculateEaa(op, DYN_ADDRESS);
+    movToRegFromReg(tmpReg, DYN_32bit, reg, DYN_32bit, false);
+    sarRegImm(tmpReg, DYN_16bit, 4);
+    shlRegImm(tmpReg, DYN_16bit, 1);
+    zeroExtendReg16To32(tmpReg, tmpReg);
+    addRegReg(DYN_ADDRESS, tmpReg, DYN_32bit, true);
+}
+
+void X86DynamicCodeGen::dynamic_btse32r32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btse32r32_lock(op);
+    } else {
+        loadReg(op->reg, DYN_DEST, DYN_32bit);
+        calculateEffectiveEaa32(op, DYN_DEST, DYN_SRC);
+        andRegImm(DYN_DEST, DYN_32bit, 0x1f);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {            
+            this->x86.lock();
+            this->x86.btsMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, X86Asm::Reg32(DYN_DEST));
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btse32r32_lock(op);
+        });
+    }
+    incrementEip(op->len);    
+}
+
+void X86DynamicCodeGen::dynamic_btse16r16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btse16r16_lock(op);
+    } else {
+        loadReg(op->reg, DYN_DEST, DYN_32bit);
+        calculateEffectiveEaa16(op, DYN_DEST, DYN_SRC);
+        andRegImm(DYN_DEST, DYN_32bit, 0xf);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.btsMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, X86Asm::Reg16(DYN_DEST));
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btse16r16_lock(op);
+        });
+    }
+    incrementEip(op->len);
+}
+
+void X86DynamicCodeGen::dynamic_btre32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btre32_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            // imm is the mask, not the bitshift
+            U8 imm = std::countr_zero(op->imm);
+            this->x86.btrMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, (U8)imm);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btre32_lock(op);
+        });
+    }
+}
+void X86DynamicCodeGen::dynamic_btre16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btre16_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            // imm is the mask, not the bitshift
+            U8 imm = std::countr_zero(op->imm);
+            this->x86.btrMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, (U8)imm);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btre16_lock(op);
+        });
+    }
+}
+void X86DynamicCodeGen::dynamic_btre32r32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btre32r32_lock(op);
+    } else {
+        loadReg(op->reg, DYN_DEST, DYN_32bit);
+        calculateEffectiveEaa32(op, DYN_DEST, DYN_SRC);
+        andRegImm(DYN_DEST, DYN_32bit, 0x1f);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.btrMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, X86Asm::Reg32(DYN_DEST));
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btre32r32_lock(op);
+        });
+    }
+    incrementEip(op->len);
+}
+void X86DynamicCodeGen::dynamic_btre16r16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btre16r16_lock(op);
+    } else {
+        loadReg(op->reg, DYN_DEST, DYN_32bit);
+        calculateEffectiveEaa16(op, DYN_DEST, DYN_SRC);
+        andRegImm(DYN_DEST, DYN_32bit, 0xf);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.btrMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, X86Asm::Reg16(DYN_DEST));
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btre16r16_lock(op);
+        });
+    }
+    incrementEip(op->len);
+}
+
+void X86DynamicCodeGen::dynamic_btce32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btce32_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            // imm is the mask, not the bitshift
+            U8 imm = std::countr_zero(op->imm);
+            this->x86.btcMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, (U8)imm);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btce32_lock(op);
+        });
+    }
+}
+void X86DynamicCodeGen::dynamic_btce16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btce16_lock(op);
+    } else {
+        calculateEaa(op, DYN_ADDRESS);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            // imm is the mask, not the bitshift
+            U8 imm = std::countr_zero(op->imm);
+            this->x86.btcMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, (U8)imm);
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btce16_lock(op);
+        });
+    }
+}
+void X86DynamicCodeGen::dynamic_btce32r32_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btce32r32_lock(op);
+    } else {
+        loadReg(op->reg, DYN_DEST, DYN_32bit);
+        calculateEffectiveEaa32(op, DYN_DEST, DYN_SRC);
+        andRegImm(DYN_DEST, DYN_32bit, 0x1f);
+        movToMem(DYN_ADDRESS, DYN_32bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.btcMem32(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, X86Asm::Reg32(DYN_DEST));
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btce32r32_lock(op);
+        });
+    }
+    incrementEip(op->len);
+}
+void X86DynamicCodeGen::dynamic_btce16r16_lock(DecodedOp* op) {
+    if (op->needsToSetFlags(cpu) & CF) {
+        DynamicCodeGen::dynamic_btce16r16_lock(op);
+    } else {
+        loadReg(op->reg, DYN_DEST, DYN_32bit);
+        calculateEffectiveEaa16(op, DYN_DEST, DYN_SRC);
+        andRegImm(DYN_DEST, DYN_32bit, 0xf);
+        movToMem(DYN_ADDRESS, DYN_16bit, 0, DynCallParamType(0), false, true, DYN_SRC, [op, this](DynReg addressReg, DynReg offsetReg) {
+            this->x86.lock();
+            this->x86.btcMem16(X86Asm::Reg32(addressReg), X86Asm::Reg32(offsetReg), 0, 0, X86Asm::Reg16(DYN_DEST));
+            incrementEip(op->len);
+        }, [op, this]() {
+            DynamicCodeGen::dynamic_btce16r16_lock(op);
+        });
+    }
+    incrementEip(op->len);
 }
 
 U8* X86DynamicCodeGen::createStartJITCode() {

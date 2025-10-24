@@ -54,6 +54,7 @@ public:
 
 private:
 	friend class BtCPU;
+	friend class CPU;
 	void removeAll();
 	void removeStartAt(U32 address, U32 len, bool becauseOfWrite);
 	DecodedOp* getPreviousOp(U32 address, U32* foundAddress, DecodedOpPageCache** foundPage);

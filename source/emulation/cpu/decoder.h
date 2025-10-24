@@ -1563,7 +1563,7 @@ public:
     void dealloc();
     void log(CPU* cpu);
     BString toString();
-    bool needsToSetFlags(CPU* cpu);
+    U32 needsToSetFlags(CPU* cpu);
     bool isFpuOp();
     bool isMmxOp();
     bool isSSEOp();

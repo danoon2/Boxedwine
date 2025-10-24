@@ -132,7 +132,10 @@ void DynamicData::dynamic_iret32(DecodedOp* op) {
 }
 void DynamicData::dynamic_sahf(DecodedOp* op) {
     dynamic_fillFlags();
-    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, 4, DYN_PARAM_CPU_REG_8, false, FMASK_ALL & 0xFF, DYN_PARAM_CONST_32, false);
+    loadReg(4, DYN_SRC, DYN_8bit);
+    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
+    setCPUFlags(DYN_SRC, FMASK_ALL & 0xFF, DYN_DEST, true);
+    currentLazyFlags = FLAGS_NONE;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_lahf(DecodedOp* op) {

@@ -278,6 +278,16 @@ void OPCALL normal_std(CPU* cpu, DecodedOp* op) {
     cpu->addFlag(DF);
     NEXT();
 }
+#ifdef BOXEDWINE_MSVC
+#include <intrin.h>
+void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
+    START_OP(cpu, op);
+    U64 t = __rdtsc();
+    EAX = (U32)t;
+    EDX = (U32)(t >> 32);
+    NEXT();
+}
+#else
 void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     U64 t = cpu->instructionCount+cpu->blockInstructionCount+op->imm;
@@ -285,6 +295,7 @@ void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
     EDX = (U32)(t >> 32);
     NEXT();
 }
+#endif
 void OPCALL normal_cpuid(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);
     cpu->cpuid();

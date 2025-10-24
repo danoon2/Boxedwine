@@ -3,7 +3,7 @@
 #include "ksignal.h"
 #include "bufferaccess.h"
 #include "kstat.h"
-
+#include "../../softmmu/kmemory_soft.h"
 
 #ifndef BOXEDWINE_BINARY_TRANSLATOR
 #include "../normal/normalCPU.h"
@@ -34,6 +34,8 @@ CPU::CPU(KMemory* memory) : memory(memory) {
 
     this->reset();
     this->fpu.reset();
+
+    opCache = (DecodedOp***)&getMemData(memory)->opCache.pageData[0];
 
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
 #if defined(BOXEDWINE_X64)
@@ -1112,7 +1114,6 @@ void CPU::clone(CPU* from) {
 
     this->src = from->src;
     this->dst = from->dst;
-    this->dst2 = from->dst2;
     this->result = from->result;
     this->lazyFlags = from->lazyFlags;
     this->oldCF = from->oldCF;

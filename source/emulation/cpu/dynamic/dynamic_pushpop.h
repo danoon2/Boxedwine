@@ -141,7 +141,7 @@ void DynamicData::dynamic_popSeg16(DecodedOp* op) {
 }
 void DynamicData::dynamic_pushSeg32(DecodedOp* op) {
     loadSegValue(op->reg, DYN_SRC);
-    callHostFunction((void*)common_push32, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
+    dynamic_pushReg32(DYN_SRC, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popSeg32(DecodedOp* op) {

@@ -226,7 +226,6 @@ public:
 
     Reg  src;
     Reg  dst;
-    Reg  dst2;
     Reg  result;
     LazyFlags const * lazyFlags = nullptr;
     U32         oldCF = 0;
@@ -239,6 +238,7 @@ public:
     U32 stackNotMask = 0;
     U32 stackMask = 0;
     U32 fpuDirtyFlags = 0;
+    DecodedOp*** opCache = nullptr;
 
     KThread* thread = nullptr;
     KMemory* memory = nullptr;

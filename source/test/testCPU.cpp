@@ -456,6 +456,19 @@ void EbAlAx(int instruction, int which, struct Data* data, int useAX) {
                 AL = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 8);
+
+            newInstructionWithRM(instruction, rm, data->flags);
+            cpu->reg[E8(rm)].u32 = DEFAULT;
+            EAX = DEFAULT;
+            *reg = (U8)data->var2;
+            if (useAX)
+                AX = data->var1;
+            else
+                AL = data->var1;
+            pushCode8(0x50); // push eax
+            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            runTestCPU();
+            assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 8, true);            
         }
 
         rm = (which << 3);
@@ -477,6 +490,24 @@ void EbAlAx(int instruction, int which, struct Data* data, int useAX) {
         memory->writeb(cpu->seg[DS].address + 200, data->var2);
         runTestCPU();
         assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16);
+
+        newInstructionWithRM(instruction, rm, data->flags);
+        if (cpu->big)
+            pushCode32(200);
+        else
+            pushCode16(200);
+        EAX = DEFAULT;
+        if (useAX)
+            AX = data->var1;
+        else
+            AL = data->var1;
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writeb(cpu->seg[DS].address + 200, data->var2);
+        pushCode8(0x50); // push eax
+        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+        runTestCPU();
+        assertResult(data, cpu, instruction, AX, 0, 0, -1, 0, 16, true);
+
         data++;
     }
 }
@@ -504,6 +535,22 @@ void EwAxDx(int instruction, int which, struct Data* data, int useDX) {
             reg->u16=data->constant;
             runTestCPU();
             assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16);
+
+            if (ew == 4) {
+                continue;
+            }
+            newInstructionWithRM(instruction, rm, data->flags);
+            reg = &cpu->reg[E(rm)];
+            EAX = DEFAULT;
+            EDX = DEFAULT;
+            reg->u32 = DEFAULT;
+            AX = data->var2;
+            DX = data->var1;
+            reg->u16 = data->constant;
+            pushCode8(0x50); // push eax
+            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            runTestCPU();
+            assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16, true);
         }
 
         rm = (which << 3);
@@ -524,6 +571,23 @@ void EwAxDx(int instruction, int which, struct Data* data, int useDX) {
         memory->writew(cpu->seg[DS].address + 200, data->constant);
         runTestCPU();
         assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16);
+
+        newInstructionWithRM(instruction, rm, data->flags);
+        if (cpu->big)
+            pushCode32(200);
+        else
+            pushCode16(200);
+        EAX = DEFAULT;
+        EDX = DEFAULT;
+        AX = data->var2;
+        DX = data->var1;
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writew(cpu->seg[DS].address + 200, data->constant);
+        pushCode8(0x50); // push eax
+        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+        runTestCPU();
+        assertResult(data, cpu, instruction, AX, DX, 0, 2, 0, 16, true);
+
         data++;
     }
 }
@@ -549,6 +613,20 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
             reg->u32 = data->constant;
             runTestCPU();
             assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32);
+            
+            if (ed == 4) {
+                continue;
+            }
+            newInstructionWithRM(instruction, rm, data->flags);
+            reg = &cpu->reg[E(rm)];
+            reg->u32 = DEFAULT;
+            EAX = data->var2;
+            EDX = data->var1;
+            reg->u32 = data->constant;
+            pushCode8(0x50); // push eax
+            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            runTestCPU();
+            assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32, true);
         }
 
         rm = (which << 3);
@@ -567,6 +645,21 @@ void EdEaxEdx(int instruction, int which, struct Data* data, int useEdx) {
         memory->writed(cpu->seg[DS].address + 200, data->constant);
         runTestCPU();
         assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32);
+
+        newInstructionWithRM(instruction, rm, data->flags);
+        if (cpu->big)
+            pushCode32(200);
+        else
+            pushCode16(200);
+        EAX = data->var2;
+        EDX = data->var1;
+        memory->writed(cpu->seg[DS].address + 200, DEFAULT);
+        memory->writed(cpu->seg[DS].address + 200, data->constant);
+        pushCode8(0x50); // push eax
+        pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+        runTestCPU();
+        assertResult(data, cpu, instruction, EAX, EDX, 0, 2, 0, 32, true);
+
         data++;
     }
 }
@@ -1024,6 +1117,19 @@ void EwIb(int instruction, int which, struct Data* data, bool includeLock = fals
             e->u16 = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, e->u16, 0, E(rm), -1, 0, 16);
+
+            if (ew == 4) {
+                continue;
+            }
+            newInstructionWithRM(instruction, rm, data->flags);
+            pushCode8(data->var2);
+            e = &cpu->reg[E(rm)];
+            e->u32 = DEFAULT;
+            e->u16 = data->var1;
+            pushCode8(0x50); // push eax
+            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            runTestCPU();
+            assertResult(data, cpu, instruction, e->u16, 0, E(rm), -1, 0, 16, true);
         }
 
         for (int lock = 0; lock < 3; lock++) {
@@ -1045,6 +1151,21 @@ void EwIb(int instruction, int which, struct Data* data, bool includeLock = fals
             runTestCPU();
             result = memory->readw(cpu->seg[DS].address + offset);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16);
+
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            if (cpu->big)
+                pushCode32(offset);
+            else
+                pushCode16(offset);
+            pushCode8(data->var2);
+            memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+            memory->writew(cpu->seg[DS].address + offset, data->var1);
+            pushCode8(0x50); // push eax
+            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            runTestCPU();
+            result = memory->readw(cpu->seg[DS].address + offset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + offset, 16, true);            
+
             if (!includeLock) {
                 break;
             }
@@ -1123,6 +1244,22 @@ void EwGw(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 g->u16 = data->var2;
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16);
+
+                if (ew == 4 || gw == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, prefix);
+                pushConstant(data);
+                e = &cpu->reg[E(rm)];
+                g = &cpu->reg[G(rm)];
+                e->u32 = DEFAULT;
+                g->u32 = DEFAULT;
+                e->u16 = data->var1;
+                g->u16 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16, true);                
             }
         }
 
@@ -1152,6 +1289,26 @@ void EwGw(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 runTestCPU();
                 result = memory->readw(cpu->seg[DS].address + offset);
                 assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + offset, 16);
+
+                if (gw == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : prefix);
+                if (cpu->big)
+                    pushCode32(offset);
+                else
+                    pushCode16(offset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + offset, DEFAULT);
+                memory->writew(cpu->seg[DS].address + offset, data->var1);
+                g = &cpu->reg[G(rm)];
+                g->u32 = DEFAULT;
+                g->u16 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                result = memory->readw(cpu->seg[DS].address + offset);
+                assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + offset, 16, true);
             }
             if (!includeLock) {
                 break;
@@ -1407,6 +1564,22 @@ void EwGwEffective(int instruction, struct Data* data, bool includeLock = false)
                 g->u16 = data->var2;
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16);
+
+                if (ew == 4 || gw == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[E(rm)];
+                g = &cpu->reg[G(rm)];
+                e->u32 = DEFAULT;
+                g->u32 = DEFAULT;
+                e->u16 = data->var1;
+                g->u16 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u16, g->u16, E(rm), G(rm), 0, 16, true);
             }
         }
 
@@ -1440,6 +1613,26 @@ void EwGwEffective(int instruction, struct Data* data, bool includeLock = false)
                 runTestCPU();
                 result = memory->readw(cpu->seg[DS].address + addressOffset + offset);
                 assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 16);
+
+                if (gw == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset + offset, DEFAULT);
+                memory->writew(cpu->seg[DS].address + addressOffset + offset, data->var1);
+                g = &cpu->reg[G(rm)];
+                g->u32 = DEFAULT;
+                g->u16 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                result = memory->readw(cpu->seg[DS].address + addressOffset + offset);
+                assertResult(data, cpu, instruction, result, g->u16, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 16, true);                
             }
             if (!includeLock) {
                 break;
@@ -1471,6 +1664,20 @@ void EdGdEffective(int instruction, struct Data* data, bool includeLock = false)
                 g->u32 = data->var2;
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u32, g->u32, E(rm), G(rm), 0, 32);
+
+                if (gd == 4 || ed == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[E(rm)];
+                g = &cpu->reg[G(rm)];
+                e->u32 = data->var1;
+                g->u32 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u32, g->u32, E(rm), G(rm), 0, 32, true);
             }
         }
 
@@ -1502,6 +1709,24 @@ void EdGdEffective(int instruction, struct Data* data, bool includeLock = false)
                 runTestCPU();
                 result = memory->readd(cpu->seg[DS].address + addressOffset + offset);
                 assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 32);
+
+                if (gd == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset + offset, data->var1);
+                g = &cpu->reg[G(rm)];
+                g->u32 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                result = memory->readd(cpu->seg[DS].address + addressOffset + offset);
+                assertResult(data, cpu, instruction, result, g->u32, G(rm), -1, cpu->seg[DS].address + addressOffset + offset, 32, true);                
             }
             if (!includeLock) {
                 break;
@@ -1636,6 +1861,22 @@ void GwEw(int instruction, struct Data* data, bool includeLock = false) {
                 g->u16=data->var1;
                 runTestCPU();
                 assertResult(data, cpu, instruction, g->u16, e->u16, ew, gw, 0, 16);
+                
+                if (gw == 4 || ew == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[ew];
+                g = &cpu->reg[gw];
+                e->u32 = DEFAULT;
+                g->u32 = DEFAULT;
+                e->u16 = data->var2;
+                g->u16 = data->var1;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                assertResult(data, cpu, instruction, g->u16, e->u16, ew, gw, 0, 16, true);
             }
         }
 
@@ -1665,6 +1906,28 @@ void GwEw(int instruction, struct Data* data, bool includeLock = false) {
                 runTestCPU();
                 result = memory->readw(cpu->seg[DS].address + addressOffset);
                 assertResult(data, cpu, instruction, g->u16, result, gw, -1, cpu->seg[DS].address + addressOffset, 16);
+
+                if (gw == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, DEFAULT);
+                memory->writew(cpu->seg[DS].address + addressOffset, data->var2);
+                g = &cpu->reg[gw];
+                g->u32 = DEFAULT;
+                g->u16 = data->var1;
+                
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+
+                runTestCPU();
+                result = memory->readw(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, g->u16, result, gw, -1, cpu->seg[DS].address + addressOffset, 16, true);
             }
             if (!includeLock) {
                 break;
@@ -1861,6 +2124,18 @@ void EdIb(int instruction, int which, struct Data* data, bool includeLock = fals
             e->u32 = data->var1;
             runTestCPU();
             assertResult(data, cpu, instruction, e->u32, 0, ed, -1, 0, 32);
+
+            if (ed == 4) {
+                continue;
+            }
+            newInstructionWithRM(instruction, rm, data->flags);
+            pushCode8(data->var2);
+            e = &cpu->reg[ed];
+            e->u32 = data->var1;
+            pushCode8(0x50); // push eax
+            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            runTestCPU();
+            assertResult(data, cpu, instruction, e->u32, 0, ed, -1, 0, 32, true);
         }
 
         for (int lock = 0; lock < 2; lock++) {
@@ -1882,6 +2157,21 @@ void EdIb(int instruction, int which, struct Data* data, bool includeLock = fals
             runTestCPU();
             result = memory->readd(cpu->seg[DS].address + addressOffset);
             assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + addressOffset, 32);
+
+            newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+            if (cpu->big)
+                pushCode32(addressOffset);
+            else
+                pushCode16(addressOffset);
+            pushCode8(data->var2);
+            memory->writed(cpu->seg[DS].address + addressOffset, DEFAULT);
+            memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+            pushCode8(0x50); // push eax
+            pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+            runTestCPU();
+            result = memory->readd(cpu->seg[DS].address + addressOffset);
+            assertResult(data, cpu, instruction, result, 0, -1, -1, cpu->seg[DS].address + addressOffset, 32, true);
+            
             if (!includeLock) {
                 break;
             }
@@ -1968,6 +2258,20 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 g->u32 = data->var2;
                 runTestCPU();
                 assertResult(data, cpu, instruction, e->u32, g->u32, -1, -1, 0, 0);
+                
+                if (ed == 4 || gd == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, prefix);
+                pushConstant(data);
+                e = &cpu->reg[ed];
+                g = &cpu->reg[gd];
+                e->u32 = data->var1;
+                g->u32 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                assertResult(data, cpu, instruction, e->u32, g->u32, -1, -1, 0, 0, true);
             }
         }
 
@@ -1995,6 +2299,25 @@ void EdGd(int instruction, struct Data* data, U8 prefix = 0, bool includeLock = 
                 runTestCPU();
                 result = memory->readd(cpu->seg[DS].address + addressOffset);
                 assertResult(data, cpu, instruction, result, g->u32, -1, -1, 0, 0);
+
+                if (gd == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : prefix);
+
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, data->var1);
+                g = &cpu->reg[gd];
+                g->u32 = data->var2;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                result = memory->readd(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, result, g->u32, -1, -1, 0, 0, true);
             }
             if (!includeLock) {
                 break;
@@ -2263,6 +2586,20 @@ void GdEd(int instruction, struct Data* data, bool includeLock = false) {
                 g->u32 = data->var1;
                 runTestCPU();
                 assertResult(data, cpu, instruction, g->u32, e->u32, -1, -1, 0, 0);
+
+                if (gd == 4 || ed == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags);
+                pushConstant(data);
+                e = &cpu->reg[ed];
+                g = &cpu->reg[gd];
+                e->u32 = data->var2;
+                g->u32 = data->var1;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                assertResult(data, cpu, instruction, g->u32, e->u32, -1, -1, 0, 0, true);
             }
         }
 
@@ -2290,6 +2627,24 @@ void GdEd(int instruction, struct Data* data, bool includeLock = false) {
                 runTestCPU();
                 result = memory->readd(cpu->seg[DS].address + addressOffset);
                 assertResult(data, cpu, instruction, g->u32, result, -1, -1, 0, 0);
+
+                if (gd == 4) {
+                    continue;
+                }
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0);
+                if (cpu->big)
+                    pushCode32(addressOffset);
+                else
+                    pushCode16(addressOffset);
+                pushConstant(data);
+                memory->writed(cpu->seg[DS].address + addressOffset, data->var2);
+                g = &cpu->reg[gd];
+                g->u32 = data->var1;
+                pushCode8(0x50); // push eax
+                pushCode8(0x9d); // pop flags, this will overwrite flags so the above code might take a different path in the dynamic cores that optimize away flag calculation
+                runTestCPU();
+                result = memory->readd(cpu->seg[DS].address + addressOffset);
+                assertResult(data, cpu, instruction, g->u32, result, -1, -1, 0, 0, true);
             }
             if (!includeLock) {
                 break;
@@ -4060,6 +4415,7 @@ static struct Data mulAl[] = {
         allocData(2, 2, 4, 0, false, false),
         allocData(0, 0, 0, 0, false, false),
         allocData(0x20, 0x10, 0x200, 0, true, true),
+        allocData(0xFA, 2, 0x1F4, 0, true, true),
         endData()
 };
 
@@ -4068,6 +4424,7 @@ static struct Data mulAx[] = {
         allocDataConstvar2(0, 0, 0, 0, false, false, 0, 0),
         allocDataConstvar2(0, 0x2001, 0x0010, 0, true, true, 0x10, 0x0002),
         allocDataConstvar2(0, 0x2001, 0x1000, 0, true, true, 0x1000, 0x0200),
+        allocDataConstvar2(0, 0xFFFA, 0xFFF4, 0, true, true, 2, 1),
         endData()
 };
 
@@ -4076,6 +4433,7 @@ static struct Data mulEax[] = {
         allocDataConstvar2(0, 0, 0, 0, false, false, 0, 0),
         allocDataConstvar2(0, 0x20000001, 0x00000010, 0, true, true, 0x10, 0x00000002),
         allocDataConstvar2(0, 0x20000001, 0x00010000, 0, true, true, 0x00010000, 0x00002000),
+        allocDataConstvar2(0, 0xFFFFFFFA, 0xFFFFFFF4, 0, true, true, 2, 1),
         endData()
 };
 

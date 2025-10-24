@@ -78,6 +78,10 @@ void X86Asm::lea(Reg32 dst, Reg32 rm, Reg32 sib, U32 shift, U32 disp) {
     }    
 }
 
+void X86Asm::lahf() {
+    outb(0x9f);
+}
+
 void X86Asm::lea(Reg32 dst, Reg32 rm, U32 disp) {
     outb(0x8d);
 
@@ -233,6 +237,10 @@ void X86Asm::subMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
     mem32(0x28, Reg32(reg.reg), rm, sib, lsl, disp);
 }
 
+void X86Asm::orMemReg(Reg32 reg, Reg32 rm, U32 disp) {
+    mem32(0x09, Reg32(reg.reg), rm, disp);
+}
+
 void X86Asm::addMem16(Reg32 rm, U32 disp, U16 value) {
     S32 sValue = (S32)value;
     S32 sDisp = (S32)disp;
@@ -351,6 +359,116 @@ void X86Asm::subMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value) {
     } else {
         outd(value);
     }
+}
+
+void X86Asm::andMem32(Reg32 rm, U32 disp, U32 value) {
+    S32 sValue = (S32)value;
+    bool smallValue = sValue >= -128 && sValue <= 127;
+
+    mem32(smallValue ? 0x83 : 0x81, 4, rm, disp);
+    if (smallValue) {
+        outb((U8)value);
+    } else {
+        outd(value);
+    }
+}
+
+void X86Asm::notMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xf7, 2, rm, sib, lsl, disp);
+}
+
+void X86Asm::notMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    outb(0x66);
+    mem32(0xf7, 2, rm, sib, lsl, disp);
+}
+
+void X86Asm::notMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xf6, 2, rm, sib, lsl, disp);
+}
+
+void X86Asm::negMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xf7, 3, rm, sib, lsl, disp);
+}
+
+void X86Asm::negMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    outb(0x66);
+    mem32(0xf7, 3, rm, sib, lsl, disp);
+}
+
+void X86Asm::negMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xf6, 3, rm, sib, lsl, disp);
+}
+
+void X86Asm::btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+    outb(0x0f);
+    mem32(0xba, 5, rm, sib, lsl, disp);
+    outb(value);
+}
+
+void X86Asm::btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xba, 5, rm, sib, lsl, disp);
+    outb(value);
+}
+
+void X86Asm::btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value) {
+    outb(0x0f);
+    mem32(0xab, value, rm, sib, lsl, disp);
+}
+
+void X86Asm::btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xab, Reg32(value.reg), rm, sib, lsl, disp);
+}
+
+void X86Asm::btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+    outb(0x0f);
+    mem32(0xba, 6, rm, sib, lsl, disp);
+    outb(value);
+}
+
+void X86Asm::btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xba, 6, rm, sib, lsl, disp);
+    outb(value);
+}
+
+void X86Asm::btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value) {
+    outb(0x0f);
+    mem32(0xb3, value, rm, sib, lsl, disp);
+}
+
+void X86Asm::btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xb3, Reg32(value.reg), rm, sib, lsl, disp);
+}
+
+void X86Asm::btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+    outb(0x0f);
+    mem32(0xba, 7, rm, sib, lsl, disp);
+    outb(value);
+}
+
+void X86Asm::btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xba, 7, rm, sib, lsl, disp);
+    outb(value);
+}
+
+void X86Asm::btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value) {
+    outb(0x0f);
+    mem32(0xbb, value, rm, sib, lsl, disp);
+}
+
+void X86Asm::btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value) {
+    outb(0x66);
+    outb(0x0f);
+    mem32(0xbb, Reg32(value.reg), rm, sib, lsl, disp);
 }
 
 void X86Asm::subMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value) {
@@ -541,6 +659,18 @@ void X86Asm::add(Reg8 dst, U8 imm) {
     group1(0x04, 0, dst, imm);
 }
 
+void X86Asm::adc(Reg32 dst, U32 imm) {
+    group1(0x15, 2, dst, imm);
+}
+
+void X86Asm::adc(Reg16 dst, U16 imm) {
+    group1(0x15, 2, dst, imm);
+}
+
+void X86Asm::adc(Reg8 dst, U8 imm) {
+    group1(0x14, 2, dst, imm);
+}
+
 void X86Asm::sub(Reg32 dst, U32 imm) {
     group1(0x2d, 5, dst, imm);
 }
@@ -551,6 +681,18 @@ void X86Asm::sub(Reg16 dst, U16 imm) {
 
 void X86Asm::sub(Reg8 dst, U8 imm) {
     group1(0x2c, 5, dst, imm);
+}
+
+void X86Asm::sbb(Reg32 dst, U32 imm) {
+    group1(0x1d, 3, dst, imm);
+}
+
+void X86Asm::sbb(Reg16 dst, U16 imm) {
+    group1(0x1d, 3, dst, imm);
+}
+
+void X86Asm::sbb(Reg8 dst, U8 imm) {
+    group1(0x1c, 3, dst, imm);
 }
 
 void X86Asm::and_(Reg32 dst, U32 imm) {
@@ -644,6 +786,30 @@ void X86Asm::sar(Reg8 dst, U8 imm) {
     group2(7, dst, imm);
 }
 
+void X86Asm::rol(Reg32 dst, U32 imm) {
+    group2(0, dst, imm);
+}
+
+void X86Asm::rol(Reg16 dst, U16 imm) {
+    group2(0, dst, imm);
+}
+
+void X86Asm::rol(Reg8 dst, U8 imm) {
+    group2(0, dst, imm);
+}
+
+void X86Asm::ror(Reg32 dst, U32 imm) {
+    group2(1, dst, imm);
+}
+
+void X86Asm::ror(Reg16 dst, U16 imm) {
+    group2(1, dst, imm);
+}
+
+void X86Asm::ror(Reg8 dst, U8 imm) {
+    group2(1, dst, imm);
+}
+
 void X86Asm::add(Reg32 dst, Reg32 src) {
     outb(0x01);
     outb(0xC0 | (src.reg << 3) | dst.reg);
@@ -660,6 +826,22 @@ void X86Asm::add(Reg8 dst, Reg8 src) {
     outb(0xC0 | (src.reg << 3) | dst.reg);
 }
 
+void X86Asm::adc(Reg32 dst, Reg32 src) {
+    outb(0x11);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
+void X86Asm::adc(Reg16 dst, Reg16 src) {
+    outb(0x66);
+    outb(0x11);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
+void X86Asm::adc(Reg8 dst, Reg8 src) {
+    outb(0x10);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
 void X86Asm::sub(Reg32 dst, Reg32 src) {
     outb(0x29);
     outb(0xC0 | (src.reg << 3) | dst.reg);
@@ -673,6 +855,22 @@ void X86Asm::sub(Reg16 dst, Reg16 src) {
 
 void X86Asm::sub(Reg8 dst, Reg8 src) {
     outb(0x28);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
+void X86Asm::sbb(Reg32 dst, Reg32 src) {
+    outb(0x19);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
+void X86Asm::sbb(Reg16 dst, Reg16 src) {
+    outb(0x66);
+    outb(0x19);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
+void X86Asm::sbb(Reg8 dst, Reg8 src) {
+    outb(0x18);
     outb(0xC0 | (src.reg << 3) | dst.reg);
 }
 
@@ -799,6 +997,156 @@ void X86Asm::sar(Reg8 dst, Reg8 src) {
     outb(0xf8 | dst.reg);
 }
 
+void X86Asm::rol(Reg32 dst, Reg32 src) {
+    if (src.reg != 1) {
+        kpanic("X86Asm::rol must use cl");
+    }
+    outb(0xd3);
+    outb(0xc0 | dst.reg);
+}
+
+void X86Asm::rol(Reg16 dst, Reg16 src) {
+    if (src.reg != 1) {
+        kpanic("X86Asm::rol must use cl");
+    }
+    outb(0x66);
+    outb(0xd3);
+    outb(0xc0 | dst.reg);
+}
+
+void X86Asm::rol(Reg8 dst, Reg8 src) {
+    if (src.reg != 1) {
+        kpanic("X86Asm::rol must use cl");
+    }
+    outb(0xd2);
+    outb(0xc0 | dst.reg);
+}
+
+void X86Asm::ror(Reg32 dst, Reg32 src) {
+    if (src.reg != 1) {
+        kpanic("X86Asm::ror must use cl");
+    }
+    outb(0xd3);
+    outb(0xc8 | dst.reg);
+}
+
+void X86Asm::ror(Reg16 dst, Reg16 src) {
+    if (src.reg != 1) {
+        kpanic("X86Asm::ror must use cl");
+    }
+    outb(0x66);
+    outb(0xd3);
+    outb(0xc8 | dst.reg);
+}
+
+void X86Asm::ror(Reg8 dst, Reg8 src) {
+    if (src.reg != 1) {
+        kpanic("X86Asm::ror must use cl");
+    }
+    outb(0xd2);
+    outb(0xc8 | dst.reg);
+}
+
+void X86Asm::mulEax(Reg32 src) {
+    outb(0xf7);
+    outb(0xe0 | src.reg);
+}
+
+void X86Asm::mulAx(Reg16 src) {
+    outb(0x66);
+    outb(0xf7);
+    outb(0xe0 | src.reg);
+}
+
+void X86Asm::mulAl(Reg8 src) {
+    outb(0xf6);
+    outb(0xe0 | src.reg);
+}
+
+void X86Asm::imul(Reg32 dst, Reg32 src) {
+    outb(0x0f);
+    outb(0xaf);
+    outb(0xc0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::imul(Reg16 dst, Reg16 src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xaf);
+    outb(0xc0 | (dst.reg << 3) | src.reg);
+}
+
+void X86Asm::imul(Reg32 dst, U32 imm) {
+    S32 sIMM = (S32)imm;
+    bool small = true;
+    if (sIMM < -128 || sIMM > 127) {
+        small = false;
+    }
+    if (small) {
+        outb(0x6b);
+    } else {
+        outb(0x69);
+    }
+    outb(0xc0 | dst.reg | (dst.reg << 3));
+    if (small) {
+        outb((U8)imm);
+    } else {
+        outd(imm);
+    }
+}
+
+void X86Asm::imul(Reg16 dst, U16 imm) {
+    S32 sIMM = (S32)imm;
+    bool small = true;
+    if (sIMM < -128 || sIMM > 127) {
+        small = false;
+    }
+    outb(0x66);
+    if (small) {
+        outb(0x6b);
+    } else {
+        outb(0x69);
+    }
+    outb(0xc0 | dst.reg | (dst.reg << 3));
+    if (small) {
+        outb((U8)imm);
+    } else {
+        outw((U16)imm);
+    }
+}
+
+void X86Asm::imul(Reg32 src) {
+    outb(0xf7);
+    outb(0xe8 | src.reg);
+}
+
+void X86Asm::mul(Reg32 src) {
+    outb(0xf7);
+    outb(0xe0 | src.reg);
+}
+
+void X86Asm::div(Reg16 src) {
+    outb(0x66);
+    outb(0xf7);
+    outb(0xf0 | src.reg);
+}
+
+void X86Asm::div(Reg32 src) {
+    outb(0xf7);
+    outb(0xf0 | src.reg);
+}
+
+void X86Asm::idiv(Reg16 src) {
+    outb(0x66);
+    outb(0xf7);
+    outb(0xf8 | src.reg);
+}
+
+void X86Asm::idiv(Reg32 src) {
+    outb(0xf7);
+    outb(0xf8 | src.reg);
+}
+
 void X86Asm::neg(Reg32 dst) {
     outb(0xf7);
     outb(0xd8 | dst.reg);
@@ -910,19 +1258,19 @@ void X86Asm::movsx(Reg16 dst, Reg8 src) {
     outb(0x66);
     outb(0x0f);
     outb(0xbe);
-    outb(0xC0 | (src.reg << 3) | dst.reg);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
 }
 
 void X86Asm::movsx(Reg32 dst, Reg8 src) {
     outb(0x0f);
     outb(0xbe);
-    outb(0xC0 | (src.reg << 3) | dst.reg);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
 }
 
 void X86Asm::movsx(Reg32 dst, Reg16 src) {
     outb(0x0f);
     outb(0xbf);
-    outb(0xC0 | (src.reg << 3) | dst.reg);
+    outb(0xC0 | (dst.reg << 3) | src.reg);
 }
 
 void X86Asm::mov(Reg32 dst, Reg32 src) {
@@ -1248,11 +1596,18 @@ void X86Asm::IfZF() {
     outb(0); // jump over amount
 }
 
-void X86Asm::IfNotZero(Reg32 reg) {
+void X86Asm::IfNotZero(Reg32 reg, bool bigJump) {
     test(reg, reg);
-    outb(0x74); // jz
-    ifJump.push_back(buffer.size());
-    outb(0); // jump over amount
+    if (bigJump) {
+        outb(0x0f);
+        outb(0x84); // jz
+        ifJump.push_back(buffer.size());
+        outd(0); // jump over amount
+    } else {
+        outb(0x74); // jz
+        ifJump.push_back(buffer.size());
+        outb(0); // jump over amount
+    }
 }
 
 void X86Asm::IfBitSet(Reg32 reg, U32 mask, bool bigJump) {
@@ -1600,6 +1955,11 @@ void X86Asm::ldmxcsr(Reg32 rm, U32 disp) {
             outb(disp);
         }
     }
+}
+
+void X86Asm::rdtsc() {
+    outb(0x0f);
+    outb(0x31);
 }
 
 void X86Asm::movd(RegMMX dst, Reg32 src) {
