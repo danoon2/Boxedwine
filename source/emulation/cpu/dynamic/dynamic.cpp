@@ -308,7 +308,12 @@ bool DynamicCodeGen::compileOps(DecodedOp* op) {
 void DynamicCodeGen::doJIT(U32 address, DecodedOp* op) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
     if (!cpu->thread->process->startJITOp) {
-        cpu->thread->process->startJITOp = (OpCallback)createStartJITCode();
+        DynamicCodeGen* jit = startNewJIT(cpu);
+        cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
+        delete jit;
+        jit = startNewJIT(cpu);
+        cpu->thread->process->jumpToNextJIT = jit->createJumpEip();
+        delete jit;
     }
 
     // did another thread beat us to JITing this block?
@@ -877,11 +882,12 @@ void DynamicCodeGen::blockDoneCall() {
 
 void DynamicCodeGen::blockDone(bool returnEarly) {
     // cpu->nextOp = cpu->nextOp();
-    callHostFunction(common_getNextOp, true, 1, 0, DYN_PARAM_CPU, false);
-    movToCpuFromReg(offsetof(CPU, nextOp), DYN_CALL_RESULT, DYN_32bit, true);
-    if (returnEarly || lastOpEip > currentEip) {
-        blockExit();
-    }
+    jumpEip();
+}
+
+void DynamicCodeGen::jumpEip() {
+    movToReg(DYN_CALL_RESULT, DYN_PTR, (DYN_PTR_SIZE)cpu->thread->process->jumpToNextJIT);
+    jmp(DYN_CALL_RESULT);
 }
 
 static OpCallback getJitFunctionForCurrentOp(CPU* cpu) {
@@ -899,57 +905,7 @@ static OpCallback getJitFunctionForCurrentOp(CPU* cpu) {
 }
 
 void DynamicCodeGen::blockDoneJump() {
-    // U32 pageIndex = address >> K_PAGE_SHIFT;
-    // DecodedOpPageCache* page = getPageCache(pageIndex, false);
-    // if (page) {
-    //     U32 offset = address & K_PAGE_MASK;
-    //     if (page->ops[offset] == nullptr) {
-    //         if (offset > 0 && page->ops[offset - 1] && page->ops[offset - 1]->lock) {
-    //             return page->ops[offset - 1];
-    //         }
-    //     }
-    //     return page->ops[offset];
-    // }
-    const DynReg eipReg = DYN_SRC;
-    const DynReg pageReg = DYN_DEST;
-    const DynReg firstPageIndexReg = DYN_ADDRESS;
-    const DynReg secondPageIndexReg = DYN_DEST;
-    const DynReg pageOffsetReg = DYN_SRC;
-
-    movToRegFromCpu(eipReg, CPU_OFFSET_OF(eip.u32), DYN_32bit);
-    if (cpu->thread->process->hasSetSeg[CS]) {
-        loadSegAddress(CS, DYN_DEST);
-        addRegReg(eipReg, DYN_DEST, DYN_32bit, true);
-    }    
-    movToRegFromReg(pageReg, DYN_32bit, eipReg, DYN_32bit, false);
-    shrRegImm(pageReg, DYN_32bit, K_PAGE_SHIFT);
-
-    // page >> 10
-    movToRegFromReg(firstPageIndexReg, DYN_32bit, pageReg, DYN_32bit, false);    
-    shrRegImm(firstPageIndexReg, DYN_32bit, 10);
-    movToRegFromCpu(DYN_CALL_RESULT, offsetof(CPU, opCache), DYN_PTR);
-    readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, firstPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
-    
-    // DYN_CALL_RESULT contains 2nd level of page op cache
-    If(DYN_CALL_RESULT, false);
-        // page & 0x3ff        
-        andRegImm(secondPageIndexReg, DYN_32bit, 0x3ff);
-        readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, secondPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
-        // DYN_CALL_RESULT contains page of DecodedOp*
-        If(DYN_CALL_RESULT, false);            
-            andRegImm(pageOffsetReg, DYN_32bit, K_PAGE_MASK);
-            readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, pageOffsetReg, 2, 0); // :TODO: 3 on 64-bit system
-            // DYN_CALL_RESULT contains DecodedOp
-            If(DYN_CALL_RESULT, false);
-                readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, 0, offsetof(DecodedOp, pfnJitCode));
-                // DYN_CALL_RESULT contains pfnJitCode
-                If(DYN_CALL_RESULT, false);
-                    jmp(DYN_CALL_RESULT);
-                EndIf();
-            EndIf();
-        EndIf();
-    EndIf();
-        
+    jumpToEipIfCached();        
     callHostFunction(getJitFunctionForCurrentOp, true, 1, 0, DYN_PARAM_CPU, false);
     IfNot(DYN_CALL_RESULT, true);
         blockExit();
@@ -1340,6 +1296,74 @@ U8* DynamicCodeGen::createDynamicExecutableMemory() {
         memcpy(begin, this->getBuffer(), this->getBufferSize());
         });
     return begin;
+}
+
+void DynamicCodeGen::jumpToEipIfCached() {
+    // U32 pageIndex = address >> K_PAGE_SHIFT;
+    // DecodedOpPageCache* page = getPageCache(pageIndex, false);
+    // if (page) {
+    //     U32 offset = address & K_PAGE_MASK;
+    //     if (page->ops[offset] == nullptr) {
+    //         if (offset > 0 && page->ops[offset - 1] && page->ops[offset - 1]->lock) {
+    //             return page->ops[offset - 1];
+    //         }
+    //     }
+    //     return page->ops[offset];
+    // }
+    const DynReg eipReg = DYN_SRC;
+    const DynReg pageReg = DYN_DEST;
+    const DynReg firstPageIndexReg = DYN_ADDRESS;
+    const DynReg secondPageIndexReg = DYN_DEST;
+    const DynReg pageOffsetReg = DYN_SRC;
+
+    movToRegFromCpu(eipReg, CPU_OFFSET_OF(eip.u32), DYN_32bit);
+    if (cpu->thread->process->hasSetSeg[CS]) {
+        loadSegAddress(CS, DYN_DEST);
+        addRegReg(eipReg, DYN_DEST, DYN_32bit, true);
+    }
+    movToRegFromReg(pageReg, DYN_32bit, eipReg, DYN_32bit, false);
+    shrRegImm(pageReg, DYN_32bit, K_PAGE_SHIFT);
+
+    // page >> 10
+    movToRegFromReg(firstPageIndexReg, DYN_32bit, pageReg, DYN_32bit, false);
+    shrRegImm(firstPageIndexReg, DYN_32bit, 10);
+    movToRegFromCpu(DYN_CALL_RESULT, offsetof(CPU, opCache), DYN_PTR);
+    readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, firstPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
+
+    // DYN_CALL_RESULT contains 2nd level of page op cache
+    If(DYN_CALL_RESULT, false);
+        // page & 0x3ff        
+        andRegImm(secondPageIndexReg, DYN_32bit, 0x3ff);
+        readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, secondPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
+        // DYN_CALL_RESULT contains page of DecodedOp*
+        If(DYN_CALL_RESULT, false);
+            andRegImm(pageOffsetReg, DYN_32bit, K_PAGE_MASK);
+            readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, pageOffsetReg, 2, 0); // :TODO: 3 on 64-bit system
+            // DYN_CALL_RESULT contains DecodedOp
+            If(DYN_CALL_RESULT, false);
+                readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, 0, offsetof(DecodedOp, pfnJitCode));
+                // DYN_CALL_RESULT contains pfnJitCode
+                If(DYN_CALL_RESULT, false);
+                    jmp(DYN_CALL_RESULT);
+                EndIf();
+            EndIf();
+        EndIf();
+    EndIf();
+    regUsed[0] = false;
+    regUsed[1] = false;
+    regUsed[2] = false;
+    regUsed[3] = false;
+ }
+
+U8* DynamicCodeGen::createJumpEip() {
+    jumpToEipIfCached();
+    callHostFunction(common_getNextOp, true, 1, 0, DYN_PARAM_CPU, false);
+    movToCpuFromReg(offsetof(CPU, nextOp), DYN_CALL_RESULT, DYN_32bit, true);
+    blockExit();
+
+    U8* result = createDynamicExecutableMemory();
+    patch(result);
+    return result;
 }
 
 void DynamicCodeGen::commitJIT(DecodedOp* op) {

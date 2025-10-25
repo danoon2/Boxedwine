@@ -41,7 +41,7 @@
 // 0+6: 32.2, 32.3, 32.1
 static U8 regCache[] = { 5, 0, 0, 0, 0, 0, 6, 0 };
 
-class X86DynamicCodeGen : DynamicCodeGenSSE {
+class X86DynamicCodeGen : public DynamicCodeGenSSE {
 public:    
     X86DynamicCodeGen(CPU* cpu) : DynamicCodeGenSSE(cpu) {}
 
@@ -3727,6 +3727,10 @@ void X86DynamicCodeGen::writeCache() {
             DynamicCodeGen::storeReg(i, (DynReg)regCache[i], DYN_32bit, false);
         }
     }    
+}
+
+DynamicCodeGen* startNewJIT(CPU* cpu) {
+    return new X86DynamicCodeGen(cpu);
 }
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op) {

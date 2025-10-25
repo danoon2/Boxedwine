@@ -277,6 +277,7 @@ public:
     U32 numberOfExtensions = 0;
 #ifdef BOXEDWINE_DYNAMIC
     OpCallback startJITOp = nullptr;
+    void* jumpToNextJIT = nullptr;
 #endif
 #ifdef BOXEDWINE_BINARY_TRANSLATOR
     bool emulateFPU = false;

@@ -132,6 +132,8 @@ public:
     
     void doJIT(U32 address, DecodedOp* op);
     void onTestEnd(DecodedOp* op) override;
+    U8* createJumpEip();
+    void jumpToEipIfCached();
 protected:
 
     virtual void instMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg, InstRegReg pfnInstRegReg);
@@ -169,6 +171,7 @@ protected:
     bool isParamTypeReg(DynCallParamType paramType);
     bool calculateLongestBlock(DecodedOp* op);
     void removeJIT(DecodedOp* op, U32 count);
+    void jumpEip();
 
     virtual void jmp(DynReg reg) = 0;
     virtual void readMem(DynReg reg, DynWidth width, DynReg address, U8 lsl , U32 disp ) = 0;    
@@ -266,6 +269,7 @@ protected:
 };
 
 void startNewJIT(CPU* cpu, U32 address, DecodedOp* op);
+DynamicCodeGen* startNewJIT(CPU* cpu);
 void writeBlockExitForJIT(U8* buffer);
 
 #endif
