@@ -43,6 +43,14 @@
 #include "../dynamic/dynamic_fpu.h"
 #include "../dynamic/dynamic_lock.h"
 
+U8 DynReg2::hardwareReg() {
+    if (reg != 0xff) {
+        return reg;
+    }
+    reg = delayedLoading();
+    return reg;
+}
+
 void DynamicData::dynamic_sidt(DecodedOp* op) {
 }
 
@@ -92,6 +100,12 @@ void DynamicData::call(void* address, DynWidth width, RegPtr reg, DynWidth width
     params.push_back(DynParam(DYN_PARAM_CPU));
     pushParam(params, width, reg);
     pushParam(params, width2, reg2);
+    callHostFunction(address, params);
+}
+
+void DynamicData::call(CallNoArgs address) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
     callHostFunction(address, params);
 }
 

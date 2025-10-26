@@ -199,6 +199,7 @@ public:
     Reg reg[9];
     Seg seg[7];    
     U32 flags = 0;
+    U32 dynamicFlags = 0;
     Reg eip;
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);

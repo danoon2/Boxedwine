@@ -32,493 +32,421 @@ void DynamicData::dynamic_add8_mem(DecodedOp* op) {
     dynamic_MI(op, DYN_8bit, &DynamicData::addValue);
 }
 void DynamicData::dynamic_addr16r16(DecodedOp* op) {
-    dynamic_addRR(op, DYN_16bit, false, true, FLAGS_ADD16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_adde16r16(DecodedOp* op) {
-    dynamic_addMR(op, DYN_16bit, false, true, FLAGS_ADD16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_addr16e16(DecodedOp* op) {
-    dynamic_addRM(op, DYN_16bit, false, true, FLAGS_ADD16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_add16_reg(DecodedOp* op) {
-    dynamic_addRI(op, DYN_16bit, false, true, FLAGS_ADD16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::addValue);
 }
 void DynamicData::dynamic_add16_mem(DecodedOp* op) {
-    dynamic_addMI(op, DYN_16bit, false, true, FLAGS_ADD16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::addValue);
 }
 void DynamicData::dynamic_addr32r32(DecodedOp* op) {
-    dynamic_addRR(op, DYN_32bit, false, true, FLAGS_ADD32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_adde32r32(DecodedOp* op) {
-    dynamic_addMR(op, DYN_32bit, false, true, FLAGS_ADD32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_addr32e32(DecodedOp* op) {
-    dynamic_addRM(op, DYN_32bit, false, true, FLAGS_ADD32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_add32_reg(DecodedOp* op) {
-    dynamic_addRI(op, DYN_32bit, false, true, FLAGS_ADD32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::addValue);
 }
 void DynamicData::dynamic_add32_mem(DecodedOp* op) {
-    dynamic_addMI(op, DYN_32bit, false, true, FLAGS_ADD32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::addValue);
 }
 void DynamicData::dynamic_orr8r8(DecodedOp* op) {
-    dynamic_orRR(op, DYN_8bit, false, true, FLAGS_OR8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_ore8r8(DecodedOp* op) {
-    dynamic_orMR(op, DYN_8bit, false, true, FLAGS_OR8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_orr8e8(DecodedOp* op) {
-    dynamic_orRM(op, DYN_8bit, false, true, FLAGS_OR8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_or8_reg(DecodedOp* op) {
-    dynamic_orRI(op, DYN_8bit, false, true, FLAGS_OR8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::orValue);
 }
 void DynamicData::dynamic_or8_mem(DecodedOp* op) {
-    dynamic_orMI(op, DYN_8bit, false, true, FLAGS_OR8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::orValue);
 }
 void DynamicData::dynamic_orr16r16(DecodedOp* op) {
-    dynamic_orRR(op, DYN_16bit, false, true, FLAGS_OR16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_ore16r16(DecodedOp* op) {
-    dynamic_orMR(op, DYN_16bit, false, true, FLAGS_OR16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_orr16e16(DecodedOp* op) {
-    dynamic_orRM(op, DYN_16bit, false, true, FLAGS_OR16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_or16_reg(DecodedOp* op) {
-    dynamic_orRI(op, DYN_16bit, false, true, FLAGS_OR16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::orValue);
 }
 void DynamicData::dynamic_or16_mem(DecodedOp* op) {
-    dynamic_orMI(op, DYN_16bit, false, true, FLAGS_OR16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::orValue);
 }
 void DynamicData::dynamic_orr32r32(DecodedOp* op) {
-    dynamic_orRR(op, DYN_32bit, false, true, FLAGS_OR32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_ore32r32(DecodedOp* op) {
-    dynamic_orMR(op, DYN_32bit, false, true, FLAGS_OR32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_orr32e32(DecodedOp* op) {
-    dynamic_orRM(op, DYN_32bit, false, true, FLAGS_OR32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::orReg);
 }
 void DynamicData::dynamic_or32_reg(DecodedOp* op) {
-    dynamic_orRI(op, DYN_32bit, false, true, FLAGS_OR32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::orValue);
 }
 void DynamicData::dynamic_or32_mem(DecodedOp* op) {
-    dynamic_orMI(op, DYN_32bit, false, true, FLAGS_OR32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::orValue);
 }
 void DynamicData::dynamic_adcr8r8(DecodedOp* op) {
-    dynamic_addRR(op, DYN_8bit, true, true, FLAGS_ADC8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adce8r8(DecodedOp* op) {
-    dynamic_addMR(op, DYN_8bit, true, true, FLAGS_ADC8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adcr8e8(DecodedOp* op) {
-    dynamic_addRM(op, DYN_8bit, true, true, FLAGS_ADC8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adc8_reg(DecodedOp* op) {
-    dynamic_addRI(op, DYN_8bit, true, true, FLAGS_ADC8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::adcValue);
 }
 void DynamicData::dynamic_adc8_mem(DecodedOp* op) {
-    dynamic_addMI(op, DYN_8bit, true, true, FLAGS_ADC8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::adcValue);
 }
 void DynamicData::dynamic_adcr16r16(DecodedOp* op) {
-    dynamic_addRR(op, DYN_16bit, true, true, FLAGS_ADC16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adce16r16(DecodedOp* op) {
-    dynamic_addMR(op, DYN_16bit, true, true, FLAGS_ADC16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adcr16e16(DecodedOp* op) {
-    dynamic_addRM(op, DYN_16bit, true, true, FLAGS_ADC16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adc16_reg(DecodedOp* op) {
-    dynamic_addRI(op, DYN_16bit, true, true, FLAGS_ADC16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::adcValue);
 }
 void DynamicData::dynamic_adc16_mem(DecodedOp* op) {
-    dynamic_addMI(op, DYN_16bit, true, true, FLAGS_ADC16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::adcValue);
 }
 void DynamicData::dynamic_adcr32r32(DecodedOp* op) {
-    dynamic_addRR(op, DYN_32bit, true, true, FLAGS_ADC32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adce32r32(DecodedOp* op) {
-    dynamic_addMR(op, DYN_32bit, true, true, FLAGS_ADC32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adcr32e32(DecodedOp* op) {
-    dynamic_addRM(op, DYN_32bit, true, true, FLAGS_ADC32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::adcReg);
 }
 void DynamicData::dynamic_adc32_reg(DecodedOp* op) {
-    dynamic_addRI(op, DYN_32bit, true, true, FLAGS_ADC32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::adcValue);
 }
 void DynamicData::dynamic_adc32_mem(DecodedOp* op) {
-    dynamic_addMI(op, DYN_32bit, true, true, FLAGS_ADC32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::adcValue);
 }
 void DynamicData::dynamic_sbbr8r8(DecodedOp* op) {
-    dynamic_subRR(op, DYN_8bit, true, true, FLAGS_SBB8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbbe8r8(DecodedOp* op) {
-    dynamic_subMR(op, DYN_8bit, true, true, FLAGS_SBB8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbbr8e8(DecodedOp* op) {
-    dynamic_subRM(op, DYN_8bit, true, true, FLAGS_SBB8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbb8_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_8bit, true, true, FLAGS_SBB8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::sbbValue);
 }
 void DynamicData::dynamic_sbb8_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_8bit, true, true, FLAGS_SBB8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::sbbValue);
 }
 void DynamicData::dynamic_sbbr16r16(DecodedOp* op) {
-    dynamic_subRR(op, DYN_16bit, true, true, FLAGS_SBB16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbbe16r16(DecodedOp* op) {
-    dynamic_subMR(op, DYN_16bit, true, true, FLAGS_SBB16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbbr16e16(DecodedOp* op) {
-    dynamic_subRM(op, DYN_16bit, true, true, FLAGS_SBB16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbb16_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_16bit, true, true, FLAGS_SBB16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::sbbValue);
 }
 void DynamicData::dynamic_sbb16_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_16bit, true, true, FLAGS_SBB16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::sbbValue);
 }
 void DynamicData::dynamic_sbbr32r32(DecodedOp* op) {
-    dynamic_subRR(op, DYN_32bit, true, true, FLAGS_SBB32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbbe32r32(DecodedOp* op) {
-    dynamic_subMR(op, DYN_32bit, true, true, FLAGS_SBB32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbbr32e32(DecodedOp* op) {
-    dynamic_subRM(op, DYN_32bit, true, true, FLAGS_SBB32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::sbbReg);
 }
 void DynamicData::dynamic_sbb32_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_32bit, true, true, FLAGS_SBB32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::sbbValue);
 }
 void DynamicData::dynamic_sbb32_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_32bit, true, true, FLAGS_SBB32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::sbbValue);
 }
 void DynamicData::dynamic_andr8r8(DecodedOp* op) {
-    dynamic_andRR(op, DYN_8bit, false, true, FLAGS_AND8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_ande8r8(DecodedOp* op) {
-    dynamic_andMR(op, DYN_8bit, false, true, FLAGS_AND8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_andr8e8(DecodedOp* op) {
-    dynamic_andRM(op, DYN_8bit, false, true, FLAGS_AND8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_and8_reg(DecodedOp* op) {
-    dynamic_andRI(op, DYN_8bit, false, true, FLAGS_AND8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::andValue);
 }
 void DynamicData::dynamic_and8_mem(DecodedOp* op) {
-    dynamic_andMI(op, DYN_8bit, false, true, FLAGS_AND8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::andValue);
 }
 void DynamicData::dynamic_andr16r16(DecodedOp* op) {
-    dynamic_andRR(op, DYN_16bit, false, true, FLAGS_AND16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_ande16r16(DecodedOp* op) {
-    dynamic_andMR(op, DYN_16bit, false, true, FLAGS_AND16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_andr16e16(DecodedOp* op) {
-    dynamic_andRM(op, DYN_16bit, false, true, FLAGS_AND16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_and16_reg(DecodedOp* op) {
-    dynamic_andRI(op, DYN_16bit, false, true, FLAGS_AND16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::andValue);
 }
 void DynamicData::dynamic_and16_mem(DecodedOp* op) {
-    dynamic_andMI(op, DYN_16bit, false, true, FLAGS_AND16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::andValue);
 }
 void DynamicData::dynamic_andr32r32(DecodedOp* op) {
-    dynamic_andRR(op, DYN_32bit, false, true, FLAGS_AND32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_ande32r32(DecodedOp* op) {
-    dynamic_andMR(op, DYN_32bit, false, true, FLAGS_AND32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_andr32e32(DecodedOp* op) {
-    dynamic_andRM(op, DYN_32bit, false, true, FLAGS_AND32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::andReg);
 }
 void DynamicData::dynamic_and32_reg(DecodedOp* op) {
-    dynamic_andRI(op, DYN_32bit, false, true, FLAGS_AND32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::andValue);
 }
 void DynamicData::dynamic_and32_mem(DecodedOp* op) {
-    dynamic_andMI(op, DYN_32bit, false, true, FLAGS_AND32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::andValue);
 }
 void DynamicData::dynamic_subr8r8(DecodedOp* op) {
-    dynamic_subRR(op, DYN_8bit, false, true, FLAGS_SUB8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_sube8r8(DecodedOp* op) {
-    dynamic_subMR(op, DYN_8bit, false, true, FLAGS_SUB8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_subr8e8(DecodedOp* op) {
-    dynamic_subRM(op, DYN_8bit, false, true, FLAGS_SUB8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_sub8_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_8bit, false, true, FLAGS_SUB8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::subValue);
 }
 void DynamicData::dynamic_sub8_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_8bit, false, true, FLAGS_SUB8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::subValue);
 }
 void DynamicData::dynamic_subr16r16(DecodedOp* op) {
-    dynamic_subRR(op, DYN_16bit, false, true, FLAGS_SUB16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_sube16r16(DecodedOp* op) {
-    dynamic_subMR(op, DYN_16bit, false, true, FLAGS_SUB16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_subr16e16(DecodedOp* op) {
-    dynamic_subRM(op, DYN_16bit, false, true, FLAGS_SUB16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_sub16_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_16bit, false, true, FLAGS_SUB16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::subValue);
 }
 void DynamicData::dynamic_sub16_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_16bit, false, true, FLAGS_SUB16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::subValue);
 }
 void DynamicData::dynamic_subr32r32(DecodedOp* op) {
-    dynamic_subRR(op, DYN_32bit, false, true, FLAGS_SUB32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_sube32r32(DecodedOp* op) {
-    dynamic_subMR(op, DYN_32bit, false, true, FLAGS_SUB32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_subr32e32(DecodedOp* op) {
-    dynamic_subRM(op, DYN_32bit, false, true, FLAGS_SUB32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::subReg);
 }
 void DynamicData::dynamic_sub32_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_32bit, false, true, FLAGS_SUB32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::subValue);
 }
 void DynamicData::dynamic_sub32_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_32bit, false, true, FLAGS_SUB32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::subValue);
 }
 void DynamicData::dynamic_xorr8r8(DecodedOp* op) {
-    dynamic_xorRR(op, DYN_8bit, false, true, FLAGS_XOR8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xore8r8(DecodedOp* op) {
-    dynamic_xorMR(op, DYN_8bit, false, true, FLAGS_XOR8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xorr8e8(DecodedOp* op) {
-    dynamic_xorRM(op, DYN_8bit, false, true, FLAGS_XOR8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xor8_reg(DecodedOp* op) {
-    dynamic_xorRI(op, DYN_8bit, false, true, FLAGS_XOR8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::xorValue);
 }
 void DynamicData::dynamic_xor8_mem(DecodedOp* op) {
-    dynamic_xorMI(op, DYN_8bit, false, true, FLAGS_XOR8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::xorValue);
 }
 void DynamicData::dynamic_xorr16r16(DecodedOp* op) {
-    dynamic_xorRR(op, DYN_16bit, false, true, FLAGS_XOR16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xore16r16(DecodedOp* op) {
-    dynamic_xorMR(op, DYN_16bit, false, true, FLAGS_XOR16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xorr16e16(DecodedOp* op) {
-    dynamic_xorRM(op, DYN_16bit, false, true, FLAGS_XOR16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xor16_reg(DecodedOp* op) {
-    dynamic_xorRI(op, DYN_16bit, false, true, FLAGS_XOR16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::xorValue);
 }
 void DynamicData::dynamic_xor16_mem(DecodedOp* op) {
-    dynamic_xorMI(op, DYN_16bit, false, true, FLAGS_XOR16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::xorValue);
 }
 void DynamicData::dynamic_xorr32r32(DecodedOp* op) {
-    dynamic_xorRR(op, DYN_32bit, false, true, FLAGS_XOR32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xore32r32(DecodedOp* op) {
-    dynamic_xorMR(op, DYN_32bit, false, true, FLAGS_XOR32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xorr32e32(DecodedOp* op) {
-    dynamic_xorRM(op, DYN_32bit, false, true, FLAGS_XOR32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::xorReg);
 }
 void DynamicData::dynamic_xor32_reg(DecodedOp* op) {
-    dynamic_xorRI(op, DYN_32bit, false, true, FLAGS_XOR32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::xorValue);
 }
 void DynamicData::dynamic_xor32_mem(DecodedOp* op) {
-    dynamic_xorMI(op, DYN_32bit, false, true, FLAGS_XOR32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::xorValue);
 }
 void DynamicData::dynamic_cmpr8r8(DecodedOp* op) {
-    dynamic_subRR(op, DYN_8bit, false, false, FLAGS_CMP8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::cmpReg);
 }
 void DynamicData::dynamic_cmpe8r8(DecodedOp* op) {
-    dynamic_subMR(op, DYN_8bit, false, false, FLAGS_CMP8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmpr8e8(DecodedOp* op) {
-    dynamic_subRM(op, DYN_8bit, false, false, FLAGS_CMP8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmp8_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_8bit, false, false, FLAGS_CMP8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::cmpValue, false);
 }
 void DynamicData::dynamic_cmp8_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_8bit, false, false, FLAGS_CMP8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::cmpValue, false);
 }
 void DynamicData::dynamic_cmpr16r16(DecodedOp* op) {
-    dynamic_subRR(op, DYN_16bit, false, false, FLAGS_CMP16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmpe16r16(DecodedOp* op) {
-    dynamic_subMR(op, DYN_16bit, false, false, FLAGS_CMP16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmpr16e16(DecodedOp* op) {
-    dynamic_subRM(op, DYN_16bit, false, false, FLAGS_CMP16);
+    dynamic_RM(op, DYN_16bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmp16_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_16bit, false, false, FLAGS_CMP16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::cmpValue, false);
 }
 void DynamicData::dynamic_cmp16_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_16bit, false, false, FLAGS_CMP16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::cmpValue, false);
 }
 void DynamicData::dynamic_cmpr32r32(DecodedOp* op) {
-    dynamic_subRR(op, DYN_32bit, false, false, FLAGS_CMP32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmpe32r32(DecodedOp* op) {
-    dynamic_subMR(op, DYN_32bit, false, false, FLAGS_CMP32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmpr32e32(DecodedOp* op) {
-    dynamic_subRM(op, DYN_32bit, false, false, FLAGS_CMP32);
+    dynamic_RM(op, DYN_32bit, &DynamicData::cmpReg, false);
 }
 void DynamicData::dynamic_cmp32_reg(DecodedOp* op) {
-    dynamic_subRI(op, DYN_32bit, false, false, FLAGS_CMP32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::cmpValue, false);
 }
 void DynamicData::dynamic_cmp32_mem(DecodedOp* op) {
-    dynamic_subMI(op, DYN_32bit, false, false, FLAGS_CMP32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::cmpValue, false);
 }
 void DynamicData::dynamic_testr8r8(DecodedOp* op) {
-    dynamic_andRR(op, DYN_8bit, false, false, FLAGS_TEST8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::testReg);
 }
 void DynamicData::dynamic_teste8r8(DecodedOp* op) {
-    dynamic_andMR(op, DYN_8bit, false, false, FLAGS_TEST8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::testReg, false);
 }
 void DynamicData::dynamic_test8_reg(DecodedOp* op) {
-    dynamic_andRI(op, DYN_8bit, false, false, FLAGS_TEST8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::testValue, false);
 }
 void DynamicData::dynamic_test8_mem(DecodedOp* op) {
-    dynamic_andMI(op, DYN_8bit, false, false, FLAGS_TEST8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::testValue, false);
 }
 void DynamicData::dynamic_testr16r16(DecodedOp* op) {
-    dynamic_andRR(op, DYN_16bit, false, false, FLAGS_TEST16);
+    dynamic_RR(op, DYN_16bit, &DynamicData::testReg, false);
 }
 void DynamicData::dynamic_teste16r16(DecodedOp* op) {
-    dynamic_andMR(op, DYN_16bit, false, false, FLAGS_TEST16);
+    dynamic_MR(op, DYN_16bit, &DynamicData::testReg, false);
 }
 void DynamicData::dynamic_test16_reg(DecodedOp* op) {
-    dynamic_andRI(op, DYN_16bit, false, false, FLAGS_TEST16);
+    dynamic_RI(op, DYN_16bit, &DynamicData::testValue, false);
 }
 void DynamicData::dynamic_test16_mem(DecodedOp* op) {
-    dynamic_andMI(op, DYN_16bit, false, false, FLAGS_TEST16);
+    dynamic_MI(op, DYN_16bit, &DynamicData::testValue, false);
 }
 void DynamicData::dynamic_testr32r32(DecodedOp* op) {
-    dynamic_andRR(op, DYN_32bit, false, false, FLAGS_TEST32);
+    dynamic_RR(op, DYN_32bit, &DynamicData::testReg, false);
 }
 void DynamicData::dynamic_teste32r32(DecodedOp* op) {
-    dynamic_andMR(op, DYN_32bit, false, false, FLAGS_TEST32);
+    dynamic_MR(op, DYN_32bit, &DynamicData::testReg, false);
 }
 void DynamicData::dynamic_test32_reg(DecodedOp* op) {
-    dynamic_andRI(op, DYN_32bit, false, false, FLAGS_TEST32);
+    dynamic_RI(op, DYN_32bit, &DynamicData::testValue, false);
 }
 void DynamicData::dynamic_test32_mem(DecodedOp* op) {
-    dynamic_andMI(op, DYN_32bit, false, false, FLAGS_TEST32);
+    dynamic_MI(op, DYN_32bit, &DynamicData::testValue, false);
 }
 void DynamicData::dynamic_notr8(DecodedOp* op) {
-    notCPU(op->reg, DYN_8bit, DYN_DEST);
-    incrementEip(op->len);
+    dynamic_R(op, DYN_8bit, &DynamicData::notReg2);
 }
 void DynamicData::dynamic_note8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    notMem(DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
-    incrementEip(op->len);
+    dynamic_M(op, DYN_8bit, &DynamicData::notReg2);
 }
 void DynamicData::dynamic_notr16(DecodedOp* op) {
-    notCPU(op->reg, DYN_16bit, DYN_DEST);
-    incrementEip(op->len);
+    dynamic_R(op, DYN_16bit, &DynamicData::notReg2);
 }
 void DynamicData::dynamic_note16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    notMem(DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
-    incrementEip(op->len);
+    dynamic_M(op, DYN_16bit, &DynamicData::notReg2);
 }
 void DynamicData::dynamic_notr32(DecodedOp* op) {
-    notCPU(op->reg, DYN_32bit, DYN_DEST);
-    incrementEip(op->len);
+    dynamic_R(op, DYN_32bit, &DynamicData::notReg2);
 }
 void DynamicData::dynamic_note32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    notMem(DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
-    incrementEip(op->len);
+    dynamic_M(op, DYN_32bit, &DynamicData::notReg2);
 }
 void DynamicData::dynamic_negr8(DecodedOp* op) {
-    if (!op->needsToSetFlags(cpu)) {
-        negCPU(op->reg, DYN_8bit, DYN_DEST);
-    } else {
-        loadRegStoreSrc(op->reg, DYN_8bit, DYN_DEST, false);
-        negReg(DYN_DEST, DYN_8bit);
-        storeLazyFlagsResult(DYN_DEST, DYN_8bit, false);
-        storeReg(op->reg, DYN_DEST, DYN_8bit, true);
-        storeLazyFlags(FLAGS_NEG8);
-        currentLazyFlags=FLAGS_NEG8;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_8bit, &DynamicData::negReg2);
 }
 void DynamicData::dynamic_nege8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    if (!op->needsToSetFlags(cpu)) {
-        negMem(DYN_ADDRESS, DYN_8bit, true, DYN_DEST);
-    } else {
-        storeLazyFlagsSrcFromMem(DYN_8bit, DYN_ADDRESS, false, false);
-        negReg(DYN_CALL_RESULT, DYN_8bit);
-        storeLazyFlagsResult(DYN_CALL_RESULT, DYN_8bit, false);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_8bit, true, true, DYN_DEST);
-        storeLazyFlags(FLAGS_NEG8);
-        currentLazyFlags=FLAGS_NEG8;
-    }
-    incrementEip(op->len);
+    dynamic_M(op, DYN_8bit, &DynamicData::negReg2);
 }
 void DynamicData::dynamic_negr16(DecodedOp* op) {
-    if (!op->needsToSetFlags(cpu)) {
-        negCPU(op->reg, DYN_16bit, DYN_DEST);
-    } else {
-        loadRegStoreSrc(op->reg, DYN_16bit, DYN_DEST, false);
-        negReg(DYN_DEST, DYN_16bit);
-        storeLazyFlagsResult(DYN_DEST, DYN_16bit, false);
-        storeReg(op->reg, DYN_DEST, DYN_16bit, true);
-        storeLazyFlags(FLAGS_NEG16);
-        currentLazyFlags=FLAGS_NEG16;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_16bit, &DynamicData::negReg2);
 }
 void DynamicData::dynamic_nege16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    if (!op->needsToSetFlags(cpu)) {
-        negMem(DYN_ADDRESS, DYN_16bit, true, DYN_DEST);
-    } else {
-        storeLazyFlagsSrcFromMem(DYN_16bit, DYN_ADDRESS, false, false);
-        negReg(DYN_CALL_RESULT, DYN_16bit);
-        storeLazyFlagsResult(DYN_CALL_RESULT, DYN_16bit, false);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_16bit, true, true, DYN_DEST);
-        storeLazyFlags(FLAGS_NEG16);
-        currentLazyFlags=FLAGS_NEG16;
-    }
-    incrementEip(op->len);
+    dynamic_M(op, DYN_16bit, &DynamicData::negReg2);
 }
 void DynamicData::dynamic_negr32(DecodedOp* op) {
-    if (!op->needsToSetFlags(cpu)) {
-        negCPU(op->reg, DYN_32bit, DYN_DEST);
-    } else {
-        loadRegStoreSrc(op->reg, DYN_32bit, DYN_DEST, false);
-        negReg(DYN_DEST, DYN_32bit);
-        storeLazyFlagsResult(DYN_DEST, DYN_32bit, false);
-        storeReg(op->reg, DYN_DEST, DYN_32bit, true);
-        storeLazyFlags(FLAGS_NEG32);
-        currentLazyFlags=FLAGS_NEG32;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_32bit, &DynamicData::negReg2);
 }
 void DynamicData::dynamic_nege32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    if (!op->needsToSetFlags(cpu)) {
-        negMem(DYN_ADDRESS, DYN_32bit, true, DYN_DEST);
-    } else {
-        storeLazyFlagsSrcFromMem(DYN_32bit, DYN_ADDRESS, false, false);
-        negReg(DYN_CALL_RESULT, DYN_32bit);
-        storeLazyFlagsResult(DYN_CALL_RESULT, DYN_32bit, false);
-        movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, DYN_32bit, true, true, DYN_DEST);
-        storeLazyFlags(FLAGS_NEG32);
-        currentLazyFlags=FLAGS_NEG32;
-    }
-    incrementEip(op->len);
+    dynamic_M(op, DYN_32bit, &DynamicData::negReg2);
 }
 void DynamicData::dynamic_mulR8(DecodedOp* op) {
     if (!(op->needsToSetFlags(cpu) & (CF | OF))) {

@@ -82,6 +82,10 @@ void X86Asm::lahf() {
     outb(0x9f);
 }
 
+void X86Asm::sahf() {
+    outb(0x9e);
+}
+
 void X86Asm::lea(Reg32 dst, Reg32 rm, U32 disp) {
     outb(0x8d);
 
@@ -1502,6 +1506,11 @@ void X86Asm::xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
 
 void X86Asm::xchg(Reg8 reg, Reg8 rm) {
     outb(0x86);
+    outb(0xC0 | reg.reg | (rm.reg << 3));
+}
+
+void X86Asm::xchg(Reg32 reg, Reg32 rm) {
+    outb(0x87);
     outb(0xC0 | reg.reg | (rm.reg << 3));
 }
 

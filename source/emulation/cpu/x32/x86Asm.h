@@ -93,6 +93,7 @@ public:
 	void lea(Reg32 dst, Reg32 rm, Reg32 sib, U32 shift, U32 disp);
 	void lea(Reg32 dst, Reg32 rm, U32 disp);
 	void lahf();
+	void sahf();
 
 	void add(Reg32 dst, U32 imm);
 	void add(Reg16 dst, U16 imm);
@@ -313,6 +314,7 @@ public:
 	void xchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xchg(Reg8 reg, Reg8 rm);
+	void xchg(Reg32 reg, Reg32 rm);
 	void xadd(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xadd(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xadd(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
