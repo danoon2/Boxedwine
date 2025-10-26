@@ -241,6 +241,11 @@ void X86Asm::orMemReg(Reg32 reg, Reg32 rm, U32 disp) {
     mem32(0x09, Reg32(reg.reg), rm, disp);
 }
 
+void X86Asm::orMemReg(Reg16 reg, Reg32 rm, U32 disp) {
+    outb(0x66);
+    mem32(0x09, Reg32(reg.reg), rm, disp);
+}
+
 void X86Asm::addMem16(Reg32 rm, U32 disp, U16 value) {
     S32 sValue = (S32)value;
     S32 sDisp = (S32)disp;
@@ -1495,6 +1500,11 @@ void X86Asm::xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
     }
 }
 
+void X86Asm::xchg(Reg8 reg, Reg8 rm) {
+    outb(0x86);
+    outb(0xC0 | reg.reg | (rm.reg << 3));
+}
+
 void X86Asm::xadd(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
     outb(0xf0);
     outb(0x0f);
@@ -1557,7 +1567,35 @@ void X86Asm::IfLessThan(Reg32 reg, U32 value) {
     outb(0); // jump over amount
 }
 
+void X86Asm::IfLessThan(Reg16 reg, U16 value) {
+    cmp(reg, value);
+    outb(0x73); // jnb
+    ifJump.push_back(buffer.size());
+    outb(0); // jump over amount
+}
+
+void X86Asm::IfLessThan(Reg8 reg, U8 value) {
+    cmp(reg, value);
+    outb(0x73); // jnb
+    ifJump.push_back(buffer.size());
+    outb(0); // jump over amount
+}
+
 void X86Asm::IfEqual(Reg32 reg, U32 value) {
+    cmp(reg, value);
+    outb(0x75); // jnz
+    ifJump.push_back(buffer.size());
+    outb(0); // jump over amount
+}
+
+void X86Asm::IfEqual(Reg16 reg, U16 value) {
+    cmp(reg, value);
+    outb(0x75); // jnz
+    ifJump.push_back(buffer.size());
+    outb(0); // jump over amount
+}
+
+void X86Asm::IfEqual(Reg8 reg, U8 value) {
     cmp(reg, value);
     outb(0x75); // jnz
     ifJump.push_back(buffer.size());
@@ -1572,6 +1610,20 @@ void X86Asm::IfNotEqual(Reg32 reg, U32 value) {
 }
 
 void X86Asm::IfZero(Reg32 reg) {
+    test(reg, reg);
+    outb(0x75); // jnz
+    ifJump.push_back(buffer.size());
+    outb(0); // jump over amount
+}
+
+void X86Asm::IfZero(Reg16 reg) {
+    test(reg, reg);
+    outb(0x75); // jnz
+    ifJump.push_back(buffer.size());
+    outb(0); // jump over amount
+}
+
+void X86Asm::IfZero(Reg8 reg) {
     test(reg, reg);
     outb(0x75); // jnz
     ifJump.push_back(buffer.size());
@@ -1597,6 +1649,34 @@ void X86Asm::IfZF() {
 }
 
 void X86Asm::IfNotZero(Reg32 reg, bool bigJump) {
+    test(reg, reg);
+    if (bigJump) {
+        outb(0x0f);
+        outb(0x84); // jz
+        ifJump.push_back(buffer.size());
+        outd(0); // jump over amount
+    } else {
+        outb(0x74); // jz
+        ifJump.push_back(buffer.size());
+        outb(0); // jump over amount
+    }
+}
+
+void X86Asm::IfNotZero(Reg16 reg, bool bigJump) {
+    test(reg, reg);
+    if (bigJump) {
+        outb(0x0f);
+        outb(0x84); // jz
+        ifJump.push_back(buffer.size());
+        outd(0); // jump over amount
+    } else {
+        outb(0x74); // jz
+        ifJump.push_back(buffer.size());
+        outb(0); // jump over amount
+    }
+}
+
+void X86Asm::IfNotZero(Reg8 reg, bool bigJump) {
     test(reg, reg);
     if (bigJump) {
         outb(0x0f);
@@ -1712,6 +1792,12 @@ void X86Asm::setl(Reg8 reg) {
 void X86Asm::setle(Reg8 reg) {
     outb(0x0f);
     outb(0x9e);
+    outb(0xc0 + reg.reg);
+}
+
+void X86Asm::seto(Reg8 reg) {
+    outb(0x0f);
+    outb(0x90);
     outb(0xc0 + reg.reg);
 }
 

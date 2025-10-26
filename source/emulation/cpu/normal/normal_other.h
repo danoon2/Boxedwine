@@ -278,7 +278,7 @@ void OPCALL normal_std(CPU* cpu, DecodedOp* op) {
     cpu->addFlag(DF);
     NEXT();
 }
-#ifdef BOXEDWINE_MSVC
+#if defined(BOXEDWINE_DYNAMIC32) || defined(BOXEDWINE_X64)
 #include <intrin.h>
 void OPCALL normal_rdtsc(CPU* cpu, DecodedOp* op) {
     START_OP(cpu, op);

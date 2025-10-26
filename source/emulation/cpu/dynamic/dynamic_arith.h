@@ -17,19 +17,19 @@
  */
 
 void DynamicData::dynamic_addr8r8(DecodedOp* op) {
-    dynamic_addRR(op, DYN_8bit, false, true, FLAGS_ADD8);
+    dynamic_RR(op, DYN_8bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_adde8r8(DecodedOp* op) {
-    dynamic_addMR(op, DYN_8bit, false, true, FLAGS_ADD8);
+    dynamic_MR(op, DYN_8bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_addr8e8(DecodedOp* op) {
-    dynamic_addRM(op, DYN_8bit, false, true, FLAGS_ADD8);
+    dynamic_RM(op, DYN_8bit, &DynamicData::addReg);
 }
 void DynamicData::dynamic_add8_reg(DecodedOp* op) {
-    dynamic_addRI(op, DYN_8bit, false, true, FLAGS_ADD8);
+    dynamic_RI(op, DYN_8bit, &DynamicData::addValue);
 }
 void DynamicData::dynamic_add8_mem(DecodedOp* op) {
-    dynamic_addMI(op, DYN_8bit, false, true, FLAGS_ADD8);
+    dynamic_MI(op, DYN_8bit, &DynamicData::addValue);
 }
 void DynamicData::dynamic_addr16r16(DecodedOp* op) {
     dynamic_addRR(op, DYN_16bit, false, true, FLAGS_ADD16);

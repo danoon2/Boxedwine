@@ -25,6 +25,21 @@
 class DynamicCodeGen : public DynamicData {
 public:    
     DynamicCodeGen(CPU* cpu) : DynamicData(cpu) {}
+
+    // V2
+    virtual void preOp(DecodedOp* op) {}
+    virtual void postOp(DecodedOp* op) {}
+    virtual void read(DynWidth width, RegPtr dest, RegPtr reg, U8 lsl, U32 disp) = 0;
+    virtual void read(DynWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void write(DynWidth width, RegPtr reg, U32 disp, RegPtr src) = 0;
+    virtual void write(DynWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
+
+    void readWriteMem(DynWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite) override;
+    RegPtr read(DynWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false) override;
+    void write(DynWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false) override;
+
+    RegPtr calculateEaa2(DecodedOp* op, bool popEsp = false) override; // :TODO: V2
+
     DecodedOp* firstOp = nullptr;
 
     BHashTable<U32, U32> eipToBufferPos;    

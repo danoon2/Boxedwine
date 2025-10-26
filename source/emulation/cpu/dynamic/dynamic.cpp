@@ -291,7 +291,9 @@ bool DynamicCodeGen::compileOps(DecodedOp* op) {
             // so that intra block jumps that try to skip a lock will find the lock version of the op anyway
             this->eipToBufferPos.set(this->currentEip + 1, getBufferSize());
         }
+        preOp(nextOp);
         (this->*dynamicOps[nextOp->inst])(nextOp);
+        postOp(nextOp);
         this->currentEip += nextOp->len;
         if (getIfJumpSize()) {
             kpanic_fmt("x32CPU::firstDynamicOp if statement was not closed in instruction: %d", op->inst);
@@ -1097,6 +1099,30 @@ U32 readb(U32 address) {
     return KThread::currentThread()->memory->readb(address);
 }
 
+U32 readd2(CPU* cpu, U32 address) {
+    return cpu->memory->readd(address);
+}
+
+U32 readw2(CPU* cpu, U32 address) {
+    return cpu->memory->readw(address);
+}
+
+U32 readb2(CPU* cpu, U32 address) {
+    return cpu->memory->readb(address);
+}
+
+void writed2(CPU* cpu, U32 address, U32 value) {
+    cpu->memory->writed(address, value);
+}
+
+void writew2(CPU* cpu, U32 address, U16 value) {
+    cpu->memory->writew(address, value);
+}
+
+void writeb2(CPU* cpu, U32 address, U8 value) {
+    cpu->memory->writeb(address, value);
+}
+
 void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, std::function<void(DynReg address, DynReg offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump) {
     regUsed[DYN_CALL_RESULT] = true;
 
@@ -1193,6 +1219,305 @@ void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWith
     if (doneWithAddressReg) {
         regUsed[addressReg] = false;
     }
+}
+
+RegPtr DynamicCodeGen::calculateEaa2(DecodedOp* op, bool popEsp) {    
+    if (op->ea16) {
+        // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
+        RegPtr result = getTmpReg();
+
+        xorReg(DYN_32bit, result, result, false); // clear top bits
+
+        if (op->data.disp) {
+            movValue(DYN_16bit, result, op->data.disp);
+        }
+        if (op->rm == op->sibIndex && op->rm != 8) {
+            RegPtr reg = getReadOnlyReg(op->rm);
+            addReg(DYN_16bit, result, reg, false);
+            addReg(DYN_16bit, result, reg, false);
+        } else {
+            if (op->rm != 8) {
+                addReg(DYN_16bit, result, getReadOnlyReg(op->rm), false);
+            }
+            if (op->sibIndex != 8) {
+                addReg(DYN_16bit, result, getReadOnlyReg(op->sibIndex), false);
+            }
+        }
+
+        // seg[6] is always 0
+        if (op->base < 6) {
+            // intentional 32-bit add
+            addReg(DYN_32bit, result, getSegAddress(op->base), false);
+        }
+        return result;
+    } else {
+        RegPtr result;
+
+        if (op->sibIndex != 8) {
+            result = getTmpReg(op->sibIndex);
+            if (op->sibScale) {
+                shlValue(DYN_32bit, result, op->sibScale, false);
+            }
+
+            if (op->rm != 8) {
+                addReg(DYN_32bit, result, getReadOnlyReg(op->rm), false);
+            }
+            if (op->data.disp) {
+                addValue(DYN_32bit, result, op->data.disp, false);
+            }
+        } else if (op->rm != 8) {
+            result = getTmpReg(op->rm);
+            if (op->data.disp) {
+                addValue(DYN_32bit, result, op->data.disp, false);
+            }
+        } else if (op->data.disp) {
+            result = getTmpReg();
+            movValue(DYN_32bit, result, op->data.disp);
+        } else {
+            result = getTmpReg();
+            xorReg(DYN_32bit, result, result, false);
+        }
+
+        // seg[6] is always 0
+        if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
+            addReg(DYN_32bit, result, getSegAddress(op->base), false);
+        }
+        return result;
+    }
+}
+
+RegPtr DynamicCodeGen::read(DynWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump) {
+    RegPtr tmp = getTmpRegForCallResult();
+
+    if (width != DYN_8bit) {
+        // make sure we only use the fast path if the entire read will take place on the same page
+        mov(DYN_32bit, tmp, addressReg);
+        andValue(DYN_32bit, tmp, K_PAGE_MASK, false);
+
+        if (width == DYN_16bit) {
+            // if ((address & 0xFFF) < 0xFFF)                    
+            IfLessThan2(DYN_32bit, tmp, K_PAGE_MASK);
+        } else if (width == DYN_32bit) {
+            // if ((address & 0xFFF) < 0xFFD)
+            IfLessThan2(DYN_32bit, tmp, 0xFFD);
+        } else if (width == DYN_64bit) {
+            // if ((address & 0xFFF) < 0xFF9)
+            IfLessThan2(DYN_32bit, tmp, 0xFF9);
+        } else if (width == DYN_128bit) {
+            // if ((address & 0xFFF) < 0xFF1)
+            IfLessThan2(DYN_32bit, tmp, 0xFF1);
+        } else {
+            kpanic_fmt("DynamicCodeGen::read unknown width %d", (U32)width);
+        }
+    }
+    // int index = address >> 12;
+    // if (Memory::currentMMUReadPtr[index])
+    //     return *(U32*)(&Memory::currentMMUReadPtr[index][address & 0xFFF]);
+    // else
+    //     return readd(address);
+
+    mov(DYN_32bit, tmp, addressReg);
+    shrValue(DYN_32bit, tmp, K_PAGE_SHIFT, false);
+    read(DYN_32bit, tmp, tmp, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+
+    if (width != DYN_8bit) {
+        EndIf();
+    }
+
+    // test eax, 0x40000000 (mmu[index].canReadRam)
+    IfBitSet2(DYN_32bit, tmp, 0x40000000, isBigJump);
+
+    // bottom 20 bits of mmu contains ram page index
+    andValue(DYN_32bit, tmp, 0xfffff, false);
+    read(DYN_32bit, tmp, tmp, 2, (U32)ramPages);
+
+    RegPtr offsetReg;
+    
+    if (addressReg.use_count() == 1) {
+        offsetReg = addressReg;
+    } else {
+        offsetReg = getTmpReg();
+        mov(DYN_32bit, offsetReg, addressReg);
+    }
+    andValue(DYN_32bit, offsetReg, K_PAGE_MASK, false);
+
+    if (customMemoryOp) {
+        customMemoryOp(tmp, offsetReg);
+    } else {
+        // mov eax, [eax+reg]
+        read(width, tmp, tmp, offsetReg, 0, 0);
+    }
+    StartElse(isBigJump);
+
+    if (failedMemoryOp) {
+        failedMemoryOp();
+    } else {
+        void* address;
+
+        // call read
+        if (width == DYN_32bit) {
+            address = readd2;
+        } else if (width == DYN_16bit) {
+            address = readw2;
+        } else if (width == DYN_8bit) {
+            address = readb2;
+        } else {
+            kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
+        }
+        callAndReturn(tmp, address, DYN_32bit, addressReg);
+    }
+    EndIf(isBigJump);
+    return tmp;
+}
+
+void DynamicCodeGen::write(DynWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump) {
+    RegPtr tmp = getTmpReg();
+
+    if (width != DYN_8bit) {
+        // make sure we only use the fast path if the entire read will take place on the same page
+        mov(DYN_32bit, tmp, addressReg);
+        andValue(DYN_32bit, tmp, K_PAGE_MASK, false);
+
+        if (width == DYN_16bit) {
+            // if ((address & 0xFFF) < 0xFFF)                    
+            IfLessThan2(DYN_32bit, tmp, K_PAGE_MASK);
+        } else if (width == DYN_32bit) {
+            // if ((address & 0xFFF) < 0xFFD)
+            IfLessThan2(DYN_32bit, tmp, 0xFFD);
+        } else if (width == DYN_64bit) {
+            // if ((address & 0xFFF) < 0xFF9)
+            IfLessThan2(DYN_32bit, tmp, 0xFF9);
+        } else if (width == DYN_128bit) {
+            // if ((address & 0xFFF) < 0xFF1)
+            IfLessThan2(DYN_32bit, tmp, 0xFF1);
+        } else {
+            kpanic_fmt("DynamicCodeGen::write unknown width %d", (U32)width);
+        }
+    }
+    mov(DYN_32bit, tmp, addressReg);
+    shrValue(DYN_32bit, tmp, K_PAGE_SHIFT, false);
+    read(DYN_32bit, tmp, tmp, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+
+    if (width != DYN_8bit) {
+        EndIf();
+    }
+
+    // test reg, 0x80000000 (mmu[index].canWriteRam)
+    IfBitSet2(DYN_8bit, tmp, 0x80000000, isBigJump);
+
+    // bottom 20 bits of mmu contains ram page index
+    andValue(DYN_32bit, tmp, 0xfffff, false);
+    read(DYN_32bit, tmp, tmp, 2, (U32)ramPages);
+
+    andValue(DYN_32bit, addressReg, K_PAGE_MASK, false);
+
+    if (customMemoryOp) {
+        customMemoryOp(tmp, addressReg);
+    } else {
+        write(width, tmp, addressReg, 0, 0, src);
+    }    
+
+    StartElse(isBigJump);
+
+    if (failedMemoryOp) {
+        failedMemoryOp();
+    } else {
+        void* address;
+
+        if (width == DYN_32bit) {
+            address = writed2;
+        } else if (width == DYN_16bit) {
+            address = writew2;
+        } else if (width == DYN_8bit) {
+            address = writeb2;
+        } else {
+            kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
+        }
+        call(address, DYN_32bit, addressReg, DYN_32bit, src);
+    }
+    EndIf(isBigJump);
+}
+
+void DynamicCodeGen::readWriteMem(DynWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite) {
+    U32 firstCheckPos = 0;
+
+    if (width != DYN_8bit) {
+        // make sure we only use the fast path if the entire read will take place on the same page
+        RegPtr tmpReg = getTmpReg();
+
+        mov(DYN_32bit, tmpReg, addressReg);
+        andValue(DYN_32bit, tmpReg, K_PAGE_MASK, false);
+
+        if (width == DYN_16bit) {
+            // if ((address & 0xFFF) < 0xFFF)                    
+            IfLessThan2(DYN_32bit, tmpReg, K_PAGE_MASK); // :TODO: V2
+        } else if (width == DYN_32bit) {
+            // if ((address & 0xFFF) < 0xFFD)
+            IfLessThan2(DYN_32bit, tmpReg, 0xFFD); // :TODO: V2
+        } else {
+            kpanic_fmt("DynamicCodeGen::readWriteMem unknown width %d", (U32)width);
+        }
+    }
+    RegPtr tmpReg = getTmpReg();
+    mov(DYN_32bit, tmpReg, addressReg);
+
+    shrValue(DYN_32bit, tmpReg, K_PAGE_SHIFT, false);
+    read(DYN_32bit, tmpReg, tmpReg, 2, (U32)getMemData(KThread::currentThread()->memory)->mmu);
+
+    if (width != DYN_8bit) {
+        EndIf();
+    }
+
+    // if read/write
+    RegPtr tmpReg2 = getTmpReg();
+    mov(DYN_32bit, tmpReg2, tmpReg);
+    andValue(DYN_32bit, tmpReg2, 0x40000000 | 0x80000000, false);
+
+    IfEqual(DYN_32bit, tmpReg2, 0x40000000 | 0x80000000);
+
+        // bottom 20 bits of mmu contains ram page index
+        andValue(DYN_32bit, tmpReg, 0xfffff, false);
+        read(DYN_32bit, tmpReg, tmpReg, 2, (U32)ramPages);
+        andValue(DYN_32bit, addressReg, K_PAGE_MASK, false);
+        read(DYN_32bit, tmpReg2, tmpReg, addressReg, 0, 0);
+
+    StartElse();
+
+        void* address;
+        // call read
+        if (width == DYN_32bit) {
+            address = readd2;
+        } else if (width == DYN_16bit) {
+            address = readw2;
+        } else if (width == DYN_8bit) {
+            address = readb2;
+        } else {
+            kpanic("DynamicCodeGen::readWriteMem");
+        }
+        callAndReturn(tmpReg2, address, DYN_32bit, addressReg);    
+        xorReg(DYN_32bit, tmpReg, tmpReg, false); // so that the next if statement will also choose calling write
+
+    EndIf();
+
+    prepareWrite(tmpReg2);
+
+    // test reg, 0x80000000 (mmu[index].canWriteRam)
+    If(DYN_32bit, tmpReg);
+
+        write(DYN_32bit, tmpReg, addressReg, 0, 0, tmpReg2);
+
+    StartElse();
+
+        if (width == DYN_32bit) {
+            address = writed2;
+        } else if (width == DYN_16bit) {
+            address = writew2;
+        } else if (width == DYN_8bit) {
+            address = writeb2;
+        }
+        call(address, DYN_32bit, addressReg, DYN_32bit, tmpReg2);
+
+    EndIf();
 }
 
 void DynamicCodeGen::readWriteMem(DynWidth width, DynReg addressReg, DynReg tmpReg, bool doneWithAddressReg, std::function<void()> prepareWrite) {

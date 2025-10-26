@@ -212,6 +212,7 @@ public:
 	void subMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void subMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void orMemReg(Reg32 reg, Reg32 rm, U32 disp);
+	void orMemReg(Reg16 reg, Reg32 rm, U32 disp);
 	void subMemReg(Reg32 reg, Reg32 rm, U32 disp);
 	void addMem32(Reg32 rm, U32 disp, U32 value);
 	void addMem16(Reg32 rm, U32 disp, U16 value);
@@ -301,6 +302,7 @@ public:
 	void setnb(Reg8 reg);
 	void setl(Reg8 reg);
 	void setle(Reg8 reg);
+	void seto(Reg8 reg);
 
 	void lock();
 	void cmpxchg8b(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
@@ -310,15 +312,24 @@ public:
 	void xchg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void xchg(Reg8 reg, Reg8 rm);
 	void xadd(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xadd(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xadd(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 
 	void IfLessThan(Reg32 reg, U32 value);
+	void IfLessThan(Reg16 reg, U16 value);
+	void IfLessThan(Reg8 reg, U8 value);
 	void IfEqual(Reg32 reg, U32 value);
+	void IfEqual(Reg16 reg, U16 value);
+	void IfEqual(Reg8 reg, U8 value);
 	void IfNotEqual(Reg32 reg, U32 value);
 	void IfZero(Reg32 reg);
+	void IfZero(Reg16 reg);
+	void IfZero(Reg8 reg);
 	void IfNotZero(Reg32 reg, bool bigJump = false);
+	void IfNotZero(Reg16 reg, bool bigJump = false);
+	void IfNotZero(Reg8 reg, bool bigJump = false);
 	void IfBitSet(Reg32 reg, U32 mask, bool bigJump = false);
 	void IfNotBitSet(Reg32 reg, U32 mask, bool bigJump = false);
 	void Else(bool bigJump = false);

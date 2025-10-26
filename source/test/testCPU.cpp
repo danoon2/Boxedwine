@@ -839,6 +839,39 @@ void EbGb(int instruction, struct Data* data, bool includeLock = false) {
                 break;
             }
         }
+
+        // read/write to code page, this takes a different path for JIT
+        for (int lock = 0; lock < 3; lock++) {
+            for (gb = 0; gb < 8; gb++) {
+                U8* g;
+                U32 result;
+
+                rm = (gb << 3);
+                if (cpu->big)
+                    rm += 5;
+                else
+                    rm += 6;
+                newInstructionWithRM(instruction, rm, data->flags, lock ? LOCK_PREFIX : 0, 0x2e); // 0x2e CS seg
+                U16 offset = lock == 2 ? 201 : 200;
+
+                if (cpu->big)
+                    pushCode32(offset);
+                else
+                    pushCode16(offset);
+                pushConstant(data);
+                memory->writed(cpu->seg[CS].address + offset, DEFAULT);
+                memory->writeb(cpu->seg[CS].address + offset, data->var1);
+                g = cpu->reg8[G(rm)];
+                cpu->reg[G8(rm)].u32 = DEFAULT;
+                *g = data->var2;
+                runTestCPU();
+                result = memory->readb(cpu->seg[CS].address + offset);
+                assertResult(data, cpu, instruction, result, *g, G8(rm), -1, cpu->seg[CS].address + offset, 8);
+            }
+            if (!includeLock) {
+                break;
+            }
+        }
         data++;
     }
 }
@@ -892,6 +925,7 @@ void GbEb(int instruction, struct Data* data) {
             runTestCPU();
             assertResult(data, cpu, instruction, *g, memory->readb(cpu->seg[DS].address + 200), G8(rm), -1, cpu->seg[DS].address + 200, 8);
         }
+
         data++;
     }
 }

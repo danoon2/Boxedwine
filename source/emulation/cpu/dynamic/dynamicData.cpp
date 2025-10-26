@@ -68,4 +68,31 @@ void DynamicData::dynamic_onTestEnd(DecodedOp* op) {
     onTestEnd(op);
 }
 
+void DynamicData::pushParam(std::vector<DynParam>& params, DynWidth width, RegPtr reg) {
+    if (width == DYN_32bit) {
+        params.push_back(DynParam(DYN_PARAM_REG_32, reg));
+    } else if (width == DYN_16bit) {
+        params.push_back(DynParam(DYN_PARAM_REG_16, reg));
+    } else if (width == DYN_8bit) {
+        params.push_back(DynParam(DYN_PARAM_REG_8, reg));
+    } else {
+        kpanic("DynamicData::callAndReturn");
+    }
+}
+
+void DynamicData::callAndReturn(RegPtr result, void* address, DynWidth width, RegPtr reg) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    pushParam(params, width, reg);
+    callHostFunctionWithResult(result, address, params);
+}
+
+void DynamicData::call(void* address, DynWidth width, RegPtr reg, DynWidth width2, RegPtr reg2) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    pushParam(params, width, reg);
+    pushParam(params, width2, reg2);
+    callHostFunction(address, params);
+}
+
 #endif
