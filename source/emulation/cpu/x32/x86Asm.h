@@ -119,6 +119,10 @@ public:
 	void shl(Reg32 dst, U32 imm);
 	void shl(Reg16 dst, U16 imm);
 	void shl(Reg8 dst, U8 imm);
+	void shld(Reg32 dst, Reg32 src, U32 imm);
+	void shld(Reg16 dst, Reg16 src, U16 imm);
+	void shrd(Reg32 dst, Reg32 src, U32 imm);
+	void shrd(Reg16 dst, Reg16 src, U16 imm);
 	void shr(Reg32 dst, U32 imm);
 	void shr(Reg16 dst, U16 imm);
 	void shr(Reg8 dst, U8 imm);
@@ -131,6 +135,12 @@ public:
 	void ror(Reg32 dst, U32 imm);
 	void ror(Reg16 dst, U16 imm);
 	void ror(Reg8 dst, U8 imm);
+	void rcl(Reg32 dst, U32 imm);
+	void rcl(Reg16 dst, U16 imm);
+	void rcl(Reg8 dst, U8 imm);
+	void rcr(Reg32 dst, U32 imm);
+	void rcr(Reg16 dst, U16 imm);
+	void rcr(Reg8 dst, U8 imm);
 
 	void add(Reg32 dst, Reg32 src);
 	void add(Reg16 dst, Reg16 src);
@@ -156,6 +166,10 @@ public:
 	void shl(Reg32 dst, Reg32 src);
 	void shl(Reg16 dst, Reg16 src);
 	void shl(Reg8 dst, Reg8 src);
+	void shld(Reg16 dst, Reg16 src, Reg16 cl);
+	void shld(Reg32 dst, Reg32 src, Reg32 cl);
+	void shrd(Reg16 dst, Reg16 src, Reg16 cl);
+	void shrd(Reg32 dst, Reg32 src, Reg32 cl);
 	void shr(Reg32 dst, Reg32 src);
 	void shr(Reg16 dst, Reg16 src);
 	void shr(Reg8 dst, Reg8 src);
@@ -168,6 +182,12 @@ public:
 	void ror(Reg32 dst, Reg32 src);
 	void ror(Reg16 dst, Reg16 src);
 	void ror(Reg8 dst, Reg8 src);
+	void rcl(Reg32 dst, Reg32 src);
+	void rcl(Reg16 dst, Reg16 src);
+	void rcl(Reg8 dst, Reg8 src);
+	void rcr(Reg32 dst, Reg32 src);
+	void rcr(Reg16 dst, Reg16 src);
+	void rcr(Reg8 dst, Reg8 src);
 
 	void mulEax(Reg32 src);
 	void mulAx(Reg16 src);
@@ -175,8 +195,12 @@ public:
 	void imul(Reg32 dst, Reg32 src);
 	void imul(Reg16 dst, Reg16 src);
 	void imul(Reg32 dst, U32 imm);
+	void imul(Reg32 dst, Reg32 src, U32 imm);
 	void imul(Reg16 dst, U16 imm);
-	void imul(Reg32 src);
+	void imul(Reg16 dst, Reg16 src, U16 imm);
+	void imulEax(Reg32 src);
+	void imulAx(Reg16 src);
+	void imulAl(Reg8 src);
 	void mul(Reg32 src);
 	void div(Reg32 src);
 	void div(Reg16 src);	
@@ -189,6 +213,12 @@ public:
 	void not_(Reg32 dst);
 	void not_(Reg16 dst);
 	void not_(Reg8 dst);
+	void inc(Reg32 dst);
+	void inc(Reg16 dst);
+	void inc(Reg8 dst);
+	void dec(Reg32 dst);
+	void dec(Reg16 dst);
+	void dec(Reg8 dst);
 
 	void test(Reg32 dst, U32 imm);
 	void test(Reg16 dst, U16 imm);
@@ -291,19 +321,42 @@ public:
 	void call(void* address);
 	void ret();
 	void jmp(Reg32 reg);
-	void jz(U32 address);
-	void jnz(U32 address);
 	void jmp(U32 address);
 	void movsb_repeat();
 
+	void jo(U32 address);
+	void jno(U32 address);
+	void jb(U32 address);
+	void jnb(U32 address);
+	void jz(U32 address);
+	void jnz(U32 address);
+	void jbe(U32 address);
+	void jnbe(U32 address);
+	void js(U32 address);
+	void jns(U32 address);
+	void jp(U32 address);
+	void jnp(U32 address);
+	void jl(U32 address);
+	void jnl(U32 address);
+	void jle(U32 address);
+	void jnle(U32 address);
+
 	void setz(Reg8 reg);
 	void setnz(Reg8 reg);
-	void setb(Reg8 reg);
-	void setbe(Reg8 reg);
+	void setb(Reg8 reg);	
 	void setnb(Reg8 reg);
+	void setbe(Reg8 reg);
+	void setnbe(Reg8 reg);
 	void setl(Reg8 reg);
+	void setnl(Reg8 reg);
 	void setle(Reg8 reg);
+	void setnle(Reg8 reg);
 	void seto(Reg8 reg);
+	void setno(Reg8 reg);
+	void sets(Reg8 reg);
+	void setns(Reg8 reg);
+	void setp(Reg8 reg);
+	void setnp(Reg8 reg);
 
 	void lock();
 	void cmpxchg8b(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
@@ -314,6 +367,7 @@ public:
 	void xchg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xchg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xchg(Reg8 reg, Reg8 rm);
+	void xchg(Reg16 reg, Reg16 rm);
 	void xchg(Reg32 reg, Reg32 rm);
 	void xadd(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xadd(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);

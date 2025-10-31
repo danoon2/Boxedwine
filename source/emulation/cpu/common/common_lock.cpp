@@ -1583,7 +1583,7 @@ void common_btse32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->setCF(value & mask);
     cpu->memory->writew(address, value | mask);
 */
-void common_btse16_lock(CPU* cpu, U32 address, U16 mask) {
+void common_btse16_lock(CPU* cpu, U32 address, U32 mask) {
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1633,7 +1633,7 @@ void common_btse32r32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->setCF(value & mask);
     cpu->memory->writew(address, value | mask);
 */
-void common_btse16r16_lock(CPU* cpu, U32 address, U16 mask) {
+void common_btse16r16_lock(CPU* cpu, U32 address, U32 mask) {
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1680,7 +1680,7 @@ void common_btre32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->setCF(value & mask);
     cpu->memory->writew(address, value & ~mask);
 */
-void common_btre16_lock(CPU* cpu, U32 address, U16 mask) {
+void common_btre16_lock(CPU* cpu, U32 address, U32 mask) {
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1730,7 +1730,7 @@ void common_btre32r32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->setCF(value & mask);
     cpu->memory->writew(address, value & ~mask);
 */
-void common_btre16r16_lock(CPU* cpu, U32 address, U16 mask) {
+void common_btre16r16_lock(CPU* cpu, U32 address, U32 mask) {
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1776,7 +1776,7 @@ void common_btce32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->setCF(value & mask);
     cpu->memory->writew(address, value ^ mask);
 */
-void common_btce16_lock(CPU* cpu, U32 address, U16 mask) {
+void common_btce16_lock(CPU* cpu, U32 address, U32 mask) {
     U16 oldValue;
 
     cpu->fillFlagsNoCF();
@@ -1826,7 +1826,7 @@ void common_btce32r32_lock(CPU* cpu, U32 address, U32 mask) {
     cpu->setCF(value & mask);
     cpu->memory->writew(address, value ^ mask);
 */
-void common_btce16r16_lock(CPU* cpu, U32 address, U16 mask) {
+void common_btce16r16_lock(CPU* cpu, U32 address, U32 mask) {
     U16 oldValue;
 
     cpu->fillFlagsNoCF();

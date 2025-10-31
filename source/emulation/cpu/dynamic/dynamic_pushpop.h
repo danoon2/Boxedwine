@@ -123,6 +123,7 @@ void DynamicData::dynamic_pushSeg16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popSeg16(DecodedOp* op) {
+    cpu->thread->process->hasSetSeg[op->reg] = true;
     callHostFunction((void*)common_peek16, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
     IfNot(DYN_CALL_RESULT, true);
@@ -145,6 +146,7 @@ void DynamicData::dynamic_pushSeg32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popSeg32(DecodedOp* op) {
+    cpu->thread->process->hasSetSeg[op->reg] = true;
     callHostFunction((void*)common_peek32, true, 2, 0, DYN_PARAM_CPU, false, 0, DYN_PARAM_CONST_32, false);
     callHostFunction((void*)common_setSegment, true, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
     IfNot(DYN_CALL_RESULT, true);

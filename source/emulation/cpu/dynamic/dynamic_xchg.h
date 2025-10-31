@@ -18,77 +18,86 @@
 
 #include "../common/common_xchg.h"
 void DynamicData::dynamic_xchgr8r8(DecodedOp* op) {
-    loadReg(op->rm, DYN_DEST, DYN_8bit);
-    loadRegStoreReg(op->rm, op->reg, DYN_8bit, DYN_SRC);
-    storeReg(op->reg, DYN_DEST, DYN_8bit, true);
+    // this is a weird case where we could write to the same hardware register, like AH and AL would both write to EAX.  When they sync back, the last one would win since writing back 8-bit regs doesn't mask the write back
+    bool sameReg = (op->reg + 4 == op->rm) || (op->reg == op->rm + 4);
+    if (sameReg) {
+        RegPtr reg = getTmpReg8(op->reg > op->rm ? op->reg : op->rm);
+        RegPtr rm = getTmpReg8(op->reg > op->rm ? op->rm : op->reg);
+        RegPtr actualReg = getReg(op->reg & 3);
+
+        shrValue(DYN_16bit, reg, 8, false);
+        shlValue(DYN_16bit, rm, 8, false);
+        orReg(DYN_16bit, reg, rm, false);
+        mov(DYN_16bit, actualReg, reg);
+    } else {
+        RegPtr reg = getReg8(op->reg);
+        RegPtr rm = getReg8(op->rm);
+        xchgReg(DYN_8bit, reg, rm);
+    }
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge8r8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_8bit, DYN_ADDRESS, false);
-    loadReg(op->reg, DYN_DEST, DYN_8bit);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_8bit, true);
-    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_8bit, true, true, DYN_SRC);    
+    readWriteMem(DYN_8bit, calculateEaa2(op), [op, this](RegPtr value) {
+        RegPtr reg = getReg8(op->reg);
+        xchgReg(DYN_8bit, reg, value);
+    });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchgr16r16(DecodedOp* op) {
-    loadReg(op->rm, DYN_DEST, DYN_16bit);
-    loadRegStoreReg(op->rm, op->reg, DYN_16bit, DYN_SRC);
-    storeReg(op->reg, DYN_DEST, DYN_16bit, true);
+    RegPtr reg = getReg(op->reg);
+    RegPtr rm = getReg(op->rm);
+    xchgReg(DYN_16bit, reg, rm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge16r16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, false);
-    loadReg(op->reg, DYN_DEST, DYN_16bit);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
-    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_16bit, true, true, DYN_SRC);    
+    readWriteMem(DYN_16bit, calculateEaa2(op), [op, this](RegPtr value) {
+        RegPtr reg = getReg(op->reg);
+        xchgReg(DYN_16bit, reg, value);
+    });
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchgr32r32(DecodedOp* op) {
-    loadReg(op->rm, DYN_DEST, DYN_32bit);
-    loadRegStoreReg(op->rm, op->reg, DYN_32bit, DYN_SRC);
-    storeReg(op->reg, DYN_DEST, DYN_32bit, true);
+    RegPtr reg = getReg(op->reg);
+    RegPtr rm = getReg(op->rm);
+    xchgReg(DYN_32bit, reg, rm);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge32r32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, false);
-    loadReg(op->reg, DYN_DEST, DYN_32bit);
-    storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
-    movToMemFromReg(DYN_ADDRESS, DYN_DEST, DYN_32bit, true, true, DYN_SRC);
+    readWriteMem(DYN_32bit, calculateEaa2(op), [op, this](RegPtr value) {
+        RegPtr reg = getReg(op->reg);
+        xchgReg(DYN_32bit, reg, value);
+    });
     incrementEip(op->len);
 }
+
+// I didn't see Quake 2 or Cinebench trigger these, so for now they are low priority for inlining
 void DynamicData::dynamic_cmpxchgr8r8(DecodedOp* op) {
-    callHostFunction((void*)common_cmpxchgr8r8, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_CMP8;
+    call(common_cmpxchgr8r8, op->reg, op->rm);
+    currentLazyFlags=nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge8r8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_cmpxchge8r8, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_CMP8;
+    call(common_cmpxchge8r8, DYN_32bit, calculateEaa2(op), op->reg);
+    currentLazyFlags=nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchgr16r16(DecodedOp* op) {
-    callHostFunction((void*)common_cmpxchgr16r16, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_CMP16;
+    call(common_cmpxchgr16r16, op->reg, op->rm);
+    currentLazyFlags=nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge16r16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_cmpxchge16r16, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_CMP16;
+    call(common_cmpxchge16r16, DYN_32bit, calculateEaa2(op), op->reg);
+    currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchgr32r32(DecodedOp* op) {
-    callHostFunction((void*)common_cmpxchgr32r32, false, 3, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CONST_32, false, op->rm, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_CMP32;
+    call(common_cmpxchgr32r32, op->reg, op->rm);
+    currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge32r32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    callHostFunction((void*)common_cmpxchge32r32, false, 3, 0, DYN_PARAM_CPU, false, DYN_ADDRESS, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_CMP32;
+    call(common_cmpxchge32r32, DYN_32bit, calculateEaa2(op), op->reg);
+    currentLazyFlags = nullptr;
     incrementEip(op->len);
 }

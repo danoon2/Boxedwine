@@ -449,200 +449,50 @@ void DynamicData::dynamic_nege32(DecodedOp* op) {
     dynamic_M(op, DYN_32bit, &DynamicData::negReg2);
 }
 void DynamicData::dynamic_mulR8(DecodedOp* op) {
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_8bit);
-        movToRegFromReg(DYN_DEST, DYN_16bit, DYN_DEST, DYN_8bit, false);
-        loadReg(op->reg, DYN_SRC, DYN_8bit);
-        movToRegFromReg(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
-        imulRegReg(DYN_DEST, DYN_SRC, DYN_16bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-    } else {
-        callHostFunction((void*)common_mul8, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_8, false);
-        currentLazyFlags = FLAGS_NONE;
-    }    
-    incrementEip(op->len);
+    // AX = AL * src;
+    dynamic_R(op, DYN_8bit, &DynamicData::mulReg, false);
 }
 void DynamicData::dynamic_mulE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_8bit);
-        movToRegFromReg(DYN_DEST, DYN_16bit, DYN_DEST, DYN_8bit, false);
-        movToRegFromReg(DYN_CALL_RESULT, DYN_16bit, DYN_CALL_RESULT, DYN_8bit, false);
-        imulRegReg(DYN_DEST, DYN_CALL_RESULT, DYN_16bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-    } else {
-        callHostFunction((void*)common_mul8, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_8, true);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    // getTmpReg will register the reg we want the read from memory to use, by default it will be EAX, but mul needs to this to be unused
+    dynamic_M(op, DYN_8bit, &DynamicData::mulReg, false, getTmpReg());
 }
 void DynamicData::dynamic_imulR8(DecodedOp* op) {
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_8bit);
-        movToRegFromRegSignExtend(DYN_DEST, DYN_16bit, DYN_DEST, DYN_8bit, false);
-        loadReg(op->reg, DYN_SRC, DYN_8bit);
-        movToRegFromRegSignExtend(DYN_SRC, DYN_16bit, DYN_SRC, DYN_8bit, false);
-        imulRegReg(DYN_DEST, DYN_SRC, DYN_16bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-    } else {
-        callHostFunction((void*)common_imul8, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_8, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_8bit, &DynamicData::imulReg, false);
 }
 void DynamicData::dynamic_imulE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_8bit);
-        movToRegFromRegSignExtend(DYN_DEST, DYN_16bit, DYN_DEST, DYN_8bit, false);
-        movToRegFromRegSignExtend(DYN_CALL_RESULT, DYN_16bit, DYN_CALL_RESULT, DYN_8bit, false);
-        imulRegReg(DYN_DEST, DYN_CALL_RESULT, DYN_16bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-    } else {
-        callHostFunction((void*)common_imul8, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_8, true);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_M(op, DYN_8bit, &DynamicData::imulReg, false, getTmpReg());
 }
 void DynamicData::dynamic_mulR16(DecodedOp* op) {
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_16bit);
-        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
-        loadReg(op->reg, DYN_SRC, DYN_16bit);
-        movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-        imulRegReg(DYN_DEST, DYN_SRC, DYN_32bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-        shrRegImm(DYN_DEST, DYN_32bit, 16);
-        storeReg(2, DYN_DEST, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_mul16, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_16, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_16bit, &DynamicData::mulReg, false);
 }
-void DynamicData::dynamic_mulE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_16bit);
-        movToRegFromReg(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
-        movToRegFromReg(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, false);
-        imulRegReg(DYN_DEST, DYN_CALL_RESULT, DYN_32bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-        shrRegImm(DYN_DEST, DYN_32bit, 16);
-        storeReg(2, DYN_DEST, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_mul16, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+void DynamicData::dynamic_mulE16(DecodedOp* op) {    
+    dynamic_M(op, DYN_16bit, &DynamicData::mulReg, false, getTmpReg());
 }
 void DynamicData::dynamic_imulR16(DecodedOp* op) {
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_16bit);
-        movToRegFromRegSignExtend(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
-        loadReg(op->reg, DYN_SRC, DYN_16bit);
-        movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-        imulRegReg(DYN_DEST, DYN_SRC, DYN_32bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-        shrRegImm(DYN_DEST, DYN_32bit, 16);
-        storeReg(2, DYN_DEST, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_imul16, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_16, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_16bit, &DynamicData::imulReg, false);
 }
 void DynamicData::dynamic_imulE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_DEST, DYN_16bit);
-        movToRegFromRegSignExtend(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
-        movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, false);
-        imulRegReg(DYN_DEST, DYN_SRC, DYN_32bit, true);
-        storeReg(0, DYN_DEST, DYN_16bit, false);
-        shrRegImm(DYN_DEST, DYN_32bit, 16);
-        storeReg(2, DYN_DEST, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_imul16, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_M(op, DYN_16bit, &DynamicData::imulReg, false, getTmpReg());
 }
 void DynamicData::dynamic_mulR32(DecodedOp* op) {
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_CALL_RESULT, DYN_32bit);
-        if (op->reg == 0) {
-            mulRegReg64(DYN_DEST, DYN_CALL_RESULT, DYN_CALL_RESULT, false);
-        } else {
-            loadReg(op->reg, DYN_SRC, DYN_32bit);
-            mulRegReg64(DYN_DEST, DYN_CALL_RESULT, DYN_SRC, true);
-        }
-        storeReg(0, DYN_CALL_RESULT, DYN_32bit, true);
-        storeReg(2, DYN_DEST, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_mul32, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_32bit, &DynamicData::mulReg, false);
 }
 void DynamicData::dynamic_mulE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        movToRegFromReg(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, true);
-        loadReg(0, DYN_CALL_RESULT, DYN_32bit);
-        mulRegReg64(DYN_DEST, DYN_CALL_RESULT, DYN_SRC, true);
-        storeReg(0, DYN_CALL_RESULT, DYN_32bit, true);
-        storeReg(2, DYN_DEST, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_mul32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_M(op, DYN_32bit, &DynamicData::mulReg, false, getTmpReg());
 }
 void DynamicData::dynamic_imulR32(DecodedOp* op) {
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        loadReg(0, DYN_CALL_RESULT, DYN_32bit);
-        if (op->reg == 0) {
-            imulRegReg64(DYN_DEST, DYN_CALL_RESULT, DYN_CALL_RESULT, false);
-        } else {
-            loadReg(op->reg, DYN_SRC, DYN_32bit);
-            imulRegReg64(DYN_DEST, DYN_CALL_RESULT, DYN_SRC, true);
-        }
-        storeReg(0, DYN_CALL_RESULT, DYN_32bit, true);
-        storeReg(2, DYN_DEST, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_imul32, false, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_R(op, DYN_32bit, &DynamicData::imulReg, false);
 }
 void DynamicData::dynamic_imulE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        movToRegFromReg(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, true);
-        loadReg(0, DYN_CALL_RESULT, DYN_32bit);
-        imulRegReg64(DYN_DEST, DYN_CALL_RESULT, DYN_SRC, true);
-        storeReg(0, DYN_CALL_RESULT, DYN_32bit, true);
-        storeReg(2, DYN_DEST, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_imul32, false, 2, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true);
-        currentLazyFlags = FLAGS_NONE;
-    }
-    incrementEip(op->len);
+    dynamic_M(op, DYN_32bit, &DynamicData::imulReg, false, getTmpReg());
 }
 
-static void dynamic_prepareException(CPU* cpu, int code, int error) {
+static void dynamic_prepareException(CPU* cpu, U32 code, U32 error) {
     common_prepareException(cpu, code, error);
     cpu->nextOp = cpu->getNextOp();
 }
 
-void DynamicData::div8(DecodedOp* op, DynReg src, bool isSigned, InstDiv callback) {
+void DynamicData::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callback) {
     /*
     if (src == 0) {
         cpu->prepareException(EXCEPTION_DIVIDE, 0);
@@ -660,37 +510,47 @@ void DynamicData::div8(DecodedOp* op, DynReg src, bool isSigned, InstDiv callbac
     AH = rem;
     return 1;
     */
-    IfNot(src, false);
-        callHostFunction((void*)dynamic_prepareException, true, 3, 0, DYN_PARAM_CPU, false, EXCEPTION_DIVIDE, DYN_PARAM_CONST_32, false, 0, DYN_PARAM_CONST_32, false);
+    IfNot(DYN_8bit, src);
+        call(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
         blockExit();
     EndIf();
-    loadReg(0, DYN_CALL_RESULT, DYN_16bit);
-    (this->*callback)(DYN_CALL_RESULT, src, DYN_DEST, DYN_16bit);    
-    movToRegFromReg(DYN_ADDRESS, DYN_32bit, (DynReg)4, DYN_8bit, false);
+
+    // this code is fragile, the order of creating the tmps here matters for the x86 JIT implementation
+    RegPtr eax = getTmpRegForCallResult();
+    mov(DYN_16bit, eax, getReadOnlyReg(0));
+    RegPtr remainder = getTmpReg();
+    RegPtr tmp = getTmpReg();    
+
+    // do 16-bit div instead of 8-bit so that we can detect the overflow and generate an exception
+    (this->*callback)(DYN_16bit, eax, src, remainder);
+
+    xorReg(DYN_32bit, tmp, tmp, false);
+    mov8(tmp, false, eax, true);
+
     if (isSigned) {
-        If(DYN_ADDRESS, false);
-            subRegImm(DYN_ADDRESS, DYN_32bit, 0xff);
-            If(DYN_ADDRESS, true);
-                callHostFunction((void*)dynamic_prepareException, true, 3, 0, DYN_PARAM_CPU, false, EXCEPTION_DIVIDE, DYN_PARAM_CONST_32, false, 0, DYN_PARAM_CONST_32, false);
+        If(DYN_32bit, tmp);
+            subValue(DYN_32bit, tmp, 0xff, false);
+            If(DYN_32bit, tmp);
+                call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
                 blockExit();
             EndIf();
         EndIf();
-    } else {                
-        If(DYN_ADDRESS, true);
-            callHostFunction((void*)dynamic_prepareException, true, 3, 0, DYN_PARAM_CPU, false, EXCEPTION_DIVIDE, DYN_PARAM_CONST_32, false, 0, DYN_PARAM_CONST_32, false);
+    } else {
+        If(DYN_32bit, tmp);
+            call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
             blockExit();
         EndIf();
-    }    
-    movToRegFromReg((DynReg)4, DYN_8bit, DYN_DEST, DYN_8bit, true); // AH = rem;
-    storeReg(0, DYN_CALL_RESULT, DYN_16bit, true);
+    }
+    mov8(eax, true, remainder, false);
+    mov(DYN_16bit, getReg(0), eax);
     incrementEip(op->len);
 }
 
-void DynamicData::div16(DecodedOp* op, DynReg src, bool isSigned, InstDiv callback) {
+void DynamicData::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callback) {
     /*
     U32 num = ((U32)DX << 16) | AX;
 
-    if (src==0) {	
+    if (src==0) {
         cpu->prepareException(EXCEPTION_DIVIDE, 0);
         return 0;
     }
@@ -705,38 +565,49 @@ void DynamicData::div16(DecodedOp* op, DynReg src, bool isSigned, InstDiv callba
     AX=quo16;
     return 1;
     */
-    IfNot(src, false);
-    callHostFunction((void*)dynamic_prepareException, true, 3, 0, DYN_PARAM_CPU, false, EXCEPTION_DIVIDE, DYN_PARAM_CONST_32, false, 0, DYN_PARAM_CONST_32, false);
-    blockExit();
+    IfNot(DYN_16bit, src);
+        call(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
+        blockExit();
     EndIf();
-    loadReg(2, DYN_DEST, DYN_16bit);
-    shlRegImm(DYN_DEST, DYN_32bit, 16);
-    xorRegReg(DYN_CALL_RESULT, DYN_CALL_RESULT, DYN_32bit, false);
-    loadReg(0, DYN_CALL_RESULT, DYN_16bit);    
-    orRegReg(DYN_CALL_RESULT, DYN_DEST, DYN_32bit, true);
-    (this->*callback)(DYN_CALL_RESULT, src, DYN_DEST, DYN_32bit);
-    movToRegFromReg(DYN_ADDRESS, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, false);
-    shrRegImm(DYN_ADDRESS, DYN_32bit, 16);
+
+    // this code is fragile, the order of creating the tmps here matters for the x86 JIT implementation
+    RegPtr eax = getTmpRegForCallResult();
+    xorReg(DYN_32bit, eax, eax, false);
+    mov(DYN_16bit, eax, getReadOnlyReg(0));
+    RegPtr remainder = getTmpReg(2);
+    RegPtr tmp = getTmpReg();
+
+    // combine DX:AX into EAX for 32-bit div
+    shlValue(DYN_32bit, remainder, 16, false);    
+    orReg(DYN_32bit, eax, remainder, false);
+
+    // do 32-bit div instead of 16-bit so that we can detect the overflow and generate an exception
+    (this->*callback)(DYN_32bit, eax, src, remainder);
+
+    mov(DYN_32bit, tmp, eax);
+    shrValue(DYN_32bit, tmp, 16, false);
+
     if (isSigned) {
-        If(DYN_ADDRESS, false);
-            subRegImm(DYN_ADDRESS, DYN_32bit, 0xffff);
-            If(DYN_ADDRESS, true);
-                callHostFunction((void*)dynamic_prepareException, true, 3, 0, DYN_PARAM_CPU, false, EXCEPTION_DIVIDE, DYN_PARAM_CONST_32, false, 0, DYN_PARAM_CONST_32, false);
+        If(DYN_32bit, tmp);
+            subValue(DYN_32bit, tmp, 0xffff, false);
+            If(DYN_32bit, tmp);
+                call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
                 blockExit();
             EndIf();
         EndIf();
     } else {
-        If(DYN_ADDRESS, true);
-            callHostFunction((void*)dynamic_prepareException, true, 3, 0, DYN_PARAM_CPU, false, EXCEPTION_DIVIDE, DYN_PARAM_CONST_32, false, 0, DYN_PARAM_CONST_32, false);
+        If(DYN_32bit, tmp);
+            call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
             blockExit();
         EndIf();
     }
-    storeReg(0, DYN_CALL_RESULT, DYN_16bit, true);
-    storeReg(2, DYN_DEST, DYN_16bit, true);
+    tmp = nullptr;
+    mov(DYN_16bit, getReg(0), eax);
+    mov(DYN_16bit, getReg(2), remainder);
     incrementEip(op->len);
 }
 
-void DynamicData::div32(DecodedOp* op, DynReg src, InstDiv callback, std::function<void()> fallback) {
+void DynamicData::div32(DecodedOp* op, RegPtr src, InstDiv2 callback, std::function<void()> fallback) {
     /*
     U64 num = ((U64)EDX << 32) | EAX;
 
@@ -756,200 +627,143 @@ void DynamicData::div32(DecodedOp* op, DynReg src, InstDiv callback, std::functi
     EAX=quo32;
     return 1;
     */
-    IfNot(src, false);
-        callHostFunction((void*)dynamic_prepareException, true, 3, 0, DYN_PARAM_CPU, false, EXCEPTION_DIVIDE, DYN_PARAM_CONST_32, false, 0, DYN_PARAM_CONST_32, false);
+    IfNot(DYN_32bit, src);
+        call(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
         blockExit();
     EndIf();
-    loadReg(2, DYN_DEST, DYN_32bit);
-    If(DYN_DEST, true);
+    
+    RegPtr remainder = getReadOnlyReg(2, false, 2); // read only because in the fallback scenario, we don't want to write it back
+    // only take the inline path if we are guaranteed it won't overflow
+    If(DYN_32bit, remainder);
         fallback();
     StartElse();
-        loadReg(0, DYN_CALL_RESULT, DYN_32bit);
-        (this->*callback)(DYN_CALL_RESULT, src, DYN_DEST, DYN_32bit);
-        storeReg(0, DYN_CALL_RESULT, DYN_32bit, true);
-        storeReg(2, DYN_DEST, DYN_32bit, true);        
+#ifdef BOXEDWINE_DYNAMIC32
+        RegPtr eax = getTmpRegForCallResult();        
+        mov(DYN_32bit, eax, getReadOnlyReg(0));
+        (this->*callback)(DYN_32bit, eax, src, remainder);
+        mov(DYN_32bit, getReg(0), eax);
+        mov(DYN_32bit, getReg(2), remainder);
+#else
+        RegPtr eax = getReg(0);
+        (this->*callback)(DYN_32bit, eax, src, remainder);
+#endif
     EndIf();
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_divR8(DecodedOp* op) {        
-    loadReg(op->reg, DYN_SRC, DYN_8bit);
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
-    div8(op, DYN_SRC, false, &DynamicData::divRegRegWithRemainder);
+void DynamicData::dynamic_divR8(DecodedOp* op) {
+    RegPtr src = getTmpReg8(op->reg);
+    movzx(DYN_32bit, src, DYN_8bit, src);
+    div8(op, src, false, &DynamicData::divRegRegWithRemainder2);
 }
 void DynamicData::dynamic_divE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_8bit, true);
-    div8(op, DYN_SRC, false, &DynamicData::divRegRegWithRemainder);
+    // getTmpReg to help x86 JIT, so that its tmp EAX hardware reg is still available for the div
+    RegPtr src = read(DYN_8bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    movzx(DYN_32bit, src, DYN_8bit, src);
+    div8(op, src, false, &DynamicData::divRegRegWithRemainder2);
 }
-
 void DynamicData::dynamic_idivR8(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_8bit);
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_8bit, false);
-    div8(op, DYN_SRC, true, &DynamicData::idivRegRegWithRemainder);
+    RegPtr src = getTmpReg8(op->reg);
+    movsx(DYN_32bit, src, DYN_8bit, src);
+    div8(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
 void DynamicData::dynamic_idivE8(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_8bit, DYN_ADDRESS, true);
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_8bit, true);
-    div8(op, DYN_SRC, true, &DynamicData::idivRegRegWithRemainder);
+    RegPtr src = read(DYN_8bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    movsx(DYN_32bit, src, DYN_8bit, src);
+    div8(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
 void DynamicData::dynamic_divR16(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_16bit);
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-    div16(op, DYN_SRC, false, &DynamicData::divRegRegWithRemainder);
+    RegPtr src = getTmpReg(op->reg);
+    movzx(DYN_32bit, src, DYN_16bit, src);
+    div16(op, src, false, &DynamicData::divRegRegWithRemainder2);
 }
 void DynamicData::dynamic_divE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, true);
-    div16(op, DYN_SRC, false, &DynamicData::divRegRegWithRemainder);
+    // getTmpReg to help x86 JIT, so that its tmp EAX hardware reg is still available for the div
+    RegPtr src = read(DYN_16bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    movzx(DYN_32bit, src, DYN_16bit, src);
+    div16(op, src, false, &DynamicData::divRegRegWithRemainder2);
 }
 void DynamicData::dynamic_idivR16(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_16bit);
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-    div16(op, DYN_SRC, true, &DynamicData::idivRegRegWithRemainder);
+    RegPtr src = getTmpReg(op->reg);
+    movsx(DYN_32bit, src, DYN_16bit, src);
+    div16(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
 void DynamicData::dynamic_idivE16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, true);
-    div16(op, DYN_SRC, true, &DynamicData::idivRegRegWithRemainder);
+    RegPtr src = read(DYN_16bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    movsx(DYN_32bit, src, DYN_16bit, src);
+    div16(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
 void DynamicData::dynamic_divR32(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_32bit);
-    div32(op, DYN_SRC, &DynamicData::divRegRegWithRemainder, [op, this]() {
-        callHostFunction((void*)::div32, true, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
-        IfNot(DYN_CALL_RESULT, true);
+    div32(op, getReadOnlyReg(op->reg), &DynamicData::divRegRegWithRemainder2, [op, this]() {
+        RegPtr result = callAndReturn(::div32, DYN_32bit, getReadOnlyReg(op->reg));
+        IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();
     });
 }
 void DynamicData::dynamic_divE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS); 
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, true);
-    div32(op, DYN_SRC, &DynamicData::divRegRegWithRemainder, [op, this]() {
-        callHostFunction((void*)::div32, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, false);
-        IfNot(DYN_CALL_RESULT, true);
+    RegPtr src = read(DYN_32bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    div32(op, src, &DynamicData::divRegRegWithRemainder2, [op, src, this]() {
+        RegPtr result = callAndReturn(::div32, DYN_32bit, src);
+        IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();
     });
 }
 void DynamicData::dynamic_idivR32(DecodedOp* op) {
-    loadReg(op->reg, DYN_SRC, DYN_32bit);
-    div32(op, DYN_SRC, &DynamicData::idivRegRegWithRemainder, [op, this]() {
-        callHostFunction((void*)idiv32, true, 2, 0, DYN_PARAM_CPU, false, op->reg, DYN_PARAM_CPU_REG_32, false);
-        IfNot(DYN_CALL_RESULT, true);
+    div32(op, getReadOnlyReg(op->reg), &DynamicData::idivRegRegWithRemainder2, [op, this]() {
+        RegPtr result = callAndReturn(::idiv32, DYN_32bit, getReadOnlyReg(op->reg));
+        IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();
     });
 }
 void DynamicData::dynamic_idivE32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_SRC, DYN_32bit, DYN_CALL_RESULT, DYN_32bit, true);
-    div32(op, DYN_SRC, &DynamicData::idivRegRegWithRemainder, [op, this]() {
-        callHostFunction((void*)idiv32, true, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, false);
-        IfNot(DYN_CALL_RESULT, true);
+    RegPtr src = read(DYN_32bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    div32(op, src, &DynamicData::idivRegRegWithRemainder2, [op, src, this]() {
+        RegPtr result = callAndReturn(::idiv32, DYN_32bit, src);
+        IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();
     });
 }
 void DynamicData::dynamic_dimulcr16r16(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_16bit);
-    if (!(op->needsToSetFlags(cpu) & (CF|OF))) {
-        imulRegImm(DYN_SRC, DYN_16bit, op->imm);
-        storeReg(op->reg, DYN_SRC, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_16, true, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRRI, we don't want the sync back to happen until after imulRRI
+    imulRRI(DYN_16bit, dest, getReadOnlyReg(op->rm), op->imm, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulcr16e16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        imulRegImm(DYN_CALL_RESULT, DYN_16bit, op->imm);
-        storeReg(op->reg, DYN_CALL_RESULT, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, op->imm, DYN_PARAM_CONST_16, false, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRRI, we don't want the sync back to happen until after imulRRI
+    imulRRI(DYN_16bit, dest, read(DYN_16bit, calculateEaa2(op)), op->imm, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulcr32r32(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        imulRegImm(DYN_SRC, DYN_32bit, op->imm);
-        storeReg(op->reg, DYN_SRC, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRRI, we don't want the sync back to happen until after imulRRI
+    imulRRI(DYN_32bit, dest, getReadOnlyReg(op->rm), op->imm, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulcr32e32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        imulRegImm(DYN_CALL_RESULT, DYN_32bit, op->imm);
-        storeReg(op->reg, DYN_CALL_RESULT, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, op->imm, DYN_PARAM_CONST_32, false, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRRI, we don't want the sync back to happen until after imulRRI
+    imulRRI(DYN_32bit, dest, read(DYN_32bit, calculateEaa2(op)), op->imm, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr16r16(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_16bit);
-    loadReg(op->reg, DYN_DEST, DYN_16bit);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        imulRegReg(DYN_DEST, DYN_SRC, DYN_16bit, true);
-        storeReg(op->reg, DYN_DEST, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_16, true, DYN_SRC, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRR, we don't want the sync back to happen until after imulRRI
+    imulRR(DYN_16bit, dest, getReadOnlyReg(op->rm), true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr16e16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    loadReg(op->reg, DYN_SRC, DYN_16bit);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        imulRegReg(DYN_SRC, DYN_CALL_RESULT, DYN_16bit, true);
-        storeReg(op->reg, DYN_SRC, DYN_16bit, true);
-    } else {
-        callHostFunction((void*)common_dimul16, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, DYN_SRC, DYN_PARAM_REG_16, true, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRR, we don't want the sync back to happen until after imulRRI
+    imulRR(DYN_16bit, dest, read(DYN_16bit, calculateEaa2(op)), true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr32r32(DecodedOp* op) {
-    loadReg(op->rm, DYN_SRC, DYN_32bit);
-    loadReg(op->reg, DYN_DEST, DYN_32bit);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        imulRegReg(DYN_DEST, DYN_SRC, DYN_32bit, true);
-        storeReg(op->reg, DYN_DEST, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_DEST, DYN_PARAM_REG_32, true, DYN_SRC, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRR, we don't want the sync back to happen until after imulRRI
+    imulRR(DYN_32bit, dest, getReadOnlyReg(op->rm), true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr32e32(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true);
-    loadReg(op->reg, DYN_DEST, DYN_32bit);
-    if (!(op->needsToSetFlags(cpu) & (CF | OF))) {
-        imulRegReg(DYN_DEST, DYN_CALL_RESULT, DYN_32bit, true);
-        storeReg(op->reg, DYN_DEST, DYN_32bit, true);
-    } else {
-        callHostFunction((void*)common_dimul32, false, 4, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, DYN_DEST, DYN_PARAM_REG_32, true, op->reg, DYN_PARAM_CONST_32, false);
-        currentLazyFlags = FLAGS_NONE;
-    }
+    RegPtr dest = getReg(op->reg); // don't inline with imulRR, we don't want the sync back to happen until after imulRRI
+    imulRR(DYN_32bit, dest, read(DYN_32bit, calculateEaa2(op)), true);
     incrementEip(op->len);
 }

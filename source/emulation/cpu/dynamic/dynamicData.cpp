@@ -88,11 +88,15 @@ void DynamicData::pushParam(std::vector<DynParam>& params, DynWidth width, RegPt
     }
 }
 
-void DynamicData::callAndReturn(RegPtr result, void* address, DynWidth width, RegPtr reg) {
+RegPtr DynamicData::callAndReturn(void* address, DynWidth width, RegPtr reg, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(DYN_PARAM_CPU));
     pushParam(params, width, reg);
-    callHostFunctionWithResult(result, address, params);
+    if (!resultReg) {
+        resultReg = getTmpRegForCallResult();
+    }
+    callHostFunctionWithResult(resultReg, address, params);
+    return resultReg;
 }
 
 void DynamicData::call(void* address, DynWidth width, RegPtr reg, DynWidth width2, RegPtr reg2) {
@@ -100,6 +104,49 @@ void DynamicData::call(void* address, DynWidth width, RegPtr reg, DynWidth width
     params.push_back(DynParam(DYN_PARAM_CPU));
     pushParam(params, width, reg);
     pushParam(params, width2, reg2);
+    callHostFunction(address, params);
+}
+
+void DynamicData::call(CallII address, U32 value1, U32 value2) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value1));
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value2));
+    callHostFunction(address, params);
+}
+
+void DynamicData::call(CallRI address, DynWidth width, RegPtr reg, U32 value) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    pushParam(params, width, reg);
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value));
+    callHostFunction(address, params);
+}
+
+RegPtr DynamicData::callAndReturn(CallReturnIR address, U32 value, DynWidth width, RegPtr reg) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value));
+    pushParam(params, width, reg);
+    RegPtr result = getTmpRegForCallResult();
+    callHostFunctionWithResult(result, address, params);
+    return result;
+}
+
+RegPtr DynamicData::callAndReturn(CallReturnII address, U32 value1, U32 value2) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value1));
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value2));
+    RegPtr result = getTmpRegForCallResult();
+    callHostFunctionWithResult(result, address, params);
+    return result;
+}
+
+void DynamicData::call(CallR address, DynWidth width, RegPtr reg) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    pushParam(params, width, reg);
     callHostFunction(address, params);
 }
 
