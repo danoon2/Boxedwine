@@ -1353,12 +1353,12 @@ U32 common_pop32(CPU* cpu) {
     return cpu->pop32();
 }
 
-U16 common_pop16(CPU* cpu) {
+U32 common_pop16(CPU* cpu) {
     return cpu->pop16();
 }
 
-void common_push16(CPU* cpu, U16 value) {
-    cpu->push16(value);
+void common_push16(CPU* cpu, U32 value) {
+    cpu->push16((U16)value);
 }
 
 void common_push32(CPU* cpu, U32 value) {

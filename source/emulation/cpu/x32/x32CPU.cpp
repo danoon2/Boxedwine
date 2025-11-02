@@ -57,8 +57,11 @@ public:
     RegPtr getTmpReg(U8 reg, bool delayed = false, S8 hint = -1) override;
     RegPtr getTmpReg8(U8 reg, bool delayed = false, S8 hint = -1) override;
     RegPtr getTmpRegForCallResult() override;
-    RegPtr getSegAddress(U8 reg) override;
-    RegPtr getSegValue(U8 reg) override;
+    RegPtr getReadOnlySegAddress(U8 reg) override;
+    RegPtr getTmpSegAddress(U8 reg) override;
+    RegPtr getReadOnlySegValue(U8 reg) override;
+    RegPtr getTmpEip() override;
+    RegPtr getEip(bool load = true) override;
 
     U8 findTmpReg(S8 hint = -1);
     void updateFlagsIfNecessary();
@@ -70,9 +73,10 @@ public:
     void write(DynWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) override;
     void write(DynWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) override;
 
-    void IfLessThan2(DynWidth regWidth, RegPtr reg, U32 value) override;
+    void IfSmallStack(bool bigJump = false) override;
+    void IfLessThan2(DynWidth regWidth, RegPtr reg, U32 value, bool bigJump = false) override;
     void IfNot(DynWidth regWidth, RegPtr reg) override;
-    void If(DynWidth regWidth, RegPtr reg) override;
+    void If(DynWidth regWidth, RegPtr reg, bool bigJump = false) override;
     void IfEqual(DynWidth regWidth, RegPtr reg, U32 value) override;
     void IfBitSet2(DynWidth regWidth, RegPtr reg, U32 value, bool bigJump = false) override;
     void IfFlagSet(U32 flags);
@@ -133,6 +137,8 @@ public:
     void imulReg(DynWidth regWidth, RegPtr reg, bool checkFlags) override;
     void imulRRI(DynWidth regWidth, RegPtr dst, RegPtr src, U32 src2, bool checkFlags) override;
     void imulRR(DynWidth regWidth, RegPtr dst, RegPtr src, bool checkFlags) override;    
+    void xaddReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) override;
+    void byteSwapReg32(RegPtr reg) override;
 
     std::array<bool, 8> regUsed2;
     DecodedOp* currentOp = nullptr;
@@ -180,8 +186,7 @@ public:
     void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) override;
     void movToReg(DynReg reg, DynWidth width, U32 imm) override;
     void calculateEaa(DecodedOp* op, DynReg reg) override;
-    void pushValue(U32 arg, DynCallParamType argType) override;
-    void byteSwapReg32(DynReg reg) override;
+    void pushValue(U32 arg, DynCallParamType argType) override;    
     void zeroExtendReg16To32(DynReg dest, DynReg src) override;
     void JumpIf(DynReg reg, bool doneWithReg, U32 address) override;
     void JumpIfNot(DynReg reg, bool doneWithReg, U32 address) override;
@@ -721,13 +726,35 @@ RegPtr X86DynamicCodeGen::getTmpReg8(U8 reg, bool delayed, S8 hint) {
     return result;
 }
 
-RegPtr X86DynamicCodeGen::getSegAddress(U8 reg) {
+RegPtr X86DynamicCodeGen::getTmpEip() {
+    RegPtr result = getTmpReg();
+    x86.readMem(X86Asm::Reg32(result->hardwareReg()), x86.edi, offsetof(CPU, eip.u32));
+    return result;
+}
+
+RegPtr X86DynamicCodeGen::getEip(bool load) {
+    RegPtr result = std::shared_ptr<DynReg2>(new DynReg2(findTmpReg(), 0xff), [this](DynReg2* p) {
+        x86.writeMem(x86.edi, offsetof(CPU, eip.u32), X86Asm::Reg32(p->hardwareReg()));
+        regUsed2[p->hardwareReg()] = false;
+        delete p;
+        });
+    if (load) {
+        x86.readMem(X86Asm::Reg32(result->hardwareReg()), x86.edi, offsetof(CPU, eip.u32));
+    }
+    return result;
+}
+
+RegPtr X86DynamicCodeGen::getTmpSegAddress(U8 reg) {
+    return getReadOnlySegAddress(reg);
+}
+
+RegPtr X86DynamicCodeGen::getReadOnlySegAddress(U8 reg) {
     RegPtr result = getTmpReg();
     x86.readMem(X86Asm::Reg32(result->hardwareReg()), x86.edi, CPU::offsetofSegAddress(reg));
     return result;
 }
 
-RegPtr X86DynamicCodeGen::getSegValue(U8 reg) {
+RegPtr X86DynamicCodeGen::getReadOnlySegValue(U8 reg) {
     RegPtr result = getTmpReg();
     x86.readMem(X86Asm::Reg32(result->hardwareReg()), x86.edi, CPU::offsetofSegValue(reg));
     return result;
@@ -744,9 +771,7 @@ RegPtr X86DynamicCodeGen::getReg(U8 reg, S8 hint) {
     } else {        
         RegPtr result = std::shared_ptr<DynReg2>(new DynReg2(findTmpReg(hint), reg), [this](DynReg2* p) {
             x86.writeMem(x86.edi, CPU::offsetofReg32(p->emulatedReg), X86Asm::Reg32(p->hardwareReg()));
-            if (p->isLoaded()) {
-                regUsed2[p->hardwareReg()] = false;
-            }
+            regUsed2[p->hardwareReg()] = false;
             delete p;
             });
         x86.readMem(X86Asm::Reg32(result->hardwareReg()), x86.edi, CPU::offsetofReg32(reg));
@@ -856,13 +881,19 @@ U8 get8bitReg(RegPtr reg) {
     return reg->hardwareReg();
 }
 
-void X86DynamicCodeGen::IfLessThan2(DynWidth regWidth, RegPtr reg, U32 value) {
+void X86DynamicCodeGen::IfSmallStack(bool bigJump) {
+    RegPtr reg = getTmpReg();
+    x86.readMem(X86Asm::Reg32(reg->hardwareReg()), x86.edi, offsetof(CPU, stackNotMask));
+    If(DYN_32bit, reg, bigJump);
+}
+
+void X86DynamicCodeGen::IfLessThan2(DynWidth regWidth, RegPtr reg, U32 value, bool bigJump) {
     if (regWidth == DYN_32bit) {
-        x86.IfLessThan(X86Asm::Reg32(reg->hardwareReg()), value);
+        x86.IfLessThan(X86Asm::Reg32(reg->hardwareReg()), value, bigJump);
     } else if (regWidth == DYN_16bit) {
-        x86.IfLessThan(X86Asm::Reg16(reg->hardwareReg()), (U16)value);
+        x86.IfLessThan(X86Asm::Reg16(reg->hardwareReg()), (U16)value, bigJump);
     } else if (regWidth == DYN_8bit) {
-        x86.IfLessThan(X86Asm::Reg8(get8bitReg(reg)), (U8)value);
+        x86.IfLessThan(X86Asm::Reg8(get8bitReg(reg)), (U8)value, bigJump);
     } else {
         kpanic_fmt("X86DynamicCodeGen::IfNot unexpected width: %d", (U32)regWidth);
     }
@@ -880,13 +911,13 @@ void X86DynamicCodeGen::IfNot(DynWidth regWidth, RegPtr reg) {
     }
 }
 
-void X86DynamicCodeGen::If(DynWidth regWidth, RegPtr reg) {
+void X86DynamicCodeGen::If(DynWidth regWidth, RegPtr reg, bool bigJump) {
     if (regWidth == DYN_32bit) {
-        x86.IfNotZero(X86Asm::Reg32(reg->hardwareReg()));
+        x86.IfNotZero(X86Asm::Reg32(reg->hardwareReg()), bigJump);
     } else if (regWidth == DYN_16bit) {
-        x86.IfNotZero(X86Asm::Reg16(reg->hardwareReg()));
+        x86.IfNotZero(X86Asm::Reg16(reg->hardwareReg()), bigJump);
     } else if (regWidth == DYN_8bit) {
-        x86.IfNotZero(X86Asm::Reg8(get8bitReg(reg)));
+        x86.IfNotZero(X86Asm::Reg8(get8bitReg(reg)), bigJump);
     } else {
         kpanic_fmt("X86DynamicCodeGen::If unexpected width: %d", (U32)regWidth);
     }
@@ -1381,6 +1412,22 @@ void X86DynamicCodeGen::write(DynWidth width, RegPtr reg, RegPtr sib, U8 lsl, U3
         x86.writeMem(X86Asm::Reg32(reg->hardwareReg()), X86Asm::Reg32(sib->hardwareReg()), lsl, disp, X86Asm::Reg8(get8bitReg(src)));
     } else {
         kpanic_fmt("X86DynamicCodeGen::write unexpected width: %d", (U32)width);
+    }
+}
+
+void X86DynamicCodeGen::xaddReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) {
+    if (regWidth == DYN_32bit) {
+        x86.xadd(X86Asm::Reg32(rm->hardwareReg()), X86Asm::Reg32(reg->hardwareReg()));
+    } else if (regWidth == DYN_16bit) {
+        x86.xadd(X86Asm::Reg16(rm->hardwareReg()), X86Asm::Reg16(reg->hardwareReg()));
+    } else if (regWidth == DYN_8bit) {
+        x86.xadd(X86Asm::Reg8(get8bitReg(rm)), X86Asm::Reg8(get8bitReg(reg)));
+    } else {
+        kpanic("X86DynamicCodeGen::xaddReg");
+    }
+    if (checkFlags) {
+        rm = nullptr; // if there is only one reference then letting go of it could help updateFlagsIfNecessary
+        updateFlagsIfNecessary();
     }
 }
 
@@ -4207,8 +4254,8 @@ void X86DynamicCodeGen::calculateEaa(DecodedOp* op, DynReg reg) {
     }
 }
 
-void X86DynamicCodeGen::byteSwapReg32(DynReg reg) {
-    x86.bswap(reg);
+void X86DynamicCodeGen::byteSwapReg32(RegPtr reg) {
+    x86.bswap(X86Asm::Reg32(reg->hardwareReg()));
 }
 
 void X86DynamicCodeGen::movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) {

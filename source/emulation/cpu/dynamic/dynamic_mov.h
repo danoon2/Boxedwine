@@ -77,21 +77,21 @@ void DynamicData::dynamic_move32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr16s16(DecodedOp* op) {
-    mov(DYN_16bit, getReg(op->reg), getSegValue(op->rm));
+    mov(DYN_16bit, getReg(op->reg), getReadOnlySegValue(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movr32s16(DecodedOp* op) {
-    mov(DYN_32bit, getReg(op->reg), getSegValue(op->rm));
+    mov(DYN_32bit, getReg(op->reg), getReadOnlySegValue(op->rm));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_move16s16(DecodedOp* op) {
-    write(DYN_16bit, calculateEaa2(op), getSegValue(op->reg));
+    write(DYN_16bit, calculateEaa2(op), getReadOnlySegValue(op->reg));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movs16e16(DecodedOp* op) {
     cpu->thread->process->hasSetSeg[op->reg] = true;
     // the weird getTmpReg is to override the behavior of read, to make it not use getTmpRegForCallResult so that EAX is available to use for callAndReturn
-    RegPtr result = callAndReturn(common_setSegment, op->reg, DYN_16bit, read(DYN_16bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg()));
+    RegPtr result = callAndReturn_IR(common_setSegment, op->reg, DYN_16bit, read(DYN_16bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg()));
     IfNot(DYN_32bit, result);
         blockDone(true);
     EndIf();
@@ -99,7 +99,7 @@ void DynamicData::dynamic_movs16e16(DecodedOp* op) {
 }
 void DynamicData::dynamic_movs16r16(DecodedOp* op) {
     cpu->thread->process->hasSetSeg[op->reg] = true;
-    RegPtr result = callAndReturn(common_setSegment, op->rm, DYN_16bit, getReadOnlyReg(op->reg));
+    RegPtr result = callAndReturn_IR(common_setSegment, op->rm, DYN_16bit, getReadOnlyReg(op->reg));
     IfNot(DYN_32bit, result);
         blockDone(true);
     EndIf();
@@ -108,7 +108,7 @@ void DynamicData::dynamic_movs16r16(DecodedOp* op) {
 void DynamicData::dynamic_movAlOb(DecodedOp* op) {    
     RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getSegAddress(op->base);
+        reg = getTmpSegAddress(op->base);
         addValue(DYN_32bit, reg, op->data.disp, false);
     } else {
         reg = getTmpReg();
@@ -120,7 +120,7 @@ void DynamicData::dynamic_movAlOb(DecodedOp* op) {
 void DynamicData::dynamic_movAxOw(DecodedOp* op) {
     RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getSegAddress(op->base);
+        reg = getTmpSegAddress(op->base);
         addValue(DYN_32bit, reg, op->data.disp, false);
     } else {
         reg = getTmpReg();
@@ -132,7 +132,7 @@ void DynamicData::dynamic_movAxOw(DecodedOp* op) {
 void DynamicData::dynamic_movEaxOd(DecodedOp* op) {
     RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getSegAddress(op->base);
+        reg = getTmpSegAddress(op->base);
         addValue(DYN_32bit, reg, op->data.disp, false);
     } else {
         reg = getTmpReg();
@@ -144,7 +144,7 @@ void DynamicData::dynamic_movEaxOd(DecodedOp* op) {
 void DynamicData::dynamic_movObAl(DecodedOp* op) {
     RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getSegAddress(op->base);
+        reg = getTmpSegAddress(op->base);
         addValue(DYN_32bit, reg, op->data.disp, false);
     } else {
         reg = getTmpReg();
@@ -156,7 +156,7 @@ void DynamicData::dynamic_movObAl(DecodedOp* op) {
 void DynamicData::dynamic_movOwAx(DecodedOp* op) {
     RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getSegAddress(op->base);
+        reg = getTmpSegAddress(op->base);
         addValue(DYN_32bit, reg, op->data.disp, false);
     } else {
         reg = getTmpReg();
@@ -168,7 +168,7 @@ void DynamicData::dynamic_movOwAx(DecodedOp* op) {
 void DynamicData::dynamic_movOdEax(DecodedOp* op) {
     RegPtr reg;
     if (cpu->thread->process->hasSetSeg[op->base]) {
-        reg = getSegAddress(op->base);
+        reg = getTmpSegAddress(op->base);
         addValue(DYN_32bit, reg, op->data.disp, false);
     } else {
         reg = getTmpReg();
@@ -226,14 +226,14 @@ void DynamicData::dynamic_movGdSxE16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movRdCRx(DecodedOp* op) {
-    RegPtr result = callAndReturn(common_readCrx, op->rm, op->reg);
+    RegPtr result = callAndReturn_II(common_readCrx, op->rm, op->reg);
     IfNot(DYN_32bit, result);
         blockDone(true);
     EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_movCRxRd(DecodedOp* op) {
-    RegPtr result = callAndReturn(common_writeCrx, op->rm, DYN_32bit, getReadOnlyReg(op->reg));
+    RegPtr result = callAndReturn_IR(common_writeCrx, op->rm, DYN_32bit, getReadOnlyReg(op->reg));
     IfNot(DYN_32bit, result);
         blockDone(true);
     EndIf();

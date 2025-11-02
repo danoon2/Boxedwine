@@ -72,32 +72,32 @@ void DynamicData::dynamic_xchge32r32(DecodedOp* op) {
 
 // I didn't see Quake 2 or Cinebench trigger these, so for now they are low priority for inlining
 void DynamicData::dynamic_cmpxchgr8r8(DecodedOp* op) {
-    call(common_cmpxchgr8r8, op->reg, op->rm);
+    call_II(common_cmpxchgr8r8, op->reg, op->rm);
     currentLazyFlags=nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge8r8(DecodedOp* op) {
-    call(common_cmpxchge8r8, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge8r8, DYN_32bit, calculateEaa2(op), op->reg);
     currentLazyFlags=nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchgr16r16(DecodedOp* op) {
-    call(common_cmpxchgr16r16, op->reg, op->rm);
+    call_II(common_cmpxchgr16r16, op->reg, op->rm);
     currentLazyFlags=nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge16r16(DecodedOp* op) {
-    call(common_cmpxchge16r16, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge16r16, DYN_32bit, calculateEaa2(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchgr32r32(DecodedOp* op) {
-    call(common_cmpxchgr32r32, op->reg, op->rm);
+    call_II(common_cmpxchgr32r32, op->reg, op->rm);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge32r32(DecodedOp* op) {
-    call(common_cmpxchge32r32, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge32r32, DYN_32bit, calculateEaa2(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }

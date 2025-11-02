@@ -217,15 +217,15 @@ bool DynamicCodeGen::calculateLongestBlock(DecodedOp* op) {
         }
         nextOp = nextOp->next;
     }
-    // find longest block where all direction jumps don't go past the block
+    // find longest block where all direct jumps don't go past the block
     U32 lastFurthestEip = eip;
     while (true) {
         nextOp = op;
         this->lastOpEip = this->startingEip;
         while (nextOp && this->lastOpEip < lastFurthestEip) {
-            if (nextOp->isDirectJumpBranch()) {
+            if (nextOp->isDirectJumpBranch() && !(nextOp->inst == Loop || nextOp->inst == LoopZ || nextOp->inst == LoopNZ || nextOp->inst == Jcxz)) {
                 U32 target = this->lastOpEip + nextOp->len + nextOp->imm;
-                if (target >= lastFurthestEip || target < this->startingEip) {
+                if (target > lastFurthestEip || target < this->startingEip) {
                     break;
                 }
             }
@@ -947,6 +947,7 @@ void DynamicCodeGen::blockNext1(DecodedOp* op) {
     jmp(DYN_CALL_RESULT);
     EndIf();
 #endif
+    blockExit();
 }
 
 void DynamicCodeGen::blockNext2(DecodedOp* op) {
@@ -976,6 +977,7 @@ void DynamicCodeGen::blockNext2(DecodedOp* op) {
     jmp(DYN_CALL_RESULT);
     EndIf();
 #endif 
+    blockExit();
 }
 
 void writed(U32 address, U32 value) {
@@ -1221,15 +1223,24 @@ void DynamicCodeGen::movFromMem(DynWidth width, DynReg addressReg, bool doneWith
     }
 }
 
-RegPtr DynamicCodeGen::calculateEaa2(DecodedOp* op, bool popEsp) {    
+RegPtr DynamicCodeGen::calculateEaa2(DecodedOp* op, U32 popEspAmount) {
     if (op->ea16) {
         // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
         RegPtr result = getTmpReg();
 
         xorReg(DYN_32bit, result, result, false); // clear top bits
 
+        if (popEspAmount && op->rm != 4 && op->sibIndex != 4) {
+            popEspAmount = 0;
+        } else if (popEspAmount && op->rm == 4 && op->sibIndex == 4) {
+            popEspAmount *= 2;
+        } else if (popEspAmount) {
+            kpanic("found sp pop");
+        }
         if (op->data.disp) {
-            movValue(DYN_16bit, result, op->data.disp);
+            movValue(DYN_16bit, result, op->data.disp + popEspAmount);
+        } else if (popEspAmount) {
+            movValue(DYN_16bit, result, popEspAmount);
         }
         if (op->rm == op->sibIndex && op->rm != 8) {
             RegPtr reg = getReadOnlyReg(op->rm);
@@ -1247,7 +1258,7 @@ RegPtr DynamicCodeGen::calculateEaa2(DecodedOp* op, bool popEsp) {
         // seg[6] is always 0
         if (op->base < 6) {
             // intentional 32-bit add
-            addReg(DYN_32bit, result, getSegAddress(op->base), false);
+            addReg(DYN_32bit, result, getReadOnlySegAddress(op->base), false);
         }
         return result;
     } else {
@@ -1280,7 +1291,7 @@ RegPtr DynamicCodeGen::calculateEaa2(DecodedOp* op, bool popEsp) {
 
         // seg[6] is always 0
         if (op->base < 6 && KThread::currentThread()->process->hasSetSeg[op->base]) {
-            addReg(DYN_32bit, result, getSegAddress(op->base), false);
+            addReg(DYN_32bit, result, getReadOnlySegAddress(op->base), false);
         }
         return result;
     }
@@ -1307,6 +1318,9 @@ RegPtr DynamicCodeGen::read(DynWidth width, RegPtr addressReg, std::function<voi
         } else if (width == DYN_128bit) {
             // if ((address & 0xFFF) < 0xFF1)
             IfLessThan2(DYN_32bit, tmp, 0xFF1);
+        } else if (width == DYN_256bit) {
+            // if ((address & 0xFFF) < 0xFE1)
+            IfLessThan2(DYN_32bit, tmp, 0xFE1);
         } else {
             kpanic_fmt("DynamicCodeGen::read unknown width %d", (U32)width);
         }
@@ -1353,7 +1367,7 @@ RegPtr DynamicCodeGen::read(DynWidth width, RegPtr addressReg, std::function<voi
     if (failedMemoryOp) {
         failedMemoryOp();
     } else {
-        void* address;
+        DynamicData::CallReturnR address;
 
         // call read
         if (width == DYN_32bit) {
@@ -1365,7 +1379,7 @@ RegPtr DynamicCodeGen::read(DynWidth width, RegPtr addressReg, std::function<voi
         } else {
             kpanic_fmt("unknown width in x32CPU::movFromMem %d", width);
         }
-        callAndReturn(address, DYN_32bit, addressReg, tmp);
+        callAndReturn_R(address, DYN_32bit, addressReg, tmp);
     }
     EndIf(isBigJump);
     return tmp;
@@ -1391,6 +1405,9 @@ void DynamicCodeGen::write(DynWidth width, RegPtr addressReg, RegPtr src, std::f
         } else if (width == DYN_128bit) {
             // if ((address & 0xFFF) < 0xFF1)
             IfLessThan2(DYN_32bit, tmp, 0xFF1);
+        } else if (width == DYN_256bit) {
+            // if ((address & 0xFFF) < 0xFE1)
+            IfLessThan2(DYN_32bit, tmp, 0xFE1);
         } else {
             kpanic_fmt("DynamicCodeGen::write unknown width %d", (U32)width);
         }
@@ -1423,7 +1440,7 @@ void DynamicCodeGen::write(DynWidth width, RegPtr addressReg, RegPtr src, std::f
     if (failedMemoryOp) {
         failedMemoryOp();
     } else {
-        void* address;
+        DynamicData::CallRR address;
 
         if (width == DYN_32bit) {
             address = writed2;
@@ -1434,7 +1451,7 @@ void DynamicCodeGen::write(DynWidth width, RegPtr addressReg, RegPtr src, std::f
         } else {
             kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
         }
-        call(address, DYN_32bit, addressReg, width, src);
+        call_RR(address, DYN_32bit, addressReg, width, src);
     }
     EndIf(isBigJump);
 }
@@ -1495,7 +1512,7 @@ void DynamicCodeGen::writeValue(DynWidth width, RegPtr addressReg, U32 imm) {
         } else {
             kpanic_fmt("unknown width in x32CPU::movToMem %d", width);
         }
-        call(address, DYN_32bit, addressReg, imm);
+        call_RI(address, DYN_32bit, addressReg, imm);
     
     EndIf();
 }
@@ -1545,18 +1562,18 @@ void DynamicCodeGen::readWriteMem(DynWidth width, RegPtr addressReg, std::functi
 
     StartElse();
 
-        void* address;
+        DynamicData::CallReturnR addressRead;
         // call read
         if (width == DYN_32bit) {
-            address = readd2;
+            addressRead = readd2;
         } else if (width == DYN_16bit) {
-            address = readw2;
+            addressRead = readw2;
         } else if (width == DYN_8bit) {
-            address = readb2;
+            addressRead = readb2;
         } else {
             kpanic("DynamicCodeGen::readWriteMem");
         }
-        callAndReturn(address, DYN_32bit, addressReg, tmpReg2);
+        callAndReturn_R(addressRead, DYN_32bit, addressReg, tmpReg2);
         xorReg(DYN_32bit, tmpReg, tmpReg, false); // so that the next if statement will also choose calling write
 
     EndIf();
@@ -1569,6 +1586,7 @@ void DynamicCodeGen::readWriteMem(DynWidth width, RegPtr addressReg, std::functi
         write(DYN_32bit, tmpReg, addressReg, 0, 0, tmpReg2);
 
     StartElse();
+        DynamicData::CallRR address;
 
         if (width == DYN_32bit) {
             address = writed2;
@@ -1577,7 +1595,7 @@ void DynamicCodeGen::readWriteMem(DynWidth width, RegPtr addressReg, std::functi
         } else if (width == DYN_8bit) {
             address = writeb2;
         }
-        call(address, DYN_32bit, addressReg, DYN_32bit, tmpReg2);
+        call_RR(address, DYN_32bit, addressReg, DYN_32bit, tmpReg2);
 
     EndIf();
 }

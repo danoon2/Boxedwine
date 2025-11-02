@@ -363,8 +363,8 @@ U32 common_condition_le(CPU* cpu);
 U32 common_condition_nle(CPU* cpu);
 
 U32 common_pop32(CPU* cpu);
-U16 common_pop16(CPU* cpu);
-void common_push16(CPU* cpu, U16 value);
+U32 common_pop16(CPU* cpu);
+void common_push16(CPU* cpu, U32 value);
 void common_push32(CPU* cpu, U32 value);
 U32 common_peek32(CPU* cpu, U32 index);
 U16 common_peek16(CPU* cpu, U32 index);

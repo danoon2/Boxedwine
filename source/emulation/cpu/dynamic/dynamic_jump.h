@@ -16,39 +16,6 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-void DynamicData::dynamic_jumpIfRegSet(DecodedOp* op, DynReg reg, bool doneWithReg) {
-    // currentEip > lastOpEip this will just if we don't jump there is a next instruction
-    if (canJumpInBlock(op)) {
-        incrementEip(op->len + op->imm);
-        JumpIf(reg, true, currentEip + op->len + op->imm);
-        incrementEip((U32)(-(S32)(op->imm)));
-    } else {
-        If(reg, doneWithReg);
-        incrementEip(op->imm + op->len);
-        blockNext1(op);
-        StartElse();
-        incrementEip(op->len);
-        blockNext2(op);
-        EndIf();
-    }
-}
-
-void DynamicData::dynamic_jumpIfRegNotSet(DecodedOp* op, DynReg reg, bool doneWithReg) {
-    if (canJumpInBlock(op)) {
-        incrementEip(op->len + op->imm);
-        JumpIfNot(reg, true, currentEip + op->len + op->imm);
-        incrementEip((U32)(-(S32)(op->imm)));
-    } else {
-        IfNot(reg, doneWithReg);
-        incrementEip(op->imm + op->len);
-        blockNext1(op);
-        StartElse();
-        incrementEip(op->len);
-        blockNext2(op);
-        EndIf();
-    }
-}
-
 void DynamicData::dynamic_jump(DecodedOp* op, DynConditional condition) {
     if (canJumpInBlock(op)) {
         incrementEip(op->len + op->imm);

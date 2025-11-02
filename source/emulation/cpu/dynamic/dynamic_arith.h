@@ -511,7 +511,7 @@ void DynamicData::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callba
     return 1;
     */
     IfNot(DYN_8bit, src);
-        call(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
+        call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
         blockExit();
     EndIf();
 
@@ -531,13 +531,13 @@ void DynamicData::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callba
         If(DYN_32bit, tmp);
             subValue(DYN_32bit, tmp, 0xff, false);
             If(DYN_32bit, tmp);
-                call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
+                call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
                 blockExit();
             EndIf();
         EndIf();
     } else {
         If(DYN_32bit, tmp);
-            call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
+            call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
             blockExit();
         EndIf();
     }
@@ -566,7 +566,7 @@ void DynamicData::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callb
     return 1;
     */
     IfNot(DYN_16bit, src);
-        call(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
+        call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
         blockExit();
     EndIf();
 
@@ -591,13 +591,13 @@ void DynamicData::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callb
         If(DYN_32bit, tmp);
             subValue(DYN_32bit, tmp, 0xffff, false);
             If(DYN_32bit, tmp);
-                call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
+                call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
                 blockExit();
             EndIf();
         EndIf();
     } else {
         If(DYN_32bit, tmp);
-            call(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
+            call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 1);
             blockExit();
         EndIf();
     }
@@ -628,7 +628,7 @@ void DynamicData::div32(DecodedOp* op, RegPtr src, InstDiv2 callback, std::funct
     return 1;
     */
     IfNot(DYN_32bit, src);
-        call(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
+        call_II(dynamic_prepareException, EXCEPTION_DIVIDE, 0);
         blockExit();
     EndIf();
     
@@ -695,7 +695,7 @@ void DynamicData::dynamic_idivE16(DecodedOp* op) {
 }
 void DynamicData::dynamic_divR32(DecodedOp* op) {
     div32(op, getReadOnlyReg(op->reg), &DynamicData::divRegRegWithRemainder2, [op, this]() {
-        RegPtr result = callAndReturn(::div32, DYN_32bit, getReadOnlyReg(op->reg));
+        RegPtr result = callAndReturn_R(::div32, DYN_32bit, getReadOnlyReg(op->reg));
         IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();
@@ -704,7 +704,7 @@ void DynamicData::dynamic_divR32(DecodedOp* op) {
 void DynamicData::dynamic_divE32(DecodedOp* op) {
     RegPtr src = read(DYN_32bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
     div32(op, src, &DynamicData::divRegRegWithRemainder2, [op, src, this]() {
-        RegPtr result = callAndReturn(::div32, DYN_32bit, src);
+        RegPtr result = callAndReturn_R(::div32, DYN_32bit, src);
         IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();
@@ -712,7 +712,7 @@ void DynamicData::dynamic_divE32(DecodedOp* op) {
 }
 void DynamicData::dynamic_idivR32(DecodedOp* op) {
     div32(op, getReadOnlyReg(op->reg), &DynamicData::idivRegRegWithRemainder2, [op, this]() {
-        RegPtr result = callAndReturn(::idiv32, DYN_32bit, getReadOnlyReg(op->reg));
+        RegPtr result = callAndReturn_RS(::idiv32, DYN_32bit, getReadOnlyReg(op->reg));
         IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();
@@ -721,7 +721,7 @@ void DynamicData::dynamic_idivR32(DecodedOp* op) {
 void DynamicData::dynamic_idivE32(DecodedOp* op) {
     RegPtr src = read(DYN_32bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
     div32(op, src, &DynamicData::idivRegRegWithRemainder2, [op, src, this]() {
-        RegPtr result = callAndReturn(::idiv32, DYN_32bit, src);
+        RegPtr result = callAndReturn_RS(::idiv32, DYN_32bit, src);
         IfNot(DYN_32bit, result);
             blockDone(true);
         EndIf();

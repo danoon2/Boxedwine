@@ -911,6 +911,25 @@ void X86Asm::rcr(Reg8 dst, U8 imm) {
     group2(3, dst, imm);
 }
 
+void X86Asm::xadd(Reg32 dst, Reg32 src) {
+    outb(0x0f);
+    outb(0xc1);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
+void X86Asm::xadd(Reg16 dst, Reg16 src) {
+    outb(0x66);
+    outb(0x0f);
+    outb(0xc1);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
+void X86Asm::xadd(Reg8 dst, Reg8 src) {
+    outb(0x0f);
+    outb(0xc0);
+    outb(0xC0 | (src.reg << 3) | dst.reg);
+}
+
 void X86Asm::add(Reg32 dst, Reg32 src) {
     outb(0x01);
     outb(0xC0 | (src.reg << 3) | dst.reg);
@@ -1888,25 +1907,49 @@ void X86Asm::ret() {
     outb(0xc3);
 }
 
-void X86Asm::IfLessThan(Reg32 reg, U32 value) {
+void X86Asm::IfLessThan(Reg32 reg, U32 value, bool bigJump) {
     cmp(reg, value);
-    outb(0x73); // jnb
-    ifJump.push_back(buffer.size());
-    outb(0); // jump over amount
+
+    if (bigJump) {
+        outb(0x0f);
+        outb(0x83); // jnb
+        ifJump.push_back(buffer.size());
+        outd(0); // jump over amount
+    } else {
+        outb(0x73); // jnb
+        ifJump.push_back(buffer.size());
+        outb(0); // jump over amount
+    }
 }
 
-void X86Asm::IfLessThan(Reg16 reg, U16 value) {
+void X86Asm::IfLessThan(Reg16 reg, U16 value, bool bigJump) {
     cmp(reg, value);
-    outb(0x73); // jnb
-    ifJump.push_back(buffer.size());
-    outb(0); // jump over amount
+
+    if (bigJump) {
+        outb(0x0f);
+        outb(0x83); // jnb
+        ifJump.push_back(buffer.size());
+        outd(0); // jump over amount
+    } else {
+        outb(0x73); // jnb
+        ifJump.push_back(buffer.size());
+        outb(0); // jump over amount
+    }
 }
 
-void X86Asm::IfLessThan(Reg8 reg, U8 value) {
+void X86Asm::IfLessThan(Reg8 reg, U8 value, bool bigJump) {
     cmp(reg, value);
-    outb(0x73); // jnb
-    ifJump.push_back(buffer.size());
-    outb(0); // jump over amount
+
+    if (bigJump) {
+        outb(0x0f);
+        outb(0x83); // jnb
+        ifJump.push_back(buffer.size());
+        outd(0); // jump over amount
+    } else {
+        outb(0x73); // jnb
+        ifJump.push_back(buffer.size());
+        outb(0); // jump over amount
+    }
 }
 
 void X86Asm::IfEqual(Reg32 reg, U32 value) {

@@ -34,13 +34,13 @@ public:
     virtual void write(DynWidth width, RegPtr reg, U32 disp, RegPtr src) = 0;
     virtual void write(DynWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
     virtual void write(DynWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, U32 value) = 0;
-
+    
     void readWriteMem(DynWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) override;
     RegPtr read(DynWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false, RegPtr tmp = nullptr) override;
     void write(DynWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false) override;
     void writeValue(DynWidth width, RegPtr addressReg, U32 imm) override;
 
-    RegPtr calculateEaa2(DecodedOp* op, bool popEsp = false) override; // :TODO: V2
+    RegPtr calculateEaa2(DecodedOp* op, U32 popEspAmount = 0) override; // :TODO: V2
 
     DecodedOp* firstOp = nullptr;
 
@@ -52,7 +52,7 @@ public:
     
     // per instruction, not per block.  
     bool canJumpInBlock(DecodedOp* op) override {
-        return currentEip < lastOpEip && currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
+        return currentEip + op->len + op->imm <= lastOpEip && currentEip + op->len + op->imm >= startingEip;
     }
 
     void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg) override;

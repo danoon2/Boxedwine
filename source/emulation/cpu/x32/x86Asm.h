@@ -188,6 +188,9 @@ public:
 	void rcr(Reg32 dst, Reg32 src);
 	void rcr(Reg16 dst, Reg16 src);
 	void rcr(Reg8 dst, Reg8 src);
+	void xadd(Reg32 dst, Reg32 src);
+	void xadd(Reg16 dst, Reg16 src);
+	void xadd(Reg8 dst, Reg8 src);
 
 	void mulEax(Reg32 src);
 	void mulAx(Reg16 src);
@@ -373,9 +376,9 @@ public:
 	void xadd(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void xadd(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 
-	void IfLessThan(Reg32 reg, U32 value);
-	void IfLessThan(Reg16 reg, U16 value);
-	void IfLessThan(Reg8 reg, U8 value);
+	void IfLessThan(Reg32 reg, U32 value, bool bigJump = false);
+	void IfLessThan(Reg16 reg, U16 value, bool bigJump = false);
+	void IfLessThan(Reg8 reg, U8 value, bool bigJump = false);
 	void IfEqual(Reg32 reg, U32 value);
 	void IfEqual(Reg16 reg, U16 value);
 	void IfEqual(Reg8 reg, U8 value);
