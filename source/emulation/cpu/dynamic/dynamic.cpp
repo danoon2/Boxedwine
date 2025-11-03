@@ -396,32 +396,6 @@ U32 DynamicCodeGen::cpuOffsetSrc(DynWidth width) {
     }
 }
 
-void DynamicCodeGen::loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg) {
-    loadReg(src, tmpReg, width);
-    storeReg(dst, tmpReg, width, true);
-}
-
-void DynamicCodeGen::loadRegStoreSrc(U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    loadReg(src, tmpReg, width);
-    movToCpuFromReg(cpuOffsetSrc(width), tmpReg, width, doneWithTmpReg);
-}
-
-void DynamicCodeGen::loadRegStoreDst(U8 src, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) {
-    loadReg(src, tmpReg, width);
-    movToCpuFromReg(cpuOffsetDst(width), tmpReg, width, doneWithTmpReg);
-}
-
-void DynamicCodeGen::loadRegStoreEip(U8 src, DynReg tmpReg) {
-    loadReg(src, tmpReg, DYN_32bit);
-    movToCpuFromReg(CPU_OFFSET_OF(eip.u32), tmpReg, DYN_32bit, true);
-}
-
-void DynamicCodeGen::loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg) {
-    // mov tmpReg, [cpu+srcOffset]
-    movToRegFromCpu(tmpReg, CPU::offsetofSegValue(seg), DYN_32bit);
-    storeReg(reg, tmpReg, DYN_32bit, true);
-}
-
 // all reg read/write access should go through loadReg/storeReg, no one else should index a reg in the CPU
 U32 dontUseCpuOffset(U32 r, DynWidth width) {
     if (width == DYN_8bit)
@@ -455,10 +429,6 @@ void DynamicCodeGen::storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressRe
 
 void DynamicCodeGen::loadSegAddress(U8 seg, DynReg reg) {
     movToRegFromCpu(reg, CPU::offsetofSegAddress(seg), DYN_32bit);
-}
-
-void DynamicCodeGen::loadSegValue(U8 seg, DynReg reg) {
-    movToRegFromCpu(reg, CPU::offsetofSegValue(seg), DYN_32bit);
 }
 
 void DynamicCodeGen::loadCPUFlags(DynReg reg) {
@@ -543,118 +513,6 @@ bool DynamicCodeGen::isParamTypeReg(DynCallParamType paramType) {
     return paramType == DYN_PARAM_REG_8 || paramType == DYN_PARAM_REG_16 || paramType == DYN_PARAM_REG_32;
 }
 
-void DynamicCodeGen::movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg, DynReg tmpReg) {
-    DynCallParamType paramType;
-
-    if (width == DYN_8bit)
-        paramType = DYN_PARAM_REG_8;
-    else if (width == DYN_16bit)
-        paramType = DYN_PARAM_REG_16;
-    else if (width == DYN_32bit)
-        paramType = DYN_PARAM_REG_32;
-    else
-        kpanic_fmt("unknown width %d in x32CPU::movToMemFromReg", width);
-
-    movToMem(addressReg, width, reg, paramType, doneWithReg, doneWithAddressReg, tmpReg);
-}
-
-void DynamicCodeGen::movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    DynCallParamType paramType;
-
-    if (width == DYN_8bit)
-        paramType = DYN_PARAM_CONST_8;
-    else if (width == DYN_16bit)
-        paramType = DYN_PARAM_CONST_16;
-    else if (width == DYN_32bit)
-        paramType = DYN_PARAM_CONST_32;
-    else
-        kpanic_fmt("unknown width %d in x32CPU::movToMemFromImm", width);
-
-    movToMem(addressReg, width, imm, paramType, false, doneWithAddressReg, tmpReg);
-}
-
-void DynamicCodeGen::instCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg, InstRegReg pfnInstRegReg) {
-    if (regUsed[tmpReg]) {
-        kpanic("instCPUReg");
-    }
-    loadReg(regIndex, tmpReg, regWidth);
-    (this->*pfnInstRegReg)(tmpReg, rm, regWidth, doneWithRmReg);
-    storeReg(regIndex, tmpReg, regWidth, true);
-}
-
-void DynamicCodeGen::addCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::addRegReg);
-}
-
-void DynamicCodeGen::orCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::orRegReg);
-}
-
-void DynamicCodeGen::subCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::subRegReg);
-}
-
-void DynamicCodeGen::andCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::andRegReg);
-}
-
-void DynamicCodeGen::xorCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::xorRegReg);
-}
-
-void DynamicCodeGen::shrCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::shrRegReg);
-}
-
-void DynamicCodeGen::sarCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::sarRegReg);
-}
-
-void DynamicCodeGen::shlCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) {
-    instCPUReg(regIndex, rm, regWidth, doneWithRmReg, tmpReg, &DynamicCodeGen::shlRegReg);
-}
-
-void DynamicCodeGen::instCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg, InstRegImm pfnInstRegImm) {
-    if (regUsed[tmpReg]) {
-        kpanic("instCPUImm");
-    }
-    loadReg(regIndex, tmpReg, regWidth);
-    (this->*pfnInstRegImm)(tmpReg, regWidth, imm);
-    storeReg(regIndex, tmpReg, regWidth, true);
-}
-
-void DynamicCodeGen::addCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::addRegImm);
-}
-
-void DynamicCodeGen::orCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::orRegImm);
-}
-
-void DynamicCodeGen::subCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::subRegImm);
-}
-
-void DynamicCodeGen::andCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::andRegImm);
-}
-
-void DynamicCodeGen::xorCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::xorRegImm);
-}
-
-void DynamicCodeGen::shrCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::shrRegImm);
-}
-
-void DynamicCodeGen::sarCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::sarRegImm);
-}
-
-void DynamicCodeGen::shlCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) {
-    instCPUImm(regIndex, regWidth, imm, tmpReg, &DynamicCodeGen::shlRegImm);
-}
-
 void DynamicCodeGen::xorCPUFlagsImm(U32 imm, DynReg tmpReg) {
     if (regUsed[tmpReg]) {
         kpanic("DynamicCodeGen::xorCPUFlagsImm");
@@ -699,167 +557,6 @@ void DynamicCodeGen::orCPUFlagsReg(DynReg reg, DynReg tmpReg, bool doneWithReg) 
     movToRegFromCpu(tmpReg, CPU_OFFSET_OF(flags), DYN_32bit);
     orRegReg(tmpReg, reg, DYN_32bit, doneWithReg);
     movToCpuFromReg(CPU_OFFSET_OF(flags), tmpReg, DYN_32bit, true);
-}
-
-void DynamicCodeGen::instMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg, InstRegImm pfnInstRegImm) {
-    if (regUsed[0]) {
-        kpanic("DynamicCodeGen::instMemImm");
-    }
-    movFromMem(regWidth, addressReg, false);
-    readWriteMem(regWidth, addressReg, tmpReg, doneWithAddressReg, [regWidth, imm, pfnInstRegImm, this]() {
-        (this->*pfnInstRegImm)(DYN_CALL_RESULT, regWidth, imm);
-    });
-}
-
-void DynamicCodeGen::addMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::addRegImm);
-}
-
-void DynamicCodeGen::orMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::orRegImm);
-}
-
-void DynamicCodeGen::subMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::subRegImm);
-}
-
-void DynamicCodeGen::andMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::andRegImm);
-}
-
-void DynamicCodeGen::xorMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::xorRegImm);
-}
-
-void DynamicCodeGen::shrMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::shrRegImm);
-}
-
-void DynamicCodeGen::sarMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::sarRegImm);
-}
-
-void DynamicCodeGen::shlMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) {
-    instMemImm(addressReg, regWidth, imm, doneWithAddressReg, tmpReg, &DynamicCodeGen::shlRegImm);
-}
-
-void DynamicCodeGen::instMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg, InstRegReg pfnInstRegReg) {
-    if (regUsed[0]) {
-        kpanic("DynamicCodeGen::instMemReg");
-    }
-    readWriteMem(regWidth, addressReg, tmpReg, doneWithAddressReg, [pfnInstRegReg, this, rm, regWidth, doneWithRmReg]() {
-        (this->*pfnInstRegReg)(DYN_CALL_RESULT, rm, regWidth, doneWithRmReg);
-    });
-}
-
-void DynamicCodeGen::addMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::addRegReg);
-}
-
-void DynamicCodeGen::orMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::orRegReg);
-}
-
-void DynamicCodeGen::subMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::subRegReg);
-}
-
-void DynamicCodeGen::andMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::andRegReg);
-}
-
-void DynamicCodeGen::xorMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::xorRegReg);
-}
-
-void DynamicCodeGen::shrMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::shrRegReg);
-}
-
-void DynamicCodeGen::sarMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::sarRegReg);
-}
-
-void DynamicCodeGen::shlMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) {
-    instMemReg(addressReg, rm, regWidth, doneWithAddressReg, doneWithRmReg, tmpReg, &DynamicCodeGen::shlRegReg);
-}
-
-void DynamicCodeGen::negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) {
-    if (regUsed[0]) {
-        kpanic("x32CPU::instMem");
-    }
-    movFromMem(regWidth, addressReg, false);
-    negReg(DYN_CALL_RESULT, regWidth);
-    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true, tmpReg);
-}
-
-void DynamicCodeGen::notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) {
-    if (regUsed[0]) {
-        kpanic("x32CPU::instMem");
-    }
-    movFromMem(regWidth, addressReg, false);
-    notReg(DYN_CALL_RESULT, regWidth);
-    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, true, true, tmpReg);
-}
-
-void DynamicCodeGen::negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) {
-    if (regUsed[tmpReg]) {
-        kpanic("instCPU");
-    }
-    loadReg(regIndex, tmpReg, regWidth);
-    negReg(tmpReg, regWidth);
-    storeReg(regIndex, tmpReg, regWidth, true);
-}
-
-void DynamicCodeGen::notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) {
-    if (regUsed[tmpReg]) {
-        kpanic("instCPU");
-    }
-    loadReg(regIndex, tmpReg, regWidth);
-    notReg(tmpReg, regWidth);
-    storeReg(regIndex, tmpReg, regWidth, true);
-}
-
-// this is good generic code to copy for other implementations that don't have something like setcc
-/*
-void setCPU(DynamicData* data, U32 offset, DynWidth regWidth, DynConditional condition) {
-    setConditionInReg(data, condition, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    movToCpu(offset, regWidth, 0);
-    startElse();
-    movToCpu(offset, regWidth, 1);
-    EndIf();
-}
-*/
-
-void DynamicCodeGen::setCPUReg(U8 regIndex, DynWidth regWidth, DynConditional condition) {
-    setConditional(condition);
-
-    if (regWidth != DYN_8bit) {
-        movToRegFromReg(DYN_CALL_RESULT, regWidth, DYN_CALL_RESULT, DYN_8bit, false);
-    }
-    storeReg(regIndex, DYN_CALL_RESULT, regWidth, true);
-}
-
-/*
-void setMem(DynamicData* data, DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg) {
-    setConditionInReg(data, condition, DYN_CALL_RESULT);
-    startIf(DYN_CALL_RESULT, DYN_EQUALS_ZERO, true);
-    movToReg(DYN_SRC, regWidth, 0);
-    startElse();
-    movToReg(DYN_SRC, regWidth, 1);
-    EndIf();
-    // don't put this movToMem in the if statement because it is big and will be inlines once in each block of the if statement
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, regWidth, doneWithAddressReg, true);
-}
-*/
-void DynamicCodeGen::setMem(DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg, DynReg tmpReg) {
-    setConditional(condition);
-
-    if (regWidth != DYN_8bit) {
-        movToRegFromReg(DYN_CALL_RESULT, regWidth, DYN_CALL_RESULT, DYN_8bit, false);
-    }
-    movToMemFromReg(addressReg, DYN_CALL_RESULT, regWidth, doneWithAddressReg, true, tmpReg);
 }
 
 void DynamicCodeGen::incrementEip(U32 inc) {
@@ -1715,49 +1412,41 @@ void DynamicCodeGen::jumpToEipIfCached() {
     //     }
     //     return page->ops[offset];
     // }
-    const DynReg eipReg = DYN_SRC;
-    const DynReg pageReg = DYN_DEST;
-    const DynReg firstPageIndexReg = DYN_ADDRESS;
-    const DynReg secondPageIndexReg = DYN_DEST;
-    const DynReg pageOffsetReg = DYN_SRC;
-
-    movToRegFromCpu(eipReg, CPU_OFFSET_OF(eip.u32), DYN_32bit);
+    RegPtr eipReg = getTmpEip();
     if (cpu->thread->process->hasSetSeg[CS]) {
-        loadSegAddress(CS, DYN_DEST);
-        addRegReg(eipReg, DYN_DEST, DYN_32bit, true);
+        addReg(DYN_32bit, eipReg, getReadOnlySegAddress(CS), false);
     }
-    movToRegFromReg(pageReg, DYN_32bit, eipReg, DYN_32bit, false);
-    shrRegImm(pageReg, DYN_32bit, K_PAGE_SHIFT);
+    RegPtr pageReg = getTmpReg();
+    mov(DYN_32bit, pageReg, eipReg);
+    shrValue(DYN_32bit, pageReg, K_PAGE_SHIFT, false);
 
-    // page >> 10
-    movToRegFromReg(firstPageIndexReg, DYN_32bit, pageReg, DYN_32bit, false);
-    shrRegImm(firstPageIndexReg, DYN_32bit, 10);
-    movToRegFromCpu(DYN_CALL_RESULT, offsetof(CPU, opCache), DYN_PTR);
-    readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, firstPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
+    RegPtr firstPageIndexReg = getTmpReg();
+    mov(DYN_32bit, firstPageIndexReg, pageReg);
+    shrValue(DYN_32bit, firstPageIndexReg, 10, false);
 
-    // DYN_CALL_RESULT contains 2nd level of page op cache
-    If(DYN_CALL_RESULT, false);
-        // page & 0x3ff        
-        andRegImm(secondPageIndexReg, DYN_32bit, 0x3ff);
-        readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, secondPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
-        // DYN_CALL_RESULT contains page of DecodedOp*
-        If(DYN_CALL_RESULT, false);
-            andRegImm(pageOffsetReg, DYN_32bit, K_PAGE_MASK);
-            readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, pageOffsetReg, 2, 0); // :TODO: 3 on 64-bit system
-            // DYN_CALL_RESULT contains DecodedOp
-            If(DYN_CALL_RESULT, false);
-                readMem(DYN_CALL_RESULT, DYN_PTR, DYN_CALL_RESULT, 0, offsetof(DecodedOp, pfnJitCode));
-                // DYN_CALL_RESULT contains pfnJitCode
-                If(DYN_CALL_RESULT, false);
-                    jmp(DYN_CALL_RESULT);
+    RegPtr tmp = readCPU(DYN_PTR, offsetof(CPU, opCache));
+    read(DYN_PTR, tmp, tmp, firstPageIndexReg, 2, 0); // :TODO: 3 on 64-bit system
+
+
+    // tmp contains 2nd level of page op cache
+    If(DYN_PTR, tmp);
+        // page & 0x3ff
+        andValue(DYN_32bit, pageReg, 0x3ff, false);
+        read(DYN_PTR, tmp, tmp, pageReg, 2, 0);// :TODO: 3 on 64-bit system
+        // tmp contains page of DecodedOp*
+        If(DYN_PTR, tmp);
+            andValue(DYN_32bit, eipReg, K_PAGE_MASK, false);
+            read(DYN_PTR, tmp, tmp, eipReg, 2, 0); // :TODO: 3 on 64-bit system
+            // tmp contains DecodedOp
+            If(DYN_PTR, tmp);
+                read(DYN_PTR, tmp, tmp, 0, offsetof(DecodedOp, pfnJitCode));
+                // tmp contains pfnJitCode
+                If(DYN_PTR, tmp);
+                    jmp2(tmp);
                 EndIf();
             EndIf();
         EndIf();
     EndIf();
-    regUsed[0] = false;
-    regUsed[1] = false;
-    regUsed[2] = false;
-    regUsed[3] = false;
  }
 
 U8* DynamicCodeGen::createJumpEip() {
@@ -1815,229 +1504,6 @@ void DynamicCodeGen::commitJIT(DecodedOp* op) {
         last = nextOp;
         nextOp = nextOp->next;
     }
-}
-
-void DynamicCodeGen::arithRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstCPUReg pfnInstCpuReg) {
-    U32 needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        loadReg(op->rm, DYN_SRC, width);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            addRegReg(DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        (this->*pfnInstCpuReg)(op->reg, DYN_SRC, width, true, DYN_DEST);
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        loadRegStoreSrc(op->rm, width, DYN_SRC, false);
-        loadRegStoreDst(op->reg, width, DYN_DEST, false);
-
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            addRegReg(DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        (this->*pfnInstRegReg)(DYN_DEST, DYN_SRC, width, true);
-        storeLazyFlagsResult(DYN_DEST, width, !store);
-        if (store) {
-            storeReg(op->reg, DYN_DEST, width, true);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicCodeGen::arithRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstCPUReg pfnInstCpuReg) {
-    U32 needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        calculateEaa(op, DYN_ADDRESS);
-        if (cf) {
-            movToRegFromReg(DYN_DEST, width, DYN_CALL_RESULT, DYN_32bit, false);
-            movFromMem(width, DYN_ADDRESS, true);
-            addRegReg(DYN_CALL_RESULT, DYN_DEST, width, true);
-        } else {
-            movFromMem(width, DYN_ADDRESS, true);
-        }
-        (this->*pfnInstCpuReg)(op->reg, DYN_CALL_RESULT, width, true, DYN_DEST);
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        if (cf) {
-            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-        }
-        calculateEaa(op, DYN_ADDRESS);
-        storeLazyFlagsSrcFromMem(width, DYN_ADDRESS, true, false);
-        loadRegStoreDst(op->reg, width, DYN_DEST, false);
-        if (cf) {
-            addRegReg(DYN_CALL_RESULT, DYN_SRC, width, true);
-        }
-        (this->*pfnInstRegReg)(DYN_DEST, DYN_CALL_RESULT, width, true);
-        storeLazyFlagsResult(DYN_DEST, width, !store);
-        if (store) {
-            storeReg(op->reg, DYN_DEST, width, true);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicCodeGen::arithRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstRegImm pfnInstRegImm, InstCPUReg pfnInstCpuReg, InstCPUImm pfnInstCpuImm) {
-    U32 needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            addRegImm(DYN_CALL_RESULT, width, op->imm);
-            (this->*pfnInstCpuReg)(op->reg, DYN_CALL_RESULT, width, true, DYN_DEST);
-        } else {
-            (this->*pfnInstCpuImm)(op->reg, width, op->imm, DYN_DEST);
-        }
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        storeLazyFlagsSrc(width, op->imm);
-        loadRegStoreDst(op->reg, width, DYN_DEST, false);
-        (this->*pfnInstRegImm)(DYN_DEST, width, op->imm);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            (this->*pfnInstRegReg)(DYN_DEST, DYN_CALL_RESULT, width, true);
-        }
-        storeLazyFlagsResult(DYN_DEST, width, !store);
-        if (store) {
-            storeReg(op->reg, DYN_DEST, width, true);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicCodeGen::arithMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstMemReg pfnInstMemReg) {
-    U32 needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        calculateEaa(op, DYN_ADDRESS);
-        loadReg(op->reg, DYN_SRC, width);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, false);
-            }
-            addRegReg(DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        (this->*pfnInstMemReg)(DYN_ADDRESS, DYN_SRC, width, true, true, DYN_DEST);
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        loadRegStoreSrc(op->reg, width, DYN_SRC, false);
-        if (cf) {
-            if (width != DYN_32bit) {
-                movToRegFromReg(DYN_CALL_RESULT, width, DYN_CALL_RESULT, DYN_32bit, true);
-            }
-            addRegReg(DYN_SRC, DYN_CALL_RESULT, width, true);
-        }
-        calculateEaa(op, DYN_ADDRESS);
-        storeLazyFlagsDstFromMem(width, DYN_ADDRESS, !store, false);
-        (this->*pfnInstRegReg)(DYN_CALL_RESULT, DYN_SRC, width, true);
-        storeLazyFlagsResult(DYN_CALL_RESULT, width, !store);
-        if (store) {
-            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true, DYN_DEST);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
-}
-
-void DynamicCodeGen::arithMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags, InstRegReg pfnInstRegReg, InstRegImm pfnInstRegImm, InstMemReg pfnInstMemReg, InstMemImm pfnInstMemImm) {
-    U32 needsToSetFlags = op->needsToSetFlags(cpu);
-
-    if (cf) {
-        dynamic_getCF();
-    }
-    if (!needsToSetFlags && !store) {
-        // I've seen a test followed by a cmp when running Quake 2.  Very weird
-        incrementEip(op->len);
-        return;
-    }
-    if (!needsToSetFlags) {
-        calculateEaa(op, DYN_ADDRESS);
-        if (cf) {
-            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-            addRegImm(DYN_SRC, width, op->imm);
-            (this->*pfnInstMemReg)(DYN_ADDRESS, DYN_SRC, width, true, true, DYN_DEST);
-        } else {
-            (this->*pfnInstMemImm)(DYN_ADDRESS, width, op->imm, true, DYN_DEST);
-        }
-    } else {
-        if (cf) {
-            storeLazyFlagsOldCF(DYN_CALL_RESULT, false);
-        }
-        calculateEaa(op, DYN_ADDRESS);
-        storeLazyFlagsSrc(width, op->imm);
-        if (cf) {
-            movToRegFromReg(DYN_SRC, width, DYN_CALL_RESULT, DYN_32bit, true);
-            storeLazyFlagsDstFromMem(width, DYN_ADDRESS, !store, false);
-            addRegImm(DYN_SRC, width, op->imm);
-            (this->*pfnInstRegReg)(DYN_CALL_RESULT, DYN_SRC, width, true);
-        } else {
-            storeLazyFlagsDstFromMem(width, DYN_ADDRESS, !store, false);
-            (this->*pfnInstRegImm)(DYN_CALL_RESULT, width, op->imm);
-        }
-        storeLazyFlagsResult(DYN_CALL_RESULT, width, !store);
-        if (store) {
-            movToMemFromReg(DYN_ADDRESS, DYN_CALL_RESULT, width, true, true, DYN_DEST);
-        }
-        storeLazyFlags(flags);
-        currentLazyFlags = flags;
-    }
-    incrementEip(op->len);
 }
 
 #endif

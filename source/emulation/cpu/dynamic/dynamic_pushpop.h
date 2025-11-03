@@ -321,10 +321,6 @@ void DynamicData::dynamic_pushf16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushf32(DecodedOp* op) {
-    dynamic_fillFlags();
-    loadCPUFlags(DYN_SRC);
-    orRegImm(DYN_SRC, DYN_32bit, 2);
-    andRegImm(DYN_SRC, DYN_32bit, 0xFCFFFF);
-    dynamic_pushReg32(DYN_SRC, true);
+    push32(getReadOnlyFlags());
     incrementEip(op->len);
 }

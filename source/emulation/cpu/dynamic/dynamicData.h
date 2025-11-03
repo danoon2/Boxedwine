@@ -162,6 +162,7 @@ public:
     virtual RegPtr getReadOnlySegValue(U8 reg) = 0;
     virtual RegPtr getTmpEip() = 0;
     virtual RegPtr getEip(bool load = true) = 0;
+    virtual RegPtr getReadOnlyFlags() = 0;
 
     virtual RegPtr calculateEaa2(DecodedOp* op, U32 popEspAmount = 0) = 0; // :TODO: V2
     virtual void readWriteMem(DynWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
@@ -236,14 +237,8 @@ public:
     virtual void xaddReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0;
     virtual void byteSwapReg32(RegPtr reg) = 0;
 
-    virtual void loadRegStoreReg(U8 dst, U8 src, DynWidth width, DynReg tmpReg) = 0;
-    virtual void loadRegStoreSrc(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) = 0;
-    virtual void loadRegStoreDst(U8 reg, DynWidth width, DynReg tmpReg, bool doneWithTmpReg) = 0;
-    virtual void loadRegStoreEip(U8 reg, DynReg tmpReg) = 0;
-    virtual void loadSegValueStoreReg(U8 reg, U8 seg, DynReg tmpReg) = 0;
     virtual void loadReg(U8 reg, DynReg tmpReg, DynWidth width) = 0;
     virtual void loadSegAddress(U8 seg, DynReg reg) = 0;
-    virtual void loadSegValue(U8 seg, DynReg reg) = 0;
     virtual void loadCPUFlags(DynReg reg) = 0;
     virtual void loadLazyFlagsResult(DynReg reg, DynWidth width) = 0;
     virtual void loadLazyFlagsSrc(DynReg reg, DynWidth width) = 0;
@@ -272,10 +267,6 @@ public:
     virtual void orCPUFlagsImm(U32 imm, DynReg tmpReg) = 0;
     virtual void setCPUFlags(DynReg reg, U32 mask, DynReg tmpReg, bool doneWithReg) = 0;
 
-    virtual void negMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void notMem(DynReg addressReg, DynWidth regWidth, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void negCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) = 0;
-    virtual void notCPU(U8 regIndex, DynWidth regWidth, DynReg tmpReg) = 0;
     virtual void negReg(DynReg reg, DynWidth regWidth) = 0;
     virtual void notReg(DynReg reg, DynWidth regWidth) = 0;
 
@@ -307,46 +298,6 @@ public:
     virtual void rorRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
     virtual void imulRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
 
-    virtual void addMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void orMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void subMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void andMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void xorMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void shrMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void sarMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void shlMemReg(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg) = 0;
-
-    virtual void addCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void orCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void subCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void andCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void xorCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void shrCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void sarCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-    virtual void shlCPUReg(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg) = 0;
-
-    virtual void addCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-    virtual void orCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-    virtual void subCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-    virtual void andCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-    virtual void xorCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-    virtual void shrCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-    virtual void sarCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-    virtual void shlCPUImm(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg) = 0;
-
-    virtual void addMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void orMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void subMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void andMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void xorMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void shrMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void sarMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void shlMemImm(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-
-    virtual void movToMemFromReg(DynReg addressReg, DynReg reg, DynWidth width, bool doneWithAddressReg, bool doneWithReg, DynReg tmpReg) = 0;
-    virtual void movToMemFromImm(DynReg addressReg, DynWidth width, U32 imm, bool doneWithAddressReg, DynReg tmpReg) = 0;
-    virtual void setCPUReg(U8 regIndex, DynWidth regWidth, DynConditional condition) = 0;
-    virtual void setMem(DynReg addressReg, DynWidth regWidth, DynConditional condition, bool doneWithAddressReg, DynReg tmpReg) = 0;
     virtual void blockCall(DecodedOp* op) = 0;
     virtual void blockDone(bool returnEarly) = 0;
     virtual void blockDoneCall() = 0;
@@ -356,7 +307,6 @@ public:
     virtual void blockNext2(DecodedOp* op) = 0;
     virtual void blockDoneJump() = 0;
     virtual void blockExit() = 0;
-    virtual void setConditional(DynConditional condition) = 0;
     virtual void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) = 0;
     virtual void callHostFunction(void* address, bool hasReturn = false, U32 argCount = 0, U32 arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, U32 arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, U32 arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, U32 arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, U32 arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true) = 0;
     virtual void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) = 0;
@@ -377,18 +327,7 @@ public:
     virtual void StartElse(bool bigJump = false) = 0;
     virtual void EndIf(bool bigJump = false) = 0;
 
-    void genCF(const LazyFlags* flags, DynReg reg);
-    void genOF(const LazyFlags* flags, DynReg reg);
-    void genNZ(const LazyFlags* flags, DynReg reg);
-    void genZ(const LazyFlags* flags, DynReg reg);
-    void genS(const LazyFlags* flags, DynReg reg);
-    bool getFlagInReg(DynConditional condition, DynReg reg);
-    void getCondition(DynConditional condition, DynReg reg);
-    void setConditionInReg(DynConditional condition, DynReg reg);
-    void dynamic_pushReg32(DynReg reg, bool doneWithReg);
-    void dynamic_pop32();
     void dynamic_fillFlags();
-    void dynamic_getCF();
     void dynamic_jump(DecodedOp* op, DynConditional condition);
     RegPtr calculateMask16(DecodedOp* op);
     RegPtr calculateMask32(DecodedOp* op);
@@ -700,32 +639,6 @@ public:
     void call_IRRR(CallIRRR address, U32 value1, DynWidth width1, RegPtr reg1, DynWidth width2, RegPtr reg2, DynWidth width3, RegPtr reg3);
 
     void pushParam(std::vector<DynParam>& params, DynWidth width, RegPtr reg);
-
-    virtual void dynamic_andMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_subMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_addMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_orMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_xorMR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_andRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_subRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_addRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_orRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_xorRR(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_andRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_subRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_addRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_orRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_xorRM(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_andRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_subRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_addRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_orRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_xorRI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_andMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_subMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_addMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_orMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
-    virtual void dynamic_xorMI(DecodedOp* op, DynWidth width, bool cf, bool store, const LazyFlags* flags) = 0;
 
     void dynamic_sidt(DecodedOp* op);
     void dynamic_callback(DecodedOp* op);

@@ -264,6 +264,12 @@ public:
 	void negMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void negMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void negMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void incMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void incMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void incMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void decMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void decMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void decMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
 	void btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
 	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);

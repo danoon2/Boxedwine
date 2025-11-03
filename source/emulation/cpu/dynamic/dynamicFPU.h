@@ -65,6 +65,7 @@ public:
     virtual void fcompare(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ordTags, const std::function<void()>& pfnEqual, const std::function<void()>& pfnLessThan, const std::function<void()>& pfnGreaterThan, const std::function<void()>& pfnInvalid) = 0;
 
     void getTopReg(DynReg reg);
+    RegPtr getTopReg2();
     void calculateIndexReg(DynReg result, DynReg topReg, U32 index);
     void getIsCachedReg(DynReg result, DynReg indexReg);
     void setRegIsCached(U8 regIsCached, DynReg indexReg);

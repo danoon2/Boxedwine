@@ -143,9 +143,10 @@ void DynamicData::dynamic_lahf(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_salc(DecodedOp* op) {
-    dynamic_getCF();    
-    negReg(DYN_CALL_RESULT, DYN_32bit);
-    storeReg(0, DYN_CALL_RESULT, DYN_8bit, true);
+    movValue(DYN_8bit, getReg8(0), 0);
+    IfCondition(B);
+        movValue(DYN_8bit, getReg8(0), 0xff);
+    EndIf();
     incrementEip(op->len);
 }
 void DynamicData::dynamic_retn16Iw(DecodedOp* op) {

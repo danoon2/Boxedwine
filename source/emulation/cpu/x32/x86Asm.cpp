@@ -408,6 +408,32 @@ void X86Asm::negMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
     mem32(0xf6, 3, rm, sib, lsl, disp);
 }
 
+void X86Asm::incMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xff, 0, rm, sib, lsl, disp);
+}
+
+void X86Asm::incMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    outb(0x66);
+    mem32(0xff, 0, rm, sib, lsl, disp);
+}
+
+void X86Asm::incMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xfe, 0, rm, sib, lsl, disp);
+}
+
+void X86Asm::decMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xff, 1, rm, sib, lsl, disp);
+}
+
+void X86Asm::decMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    outb(0x66);
+    mem32(0xff, 1, rm, sib, lsl, disp);
+}
+
+void X86Asm::decMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp) {
+    mem32(0xfe, 1, rm, sib, lsl, disp);
+}
+
 void X86Asm::btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value) {
     outb(0x0f);
     mem32(0xba, 5, rm, sib, lsl, disp);

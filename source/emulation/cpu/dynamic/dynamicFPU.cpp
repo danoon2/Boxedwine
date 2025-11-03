@@ -736,9 +736,7 @@ void DynamicCodeGenFPU::dynamic_FST_DOUBLE_REAL_Pop(DecodedOp* op) {
 
 void DynamicCodeGenFPU::dynamic_FNSTCW(DecodedOp* op) {
     // cpu->memory->writew(address, cpu->fpu.CW());
-    calculateEaa(op, DYN_ADDRESS);
-    movToRegFromCpu(DYN_SRC, offsetof(CPU, fpu.cw), DYN_16bit);
-    movToMemFromReg(DYN_ADDRESS, DYN_SRC, DYN_16bit, true, true, DYN_DEST);
+    write(DYN_16bit, calculateEaa2(op), readCPU(DYN_16bit, offsetof(CPU, fpu.cw)));
     incrementEip(op->len);
 }
 
@@ -804,64 +802,56 @@ void DynamicCodeGenFPU::dynamic_doCMov(U8 regIndex) {
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_CF(DecodedOp* op) {
-    setConditionInReg(B, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
+    IfCondition(B);
         dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_ZF(DecodedOp* op) {
-    setConditionInReg(Z, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
+    IfCondition(Z);
         dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_CF_OR_ZF(DecodedOp* op) {
-    setConditionInReg(BE, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
+    IfCondition(BE);
         dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_PF(DecodedOp* op) {
-    setConditionInReg(P, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
-    dynamic_doCMov(op->reg);
+    IfCondition(P);
+        dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_NCF(DecodedOp* op) {
-    setConditionInReg(NB, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
+    IfCondition(NB);
         dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_NZF(DecodedOp* op) {
-    setConditionInReg(NZ, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
+    IfCondition(NZ);
         dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_NCF_AND_NZF(DecodedOp* op) {
-    setConditionInReg(NBE, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
+    IfCondition(NBE);
         dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_NPF(DecodedOp* op) {
-    setConditionInReg(NP, DYN_CALL_RESULT);
-    If(DYN_CALL_RESULT, true);
+    IfCondition(NP);
         dynamic_doCMov(op->reg);
     EndIf();
     incrementEip(op->len);
