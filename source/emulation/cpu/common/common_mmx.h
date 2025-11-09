@@ -26,7 +26,7 @@
 #undef MMX_RE
 #define MMX_RE(name) void common_##name(CPU* cpu, U32 reg, U32 address);
 #undef MMX_RI
-#define MMX_RI(name) void common_##name(CPU* cpu, U32 reg, U8 imm);
+#define MMX_RI(name) void common_##name(CPU* cpu, U32 reg, U32 imm);
 #include "../common/common_mmx_def.h"
 
 #endif

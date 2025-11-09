@@ -27,7 +27,7 @@ void DynamicData::dynamic_set_R(DecodedOp* op, DynConditional condition) {
 void DynamicData::dynamic_set_M(DecodedOp* op, DynConditional condition) {
     RegPtr reg = getTmpReg();
     setReg(condition, reg);
-    write(DYN_8bit, calculateEaa2(op), reg);
+    write(DYN_8bit, calculateEaa(op), reg);
     incrementEip(op->len);
 }
 

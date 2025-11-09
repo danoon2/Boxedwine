@@ -41,14 +41,14 @@ public:
     DynamicCodeGenMMX(CPU* cpu) : DynamicCodeGenFPU(cpu) {}
 
     void startMMX();
-    virtual void loadMMXFromReg(DynMMXReg mmx, DynReg reg) = 0;
+    virtual void loadMMXFromReg(DynMMXReg mmx, RegPtr reg) = 0;
     virtual void storeCpuMMXReg(DynMMXReg reg, U32 index) = 0;
-    virtual void storeMMXToReg(DynMMXReg mmx, DynReg reg) = 0;
+    virtual void storeMMXToReg(DynMMXReg mmx, RegPtr reg) = 0;
     virtual void loadCpuMMXReg(DynMMXReg reg, U32 index) = 0;
-    virtual void loadMMXFromMem32(DynMMXReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadMMXFromMem64(DynMMXReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeMMXToMem32(DynMMXReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeMMXToMem64(DynMMXReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;    
+    virtual void loadMMXFromMem32(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void loadMMXFromMem64(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeMMXToMem32(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeMMXToMem64(DynMMXReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
     virtual DynMMXReg getTmpMMX(U8 inUse) = 0; // just in case some day I do mmx register caching
     virtual void xorMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void orMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
@@ -112,16 +112,16 @@ public:
     virtual void pavgbMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void pavgwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void psadbwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pextrwRegMmx(DynReg dst, DynMMXReg src, U8 srcIndex) = 0;
-    virtual void pinsrwMmxReg(DynMMXReg dest, DynReg src, U8 dstIndex) = 0;
+    virtual void pextrwRegMmx(RegPtr dst, DynMMXReg src, U8 srcIndex) = 0;
+    virtual void pinsrwMmxReg(DynMMXReg dest, RegPtr src, U8 dstIndex) = 0;
     virtual void pmaxswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void pmaxubMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void pminswMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void pminubMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
-    virtual void pmovmskbMmxMmx(DynReg dst, DynMMXReg src) = 0;
+    virtual void pmovmskbMmxMmx(RegPtr dst, DynMMXReg src) = 0;
     virtual void pmulhuwMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void pshufwMmxMmx(DynMMXReg dst, DynMMXReg src, U8 mask) = 0;
-    virtual void maskmovq(DynMMXReg src, DynMMXReg mask, DynReg destAddress) = 0;
+    virtual void maskmovq(DynMMXReg src, DynMMXReg mask, RegPtr destAddress) = 0;
     virtual void paddqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void psubqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;
     virtual void pmuludqMmxMmx(DynMMXReg dst, DynMMXReg src) = 0;

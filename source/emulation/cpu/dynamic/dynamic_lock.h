@@ -21,332 +21,332 @@
 #include "../common/common_lock.h"
 
 void DynamicData::dynamic_cmpxchg8b_lock(DecodedOp* op) {
-    call_R(common_cmpxchg8b_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_cmpxchg8b_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_cmpxchge32r32_lock(DecodedOp* op) {
-    call_RI(common_cmpxchge32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge16r16_lock(DecodedOp* op) {
-    call_RI(common_cmpxchge16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_cmpxchge8r8_lock(DecodedOp* op) {
-    call_RI(common_cmpxchge8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xchge32r32_lock(DecodedOp* op) {
-    call_RI(common_xchge32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xchge32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge16r16_lock(DecodedOp* op) {
-    call_RI(common_xchge16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xchge16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge8r8_lock(DecodedOp* op) {
-    call_RI(common_xchge8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xchge8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xaddr32e32_lock(DecodedOp* op) {
-    call_RI(common_xaddr32e32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xaddr32e32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xaddr16e16_lock(DecodedOp* op) {
-    call_RI(common_xaddr16e16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xaddr16e16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xaddr8e8_lock(DecodedOp* op) {
-    call_RI(common_xaddr8e8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xaddr8e8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adde32r32_lock(DecodedOp* op) {
-    call_RI(common_adde32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_adde32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adde16r16_lock(DecodedOp* op) {
-    call_RI(common_adde16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_adde16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adde8r8_lock(DecodedOp* op) {
-    call_RI(common_adde8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_adde8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_add32_mem_lock(DecodedOp* op) {
-    call_RI(common_add32_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_add32_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_add16_mem_lock(DecodedOp* op) {
-    call_RI(common_add16_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_add16_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_add8_mem_lock(DecodedOp* op) {
-    call_RI(common_add8_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_add8_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sube32r32_lock(DecodedOp* op) {
-    call_RI(common_sube32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_sube32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sube16r16_lock(DecodedOp* op) {
-    call_RI(common_sube16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_sube16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sube8r8_lock(DecodedOp* op) {
-    call_RI(common_sube8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_sube8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sub32_mem_lock(DecodedOp* op) {
-    call_RI(common_sub32_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_sub32_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sub16_mem_lock(DecodedOp* op) {
-    call_RI(common_sub16_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_sub16_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sub8_mem_lock(DecodedOp* op) {
-    call_RI(common_sub8_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_sub8_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_ore32r32_lock(DecodedOp* op) {
-    call_RI(common_ore32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_ore32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_ore16r16_lock(DecodedOp* op) {
-    call_RI(common_ore16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_ore16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_ore8r8_lock(DecodedOp* op) {
-    call_RI(common_ore8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_ore8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_or32_mem_lock(DecodedOp* op) {
-    call_RI(common_or32_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_or32_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_or16_mem_lock(DecodedOp* op) {
-    call_RI(common_or16_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_or16_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_or8_mem_lock(DecodedOp* op) {
-    call_RI(common_or8_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_or8_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_ande32r32_lock(DecodedOp* op) {
-    call_RI(common_ande32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_ande32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_ande16r16_lock(DecodedOp* op) {
-    call_RI(common_ande16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_ande16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_ande8r8_lock(DecodedOp* op) {
-    call_RI(common_ande8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_ande8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_and32_mem_lock(DecodedOp* op) {
-    call_RI(common_and32_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_and32_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_and16_mem_lock(DecodedOp* op) {
-    call_RI(common_and16_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_and16_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_and8_mem_lock(DecodedOp* op) {
-    call_RI(common_and8_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_and8_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xore32r32_lock(DecodedOp* op) {
-    call_RI(common_xore32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xore32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xore16r16_lock(DecodedOp* op) {
-    call_RI(common_xore16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xore16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xore8r8_lock(DecodedOp* op) {
-    call_RI(common_xore8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_xore8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xor32_mem_lock(DecodedOp* op) {
-    call_RI(common_xor32_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_xor32_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xor16_mem_lock(DecodedOp* op) {
-    call_RI(common_xor16_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_xor16_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_xor8_mem_lock(DecodedOp* op) {
-    call_RI(common_xor8_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_xor8_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adce32r32_lock(DecodedOp* op) {
-    call_RI(common_adce32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_adce32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adce16r16_lock(DecodedOp* op) {
-    call_RI(common_adce16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_adce16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adce8r8_lock(DecodedOp* op) {
-    call_RI(common_adce8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_adce8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adc32_mem_lock(DecodedOp* op) {
-    call_RI(common_adc32_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_adc32_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adc16_mem_lock(DecodedOp* op) {
-    call_RI(common_adc16_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_adc16_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_adc8_mem_lock(DecodedOp* op) {
-    call_RI(common_adc8_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_adc8_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sbbe32r32_lock(DecodedOp* op) {
-    call_RI(common_sbbe32r32_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_sbbe32r32_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sbbe16r16_lock(DecodedOp* op) {
-    call_RI(common_sbbe16r16_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_sbbe16r16_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sbbe8r8_lock(DecodedOp* op) {
-    call_RI(common_sbbe8r8_lock, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_sbbe8r8_lock, DYN_32bit, calculateEaa(op), op->reg);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sbb32_mem_lock(DecodedOp* op) {
-    call_RI(common_sbb32_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_sbb32_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sbb16_mem_lock(DecodedOp* op) {
-    call_RI(common_sbb16_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_sbb16_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_sbb8_mem_lock(DecodedOp* op) {
-    call_RI(common_sbb8_mem_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_sbb8_mem_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_inc32_mem32_lock(DecodedOp* op) {
-    call_R(common_inc32_mem32_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_inc32_mem32_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_inc16_mem16_lock(DecodedOp* op) {
-    call_R(common_inc16_mem16_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_inc16_mem16_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_inc8_mem8_lock(DecodedOp* op) {
-    call_R(common_inc8_mem8_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_inc8_mem8_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_dec32_mem32_lock(DecodedOp* op) {
-    call_R(common_dec32_mem32_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_dec32_mem32_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_dec16_mem16_lock(DecodedOp* op) {
-    call_R(common_dec16_mem16_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_dec16_mem16_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_dec8_mem8_lock(DecodedOp* op) {
-    call_R(common_dec8_mem8_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_dec8_mem8_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_note32_lock(DecodedOp* op) {
-    call_R(common_note32_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_note32_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_note16_lock(DecodedOp* op) {
-    call_R(common_note16_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_note16_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_note8_lock(DecodedOp* op) {
-    call_R(common_note8_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_note8_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_nege32_lock(DecodedOp* op) {
-    call_R(common_nege32_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_nege32_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_nege16_lock(DecodedOp* op) {
-    call_R(common_nege16_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_nege16_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_nege8_lock(DecodedOp* op) {
-    call_R(common_nege8_lock, DYN_32bit, calculateEaa2(op));
+    call_R(common_nege8_lock, DYN_32bit, calculateEaa(op));
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_btse32_lock(DecodedOp* op) {
-    call_RI(common_btse32_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_btse32_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_btse16_lock(DecodedOp* op) {
-    call_RI(common_btse16_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_btse16_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 
 RegPtr DynamicData::calculateEffectiveEaa32(DecodedOp* op) {
-    RegPtr result = calculateEaa2(op);
+    RegPtr result = calculateEaa(op);
     RegPtr reg = getTmpReg(op->reg);
     
     sarValue(DYN_32bit, reg, 5, false);
@@ -356,7 +356,7 @@ RegPtr DynamicData::calculateEffectiveEaa32(DecodedOp* op) {
 }
 
 RegPtr DynamicData::calculateEffectiveEaa16(DecodedOp* op) {
-    RegPtr result = calculateEaa2(op);
+    RegPtr result = calculateEaa(op);
     RegPtr reg = getTmpReg(op->reg);
 
     sarValue(DYN_16bit, reg, 4, false);
@@ -399,12 +399,12 @@ void DynamicData::dynamic_btse16r16_lock(DecodedOp* op) {
 }
 
 void DynamicData::dynamic_btre32_lock(DecodedOp* op) {
-    call_RI(common_btre32_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_btre32_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_btre16_lock(DecodedOp* op) {
-    call_RI(common_btre16_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_btre16_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
@@ -419,12 +419,12 @@ void DynamicData::dynamic_btre16r16_lock(DecodedOp* op) {
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_btce32_lock(DecodedOp* op) {
-    call_RI(common_btce32_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_btce32_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }
 void DynamicData::dynamic_btce16_lock(DecodedOp* op) {
-    call_RI(common_btce16_lock, DYN_32bit, calculateEaa2(op), op->imm);
+    call_RI(common_btce16_lock, DYN_32bit, calculateEaa(op), op->imm);
     incrementEip(op->len);
     currentLazyFlags = nullptr;
 }

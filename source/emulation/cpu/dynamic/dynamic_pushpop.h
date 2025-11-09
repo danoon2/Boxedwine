@@ -23,18 +23,18 @@ void DynamicData::push16(RegPtr reg) {
 
     RegPtr address = getTmpReg(4);
 
-    IfSmallStack();
+    IfSmallStack(true);
         andValue(DYN_32bit, address, 0xFFFF, false);
         subValue(DYN_16bit, address, 2, false);
         addReg(DYN_32bit, address, getReadOnlySegAddress(SS), false);
         write(DYN_16bit, address, reg);
         subValue(DYN_16bit, getReg(4), 2, false);
-    StartElse();
+    StartElse(true);
         subValue(DYN_32bit, address, 2, false);
         addReg(DYN_32bit, address, getReadOnlySegAddress(SS), false);
         write(DYN_16bit, address, reg);
         subValue(DYN_32bit, getReg(4), 2, false);
-    EndIf();
+    EndIf(true);
 }
 
 void DynamicData::push32(RegPtr reg) {
@@ -46,18 +46,18 @@ void DynamicData::push32(RegPtr reg) {
     } else {
         RegPtr address = getTmpReg(4);
 
-        IfSmallStack();
+        IfSmallStack(true);
             andValue(DYN_32bit, address, 0xFFFF, false);
             subValue(DYN_16bit, address, 4, false);
             addReg(DYN_32bit, address, getReadOnlySegAddress(SS), false);
             write(DYN_32bit, address, reg);
             subValue(DYN_16bit, getReg(4), 4, false);
-        StartElse();
+        StartElse(true);
             subValue(DYN_32bit, address, 4, false);
             addReg(DYN_32bit, address, getReadOnlySegAddress(SS), false);
             write(DYN_32bit, address, reg);
             subValue(DYN_32bit, getReg(4), 4, false);
-        EndIf();
+        EndIf(true);
     }
 }
 
@@ -114,11 +114,11 @@ void DynamicData::dynamic_popEw_reg(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushEw_mem(DecodedOp* op) {
-    push16(read(DYN_16bit, calculateEaa2(op)));
+    push16(read(DYN_16bit, calculateEaa(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popEw_mem(DecodedOp* op) {
-    write(DYN_16bit, calculateEaa2(op, 2), peek16()); // eaa must be calculated after esp is incremented which is why we pass 2 here
+    write(DYN_16bit, calculateEaa(op, 2), peek16()); // eaa must be calculated after esp is incremented which is why we pass 2 here
 
     IfSmallStack();
         addValue(DYN_16bit, getReg(4), 2, false);        
@@ -136,11 +136,11 @@ void DynamicData::dynamic_popEd_reg(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushEd_mem(DecodedOp* op) {
-    push32(read(DYN_32bit, calculateEaa2(op)));
+    push32(read(DYN_32bit, calculateEaa(op)));
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popEd_mem(DecodedOp* op) {
-    write(DYN_32bit, calculateEaa2(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
+    write(DYN_32bit, calculateEaa(op, 4), peek32()); // eaa must be calculated after esp is incremented which is why we pass 2 here
 
     IfSmallStack();
         addValue(DYN_16bit, getReg(4), 4, false);
@@ -154,7 +154,6 @@ void DynamicData::dynamic_pushSeg16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popSeg16(DecodedOp* op) {
-    cpu->thread->process->hasSetSeg[op->reg] = true;
     RegPtr result = callAndReturn_IR(common_setSegment, op->reg, DYN_16bit, peek16(getTmpReg())); // getTmpReg so that peek16 won't use hardware EAX on x86, callAndReturn needs that. :TODO: maybe callAndReturn can be enhanced to allow a param using EAX but that doesn't need it after its used as a param.
 
     IfNot(DYN_32bit, result);
@@ -174,7 +173,6 @@ void DynamicData::dynamic_pushSeg32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popSeg32(DecodedOp* op) {
-    cpu->thread->process->hasSetSeg[op->reg] = true;
     RegPtr result = callAndReturn_IR(common_setSegment, op->reg, DYN_32bit, peek32(getTmpReg())); // getTmpReg so that peek16 won't use hardware EAX on x86, callAndReturn needs that. :TODO: maybe callAndReturn can be enhanced to allow a param using EAX but that doesn't need it after its used as a param.
 
     IfNot(DYN_32bit, result);
@@ -300,24 +298,15 @@ void DynamicData::dynamic_push32imm(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popf16(DecodedOp* op) {
-    storeLazyFlags(FLAGS_NONE);
-    callHostFunction((void*)common_pop16, true, 1, 0, DYN_PARAM_CPU, false);
-    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_16, true, FMASK_ALL & 0xFFFF, DYN_PARAM_CONST_16, false);
-    currentLazyFlags=FLAGS_NONE;
+    setFlags(pop16(), FMASK_ALL & 0xFFFF);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_popf32(DecodedOp* op) {
-    storeLazyFlags(FLAGS_NONE);
-    callHostFunction((void*)common_pop32, true, 1, 0, DYN_PARAM_CPU, false);
-    callHostFunction((void*)common_setFlags, false, 3, 0, DYN_PARAM_CPU, false, DYN_CALL_RESULT, DYN_PARAM_REG_32, true, FMASK_ALL, DYN_PARAM_CONST_32, false);
-    currentLazyFlags=FLAGS_NONE;
+    setFlags(pop32(), FMASK_ALL);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushf16(DecodedOp* op) {
-    dynamic_fillFlags();
-    loadCPUFlags(DYN_SRC);
-    orRegImm(DYN_SRC, DYN_32bit, 2);
-    callHostFunction((void*)common_push16, false, 2, 0, DYN_PARAM_CPU, false, DYN_SRC, DYN_PARAM_REG_32, true);
+    push16(getReadOnlyFlags());
     incrementEip(op->len);
 }
 void DynamicData::dynamic_pushf32(DecodedOp* op) {

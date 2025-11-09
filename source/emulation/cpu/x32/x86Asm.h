@@ -237,11 +237,32 @@ public:
 	void cmp(Reg16 dst, Reg16 src);
 	void cmp(Reg8 dst, Reg8 src);
 
+	void bt(Reg32 reg, Reg32 rm);
+	void bt(Reg16 reg, Reg16 rm);
+	void bt(Reg32 reg, U8 mask);
+	void bt(Reg16 reg, U8 mask);
+	void bts(Reg32 reg, Reg32 rm);
+	void bts(Reg16 reg, Reg16 rm);
+	void bts(Reg32 reg, U8 mask);
+	void bts(Reg16 reg, U8 mask);
+	void btr(Reg32 reg, Reg32 rm);
+	void btr(Reg16 reg, Reg16 rm);
+	void btr(Reg32 reg, U8 mask);
+	void btr(Reg16 reg, U8 mask);
+	void btc(Reg32 reg, Reg32 rm);
+	void btc(Reg16 reg, Reg16 rm);
+	void btc(Reg32 reg, U8 mask);
+	void btc(Reg16 reg, U8 mask);
+	void bsf(Reg32 reg, Reg32 rm);
+	void bsf(Reg16 reg, Reg16 rm);
+	void bsr(Reg32 reg, Reg32 rm);
+	void bsr(Reg16 reg, Reg16 rm);
+
 	void addMemReg(Reg16 reg, Reg32 rm, U32 disp);
 	void addMemReg(Reg32 reg, Reg32 rm, U32 disp);
 	void addMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void addMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
-	void addMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void addMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);	
 	void subMemReg(Reg32 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void subMemReg(Reg16 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void subMemReg(Reg8 reg, Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
@@ -257,6 +278,12 @@ public:
 	void subMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
 	void subMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
 	void subMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void cmpMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U32 value);
+	void cmpMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U16 value);
+	void cmpMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void testMem32(Reg32 rm, U32 disp, U32 value);
+	void testMem16(Reg32 rm, U32 disp, U16 value);
+	void testMem8(Reg32 rm, U32 disp, U8 value);
 	void andMem32(Reg32 rm, U32 disp, U32 value);
 	void notMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void notMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
@@ -270,15 +297,19 @@ public:
 	void decMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void decMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
 	void decMem8(Reg32 rm, Reg32 sib, U8 lsl, U32 disp);
+	void btMem32(Reg32 rm, U32 disp, U8 value);
 	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btsMem32(Reg32 rm, U32 disp, U8 value);
 	void btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
 	void btsMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
 	void btsMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
 	void btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btrMem32(Reg32 rm, U32 disp, U8 value);
 	void btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
 	void btrMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
 	void btrMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
 	void btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
+	void btcMem32(Reg32 rm, U32 disp, U8 value);
 	void btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, U8 value);
 	void btcMem32(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg32 value);
 	void btcMem16(Reg32 rm, Reg32 sib, U8 lsl, U32 disp, Reg16 value);
@@ -331,6 +362,8 @@ public:
 	void ret();
 	void jmp(Reg32 reg);
 	void jmp(U32 address);
+	void goto8(U32 amount);
+	void goto32(U32 amount);
 	void movsb_repeat();
 
 	void jo(U32 address);
@@ -401,7 +434,10 @@ public:
 	void EndIf(bool bigJump = false);
 	void IfPF();
 	void IfCF();
-	void IfZF();
+	void IfZF(bool bigJump = false);
+	void IfSF(bool bigJump = false);
+	void IfOF(bool bigJump = false);
+	void IfNotZF(bool bigJump = false);
 
 	void reset();
 

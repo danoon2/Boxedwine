@@ -45,15 +45,15 @@ public:
     virtual void storeCpuXMMReg(DynXMMReg reg, U32 index) = 0;
     virtual void loadCpuXMMReg(DynXMMReg reg, U32 index) = 0;
 	virtual void loadCpuXMMReg64ZeroExtend(DynXMMReg reg, U32 index) = 0;
-    virtual void loadXMMFromMem128(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadXMMFromMem32(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadLowXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void loadHighXMMFromMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeXMMToMem128(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeXMMToMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeXMMToMem32(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
-    virtual void storeHighXMMToMem64(DynXMMReg reg, DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
+    virtual void loadXMMFromMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void loadXMMFromMem32(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void loadXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void loadLowXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void loadHighXMMFromMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeXMMToMem128(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeXMMToMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeXMMToMem32(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
+    virtual void storeHighXMMToMem64(DynXMMReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
 
     void opXmmXmm(DecodedOp* op, XmmXmmCallback callback, bool loadDest = true);
     void opXmmXmmImm(DecodedOp* op, XmmXmmImmCallback callback);
@@ -89,13 +89,13 @@ public:
     virtual void xorpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
     virtual void cvtpi2psXmmMmx(DynXMMReg dst, DynMMXReg src) = 0;
     virtual void cvtps2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
-    virtual void cvtsi2ssXmmR32(DynXMMReg dst, DynReg src) = 0;
-    virtual void cvtss2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
+    virtual void cvtsi2ssXmmR32(DynXMMReg dst, RegPtr src) = 0;
+    virtual void cvtss2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
     virtual void cvttps2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
-    virtual void cvttss2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
+    virtual void cvttss2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
     virtual void movhlpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
     virtual void movlhpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-    virtual void movmskpsR32Xmm(DynReg dst, DynXMMReg src) = 0;
+    virtual void movmskpsR32Xmm(RegPtr dst, DynXMMReg src) = 0;
     virtual void movssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
     virtual void shufpsXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
     virtual void unpckhpsXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
@@ -105,8 +105,8 @@ public:
     virtual void comissXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
     virtual void ucomissXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
     virtual void sfence() = 0;
-    virtual void stmxcsr(DynReg address) = 0;
-    virtual void ldmxcsr(DynReg address) = 0;
+    virtual void stmxcsr(RegPtr address) = 0;
+    virtual void ldmxcsr(RegPtr address) = 0;
     
     void dynamic_addpsXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::addpsXmmXmm); }
     void dynamic_addpsE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::addpsXmmXmm, [op, this]() {DynamicCodeGen::dynamic_addpsE128(op); }); }
@@ -292,22 +292,22 @@ public:
 	virtual void cvttpd2piMmxXmm(DynMMXReg dst, DynXMMReg src) = 0;
 	virtual void cvtps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void cvtps2pdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void cvtsd2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
+	virtual void cvtsd2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
 	virtual void cvtsd2ssXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void cvtsi2sdXmmR32(DynXMMReg dst, DynReg src) = 0;
+	virtual void cvtsi2sdXmmR32(DynXMMReg dst, RegPtr src) = 0;
 	virtual void cvtss2sdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void cvttpd2dqXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void cvttps2dqXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void cvttsd2siR32Xmm(DynReg dst, DynXMMReg src) = 0;
+	virtual void cvttsd2siR32Xmm(RegPtr dst, DynXMMReg src) = 0;
 	virtual void movsdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void movupdXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
-	virtual void movmskpd(DynReg dst, DynXMMReg src) = 0;
-	virtual void movd(DynReg dst, DynXMMReg src) = 0;
-	virtual void movd(DynXMMReg dst, DynReg src) = 0;
+	virtual void movmskpd(RegPtr dst, DynXMMReg src) = 0;
+	virtual void movd(RegPtr dst, DynXMMReg src) = 0;
+	virtual void movd(DynXMMReg dst, RegPtr src) = 0;
 	virtual void movdq2q(DynMMXReg dst, DynXMMReg src) = 0;
 	virtual void movq2dq(DynXMMReg dst, DynMMXReg src) = 0;
 
-	virtual void maskmovdqu(DynXMMReg dst, DynXMMReg src, DynReg address) = 0;
+	virtual void maskmovdqu(DynXMMReg dst, DynXMMReg src, RegPtr address) = 0;
 	virtual void pshufdXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
 	virtual void pshufhwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
 	virtual void pshuflwXmmXmm(DynXMMReg dst, DynXMMReg src, U32 imm) = 0;
@@ -335,11 +335,11 @@ public:
 	virtual void pmulhuwXmmXmm(DynXMMReg dst, DynXMMReg src) = 0;
 	virtual void lfence() = 0;
 	virtual void mfence() = 0;
-	virtual void clflush(DynReg rm, DynReg sib, U8 lsl, U32 disp) = 0;
+	virtual void clflush(RegPtr rm, RegPtr sib, U8 lsl, U32 disp) = 0;
 	virtual void pause() = 0;
-	virtual void pextrwR32Xmm(DynReg dst, DynXMMReg src, U32 imm) = 0;
-	virtual void pinsrwXmmR32(DynXMMReg dst, DynReg src, U32 imm) = 0;
-	virtual void pmovmskbR32Xmm(DynReg dst, DynXMMReg src) = 0;
+	virtual void pextrwR32Xmm(RegPtr dst, DynXMMReg src, U32 imm) = 0;
+	virtual void pinsrwXmmR32(DynXMMReg dst, RegPtr src, U32 imm) = 0;
+	virtual void pmovmskbR32Xmm(RegPtr dst, DynXMMReg src) = 0;
 
 	void dynamic_addpdXmmXmm(DecodedOp* op) override { opXmmXmm(op, &DynamicCodeGenSSE::addpdXmmXmm); }
 	void dynamic_addpdXmmE128(DecodedOp* op) override { opXmmE128(op, &DynamicCodeGenSSE::addpdXmmXmm, [op, this]() {DynamicCodeGen::dynamic_addpdXmmE128(op); }); }

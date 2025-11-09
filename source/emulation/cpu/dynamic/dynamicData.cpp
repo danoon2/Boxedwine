@@ -43,7 +43,7 @@
 #include "../dynamic/dynamic_fpu.h"
 #include "../dynamic/dynamic_lock.h"
 
-U8 DynReg2::hardwareReg() {
+U8 DynReg::hardwareReg() {
     if (reg != 0xff) {
         return reg;
     }
@@ -60,15 +60,15 @@ static void dynamic_onExitSignal(CPU* cpu) {
 
 void DynamicData::dynamic_callback(DecodedOp* op) {
     if (op->pfn == onExitSignal) {
-        callHostFunction(dynamic_onExitSignal, false, 1, 0, DYN_PARAM_CPU);
+        call(dynamic_onExitSignal);
     } else {
-        kpanic("x32CPU::x32_callback unhandled callback");
+        kpanic("DynamicData::dynamic_callback unhandled callback");
     }
 }
 
 void DynamicData::dynamic_invalid_op(DecodedOp* op) {
     //kpanic_fmt("Invalid instruction %x\n", op->inst);
-    callHostFunction((void*)common_ud2, false, 1, 0, DYN_PARAM_CPU, false);
+    call(common_ud2);
     blockDone(true);
 }
 
@@ -150,6 +150,24 @@ void DynamicData::call_III(CallIII address, U32 value1, U32 value2, U32 value3) 
     params.push_back(DynParam(DYN_PARAM_CONST_32, value1));
     params.push_back(DynParam(DYN_PARAM_CONST_32, value2));
     params.push_back(DynParam(DYN_PARAM_CONST_32, value3));
+    callHostFunction(address, params);
+}
+
+void DynamicData::call_IRI(CallIRI address, U32 value1, DynWidth width2, RegPtr reg2, U32 value3) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value1));
+    pushParam(params, width2, reg2);
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value3));
+    callHostFunction(address, params);
+}
+
+void DynamicData::call_IIR(CallIRI address, U32 value1, U32 value2, DynWidth width3, RegPtr reg3) {
+    std::vector<DynParam> params;
+    params.push_back(DynParam(DYN_PARAM_CPU));
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value1));    
+    params.push_back(DynParam(DYN_PARAM_CONST_32, value2));
+    pushParam(params, width3, reg3);
     callHostFunction(address, params);
 }
 

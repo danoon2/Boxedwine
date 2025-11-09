@@ -15,8 +15,3 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
-
-void DynamicData::dynamic_fillFlags() {
-    callHostFunction((void*)common_fillFlags, false, 1, 0, DYN_PARAM_CPU, false);
-    currentLazyFlags=FLAGS_NONE;
-}

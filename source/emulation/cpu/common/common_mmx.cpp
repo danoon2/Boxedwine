@@ -222,7 +222,7 @@ void common_psrawE64(CPU* cpu, U32 reg, U32 address) {
 	dest->sw.w3 >>= src.ub.b0;
 }
 
-void common_psllw(CPU* cpu, U32 reg, U8 imm) {
+void common_psllw(CPU* cpu, U32 reg, U32 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     dest->uw.w0 <<= imm;
@@ -231,7 +231,7 @@ void common_psllw(CPU* cpu, U32 reg, U8 imm) {
 	dest->uw.w3 <<= imm;	
 }
 
-void common_psraw(CPU* cpu, U32 reg, U8 imm) {
+void common_psraw(CPU* cpu, U32 reg, U32 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     dest->sw.w0 >>= imm;
@@ -240,7 +240,7 @@ void common_psraw(CPU* cpu, U32 reg, U8 imm) {
 	dest->sw.w3 >>= imm;	
 }
 
-void common_psrlw(CPU* cpu, U32 reg, U8 imm) {
+void common_psrlw(CPU* cpu, U32 reg, U32 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     dest->uw.w0 >>= imm;
@@ -327,21 +327,21 @@ void common_psradE64(CPU* cpu, U32 reg, U32 address) {
 	dest->sd.d1 >>= src.ub.b0;	
 }
 
-void common_pslld(CPU* cpu, U32 reg, U8 imm) {
+void common_pslld(CPU* cpu, U32 reg, U32 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     dest->ud.d0 <<= imm;
 	dest->ud.d1 <<= imm;
 }
 
-void common_psrad(CPU* cpu, U32 reg, U8 imm) {
+void common_psrad(CPU* cpu, U32 reg, U32 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     dest->sd.d0 >>= imm;
 	dest->sd.d1 >>= imm;
 }
 
-void common_psrld(CPU* cpu, U32 reg, U8 imm) {
+void common_psrld(CPU* cpu, U32 reg, U32 imm) {
     MMX_reg* dest=cpu->fpu.getMMX(reg);
     
     dest->ud.d0 >>= imm;
@@ -396,11 +396,11 @@ void common_psrlqE64(CPU* cpu, U32 reg, U32 address) {
 	}
 }
 
-void common_psllq(CPU* cpu, U32 reg, U8 imm) {   
+void common_psllq(CPU* cpu, U32 reg, U32 imm) {   
     cpu->fpu.getMMX(reg)->q <<= imm;
 }
 
-void common_psrlq(CPU* cpu, U32 reg, U8 imm) {
+void common_psrlq(CPU* cpu, U32 reg, U32 imm) {
     cpu->fpu.getMMX(reg)->q >>= imm;
 }
 

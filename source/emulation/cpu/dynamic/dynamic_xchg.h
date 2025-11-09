@@ -37,7 +37,7 @@ void DynamicData::dynamic_xchgr8r8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge8r8(DecodedOp* op) {
-    readWriteMem(DYN_8bit, calculateEaa2(op), [op, this](RegPtr value) {
+    readWriteMem(DYN_8bit, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg8(op->reg);
         xchgReg(DYN_8bit, reg, value);
     });
@@ -50,7 +50,7 @@ void DynamicData::dynamic_xchgr16r16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge16r16(DecodedOp* op) {
-    readWriteMem(DYN_16bit, calculateEaa2(op), [op, this](RegPtr value) {
+    readWriteMem(DYN_16bit, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg(op->reg);
         xchgReg(DYN_16bit, reg, value);
     });
@@ -63,7 +63,7 @@ void DynamicData::dynamic_xchgr32r32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_xchge32r32(DecodedOp* op) {
-    readWriteMem(DYN_32bit, calculateEaa2(op), [op, this](RegPtr value) {
+    readWriteMem(DYN_32bit, calculateEaa(op), [op, this](RegPtr value) {
         RegPtr reg = getReg(op->reg);
         xchgReg(DYN_32bit, reg, value);
     });
@@ -77,7 +77,7 @@ void DynamicData::dynamic_cmpxchgr8r8(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge8r8(DecodedOp* op) {
-    call_RI(common_cmpxchge8r8, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge8r8, DYN_32bit, calculateEaa(op), op->reg);
     currentLazyFlags=nullptr;
     incrementEip(op->len);
 }
@@ -87,7 +87,7 @@ void DynamicData::dynamic_cmpxchgr16r16(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge16r16(DecodedOp* op) {
-    call_RI(common_cmpxchge16r16, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge16r16, DYN_32bit, calculateEaa(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }
@@ -97,7 +97,7 @@ void DynamicData::dynamic_cmpxchgr32r32(DecodedOp* op) {
     incrementEip(op->len);
 }
 void DynamicData::dynamic_cmpxchge32r32(DecodedOp* op) {
-    call_RI(common_cmpxchge32r32, DYN_32bit, calculateEaa2(op), op->reg);
+    call_RI(common_cmpxchge32r32, DYN_32bit, calculateEaa(op), op->reg);
     currentLazyFlags = nullptr;
     incrementEip(op->len);
 }

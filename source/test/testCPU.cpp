@@ -177,7 +177,7 @@ void pushCode32(int value) {
 void newInstruction(int flags) {
     cseip=CODE_ADDRESS;
     cpu->lazyFlags = FLAGS_NONE;
-    cpu->flags = flags;
+    cpu->setFlags(flags, FMASK_ALL);
     //cpu.blocks.clear();
     EAX=0;
     ECX=0;
@@ -8796,6 +8796,7 @@ void testPopSeg16(int inst, U8 seg) {
         pushCode8(0);
         pushCode8(0);
         checkReadValueIntoAX = true;
+        process->hasSetSeg[seg] = true;
     }
     runTestCPU();
     if (cpu->reg[4].u16!=prevStack+2) {

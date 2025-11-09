@@ -21,58 +21,54 @@
 #ifdef BOXEDWINE_DYNAMIC
 #include "dynamicFPU.h"
 
-void DynamicCodeGenFPU::calculateIndexReg(DynReg result, DynReg topReg, U32 index) {
-    movToRegFromReg(result, DYN_32bit, topReg, DYN_32bit, false);
-    addRegImm(result, DYN_32bit, index);
-    andRegImm(result, DYN_32bit, 7);
-    regUsed[result] = true;
+RegPtr DynamicCodeGenFPU::calculateIndexReg(RegPtr topReg, U32 index) {
+    RegPtr result = getTmpReg();
+    mov(DYN_32bit, result, topReg);
+    addValue(DYN_32bit, result, index, false);
+    andValue(DYN_32bit, result, 7, false);
+    return result;
 }
 
-void DynamicCodeGenFPU::readFPUTag(DynReg indexReg, DynReg result) {
-    movToRegFromCpu(result, indexReg, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit);
-    regUsed[result] = true;
+RegPtr DynamicCodeGenFPU::readFPUTag(RegPtr indexReg) {
+    return readCPU(DYN_8bit, indexReg, 0, offsetof(CPU, fpu.tags[0]));
 }
 
-void DynamicCodeGenFPU::writeFPUTag(DynReg indexReg, DynReg valueReg) {
-    movToCpuFromReg(indexReg, 0, offsetof(CPU, fpu.tags[0]), valueReg, DYN_8bit, false);
+void DynamicCodeGenFPU::writeFPUTag(RegPtr indexReg, RegPtr valueReg) {
+    writeCPU(DYN_8bit, indexReg, 0, offsetof(CPU, fpu.tags[0]), valueReg);
 }
 
-void DynamicCodeGenFPU::dynamic_FPU_PREP_PUSH(DynReg topReg, bool writeTag) {
-    subRegImm(topReg, DYN_32bit, (U32)1);
-    andRegImm(topReg, DYN_32bit, (U32)7);
-    movToCpuFromReg(offsetof(CPU, fpu.top), topReg, DYN_32bit, false);
+void DynamicCodeGenFPU::dynamic_FPU_PREP_PUSH(RegPtr topReg, bool writeTag) {
+    subValue(DYN_32bit, topReg, 1, false);
+    andValue(DYN_32bit, topReg, 7, false);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.top), topReg);
 
     if (writeTag) {
-        movToCpu(topReg, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit, (U32)TAG_Valid);
+        writeCPUValue(DYN_8bit, topReg, 0, offsetof(CPU, fpu.tags[0]), TAG_Valid);
     }
 }
 
-void DynamicCodeGenFPU::getIsCachedReg(DynReg result, DynReg indexReg) {
-    xorRegReg(result, result, DYN_32bit, false);
+void DynamicCodeGenFPU::IfNotRegCached(RegPtr indexReg, bool bigJump) {
     static_assert(sizeof(cpu->fpu.isRegCached) == 9, "false");
-    movToRegFromCpu(result, indexReg, 0, offsetof(CPU, fpu.isRegCached), DYN_8bit);
-    regUsed[result] = true;
+    IfNotCPU(DYN_8bit, indexReg, 0, offsetof(CPU, fpu.isRegCached), bigJump);
 }
 
-void DynamicCodeGenFPU::setRegIsCached(U8 regIsCached, DynReg indexReg) {
-    movToCpu(indexReg, 0, offsetof(CPU, fpu.isRegCached), DYN_8bit, regIsCached);
+void DynamicCodeGenFPU::setRegIsCached(RegPtr indexReg, bool regIsCached) {
+    writeCPUValue(DYN_8bit, indexReg, 0, offsetof(CPU, fpu.isRegCached), regIsCached ? 1 : 0);
 }
 
 // movsd qword ptr[HOST_CPU + topReg*8 + offsetof(CPU, fpu.regs[0].d)], xmm
-void DynamicCodeGenFPU::syncXmmToCPU(DynReg topReg, DynFpuReg fpuReg, U8 regIndex, DynReg tmpReg) {
-    DynReg indexReg = topReg;
-    if (regIndex != 0) {
-        indexReg = tmpReg;
-        calculateIndexReg(tmpReg, topReg, regIndex);
+void DynamicCodeGenFPU::syncXmmToCPU(RegPtr topReg, DynFpuReg fpuReg, U8 regIndex) {
+    if (regIndex == 0) {
+        syncXmmToCPUWithIndexReg(topReg, fpuReg);
+    } else {
+        syncXmmToCPUWithIndexReg(calculateIndexReg(topReg, regIndex), fpuReg);
     }
-    syncXmmToCPUWithIndexReg(indexReg, fpuReg, tmpReg);
 }
 
-void DynamicCodeGenFPU::syncXmmToCPUWithIndexReg(DynReg indexReg, DynFpuReg xmm, DynReg tmpReg) {
+void DynamicCodeGenFPU::syncXmmToCPUWithIndexReg(RegPtr indexReg, DynFpuReg xmm) {
     static_assert(sizeof(cpu->fpu.regCache) == 72, "false");
     storeCpuFpuReg(xmm, indexReg);
-    setRegIsCached(1, indexReg);
-    regUsed[tmpReg] = false;
+    setRegIsCached(indexReg, true);
 }
 
 static void dynamic_cache_float(CPU* cpu, U32 index) {
@@ -81,74 +77,64 @@ static void dynamic_cache_float(CPU* cpu, U32 index) {
 }
 
 // movsd xmm, qword ptr[HOST_CPU + topReg*8 + offsetof(CPU, fpu.regs[0].d)]
-void DynamicCodeGenFPU::syncCPUToXmm(DynReg topReg, DynFpuReg fpuReg, U8 regIndex, DynReg calculatedIndexReg, DynReg tmpReg2, bool doneWithIndexReg) {
-    DynReg indexReg = topReg;
+RegPtr DynamicCodeGenFPU::syncCPUToXmm(RegPtr topReg, DynFpuReg fpuReg, U8 regIndex) {
+    RegPtr indexReg = topReg;
     if (regIndex != 0) {
-        indexReg = calculatedIndexReg;
-        calculateIndexReg(calculatedIndexReg, topReg, regIndex);
-    } else if (!doneWithIndexReg) {
-        movToRegFromReg(calculatedIndexReg, DYN_32bit, topReg, DYN_32bit, false);
+        indexReg = calculateIndexReg(topReg, regIndex);
     }
-    getIsCachedReg(tmpReg2, indexReg);
-    IfNot(tmpReg2, true);
-    callHostFunction(dynamic_cache_float, false, 2, 0, DYN_PARAM_CPU, false, regIndex, DYN_PARAM_CONST_32, false);
+    IfNotRegCached(indexReg);
+        call_I(dynamic_cache_float, (U32)regIndex);
     EndIf();
     loadCpuFpuReg(fpuReg, indexReg);
-    if (doneWithIndexReg) {
-        regUsed[calculatedIndexReg] = false;
-    }
-    regUsed[tmpReg2] = false;
+    return indexReg;
 }
 
-void DynamicCodeGenFPU::getTopReg(DynReg reg) {
-    movToRegFromCpu(reg, offsetof(CPU, fpu.top), DYN_32bit);
+RegPtr DynamicCodeGenFPU::getTopReg() {
+    return readCPU(DYN_32bit, offsetof(CPU, fpu.top));
 }
 
 #define XMM_TMP DYN_FPU_REG_2
 
 class FPUReg {
 public:
-    FPUReg(DynamicCodeGenFPU* data, DynReg topReg, U32 regIndex, DynReg calculatedIndexReg, DynReg tmpReg2, bool doneWithIndexReg) {
+    FPUReg(DynamicCodeGenFPU* data, RegPtr topReg, U32 regIndex, RegPtr& calculatedIndexReg) {
         this->reg = regIndex ? DYN_FPU_REG_1 : DYN_FPU_REG_0;
-        data->syncCPUToXmm(topReg, this->reg, regIndex, calculatedIndexReg, tmpReg2, doneWithIndexReg);
+        calculatedIndexReg = data->syncCPUToXmm(topReg, this->reg, regIndex);
+    }
+    FPUReg(DynamicCodeGenFPU* data, RegPtr topReg, U32 regIndex) {
+        this->reg = regIndex ? DYN_FPU_REG_1 : DYN_FPU_REG_0;
+        data->syncCPUToXmm(topReg, this->reg, regIndex);
     }
     DynFpuReg reg;
 };
 
 void DynamicCodeGenFPU::dynamic_SINGLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [reverse, op, callback, this](DynReg address, DynReg offset) {
+    read(DYN_32bit, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         loadFpuReg(XMM_TMP, address, offset, 0, 0, DYN_FPU_32_BIT);
         fpuRegExtend32To64(XMM_TMP, XMM_TMP);
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
         if (reverse) {
             (this->*callback)(XMM_TMP, dst.reg);
         } else {
             (this->*callback)(dst.reg, XMM_TMP);
         }
-        syncXmmToCPU(TOP_REG, reverse ? XMM_TMP : dst.reg, 0, DYN_SRC);
+        syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [op, fallback, this]() {
+    }, [fallback] {
         fallback();
-    });
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
+    read(DYN_32bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         loadFpuReg(XMM_TMP, address, offset, 0, 0, DYN_FPU_32_BIT);
         fpuRegExtend32To64(XMM_TMP, XMM_TMP);
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-        
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);        
 
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(std::move(top)));
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
@@ -156,84 +142,65 @@ void DynamicCodeGenFPU::dynamic_FCOM_SINGLE_REAL(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FCOM_SINGLE_REAL_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        loadFpuReg(XMM_TMP, address, offset, 0, 0, DYN_FPU_32_BIT);
+    read(DYN_32bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuReg(XMM_TMP, std::move(address), std::move(offset), 0, 0, DYN_FPU_32_BIT);
         fpuRegExtend32To64(XMM_TMP, XMM_TMP);
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
-
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
-        dynamic_FPU_POP(TOP_REG);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
+        
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
     }, [op, this]() {
-        DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
+        DynamicCodeGen::dynamic_FCOM_SINGLE_REAL_Pop(op);
     }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FCOMPP(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-    DynReg INDEX_REG = DYN_SRC;
+    RegPtr top = getTopReg();
+    RegPtr index;
+    FPUReg reg1(this, top, 1, index);
+    FPUReg reg2(this, top, 0);
+    RegPtr tag = readFPUTag(top);
 
-    getTopReg(TOP_REG);
-    FPUReg reg1(this, TOP_REG, 1, INDEX_REG, DYN_DEST, false);
-    FPUReg reg2(this, TOP_REG, 0, DYN_CALL_RESULT, DYN_DEST, true);
-
-    const DynReg TOP_TAG = DYN_DEST;
-    const DynReg INDEX_TAG = DYN_CALL_RESULT;
-
-    readFPUTag(INDEX_REG, INDEX_TAG);
-    readFPUTag(TOP_REG, TOP_TAG);
-
-    orRegReg(TOP_TAG, INDEX_TAG, DYN_8bit, true);
-    doFCOM(reg1.reg, reg2.reg, TOP_TAG, INDEX_TAG);
-    dynamic_FPU_POP(TOP_REG, 2);
+    orReg(DYN_8bit, tag, readFPUTag(index), false);
+    doFCOM(reg1.reg, reg2.reg, tag);
+    tag = nullptr;
+    index = nullptr;
+    dynamic_FPU_POP(top, 2);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_STi_ST0(DecodedOp* op, XmmXmmCallback callback, bool reverse, bool pop) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-    DynReg INDEX_REG = DYN_SRC;
+    RegPtr top = getTopReg();
+    RegPtr index;
+    FPUReg dst(this, top, op->reg, index);
+    FPUReg src(this, top, 0);
 
-    getTopReg(TOP_REG);
-    FPUReg dst(this, TOP_REG, op->reg, INDEX_REG, DYN_DEST, false);
-    FPUReg src(this, TOP_REG, 0, DYN_CALL_RESULT, DYN_DEST, true);
     if (reverse) {
         (this->*callback)(src.reg, dst.reg);
-        syncXmmToCPUWithIndexReg(INDEX_REG, src.reg, DYN_DEST);
+        syncXmmToCPUWithIndexReg(index, src.reg);
     } else {
         (this->*callback)(dst.reg, src.reg);
-        syncXmmToCPUWithIndexReg(INDEX_REG, dst.reg, DYN_DEST);
+        syncXmmToCPUWithIndexReg(index, dst.reg);
     }
     if (pop) {
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
     }
-    regUsed[DYN_ADDRESS] = false;
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::doFCOM_STi(DecodedOp* op, bool pop) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-    DynReg INDEX_REG = DYN_SRC;
-    
-    getTopReg(TOP_REG);
-    FPUReg dst(this, TOP_REG, op->reg, INDEX_REG, DYN_DEST, false);
-    FPUReg src(this, TOP_REG, 0, DYN_CALL_RESULT, DYN_DEST, true);
+    RegPtr top = getTopReg();
+    RegPtr index;
+    FPUReg dst(this, top, op->reg, index);
+    FPUReg src(this, top, 0);
+    RegPtr tag = readFPUTag(top);
 
-    const DynReg TOP_TAG = DYN_DEST;
-    const DynReg INDEX_TAG = DYN_CALL_RESULT;
-
-    readFPUTag(INDEX_REG, INDEX_TAG);
-    readFPUTag(TOP_REG, TOP_TAG);
-
-    orRegReg(TOP_TAG, INDEX_TAG, DYN_8bit, true);
-    doFCOM(dst.reg, src.reg, TOP_TAG, INDEX_TAG);
+    orReg(DYN_8bit, tag, readFPUTag(std::move(index)), false);
+    doFCOM(dst.reg, src.reg, tag);
     if (pop) {
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
     }
     incrementEip(op->len);
 }
@@ -254,225 +221,186 @@ void DynamicCodeGenFPU::dynamic_FUCOM_STi_Pop(DecodedOp* op) {
     doFCOM_STi(op, true);
 }
 
-void DynamicCodeGenFPU::dynamic_FPU_POP(DynReg topReg, U8 amount) {
+void DynamicCodeGenFPU::dynamic_FPU_POP(RegPtr topReg, U8 amount) {
     // this->tags[this->top] = TAG_Empty;
     // this->top = ((this->top + 1) & 7);
-    movToCpu(topReg, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit, (U32)TAG_Empty);
-    addRegImm(topReg, DYN_32bit, amount);
-    andRegImm(topReg, DYN_32bit, 7);
-    movToCpuFromReg(offsetof(CPU, fpu.top), topReg, DYN_32bit, false);
+    writeCPUValue(DYN_8bit, topReg, 0, offsetof(CPU, fpu.tags[0]), TAG_Empty);
+    addValue(DYN_32bit, topReg, amount, false);
+    andValue(DYN_32bit, topReg, 7, false);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.top), topReg);
 }
 
 void DynamicCodeGenFPU::dynamic_ST0_STj(DecodedOp* op, XmmXmmCallback callback, bool reverse) {
-    getTopReg(DYN_ADDRESS);
-    FPUReg src(this, DYN_ADDRESS, op->reg, DYN_SRC, DYN_DEST, true);
-    FPUReg dst(this, DYN_ADDRESS, 0, DYN_SRC, DYN_DEST, true);
+    RegPtr top = getTopReg();
+    FPUReg src(this, top, op->reg);
+    FPUReg dst(this, top, 0);
     if (reverse) {
         (this->*callback)(src.reg, dst.reg);
-        syncXmmToCPU(DYN_ADDRESS, src.reg, 0, DYN_SRC);
+        syncXmmToCPU(top, src.reg, 0);
     } else {
         (this->*callback)(dst.reg, src.reg);
-        syncXmmToCPU(DYN_ADDRESS, dst.reg, 0, DYN_SRC);
+        syncXmmToCPU(top, dst.reg, 0);
     }
-    regUsed[DYN_ADDRESS] = false;
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_DOUBLE_REAL(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [reverse, op, callback, this](DynReg address, DynReg offset) {
+    read(DYN_64bit, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         loadFpuReg(XMM_TMP, address, offset, 0, 0);
-        this->getTopReg(DYN_ADDRESS);
-        FPUReg dst(this, DYN_ADDRESS, 0, DYN_SRC, DYN_DEST, true);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
         if (reverse) {
             (this->*callback)(XMM_TMP, dst.reg);
         } else {
             (this->*callback)(dst.reg, XMM_TMP);
         }
-        syncXmmToCPU(DYN_ADDRESS, reverse ? XMM_TMP : dst.reg, 0, DYN_SRC);
+        syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [op, fallback, this]() {
+    }, [fallback] {
         fallback();
-    });
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FCOM_DOUBLE_REAL(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        loadFpuReg(XMM_TMP, address, offset, 0, 0);
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
+    read(DYN_64bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuReg(XMM_TMP, std::move(address), std::move(offset), 0, 0);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
-
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-        }, [op, this]() {
-            DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
-            }, true);
+    }, [op, this]() {
+        DynamicCodeGen::dynamic_FCOM_DOUBLE_REAL(op);
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FCOM_DOUBLE_REAL_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        loadFpuReg(XMM_TMP, address, offset, 0, 0);
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
+    read(DYN_64bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuReg(XMM_TMP, std::move(address), std::move(offset), 0, 0);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
-
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
-        dynamic_FPU_POP(TOP_REG);
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
-        }, [op, this]() {
-            DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
-            }, true);
+    }, [op, this]() {
+        DynamicCodeGen::dynamic_FCOM_DOUBLE_REAL_Pop(op);
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_DWORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [reverse, op, callback, this](DynReg address, DynReg offset) {
+    read(DYN_32bit, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
         loadFpuRegFromInt(XMM_TMP, address, offset, 0, 0);
-        this->getTopReg(DYN_ADDRESS);
-        FPUReg dst(this, DYN_ADDRESS, 0, DYN_SRC, DYN_DEST, true);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
         if (reverse) {
             (this->*callback)(XMM_TMP, dst.reg);
         } else {
             (this->*callback)(dst.reg, XMM_TMP);
         }
-        syncXmmToCPU(DYN_ADDRESS, reverse ? XMM_TMP : dst.reg, 0, DYN_SRC);
+        syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [op, fallback, this]() {
+    }, [fallback] {
         fallback();
-    });
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FICOM_DWORD_INTEGER(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        loadFpuRegFromInt(XMM_TMP, address, offset, 0, 0);
+    read(DYN_32bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuRegFromInt(XMM_TMP, std::move(address), std::move(offset), 0, 0);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
-
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-    }, [op, this]() {
-        DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
+    }, [op, this] {
+        DynamicCodeGen::dynamic_FICOM_DWORD_INTEGER(op);
     }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FICOM_DWORD_INTEGER_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        loadFpuRegFromInt(XMM_TMP, address, offset, 0, 0);
+    read(DYN_32bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuRegFromInt(XMM_TMP, std::move(address), std::move(offset), 0, 0);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
-
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
-        dynamic_FPU_POP(TOP_REG);
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
+    }, [op, this] {
+        DynamicCodeGen::dynamic_FICOM_DWORD_INTEGER_Pop(op);
     }, true);
 }
 
+void DynamicCodeGenFPU::loadFpuRegFromShort(DynFpuReg reg, RegPtr rm, RegPtr sib, U8 lsl, U32 disp) {
+    RegPtr result = getTmpReg();
+    read(DYN_16bit, result, rm, sib, 0, 0);
+    movsx(DYN_32bit, result, DYN_16bit, result);
+    regToFpuReg(reg, std::move(result));
+}
+
 void DynamicCodeGenFPU::dynamic_WORD_INTEGER(DecodedOp* op, XmmXmmCallback callback, std::function<void()> fallback, bool reverse) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true, [reverse, op, callback, this](DynReg address, DynReg offset) {
-        readMem(DYN_DEST, DYN_16bit, address, offset, 0, 0);
-        movToRegFromRegSignExtend(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
-        regToFpuReg(XMM_TMP, DYN_DEST);
-        this->getTopReg(DYN_ADDRESS);
-        FPUReg dst(this, DYN_ADDRESS, 0, DYN_SRC, DYN_DEST, true);
+    read(DYN_16bit, calculateEaa(op), [reverse, op, callback, this](RegPtr address, RegPtr offset) {
+        loadFpuRegFromShort(XMM_TMP, address, offset, 0, 0);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
         if (reverse) {
             (this->*callback)(XMM_TMP, dst.reg);
         } else {
             (this->*callback)(dst.reg, XMM_TMP);
         }
-        syncXmmToCPU(DYN_ADDRESS, reverse ? XMM_TMP : dst.reg, 0, DYN_SRC);
+        syncXmmToCPU(top, reverse ? XMM_TMP : dst.reg, 0);
         incrementEip(op->len);
-    }, [op, fallback, this]() {
+    }, [fallback] {
         fallback();
-    });
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FICOM_WORD_INTEGER(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        readMem(DYN_DEST, DYN_16bit, address, offset, 0, 0);
-        movToRegFromRegSignExtend(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
-        regToFpuReg(XMM_TMP, DYN_DEST);
+    read(DYN_16bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuRegFromShort(XMM_TMP, address, offset, 0, 0);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
-
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
         incrementEip(op->len);
-    }, [op, this]() {
-        DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
-    }, true);
+    }, [op, this] {
+        DynamicCodeGen::dynamic_FICOM_WORD_INTEGER(op);
+    });
 }
 
 void DynamicCodeGenFPU::dynamic_FICOM_WORD_INTEGER_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        readMem(DYN_DEST, DYN_16bit, address, offset, 0, 0);
-        movToRegFromRegSignExtend(DYN_DEST, DYN_32bit, DYN_DEST, DYN_16bit, false);
-        regToFpuReg(XMM_TMP, DYN_DEST);
+    read(DYN_16bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuRegFromShort(XMM_TMP, address, offset, 0, 0);
+        RegPtr top = getTopReg();
+        FPUReg dst(this, top, 0);
 
-        const DynReg TOP_REG = DYN_ADDRESS;
-        this->getTopReg(TOP_REG);
-        FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-
-        const DynReg TOP_TAG = DYN_DEST;
-        readFPUTag(TOP_REG, TOP_TAG);
-
-        doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
-        dynamic_FPU_POP(TOP_REG);
+        doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
-    }, [op, this]() {
-        DynamicCodeGen::dynamic_FCOM_SINGLE_REAL(op);
-    }, true);
+    }, [op, this] {
+        DynamicCodeGen::dynamic_FICOM_WORD_INTEGER_Pop(op);
+    });
 }
 
 void DynamicCodeGenFPU::dynamic_FCHS(DecodedOp* op) {
-    getTopReg(DYN_ADDRESS);
-    FPUReg dst(this, DYN_ADDRESS, 0, DYN_SRC, DYN_DEST, true);
+    RegPtr top = getTopReg();
+    FPUReg dst(this, top, 0);
     fpuXor(XMM_TMP, XMM_TMP);
     fpuSub(XMM_TMP, dst.reg);
-    syncXmmToCPU(DYN_ADDRESS, XMM_TMP, 0, DYN_SRC);
-    regUsed[DYN_ADDRESS] = false;
+    syncXmmToCPU(top, XMM_TMP, 0);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FABS(DecodedOp* op) {
-    getTopReg(DYN_ADDRESS);
-    FPUReg dst(this, DYN_ADDRESS, 0, DYN_SRC, DYN_DEST, true);
+    RegPtr top = getTopReg();
+    FPUReg dst(this, top, 0);
     loadCpuFpuRegConst(XMM_TMP, offsetof(CPU, fAbs));
     fpuAnd(dst.reg, XMM_TMP);
-    syncXmmToCPU(DYN_ADDRESS, dst.reg, 0, DYN_SRC);
-    regUsed[DYN_ADDRESS] = false;
+    syncXmmToCPU(top, dst.reg, 0);
     incrementEip(op->len);
 }
 
@@ -480,15 +408,11 @@ void DynamicCodeGenFPU::dynamic_FTST(DecodedOp* op) {
     // this->regs[8].d = 0.0;
     // FCOM(this->top, 8);
 
-    const DynReg TOP_REG = DYN_ADDRESS;
-    getTopReg(TOP_REG);
-    FPUReg dst(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-    fpuXor(XMM_TMP, XMM_TMP);
-    
-    const DynReg TOP_TAG = DYN_DEST;
-    readFPUTag(TOP_REG, TOP_TAG);
+    RegPtr top = getTopReg();
+    FPUReg dst(this, top, 0);
 
-    doFCOM(XMM_TMP, dst.reg, TOP_TAG, DYN_SRC);
+    fpuXor(XMM_TMP, XMM_TMP);
+    doFCOM(XMM_TMP, dst.reg, readFPUTag(top));
     incrementEip(op->len);
 }
 
@@ -497,18 +421,18 @@ void DynamicCodeGenFPU::dynamic_FLD_STi(DecodedOp* op) {
     // cpu->fpu.PREP_PUSH();
     // cpu->fpu.FST(reg_from, cpu->fpu.STV(0));
 
-    getTopReg(DYN_ADDRESS);
-    FPUReg fromTmp(this, DYN_ADDRESS, op->reg, DYN_SRC, DYN_DEST, true);
+    RegPtr top = getTopReg();
+    FPUReg fromTmp(this, top, op->reg);
+    RegPtr tag;
     if (op->reg) {
-        calculateIndexReg(DYN_CALL_RESULT, DYN_ADDRESS, op->reg);
-        readFPUTag(DYN_CALL_RESULT, DYN_CALL_RESULT);
+        tag = readFPUTag(calculateIndexReg(top, op->reg));
     } else {
-        readFPUTag(DYN_ADDRESS, DYN_CALL_RESULT);
+        tag = readFPUTag(top);
     }
-    dynamic_FPU_PREP_PUSH(DYN_ADDRESS, false); // will change topReg
+    dynamic_FPU_PREP_PUSH(top, false); // will change topReg
 
-    syncXmmToCPU(DYN_ADDRESS, fromTmp.reg, 0, DYN_SRC);
-    writeFPUTag(DYN_ADDRESS, DYN_CALL_RESULT);
+    syncXmmToCPU(top, fromTmp.reg, 0);
+    writeFPUTag(top, tag);
     incrementEip(op->len);
 }
 
@@ -519,24 +443,21 @@ void DynamicCodeGenFPU::dynamic_FXCH_STi(DecodedOp* op) {
     // this->regs[other] = this->regs[st];
     // this->tags[st] = tag;
     // this->regs[st] = reg;
-    const DynReg TOP_REG = DYN_ADDRESS;
-    const DynReg INDEX_REG = DYN_CALL_RESULT;
 
-    getTopReg(TOP_REG);
-    FPUReg from(this, TOP_REG, op->reg, DYN_SRC, DYN_DEST, true);
-    FPUReg to(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
+    RegPtr top = getTopReg();
+    FPUReg from(this, top, op->reg);
+    FPUReg to(this, top, 0);
 
     // exchange xmm
-    syncXmmToCPU(TOP_REG, from.reg, 0, DYN_SRC);
-    syncXmmToCPU(TOP_REG, to.reg, op->reg, DYN_SRC);
+    syncXmmToCPU(top, from.reg, 0);
+    syncXmmToCPU(top, to.reg, op->reg);
 
-    calculateIndexReg(INDEX_REG, TOP_REG, op->reg);
+    RegPtr index = calculateIndexReg(top, op->reg);
 
     // exchange tags
-    readFPUTag(TOP_REG, DYN_SRC);
-    readFPUTag(INDEX_REG, DYN_DEST);
-    writeFPUTag(TOP_REG, DYN_DEST);
-    writeFPUTag(INDEX_REG, DYN_SRC);
+    RegPtr topIndex = readFPUTag(top);
+    writeFPUTag(top, readFPUTag(index));
+    writeFPUTag(index, topIndex);
 
     incrementEip(op->len);
 }
@@ -548,23 +469,18 @@ void DynamicCodeGenFPU::dynamic_FNOP(DecodedOp* op) {
 void DynamicCodeGenFPU::doFST_STi(DecodedOp* op, bool pop) {
     // cpu->fpu.FST(cpu->fpu.STV(0), cpu->fpu.STV(reg));
     // cpu->fpu.FPOP();    
+    RegPtr top = getTopReg();
+    RegPtr index = calculateIndexReg(top, op->reg);
 
-    const DynReg TOP_REG = DYN_ADDRESS;
-    const DynReg INDEX_REG = DYN_CALL_RESULT;
-
-    getTopReg(TOP_REG);
-    calculateIndexReg(INDEX_REG, TOP_REG, op->reg);
-
-    FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
+    FPUReg src(this, top, 0);
 
     // copy tag
-    readFPUTag(TOP_REG, DYN_SRC);
-    writeFPUTag(INDEX_REG, DYN_SRC);
+    writeFPUTag(index, readFPUTag(top));
 
-    syncXmmToCPUWithIndexReg(INDEX_REG, src.reg, DYN_SRC);
+    syncXmmToCPUWithIndexReg(index, src.reg);
 
     if (pop) {
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
     }
     incrementEip(op->len);
 }
@@ -578,78 +494,54 @@ void DynamicCodeGenFPU::dynamic_FST_STi_Pop(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FLD1(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
+    RegPtr top = getTopReg();    
+    RegPtr reg = getTmpReg();
 
-    getTopReg(TOP_REG);
-    dynamic_FPU_PREP_PUSH(TOP_REG, true);
-    movToReg(DYN_SRC, DYN_32bit, 1);
-    regToFpuReg(XMM_TMP, DYN_SRC);
-    syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_DEST);
+    dynamic_FPU_PREP_PUSH(top, true);
+    movValue(DYN_32bit, reg, 1);
+    regToFpuReg(XMM_TMP, reg);
+    syncXmmToCPU(top, XMM_TMP, 0);
     incrementEip(op->len);
 }
 
-void DynamicCodeGenFPU::dynamic_FLDL2T(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
+void DynamicCodeGenFPU::fpuLoadConst(U32 offset) {
+    RegPtr top = getTopReg();
+    dynamic_FPU_PREP_PUSH(top, true);
+    loadCpuFpuRegConst(XMM_TMP, offset);
+    syncXmmToCPU(top, XMM_TMP, 0);    
+}
 
-    getTopReg(TOP_REG);
-    dynamic_FPU_PREP_PUSH(TOP_REG, true);
-    loadCpuFpuRegConst(XMM_TMP, offsetof(CPU, fL2T));
-    syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_SRC);
-    regUsed[DYN_ADDRESS] = false;
+void DynamicCodeGenFPU::dynamic_FLDL2T(DecodedOp* op) {
+    fpuLoadConst(offsetof(CPU, fL2T));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FLDL2E(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    dynamic_FPU_PREP_PUSH(TOP_REG, true);
-    loadCpuFpuRegConst(XMM_TMP, offsetof(CPU, fL2E));
-    syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_SRC);
-    regUsed[DYN_ADDRESS] = false;
+    fpuLoadConst(offsetof(CPU, fL2E));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FLDPI(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    dynamic_FPU_PREP_PUSH(TOP_REG, true);
-    loadCpuFpuRegConst(XMM_TMP, offsetof(CPU, fPi));
-    syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_SRC);
-    regUsed[DYN_ADDRESS] = false;
+    fpuLoadConst(offsetof(CPU, fPi));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FLDLG2(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    dynamic_FPU_PREP_PUSH(TOP_REG, true);
-    loadCpuFpuRegConst(XMM_TMP, offsetof(CPU, fLG2));
-    syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_SRC);
-    regUsed[DYN_ADDRESS] = false;
+    fpuLoadConst(offsetof(CPU, fLG2));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FLDLN2(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    dynamic_FPU_PREP_PUSH(TOP_REG, true);
-    loadCpuFpuRegConst(XMM_TMP, offsetof(CPU, fLN2));
-    syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_SRC);
-    regUsed[DYN_ADDRESS] = false;
+    fpuLoadConst(offsetof(CPU, fLN2));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FLDZ(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
+    RegPtr top = getTopReg();
 
-    getTopReg(TOP_REG);
-    dynamic_FPU_PREP_PUSH(TOP_REG, true);
+    dynamic_FPU_PREP_PUSH(top, true);
     fpuXor(XMM_TMP, XMM_TMP);
-    syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_DEST);
+    syncXmmToCPU(top, XMM_TMP, 0);
     incrementEip(op->len);
 }
 
@@ -658,15 +550,12 @@ void DynamicCodeGenFPU::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
     // cpu->fpu.PREP_PUSH();
     // cpu->fpu.FLD_F32(value, cpu->fpu.STV(0));
 
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_ADDRESS;
-
+    read(DYN_32bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
         loadFpuReg(XMM_TMP, address, offset, 0, 0, DYN_FPU_32_BIT);
         fpuRegExtend32To64(XMM_TMP, XMM_TMP);                
-        getTopReg(TOP_REG);
-        dynamic_FPU_PREP_PUSH(TOP_REG, true);
-        syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_DEST);
+        RegPtr top = getTopReg();
+        dynamic_FPU_PREP_PUSH(top, true);
+        syncXmmToCPU(top, XMM_TMP, 0);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FLD_SINGLE_REAL(op);
@@ -674,14 +563,11 @@ void DynamicCodeGenFPU::dynamic_FLD_SINGLE_REAL(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FST_SINGLE_REAL(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
-
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
+    write(DYN_32bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
         fpuReg64To32(src.reg, src.reg);
-        storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);
+        storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);        
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FST_SINGLE_REAL(op);
@@ -689,30 +575,23 @@ void DynamicCodeGenFPU::dynamic_FST_SINGLE_REAL(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FST_SINGLE_REAL_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
-
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
+    write(DYN_32bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
         fpuReg64To32(src.reg, src.reg);
         storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_32_BIT);
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
     }, [op, this]() {
-        // 3dfx logo triggers this path
         DynamicCodeGen::dynamic_FST_SINGLE_REAL_Pop(op);
-    });
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FST_DOUBLE_REAL(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
-
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
+    write(DYN_64bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
+        storeFpuReg(src.reg, address, offset, 0, 0);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FST_DOUBLE_REAL(op);
@@ -720,34 +599,31 @@ void DynamicCodeGenFPU::dynamic_FST_DOUBLE_REAL(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FST_DOUBLE_REAL_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
-
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
-        dynamic_FPU_POP(TOP_REG);
+    write(DYN_64bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
+        storeFpuReg(src.reg, address, offset, 0, 0);
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FST_DOUBLE_REAL_Pop(op);
-    });
+    }, true);
 }
 
 void DynamicCodeGenFPU::dynamic_FNSTCW(DecodedOp* op) {
     // cpu->memory->writew(address, cpu->fpu.CW());
-    write(DYN_16bit, calculateEaa2(op), readCPU(DYN_16bit, offsetof(CPU, fpu.cw)));
+    write(DYN_16bit, calculateEaa(op), readCPU(DYN_16bit, offsetof(CPU, fpu.cw)));
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FLDCW(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true);
-    movToRegFromReg(DYN_CALL_RESULT, DYN_32bit, DYN_CALL_RESULT, DYN_16bit, false);
-    movToCpuFromReg(offsetof(CPU, fpu.cw), DYN_CALL_RESULT, DYN_32bit, false);
-    shrRegImm(DYN_CALL_RESULT, DYN_32bit, 10);
-    andRegImm(DYN_CALL_RESULT, DYN_32bit, 3);
-    movToCpuFromReg(offsetof(CPU, fpu.round), DYN_CALL_RESULT, DYN_32bit, true);
+    RegPtr cw = read(DYN_16bit, calculateEaa(op));
+    movzx(DYN_32bit, cw, DYN_16bit, cw);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.cw), cw);
+
+    shrValue(DYN_32bit, cw, 10, false);
+    andValue(DYN_32bit, cw, 3, false);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.round), cw);
     incrementEip(op->len);
 }
 
@@ -755,50 +631,40 @@ void DynamicCodeGenFPU::dynamic_FLDCW(DecodedOp* op) {
 void DynamicCodeGenFPU::dynamic_FRNDINT(DecodedOp* op) {
     // double value = this->regCache[this->top].d;
     // this->regCache[this->top].d = (double)(S64)FROUND(value);
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
-    updateFPURounding(DYN_CALL_RESULT, DYN_DEST);
-    getTopReg(TOP_REG);
+    RegPtr top = getTopReg();
+    FPUReg src(this, top, 0);
+    updateFPURounding();
     fpuRegToInt64(src.reg, src.reg, false);
     fpuRegInt64To64(src.reg, src.reg);
     restoreFPURounding();
-    syncXmmToCPU(TOP_REG, src.reg, 0, DYN_DEST);
+    syncXmmToCPU(top, src.reg, 0);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_FDECSTP(DecodedOp* op) {
     // this->top = (this->top - 1) & 7;
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    subRegImm(TOP_REG, DYN_32bit, (U32)1);
-    andRegImm(TOP_REG, DYN_32bit, (U32)7);
-    movToCpuFromReg(offsetof(CPU, fpu.top), TOP_REG, DYN_32bit, true);
+    RegPtr top = getTopReg();
+    subValue(DYN_32bit, top, 1, false);
+    andValue(DYN_32bit, top, 7, false);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.top), top);
     incrementEip(op->len);
 }
 void DynamicCodeGenFPU::dynamic_FINCSTP(DecodedOp* op) {
     // this->top = (this->top + 1) & 7;
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    addRegImm(TOP_REG, DYN_32bit, (U32)1);
-    andRegImm(TOP_REG, DYN_32bit, (U32)7);
-    movToCpuFromReg(offsetof(CPU, fpu.top), TOP_REG, DYN_32bit, true);
+    RegPtr top = getTopReg();
+    addValue(DYN_32bit, top, 1, false);
+    andValue(DYN_32bit, top, 7, false);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.top), top);
     incrementEip(op->len);
 }
 
 void DynamicCodeGenFPU::dynamic_doCMov(U8 regIndex) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-    const DynReg INDEX_REG = DYN_SRC;
+    RegPtr top = getTopReg();
+    RegPtr index;
+    FPUReg src(this, top, regIndex, index);
 
-    getTopReg(TOP_REG);
-    FPUReg src(this, TOP_REG, regIndex, INDEX_REG, DYN_DEST, false);
-
-    syncXmmToCPUWithIndexReg(TOP_REG, src.reg, DYN_DEST);
-    readFPUTag(INDEX_REG, DYN_SRC);
-    writeFPUTag(TOP_REG, DYN_SRC);
+    syncXmmToCPUWithIndexReg(top, src.reg);
+    writeFPUTag(top, readFPUTag(index));
 }
 
 void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_CF(DecodedOp* op) {
@@ -859,12 +725,10 @@ void DynamicCodeGenFPU::dynamic_FCMOV_ST0_STj_NPF(DecodedOp* op) {
 
 // age of empires uses this for path finding
 void DynamicCodeGenFPU::dynamic_FSQRT(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-
-    getTopReg(TOP_REG);
-    FPUReg reg(this, TOP_REG, 0, DYN_SRC, DYN_DEST, true);
+    RegPtr top = getTopReg();
+    FPUReg reg(this, top, 0);
     fpuSqrt(reg.reg, reg.reg);
-    syncXmmToCPU(TOP_REG, reg.reg, 0, DYN_SRC);
+    syncXmmToCPU(top, reg.reg, 0);
     incrementEip(op->len);
 }
 
@@ -873,14 +737,12 @@ void DynamicCodeGenFPU::dynamic_FILD_DWORD_INTEGER(DecodedOp* op) {
     // cpu->fpu.PREP_PUSH();
     // cpu->fpu.FLD_I32(value, cpu->fpu.STV(0));
 
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_32bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST;
+    read(DYN_32bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
 
-        getTopReg(TOP_REG);
         loadFpuRegFromInt(XMM_TMP, address, offset, 0, 0);
-        dynamic_FPU_PREP_PUSH(TOP_REG, true); // will change topReg
-        syncXmmToCPUWithIndexReg(TOP_REG, XMM_TMP, DYN_SRC);
+        dynamic_FPU_PREP_PUSH(top, true); // will change topReg
+        syncXmmToCPUWithIndexReg(top, XMM_TMP);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FILD_DWORD_INTEGER(op);
@@ -892,7 +754,7 @@ void DynamicCodeGenFPU::dynamic_FILD_DWORD_INTEGER(DecodedOp* op) {
 // #define FPU_SET_C2(fpu, C) (fpu)->sw &= ~0x0400; if (C != 0) (fpu)->sw |= 0x0400    
 // #define FPU_SET_C3(fpu, C) (fpu)->sw &= ~0x4000; if (C != 0) (fpu)->sw |= 0x4000
 
-void DynamicCodeGenFPU::doFCOM(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ordTags, DynReg tmpReg) {
+void DynamicCodeGenFPU::doFCOM(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags) {
     // if (((this->tags[st] != TAG_Valid) && (this->tags[st] != TAG_Zero)) ||
     // 	((this->tags[other] != TAG_Valid) && (this->tags[other] != TAG_Zero)) || isnan(this->regs[st].d) || isnan(this->regs[other].d)) {
     // 	FPU_SET_C3(this, 1);
@@ -917,29 +779,27 @@ void DynamicCodeGenFPU::doFCOM(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ordT
     // FPU_SET_C2(this, 0);
     // FPU_SET_C0(this, 0);	
 
-    const DynReg SW_REG = tmpReg;
-    movToRegFromCpu(SW_REG, offsetof(CPU, fpu.sw), DYN_32bit);
-
-    fcompare(fpuReg1, fpuReg2, ordTags, [SW_REG, this] {
+    RegPtr sw = readCPU(DYN_32bit, offsetof(CPU, fpu.sw));
+    fcompare(fpuReg1, fpuReg2, ordTags, [sw, this] {
         // equal
-        andRegImm(SW_REG, DYN_32bit, ~0x0700);
-        orRegImm(SW_REG, DYN_32bit, 0x4000);
-    }, [SW_REG, this] {
+        andValue(DYN_32bit, sw, ~0x0700, false);
+        orValue(DYN_32bit, sw, 0x4000, false);
+    }, [sw, this] {
         // less than
-        andRegImm(SW_REG, DYN_32bit, ~0x4600);
-        orRegImm(SW_REG, DYN_32bit, 0x0100);
-    }, [SW_REG, this] {
+        andValue(DYN_32bit, sw, ~0x4600, false);
+        orValue(DYN_32bit, sw, 0x0100, false);
+    }, [sw, this] {
         // greater than
-        andRegImm(SW_REG, DYN_32bit, ~0x4700);
-    }, [SW_REG, this] {
+        andValue(DYN_32bit, sw, ~0x4700, false);
+    }, [sw, this] {
         // invalid
-        andRegImm(SW_REG, DYN_32bit, ~0x0200);
-        orRegImm(SW_REG, DYN_32bit, 0x4500);
+        andValue(DYN_32bit, sw, ~0x0200, false);
+        orValue(DYN_32bit, sw, 0x4500, false);
     });
-    movToCpuFromReg(offsetof(CPU, fpu.sw), SW_REG, DYN_32bit, true);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.sw), sw);
 }
 
-void DynamicCodeGenFPU::doFCOMI(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ordTags, DynReg flagsReg) {
+void DynamicCodeGenFPU::doFCOMI(DynFpuReg fpuReg1, DynFpuReg fpuReg2, RegPtr ordTags) {
     // if (((this->tags[st] != TAG_Valid) && (this->tags[st] != TAG_Zero)) ||
     //     ((this->tags[other] != TAG_Valid) && (this->tags[other] != TAG_Zero)) || isnan(this->regs[st].d) || isnan(this->regs[other].d)) {
     //     setFlags(cpu, ZF | PF | CF);
@@ -956,24 +816,26 @@ void DynamicCodeGenFPU::doFCOMI(DynFpuReg fpuReg1, DynFpuReg fpuReg2, DynReg ord
     // st > other
     // setFlags(cpu, 0);
 
-    xorRegReg(flagsReg, flagsReg, DYN_32bit, false);
+    RegPtr flagsReg = getTmpReg();
+    xorReg(DYN_32bit, flagsReg, flagsReg, false);
 
     // shift 8 because popFlagsFromReg expects flags in AH
     fcompare(fpuReg1, fpuReg2, ordTags, [flagsReg, this] {
         // equal
-        orRegImm(flagsReg, DYN_32bit, ZF);
+        orValue(DYN_32bit, flagsReg, ZF, false);
     }, [flagsReg, this] {
         // less than
-        orRegImm(flagsReg, DYN_32bit, CF);
+        orValue(DYN_32bit, flagsReg, CF, false);
     }, [flagsReg, this] {
         // greater than
         // nothing
     }, [flagsReg, this] {
         // invalid
-        orRegImm(flagsReg, DYN_32bit, CF | PF | ZF);
+        orValue(DYN_32bit, flagsReg, CF | PF | ZF, false);
     });
-    movToCpuFromReg(offsetof(CPU, flags), flagsReg, DYN_32bit, true);
     storeLazyFlags(FLAGS_NONE);
+    currentLazyFlags = FLAGS_NONE;
+    setFlags(flagsReg, FMASK_TEST);
 }
 
 void DynamicCodeGenFPU::dynamic_FUCOMPP(DecodedOp* op) {
@@ -982,9 +844,10 @@ void DynamicCodeGenFPU::dynamic_FUCOMPP(DecodedOp* op) {
 
 void DynamicCodeGenFPU::dynamic_FNCLEX(DecodedOp* op) {
     // this->sw &= 0x7f00;
-    movToRegFromCpu(DYN_SRC, offsetof(CPU, fpu.sw), DYN_32bit);
-    andRegImm(DYN_SRC, DYN_32bit, 0x7f00);
-    movToCpuFromReg(offsetof(CPU, fpu.sw), DYN_SRC, DYN_32bit, true);
+    RegPtr sw = readCPU(DYN_32bit, offsetof(CPU, fpu.sw));
+    
+    andValue(DYN_32bit, sw, 0x7f00, false);
+    writeCPU(DYN_32bit, offsetof(CPU, fpu.sw), sw);
 }
 
 void DynamicCodeGenFPU::dynamic_FNSTSW(DecodedOp* op) {
@@ -992,18 +855,14 @@ void DynamicCodeGenFPU::dynamic_FNSTSW(DecodedOp* op) {
     // fpu.sw |= (fpu.top & 7) << 11
     // writew(address, fpu.SW());
 
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_16bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
-        const DynReg SW_REG = DYN_CALL_RESULT;
+    write(DYN_32bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
+        RegPtr sw = readCPU(DYN_32bit, offsetof(CPU, fpu.sw));
 
-        getTopReg(TOP_REG);
-        andRegImm(TOP_REG, DYN_32bit, 7);
-        movToRegFromCpu(SW_REG, offsetof(CPU, fpu.sw), DYN_32bit);
-        andRegImm(SW_REG, DYN_32bit, ~0x3800);
-        shlRegImm(TOP_REG, DYN_32bit, 11);
-        orRegReg(SW_REG, TOP_REG, DYN_32bit, true);
-        writeMem(SW_REG, DYN_16bit, address, offset, 0, 0);
+        andValue(DYN_32bit, sw, ~0x3800, false);
+        shlValue(DYN_32bit, top, 11, false);
+        orReg(DYN_32bit, sw, top, false);
+        write(DYN_16bit, address, offset, 0, 0, sw);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FNSTSW(op);
@@ -1011,16 +870,13 @@ void DynamicCodeGenFPU::dynamic_FNSTSW(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FNSTSW_AX(DecodedOp* op) {
-    const DynReg TOP_REG = DYN_DEST;
-    const DynReg SW_REG = DYN_CALL_RESULT;
+    RegPtr top = getTopReg();
+    RegPtr sw = readCPU(DYN_32bit, offsetof(CPU, fpu.sw));
 
-    getTopReg(TOP_REG);
-    andRegImm(TOP_REG, DYN_32bit, 7);
-    movToRegFromCpu(SW_REG, offsetof(CPU, fpu.sw), DYN_32bit);
-    andRegImm(SW_REG, DYN_32bit, ~0x3800);
-    shlRegImm(TOP_REG, DYN_32bit, 11);
-    orRegReg(SW_REG, TOP_REG, DYN_32bit, true);
-    storeReg(0, SW_REG, DYN_16bit, true);
+    andValue(DYN_32bit, sw, ~0x3800, false);
+    shlValue(DYN_32bit, top, 11, false);
+    orReg(DYN_32bit, sw, top, false);
+    mov(DYN_16bit, getReg(0), sw);
     incrementEip(op->len);
 }
 
@@ -1040,37 +896,29 @@ void DynamicCodeGenFPU::dynamic_FNINIT(DecodedOp* op) {
     this->isMMXInUse = false;
     memset(isRegCached, 0, sizeof(isRegCached));
     */
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.cw), 0x37f);
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.sw), 0);
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.top), 0);
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.round), 0);
+    writeCPUValue(DYN_8bit, offsetof(CPU, fpu.isMMXInUse), 0);
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.isRegCached), 0);
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.isRegCached) + 4, 0);
 
-    movToCpu(offsetof(CPU, fpu.cw), DYN_32bit, 0x37f);
-    movToCpu(offsetof(CPU, fpu.sw), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.top), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.round), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.isMMXInUse), DYN_8bit, 0);
-    movToCpu(offsetof(CPU, fpu.isRegCached), DYN_32bit, 0);
-    movToCpu(offsetof(CPU, fpu.isRegCached)+4, DYN_32bit, 0);
-
-    movToCpu(offsetof(CPU, fpu.tags[0]), DYN_32bit, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
-    movToCpu(offsetof(CPU, fpu.tags[0])+4, DYN_32bit, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.tags[0]), TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
+    writeCPUValue(DYN_32bit, offsetof(CPU, fpu.tags[0])+4, TAG_Empty | (TAG_Empty << 8) | (TAG_Empty << 16) | (TAG_Empty << 24));
 }
 
 void DynamicCodeGenFPU::doFCOMI_ST0_STj(DecodedOp* op, bool pop) {
-    const DynReg TOP_REG = DYN_ADDRESS;
-    DynReg INDEX_REG = DYN_SRC;
+    RegPtr top = getTopReg();
+    RegPtr index;
+    FPUReg dst(this, top, op->reg, index);
+    FPUReg src(this, top, 0);
+    RegPtr tag = readFPUTag(top);
 
-    getTopReg(TOP_REG);
-    FPUReg dst(this, TOP_REG, op->reg, INDEX_REG, DYN_DEST, false);
-    FPUReg src(this, TOP_REG, 0, DYN_CALL_RESULT, DYN_DEST, true);
-
-    const DynReg TOP_TAG = DYN_DEST;
-    const DynReg INDEX_TAG = DYN_CALL_RESULT;
-
-    readFPUTag(INDEX_REG, INDEX_TAG);
-    readFPUTag(TOP_REG, TOP_TAG);
-
-    orRegReg(TOP_TAG, INDEX_TAG, DYN_32bit, true);
-    doFCOMI(dst.reg, src.reg, TOP_TAG, INDEX_TAG);
+    orReg(DYN_32bit, tag, readFPUTag(std::move(index)), false);
+    doFCOMI(dst.reg, src.reg, tag);
     if (pop) {
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
     }
     incrementEip(op->len);
 }
@@ -1085,16 +933,13 @@ void DynamicCodeGenFPU::dynamic_FCOMI_ST0_STj(DecodedOp* op) {
 
 void DynamicCodeGenFPU::dynamic_FISTTP32(DecodedOp* op) {
     // cpu->fpu.FSTT_I32(cpu, address);
-    // cpu->fpu.FPOP();
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
+    // cpu->fpu.FPOP();    
+    write(DYN_32bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
 
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        fpuRegToInt32(DYN_CALL_RESULT, src.reg, true);
-        writeMem(DYN_CALL_RESULT, DYN_32bit, address, offset, 0, 0);
-        dynamic_FPU_POP(TOP_REG);
+        write(DYN_32bit, address, offset, 0, 0, fpuRegToInt32(src.reg, true));
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FISTTP32(op);
@@ -1102,43 +947,38 @@ void DynamicCodeGenFPU::dynamic_FISTTP32(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FISTTP64(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_64bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
+    RegPtr top = getTopReg();
 
-        getTopReg(TOP_REG);
-
-        // some apps seem to do a memcpy like thing with data pushed in and out
-        // we don't want the loaded 64-bit int to change because of rounding if its writen directly back out
-        // so if its not already cached (64-bit format vs 80-bit), then do the slow way to keep the 64-bit precision
-        // 
-        // see FPU::FLD_I64
-        getIsCachedReg(DYN_CALL_RESULT, TOP_REG);
-        If(DYN_CALL_RESULT, true);
-            FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
+    // some apps seem to do a memcpy like thing with data pushed in and out
+    // we don't want the loaded 64-bit int to change because of rounding if its writen directly back out
+    // so if its not already cached (64-bit format vs 80-bit), then do the slow way to keep the 64-bit precision
+    // 
+    // see FPU::FLD_I64
+    IfNotRegCached(top, true);
+        DynamicCodeGen::dynamic_FISTTP64(op);
+    StartElse(true);
+        write(DYN_64bit, calculateEaa(op), nullptr, [top, op, this](RegPtr address, RegPtr offset) {
+        
+            FPUReg src(this, top, 0);
             fpuRegToInt64(src.reg, src.reg, true);
             storeFpuReg(src.reg, address, offset, 0, 0, DYN_FPU_64_BIT);
-            dynamic_FPU_POP(TOP_REG);
-            incrementEip(op->len);
-        StartElse();
+            dynamic_FPU_POP(top);
+            incrementEip(op->len);                
+        }, [op, this]() {
             DynamicCodeGen::dynamic_FISTTP64(op);
-        EndIf();
-    }, [op, this]() {
-        DynamicCodeGen::dynamic_FISTTP64(op);
-    }, true);
+        }, true);
+    EndIf(true);
 }
 
 void DynamicCodeGenFPU::dynamic_FIST_DWORD_INTEGER(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
+    write(DYN_32bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {        
+        updateFPURounding(); // set rounding first since it needs 2 tmp regs
 
-        updateFPURounding(DYN_CALL_RESULT, DYN_DEST);
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        fpuRegToInt32(DYN_CALL_RESULT, src.reg, false);
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
+        
+        write(DYN_32bit, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
-        writeMem(DYN_CALL_RESULT, DYN_32bit, address, offset, 0, 0);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FIST_DWORD_INTEGER(op);
@@ -1146,17 +986,15 @@ void DynamicCodeGenFPU::dynamic_FIST_DWORD_INTEGER(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
+    write(DYN_32bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        updateFPURounding(); // set rounding first since it needs 2 tmp regs
 
-        updateFPURounding(DYN_CALL_RESULT, DYN_DEST);
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        fpuRegToInt32(DYN_CALL_RESULT, src.reg, false);
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
+        
+        write(DYN_32bit, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
-        writeMem(DYN_CALL_RESULT, DYN_32bit, address, offset, 0, 0);
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FIST_DWORD_INTEGER_Pop(op);
@@ -1165,13 +1003,11 @@ void DynamicCodeGenFPU::dynamic_FIST_DWORD_INTEGER_Pop(DecodedOp* op) {
 
 void DynamicCodeGenFPU::doFFREE_STi(DecodedOp* op, bool pop) {
     // cpu->fpu.FFREE_STi(cpu->fpu.STV(reg)); this->tags[st] = TAG_Empty;
-    const DynReg TOP_REG = DYN_SRC;
-    const DynReg INDEX_REG = DYN_DEST;
-    getTopReg(TOP_REG);
-    calculateIndexReg(INDEX_REG, TOP_REG, op->reg);
-    movToCpu(INDEX_REG, 0, offsetof(CPU, fpu.tags[0]), DYN_8bit, TAG_Empty);
+    RegPtr top = getTopReg();
+    RegPtr index = calculateIndexReg(top, op->reg);
+    writeCPUValue(DYN_8bit, index, 0, offsetof(CPU, fpu.tags[0]), TAG_Empty);
     if (pop) {
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
     }
     incrementEip(op->len);
 }
@@ -1181,14 +1017,11 @@ void DynamicCodeGenFPU::dynamic_FFREE_STi(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FLD_DOUBLE_REAL(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_64bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_SRC;
-
-        loadFpuReg(XMM_TMP, address, offset, 0, 0);        
-        getTopReg(TOP_REG);
-        dynamic_FPU_PREP_PUSH(TOP_REG, true);
-        syncXmmToCPU(TOP_REG, XMM_TMP, 0, DYN_DEST);
+    read(DYN_64bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {
+        loadFpuReg(XMM_TMP, address, offset, 0, 0);
+        RegPtr top = getTopReg();
+        dynamic_FPU_PREP_PUSH(top, true);
+        syncXmmToCPU(top, XMM_TMP, 0);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FLD_DOUBLE_REAL(op);
@@ -1212,33 +1045,25 @@ void DynamicCodeGenFPU::dynamic_FILD_WORD_INTEGER(DecodedOp* op) {
     // S16 value = (S16)cpu->memory->readw(address); // might generate PF, so do before we adjust the stack
     // cpu->fpu.PREP_PUSH();
     // cpu->fpu.FLD_I16(value, cpu->fpu.STV(0));
-    calculateEaa(op, DYN_ADDRESS);
-    movFromMem(DYN_16bit, DYN_ADDRESS, true, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST;
-
-        getTopReg(TOP_REG);
-        readMem(DYN_SRC, DYN_16bit, address, offset, 0, 0);        
-        movToRegFromRegSignExtend(DYN_SRC, DYN_32bit, DYN_SRC, DYN_16bit, false);
-        regToFpuReg(XMM_TMP, DYN_SRC);
-        dynamic_FPU_PREP_PUSH(TOP_REG, true); // will change topReg
-        syncXmmToCPUWithIndexReg(TOP_REG, XMM_TMP, DYN_SRC);
+    read(DYN_16bit, calculateEaa(op), [op, this](RegPtr address, RegPtr offset) {        
+        loadFpuRegFromShort(XMM_TMP, address, offset, 0, 0);
+        RegPtr top = getTopReg();
+        dynamic_FPU_PREP_PUSH(top, true); // will change topReg
+        syncXmmToCPUWithIndexReg(top, XMM_TMP);
         incrementEip(op->len);
     }, [op, this]() {
-        DynamicCodeGen::dynamic_FILD_DWORD_INTEGER(op);
+        DynamicCodeGen::dynamic_FILD_WORD_INTEGER(op);
     });
 }
 
 // SSE3 instruction
 void DynamicCodeGenFPU::dynamic_FISTTP16(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
+    write(DYN_16bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
 
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        fpuRegToInt32(DYN_CALL_RESULT, src.reg, true);
-        writeMem(DYN_CALL_RESULT, DYN_32bit, address, offset, 0, 0);
-        dynamic_FPU_POP(TOP_REG);
+        write(DYN_16bit, address, offset, 0, 0, fpuRegToInt32(src.reg, true));
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FISTTP16(op);
@@ -1246,16 +1071,14 @@ void DynamicCodeGenFPU::dynamic_FISTTP16(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
+    write(DYN_16bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        updateFPURounding();
 
-        updateFPURounding(DYN_CALL_RESULT, DYN_DEST);
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        fpuRegToInt32(DYN_CALL_RESULT, src.reg, false);
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
+
+        write(DYN_16bit, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
-        writeMem(DYN_CALL_RESULT, DYN_16bit, address, offset, 0, 0);
         incrementEip(op->len);
     }, [op, this]() {
         DynamicCodeGen::dynamic_FIST_WORD_INTEGER(op);
@@ -1263,20 +1086,18 @@ void DynamicCodeGenFPU::dynamic_FIST_WORD_INTEGER(DecodedOp* op) {
 }
 
 void DynamicCodeGenFPU::dynamic_FIST_WORD_INTEGER_Pop(DecodedOp* op) {
-    calculateEaa(op, DYN_ADDRESS);
-    movToMem(DYN_ADDRESS, DYN_32bit, 0, (DynCallParamType)0, false, true, DYN_SRC, [op, this](DynReg address, DynReg offset) {
-        const DynReg TOP_REG = DYN_DEST; // can't use DYN_ADDRESS or DYN_SRC, they will be used to pass in address and offset
+    write(DYN_16bit, calculateEaa(op), nullptr, [op, this](RegPtr address, RegPtr offset) {
+        updateFPURounding();
 
-        updateFPURounding(DYN_CALL_RESULT, DYN_DEST);
-        getTopReg(TOP_REG);
-        FPUReg src(this, TOP_REG, 0, DYN_SRC, DYN_CALL_RESULT, true); //not great API, but I know that DYN_SRC won't be used here because it's only needed if the passed in regIndex isn't 0
-        fpuRegToInt32(DYN_CALL_RESULT, src.reg, false);
+        RegPtr top = getTopReg();
+        FPUReg src(this, top, 0);
+
+        write(DYN_16bit, address, offset, 0, 0, fpuRegToInt32(src.reg, false));
         restoreFPURounding();
-        writeMem(DYN_CALL_RESULT, DYN_16bit, address, offset, 0, 0);
-        dynamic_FPU_POP(TOP_REG);
+        dynamic_FPU_POP(top);
         incrementEip(op->len);
     }, [op, this]() {
-        DynamicCodeGen::dynamic_FIST_WORD_INTEGER(op);
+        DynamicCodeGen::dynamic_FIST_WORD_INTEGER_Pop(op);
     }, true);
 }
 

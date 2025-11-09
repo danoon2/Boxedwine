@@ -199,7 +199,6 @@ public:
     Reg reg[9];
     Seg seg[7];    
     U32 flags = 0;
-    U32 dynamicFlags = 0;
     Reg eip;
     U8* reg8[9];
     ALIGN(SSE xmm[8], 16);
@@ -229,12 +228,13 @@ public:
     Reg  dst;
     Reg  result;
     LazyFlags const * lazyFlags = nullptr;
-    U32         oldCF = 0;
-    FPU         fpu;
-    U64		    instructionCount = 0;
-    U32         blockInstructionCount = 0;
-    bool        yield = false;
-    U32         cpl = 0;
+    S32 df = 1;
+    U32 oldCF = 0;
+    FPU fpu;
+    U64	instructionCount = 0;
+    U32 blockInstructionCount = 0;
+    bool yield = false;
+    U32 cpl = 0;
     U32 cr0 = 0;
     U32 stackNotMask = 0;
     U32 stackMask = 0;
@@ -274,7 +274,20 @@ public:
     void removeAF();
     void addOF();
     void removeOF();
-    int getDirection() {return (this->flags & DF) ? -1 : 1;}
+    S32 getDirection() {
+#ifdef _DEBUG
+        if (this->flags & DF) {
+            if (df != -1) {
+                kpanic("df");
+            }
+        } else {
+            if (df != 1) {
+                kpanic("df");
+            }
+        }
+#endif
+        return df;
+    }
     U32 pop32();
     U16 pop16();
     U32 peek32(U32 index);

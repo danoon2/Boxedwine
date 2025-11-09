@@ -21,19 +21,6 @@
 
 #include "../common/cpu.h"
 
-enum DynReg {
-    DYN_CALL_RESULT = 0,
-    DYN_SRC = 1,
-    DYN_DEST = 2,
-    DYN_ADDRESS = 3,
-
-    DYN_REG4 = 4,
-    DYN_REG5 = 5,
-    DYN_REG6 = 6,
-    DYN_REG7 = 7,
-    DYN_NOT_SET = 0xff
-};
-
 enum DynWidth {
     DYN_8bit = 0,
     DYN_16bit,
@@ -41,21 +28,6 @@ enum DynWidth {
     DYN_64bit,
     DYN_128bit,
     DYN_256bit,
-};
-
-enum DynCondition {
-    DYN_EQUALS_ZERO,
-    DYN_NOT_EQUALS_ZERO
-};
-
-enum DynConditionEvaluate {
-    DYN_EQUALS,
-    DYN_NOT_EQUALS,
-    DYN_LESS_THAN_UNSIGNED,
-    DYN_LESS_THAN_EQUAL_UNSIGNED,
-    DYN_GREATER_THAN_EQUAL_UNSIGNED,
-    DYN_LESS_THAN_SIGNED,
-    DYN_LESS_THAN_EQUAL_SIGNED,
 };
 
 enum DynCallParamType {
@@ -66,9 +38,6 @@ enum DynCallParamType {
     DYN_PARAM_CONST_16,
     DYN_PARAM_CONST_32,
     DYN_PARAM_CONST_PTR,
-    DYN_PARAM_CPU_REG_8,
-    DYN_PARAM_CPU_REG_16,
-    DYN_PARAM_CPU_REG_32,
     DYN_PARAM_CPU,
 };
 
@@ -93,15 +62,16 @@ enum DynConditional {
 
 #define DYN_PTR_SIZE U32
 #define DYN_PTR DYN_32bit
+#define DYN_PTR_BYTES 4
 // API available to dynamic ops
 
 class DynamicData;
 
 // the code will guarantee that for a single instruction, 2 DynReg's will never point to the same reg and both be read/write (see dynamic_xchgr8r8), that way we don't have to worry about clobbering
-class DynReg2 {
+class DynReg {
 public:
-    DynReg2(U8 hardwareReg, U8 emulatedReg, std::function<U8()> delayedLoading = nullptr) : emulatedReg(emulatedReg), isHigh(false), reg(hardwareReg), delayedLoading(delayedLoading) {}
-    DynReg2(U8 hardwareReg, U8 emulatedReg, bool isHigh, std::function<U8()> delayedLoading = nullptr) : emulatedReg(emulatedReg), isHigh(isHigh), reg(hardwareReg), delayedLoading(delayedLoading) {}
+    DynReg(U8 hardwareReg, U8 emulatedReg, std::function<U8()> delayedLoading = nullptr) : emulatedReg(emulatedReg), isHigh(false), reg(hardwareReg), delayedLoading(delayedLoading) {}
+    DynReg(U8 hardwareReg, U8 emulatedReg, bool isHigh, std::function<U8()> delayedLoading = nullptr) : emulatedReg(emulatedReg), isHigh(isHigh), reg(hardwareReg), delayedLoading(delayedLoading) {}
     
     U8 hardwareReg();
     bool isLoaded() { return reg != 0xff; }
@@ -113,18 +83,12 @@ private:
     std::function<U8()> delayedLoading;
 };
 
-using RegPtr = std::shared_ptr<DynReg2>;
+using RegPtr = std::shared_ptr<DynReg>;
 
 class DynamicData {
    
 public:
     using OpFunction = void(DynamicData::*)(DecodedOp* op);
-    using InstRegReg = void(DynamicData::*)(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg);
-    using InstMemReg = void(DynamicData::*)(DynReg addressReg, DynReg rm, DynWidth regWidth, bool doneWithAddressReg, bool doneWithRmReg, DynReg tmpReg);
-    using InstCPUReg = void(DynamicData::*)(U8 regIndex, DynReg rm, DynWidth regWidth, bool doneWithRmReg, DynReg tmpReg);
-    using InstCPUImm = void(DynamicData::*)(U8 regIndex, DynWidth regWidth, U32 imm, DynReg tmpReg);
-    using InstRegImm = void(DynamicData::*)(DynReg reg, DynWidth regWidth, U32 imm);
-    using InstMemImm = void(DynamicData::*)(DynReg addressReg, DynWidth regWidth, U32 imm, bool doneWithAddressReg, DynReg tmpReg);
 
     DynamicData(CPU* cpu) : cpu(cpu) {}
     CPU* cpu = nullptr;
@@ -140,15 +104,15 @@ public:
     // being called can null it out if its done and the temp reg can be re-used
     using InstRegRegImm = void(DynamicData::*)(DynWidth regWidth, RegPtr reg, RegPtr rm, U32 imm, bool checkFlags);
     using InstRegRegCl = void(DynamicData::*)(DynWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl, bool checkFlags);
-    using InstRegReg2 = void(DynamicData::*)(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags);
-    using InstRegImm2 = void(DynamicData::*)(DynWidth regWidth, RegPtr reg, U32 imm, bool checkFlags);
+    using InstRegReg = void(DynamicData::*)(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags);
+    using InstRegImm = void(DynamicData::*)(DynWidth regWidth, RegPtr reg, U32 imm, bool checkFlags);
     using InstReg = void(DynamicData::*)(DynWidth regWidth, RegPtr reg, bool checkFlags);
 
     // I would say that most ops should use these directly, but pusha/popa needs it
     virtual void write(DynWidth width, RegPtr reg, RegPtr sib, U8 lsl, U32 disp, RegPtr src) = 0;
     virtual void read(DynWidth width, RegPtr dest, RegPtr reg, RegPtr sib, U8 lsl, U32 disp) = 0;
 
-    virtual RegPtr getReg(U8 reg, S8 hint = -1) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu and written back when done
+    virtual RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu and written back when done
     virtual RegPtr getReg8(U8 reg) = 0;
     virtual RegPtr getReadOnlyReg(U8 reg, bool delayed = false, S8 hint = -1) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu but NOT written back when done
     virtual RegPtr getReadOnlyReg8(U8 reg, bool delayed = false, S8 hint = -1) = 0;
@@ -163,8 +127,13 @@ public:
     virtual RegPtr getTmpEip() = 0;
     virtual RegPtr getEip(bool load = true) = 0;
     virtual RegPtr getReadOnlyFlags() = 0;
+    virtual void setFlags(RegPtr flags, U32 mask) = 0;
+    virtual RegPtr getDF() = 0;
+    virtual bool isTmpRegAvailable() = 0;
+    virtual void pushReg(RegPtr reg) = 0;
+    virtual void popReg(RegPtr reg) = 0;
 
-    virtual RegPtr calculateEaa2(DecodedOp* op, U32 popEspAmount = 0) = 0; // :TODO: V2
+    virtual RegPtr calculateEaa(DecodedOp* op, U32 popEspAmount = 0) = 0; // :TODO: V2
     virtual void readWriteMem(DynWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint = -1) = 0;
     virtual RegPtr read(DynWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false, RegPtr tmp = nullptr) = 0;
     virtual void write(DynWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool isBigJump = false) = 0;
@@ -173,12 +142,16 @@ public:
     virtual void IfSmallStack(bool bigJump = false) = 0;
     virtual void IfLessThan2(DynWidth regWidth, RegPtr reg, U32 value, bool bigJump = false) = 0;
     virtual void IfNot(DynWidth regWidth, RegPtr reg) = 0;
+    virtual void IfNotCPU(DynWidth regWidth, RegPtr sib, U8 lsl, U32 offset, bool bigJump = false) = 0;
     virtual void If(DynWidth regWidth, RegPtr reg, bool bigJump = false) = 0;
     virtual void IfEqual(DynWidth regWidth, RegPtr reg, U32 value) = 0;
     virtual void IfBitSet2(DynWidth regWidth, RegPtr reg, U32 value, bool bigJump = false) = 0;
     virtual void IfCondition(DynConditional condition) = 0;
     virtual void JumpIfCondition(DynConditional condition, U32 address) = 0;
     virtual void setReg(DynConditional condition, RegPtr reg) = 0;
+    virtual U32 MarkJumpLocation() = 0;
+    virtual void Goto(U32 location) = 0;
+    virtual void IfFlagSet(U32 flags, bool bigJump = false) = 0;
 
     virtual void mov(DynWidth regWidth, RegPtr dest, RegPtr src) = 0;
     virtual void mov8(RegPtr dest, bool isDestHigh, RegPtr src, bool isSrcHigh) = 0;
@@ -236,67 +209,21 @@ public:
     virtual void rcrValue(DynWidth regWidth, RegPtr reg, U32 imm, bool checkFlags) = 0;
     virtual void xaddReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0;
     virtual void byteSwapReg32(RegPtr reg) = 0;
+    virtual void btReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0; // rm is bit position
+    virtual void btValue(DynWidth regWidth, RegPtr reg, U32 mask, bool checkFlags) = 0; 
+    virtual void btsReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0; // rm is bit position
+    virtual void btsValue(DynWidth regWidth, RegPtr reg, U32 mask, bool checkFlags) = 0;
+    virtual void btrReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0; // rm is bit position
+    virtual void btrValue(DynWidth regWidth, RegPtr reg, U32 mask, bool checkFlags) = 0;
+    virtual void btcReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0; // rm is bit position
+    virtual void btcValue(DynWidth regWidth, RegPtr reg, U32 mask, bool checkFlags) = 0;
+    virtual void bsfReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0;
+    virtual void bsrReg(DynWidth regWidth, RegPtr reg, RegPtr rm, bool checkFlags) = 0;
 
-    virtual void loadReg(U8 reg, DynReg tmpReg, DynWidth width) = 0;
-    virtual void loadSegAddress(U8 seg, DynReg reg) = 0;
-    virtual void loadCPUFlags(DynReg reg) = 0;
-    virtual void loadLazyFlagsResult(DynReg reg, DynWidth width) = 0;
-    virtual void loadLazyFlagsSrc(DynReg reg, DynWidth width) = 0;
-    virtual void loadLazyFlagsOldCF(DynReg reg) = 0;
-    virtual void loadEip(DynReg reg) = 0;
-    virtual void loadStackMask(DynReg reg) = 0;
-    virtual void loadStackNotMask(DynReg reg) = 0;
-    virtual void loadLazyFlags(DynReg reg) = 0;
-    virtual void loadLazyFlagsDst(DynReg reg, DynWidth width) = 0;
-    virtual void storeReg(U8 reg, DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
-    virtual void storeLazyFlagsResult(DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
-    virtual void storeLazyFlagsDst(DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
-    virtual void storeLazyFlagsSrc(DynReg srcReg, DynWidth width, bool doneWithSrcReg) = 0;
-    virtual void storeLazyFlagsOldCF(DynReg srcReg, bool doneWithSrcReg) = 0;
-    virtual void storeEip(DynReg srcReg, bool doneWithSrcReg) = 0;
-    virtual void storeReg(U8 reg, DynWidth dstWidth, U32 imm) = 0;
-    virtual void storeLazyFlagsSrc(DynWidth width, U32 imm) = 0;
     virtual void storeLazyFlags(const LazyFlags* lazyFlags) = 0;
-
-    virtual void storeRegFromMem(U8 reg, DynWidth dstWidth, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) = 0;
-    virtual void storeLazyFlagsDstFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) = 0;
-    virtual void storeLazyFlagsSrcFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, bool doneWithCallResult) = 0;
-
-    virtual void xorCPUFlagsImm(U32 imm, DynReg tmpReg) = 0;
-    virtual void andCPUFlagsImm(U32 imm, DynReg tmpReg) = 0;
-    virtual void orCPUFlagsImm(U32 imm, DynReg tmpReg) = 0;
-    virtual void setCPUFlags(DynReg reg, U32 mask, DynReg tmpReg, bool doneWithReg) = 0;
-
-    virtual void negReg(DynReg reg, DynWidth regWidth) = 0;
-    virtual void notReg(DynReg reg, DynWidth regWidth) = 0;
-
-    virtual void addRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void orRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void subRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void andRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void xorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void shrRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void sarRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void shlRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void rolRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void rorRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void imulRegReg(DynReg reg, DynReg rm, DynWidth regWidth, bool doneWithRmReg) = 0;
-    virtual void imulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) = 0;
-    virtual void mulRegReg64(DynReg high64, DynReg dst, DynReg src, bool doneWithSrcReg) = 0;
-    virtual void divRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) = 0; // src should be checked for 0 before calling
-    virtual void idivRegRegWithRemainder(DynReg dest, DynReg src, DynReg remainder, DynWidth width) = 0; // src should be checked for 0 before calling
-
-    virtual void addRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void orRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void subRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void andRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void xorRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void shrRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void sarRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void shlRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void rolRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void rorRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
-    virtual void imulRegImm(DynReg reg, DynWidth regWidth, U32 imm) = 0;
+    virtual void xorCPUFlagsImm(U32 imm) = 0;
+    virtual void andCPUFlagsImm(U32 imm) = 0;
+    virtual void orCPUFlagsImm(U32 imm) = 0;
 
     virtual void blockCall(DecodedOp* op) = 0;
     virtual void blockDone(bool returnEarly) = 0;
@@ -307,34 +234,18 @@ public:
     virtual void blockNext2(DecodedOp* op) = 0;
     virtual void blockDoneJump() = 0;
     virtual void blockExit() = 0;
-    virtual void evaluateToReg(DynReg reg, DynWidth dstWidth, DynReg left, bool isRightConst, DynReg right, U32 rightConst, DynWidth regWidth, DynConditionEvaluate condition, bool doneWithLeftReg, bool doneWithRightReg) = 0;
-    virtual void callHostFunction(void* address, bool hasReturn = false, U32 argCount = 0, U32 arg1 = 0, DynCallParamType arg1Type = DYN_PARAM_CONST_32, bool doneWithArg1 = true, U32 arg2 = 0, DynCallParamType arg2Type = DYN_PARAM_CONST_32, bool doneWithArg2 = true, U32 arg3 = 0, DynCallParamType arg3Type = DYN_PARAM_CONST_32, bool doneWithArg3 = true, U32 arg4 = 0, DynCallParamType arg4Type = DYN_PARAM_CONST_32, bool doneWithArg4 = true, U32 arg5 = 0, DynCallParamType arg5Type = DYN_PARAM_CONST_32, bool doneWithArg5 = true) = 0;
-    virtual void movToRegFromRegSignExtend(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) = 0;
-    virtual void movToRegFromReg(DynReg dst, DynWidth dstWidth, DynReg src, DynWidth srcWidth, bool doneWithSrcReg) = 0;
-    virtual void movToReg(DynReg reg, DynWidth width, U32 imm) = 0;
-    virtual void calculateEaa(DecodedOp* op, DynReg reg) = 0;
-    virtual void pushValue(U32 arg, DynCallParamType argType) = 0;    
-    virtual void movFromMem(DynWidth width, DynReg addressReg, bool doneWithAddressReg, std::function<void(DynReg address, DynReg offset)> customMemoryOp = nullptr, std::function<void()> failedMemoryOp = nullptr, bool bigJump = false) = 0;
-    virtual void readWriteMem(DynWidth width, DynReg addressReg, DynReg tmpReg, bool doneWithAddressReg, std::function<void()> prepareWrite) = 0;
 
-    virtual void zeroExtendReg16To32(DynReg dest, DynReg src) = 0;
-    virtual void JumpIf(DynReg reg, bool doneWithReg, U32 address) = 0;
-    virtual void JumpIfNot(DynReg reg, bool doneWithReg, U32 address) = 0;
     virtual void JumpInBlock(U32 address) = 0;
-    virtual void IfNot(DynReg reg, bool doneWithReg) = 0;
-    virtual void If(DynReg reg, bool doneWithReg, bool bigJump = false) = 0;
-    virtual void IfPtrEqual(DynReg reg, DYN_PTR_SIZE value, bool doneWithReg) = 0;
     virtual void StartElse(bool bigJump = false) = 0;
     virtual void EndIf(bool bigJump = false) = 0;
 
-    void dynamic_fillFlags();
     void dynamic_jump(DecodedOp* op, DynConditional condition);
     RegPtr calculateMask16(DecodedOp* op);
     RegPtr calculateMask32(DecodedOp* op);
     RegPtr calculateEffectiveEaa16(DecodedOp* op);
     RegPtr calculateEffectiveEaa32(DecodedOp* op);
 
-    void dynamic_RR(DecodedOp* op, DynWidth width, InstRegReg2 callback, bool writeback = true) {
+    void dynamic_RR(DecodedOp* op, DynWidth width, InstRegReg callback, bool writeback = true) {
         if (writeback) {
             if (width == DYN_8bit) {
                 if (op->reg == op->rm) {
@@ -371,13 +282,13 @@ public:
         incrementEip(op->len);
     }
 
-    void dynamic_RR_WriteBoth(DecodedOp* op, DynWidth width, InstRegReg2 callback) {
+    void dynamic_RR_WriteBoth(DecodedOp* op, DynWidth width, InstRegReg callback) {
         if (width == DYN_8bit) {
             if (op->reg == op->rm + 4 || op->rm == op->reg + 4) {
                 // dynamic_xchgr8r8 has the same issue, the API doesn't allow for the write of 2 registers that map to the same emulated register (AL/AH etc)
 
                 RegPtr reg = getReg8(op->reg & 3); // need to use getReg8 instead of getReg because on x86, this will ensure we use a tmp reg that allows for 8-bit ops (EAX, ECX, EDX or EBX)
-                RegPtr rm = std::make_shared<DynReg2>(reg->hardwareReg(), 0xff);
+                RegPtr rm = std::make_shared<DynReg>(reg->hardwareReg(), 0xff);
 
                 if (op->reg > op->rm) {
                     reg->isHigh = true;
@@ -425,7 +336,7 @@ public:
         incrementEip(op->len);
     }
 
-    void dynamic_R_Cl(DecodedOp* op, DynWidth width, InstRegReg2 callback) {
+    void dynamic_R_Cl(DecodedOp* op, DynWidth width, InstRegReg callback) {
         if (width == DYN_8bit) {
             (this->*callback)(width, getReg8(op->reg), getReadOnlyReg8(1, false, 1), true);
         } else {
@@ -434,9 +345,9 @@ public:
         incrementEip(op->len);
     }
 
-    void dynamic_MR(DecodedOp* op, DynWidth width, InstRegReg2 callback, bool writeback = true) {
+    void dynamic_MR(DecodedOp* op, DynWidth width, InstRegReg callback, bool writeback = true) {
         if (writeback) {
-            readWriteMem(width, calculateEaa2(op), [op, width, callback, this](RegPtr value) {
+            readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
                 // don't create a local variable for getReg, we don't want to hold a reference, this
                 // way the function can null out its copy when its done and reclaim a tmp reg
                 //
@@ -449,16 +360,35 @@ public:
             });
         } else {
             if (width == DYN_8bit) {
-                (this->*callback)(width, read(width, calculateEaa2(op)) , getReadOnlyReg8(op->reg, true), true);
+                (this->*callback)(width, read(width, calculateEaa(op)) , getReadOnlyReg8(op->reg, true), true);
             } else {
-                (this->*callback)(width, read(width, calculateEaa2(op)), getReadOnlyReg(op->reg, true), true);
+                (this->*callback)(width, read(width, calculateEaa(op)), getReadOnlyReg(op->reg, true), true);
             }            
         }
         incrementEip(op->len);
     }
 
-    void dynamic_RM_WriteM(DecodedOp* op, DynWidth width, InstRegReg2 callback) {
-        readWriteMem(width, calculateEaa2(op), [op, width, callback, this](RegPtr value) {
+
+    void dynamic_MR_effective(DecodedOp* op, DynWidth width, InstRegReg callback, bool writeback = true) {
+        RegPtr address = width == DYN_16bit ? calculateEffectiveEaa16(op) : calculateEffectiveEaa32(op);
+        RegPtr reg = getTmpReg(op->reg);
+        if (width == DYN_16bit) {
+            andValue(DYN_16bit, reg, 0xf, false);
+        } else {
+            andValue(DYN_32bit, reg, 0x1f, false);
+        }
+        if (writeback) {
+            readWriteMem(width, std::move(address), [reg, op, width, callback, this](RegPtr value) {
+                (this->*callback)(width, value, reg, true);
+                });
+        } else {
+            (this->*callback)(width, read(width, std::move(address)), reg, true);
+        }
+        incrementEip(op->len);
+    }
+
+    void dynamic_RM_WriteM(DecodedOp* op, DynWidth width, InstRegReg callback) {
+        readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             if (width == DYN_8bit) {
                 (this->*callback)(width, getReg8(op->reg), value, true);
             } else {
@@ -469,7 +399,7 @@ public:
     }
 
     void dynamic_MRI(DecodedOp* op, DynWidth width, InstRegRegImm callback) {
-        readWriteMem(width, calculateEaa2(op), [op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             if (width == DYN_8bit) {
                 (this->*callback)(width, value, getReadOnlyReg8(op->reg), op->imm, true);
             } else {
@@ -479,8 +409,8 @@ public:
         incrementEip(op->len);
     }
 
-    void dynamic_M_Cl(DecodedOp* op, DynWidth width, InstRegReg2 callback) {
-        readWriteMem(width, calculateEaa2(op), [op, width, callback, this](RegPtr value) {
+    void dynamic_M_Cl(DecodedOp* op, DynWidth width, InstRegReg callback) {
+        readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             if (width == DYN_8bit) {
                 (this->*callback)(width, value, getReadOnlyReg8(1, true, 1), true);
             } else {
@@ -491,7 +421,7 @@ public:
     }
 
     void dynamic_MR_Cl(DecodedOp* op, DynWidth width, InstRegRegCl callback) {
-        readWriteMem(width, calculateEaa2(op), [op, width, callback, this](RegPtr value) {
+        readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
             // cl is delay loaded because shldReg/shrdReg on x86 JIT will check if hardware ECX is in use and if so then push/pop it
             if (width == DYN_8bit) {
                 (this->*callback)(width, value, getReadOnlyReg8(op->reg), getReadOnlyReg8(1, true, 1), true);
@@ -502,24 +432,24 @@ public:
         incrementEip(op->len);
     }
 
-    void dynamic_RM(DecodedOp* op, DynWidth width, InstRegReg2 callback, bool writeback = true) {
+    void dynamic_RM(DecodedOp* op, DynWidth width, InstRegReg callback, bool writeback = true) {
         if (writeback) {
             if (width == DYN_8bit) {
-                (this->*callback)(width, getReg8(op->reg), read(width, calculateEaa2(op)), true);
+                (this->*callback)(width, getReg8(op->reg), read(width, calculateEaa(op)), true);
             } else {
-                (this->*callback)(width, getReg(op->reg), read(width, calculateEaa2(op)), true);
+                (this->*callback)(width, getReg(op->reg), read(width, calculateEaa(op)), true);
             }
         } else {
             if (width == DYN_8bit) {
-                (this->*callback)(width, getReadOnlyReg8(op->reg), read(width, calculateEaa2(op)), true);
+                (this->*callback)(width, getReadOnlyReg8(op->reg), read(width, calculateEaa(op)), true);
             } else {
-                (this->*callback)(width, getReadOnlyReg(op->reg), read(width, calculateEaa2(op)), true);
+                (this->*callback)(width, getReadOnlyReg(op->reg), read(width, calculateEaa(op)), true);
             }
         }
         incrementEip(op->len);
     }
 
-    void dynamic_RI(DecodedOp* op, DynWidth width, InstRegImm2 callback, bool writeback = true) {
+    void dynamic_RI(DecodedOp* op, DynWidth width, InstRegImm callback, bool writeback = true) {
         if (writeback) {
             if (width == DYN_8bit) {
                 (this->*callback)(width, getReg8(op->reg), op->imm, true);
@@ -536,13 +466,13 @@ public:
         incrementEip(op->len);
     }
 
-    void dynamic_MI(DecodedOp* op, DynWidth width, InstRegImm2 callback, bool writeback = true) {
+    void dynamic_MI(DecodedOp* op, DynWidth width, InstRegImm callback, bool writeback = true) {
         if (writeback) {
-            readWriteMem(width, calculateEaa2(op), [op, width, callback, this](RegPtr value) {
+            readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
                 (this->*callback)(width, value, op->imm, true);
             });
         } else {
-            (this->*callback)(width, read(width, calculateEaa2(op)), op->imm, true);
+            (this->*callback)(width, read(width, calculateEaa(op)), op->imm, true);
         }
         incrementEip(op->len);
     }
@@ -566,11 +496,11 @@ public:
 
     void dynamic_M(DecodedOp* op, DynWidth width, InstReg callback, bool writeback = true, RegPtr tmp = nullptr) {
         if (writeback) {
-            readWriteMem(width, calculateEaa2(op), [op, width, callback, this](RegPtr value) {
+            readWriteMem(width, calculateEaa(op), [op, width, callback, this](RegPtr value) {
                 (this->*callback)(width, value, true);
                 });
         } else {
-            (this->*callback)(width, read(width, calculateEaa2(op), nullptr, nullptr, false, tmp), true);
+            (this->*callback)(width, read(width, calculateEaa(op), nullptr, nullptr, false, tmp), true);
         }
         incrementEip(op->len);
     }
@@ -632,6 +562,12 @@ public:
     using CallIII = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3);
     void call_III(CallIII address, U32 value1, U32 value2, U32 value3);
 
+    using CallIRI = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3);
+    void call_IRI(CallIRI address, U32 value1, DynWidth width2, RegPtr reg2, U32 value3);
+
+    using CallIIR = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3);
+    void call_IIR(CallIIR address, U32 value1, U32 value2, DynWidth width3, RegPtr reg3);
+
     using CallIIIR = void(*)(CPU* cpu, U32 value1, U32 value2, U32 value3, U32 value4);
     void call_IIIR(CallIIIR address, U32 value1, U32 value2, U32 value3, DynWidth width, RegPtr reg);    
 
@@ -660,11 +596,10 @@ public:
 #undef INIT_CPU
 
 protected:
-    using InstDiv = void(DynamicData::*)(DynReg dest, DynReg src, DynReg remainder, DynWidth width);
-    using InstDiv2 = void(DynamicData::*)(DynWidth width, RegPtr dest, RegPtr src, RegPtr remainder);
-    void div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callback);
-    void div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callback);
-    void div32(DecodedOp* op, RegPtr src, InstDiv2 callback, std::function<void()> fallback);
+    using InstDiv = void(DynamicData::*)(DynWidth width, RegPtr dest, RegPtr src, RegPtr remainder);
+    void div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
+    void div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
+    void div32(DecodedOp* op, RegPtr src, InstDiv callback, std::function<void()> fallback);
     void push16(RegPtr reg);    
     void push32(RegPtr reg);
     RegPtr peek16(RegPtr resultReg = nullptr);
@@ -676,6 +611,9 @@ private:
     void dynamic_cmov_M(DynWidth width, DecodedOp* op, DynConditional condition);
     void dynamic_set_R(DecodedOp* op, DynConditional condition);
     void dynamic_set_M(DecodedOp* op, DynConditional condition);
+
+    void movsr(DynWidth valueWidth, U32 size, DynWidth regWidth);
+    void movs(U32 base, DynWidth valueWidth, U32 size, DynWidth regWidth);
 };
 
 #endif

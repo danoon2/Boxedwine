@@ -907,9 +907,10 @@ void CPU::setCF(U32 value) {
         kpanic("CPU::fillFlags must be called before CPU::setCF");
     }
 #endif
-    this->flags&=~CF;
-    if (value)
-        this->flags|=CF;
+    this->flags &= ~CF;
+    if (value) {
+        this->flags |= CF;
+    }
 }
 
 void CPU::setOF(U32 value) {
@@ -918,9 +919,10 @@ void CPU::setOF(U32 value) {
         kpanic("CPU::fillFlags must be called before CPU::setOF");
     }
 #endif
-    this->flags&=~OF;
-    if (value)
-        this->flags|=OF;
+    this->flags &= ~OF;
+    if (value) {
+        this->flags |= OF;
+    }
 }
 
 void CPU::setSF(U32 value) {
@@ -929,9 +931,10 @@ void CPU::setSF(U32 value) {
         kpanic("CPU::fillFlags must be called before CPU::setSF");
     }
 #endif
-    this->flags&=~SF;
-    if (value)
-        this->flags|=SF;
+    this->flags &= ~SF;
+    if (value) {
+        this->flags |= SF;
+    }
 }
 
 void CPU::setZF(U32 value) {
@@ -940,9 +943,10 @@ void CPU::setZF(U32 value) {
         kpanic("CPU::fillFlags must be called before CPU::setZF");
     }
 #endif
-    this->flags&=~ZF;
-    if (value)
-        this->flags|=ZF;
+    this->flags &= ~ZF;
+    if (value) {
+        this->flags |= ZF;
+    }
 }
 
 extern U8 parity_lookup[256] ;
@@ -952,9 +956,10 @@ void CPU::setPFonValue(U32 value) {
         kpanic("CPU::fillFlags must be called before CPU::setPFonValue");
     }
 #endif
-    this->flags&=~PF;
-    if (parity_lookup[value & 0xFF])
-        this->flags|=PF;
+    this->flags &= ~PF;
+    if (parity_lookup[value & 0xFF]) {
+        this->flags |= PF;
+    }
 }
 
 void CPU::setFlags(U32 flags, U32 mask) {
@@ -963,7 +968,12 @@ void CPU::setFlags(U32 flags, U32 mask) {
         kpanic("CPU::fillFlags must be called before CPU::setFlags");
     }
 #endif
-    this->flags=(this->flags & ~mask)|(flags & mask)|2;
+    this->flags = (this->flags & ~mask)|(flags & mask)|2;
+    if (this->flags & DF) {
+        df = -1;
+    } else {
+        df = 1;
+    }
 }
 
 void CPU::addFlag(U32 flags) {
@@ -972,7 +982,10 @@ void CPU::addFlag(U32 flags) {
         kpanic("CPU::fillFlags must be called before CPU::addFlag");
     }
 #endif
-    this->flags|=flags;
+    this->flags |= flags;
+    if (flags & DF) {
+        df = -1;
+    }
 }
 
 void CPU::removeFlag(U32 flags) {
@@ -981,7 +994,10 @@ void CPU::removeFlag(U32 flags) {
         kpanic("CPU::fillFlags must be called before CPU::removeFlag");
     }
 #endif
-    this->flags&=~flags;
+    this->flags &= ~flags;
+    if (flags & DF) {
+        df = 1;
+    }
 }
 
 void CPU::addZF() {
@@ -990,7 +1006,7 @@ void CPU::addZF() {
         kpanic("CPU::fillFlags must be called before CPU::addZF");
     }
 #endif
-    this->flags|=ZF;
+    this->flags |= ZF;
 }
 
 void CPU::removeZF() {
@@ -999,7 +1015,7 @@ void CPU::removeZF() {
         kpanic("CPU::fillFlags must be called before CPU::removeZF");
     }
 #endif
-    this->flags&=~ZF;
+    this->flags &= ~ZF;
 }
 
 void CPU::addCF() {
@@ -1008,7 +1024,7 @@ void CPU::addCF() {
         kpanic("CPU::fillFlags must be called before CPU::addCF");
     }
 #endif
-    this->flags|=CF;
+    this->flags |= CF;
 }
 
 void CPU::removeCF() {
@@ -1017,7 +1033,7 @@ void CPU::removeCF() {
         kpanic("CPU::fillFlags must be called before CPU::removeCF");
     }
 #endif
-    this->flags&=~CF;
+    this->flags &= ~CF;
 }
 
 void CPU::addAF() {
@@ -1026,7 +1042,7 @@ void CPU::addAF() {
         kpanic("CPU::fillFlags must be called before CPU::addAF");
     }
 #endif
-    this->flags|=AF;
+    this->flags |= AF;
 }
 
 void CPU::removeAF() {
@@ -1035,7 +1051,7 @@ void CPU::removeAF() {
         kpanic("CPU::fillFlags must be called before CPU::removeAF");
     }
 #endif
-    this->flags&=~AF;
+    this->flags &= ~AF;
 }
 
 void CPU::addOF() {
@@ -1044,7 +1060,7 @@ void CPU::addOF() {
         kpanic("CPU::fillFlags must be called before CPU::addOF");
     }
 #endif
-    this->flags|=OF;
+    this->flags |= OF;
 }
 
 void CPU::removeOF() {
@@ -1053,7 +1069,7 @@ void CPU::removeOF() {
         kpanic("CPU::fillFlags must be called before CPU::removeOF");
     }
 #endif
-    this->flags&=~OF;
+    this->flags &= ~OF;
 }
 
 U32 CPU::pop32() {

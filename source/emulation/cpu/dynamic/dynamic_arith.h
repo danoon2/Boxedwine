@@ -492,7 +492,7 @@ static void dynamic_prepareException(CPU* cpu, U32 code, U32 error) {
     cpu->nextOp = cpu->getNextOp();
 }
 
-void DynamicData::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callback) {
+void DynamicData::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
     /*
     if (src == 0) {
         cpu->prepareException(EXCEPTION_DIVIDE, 0);
@@ -546,7 +546,7 @@ void DynamicData::div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callba
     incrementEip(op->len);
 }
 
-void DynamicData::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callback) {
+void DynamicData::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback) {
     /*
     U32 num = ((U32)DX << 16) | AX;
 
@@ -607,7 +607,7 @@ void DynamicData::div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv2 callb
     incrementEip(op->len);
 }
 
-void DynamicData::div32(DecodedOp* op, RegPtr src, InstDiv2 callback, std::function<void()> fallback) {
+void DynamicData::div32(DecodedOp* op, RegPtr src, InstDiv callback, std::function<void()> fallback) {
     /*
     U64 num = ((U64)EDX << 32) | EAX;
 
@@ -658,7 +658,7 @@ void DynamicData::dynamic_divR8(DecodedOp* op) {
 }
 void DynamicData::dynamic_divE8(DecodedOp* op) {
     // getTmpReg to help x86 JIT, so that its tmp EAX hardware reg is still available for the div
-    RegPtr src = read(DYN_8bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    RegPtr src = read(DYN_8bit, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
     movzx(DYN_32bit, src, DYN_8bit, src);
     div8(op, src, false, &DynamicData::divRegRegWithRemainder2);
 }
@@ -668,7 +668,7 @@ void DynamicData::dynamic_idivR8(DecodedOp* op) {
     div8(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
 void DynamicData::dynamic_idivE8(DecodedOp* op) {
-    RegPtr src = read(DYN_8bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    RegPtr src = read(DYN_8bit, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
     movsx(DYN_32bit, src, DYN_8bit, src);
     div8(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
@@ -679,7 +679,7 @@ void DynamicData::dynamic_divR16(DecodedOp* op) {
 }
 void DynamicData::dynamic_divE16(DecodedOp* op) {
     // getTmpReg to help x86 JIT, so that its tmp EAX hardware reg is still available for the div
-    RegPtr src = read(DYN_16bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    RegPtr src = read(DYN_16bit, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
     movzx(DYN_32bit, src, DYN_16bit, src);
     div16(op, src, false, &DynamicData::divRegRegWithRemainder2);
 }
@@ -689,7 +689,7 @@ void DynamicData::dynamic_idivR16(DecodedOp* op) {
     div16(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
 void DynamicData::dynamic_idivE16(DecodedOp* op) {
-    RegPtr src = read(DYN_16bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    RegPtr src = read(DYN_16bit, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
     movsx(DYN_32bit, src, DYN_16bit, src);
     div16(op, src, true, &DynamicData::idivRegRegWithRemainder2);
 }
@@ -702,7 +702,7 @@ void DynamicData::dynamic_divR32(DecodedOp* op) {
     });
 }
 void DynamicData::dynamic_divE32(DecodedOp* op) {
-    RegPtr src = read(DYN_32bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    RegPtr src = read(DYN_32bit, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
     div32(op, src, &DynamicData::divRegRegWithRemainder2, [op, src, this]() {
         RegPtr result = callAndReturn_R(::div32, DYN_32bit, src);
         IfNot(DYN_32bit, result);
@@ -719,7 +719,7 @@ void DynamicData::dynamic_idivR32(DecodedOp* op) {
     });
 }
 void DynamicData::dynamic_idivE32(DecodedOp* op) {
-    RegPtr src = read(DYN_32bit, calculateEaa2(op), nullptr, nullptr, false, getTmpReg());
+    RegPtr src = read(DYN_32bit, calculateEaa(op), nullptr, nullptr, false, getTmpReg());
     div32(op, src, &DynamicData::idivRegRegWithRemainder2, [op, src, this]() {
         RegPtr result = callAndReturn_RS(::idiv32, DYN_32bit, src);
         IfNot(DYN_32bit, result);
@@ -734,7 +734,7 @@ void DynamicData::dynamic_dimulcr16r16(DecodedOp* op) {
 }
 void DynamicData::dynamic_dimulcr16e16(DecodedOp* op) {
     RegPtr dest = getReg(op->reg); // don't inline with imulRRI, we don't want the sync back to happen until after imulRRI
-    imulRRI(DYN_16bit, dest, read(DYN_16bit, calculateEaa2(op)), op->imm, true);
+    imulRRI(DYN_16bit, dest, read(DYN_16bit, calculateEaa(op)), op->imm, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulcr32r32(DecodedOp* op) {
@@ -744,7 +744,7 @@ void DynamicData::dynamic_dimulcr32r32(DecodedOp* op) {
 }
 void DynamicData::dynamic_dimulcr32e32(DecodedOp* op) {
     RegPtr dest = getReg(op->reg); // don't inline with imulRRI, we don't want the sync back to happen until after imulRRI
-    imulRRI(DYN_32bit, dest, read(DYN_32bit, calculateEaa2(op)), op->imm, true);
+    imulRRI(DYN_32bit, dest, read(DYN_32bit, calculateEaa(op)), op->imm, true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr16r16(DecodedOp* op) {
@@ -754,7 +754,7 @@ void DynamicData::dynamic_dimulr16r16(DecodedOp* op) {
 }
 void DynamicData::dynamic_dimulr16e16(DecodedOp* op) {
     RegPtr dest = getReg(op->reg); // don't inline with imulRR, we don't want the sync back to happen until after imulRRI
-    imulRR(DYN_16bit, dest, read(DYN_16bit, calculateEaa2(op)), true);
+    imulRR(DYN_16bit, dest, read(DYN_16bit, calculateEaa(op)), true);
     incrementEip(op->len);
 }
 void DynamicData::dynamic_dimulr32r32(DecodedOp* op) {
@@ -764,6 +764,6 @@ void DynamicData::dynamic_dimulr32r32(DecodedOp* op) {
 }
 void DynamicData::dynamic_dimulr32e32(DecodedOp* op) {
     RegPtr dest = getReg(op->reg); // don't inline with imulRR, we don't want the sync back to happen until after imulRRI
-    imulRR(DYN_32bit, dest, read(DYN_32bit, calculateEaa2(op)), true);
+    imulRR(DYN_32bit, dest, read(DYN_32bit, calculateEaa(op)), true);
     incrementEip(op->len);
 }

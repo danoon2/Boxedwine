@@ -27,7 +27,7 @@ void DynamicData::dynamic_cmov_R(DynWidth width, DecodedOp* op, DynConditional c
 void DynamicData::dynamic_cmov_M(DynWidth width, DecodedOp* op, DynConditional condition) {
     IfCondition(condition); {
         RegPtr dest = getReg(op->reg);
-        mov(width, dest, read(width, calculateEaa2(op)));
+        mov(width, dest, read(width, calculateEaa(op)));
     } EndIf();
     incrementEip(op->len);
 }
