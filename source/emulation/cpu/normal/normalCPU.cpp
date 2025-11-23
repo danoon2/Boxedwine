@@ -21,7 +21,7 @@
 #include "../decoder.h"
 #include "normalCPU.h"
 #include "../../softmmu/soft_code_page.h"
-#include "../x32/x32CPU.h"
+#include "../x32/jitX86CodeGen.h"
 #include "../armv7/armv7CPU.h"
 #include "../armv8/armv8CPU.h"
 #include "../../../util/ptrpool.h"
