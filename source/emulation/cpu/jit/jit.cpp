@@ -19,29 +19,28 @@
 #include "boxedwine.h"
 
 #ifdef BOXEDWINE_DYNAMIC
-#include "dynamicData.h"
+#include "jit.h"
 
 #include "../normal/instructions.h"
 #include "../common/common_arith.h"
 #include "../common/common_pushpop.h"
-#include "../dynamic/dynamic_func.h"
-#include "../dynamic/dynamic_arith.h"
-#include "../dynamic/dynamic_mov.h"
-#include "../dynamic/dynamic_incdec.h"
-#include "../dynamic/dynamic_jump.h"
-#include "../dynamic/dynamic_pushpop.h"
-#include "../dynamic/dynamic_strings.h"
-#include "../dynamic/dynamic_shift.h"
-#include "../dynamic/dynamic_conditions.h"
-#include "../dynamic/dynamic_setcc.h"
-#include "../dynamic/dynamic_xchg.h"
-#include "../dynamic/dynamic_bit.h"
-#include "../dynamic/dynamic_other.h"
-#include "../dynamic/dynamic_mmx.h"
-#include "../dynamic/dynamic_sse.h"
-#include "../dynamic/dynamic_sse2.h"
-#include "../dynamic/dynamic_fpu.h"
-#include "../dynamic/dynamic_lock.h"
+#include "jitArith.h"
+#include "jitMov.h"
+#include "jitIncDec.h"
+#include "jitJump.h"
+#include "jitPushPop.h"
+#include "jitStrings.h"
+#include "jitShift.h"
+#include "jitConditions.h"
+#include "jitSetcc.h"
+#include "jitXchg.h"
+#include "jitBit.h"
+#include "jitOther.h"
+#include "jitCallMmx.h"
+#include "jitCallSse.h"
+#include "jitCallSse2.h"
+#include "jitCallFPU.h"
+#include "jitLock.h"
 
 U8 JitReg::hardwareReg() {
     if (reg != 0xff) {
@@ -51,7 +50,7 @@ U8 JitReg::hardwareReg() {
     return reg;
 }
 
-RegPtr DynamicData::calculateEaaV2(DecodedOp* op, U32 popEspAmount) {
+RegPtr Jit::calculateEaaV2(DecodedOp* op, U32 popEspAmount) {
     if (op->ea16) {
         // cpu->seg[op->base].address + (U16)(cpu->reg[op->rm].u16 + (S16)cpu->reg[op->sibIndex].u16 + op->disp)
         RegPtr result = getTmpReg();
@@ -125,14 +124,14 @@ RegPtr DynamicData::calculateEaaV2(DecodedOp* op, U32 popEspAmount) {
     }
 }
 
-void DynamicData::dynamic_sidt(DecodedOp* op) {
+void Jit::dynamic_sidt(DecodedOp* op) {
 }
 
 static void dynamic_onExitSignal(CPU* cpu) {
     onExitSignal(cpu, NULL);
 }
 
-void DynamicData::dynamic_callback(DecodedOp* op) {
+void Jit::dynamic_callback(DecodedOp* op) {
     if (op->pfn == onExitSignal) {
         call(dynamic_onExitSignal);
     } else {
@@ -140,17 +139,17 @@ void DynamicData::dynamic_callback(DecodedOp* op) {
     }
 }
 
-void DynamicData::dynamic_invalid_op(DecodedOp* op) {
+void Jit::dynamic_invalid_op(DecodedOp* op) {
     //kpanic_fmt("Invalid instruction %x\n", op->inst);
     call(common_ud2);
     blockDone(true);
 }
 
-void DynamicData::dynamic_onTestEnd(DecodedOp* op) {
+void Jit::dynamic_onTestEnd(DecodedOp* op) {
     onTestEnd(op);
 }
 
-void DynamicData::pushParam(std::vector<DynParam>& params, JitWidth width, RegPtr reg) {
+void Jit::pushParam(std::vector<DynParam>& params, JitWidth width, RegPtr reg) {
     if (width == JitWidth::b32) {
         params.push_back(DynParam(JitCallParamType::REG_32, reg));
     } else if (width == JitWidth::b16) {
@@ -158,31 +157,31 @@ void DynamicData::pushParam(std::vector<DynParam>& params, JitWidth width, RegPt
     } else if (width == JitWidth::b8) {
         params.push_back(DynParam(JitCallParamType::REG_8, reg));
     } else {
-        kpanic("DynamicData::callAndReturn");
+        kpanic("Jit::callAndReturn");
     }
 }
 
-void DynamicData::call(CallNoArgs address) {
+void Jit::call(CallNoArgs address) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     callHostFunction(address, params);
 }
 
-void DynamicData::call_I(CallI address, U32 value) {
+void Jit::call_I(CallI address, U32 value) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value));
     callHostFunction(address, params);
 }
 
-void DynamicData::call_R(CallR address, JitWidth width, RegPtr reg) {
+void Jit::call_R(CallR address, JitWidth width, RegPtr reg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width, reg);
     callHostFunction(address, params);
 }
 
-void DynamicData::call_II(CallII address, U32 value1, U32 value2) {
+void Jit::call_II(CallII address, U32 value1, U32 value2) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -190,7 +189,7 @@ void DynamicData::call_II(CallII address, U32 value1, U32 value2) {
     callHostFunction(address, params);
 }
 
-void DynamicData::call_II8(CallII8 address, U32 value1, U32 value2) {
+void Jit::call_II8(CallII8 address, U32 value1, U32 value2) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -198,7 +197,7 @@ void DynamicData::call_II8(CallII8 address, U32 value1, U32 value2) {
     callHostFunction(address, params);
 }
 
-void DynamicData::call_IR(CallIR address, U32 value, JitWidth width, RegPtr reg) {
+void Jit::call_IR(CallIR address, U32 value, JitWidth width, RegPtr reg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value));
@@ -206,7 +205,7 @@ void DynamicData::call_IR(CallIR address, U32 value, JitWidth width, RegPtr reg)
     callHostFunction(address, params);
 }
 
-void DynamicData::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
+void Jit::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width, reg);
@@ -214,7 +213,7 @@ void DynamicData::call_RI(CallRI address, JitWidth width, RegPtr reg, U32 value)
     callHostFunction(address, params);
 }
 
-void DynamicData::call_RR(CallRR address, JitWidth width, RegPtr reg, JitWidth width2, RegPtr reg2) {
+void Jit::call_RR(CallRR address, JitWidth width, RegPtr reg, JitWidth width2, RegPtr reg2) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width, reg);
@@ -222,7 +221,7 @@ void DynamicData::call_RR(CallRR address, JitWidth width, RegPtr reg, JitWidth w
     callHostFunction(address, params);
 }
 
-void DynamicData::call_III(CallIII address, U32 value1, U32 value2, U32 value3) {
+void Jit::call_III(CallIII address, U32 value1, U32 value2, U32 value3) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -231,7 +230,7 @@ void DynamicData::call_III(CallIII address, U32 value1, U32 value2, U32 value3) 
     callHostFunction(address, params);
 }
 
-void DynamicData::call_III8(CallIII8 address, U32 value1, U32 value2, U32 value3) {
+void Jit::call_III8(CallIII8 address, U32 value1, U32 value2, U32 value3) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -240,7 +239,7 @@ void DynamicData::call_III8(CallIII8 address, U32 value1, U32 value2, U32 value3
     callHostFunction(address, params);
 }
 
-void DynamicData::call_IIR(CallIIR address, U32 value1, U32 value2, JitWidth width3, RegPtr reg3) {
+void Jit::call_IIR(CallIIR address, U32 value1, U32 value2, JitWidth width3, RegPtr reg3) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -249,7 +248,7 @@ void DynamicData::call_IIR(CallIIR address, U32 value1, U32 value2, JitWidth wid
     callHostFunction(address, params);
 }
 
-void DynamicData::call_IRI8(CallIRI8 address, U32 value1, JitWidth width2, RegPtr reg2, U32 value3) {
+void Jit::call_IRI8(CallIRI8 address, U32 value1, JitWidth width2, RegPtr reg2, U32 value3) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -258,7 +257,7 @@ void DynamicData::call_IRI8(CallIRI8 address, U32 value1, JitWidth width2, RegPt
     callHostFunction(address, params);
 }
 
-void DynamicData::call_RII(CallRII address, JitWidth width1, RegPtr reg1, U32 value2, U32 value3) {
+void Jit::call_RII(CallRII address, JitWidth width1, RegPtr reg1, U32 value2, U32 value3) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width1, reg1);
@@ -267,7 +266,7 @@ void DynamicData::call_RII(CallRII address, JitWidth width1, RegPtr reg1, U32 va
     callHostFunction(address, params);
 }
 
-void DynamicData::call_RRI(CallRRI address, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, U32 value3) {
+void Jit::call_RRI(CallRRI address, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, U32 value3) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width1, reg1);
@@ -276,7 +275,7 @@ void DynamicData::call_RRI(CallRRI address, JitWidth width1, RegPtr reg1, JitWid
     callHostFunction(address, params);
 }
 
-void DynamicData::call_IIIR(CallIIIR address, U32 value1, U32 value2, U32 value3, JitWidth width, RegPtr reg) {
+void Jit::call_IIIR(CallIIIR address, U32 value1, U32 value2, U32 value3, JitWidth width, RegPtr reg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -286,7 +285,7 @@ void DynamicData::call_IIIR(CallIIIR address, U32 value1, U32 value2, U32 value3
     callHostFunction(address, params);
 }
 
-void DynamicData::call_IRRR(CallIIIR address, U32 value1, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, JitWidth width3, RegPtr reg3) {
+void Jit::call_IRRR(CallIIIR address, U32 value1, JitWidth width1, RegPtr reg1, JitWidth width2, RegPtr reg2, JitWidth width3, RegPtr reg3) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -296,7 +295,7 @@ void DynamicData::call_IRRR(CallIIIR address, U32 value1, JitWidth width1, RegPt
     callHostFunction(address, params);
 }
 
-RegPtr DynamicData::callAndReturn(CallReturn address, RegPtr resultReg) {
+RegPtr Jit::callAndReturn(CallReturn address, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     if (!resultReg) {
@@ -306,7 +305,7 @@ RegPtr DynamicData::callAndReturn(CallReturn address, RegPtr resultReg) {
     return resultReg;
 }
 
-RegPtr DynamicData::callAndReturnOp(CallReturnOp address, RegPtr resultReg) {
+RegPtr Jit::callAndReturnOp(CallReturnOp address, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     if (!resultReg) {
@@ -316,7 +315,7 @@ RegPtr DynamicData::callAndReturnOp(CallReturnOp address, RegPtr resultReg) {
     return resultReg;
 }
 
-RegPtr DynamicData::callAndReturn_II(CallReturnII address, U32 value1, U32 value2) {
+RegPtr Jit::callAndReturn_II(CallReturnII address, U32 value1, U32 value2) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value1));
@@ -326,7 +325,7 @@ RegPtr DynamicData::callAndReturn_II(CallReturnII address, U32 value1, U32 value
     return result;
 }
 
-RegPtr DynamicData::callAndReturn_R(CallReturnR address, JitWidth width, RegPtr reg, RegPtr resultReg) {
+RegPtr Jit::callAndReturn_R(CallReturnR address, JitWidth width, RegPtr reg, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width, reg);
@@ -337,7 +336,7 @@ RegPtr DynamicData::callAndReturn_R(CallReturnR address, JitWidth width, RegPtr 
     return resultReg;
 }
 
-RegPtr DynamicData::callAndReturn_RS(CallReturnRS address, JitWidth width, RegPtr reg, RegPtr resultReg) {
+RegPtr Jit::callAndReturn_RS(CallReturnRS address, JitWidth width, RegPtr reg, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     pushParam(params, width, reg);
@@ -348,7 +347,7 @@ RegPtr DynamicData::callAndReturn_RS(CallReturnRS address, JitWidth width, RegPt
     return resultReg;
 }
 
-RegPtr DynamicData::callAndReturn_IR(CallReturnIR address, U32 value, JitWidth width, RegPtr reg) {
+RegPtr Jit::callAndReturn_IR(CallReturnIR address, U32 value, JitWidth width, RegPtr reg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value));
@@ -358,7 +357,7 @@ RegPtr DynamicData::callAndReturn_IR(CallReturnIR address, U32 value, JitWidth w
     return result;
 }
 
-RegPtr DynamicData::callAndReturn_I(CallReturnI address, U32 value, RegPtr resultReg) {
+RegPtr Jit::callAndReturn_I(CallReturnI address, U32 value, RegPtr resultReg) {
     std::vector<DynParam> params;
     params.push_back(DynParam(JitCallParamType::CPU));
     params.push_back(DynParam(JitCallParamType::CONST_32, value));
@@ -369,7 +368,7 @@ RegPtr DynamicData::callAndReturn_I(CallReturnI address, U32 value, RegPtr resul
     return resultReg;
 }
 
-void DynamicData::arithSetup(DecodedOp* op, U32& needsToSetFlags, RegPtr& cf, const LazyFlags* flags, bool addCF) {
+void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, RegPtr& cf, const LazyFlags* flags, bool addCF) {
     if (flags) {
         needsToSetFlags = op->needsToSetFlags(cpu);
     }
@@ -385,7 +384,7 @@ void DynamicData::arithSetup(DecodedOp* op, U32& needsToSetFlags, RegPtr& cf, co
     }
 }
 
-void DynamicData::arithSetup(DecodedOp* op, U32& needsToSetFlags, const LazyFlags* flags) {
+void Jit::arithSetup(DecodedOp* op, U32& needsToSetFlags, const LazyFlags* flags) {
     if (flags) {
         needsToSetFlags = op->needsToSetFlags(cpu);
     }
@@ -398,7 +397,7 @@ void DynamicData::arithSetup(DecodedOp* op, U32& needsToSetFlags, const LazyFlag
     }
 }
 
-void DynamicData::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback, bool addCF, InstRegReg2 cfCallback) {
+void Jit::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback, bool addCF, InstRegReg2 cfCallback) {
     U32 needsToSetFlags = 0;
     RegPtr cf;
     arithSetup(op, needsToSetFlags, cf, flags, addCF);
@@ -441,7 +440,7 @@ void DynamicData::dynamic_MI(DecodedOp* op, JitWidth width, InstRegImm2 callback
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback, bool addCF, InstRegReg2 cfCallback) {
+void Jit::dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback, const LazyFlags* flags, bool writeback, bool addCF, InstRegReg2 cfCallback) {
     U32 needsToSetFlags = 0;
     RegPtr cf;
     arithSetup(op, needsToSetFlags, cf, flags, addCF);
@@ -479,7 +478,7 @@ void DynamicData::dynamic_RI(DecodedOp* op, JitWidth width, InstRegImm2 callback
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
+void Jit::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
     U32 needsToSetFlags = 0;
     RegPtr cf;
     arithSetup(op, needsToSetFlags, cf, flags, addCF);
@@ -518,7 +517,7 @@ void DynamicData::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback
             });
     } else {
         if (addCF) {
-            kpanic("DynamicData::dynamic_MR wasn't expecting addCF");
+            kpanic("Jit::dynamic_MR wasn't expecting addCF");
         }
         RegPtr dest = read(width, calculateEaaV2(op));
 
@@ -543,7 +542,7 @@ void DynamicData::dynamic_MR(DecodedOp* op, JitWidth width, InstRegReg2 callback
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
+void Jit::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
     U32 needsToSetFlags = 0;
     RegPtr cf;
     arithSetup(op, needsToSetFlags, cf, flags, addCF);
@@ -582,7 +581,7 @@ void DynamicData::dynamic_RM(DecodedOp* op, JitWidth width, InstRegReg2 callback
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
+void Jit::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags, bool writeback, bool addCF) {
     U32 needsToSetFlags = 0;
     RegPtr cf;
     arithSetup(op, needsToSetFlags, cf, flags, addCF);
@@ -670,7 +669,7 @@ void DynamicData::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback
         }
     } else {
         if (addCF) {
-            kpanic("DynamicData::dynamic_RR wasn't expecting addCF");
+            kpanic("Jit::dynamic_RR wasn't expecting addCF");
         }
         if (width == JitWidth::b8) {
             RegPtr reg = getTmpReg8(op->reg);
@@ -721,7 +720,7 @@ void DynamicData::dynamic_RR(DecodedOp* op, JitWidth width, InstRegReg2 callback
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback) {
+void Jit::dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback) {
     U32 needsToSetFlags = 0;
     arithSetup(op, needsToSetFlags, flags);
 
@@ -754,7 +753,7 @@ void DynamicData::dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, co
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback, RegPtr tmp) {
+void Jit::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback, RegPtr tmp) {
     U32 needsToSetFlags = 0;
     arithSetup(op, needsToSetFlags, flags);
 
@@ -781,7 +780,7 @@ void DynamicData::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, co
         }
         (this->*callback)(width, dest);
         if (flags && flags->usesResult(needsToSetFlags)) {
-            kpanic("DynamicData::dynamic_M");
+            kpanic("Jit::dynamic_M");
         }
     }
     incrementEip(op->len);
@@ -791,7 +790,7 @@ void DynamicData::dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, co
 // The CF flag contains the value of the last bit shifted out of the destination operand; it is undefined for SHL and SHR instructions where the count is greater than 
 // or equal to the size(in bits) of the destination operand.The OF flag is affected only for 1 - bit shifts(see "Description" above); otherwise, it is undefined.The SF, 
 // ZF, and PF flags are set according to the result.If the count is 0, the flags are not affected.For a non - zero count, the AF flag is undefined.
-void DynamicData::dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
+void Jit::dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
     RegPtr dest;
@@ -836,7 +835,7 @@ void DynamicData::dynamic_R_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callba
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
+void Jit::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
     U32 needsToSetFlags = op->needsToSetFlags(cpu);
 
     if (!needsToSetFlags) {
@@ -875,7 +874,7 @@ void DynamicData::dynamic_M_Cl(DecodedOp* op, JitWidth width, InstRegReg2 callba
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
+void Jit::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
     U32 needsToSetFlags = 0;
     arithSetup(op, needsToSetFlags, flags);
 
@@ -912,7 +911,7 @@ void DynamicData::dynamic_RM_WriteM(DecodedOp* op, JitWidth width, InstRegReg2 c
     incrementEip(op->len);
 }
 
-void DynamicData::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
+void Jit::dynamic_RR_WriteBoth(DecodedOp* op, JitWidth width, InstRegReg2 callback, const LazyFlags* flags) {
     U32 needsToSetFlags = 0;
     arithSetup(op, needsToSetFlags, flags);
 

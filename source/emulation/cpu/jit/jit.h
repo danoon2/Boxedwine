@@ -16,8 +16,8 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
-#ifndef __DYNAMIC_DATA_H__
-#define __DYNAMIC_DATA_H__
+#ifndef __JIT_H__
+#define __JIT_H__
 
 #include "../common/cpu.h"
 
@@ -97,14 +97,14 @@ using RegPtr = std::shared_ptr<JitReg>;
 #define DYN_PTR_SIZE U32
 #define DYN_PTR JitWidth::b32
 // API available to dynamic ops
-class DynamicData {
+class Jit {
 public:
     // v3
-    using InstRegRegImm = void(DynamicData::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm);
-    using InstRegRegCl = void(DynamicData::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl);
-    using InstRegReg2 = void(DynamicData::*)(JitWidth regWidth, RegPtr reg, RegPtr rm);
-    using InstRegImm2 = void(DynamicData::*)(JitWidth regWidth, RegPtr reg, U32 imm);
-    using InstReg2 = void(DynamicData::*)(JitWidth regWidth, RegPtr reg);
+    using InstRegRegImm = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, U32 imm);
+    using InstRegRegCl = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm, RegPtr cl);
+    using InstRegReg2 = void(Jit::*)(JitWidth regWidth, RegPtr reg, RegPtr rm);
+    using InstRegImm2 = void(Jit::*)(JitWidth regWidth, RegPtr reg, U32 imm);
+    using InstReg2 = void(Jit::*)(JitWidth regWidth, RegPtr reg);
 
     virtual RegPtr getReg(U8 reg, S8 hint = -1, bool load = true) = 0; // for cached regs, they will be used directly, for unchached regs, it will be read from the cpu and written back when done
     virtual RegPtr getReg8(U8 reg) = 0;
@@ -251,9 +251,9 @@ public:
     void dynamic_R(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback = true);
     void dynamic_M(DecodedOp* op, JitWidth width, InstReg2 callback, const LazyFlags* flags, bool writeback = true, RegPtr tmp = nullptr);
 
-    using OpFunction = void(DynamicData::*)(DecodedOp* op);
+    using OpFunction = void(Jit::*)(DecodedOp* op);
 
-    DynamicData(CPU* cpu) : cpu(cpu) {}
+    Jit(CPU* cpu) : cpu(cpu) {}
     CPU* cpu = nullptr;
 
     // don't perform logic based on currentLazyFlags, you must check at run time if the lazy flags is currently equal to currentLazyFlags then you can use it.  This is because
@@ -407,7 +407,7 @@ protected:
     void dynamic_cmov_M(JitWidth width, DecodedOp* op, JitConditional condition);
     void dynamic_set_R(DecodedOp* op, JitConditional condition);
     void dynamic_set_M(DecodedOp* op, JitConditional condition);
-    using InstDiv = void(DynamicData::*)(JitWidth width, RegPtr dest, RegPtr src, RegPtr remainder);
+    using InstDiv = void(Jit::*)(JitWidth width, RegPtr dest, RegPtr src, RegPtr remainder);
     void div8(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
     void div16(DecodedOp* op, RegPtr src, bool isSigned, InstDiv callback);
     void div32(DecodedOp* op, RegPtr src, InstDiv callback, std::function<void()> fallback);

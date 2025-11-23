@@ -19,15 +19,15 @@
 #include "boxedwine.h"
 
 #ifdef BOXEDWINE_DYNAMIC
-#include "dynamic.h"
+#include "jitCodeGen.h"
 #include "../normal/normalCPU.h"
-#include "dynamic_flags.h"
+#include "jitFlags.h"
 
 extern U8* ramPages[K_NUMBER_OF_PAGES];
-static DynamicCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
+static JitCodeGen::OpFunction dynamicOps[NUMBER_OF_OPS];
 static U32 dynamicOpsInitialized;
 
-void DynamicCodeGen::onTestEnd(DecodedOp* op) {
+void JitCodeGen::onTestEnd(DecodedOp* op) {
     writeCPUValue(DYN_PTR, offsetof(CPU, nextOp), (DYN_PTR_SIZE)op);
 }
 
@@ -45,16 +45,16 @@ static void initDynamicOps() {
 
     dynamicOpsInitialized = 1;
     for (int i = 0; i < InstructionCount; i++) {
-        dynamicOps[i] = &DynamicData::dynamic_invalid_op;
+        dynamicOps[i] = &Jit::dynamic_invalid_op;
     }
-#define INIT_CPU(e, f) dynamicOps[e] = &DynamicData::dynamic_##f;
+#define INIT_CPU(e, f) dynamicOps[e] = &Jit::dynamic_##f;
 #include "../common/cpu_init.h"
 #include "../common/cpu_init_mmx.h"
 #include "../common/cpu_init_sse.h"
 #include "../common/cpu_init_sse2.h"
 #include "../common/cpu_init_fpu.h"
 #ifdef BOXEDWINE_MULTI_THREADED
-#define INIT_CPU_LOCK(e, f) dynamicOps[e##_Lock] = &DynamicData::dynamic_##f##_lock;
+#define INIT_CPU_LOCK(e, f) dynamicOps[e##_Lock] = &Jit::dynamic_##f##_lock;
 #include "../common/cpu_init_lock.h"
 #endif
 
@@ -71,7 +71,7 @@ static void initDynamicOps() {
     dynamicOps[VERRR16] = 0;
     dynamicOps[VERWR16] = 0;
     dynamicOps[SGDT] = 0;
-    dynamicOps[SIDT] = &DynamicData::dynamic_sidt;
+    dynamicOps[SIDT] = &Jit::dynamic_sidt;
     dynamicOps[LGDT] = 0;
     dynamicOps[LIDT] = 0;
     dynamicOps[SMSWRreg] = 0;
@@ -79,8 +79,8 @@ static void initDynamicOps() {
     dynamicOps[LMSWRreg] = 0;
     dynamicOps[LMSW] = 0;
     dynamicOps[INVLPG] = 0;
-    dynamicOps[Callback] = &DynamicData::dynamic_callback;
-    dynamicOps[TestEnd] = &DynamicCodeGen::dynamic_onTestEnd;
+    dynamicOps[Callback] = &Jit::dynamic_callback;
+    dynamicOps[TestEnd] = &JitCodeGen::dynamic_onTestEnd;
 }
 
 #ifdef _DEBUG
@@ -110,7 +110,7 @@ static void logBlock(CPU* cpu, U32 address, DecodedOp* op, U32 len) {
 }
 #endif
 
-bool DynamicCodeGen::calculateLongestBlock(DecodedOp* op) {
+bool JitCodeGen::calculateLongestBlock(DecodedOp* op) {
     U32 eip = this->startingEip;
     DecodedOp* nextOp = op;
     U32 furthestJump = 0;
@@ -261,7 +261,7 @@ static DecodedOp* removeJITBlock(DecodedOp* op) {
     return op;
 }
 
-void DynamicCodeGen::removeJIT(DecodedOp* op, U32 count) {
+void JitCodeGen::removeJIT(DecodedOp* op, U32 count) {
     for (U32 i = 0; i < count; i++) {
         if (op->blockStart) {
             removeJITBlock(op->blockStart);
@@ -269,7 +269,7 @@ void DynamicCodeGen::removeJIT(DecodedOp* op, U32 count) {
     }
 }
 
-bool DynamicCodeGen::compileOps(DecodedOp* op) {
+bool JitCodeGen::compileOps(DecodedOp* op) {
     DecodedOp* nextOp = op;
     this->emulatedLen = 0;
     this->blockOpCount = 0;
@@ -307,10 +307,10 @@ bool DynamicCodeGen::compileOps(DecodedOp* op) {
     return true;
 }
 
-void DynamicCodeGen::doJIT(U32 address, DecodedOp* op) {
+void JitCodeGen::doJIT(U32 address, DecodedOp* op) {
     BOXEDWINE_CRITICAL_SECTION_WITH_MUTEX(cpu->memory->mutex);
     if (!cpu->thread->process->startJITOp) {
-        DynamicCodeGen* jit = startNewJIT(cpu);
+        JitCodeGen* jit = startNewJIT(cpu);
         cpu->thread->process->startJITOp = (OpCallback)jit->createStartJITCode();
         delete jit;
         jit = startNewJIT(cpu);
@@ -357,33 +357,33 @@ void OPCALL firstDynamicOp(CPU* cpu, DecodedOp* op) {
 
 #define CPU_OFFSET_OF(x) offsetof(CPU, x)
 
-bool DynamicCodeGen::isParamTypeReg(JitCallParamType paramType) {
+bool JitCodeGen::isParamTypeReg(JitCallParamType paramType) {
     return paramType == JitCallParamType::REG_8 || paramType == JitCallParamType::REG_16 || paramType == JitCallParamType::REG_32;
 }
 
-void DynamicCodeGen::incrementEip(U32 inc) {
+void JitCodeGen::incrementEip(U32 inc) {
     RegPtr reg = readCPU(JitWidth::b32, CPU_OFFSET_OF(eip.u32));
     addValue(JitWidth::b32, reg, inc);
     writeCPU(JitWidth::b32, CPU_OFFSET_OF(eip.u32), reg);
 }
 
-void DynamicCodeGen::blockCall(DecodedOp* op) {
+void JitCodeGen::blockCall(DecodedOp* op) {
     blockNext1(op);
     if (lastOpEip > currentEip) {
         blockExit();
     }
 }
 
-void DynamicCodeGen::blockDoneCall() {
+void JitCodeGen::blockDoneCall() {
     blockDone(false);
 }
 
-void DynamicCodeGen::blockDone(bool returnEarly) {
+void JitCodeGen::blockDone(bool returnEarly) {
     // cpu->nextOp = cpu->nextOp();
     jumpEip();
 }
 
-void DynamicCodeGen::jumpEip() {
+void JitCodeGen::jumpEip() {
     RegPtr target = getTmpReg();
     movValue(DYN_PTR, target, (DYN_PTR_SIZE)cpu->thread->process->jumpToNextJIT);
     jmp(target);
@@ -403,7 +403,7 @@ static DYN_PTR_SIZE getJitFunctionForCurrentOp(CPU* cpu) {
     return (DYN_PTR_SIZE)op->pfnJitCode;
 }
 
-void DynamicCodeGen::blockDoneJump() {
+void JitCodeGen::blockDoneJump() {
     jumpToEipIfCached();        
     RegPtr result = callAndReturn(getJitFunctionForCurrentOp);
     IfNot(DYN_PTR, result);
@@ -420,7 +420,7 @@ static DYN_PTR_SIZE dynamic_getNextOp(CPU* cpu) {
 }
 
 // next block is also set in common_other.cpp for loop instructions, so don't use this as a hook for something else
-void DynamicCodeGen::blockNext1(DecodedOp* op) {
+void JitCodeGen::blockNext1(DecodedOp* op) {
     // if (!(*(op->nextJump))) {
     //     *(op->nextJump) = cpu->getNextOp();
     // }
@@ -456,7 +456,7 @@ void DynamicCodeGen::blockNext1(DecodedOp* op) {
     blockExit();
 }
 
-void DynamicCodeGen::blockNext2(DecodedOp* op) {
+void JitCodeGen::blockNext2(DecodedOp* op) {
     // if (!op->next) { 
     //     op->next = cpu->getNextOp(); 
     // }
@@ -514,7 +514,7 @@ U32 readb(U32 address) {
     return KThread::currentThread()->memory->readb(address);
 }
 
-U8* DynamicCodeGen::createDynamicExecutableMemory() {
+U8* JitCodeGen::createDynamicExecutableMemory() {
     U8* begin = (U8*)cpu->memory->allocCodeMemory(getBufferSize());
 
     Platform::writeCodeToMemory(begin, getBufferSize(), [begin, this]() {
@@ -523,7 +523,7 @@ U8* DynamicCodeGen::createDynamicExecutableMemory() {
     return begin;
 }
 
-void DynamicCodeGen::jumpToEipIfCached() {
+void JitCodeGen::jumpToEipIfCached() {
     // U32 pageIndex = address >> K_PAGE_SHIFT;
     // DecodedOpPageCache* page = getPageCache(pageIndex, false);
     // if (page) {
@@ -572,7 +572,7 @@ void DynamicCodeGen::jumpToEipIfCached() {
     EndIf();
  }
 
-U8* DynamicCodeGen::createJumpEip() {
+U8* JitCodeGen::createJumpEip() {
     jumpToEipIfCached();
     writeCPU(DYN_PTR, offsetof(CPU, nextOp), callAndReturnOp(common_getNextOp));
     blockExit();
@@ -582,7 +582,7 @@ U8* DynamicCodeGen::createJumpEip() {
     return result;
 }
 
-void DynamicCodeGen::commitJIT(DecodedOp* op) {
+void JitCodeGen::commitJIT(DecodedOp* op) {
     preCommitJIT();
 
     if (!blockOpCount) {
@@ -639,7 +639,7 @@ static JitWidth getWidthOfCondition(const LazyFlags* flags) {
     return JitWidth::b32;
 }
 
-RegPtr DynamicCodeGen::getZF() {
+RegPtr JitCodeGen::getZF() {
     RegPtr result = getTmpReg8();
     RegPtr lazyFlags = readCPU(DYN_PTR, offsetof(CPU, lazyFlags));
 
@@ -668,7 +668,7 @@ RegPtr DynamicCodeGen::getZF() {
     return result;
 }
 
-void DynamicCodeGen::fillFlags() {
+void JitCodeGen::fillFlags() {
     RegPtr flags = readCPU(DYN_PTR, CPU_OFFSET_OF(lazyFlags));
     IfNotEqual(DYN_PTR, flags, (DYN_PTR_SIZE)FLAGS_NONE);
         call(common_fillFlags);
@@ -676,49 +676,49 @@ void DynamicCodeGen::fillFlags() {
     currentLazyFlags = FLAGS_NONE;
 }
 
-void DynamicCodeGen::storeLazyFlags(const LazyFlags* flags) {
+void JitCodeGen::storeLazyFlags(const LazyFlags* flags) {
     writeCPUValue(DYN_PTR, CPU_OFFSET_OF(lazyFlags), (DYN_PTR_SIZE)flags);
 }
 
-void DynamicCodeGen::storeLazyFlagsDest(RegPtr reg) {
+void JitCodeGen::storeLazyFlagsDest(RegPtr reg) {
     writeCPU(reg->isHigh ? JitWidth::b8 : JitWidth::b32, CPU_OFFSET_OF(dst.u32), reg);
 }
 
-void DynamicCodeGen::storeLazyFlagsSrc(RegPtr reg) {
+void JitCodeGen::storeLazyFlagsSrc(RegPtr reg) {
     writeCPU(reg->isHigh ? JitWidth::b8 : JitWidth::b32, CPU_OFFSET_OF(src.u32), reg);
 }
 
-void DynamicCodeGen::storeLazyFlagsSrc(U32 value) {
+void JitCodeGen::storeLazyFlagsSrc(U32 value) {
     writeCPUValue(JitWidth::b32, CPU_OFFSET_OF(src.u32), value);
 }
 
-void DynamicCodeGen::storeLazyFlagsResult(RegPtr reg) {
+void JitCodeGen::storeLazyFlagsResult(RegPtr reg) {
     writeCPU(reg->isHigh ? JitWidth::b8 : JitWidth::b32, CPU_OFFSET_OF(result.u32), reg);
 }
 
-void DynamicCodeGen::storeLazyFlagsOldCF(RegPtr reg) {
+void JitCodeGen::storeLazyFlagsOldCF(RegPtr reg) {
     writeCPU(JitWidth::b32, CPU_OFFSET_OF(oldCF), reg);
 }
 
-void DynamicCodeGen::xorCPUFlagsImmV2(U32 imm) {
+void JitCodeGen::xorCPUFlagsImmV2(U32 imm) {
     RegPtr reg = readCPU(JitWidth::b32, CPU_OFFSET_OF(flags));
     xorValue(JitWidth::b32, reg, imm);
     writeCPU(JitWidth::b32, CPU_OFFSET_OF(flags), reg);
 }
 
-void DynamicCodeGen::andCPUFlagsImmV2(U32 imm) {
+void JitCodeGen::andCPUFlagsImmV2(U32 imm) {
     RegPtr reg = readCPU(JitWidth::b32, CPU_OFFSET_OF(flags));
     andValue(JitWidth::b32, reg, imm);
     writeCPU(JitWidth::b32, CPU_OFFSET_OF(flags), reg);
 }
 
-void DynamicCodeGen::orCPUFlagsImmV2(U32 imm) {
+void JitCodeGen::orCPUFlagsImmV2(U32 imm) {
     RegPtr reg = readCPU(JitWidth::b32, CPU_OFFSET_OF(flags));
     orValue(JitWidth::b32, reg, imm);
     writeCPU(JitWidth::b32, CPU_OFFSET_OF(flags), reg);
 }
 
-void DynamicCodeGen::orCPUFlags(RegPtr flags) {
+void JitCodeGen::orCPUFlags(RegPtr flags) {
     RegPtr reg = readCPU(JitWidth::b32, CPU_OFFSET_OF(flags));
     orReg(JitWidth::b32, reg, flags);
     writeCPU(JitWidth::b32, CPU_OFFSET_OF(flags), reg);
@@ -748,7 +748,7 @@ static void writeb2(CPU* cpu, U32 address, U32 value) {
     cpu->memory->writeb(address, (U8)value);
 }
 
-RegPtr DynamicCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump, RegPtr tmp) {
+RegPtr JitCodeGen::read(JitWidth width, RegPtr addressReg, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump, RegPtr tmp) {
     if (!tmp) {
         tmp = getTmpRegForCallResult();
     }
@@ -773,7 +773,7 @@ RegPtr DynamicCodeGen::read(JitWidth width, RegPtr addressReg, std::function<voi
             // if ((address & 0xFFF) < 0xFE1)
             IfLessThan2(JitWidth::b32, tmp, 0xFE1);
         } else {
-            kpanic_fmt("DynamicCodeGen::read unknown width %d", (U32)width);
+            kpanic_fmt("JitCodeGen::read unknown width %d", (U32)width);
         }
     }
     // int index = address >> 12;
@@ -821,7 +821,7 @@ RegPtr DynamicCodeGen::read(JitWidth width, RegPtr addressReg, std::function<voi
         if (failedMemoryOp) {
             failedMemoryOp();
         } else {
-            DynamicData::CallReturnR address;
+            Jit::CallReturnR address;
 
             // call read
             if (width == JitWidth::b32) {
@@ -839,7 +839,7 @@ RegPtr DynamicCodeGen::read(JitWidth width, RegPtr addressReg, std::function<voi
     return tmp;
 }
 
-void DynamicCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump) {
+void JitCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::function<void(RegPtr address, RegPtr offset)> customMemoryOp, std::function<void()> failedMemoryOp, bool isBigJump) {
     RegPtr tmp = getTmpReg();
 
     if (width != JitWidth::b8) {
@@ -863,7 +863,7 @@ void DynamicCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::f
             // if ((address & 0xFFF) < 0xFE1)
             IfLessThan2(JitWidth::b32, tmp, 0xFE1);
         } else {
-            kpanic_fmt("DynamicCodeGen::write unknown width %d", (U32)width);
+            kpanic_fmt("JitCodeGen::write unknown width %d", (U32)width);
         }
     }
     mov(JitWidth::b32, tmp, addressReg);
@@ -910,7 +910,7 @@ void DynamicCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::f
             tmp = nullptr;
             failedMemoryOp();
         } else {
-            DynamicData::CallRR address;
+            Jit::CallRR address;
 
             if (width == JitWidth::b32) {
                 address = writed2;
@@ -926,7 +926,7 @@ void DynamicCodeGen::write(JitWidth width, RegPtr addressReg, RegPtr src, std::f
     } EndIf(isBigJump);
 }
 
-void DynamicCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
+void JitCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
     RegPtr tmp = getTmpReg();
 
     if (width != JitWidth::b8) {
@@ -947,7 +947,7 @@ void DynamicCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
             // if ((address & 0xFFF) < 0xFF1)
             IfLessThan2(JitWidth::b32, tmp, 0xFF1);
         } else {
-            kpanic_fmt("DynamicCodeGen::write unknown width %d", (U32)width);
+            kpanic_fmt("JitCodeGen::write unknown width %d", (U32)width);
         }
     }
     mov(JitWidth::b32, tmp, addressReg);
@@ -987,7 +987,7 @@ void DynamicCodeGen::writeValue(JitWidth width, RegPtr addressReg, U32 imm) {
     } EndIf();
 }
 
-void DynamicCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
+void JitCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::function<void(RegPtr value)> prepareWrite, S8 hint) {
     U32 firstCheckPos = 0;
 
     if (width != JitWidth::b8) {
@@ -1004,7 +1004,7 @@ void DynamicCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::functi
             // if ((address & 0xFFF) < 0xFFD)
             IfLessThan2(JitWidth::b32, tmpReg, 0xFFD); // :TODO: V2
         } else {
-            kpanic_fmt("DynamicCodeGen::readWriteMem unknown width %d", (U32)width);
+            kpanic_fmt("JitCodeGen::readWriteMem unknown width %d", (U32)width);
         }
     }
     RegPtr tmpReg = getTmpRegWithHint(hint);
@@ -1032,7 +1032,7 @@ void DynamicCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::functi
 
     } StartElse(); {
 
-        DynamicData::CallReturnR addressRead;
+        Jit::CallReturnR addressRead;
         // call read
         if (width == JitWidth::b32) {
             addressRead = readd2;
@@ -1041,7 +1041,7 @@ void DynamicCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::functi
         } else if (width == JitWidth::b8) {
             addressRead = readb2;
         } else {
-            kpanic("DynamicCodeGen::readWriteMem");
+            kpanic("JitCodeGen::readWriteMem");
         }
         callAndReturn_R(addressRead, JitWidth::b32, addressReg, tmpReg2);
         xorReg(JitWidth::b32, tmpReg, tmpReg); // so that the next if statement will also choose calling write
@@ -1056,7 +1056,7 @@ void DynamicCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::functi
         write(JitWidth::b32, tmpReg, addressReg, 0, 0, tmpReg2);
 
     } StartElse(); {
-        DynamicData::CallRR address;
+        Jit::CallRR address;
 
         if (width == JitWidth::b32) {
             address = writed2;
@@ -1070,21 +1070,21 @@ void DynamicCodeGen::readWriteMem(JitWidth width, RegPtr addressReg, std::functi
     } EndIf();
 }
 
-RegPtr DynamicCodeGen::getFlagDestReadOnly(RegPtr result) {
+RegPtr JitCodeGen::getFlagDestReadOnly(RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
     return readCPU(JitWidth::b32, CPU_OFFSET_OF(dst.u32), result);
 }
 
-RegPtr DynamicCodeGen::getFlagDestTmp(RegPtr result) {
+RegPtr JitCodeGen::getFlagDestTmp(RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
     return readCPU(JitWidth::b32, CPU_OFFSET_OF(dst.u32), result);
 }
 
-RegPtr DynamicCodeGen::getFlagSrcTmp(RegPtr result) {
+RegPtr JitCodeGen::getFlagSrcTmp(RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
@@ -1092,35 +1092,35 @@ RegPtr DynamicCodeGen::getFlagSrcTmp(RegPtr result) {
 }
 
 
-RegPtr DynamicCodeGen::getFlagSrcReadOnly(RegPtr result) {
+RegPtr JitCodeGen::getFlagSrcReadOnly(RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
     return readCPU(JitWidth::b32, CPU_OFFSET_OF(src.u32), result);
 }
 
-RegPtr DynamicCodeGen::getFlagResultReadOnly(RegPtr result) {
+RegPtr JitCodeGen::getFlagResultReadOnly(RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
     return readCPU(JitWidth::b32, CPU_OFFSET_OF(result.u32), result);
 }
 
-RegPtr DynamicCodeGen::getFlagResultTmp(RegPtr result) {
+RegPtr JitCodeGen::getFlagResultTmp(RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
     return readCPU(JitWidth::b32, CPU_OFFSET_OF(result.u32), result);
 }
 
-RegPtr DynamicCodeGen::getFlagCF(RegPtr result) {
+RegPtr JitCodeGen::getFlagCF(RegPtr result) {
     if (!result) {
         result = getTmpReg8();
     }
     return readCPU(JitWidth::b32, CPU_OFFSET_OF(oldCF), result);
 }
 
-RegPtr DynamicCodeGen::getCF() {
+RegPtr JitCodeGen::getCF() {
     if (currentLazyFlags) {
         RegPtr flags = readCPU(DYN_PTR, CPU_OFFSET_OF(lazyFlags), getTmpRegForCallResult());
         IfEqual(DYN_PTR, flags, (DYN_PTR_SIZE)currentLazyFlags); {
@@ -1134,7 +1134,7 @@ RegPtr DynamicCodeGen::getCF() {
     }
 }
 
-RegPtr DynamicCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
+RegPtr JitCodeGen::getCondition(JitConditional condition, RegPtr resultReg) {
     if (!currentLazyFlags) {
         return callGetCondition(condition, resultReg);
     }
@@ -1217,7 +1217,7 @@ RegPtr DynamicCodeGen::getCondition(JitConditional condition, RegPtr resultReg) 
     return calculateCondition(condition, resultReg);
 }
 
-RegPtr DynamicCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg) {
+RegPtr JitCodeGen::calculateCondition(JitConditional condition, RegPtr resultReg) {
     if (!resultReg) {
         resultReg = getTmpReg8();
     }
@@ -1396,7 +1396,7 @@ RegPtr DynamicCodeGen::calculateCondition(JitConditional condition, RegPtr resul
     return resultReg;
 }
 
-RegPtr DynamicCodeGen::callGetCondition(JitConditional condition, RegPtr resultReg) {
+RegPtr JitCodeGen::callGetCondition(JitConditional condition, RegPtr resultReg) {
     switch (condition) {
     case JitConditional::O: return callAndReturn(common_condition_o, resultReg);
     case JitConditional::NO: return callAndReturn(common_condition_no, resultReg);
@@ -1418,7 +1418,7 @@ RegPtr DynamicCodeGen::callGetCondition(JitConditional condition, RegPtr resultR
     }
 }
 
-void DynamicCodeGen::IfCondition(JitConditional condition) {
+void JitCodeGen::IfCondition(JitConditional condition) {
     //if (!currentLazyFlags || currentLazyFlags == FLAGS_NONE) {
         If(JitWidth::b32, getCondition(condition));
         return;
